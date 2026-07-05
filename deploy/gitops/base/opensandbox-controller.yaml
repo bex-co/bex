@@ -13,7 +13,7 @@ spec:
   source:
     # released as: https://github.com/alibaba/OpenSandbox/releases/download/helm/opensandbox-controller/0.2.0/opensandbox-controller-0.2.0.tgz
     # chart is vendored in THIS repo; Argo reads it via the SSH deploy key (bex-repo secret)
-    repoURL: git@github.com:stargately/bex.git
+    repoURL: git@github.com:bex-co/bex.git
     targetRevision: main
     path: deploy/gitops/charts/opensandbox-controller
     helm:

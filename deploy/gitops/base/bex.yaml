@@ -17,12 +17,12 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:stargately/bex.git
+    repoURL: git@github.com:bex-co/bex.git
     targetRevision: main
     path: operator/config/default
     kustomize:
       images:
-        - controller=ghcr.io/stargately/bex-operator:latest
+        - controller=ghcr.io/bex-co/bex-operator:latest
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-system

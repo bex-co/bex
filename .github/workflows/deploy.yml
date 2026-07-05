@@ -29,7 +29,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/stargately/bex-operator
+  IMAGE: ghcr.io/bex-co/bex-operator
   CLUSTER_NAME: bex
   CLUSTERCTL_VERSION: v1.13.2
 
@@ -115,7 +115,7 @@ jobs:
           printf '%s\n' "${{ secrets.ARGOCD_REPO_SSH_KEY }}" > /tmp/argo_deploy_key
           kubectl -n argocd create secret generic bex-repo \
             --from-literal=type=git \
-            --from-literal=url=git@github.com:stargately/bex.git \
+            --from-literal=url=git@github.com:bex-co/bex.git \
             --from-file=sshPrivateKey=/tmp/argo_deploy_key \
             --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n argocd label secret bex-repo argocd.argoproj.io/secret-type=repository --overwrite

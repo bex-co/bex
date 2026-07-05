@@ -11,7 +11,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:stargately/bex.git
+    repoURL: git@github.com:bex-co/bex.git
     targetRevision: main
     path: deploy/gitops/overlays/prod
   destination:
