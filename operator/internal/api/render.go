@@ -29,6 +29,10 @@ const (
 	renderNotSuspended = "not_suspended"
 )
 
+// renderWebService is Render's serviceType for an HTTP service. Every bex App
+// serves HTTP, so it's the only type bex reports.
+const renderWebService = "web_service"
+
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
@@ -66,7 +70,7 @@ func toRenderService(a AppView) renderService {
 	return renderService{
 		ID:             a.Name,
 		Name:           a.Name,
-		Type:           "web_service",
+		Type:           renderWebService,
 		Suspended:      susp,
 		DashboardURL:   a.URL,
 		CreatedAt:      a.CreatedAt,
@@ -76,6 +80,16 @@ func toRenderService(a AppView) renderService {
 		Revision:       a.Revision,
 		URLs:           a.URLs,
 	}
+}
+
+// toRenderServices maps a slice of AppViews to bare Render service objects (no
+// cursor envelope) — the shape the MCP list_services tool returns.
+func toRenderServices(apps []AppView) []renderService {
+	out := make([]renderService, 0, len(apps))
+	for _, a := range apps {
+		out = append(out, toRenderService(a))
+	}
+	return out
 }
 
 func toServiceList(apps []AppView) []serviceWithCursor {

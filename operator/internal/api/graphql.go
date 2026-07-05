@@ -46,7 +46,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Render-shaped fields (id is the App name; type is always web_service).
 		"id":           &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Name })},
 		"name":         &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Name })},
-		"type":         &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return "web_service" })},
+		"type":         &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return renderWebService })},
 		"suspended":    &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return suspendedEnum(a.Suspended) })},
 		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.URL })},
 		"url":          &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.URL })},

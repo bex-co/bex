@@ -1,6 +1,8 @@
-# bex-api touches Apps and Databases (the product resources) and reads the
-# CNPG-generated connection Secrets — least privilege. It writes intent (App
-# lifecycle fields, Database CRs); the operator does all the mechanism.
+# bex-api touches Apps and Databases (the product resources), reads the
+# CNPG-generated connection Secrets, and reads App pods' logs — least privilege.
+# It writes intent (App lifecycle fields, Database CRs); the operator does all
+# the mechanism. Pod read + pods/log is where the list_logs verb
+# (REST/GraphQL/MCP) tails an App's instance logs.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -28,6 +30,13 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
+  # Read-only pod access for the logs verb: list pods by App label, read logs.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -22,8 +22,8 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-// Server wires the two adapters (REST + GraphQL) over one Core and one auth
-// token. Both surfaces mount on the same mux, share the bearer middleware, and
+// Server wires the adapters (REST + GraphQL + MCP) over one Core and one auth
+// token. All surfaces mount on the same mux, share the bearer middleware, and
 // call identical Core methods — so they cannot diverge in behavior.
 type Server struct {
 	Core       *Core
@@ -41,6 +41,7 @@ type Server struct {
 //	GET  /v1/services, /v1/services/{id}       (bearer)   REST
 //	POST /v1/services/{id}/{suspend|resume|restart}  (bearer)   REST
 //	POST /graphql                              (bearer)   GraphQL
+//	     /mcp                                  (bearer)   MCP (streamable-http)
 func (s *Server) Handler() (http.Handler, error) {
 	if s.Token == "" {
 		return nil, errEmptyToken
@@ -56,9 +57,10 @@ func (s *Server) Handler() (http.Handler, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	// Both adapters sit behind the same bearer gate.
+	// All three adapters sit behind the same bearer gate.
 	mux.Handle("/v1/", bearerAuth(s.Token, s.restHandler()))
 	mux.Handle("/graphql", bearerAuth(s.Token, s.graphqlHandler()))
+	mux.Handle("/mcp", bearerAuth(s.Token, s.mcpHTTPHandler()))
 
 	return withCORS(s.CORSOrigin, mux), nil
 }

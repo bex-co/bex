@@ -1,20 +1,21 @@
-# bex-api — the control-plane seed (REST + GraphQL)
+# bex-api — the control-plane seed (REST + GraphQL + MCP)
 
 The first slice of the bex control plane (see [control-plane.md](control-plane.md)): a thin, bearer-authed HTTP service that turns product actions into **App CR spec patches**. It contains no mechanism — it writes intent; the operator converges it. Today it exposes the lifecycle verbs from [restart-suspend-and-resume.md](restart-suspend-and-resume.md).
 
-## One core, two adapters
+## One core, three adapters
 
-Render exposes a public **REST** API and drives its dashboard with **GraphQL**, both over one internal service layer. bex-api mirrors that shape:
+Render exposes a public **REST** API, drives its dashboard with **GraphQL**, and ships an official **MCP** server — all over one internal service layer. bex-api mirrors that shape:
 
 ```mermaid
 flowchart LR
   rest["REST adapter<br/>/v1/services/..."] --> core
   gql["GraphQL adapter<br/>/graphql"] --> core
+  mcp["MCP adapter<br/>/mcp + stdio"] --> core
   core["Core<br/>(one domain layer)"] --> cr["App CR spec patch"]
   cr --> op["operator (mechanism)"]
 ```
 
-`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`). REST (`rest.go`) and GraphQL (`graphql.go`) are pure presentation calling identical `Core` methods — so the two APIs cannot drift, and adding a third client later is another thin adapter, not a second implementation.
+`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`). REST (`rest.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
 ## Auth
 
@@ -92,9 +93,24 @@ curl -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/postgres/my
 
 Deferred (map to unbuilt features): `suspend`/`resume`/`restart`, `failover` (needs HA), `recovery`/PITR (needs backups), `credentials`, `export`, and the pooler connection strings (needs a PgBouncer `Pooler`).
 
+## MCP (Render official-server compatible)
+
+The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent operates bex natively instead of screen-scraping the dashboard. Tool names, argument names, and the returned `service` object track Render's official MCP server (`render-oss/render-mcp-server`), just as REST tracks the OpenAPI spec: `list_services`, `get_service` and `list_logs` are 1:1 with Render's tools, and single-service tools key on Render's `serviceId`. Render's official MCP is read-heavy and omits restart/suspend/resume, so bex adds `restart_service` / `suspend_service` / `resume_service` — named after Render's REST verbs, keyed on the same `serviceId`, so they read as native to a Render-shaped agent. Every tool delegates to the same `Core` method REST/GraphQL call.
+
+| tool | args | Core verb | returns |
+| --- | --- | --- | --- |
+| `list_services` | — | `List` | `{services: [service, ...]}` |
+| `get_service` | `{serviceId}` | `Get` | `service` |
+| `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
+| `list_logs` | `{resource: [id, ...], limit?}` | `Logs` | `{logs: [{timestamp, message, labels}, ...]}` |
+
+`list_logs` takes Render's required `resource` array of service ids and reads pod logs for each App's instances (selected by the controller's `app.bex.co/app` label), aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`service`/`instance`/`container`). bex omits Render's structured-log filters (`level`, `statusCode`, `method`, …) it can't honor over raw pod logs — the same rule REST follows for build plans / regions / disks; `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). The `serviceId` / `resource` ids are App names, opaque and round-tripped from `list_services`, exactly as in REST/GraphQL.
+
+**Transports & auth.** The streamable-HTTP transport mounts at `/mcp` behind the same `bex-api-token` bearer gate as every other route. The stdio transport (`api mcp-stdio`, or `BEX_MCP_STDIO=1`) serves the same tools over stdin/stdout for a locally-launched agent; there the trust boundary is the subprocess itself (it already holds the kube credentials), so no bearer applies. Logs need read-only `pods` + `pods/log` RBAC.
+
 ## Deploy
 
-Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — App access only), wired from `config/default`. One-time Secret creation:
+Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb), wired from `config/default`. One-time Secret creation:
 
 ```sh
 source .env && kubectl -n bex-system create secret generic bex-api-token \
@@ -103,4 +119,4 @@ source .env && kubectl -n bex-system create secret generic bex-api-token \
 
 ## Scope
 
-Lifecycle verbs only. Not yet: deploy/rollback, tenants/auth beyond the single token, Postgres source of truth — those arrive as the control plane grows past this seed.
+Lifecycle verbs, read-only logs, and managed Postgres. Not yet: deploy/rollback, service creation, metrics, tenants/auth beyond the single token, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

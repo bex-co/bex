@@ -134,7 +134,7 @@ func TestREST_GetRenderShape(t *testing.T) {
 	if svc.ID != "web" || svc.Name != "web" {
 		t.Errorf("id/name should be the app name: %+v", svc)
 	}
-	if svc.Type != "web_service" {
+	if svc.Type != renderWebService {
 		t.Errorf("type should be web_service, got %q", svc.Type)
 	}
 	// Render's suspended is a STRING enum, not a bool.
@@ -214,7 +214,7 @@ func TestGraphQL_RenderOperationsAndShape(t *testing.T) {
 		t.Fatalf("want 1 service, got %d", len(svcs))
 	}
 	first := svcs[0].(map[string]any)
-	if first["type"] != "web_service" || first["suspended"] != "not_suspended" {
+	if first["type"] != renderWebService || first["suspended"] != renderNotSuspended {
 		t.Fatalf("unexpected service shape: %+v", first)
 	}
 

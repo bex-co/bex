@@ -1,6 +1,6 @@
 # w2 · m1 — MCP server over bex-api verbs
 
-**Worker:** worker2 **Goal:** Expose the bex-api lifecycle verbs over MCP as "just another thin adapter over the same `Core`" — so an agent operates bex natively (list/get/deploy/restart/suspend/resume/logs) instead of screen-scraping a dashboard. Tool names and shapes track Render's official MCP server (`render-oss/render-mcp-server`) — a third Render-consistent adapter alongside the REST (public-API) and GraphQL (dashboard) ones. Delivers pillar 3. **Status:** todo
+**Worker:** worker2 **Goal:** Expose the bex-api lifecycle verbs over MCP as "just another thin adapter over the same `Core`" — so an agent operates bex natively (list/get/restart/suspend/resume/logs) instead of screen-scraping a dashboard. Tool names and shapes track Render's official MCP server (`render-oss/render-mcp-server`) — a third Render-consistent adapter alongside the REST (public-API) and GraphQL (dashboard) ones. Delivers pillar 3. **Status:** done
 
 ## Render MCP consistency
 
@@ -13,16 +13,28 @@ The MCP surface mirrors Render's official server the way `rest.go` mirrors Rende
 
 ## Tasks (in order)
 
-| id | title | est | depends_on |
-| --- | --- | --- | --- |
-| t001 | MCP adapter over `Core` — `list_services`/`get_service`/`{restart,suspend,resume}_service` | 30m | — |
-| t002 | Add a `Logs` verb to `Core` + expose as `list_logs` (Render log-label shape) | 30m | t001 |
-| t003 | Auth + transport: reuse `bex-api-token` bearer, stdio + streamable-http | 25m | t001 |
-| t004 | Manifests + deploy + end-to-end acceptance | 30m | t001,t003 |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | MCP adapter over `Core` — `list_services`/`get_service`/`{restart,suspend,resume}_service` | 30m | — | done |
+| t002 | Add a `Logs` verb to `Core` + expose as `list_logs` (Render log-label shape) | 30m | t001 | done |
+| t003 | Auth + transport: reuse `bex-api-token` bearer, stdio + streamable-http | 25m | t001 | done |
+| t004 | Manifests + deploy + end-to-end acceptance | 30m | t001,t003 | done |
 
 ## Definition of done
 
 An MCP client (e.g. Claude) can `list_services`, `get_service`, `restart_service`/`suspend_service`/`resume_service`, and `list_logs` — every tool delegating to the same `Core` (`operator/internal/api/core.go`) as REST/GraphQL, authed by the `bex-api-token` Secret. Tool names, arguments, and the returned `service` object are consistent with Render's official MCP server, so an agent that knows Render operates bex with no relearning. No verb has a second implementation.
+
+## Implementation
+
+Built as a third adapter in `operator/internal/api/`, no new domain logic outside `Core`:
+
+- **`mcp.go`** — the MCP adapter (uses `github.com/modelcontextprotocol/go-sdk`). Registers the six Render-consistent tools; each delegates to the same `Core` method REST/GraphQL call. `serviceTool` reuses one mapping for `get_service`/`restart_service`/`suspend_service`/`resume_service` (the REST verb pattern). Returns the `renderService` shape (`render.go`).
+- **`core.go`** — new `Logs(ctx, name, tail)` verb: lists an App's pods by the controller's `app.bex.co/app` label, tails each via an injected `PodLogSource`, parses the timestamp prefix, and returns timestamp-sorted `LogEntry`s in Render's log-label shape (`service`/`instance`/`container`). `ErrLogsUnavailable` when unwired, `ErrNotFound` for unknown Apps.
+- **`podlogs.go`** — production `PodLogSource` over a client-go clientset (the one read controller-runtime's client can't serve); kept out of `Core` so the domain layer stays clientset-free and testable.
+- **Transports (`mcp.go` + `server.go`)** — streamable-HTTP mounted at `/mcp` behind the same `bearerAuth(bex-api-token)` gate as REST/GraphQL; stdio via `Server.RunStdio`, selected in `cmd/api` by `api mcp-stdio` / `BEX_MCP_STDIO=1` (stdio's trust boundary is the subprocess, so no bearer there).
+- **Manifests (`config/api/rbac.yaml`)** — least-privilege bump: read-only `pods` + `pods/log` for the logs verb; existing `/`-prefix Ingress and `:8090` Deployment already cover `/mcp`, no change.
+
+**Acceptance:** `mcp_test.go` drives a real in-memory MCP client↔server round-trip — asserts the six Render-consistent tool names are advertised, that `suspend_service` travels the identical `Core` write path as REST (mutating the App), that `list_logs` returns the Render log-label shape, and that an unknown id surfaces as a tool error. `Core.Logs` aggregation/sorting and its error modes are unit-tested. `make test` green; `make lint` net-neutral vs. the pre-existing baseline.
 
 ## Source
 

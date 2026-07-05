@@ -18,17 +18,23 @@ limitations under the License.
 // user intent (restart / suspend / resume) into App CR spec patches. It is a
 // thin policy layer — the operator does all the mechanism.
 //
-// Structure: ONE domain layer (Core) with TWO adapters over it (REST and
-// GraphQL). Both adapters call the same Core methods, so the two APIs can never
+// Structure: ONE domain layer (Core) with THREE adapters over it (REST, GraphQL
+// and MCP). Every adapter calls the same Core methods, so the APIs can never
 // drift in behavior — they share the single implementation, exactly the pattern
-// Render uses (public REST + dashboard GraphQL over one internal service layer).
+// Render uses (public REST + dashboard GraphQL over one internal service layer),
+// extended with an MCP surface consistent with Render's official MCP server.
 package api
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"io"
+	"sort"
+	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -38,6 +44,22 @@ import (
 // ErrNotFound is returned when an App does not exist (adapters map it to 404 /
 // a GraphQL null+error).
 var ErrNotFound = errors.New("app not found")
+
+// ErrLogsUnavailable is returned by Logs when no pod-log source is wired (e.g.
+// the binary was started without a clientset). Adapters surface it as a plain
+// error rather than a 404.
+var ErrLogsUnavailable = errors.New("logs source not configured")
+
+// podLabelApp is the label the controller stamps on an App's pods
+// (internal/controller labelApp). Kept in sync by hand: the api package must not
+// import the controller. Log selection keys on it.
+const podLabelApp = "app.bex.co/app"
+
+// appContainer is the single container name the controller gives each App pod.
+const appContainer = "app"
+
+// defaultLogTail caps log lines per instance when the caller doesn't specify.
+const defaultLogTail = 100
 
 // AppView is the neutral, bex-native projection of an App — spec intent +
 // observed status. Core returns this; each adapter maps it to its own wire
@@ -55,6 +77,22 @@ type AppView struct {
 	CreatedAt string   `json:"createdAt"`
 }
 
+// PodLogSource fetches the raw (timestamped) log stream for one pod container.
+// Core depends on this narrow function instead of a full client-go clientset so
+// the domain layer stays an apiserver-thin client and is trivial to fake in
+// tests; production wires it via NewPodLogSource. nil => the Logs verb reports
+// ErrLogsUnavailable.
+type PodLogSource func(ctx context.Context, namespace, pod, container string, tail int64) (io.ReadCloser, error)
+
+// LogEntry is one log line in Render's log shape: a timestamp, the message, and
+// a label set. Render tags every entry with labels (instance/type/...); bex tags
+// service/instance/container. Adapters render it verbatim.
+type LogEntry struct {
+	Timestamp string            `json:"timestamp,omitempty"`
+	Message   string            `json:"message"`
+	Labels    map[string]string `json:"labels,omitempty"`
+}
+
 // Core is the shared domain layer. Every product action lives here exactly
 // once; REST and GraphQL are presentation only.
 type Core struct {
@@ -63,6 +101,9 @@ type Core struct {
 	// Now supplies the restart timestamp; injectable for tests. Defaults to
 	// time.Now if nil.
 	Now func() time.Time
+	// PodLogs fetches pod logs for the Logs verb; nil => Logs reports
+	// ErrLogsUnavailable. Injected so Core needs no typed clientset.
+	PodLogs PodLogSource
 }
 
 func (c *Core) now() time.Time {
@@ -129,6 +170,77 @@ func (c *Core) Suspend(ctx context.Context, name string) (AppView, error) {
 // restores spec.replicas.
 func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
 	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = false })
+}
+
+// Logs returns recent log lines for an App, aggregated across its pods
+// (instances) and sorted by timestamp so instances interleave chronologically.
+// tail caps lines per instance (<=0 => defaultLogTail). It fails with
+// ErrNotFound for an unknown App (same as Get) and ErrLogsUnavailable when no
+// pod-log source is wired. This is the read path the MCP list_logs tool uses.
+func (c *Core) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
+	if c.PodLogs == nil {
+		return nil, ErrLogsUnavailable
+	}
+	if _, err := c.fetch(ctx, name); err != nil {
+		return nil, err // ErrNotFound for unknown apps, exactly like Get
+	}
+	if tail <= 0 {
+		tail = defaultLogTail
+	}
+	var pods corev1.PodList
+	if err := c.Client.List(ctx, &pods,
+		client.InNamespace(c.Namespace),
+		client.MatchingLabels{podLabelApp: name}); err != nil {
+		return nil, err
+	}
+	var out []LogEntry
+	for i := range pods.Items {
+		entries, err := c.readPodLogs(ctx, name, pods.Items[i].Name, tail)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, entries...)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return out, nil
+}
+
+func (c *Core) readPodLogs(ctx context.Context, service, pod string, tail int64) ([]LogEntry, error) {
+	rc, err := c.PodLogs(ctx, c.Namespace, pod, appContainer, tail)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rc.Close() }()
+
+	var entries []LogEntry
+	sc := bufio.NewScanner(rc)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // allow long lines
+	for sc.Scan() {
+		entries = append(entries, parseLogLine(service, pod, sc.Text()))
+	}
+	return entries, sc.Err()
+}
+
+// parseLogLine splits kubelet's "Timestamps: true" prefix (an RFC3339Nano stamp,
+// a space, then the message) off a log line, tagging it with Render-shaped
+// labels. A line without a parseable stamp is kept whole as the message.
+func parseLogLine(service, pod, line string) LogEntry {
+	ts, msg := "", line
+	if i := strings.IndexByte(line, ' '); i > 0 {
+		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
+			ts = t.UTC().Format(time.RFC3339Nano)
+			msg = line[i+1:]
+		}
+	}
+	return LogEntry{
+		Timestamp: ts,
+		Message:   msg,
+		Labels: map[string]string{
+			"service":   service,
+			"instance":  pod,
+			"container": appContainer,
+		},
+	}
 }
 
 func (c *Core) fetch(ctx context.Context, name string) (*appv1alpha1.App, error) {

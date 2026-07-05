@@ -14,10 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command api is the bex control-plane seed: an HTTP service exposing REST and
-// GraphQL for the App lifecycle verbs (restart / suspend / resume). It shares
-// the operator image but runs as a separate Deployment (command: /api). It is a
-// pure apiserver client — it patches App CRs; the operator does the rest.
+// Command api is the bex control-plane seed: a service exposing REST, GraphQL
+// and MCP for the App lifecycle verbs (list / get / restart / suspend / resume /
+// logs). It shares the operator image but runs as a separate Deployment
+// (command: /api). Default mode serves HTTP; `api mcp-stdio` (or BEX_MCP_STDIO=1)
+// serves the MCP adapter over stdio for a local agent. It is a pure apiserver
+// client — it patches App CRs and reads pod logs; the operator does the rest.
 package main
 
 import (
@@ -30,6 +32,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,15 +58,33 @@ func main() {
 	if err != nil {
 		log.Fatalf("kube client: %v", err)
 	}
+	// Clientset just for the pod-log subresource (the one read controller-runtime's
+	// client can't serve); Core.Logs uses it via NewPodLogSource.
+	cs, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Fatalf("kube clientset: %v", err)
+	}
 
 	srv := &api.Server{
 		Core: &api.Core{
 			Client:    cl,
 			Namespace: envOr("BEX_API_NAMESPACE", "default"),
+			PodLogs:   api.NewPodLogSource(cs),
 		},
 		Token:      os.Getenv("BEX_API_TOKEN"),
 		CORSOrigin: os.Getenv("BEX_API_CORS_ORIGIN"),
 	}
+
+	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
+	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
+	if mcpStdio() {
+		log.Printf("bex-api: serving MCP over stdio (namespace %s)", srv.Core.Namespace)
+		if err := srv.RunStdio(ctrl.SetupSignalHandler()); err != nil {
+			log.Fatalf("bex-api mcp stdio: %v", err)
+		}
+		return
+	}
+
 	handler, err := srv.Handler()
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)
@@ -79,4 +100,13 @@ func main() {
 	}
 	log.Printf("bex-api listening on %s (namespace %s)", addr, srv.Core.Namespace)
 	log.Fatal(httpSrv.ListenAndServe())
+}
+
+// mcpStdio reports whether the binary should run as a stdio MCP server rather
+// than the HTTP service: subcommand `mcp-stdio` or BEX_MCP_STDIO=1.
+func mcpStdio() bool {
+	if os.Getenv("BEX_MCP_STDIO") == "1" {
+		return true
+	}
+	return len(os.Args) > 1 && os.Args[1] == "mcp-stdio"
 }

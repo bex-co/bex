@@ -15,4 +15,4 @@
 
 ## bex-api invariant
 
-New verbs go in `internal/api/core.go` **only**. `rest.go` and `graphql.go` are thin presentation adapters over identical Core methods and must not contain logic — this is the design guarantee that the two APIs can't drift ([docs/bex-api.md](../docs/bex-api.md)). REST shapes are verified against Render's OpenAPI spec (e.g. `suspended` is the string enum `"suspended"`/`"not_suspended"`, not a boolean) — don't "fix" them to look more conventional.
+New verbs go in `internal/api/core.go` **only**. `rest.go`, `graphql.go` and `mcp.go` are thin presentation adapters over identical Core methods and must not contain logic — this is the design guarantee that the three surfaces can't drift ([docs/bex-api.md](../docs/bex-api.md)). REST shapes are verified against Render's OpenAPI spec (e.g. `suspended` is the string enum `"suspended"`/`"not_suspended"`, not a boolean) and MCP tool names against Render's official MCP server (`list_services`/`get_service`/`list_logs`) — don't "fix" them to look more conventional.
