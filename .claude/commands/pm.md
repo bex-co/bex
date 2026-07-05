@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 
 # Task: Arrange the `.pm` board
 
-`/pm` is the **only** command that writes to `.pm/`. It arranges milestones and tasks under the conventions below. `/pm-brainstorm` proposes; `/pm` materializes. Parse the subcommand from `$ARGUMENTS` (default = `status`).
+`/pm` is the **only** command that writes to `.pm/`. It arranges milestones and tasks under the conventions below. `/pm-brainstorm` proposes; `/pm` materializes. This file is the **canonical** definition of the board conventions — hierarchy, sizing rule, quality gate, standing closing tasks, templates. `/pm-brainstorm` reads it at runtime and must not restate or diverge from it. Parse the subcommand from `$ARGUMENTS` (default = `status`).
 
 ## The `.pm` hierarchy
 
@@ -26,6 +26,13 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 - **Numbering:** next free zero-padded 3-digit for inbox notes (`NNN`) and tasks (`tNNN`); next free `wN` / `mN`. Scan the tree first; don't reuse a number.
 - Use `worker: worker1` unless the workstream README names another worker.
 - **Milestones must be meaningful.** Every milestone must include direct project-goal linkage, an observable expected outcome, and why this work matters now (dependency/risk/sequence rationale).
+- **Every milestone ends with two standing closing tasks**, appended after the implementation tasks whenever a milestone is materialized:
+
+  1. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
+  2. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
+
+  Both `depends_on` the last implementation task(s) and count toward the `(N tasks)` total. `add-task` inserts new work **before** these two and updates their `depends_on`.
+
 - After editing any `.md`, run `npx prettier@3.4.2 --write "**/*.md"` (repo rule).
 
 ## Subcommands
@@ -52,12 +59,12 @@ Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdow
 
 Apply the **sizing rule first.**
 
-- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template), add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale.
+- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the two standing closing tasks (Simplify, Test coverage)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale.
 - If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`
 
-Create the next `tNNN.md` from the task template and add its row to the milestone `README.md` table. Update the `(N tasks)` count in the workstream README.
+Create the next `tNNN.md` from the task template and add its row to the milestone `README.md` table **before the two standing closing tasks**, updating their `depends_on` to include it. Update the `(N tasks)` count in the workstream README.
 
 ### `done <wN/mN/tNNN>`
 
