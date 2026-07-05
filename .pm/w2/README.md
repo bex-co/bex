@@ -4,6 +4,6 @@
 
 ## Milestones
 
-- [ ] **m1** — MCP server over bex-api verbs (4 tasks) ← pillar 3
+- [x] **m1** — MCP server over bex-api verbs (4 tasks) ← pillar 3
 - [ ] **m2** — Deploy-from-chat + HMAC git webhook (4 tasks) ← pillar 4, needs w1/m2 + w1/m5
 - [ ] **m3** — E2B-compatible sandboxes, idle-hibernated (4 tasks) ← pillar 5

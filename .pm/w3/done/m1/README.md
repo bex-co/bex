@@ -6,11 +6,11 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Logs `Core` verb + client-go pod-log backend (tail/limit/since, aggregate replicas) + RBAC | 45m | — |
-| t002 | REST adapter `GET /v1/logs` (Render-compat): resource/type/search/time filters + envelope | 40m | t001 |
-| t003 | Live tail: SSE/WebSocket `GET /v1/logs/subscribe` (follow) | 40m | t001 |
-| t004 | Log-type split: label & filter `application` vs `request` (Traefik access logs) | 30m | t001 |
-| t005 | GraphQL `logs(...)` resolver + `api_test.go` unit coverage | 30m | t001, t002 |
+| t001 | Logs `Core` verb + client-go pod-log backend (tail/limit/since, aggregate replicas) + RBAC — **DONE** | 45m | — |
+| t002 | REST adapter `GET /v1/logs` (Render-compat): resource/type/search/time filters + envelope — **DONE** | 40m | t001 |
+| t003 | Live tail: SSE/WebSocket `GET /v1/logs/subscribe` (follow) — **DONE** | 40m | t001 |
+| t004 | Log-type split: label & filter `application` vs `request` (Traefik access logs) — **DONE** | 30m | t001 |
+| t005 | GraphQL `logs(...)` resolver + `api_test.go` unit coverage — **DONE** | 30m | t001, t002 |
 
 ## Definition of done
 
