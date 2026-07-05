@@ -102,10 +102,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{Requeue: true}, nil // finalizer update doesn't bump generation
 	}
 
-	// Already reconciled this spec generation and running — nothing to do.
-	if app.Status.ObservedGeneration == app.Generation && app.Status.Phase == appv1alpha1.PhaseRunning {
-		return ctrl.Result{}, nil
-	}
+	// NOTE: intentionally NO early-return on ObservedGeneration==Generation here.
+	// This controller is level-triggered: every reconcile re-applies desired state
+	// (Deployment/Service/Ingress via CreateOrUpdate below) so operator-level config
+	// changes — cluster issuer, base domain, tier — reach already-running Apps on the
+	// next reconcile / operator restart, not only on a spec bump. Re-adding an
+	// early-return here reintroduces the config-drift bug. The expensive build path is
+	// gated separately (Status.Image reuse below), so a no-op pass never rebuilds.
 
 	port := int(app.Spec.Port)
 	if port == 0 {
@@ -113,9 +116,14 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// --- resolve the image: prebuilt, or build from git ---
+	// Reuse the cached Status.Image (never rebuild) when the spec generation is
+	// unchanged — this reconcile only re-applies desired state (e.g. an operator
+	// config change), not a new revision — or when the App is suspended. Only a
+	// genuine spec/revision bump (generation changed, not suspended) rebuilds.
 	image := app.Spec.Image
-	if image == "" && app.Spec.Suspended && app.Status.Image != "" {
-		image = app.Status.Image // suspending must not trigger a rebuild
+	if image == "" && app.Status.Image != "" &&
+		(app.Spec.Suspended || app.Status.ObservedGeneration == app.Generation) {
+		image = app.Status.Image
 	}
 	if image == "" {
 		if app.Spec.Repo == "" {
