@@ -130,3 +130,17 @@ jobs:
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \
             || { echo "operator not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
           echo "bex operator running. Deploy an App: kubectl apply -f examples/whoami-app.yaml"
+
+      # --- 5. roll bex onto the freshly-pushed image ---
+      # The Argo image override pins the mutable :latest tag (deploy/gitops/base/
+      # bex.yaml), so pushing a new :latest does NOT change the Deployment spec —
+      # Kubernetes sees no diff and never rolls the pods, which keep the image they
+      # pulled on a prior deploy. Force a fresh pull (both Deployments declare
+      # imagePullPolicy: Always) so every push actually takes effect. Idempotent:
+      # on a no-op deploy this just recreates identical pods.
+      - name: roll bex onto the freshly-pushed image
+        run: |
+          kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
+          kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
+          kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s
+          kubectl -n bex-system rollout status deploy/bex-api --timeout=300s

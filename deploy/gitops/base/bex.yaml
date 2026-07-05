@@ -2,9 +2,11 @@
 # Argo deploys it straight from operator/config/default (kustomize) into bex-system,
 # overriding the placeholder `controller` image with the one CI pushes to GHCR.
 #
-# NOTE: the tag is mutable (:latest) so the FIRST deploy works; Argo syncs git, not
-# image digests, so a new :latest push won't auto-roll. Harden with Argo Image
-# Updater or have CI commit an immutable :<sha> tag here.
+# NOTE: the tag is mutable (:latest). Argo syncs git, not image digests, so a new
+# :latest push doesn't change the Deployment spec and won't auto-roll. The deploy
+# workflow handles this by rollout-restarting the operator + api after each push
+# (both declare imagePullPolicy: Always). A stricter fix would be Argo Image Updater
+# or having CI commit an immutable :<sha> tag here.
 # NOTE: if the GHCR package is private, add an imagePullSecret in bex-system (or make
 # the package public) so app-cluster nodes can pull it.
 apiVersion: argoproj.io/v1alpha1

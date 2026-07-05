@@ -64,6 +64,10 @@ spec:
           - --leader-elect
           - --health-probe-bind-address=:8081
         image: controller:latest
+        # The Argo override pins the mutable :latest tag, so a running pod must
+        # re-pull to pick up a new push; the deploy workflow rollout-restarts this
+        # Deployment, and Always makes that restart fetch the fresh image.
+        imagePullPolicy: Always
         name: manager
         env:
           - name: BEX_RUNTIME

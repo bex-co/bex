@@ -26,6 +26,9 @@ spec:
           # Same image as the operator; Argo's image override (controller=...)
           # rewrites this tag. The command selects the api binary.
           image: controller:latest
+          # See manager.yaml: :latest is mutable, so the deploy workflow
+          # rollout-restarts this Deployment and Always re-pulls the new image.
+          imagePullPolicy: Always
           command: ["/api"]
           env:
             - name: BEX_API_ADDR
