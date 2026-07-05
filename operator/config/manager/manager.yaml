@@ -77,6 +77,11 @@ spec:
           # spec.expose get "<name>.onbex.co" automatically.
           - name: BEX_BASE_DOMAIN
             value: onbex.co
+          # Managed-Postgres external endpoints: Database{public:true} is exposed
+          # at "<name>.db.bex.co" via Traefik TCP/SNI. Needs a DNS-only (gray-cloud)
+          # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).
+          - name: BEX_DB_DOMAIN
+            value: db.bex.co
         ports:
         - containerPort: 8081
           name: health

@@ -7,6 +7,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - services
   verbs:
   - create
@@ -20,6 +28,7 @@ rules:
   - app.bex.co
   resources:
   - apps
+  - databases
   verbs:
   - create
   - delete
@@ -32,12 +41,14 @@ rules:
   - app.bex.co
   resources:
   - apps/finalizers
+  - databases/finalizers
   verbs:
   - update
 - apiGroups:
   - app.bex.co
   resources:
   - apps/status
+  - databases/status
   verbs:
   - get
   - patch
@@ -58,6 +69,30 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - postgresql.cnpg.io
+  resources:
+  - clusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - traefik.io
+  resources:
+  - ingressroutetcps
   verbs:
   - create
   - delete

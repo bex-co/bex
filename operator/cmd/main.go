@@ -200,6 +200,15 @@ func main() {
 		setupLog.Error(err, "Failed to create controller", "controller", "service")
 		os.Exit(1)
 	}
+
+	if err := (&controller.DatabaseReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		DBDomain: envOr("BEX_DB_DOMAIN", ""),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "database")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

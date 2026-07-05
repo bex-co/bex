@@ -1,0 +1,197 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: databases.app.bex.co
+spec:
+  group: app.bex.co
+  names:
+    kind: Database
+    listKind: DatabaseList
+    plural: databases
+    singular: database
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .spec.plan
+      name: Plan
+      type: string
+    - jsonPath: .status.host
+      name: Host
+      priority: 1
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Database is a managed PostgreSQL instance (projected to a CloudNativePG
+          Cluster).
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              DatabaseSpec is the desired state of a managed PostgreSQL — the Render-style
+              "add a Postgres" unit. The operator projects it to a CloudNativePG Cluster in
+              the same namespace; the plan sets resources/storage. See
+              docs/postgresql-management.md.
+            properties:
+              plan:
+                default: free
+                description: |-
+                  Plan selects the resource allocation (compute + storage + availability).
+                  MVP plans are single-instance and fit one node.
+                enum:
+                - free
+                - basic-256mb
+                - basic-1gb
+                type: string
+              public:
+                description: |-
+                  Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
+                  database at "<name>.<BEX_DB_DOMAIN>" via a Traefik TCP/SNI route (TLS
+                  passthrough — Postgres terminates its own TLS). Default: in-cluster only.
+                  External connections use sslmode=require. See docs/postgresql-management.md.
+                type: boolean
+              storageGB:
+                description: |-
+                  StorageGB overrides the plan's default volume size (GB). Storage can only
+                  grow, never shrink. 0 => plan default.
+                format: int32
+                type: integer
+              version:
+                description: Version is the major PostgreSQL version (e.g. "16").
+                  Empty => operator default.
+                enum:
+                - "13"
+                - "14"
+                - "15"
+                - "16"
+                - "17"
+                - "18"
+                type: string
+            type: object
+          status:
+            description: DatabaseStatus is the observed state of a Database.
+            properties:
+              conditions:
+                description: Conditions represent the current state (Ready).
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              externalHost:
+                description: |-
+                  ExternalHost is the public SNI hostname when Public is set (empty otherwise).
+                  The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=require
+                  (credentials from SecretName). DNS for the host must point at the edge.
+                type: string
+              host:
+                description: Host is the in-cluster read-write hostname (CNPG "<cluster>-rw"
+                  Service).
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the .metadata.generation the controller
+                  last reconciled.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is the high-level lifecycle state.
+                enum:
+                - Pending
+                - Provisioning
+                - Ready
+                - Failed
+                type: string
+              port:
+                description: Port the database listens on.
+                format: int32
+                type: integer
+              secretName:
+                description: |-
+                  SecretName is the CNPG-generated Secret holding the app credentials and the
+                  ready-made connection URI (keys: username, password, dbname, host, port, uri).
+                  The internal Database URL is that Secret's "uri" — the operator never copies
+                  the password into status.
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

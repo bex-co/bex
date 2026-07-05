@@ -1,0 +1,117 @@
+# ADR: managed PostgreSQL for tenants (CNPG, plans, internal/external URLs)
+
+**Status:** proposed (MVP design, not implemented). The CloudNativePG (CNPG) operator and the control-plane's own DB `bex-db` already run on the cluster; this ADR designs the _tenant-facing_ managed-Postgres product on top of them. Grounded in a live study of Render Postgres (create → connect → delete driven through the dashboard).
+
+## Context
+
+bex is an open-source Render. Render sells **managed Postgres** as a first-class product, and we want parity. Two Postgres concerns must not be conflated:
+
+1. **The control plane's own DB (`bex-db`, exists)** — platform infra, the source of truth for tenants/apps/domains. Internally multi-tenant (a `tenant_id` column). Not a tenant resource.
+2. **Tenant databases (this ADR)** — a Render-style "add a Postgres" that a tenant provisions, connects to, and deletes.
+
+What Render actually does (confirmed by creating a real Free instance and connecting to it): a Postgres is a **standalone resource** with a create form (name, database, user, region, **version 13–18**, plan Free/Basic/Pro/Accelerated, storage, HA), and its **Connections** panel exposes two URLs that are the whole product:
+
+- **Internal:** `postgresql://user:pass@dpg-<id>-a/db` — private network, same region, no SSL. For services _inside_ the platform.
+- **External:** `postgresql://user:pass@dpg-<id>-a.<region>-postgres.render.com/db` — public FQDN, **SSL required**, plus an IP allowlist. For anything _outside_.
+
+## Decision
+
+### 1. Operator: CloudNativePG (CNPG)
+
+Already deployed, and validated over the alternatives:
+
+- **Governance** — Apache 2.0, CNCF. Rules out KubeDB (freemium) and StackGres (AGPL).
+- **Architecture** — native HA via the Kubernetes API (no Patroni/StatefulSet), less to operate than Zalando/Crunchy.
+- **Fit** — every axis of the plan design maps to a built-in CNPG feature (below). When the product spec maps 1:1 onto the operator's CRDs, it's the right operator.
+
+The operator is only the _executor_. Plans, per-tenant provisioning, connection-URL assembly, lifecycle, and metering live in **bex's control plane** on top of CNPG — that is the actual build, and it's the same for any operator.
+
+### 2. A standalone `Database` resource → a CNPG `Cluster` in the tenant namespace
+
+Render Postgres is standalone (created independently; multiple services connect to it; it outlives any one app). So model it as a standalone **`Database`** (control-plane row + CR), _not_ `App.spec.database`. The control plane projects it to a CNPG `Cluster` in the **tenant's namespace**, so it inherits that namespace's isolation for free — NetworkPolicy, ResourceQuota, RBAC, and namespace-scoped credential Secret.
+
+```mermaid
+flowchart LR
+  db["Database resource<br/>(control plane · plan/version/storage)"] --> cnpg["CNPG Cluster<br/>(tenant namespace)"]
+  cnpg --> svc["cluster-rw Service<br/>(ClusterIP, in-cluster)"]
+  cnpg --> sec["Secret<br/>(user + password)"]
+  svc --> appx["tenant App<br/>uses INTERNAL url"]
+  svc --> tcp["Traefik TCP router<br/>SNI + TLS · id.db.bex.co:5432"]
+  tcp --> ext["external client<br/>uses EXTERNAL url · sslmode=require"]
+```
+
+### 3. Two URLs = two network paths (the core of the product)
+
+|  | Render | bex (CNPG) |
+| --- | --- | --- |
+| **Internal URL** | `dpg-<id>-a` private host | the CNPG **`<cluster>-rw` ClusterIP Service**: `postgresql://user:pass@<cluster>-rw.<tenant-ns>.svc:5432/db` — in-cluster only, for the tenant's Apps. Free; CNPG creates the Service. |
+| **External URL** | `<id>.<region>-postgres.render.com` + SSL | a **Traefik TCP router with SNI + TLS passthrough** on a shared `:5432` entrypoint, routing `<db-id>.db.bex.co` → that DB's Service (Postgres speaks its own TLS, so `sslmode=require`). One wildcard `*.db.bex.co` + entrypoint fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
+
+The external route is created by the operator only when `spec.public: true` and `BEX_DB_DOMAIN` is set (private by default). Two constraints are load-bearing and easy to miss:
+
+- **DNS-only (gray-cloud) wildcard.** `*.db.bex.co` must be a plain A record to the node IP, **not** a Cloudflare-proxied one — Cloudflare's proxy is HTTP(S) only; it cannot carry raw TCP `:5432` (that needs Spectrum, an enterprise feature). This differs from the App/API domains, which are proxied.
+- **The Postgres SSLRequest preamble vs SNI.** libpq's default negotiation sends a _cleartext_ `SSLRequest` **before** the TLS `ClientHello`, so Traefik (which reads SNI from the first-bytes ClientHello) cannot extract the SNI and route by host. SNI passthrough therefore works for clients using **direct TLS** — PostgreSQL 17+ with `sslnegotiation=direct` — but not for older preamble-mode clients. Broad-client compatibility needs a **Postgres-aware SNI proxy** (the `pg_sni_proxy` pattern) in front, which is deferred. For the MVP the external endpoint targets direct-TLS clients; the internal URL (what tenant Apps use) is unaffected.
+
+### 4. Naming convention (copy Render's reasoning, not its strings)
+
+Render's URL is engineered for three constraints at once; bex should satisfy the same:
+
+- **Normalized db/role name** — Postgres unquoted identifiers allow only `[a-z0-9_]`, lowercased. Render turns `my-db` into `my_db` so the name works **unquoted everywhere** (queries, `pg_hba`, ORMs). Do the same.
+- **`<name>_user` role** — one owner role per DB, distinct from the db name, greppable and predictable.
+- **Typed opaque ID in the SNI hostname** — the immutable ID (not the mutable name) lives in `<id>.db.bex.co`, so a **rename never breaks a connection string**, the ID is unique/non-guessable, and one wildcard endpoint routes by SNI to the right backend. (Render: `dpg-<id>-a` where `-a` is the primary-instance address.)
+- **Brand domain** — external endpoint on `db.bex.co` (the brand), not the app-hosting `onbex.co` — same rule as `api.bex.co` vs `onrender.com`.
+
+### 5. Plans — three axes, not one size knob
+
+Reading Render's pricing carefully: Free and Basic-256mb are _identical specs_ ($0 vs $6 — the difference is backups/persistence), and Pro-4gb ($55, 1 CPU) is cheaper than Basic-4gb ($75, 2 CPU) — because **Pro sells availability + PITR, not raw compute**. So a plan decomposes into three axes, each a distinct CNPG field:
+
+| axis | CNPG field | Free | Basic | Pro |
+| --- | --- | --- | --- | --- |
+| compute (RAM/CPU) | `spec.resources.requests==limits` | 256Mi/0.1 | 256Mi–4Gi / 0.1–2 | 4–16Gi / 1–4 |
+| availability | `spec.instances` (+ sync replica, anti-affinity) | 1 | 1 | **3, failover** |
+| durability | `ScheduledBackup` / `spec.backup.barmanObjectStore` | none, expires | daily | **WAL → PITR** |
+| storage | `spec.storage.size` (expand-only) | 1Gi bundled | bundled | metered |
+| version | `spec.imageName` / `ImageCatalog` (per-cluster) | any of 13–18 |  |  |
+| tuning | `spec.postgresql.parameters` (shared_buffers ~25% RAM) | per plan |  |  |
+
+Every Render Postgres feature (per-tenant version, daily backup, PITR, HA, pooling, hibernation) maps to a CNPG mechanism — so CNPG is sufficient for Render parity, and there is no case for switching to Crunchy (pgBackRest only wins at extreme scale) or a multi-engine strategy (Redis etc. is a _separate operator_, not a CNPG gap).
+
+### 6. Lifecycle (create → URLs → connect → delete)
+
+1. **Create** `Database{name, plan, version, storage}`.
+2. **Provision** → CNPG `Cluster` in the tenant namespace from the plan catalog; CNPG generates the `<name>_user` role + password into a namespace Secret.
+3. **Surface connection info** → the control plane assembles both URLs + host/port/db/user/password/psql-command from the Secret and the `-rw` Service (the Connections panel).
+4. **Delete** → deleting the `Database` deletes the Cluster + Service + Secret + PVC and drops the external SNI route. (Optionally a final backup first.)
+
+### 7. Security floor (not optional, even in MVP)
+
+- **Internal path** — the tenant's default-deny NetworkPolicy already isolates the `-rw` Service to the tenant's own pods.
+- **External path** — a public Postgres port. **Require `sslmode`** and a per-DB **IP allowlist** (Render exposes exactly this). Without it you're publishing an open Postgres.
+
+## MVP scope
+
+Ship only what fits the current single `cx33` (8 GB) node — single-instance plans differing by resources + backup:
+
+- **free** — 256Mi/0.1CPU/1Gi, `instances:1`, no backup, **30-day TTL** (a control-plane sweeper — else "free forever" eats the cluster, which is why Render expires them).
+- **basic-256mb** — 256Mi/0.1CPU, `instances:1`, daily `ScheduledBackup`.
+- **basic-1gb** — 1Gi/0.5CPU, `instances:1`, daily backup.
+
+Smallest possible first cut: internal-URL-only (connect from an in-cluster App), then add the Traefik-SNI external route as step 2 — but since the external URL _is_ the Render experience, the MVP should include its basic form.
+
+## Alternatives considered
+
+- **Operators** — Zalando (older Patroni/StatefulSet architecture), Crunchy PGO (pgBackRest, heavier, only wins at extreme backup scale), StackGres (AGPL + heavy), KubeDB (freemium). CNPG chosen; see §1.
+- **Isolation model** — shared cluster + row-level (weakest; that's how the _control plane_ stores its own tenants, not tenant DBs) and database-per-tenant on a shared cluster (noisy neighbor, shared blast radius) both rejected in favor of **instance-per-tenant-DB** (matches the namespace compute model).
+- **Attach DB to App (`App.spec.database`)** — rejected; a DB shouldn't die with one app or be un-shareable. Standalone `Database` is Render-faithful.
+- **Per-DB LoadBalancer for the external endpoint** — rejected; a Hetzner LB per DB is costly and doesn't scale. **Traefik TCP + SNI** on one wildcard endpoint is how Render does it (region proxy routes by SNI hostname).
+
+## Consequences
+
+- Deferred to post-MVP: **Pro/HA** (`instances:3` needs a ≥3-node worker pool; you have one node), **PITR**, storage autoscaling, the Accelerated tier, and metering/billing.
+- **`bex-db` (the control plane's own DB) should go `instances:3` + backups before you depend on it** — today it's `instances:1`, 5Gi, no backup config; losing it loses every tenant mapping. Higher priority than any single tenant DB.
+- Suspend/resume parity: a suspended tenant's DB should **hibernate** (`cnpg.io/hibernation`) — Postgres can't scale-to-zero, but hibernation stops compute and keeps the PVC, preserving the sleep=free promise. See [restart-suspend-and-resume.md](restart-suspend-and-resume.md).
+
+## Verification
+
+- **Target UX proven** (this ADR's research): created a real Render Free DB, connected to its **external URL** over TLS (PostgreSQL 18.4, ran `create table`/`insert`/`select`), then deleted it and confirmed the connection died.
+- **bex MVP verification (when built):** apply a `Database` CR → CNPG `Cluster` reaches healthy → connect via the **internal** URL from an in-cluster pod and via the **external** URL (`<id>.db.bex.co`, `sslmode=require`) with `psql` → delete the `Database` → Cluster/Service/Secret/PVC gone and the external route removed.
