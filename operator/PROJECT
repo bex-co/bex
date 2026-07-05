@@ -7,7 +7,7 @@ domain: bex.co
 layout:
 - go.kubebuilder.io/v4
 projectName: control-plane
-repo: github.com/blockeden/bex/operator
+repo: github.com/bex-co/bex/operator
 resources:
 - api:
     crdVersion: v1
@@ -16,6 +16,6 @@ resources:
   domain: bex.co
   group: app
   kind: App
-  path: github.com/blockeden/bex/operator/api/v1alpha1
+  path: github.com/bex-co/bex/operator/api/v1alpha1
   version: v1alpha1
 version: "3"

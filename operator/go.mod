@@ -1,4 +1,4 @@
-module github.com/blockeden/bex/operator
+module github.com/bex-co/bex/operator
 
 go 1.25.7
 

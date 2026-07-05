@@ -34,8 +34,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
-	"github.com/blockeden/bex/operator/internal/api"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
+	"github.com/bex-co/bex/operator/internal/api"
 )
 
 func envOr(k, def string) string {

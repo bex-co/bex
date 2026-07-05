@@ -1,69 +1,53 @@
-# bex — deploy-from-git on an elastic, multi-machine substrate
+# bex
 
-bex is the **deploy-from-git half** of bex.co (strategy 211.09): a Git repo (or a prebuilt image) becomes a running service, scheduled across machines that are **added/removed elastically** — and the whole thing runs **locally as a mock** that swaps to **Hetzner** by changing one provider overlay.
+**The open-source Render alternative — AI-native.**
 
-Today's brain is a **Go Kubernetes operator** that reconciles `App` CRs into running services. The planned next layer is a **Postgres-backed control plane** — the product's **source of truth** (tenants / apps / domains + business logic) that projects rows into `App` CRs; the operator stays a thin executor. See [`docs/control-plane.md`](docs/control-plane.md). Everything else is assembled open source. Full design in [`docs/architecture.md`](docs/architecture.md).
+Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.onbex.co` — on machines you own. bex runs identically as a local Docker mock and on Hetzner; only the infrastructure provider overlay changes. Built so AI agents can deploy and operate apps as first-class users, not an afterthought.
 
-## Panorama
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![deploy](https://github.com/bex-co/bex/actions/workflows/deploy.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/deploy.yml) [![docs](https://github.com/bex-co/bex/actions/workflows/docs.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/docs.yml)
 
-```mermaid
-%% arrow  A --> B  means  "A depends on B"  (points to what it needs)
-flowchart TB
-  dev["dev · kubectl"]
-  subgraph app["APP CLUSTER · substrate — bex + your Apps run here"]
-    api["📦 apiserver · etcd · scheduler"]
-    op["📦 bex operator"]
-    apppod["📦 App pod"]
-    zot["📦 bex-zot · zot-0"]
-    cpnode["control-plane node · machine"]
-    wnode["worker node · machine"]
-  end
-  subgraph infra["INFRA CLUSTER · bex-infra"]
-    capi["📦 Cluster API controllers"]
-  end
-  dev -->|"submits App CR via"| api
-  op -->|"apiserver client · watch CRs, write Deployment"| api
-  apppod -->|"managed by"| op
-  apppod -->|"image from"| zot
-  apppod -->|"runs on"| wnode
-  zot -->|"runs on"| wnode
-  api -->|"runs on"| cpnode
-  op -->|"runs on"| cpnode
-  wnode -->|"provisioned by"| capi
-  cpnode -->|"provisioned by"| capi
+## Why bex
 
-  classDef pod fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
-  classDef machine fill:#e5e7eb,stroke:#374151
-  class api,op,apppod,zot,capi pod
-  class cpnode,wnode machine
+- **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
+- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/bex-api.md](docs/bex-api.md)).
+- **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/vision.md](docs/vision.md).
+
+## Quickstart: local mock (machines = Docker containers)
+
+Prereqs: Docker (OrbStack works), Go 1.25+, `kubectl`, `kind`, `clusterctl`.
+
+```bash
+# 1. stand up the mock substrate: kind infra cluster + Cluster API + CAPD
+#    + an app cluster whose nodes are Docker containers
+bash scripts/mock-cluster.sh            # writes infra/local/bex.kubeconfig
+export KUBECONFIG=$PWD/infra/local/bex.kubeconfig
+
+# 2. build the operator image, load it into every node, deploy it as a pod
+( cd operator && make docker-build IMG=bex-operator:dev )
+docker save bex-operator:dev -o /tmp/bex-op.tar
+for n in $(kubectl get nodes -o name | sed 's|node/||'); do
+  docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
+done
+( cd operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
+# local CAPD only: pin the operator to the control-plane node (see docs/deployment.md)
+kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
+ '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+  "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}'
+kubectl -n bex-system rollout status deploy/bex-controller-manager
+
+# 3. deploy an App — the operator reconciles it onto the worker machines
+kubectl apply -f examples/whoami-app.yaml
+kubectl get pods -l app.bex.co/app=whoami -o wide
+
+# 4. ★ add a machine, then scale the App onto it
+bash scripts/mock-cluster.sh scale 2
+kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
+
+# fast dev loop (optional): run the operator from source instead of as a pod —
+# ( cd operator && make install && BEX_RUNTIME=kubernetes make run )
 ```
 
-**Every arrow is a dependency: `A → B` means _A depends on B_** (it points to what A needs). **Blue 📦 = Pod · gray = machine (k8s node).**
-
-- An **App pod** depends on the **operator** (which manages it), **`bex-zot`** (pulls its image), and the **worker node** (runs on it).
-- The **operator** depends on the **apiserver** — it's a **client** of it: it watches `App` CRs and writes Deployments; it **never talks to pods directly**. (Plus the node it runs on.)
-- Both **machines** depend on **Cluster API** — it provisions them.
-
-Note the direction: "operator _creates_ pod" becomes **`pod → operator`**, and "CAPI _provisions_ machine" becomes **`machine → CAPI`** — in a dependency graph the created/managed thing points at what it depends on, i.e. the arrow is the reverse of the "who-makes-what" flow. Outer boxes = the two **clusters**; a _machine_ is a server (Hetzner) or Docker container (local). Swap `CAPD`→`CAPH` and the picture is identical. (For a request/response view of a deploy, see the request-flow diagram in [`docs/control-plane.md`](docs/control-plane.md).)
-
-> **"control plane" is overloaded — three distinct things.** (1) The **BEX OPERATOR** (`· bex`) — a pod that _executes_ deploys (reconciles `App` CRs → Deployment/Service/ Ingress); a **client** of the apiserver, runs in-cluster, never on your laptop. (2) The **control-plane node** (apiserver/etcd/scheduler) — the _cluster's_ own master. (3) The **bex control plane** _(planned)_ — a Postgres-backed service that _decides_ intent (tenants/apps/domains + business logic) and writes the `App` CRs the operator executes; see [`docs/control-plane.md`](docs/control-plane.md). Today there is no (3): you `kubectl apply` App CRs directly.
-
-- **Two clusters.** The **app cluster** runs the bex operator **and** your Apps; the **infra cluster** runs only Cluster API (it provisions the app cluster's machines). `BEX OPERATOR`, Cluster API and `bex-zot` are **pods / containers** — no extra machines. On Hetzner the machines are the cluster **nodes**; swap `CAPD`→`CAPH` and the picture is identical. (_infra cluster_ / _app cluster_ are bex's names for Cluster API's _management_ / _workload_ cluster; a 3rd legacy `orbstack` cluster still hosts the OpenSandbox `hello-go` demo.)
-- **machines = nodes** of the app cluster — Docker containers under CAPD locally, Hetzner servers under CAPH. **Add/remove a machine** = scale the worker pool; the operator bin-packs pods onto the nodes.
-
-## Two layers
-
-- **`bex`** (Go): build → deploy → serve, placement, the auto-allocator. Two parts: the **operator** (today — reconciles `App` CRs → Deployments; node-aware, **provision-unaware**, only reads `Node`/`Pod`) and, **planned**, the **control plane** — a Postgres source of truth (tenants/apps/domains + business logic) that writes the `App` CRs the operator executes ([`docs/control-plane.md`](docs/control-plane.md)).
-- **`bex-infra`** (`infra/`): how clusters and machines _exist_ — Cluster API + a provider (CAPD locally, CAPH on Hetzner), Cluster Autoscaler, Terraform.
-
-`infra/` makes the cluster (day-0, from outside); `deploy/` is what Argo reconciles _into_ it (day-1+). bex never references `infra/`.
-
-## Runtimes (`BEX_RUNTIME`)
-
-|  | runs a revision as | use |
-| --- | --- | --- |
-| `kubernetes` | a **Deployment** (pods on cluster machines) | the elastic, multi-machine path (CAPD/Hetzner) |
-| `opensandbox` | an OpenSandbox sandbox (host Docker) | real `pause`/`resume` snapshots; single host |
+**Deploy to Hetzner:** same bex, different provider — swap `infra/clusterapi/overlays/local-capd` → `…/hetzner-caph`. See [infra/README.md](infra/README.md).
 
 ## The `App` resource
 
@@ -77,66 +61,51 @@ spec:
   replicas: 2 # pods bin-pack across machines
 ```
 
-`kubectl get apps.app.bex.co` shows phase / revision / url.
+`kubectl get apps.app.bex.co` shows phase / revision / url. Prefer Render-style config? `scripts/app-apply.sh <bex.yml>` applies a `render.yaml`-shaped `bex.yml` as an App CR (`DRY_RUN=1` to preview).
 
-## Quickstart: local CAPD mock (machines = Docker containers)
+## bex vs Render
 
-Prereqs: Docker (OrbStack), Go ≥ 1.22, `kubectl`, `kind`, `clusterctl`.
+| Capability | bex |
+| --- | --- |
+| Deploy from git (CNB / Dockerfile) | ✅ |
+| Custom domains + TLS | ✅ |
+| Suspend / resume / restart | ✅ |
+| REST API (Render-compatible) | ✅ lifecycle verbs — create-service / deploys / logs planned |
+| GraphQL (Render dashboard-compatible) | ✅ |
+| Elastic machines | ✅ manual scale — autoscaler planned |
+| Postgres control plane (tenants/auth) | 🔜 planned |
+| MCP server | 🔜 planned |
+| Managed databases | — non-goal |
 
-```bash
-# 1. stand up the mock Hetzner substrate: kind infra cluster + Cluster API + CAPD
-#    + an app cluster whose nodes are Docker containers (+ Calico CNI).
-bash scripts/mock-cluster.sh            # writes infra/local/bex.kubeconfig
-export KUBECONFIG=$PWD/infra/local/bex.kubeconfig
+## AI-native
 
-# 2. deploy bex AS A POD in the app cluster (kubernetes runtime). Build the operator
-#    image, load it into every node's containerd (CAPD can't pull a local-only image), deploy.
-( cd operator && make docker-build IMG=bex-operator:dev )
-docker save bex-operator:dev -o /tmp/bex-op.tar
-for n in $(kubectl get nodes -o name | sed 's|node/||'); do
-  docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
-done
-( cd operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
-# local CAPD only: pin the operator to the control-plane node — OrbStack/Calico can't route
-# cross-node pod→apiserver (the same gap crashes calico-kube-controllers). Real CNI needs no pin.
-kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
- '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
-  "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}'
-kubectl -n bex-system rollout status deploy/bex-controller-manager   # operator pod ready
+Today: a bearer-authed, Render-compatible REST + GraphQL API ([docs/bex-api.md](docs/bex-api.md)) an agent can drive end-to-end, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: an MCP server over the same verbs, deploy-from-chat (repo → URL in one call), and E2B-compatible sandboxes. The thesis and roadmap live in [docs/vision.md](docs/vision.md).
 
-# 3. deploy an App — the in-cluster operator reconciles it; pods land on the worker machines
-kubectl apply -f examples/whoami-app.yaml
-kubectl get pods -l app.bex.co/app=whoami -o wide   # see them on bex-worker-0-* nodes
+## Architecture
 
-# 4. ★ add a machine, then scale the App onto it
-bash scripts/mock-cluster.sh scale 2    # worker pool 1 -> 2 (a new container node joins)
-kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
-kubectl get pods -l app.bex.co/app=whoami -o wide   # pods now spread across both machines
-
-# fast dev loop (optional): run the operator from source instead of as a pod —
-# ( cd operator && make install && BEX_RUNTIME=kubernetes make run )
-```
-
-## Deploy to Hetzner (same bex, different provider)
-
-Only the infrastructure overlay changes — `infra/clusterapi/overlays/local-capd` → `…/hetzner-caph` (a real CAPH manifest is committed there). The bex control plane and the `App`/Deployment are byte-for-byte identical. See [`infra/README.md`](infra/README.md) and the overlay README.
+Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the planned **Postgres control plane** is the intent layer (tenants/apps/domains) that will write those CRs — [docs/control-plane.md](docs/control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/architecture.md](docs/architecture.md).
 
 ## Layout
 
 ```
-operator/   Go operator (kubebuilder)
-  api/v1alpha1/   App CRD          internal/build/    build plane (CNB/Dockerfile → Zot)
-  cmd/            manager entrypoint   internal/runtime/   OpenSandbox client
-  config/         CRD/RBAC kustomize   internal/controller/ reconcile: kubernetes + opensandbox runtimes
+operator/   Go operator + bex-api (kubebuilder)
+  api/v1alpha1/     App CRD              internal/build/      build plane (CNB/Dockerfile → Zot)
+  cmd/              manager + api        internal/runtime/    OpenSandbox client
+  config/           CRD/RBAC kustomize   internal/controller/ reconcile: kubernetes + opensandbox
+                                         internal/api/        bex-api (REST + GraphQL)
 infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
-deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts} · opensandbox/ server configs
-examples/        whoami-app.yaml (prebuilt), hello-go/ (build-from-git sample)
-docs/            architecture.md · go-and-gitops.md
-scripts/         mock-cluster.sh · up.sh · deploy-sample.sh · start-opensandbox*.sh
+deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts} · opensandbox/ configs
+examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)
+docs/            vision · architecture · control-plane · bex-api · deployment · custom-domain ·
+                 restart-suspend-and-resume · go-and-gitops
+scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-sample.sh ·
+                 up.sh + start-opensandbox*.sh (legacy single-host path)
 ```
 
-## Status
+## Status & roadmap
 
-Working & verified: the **Go control plane** (App CRD + reconcile, finalizer teardown); the **kubernetes runtime** (App → Deployment → pods on machines); the **local CAPD mock** with **add/remove machine** and pods bin-packing onto added machines; the **opensandbox runtime** (build CNB/Dockerfile → Zot → sandbox, real pause/resume); the **Hetzner CAPH overlay** (manifest committed, not applied — no account).
+Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, lifecycle verbs over REST/GraphQL, and a live Hetzner deployment. Tracked next — Postgres control plane, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds, MCP server: [docs/vision.md](docs/vision.md#roadmap).
 
-Tracked next: the **bex control plane** — a Postgres **source of truth** (tenants / apps / domains + business logic) that projects to `App` CRs, so business data is durable and queryable instead of living only in the app cluster's **etcd** (lost on a node _rebuild_; Apps are imperative, not in git) — see [`docs/control-plane.md`](docs/control-plane.md); the **wake activator** + **HMAC webhook** (not yet ported); **Cluster Autoscaler** wiring so add/remove-machine is reactive (not manual); in-cluster builds (BuildKit/kpack Job) so build-from-git images are pullable by cluster nodes. The **edge (HTTPS via `App.spec.host`)** is live — Traefik + cert-manager. See [`docs/architecture.md`](docs/architecture.md).
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). This repo is agent-friendly ([CLAUDE.md](CLAUDE.md)). Licensed [Apache-2.0](LICENSE).

@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test:*)",
+      "Bash(make lint:*)",
+      "Bash(make lint-fix:*)",
+      "Bash(make build:*)",
+      "Bash(make manifests:*)",
+      "Bash(make generate:*)",
+      "Bash(make fmt:*)",
+      "Bash(make vet:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go build:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl rollout status:*)",
+      "Bash(kind get:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker images:*)",
+      "Bash(clusterctl describe:*)",
+      "Bash(yq:*)"
+    ],
+    "deny": ["Read(.env)", "Read(**/*.kubeconfig)"]
+  }
+}

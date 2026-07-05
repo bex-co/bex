@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
 )
 
 const testToken = "secret-token"

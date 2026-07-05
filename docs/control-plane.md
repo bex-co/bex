@@ -2,6 +2,8 @@
 
 > **Status: planned direction, mostly not built yet.** Today there is **no Postgres source of truth** — you `kubectl apply` an `App` CR, the **operator** reconciles it, and the only store is the app cluster's **etcd**. This doc describes where bex is going and why, so the boundary is clear before the rest of the code exists. **The first seed now exists:** [bex-api.md](bex-api.md) — a bearer-authed REST + GraphQL service that writes App-spec intent (restart/suspend/resume) exactly as this doc prescribes (control plane → App CR → operator). Still no tenants, no auth beyond one token, no Postgres.
 
+> **"control plane" is overloaded — three distinct things.** (1) The **bex operator** — a pod that _executes_ deploys (reconciles `App` CRs → Deployment/Service/Ingress); a **client** of the apiserver, runs in-cluster, never on your laptop. (2) The **control-plane node** (apiserver/etcd/scheduler) — the _cluster's_ own master. (3) The **bex control plane** _(planned)_ — the subject of this doc: a Postgres-backed service that _decides_ intent (tenants/apps/domains + business logic) and writes the `App` CRs the operator executes. Today (3) exists only as the [bex-api](bex-api.md) seed: you `kubectl apply` App CRs directly or call its lifecycle verbs.
+
 bex's Go layer splits into **two collaborating components** — keep them distinct:
 
 |  | **bex control plane** (planned) | **bex operator** (exists) |

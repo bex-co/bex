@@ -39,9 +39,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
-	"github.com/blockeden/bex/operator/internal/build"
-	bexruntime "github.com/blockeden/bex/operator/internal/runtime"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
+	"github.com/bex-co/bex/operator/internal/build"
+	bexruntime "github.com/bex-co/bex/operator/internal/runtime"
 )
 
 const finalizer = "app.bex.co/finalizer"

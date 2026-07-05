@@ -32,7 +32,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
 )
 
 // ErrNotFound is returned when an App does not exist (adapters map it to 404 /

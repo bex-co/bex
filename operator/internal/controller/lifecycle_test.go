@@ -19,7 +19,7 @@ package controller
 import (
 	"testing"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
 )
 
 func TestEffectiveReplicas(t *testing.T) {

@@ -2,6 +2,51 @@
 
 bex is the **deploy-from-git half** of bex.co (strategy 211.09): a Git repo becomes a running, addressable service, bin-packed across machines, with idle services hibernated ("sleep = free") and woken on request. This doc is the map.
 
+## Panorama
+
+```mermaid
+%% arrow  A --> B  means  "A depends on B"  (points to what it needs)
+flowchart TB
+  dev["dev · kubectl"]
+  subgraph app["APP CLUSTER · substrate — bex + your Apps run here"]
+    api["📦 apiserver · etcd · scheduler"]
+    op["📦 bex operator"]
+    apppod["📦 App pod"]
+    zot["📦 bex-zot · zot-0"]
+    cpnode["control-plane node · machine"]
+    wnode["worker node · machine"]
+  end
+  subgraph infra["INFRA CLUSTER · bex-infra"]
+    capi["📦 Cluster API controllers"]
+  end
+  dev -->|"submits App CR via"| api
+  op -->|"apiserver client · watch CRs, write Deployment"| api
+  apppod -->|"managed by"| op
+  apppod -->|"image from"| zot
+  apppod -->|"runs on"| wnode
+  zot -->|"runs on"| wnode
+  api -->|"runs on"| cpnode
+  op -->|"runs on"| cpnode
+  wnode -->|"provisioned by"| capi
+  cpnode -->|"provisioned by"| capi
+
+  classDef pod fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef machine fill:#e5e7eb,stroke:#374151
+  class api,op,apppod,zot,capi pod
+  class cpnode,wnode machine
+```
+
+**Every arrow is a dependency: `A → B` means _A depends on B_** (it points to what A needs). **Blue 📦 = Pod · gray = machine (k8s node).**
+
+- An **App pod** depends on the **operator** (which manages it), **`bex-zot`** (pulls its image), and the **worker node** (runs on it).
+- The **operator** depends on the **apiserver** — it's a **client** of it: it watches `App` CRs and writes Deployments; it **never talks to pods directly**. (Plus the node it runs on.)
+- Both **machines** depend on **Cluster API** — it provisions them.
+
+Note the direction: "operator _creates_ pod" becomes **`pod → operator`**, and "CAPI _provisions_ machine" becomes **`machine → CAPI`** — in a dependency graph the created/managed thing points at what it depends on, i.e. the arrow is the reverse of the "who-makes-what" flow. Outer boxes = the two **clusters**; a _machine_ is a server (Hetzner) or Docker container (local). Swap `CAPD`→`CAPH` and the picture is identical. (For a request/response view of a deploy, see the request-flow diagram in [`control-plane.md`](control-plane.md).)
+
+- **Two clusters.** The **app cluster** runs the bex operator **and** your Apps; the **infra cluster** runs only Cluster API (it provisions the app cluster's machines). `BEX OPERATOR`, Cluster API and `bex-zot` are **pods / containers** — no extra machines. On Hetzner the machines are the cluster **nodes**; swap `CAPD`→`CAPH` and the picture is identical. (_infra cluster_ / _app cluster_ are bex's names for Cluster API's _management_ / _workload_ cluster; a 3rd legacy `orbstack` cluster still hosts the OpenSandbox `hello-go` demo.)
+- **machines = nodes** of the app cluster — Docker containers under CAPD locally, Hetzner servers under CAPH. **Add/remove a machine** = scale the worker pool; the operator bin-packs pods onto the nodes.
+
 ## Two layers: `bex` and `bex-infra`
 
 The single most important boundary:

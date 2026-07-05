@@ -35,9 +35,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	appv1alpha1 "github.com/blockeden/bex/operator/api/v1alpha1"
-	"github.com/blockeden/bex/operator/internal/controller"
-	bexruntime "github.com/blockeden/bex/operator/internal/runtime"
+	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
+	"github.com/bex-co/bex/operator/internal/controller"
+	bexruntime "github.com/bex-co/bex/operator/internal/runtime"
 	// +kubebuilder:scaffold:imports
 )
 
