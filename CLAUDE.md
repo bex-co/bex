@@ -45,6 +45,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - [docs/architecture.md](docs/architecture.md) — the map: two clusters, two layers, panorama diagram.
 - [docs/control-plane.md](docs/control-plane.md) — planned Postgres source of truth vs. operator mechanism.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL design: one Core, thin adapters, Render compatibility.
+- [docs/observability.md](docs/observability.md) — Logs API (query + live-tail) over REST/GraphQL/MCP; metrics next.
 - [docs/deployment.md](docs/deployment.md) — deploy flow, health gating, revisions.
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.

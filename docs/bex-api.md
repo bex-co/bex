@@ -15,7 +15,7 @@ flowchart LR
   cr --> op["operator (mechanism)"]
 ```
 
-`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`). REST (`rest.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
+`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`). REST (`rest.go`, `rest_logs.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
 ## Auth
 
@@ -107,6 +107,24 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 `list_logs` takes Render's required `resource` array of service ids and reads pod logs for each App's instances (selected by the controller's `app.bex.co/app` label), aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`service`/`instance`/`container`). bex omits Render's structured-log filters (`level`, `statusCode`, `method`, …) it can't honor over raw pod logs — the same rule REST follows for build plans / regions / disks; `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). The `serviceId` / `resource` ids are App names, opaque and round-tripped from `list_services`, exactly as in REST/GraphQL.
 
 **Transports & auth.** The streamable-HTTP transport mounts at `/mcp` behind the same `bex-api-token` bearer gate as every other route. The stdio transport (`api mcp-stdio`, or `BEX_MCP_STDIO=1`) serves the same tools over stdin/stdout for a locally-launched agent; there the trust boundary is the subprocess itself (it already holds the kube credentials), so no bearer applies. Logs need read-only `pods` + `pods/log` RBAC.
+
+## Logs — REST + GraphQL (Render logs-API compatible)
+
+MCP `list_logs` is the agent surface; the same `Core` logs read is also a Render-shaped **REST** and **GraphQL** query. Full design in [observability.md](observability.md).
+
+| method + path            | effect                                          |
+| ------------------------ | ----------------------------------------------- |
+| `GET /v1/logs`           | historical query → `{hasMore, next*Time, logs}` |
+| `GET /v1/logs/subscribe` | live tail over Server-Sent Events               |
+
+Query params (verified against `render-public-api-1.json`): `resource` (App id, repeatable), `type` (repeatable — `app`/`request`/`build`; `application` is an `app` alias), `text` (search), `startTime`/`endTime` (RFC3339), `limit` (default 20, max 100). The envelope carries all four required fields; each log is Render's required `{id, message, timestamp, labels[]}` with labels `type` (value `app`), `resource`, `instance`. bex only sources **application** logs, so `type=request`/`build` return an empty page (not an error). GraphQL: `logs(resource, type, text, limit)` → `LogEntry { timestamp message type instance }`.
+
+`GET /v1/logs/subscribe` streams over **SSE** where Render upgrades to a **WebSocket** (bex's choice: no dependency, curl-friendly, same "stream new lines live" contract).
+
+```sh
+curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs?resource=eden-cms-v2&type=app"
+curl -N -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs/subscribe?resource=eden-cms-v2"
+```
 
 ## Deploy
 

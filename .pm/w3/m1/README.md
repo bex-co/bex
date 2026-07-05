@@ -1,6 +1,6 @@
 # w3 · m1 — Logs API: query + stream App logs
 
-**Worker:** worker3 **Goal:** Render-compatible read-only logs over bex-api — query an App's application logs by time/text and stream new lines live. **Status:** todo
+**Worker:** worker3 **Goal:** Render-compatible read-only logs over bex-api — query an App's application logs by time/text and stream new lines live. **Status:** done
 
 ## Tasks (in order)
 

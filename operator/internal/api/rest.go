@@ -70,6 +70,7 @@ func (s *Server) restHandler() http.Handler {
 	}
 
 	s.registerPostgresRoutes(mux)
+	s.registerLogRoutes(mux)
 	return mux
 }
 
@@ -132,8 +133,11 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func writeErr(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
-	if errors.Is(err, ErrNotFound) {
+	switch {
+	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
+	case errors.Is(err, ErrLogsUnavailable):
+		code = http.StatusServiceUnavailable
 	}
 	writeJSON(w, code, map[string]string{"error": err.Error()})
 }

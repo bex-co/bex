@@ -118,6 +118,52 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+func logField(f func(LogEntry) any) graphql.FieldResolveFn {
+	return func(p graphql.ResolveParams) (any, error) {
+		e, ok := p.Source.(LogEntry)
+		if !ok {
+			return nil, nil
+		}
+		return f(e), nil
+	}
+}
+
+// logGQLType is the GraphQL projection of a LogEntry — a flat row (the REST
+// adapter renders the same data as Render's labels array instead). type is
+// Render's `app` value; instance comes from the entry's labels.
+var logGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LogEntry",
+	Fields: graphql.Fields{
+		"timestamp": &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Timestamp })},
+		"message":   &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Message })},
+		"type":      &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return renderLogTypeApp })},
+		"instance":  &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Labels["instance"] })},
+	},
+})
+
+// logQueryFromArgs maps the GraphQL logs() args onto a Core LogQuery, accepting
+// the same `app` alias for the application type as the REST adapter.
+func logQueryFromArgs(args map[string]any) LogQuery {
+	q := LogQuery{App: args["resource"].(string)}
+	if t, ok := args["type"].(string); ok {
+		switch t {
+		case renderLogTypeApp, LogTypeApplication:
+			q.Type = LogTypeApplication
+		case LogTypeRequest:
+			q.Type = LogTypeRequest
+		case LogTypeBuild:
+			q.Type = LogTypeBuild
+		}
+	}
+	if s, ok := args["text"].(string); ok {
+		q.Search = s
+	}
+	if n, ok := args["limit"].(int); ok {
+		q.Limit = int64(n)
+	}
+	return q
+}
+
 // newSchema builds the schema once; the Core is injected per-request via context.
 func newSchema() (graphql.Schema, error) {
 	idArg := graphql.FieldConfigArgument{
@@ -160,6 +206,18 @@ func newSchema() (graphql.Schema, error) {
 					Args: idArg,
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						return coreFrom(p.Context).PostgresConnectionInfo(p.Context, p.Args["id"].(string))
+					},
+				},
+				"logs": &graphql.Field{
+					Type: graphql.NewList(logGQLType),
+					Args: graphql.FieldConfigArgument{
+						"resource": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+						"type":     &graphql.ArgumentConfig{Type: graphql.String},
+						"text":     &graphql.ArgumentConfig{Type: graphql.String},
+						"limit":    &graphql.ArgumentConfig{Type: graphql.Int},
+					},
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						return coreFrom(p.Context).QueryLogs(p.Context, logQueryFromArgs(p.Args))
 					},
 				},
 			},

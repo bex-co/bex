@@ -104,6 +104,9 @@ type Core struct {
 	// PodLogs fetches pod logs for the Logs verb; nil => Logs reports
 	// ErrLogsUnavailable. Injected so Core needs no typed clientset.
 	PodLogs PodLogSource
+	// PodLogsFollow streams live pod logs for FollowLogs (the SSE tail); nil =>
+	// FollowLogs reports ErrLogsUnavailable. See logs.go.
+	PodLogsFollow PodLogStream
 }
 
 func (c *Core) now() time.Time {
@@ -187,6 +190,13 @@ func (c *Core) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, e
 	if tail <= 0 {
 		tail = defaultLogTail
 	}
+	return c.collectPodLogs(ctx, name, tail)
+}
+
+// collectPodLogs reads up to tail lines from every replica of an App, tagged and
+// timestamp-sorted. Shared by Logs (MCP) and QueryLogs (REST/GraphQL) so all
+// surfaces read pod logs the same way.
+func (c *Core) collectPodLogs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
 	var pods corev1.PodList
 	if err := c.Client.List(ctx, &pods,
 		client.InNamespace(c.Namespace),

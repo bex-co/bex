@@ -38,3 +38,13 @@ func NewPodLogSource(cs kubernetes.Interface) PodLogSource {
 		return cs.CoreV1().Pods(namespace).GetLogs(pod, opts).Stream(ctx)
 	}
 }
+
+// NewPodLogStream returns the production PodLogStream for Core.FollowLogs — the
+// live-tail sibling of NewPodLogSource (Follow:true, no tail). Same rationale for
+// living here: keep the typed clientset out of the domain layer.
+func NewPodLogStream(cs kubernetes.Interface) PodLogStream {
+	return func(ctx context.Context, namespace, pod, container string) (io.ReadCloser, error) {
+		opts := &corev1.PodLogOptions{Container: container, Timestamps: true, Follow: true}
+		return cs.CoreV1().Pods(namespace).GetLogs(pod, opts).Stream(ctx)
+	}
+}

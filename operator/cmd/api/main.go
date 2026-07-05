@@ -67,9 +67,10 @@ func main() {
 
 	srv := &api.Server{
 		Core: &api.Core{
-			Client:    cl,
-			Namespace: envOr("BEX_API_NAMESPACE", "default"),
-			PodLogs:   api.NewPodLogSource(cs),
+			Client:        cl,
+			Namespace:     envOr("BEX_API_NAMESPACE", "default"),
+			PodLogs:       api.NewPodLogSource(cs),
+			PodLogsFollow: api.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
 		},
 		Token:      os.Getenv("BEX_API_TOKEN"),
 		CORSOrigin: os.Getenv("BEX_API_CORS_ORIGIN"),
