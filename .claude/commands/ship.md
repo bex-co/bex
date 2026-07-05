@@ -8,6 +8,16 @@ allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git
 
 Bring the local `main` up to date, commit any pending work, and push to `origin/main`.
 
+## Session-aware mode
+
+If you (the agent) made the pending changes yourself earlier in this conversation, you already know what changed and why — do **not** re-derive it from git:
+
+- Skip the `git diff --stat` / `git diff --cached --stat` calls in Step 2. Run only `git status` as a sanity check.
+- In Step 4, stage exactly the files you edited this session (by name) and write the commit message from your session knowledge.
+- If `git status` shows modified/untracked files you did **not** touch this session, fall back to full inspection for those files (or ask the user) before staging anything beyond your own edits.
+
+Only when the working tree contains changes you didn't make (fresh session, external edits) do the full Step 2 inspection.
+
 ## Step 1 — Verify branch
 
 ```bash
@@ -21,6 +31,10 @@ If not on `main`, **STOP** and ask the user whether to switch or abort. Do not s
 ```bash
 !git status
 ```
+
+**Session-aware:** if every change listed by `git status` is one you made this session, stop here — no diff commands needed.
+
+Otherwise, inspect the unfamiliar changes:
 
 ```bash
 !git diff --stat
@@ -44,7 +58,7 @@ If the rebase has conflicts, **STOP** and report. Do not abort the rebase or use
 
 If there are unstaged changes, stage only the relevant files explicitly. Do **not** use `git add -A` or `git add .` (avoid sweeping in `.env`, secrets, or unrelated files).
 
-Generate a Conventional Commits message from the diff. Honor `$ARGUMENTS` as additional context if supplied.
+Generate a Conventional Commits message — from your session knowledge if you made the changes (session-aware mode), otherwise from the diff. Honor `$ARGUMENTS` as additional context if supplied.
 
 - Briefly describe UI before/after for frontend changes.
 - !!Important!! Never mention `Generated with Claude Code` or `Co-Authored-By`.
