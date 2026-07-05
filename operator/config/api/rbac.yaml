@@ -1,5 +1,6 @@
-# bex-api can touch Apps and nothing else — least privilege. It patches
-# spec.suspended / spec.restartedAt; the operator does all the mechanism.
+# bex-api touches Apps and Databases (the product resources) and reads the
+# CNPG-generated connection Secrets — least privilege. It writes intent (App
+# lifecycle fields, Database CRs); the operator does all the mechanism.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -17,6 +18,16 @@ rules:
   - apiGroups: ["app.bex.co"]
     resources: ["apps/status"]
     verbs: ["get"]
+  - apiGroups: ["app.bex.co"]
+    resources: ["databases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["app.bex.co"]
+    resources: ["databases/status"]
+    verbs: ["get"]
+  # read the CNPG-generated "<db>-app" Secret to assemble connection strings
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

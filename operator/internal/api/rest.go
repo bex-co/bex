@@ -69,7 +69,59 @@ func (s *Server) restHandler() http.Handler {
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Core.Restart)) // Render: restart => 200
 	}
 
+	s.registerPostgresRoutes(mux)
 	return mux
+}
+
+// registerPostgresRoutes adds the managed-Postgres endpoints, Render-shaped
+// (/v1/postgres) plus a bex-native /v1/databases alias.
+func (s *Server) registerPostgresRoutes(mux *http.ServeMux) {
+	for _, base := range []string{"/v1/postgres", "/v1/databases"} {
+		mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.Core.ListPostgres(r.Context())
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
+			var req CreatePostgresRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				return
+			}
+			pg, err := s.Core.CreatePostgres(r.Context(), req)
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, pg) // Render: create => 201
+		})
+		mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+			pg, err := s.Core.GetPostgres(r.Context(), r.PathValue("id"))
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, pg)
+		})
+		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+			if err := s.Core.DeletePostgres(r.Context(), r.PathValue("id")); err != nil {
+				writeErr(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent) // Render: delete => 204
+		})
+		mux.HandleFunc("GET "+base+"/{id}/connection-info", func(w http.ResponseWriter, r *http.Request) {
+			info, err := s.Core.PostgresConnectionInfo(r.Context(), r.PathValue("id"))
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, info)
+		})
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

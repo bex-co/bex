@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -241,6 +242,128 @@ func TestGraphQL_RequiresAuth(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"query": `{ services { id } }`})
 	if code := do(t, h, "POST", "/graphql", "", string(body)).Code; code != 401 {
 		t.Errorf("graphql without token => 401, got %d", code)
+	}
+}
+
+// --- managed Postgres (Render-shaped /v1/postgres) ---
+
+// seedDatabase adds a Ready public Database + its CNPG-style "<name>-app" Secret.
+func seedDatabase(t *testing.T, cl client.Client, name string) {
+	t.Helper()
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", Public: true},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseReady, Host: name + "-rw.default.svc", Port: 5432,
+			SecretName: name + "-app", ExternalHost: name + ".db.bex.co",
+		},
+	}
+	dbn := pgIdent(name)
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name + "-app", Namespace: "default"},
+		Data: map[string][]byte{
+			"username": []byte(dbn + "_user"),
+			"password": []byte("s3cret"),
+			"dbname":   []byte(dbn),
+			"uri":      []byte("postgresql://" + dbn + "_user:s3cret@" + name + "-rw.default:5432/" + dbn),
+		},
+	}
+	if err := cl.Create(context.Background(), db); err != nil {
+		t.Fatalf("seed db: %v", err)
+	}
+	if err := cl.Create(context.Background(), sec); err != nil {
+		t.Fatalf("seed secret: %v", err)
+	}
+}
+
+func TestREST_PostgresCRUD(t *testing.T) {
+	h, cl := newServer(t)
+
+	// create — Render: POST /v1/postgres => 201; name with a hyphen normalizes.
+	body := `{"name":"pg-test","plan":"free","public":true}`
+	w := do(t, h, "POST", "/v1/postgres", testToken, body)
+	if w.Code != 201 {
+		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var pg PostgresView
+	decode(t, w, &pg)
+	if pg.ID != "pg-test" || pg.DatabaseName != "pg_test" || pg.DatabaseUser != "pg_test_user" {
+		t.Fatalf("normalized names wrong: %+v", pg)
+	}
+	if pg.Plan != "free" || !pg.Public {
+		t.Fatalf("spec not applied: %+v", pg)
+	}
+	// the CR really exists
+	var got appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "pg-test"}, &got); err != nil {
+		t.Fatalf("db CR not created: %v", err)
+	}
+
+	// list + get
+	var list []PostgresView
+	decode(t, do(t, h, "GET", "/v1/postgres", testToken, ""), &list)
+	if len(list) != 1 {
+		t.Fatalf("list => 1, got %d", len(list))
+	}
+	if do(t, h, "GET", "/v1/postgres/pg-test", testToken, "").Code != 200 {
+		t.Fatalf("get failed")
+	}
+	if code := do(t, h, "GET", "/v1/postgres/nope", testToken, "").Code; code != 404 {
+		t.Errorf("unknown => 404, got %d", code)
+	}
+
+	// delete — Render: 204
+	if code := do(t, h, "DELETE", "/v1/postgres/pg-test", testToken, "").Code; code != 204 {
+		t.Errorf("delete => 204, got %d", code)
+	}
+	if do(t, h, "GET", "/v1/postgres/pg-test", testToken, "").Code != 404 {
+		t.Errorf("deleted db should be gone")
+	}
+}
+
+func TestREST_PostgresConnectionInfo(t *testing.T) {
+	h, cl := newServer(t)
+	seedDatabase(t, cl, "conn-db")
+
+	var ci PostgresConnectionInfo
+	decode(t, do(t, h, "GET", "/v1/postgres/conn-db/connection-info", testToken, ""), &ci)
+
+	if ci.Password != "s3cret" {
+		t.Errorf("password = %q", ci.Password)
+	}
+	if ci.InternalConnectionString != "postgresql://conn_db_user:s3cret@conn-db-rw.default:5432/conn_db" {
+		t.Errorf("internal = %q", ci.InternalConnectionString)
+	}
+	wantExt := "postgresql://conn_db_user:s3cret@conn-db.db.bex.co:5432/conn_db?sslmode=require&sslnegotiation=direct"
+	if ci.ExternalConnectionString != wantExt {
+		t.Errorf("external = %q", ci.ExternalConnectionString)
+	}
+	if ci.PSQLCommand == "" {
+		t.Error("psqlCommand empty")
+	}
+}
+
+func TestGraphQL_Postgres(t *testing.T) {
+	h, cl := newServer(t)
+	seedDatabase(t, cl, "gql-db")
+
+	// Render dashboard GraphQL noun is "database" (verified via Playwright).
+	data := gql(t, h, `{ databases { id databaseName status } }`)
+	if len(data["databases"].([]any)) != 1 {
+		t.Fatalf("databases want 1")
+	}
+	ci := gql(t, h, `{ databaseConnectionInfo(id:"gql-db") { externalConnectionString password } }`)["databaseConnectionInfo"].(map[string]any)
+	if ci["password"] != "s3cret" || ci["externalConnectionString"] == "" {
+		t.Fatalf("connection info: %+v", ci)
+	}
+	// create via mutation
+	gql(t, h, `mutation { createDatabase(name:"gql-new", plan:"basic-1gb") { id databaseName } }`)
+	var made appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-new"}, &made); err != nil {
+		t.Fatalf("createPostgres did not create the CR: %v", err)
+	}
+	if made.Spec.Plan != "basic-1gb" {
+		t.Errorf("plan not applied: %s", made.Spec.Plan)
 	}
 }
 

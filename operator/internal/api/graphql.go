@@ -65,6 +65,59 @@ func suspendedEnum(b bool) string {
 	return renderNotSuspended
 }
 
+func pgField(f func(PostgresView) any) graphql.FieldResolveFn {
+	return func(p graphql.ResolveParams) (any, error) {
+		v, ok := p.Source.(PostgresView)
+		if !ok {
+			return nil, nil
+		}
+		return f(v), nil
+	}
+}
+
+func ciField(f func(PostgresConnectionInfo) any) graphql.FieldResolveFn {
+	return func(p graphql.ResolveParams) (any, error) {
+		v, ok := p.Source.(PostgresConnectionInfo)
+		if !ok {
+			return nil, nil
+		}
+		return f(v), nil
+	}
+}
+
+// Render's dashboard GraphQL calls a managed Postgres a "database" (query
+// database(id), databaseStatusQuery, databaseCredentialList, ...) — captured
+// live — even though its REST noun is "postgres". bex mirrors that split: REST
+// /v1/postgres, GraphQL database* (which also matches bex's own Database CRD).
+var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Database",
+	Fields: graphql.Fields{
+		"id":                      &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.ID })},
+		"name":                    &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Name })},
+		"plan":                    &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Plan })},
+		"version":                 &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Version })},
+		"status":                  &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Status })},
+		"databaseName":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.DatabaseName })},
+		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.DatabaseUser })},
+		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: pgField(func(v PostgresView) any { return v.DiskSizeGB })},
+		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: pgField(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
+		"suspended":               &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Suspended })},
+		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.CreatedAt })},
+		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.ExternalHost })},
+		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: pgField(func(v PostgresView) any { return v.Public })},
+	},
+})
+
+var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "PostgresConnectionInfo",
+	Fields: graphql.Fields{
+		"password":                 &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.Password })},
+		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
+		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
+		"psqlCommand":              &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
+	},
+})
+
 // newSchema builds the schema once; the Core is injected per-request via context.
 func newSchema() (graphql.Schema, error) {
 	idArg := graphql.FieldConfigArgument{
@@ -91,6 +144,24 @@ func newSchema() (graphql.Schema, error) {
 						return coreFrom(p.Context).Get(p.Context, p.Args["id"].(string))
 					},
 				},
+				"databases": &graphql.Field{ // list; Render lists via env, bex offers a top-level list
+					Type:    graphql.NewList(postgresGQLType),
+					Resolve: func(p graphql.ResolveParams) (any, error) { return coreFrom(p.Context).ListPostgres(p.Context) },
+				},
+				"database": &graphql.Field{ // Render's dashboard query name
+					Type: postgresGQLType,
+					Args: idArg,
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						return coreFrom(p.Context).GetPostgres(p.Context, p.Args["id"].(string))
+					},
+				},
+				"databaseConnectionInfo": &graphql.Field{
+					Type: connectionInfoGQLType,
+					Args: idArg,
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						return coreFrom(p.Context).PostgresConnectionInfo(p.Context, p.Args["id"].(string))
+					},
+				},
 			},
 		}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{
@@ -99,6 +170,40 @@ func newSchema() (graphql.Schema, error) {
 				"suspendService": &graphql.Field{Type: serviceGQLType, Args: idArg, Resolve: verb((*Core).Suspend)},
 				"resumeService":  &graphql.Field{Type: serviceGQLType, Args: idArg, Resolve: verb((*Core).Resume)},
 				"restartServer":  &graphql.Field{Type: serviceGQLType, Args: idArg, Resolve: verb((*Core).Restart)},
+				"createDatabase": &graphql.Field{
+					Type: postgresGQLType,
+					Args: graphql.FieldConfigArgument{
+						"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+						"plan":       &graphql.ArgumentConfig{Type: graphql.String},
+						"version":    &graphql.ArgumentConfig{Type: graphql.String},
+						"diskSizeGB": &graphql.ArgumentConfig{Type: graphql.Int},
+						"public":     &graphql.ArgumentConfig{Type: graphql.Boolean},
+					},
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						req := CreatePostgresRequest{Name: p.Args["name"].(string)}
+						if v, ok := p.Args["plan"].(string); ok {
+							req.Plan = v
+						}
+						if v, ok := p.Args["version"].(string); ok {
+							req.Version = v
+						}
+						if v, ok := p.Args["diskSizeGB"].(int); ok {
+							req.DiskSizeGB = int32(v)
+						}
+						if v, ok := p.Args["public"].(bool); ok {
+							req.Public = v
+						}
+						return coreFrom(p.Context).CreatePostgres(p.Context, req)
+					},
+				},
+				"deleteDatabase": &graphql.Field{
+					Type: graphql.Boolean,
+					Args: idArg,
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						err := coreFrom(p.Context).DeletePostgres(p.Context, p.Args["id"].(string))
+						return err == nil, err
+					},
+				},
 			},
 		}),
 	})

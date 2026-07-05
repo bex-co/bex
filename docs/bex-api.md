@@ -68,6 +68,30 @@ mutation {
 }
 ```
 
+## Managed Postgres (Render `/v1/postgres` compatible)
+
+CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (see [postgresql-management.md](postgresql-management.md)):
+
+| method + path | effect | status |
+| --- | --- | --- |
+| `GET /v1/postgres` | list managed Postgres | 200 |
+| `POST /v1/postgres` | create (body: name, plan, version, diskSizeGB, public) | 201 |
+| `GET /v1/postgres/{name}` | one instance (Render `postgres` shape) | 200 |
+| `DELETE /v1/postgres/{name}` | delete (cascades CNPG Cluster + PVC + route) | 204 |
+| `GET /v1/postgres/{name}/connection-info` | password + internal/external strings + psql | 200 |
+
+`connection-info` is the key endpoint — it's how a frontend gets the connection string without cluster access. It's the **only** place the DB password is surfaced (read from CNPG's `<name>-app` Secret at request time, authed), matching Render's `postgresConnectionInfo` (`password`, `internalConnectionString`, `externalConnectionString`, `psqlCommand`).
+
+**Noun split, mirroring Render** (verified: REST spec + dashboard GraphQL captured via Playwright): Render's REST uses `postgres` (`/v1/postgres`) but its **dashboard GraphQL uses `database`** (`database(id)`, `databaseStatusQuery`, `databaseCredentialList`). bex matches both — REST `/v1/postgres` (+ `/v1/databases` alias), GraphQL `databases` / `database(id)` / `databaseConnectionInfo(id)` queries and `createDatabase` / `deleteDatabase` mutations (which also matches bex's own `Database` CRD).
+
+```sh
+curl -X POST -H "Authorization: Bearer $BEX_API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"my-db","plan":"free","public":true}' https://api.bex.co/v1/postgres
+curl -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/postgres/my-db/connection-info
+```
+
+Deferred (map to unbuilt features): `suspend`/`resume`/`restart`, `failover` (needs HA), `recovery`/PITR (needs backups), `credentials`, `export`, and the pooler connection strings (needs a PgBouncer `Pooler`).
+
 ## Deploy
 
 Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — App access only), wired from `config/default`. One-time Secret creation:
