@@ -46,8 +46,8 @@ If there are unstaged changes, stage only the relevant files explicitly. Do **no
 
 Generate a Conventional Commits message from the diff. Honor `$ARGUMENTS` as additional context if supplied.
 
-* Briefly describe UI before/after for frontend changes.
-* !!Important!! Never mention `Generated with Claude Code` or `Co-Authored-By`.
+- Briefly describe UI before/after for frontend changes.
+- !!Important!! Never mention `Generated with Claude Code` or `Co-Authored-By`.
 
 ```bash
 git commit -m "$(cat <<'EOF'

@@ -110,15 +110,16 @@ Rather than hand-writing `kubectl patch`, a project can carry a `bex.yml` at its
 # bex.yml
 apps:
   - name: my-app
-    type: web              # web (default): public — <name>.<base-domain> auto-assigned.
-                           # private: in-cluster only (ClusterIP, no Ingress, no domains).
-    image: my-app:<sha>   # or repo: + branch: to build from git
+    type:
+      web # web (default): public — <name>.<base-domain> auto-assigned.
+      # private: in-cluster only (ClusterIP, no Ingress, no domains).
+    image: my-app:<sha> # or repo: + branch: to build from git
     port: 3000
     replicas: 1
     healthCheckPath: /
-    domains:               # custom domains on top of the platform hostname
-      - my-app.example.com   # first entry -> App.spec.host (canonical URL)
-      - www.customer.com     # rest -> App.spec.hosts (each gets its own TLS cert)
+    domains: # custom domains on top of the platform hostname
+      - my-app.example.com # first entry -> App.spec.host (canonical URL)
+      - www.customer.com # rest -> App.spec.hosts (each gets its own TLS cert)
 ```
 
 Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.

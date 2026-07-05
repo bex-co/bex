@@ -1,18 +1,16 @@
 # w1 · m4 — Free tier = sleep: scale-to-zero + wake activator
 
-**Worker:** worker1
-**Goal:** Make `Free ≈ $0` real via `sleep = free`: idle free apps scale to 0 (occupy nothing → overcommit beyond the reserved sum) and wake on the next request via a **lean activator — KEDA's HTTP add-on or a small custom Go service, _not_ full Knative** (see Decision). Paid tiers stay always-on.
-**Status:** todo
+**Worker:** worker1 **Goal:** Make `Free ≈ $0` real via `sleep = free`: idle free apps scale to 0 (occupy nothing → overcommit beyond the reserved sum) and wake on the next request via a **lean activator — KEDA's HTTP add-on or a small custom Go service, _not_ full Knative** (see Decision). Paid tiers stay always-on. **Status:** todo
 
 ## Tasks (in order)
 
-| id   | title                                                   | est | depends_on |
-| ---- | ------------------------------------------------------- | --- | ---------- |
-| t001 | Idle → scale Deployment to 0 (per `idleTTLSeconds`)     | 30m | —          |
-| t002 | Spike — KEDA HTTP add-on vs custom activator (pick one) | 30m | t001       |
-| t003 | Implement the wake path (chosen in t002)                | 30m | t002       |
-| t004 | Traefik routing: sleeping app → activator/interceptor   | 30m | t003       |
-| t005 | Verify sleep→wake; paid tiers stay always-on            | 20m | t001,t004  |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Idle → scale Deployment to 0 (per `idleTTLSeconds`) | 30m | — |
+| t002 | Spike — KEDA HTTP add-on vs custom activator (pick one) | 30m | t001 |
+| t003 | Implement the wake path (chosen in t002) | 30m | t002 |
+| t004 | Traefik routing: sleeping app → activator/interceptor | 30m | t003 |
+| t005 | Verify sleep→wake; paid tiers stay always-on | 20m | t001,t004 |
 
 ## Definition of done
 
