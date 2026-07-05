@@ -11,8 +11,8 @@
 - `internal/controller/` — mechanism, per runtime: `kubernetes` (Deployment/Service/Ingress) and `opensandbox` (sandbox lifecycle). No business logic.
 - `internal/build/` — build plane: CNB / Dockerfile → Zot registry.
 - `internal/runtime/` — OpenSandbox client.
-- `internal/api/` — bex-api (REST + GraphQL).
+- `internal/api/` — bex-api (REST + GraphQL + MCP).
 
 ## bex-api invariant
 
-New verbs go in `internal/api/core.go` **only**. `rest.go`, `graphql.go` and `mcp.go` are thin presentation adapters over identical Core methods and must not contain logic — this is the design guarantee that the three surfaces can't drift ([docs/bex-api.md](../docs/bex-api.md)). REST shapes are verified against Render's OpenAPI spec (e.g. `suspended` is the string enum `"suspended"`/`"not_suspended"`, not a boolean) and MCP tool names against Render's official MCP server (`list_services`/`get_service`/`list_logs`) — don't "fix" them to look more conventional.
+One `Core` with three thin adapters (REST + GraphQL + MCP), all Render-consistent; a change to one adapter must fan out to the other two. Full rules cascade from [internal/api/CLAUDE.md](internal/api/CLAUDE.md) when you edit that package.
