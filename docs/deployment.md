@@ -84,6 +84,8 @@ kubectl patch app my-app --type merge \
 
 This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the operator early-returns when an App is already `Running` at its current generation. The reconcile rewrites the owned Deployment's image; the default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap.
 
+Preferred over a raw patch: declare the App in the project's `bex.yml` and apply that (see below) — same effect, but the spec lives in the app repo.
+
 ### ⑤ Watch the rollout — _laptop_
 
 ```sh
@@ -99,6 +101,35 @@ curl -s https://my-app.<node-ip>.sslip.io/ | grep -i '<something only in the new
 ```
 
 Grep for content that **only exists in the new build** — a 200 alone can't distinguish new pod from old.
+
+## `bex.yml` — declaring the App in its own repo
+
+Rather than hand-writing `kubectl patch`, a project can carry a `bex.yml` at its root (render.yaml-style) declaring how it runs on bex:
+
+```yaml
+# bex.yml
+apps:
+  - name: my-app
+    type: web              # web (default): public — <name>.<base-domain> auto-assigned.
+                           # private: in-cluster only (ClusterIP, no Ingress, no domains).
+    image: my-app:<sha>   # or repo: + branch: to build from git
+    port: 3000
+    replicas: 1
+    healthCheckPath: /
+    domains:               # custom domains on top of the platform hostname
+      - my-app.example.com   # first entry -> App.spec.host (canonical URL)
+      - www.customer.com     # rest -> App.spec.hosts (each gets its own TLS cert)
+```
+
+Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
+
+Apply it from the bex repo — this renders each `.apps[]` entry into an App CR and `kubectl apply`s it (respects `$KUBECONFIG`; `DRY_RUN=1` prints the CRs instead):
+
+```sh
+scripts/app-apply.sh <project-dir | path/to/bex.yml>
+```
+
+Changing `domains[0]` and re-applying is how an App moves to a real domain: the operator rewrites the Ingress to the new host and cert-manager issues a fresh certificate for it (DNS for the host must already point at the edge, or sit behind a proxy such as Cloudflare that forwards HTTP to it — otherwise the ACME HTTP-01 challenge cannot pass). Additional entries serve the App at extra hostnames — typically customers' custom domains CNAME'd to the platform hostname; see [custom-domain.md](custom-domain.md) for that flow (edge registration + per-host cert isolation).
 
 ## Gotchas
 

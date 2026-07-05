@@ -73,8 +73,10 @@ spec:
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).
           - name: BEX_CLUSTER_ISSUER
             value: letsencrypt-prod
-          # - name: BEX_BASE_DOMAIN      # set once a wildcard domain (e.g. bex.co) exists
-          #   value: bex.co
+          # Wildcard *.onbex.co exists (Cloudflare, proxied) — Apps with
+          # spec.expose get "<name>.onbex.co" automatically.
+          - name: BEX_BASE_DOMAIN
+            value: onbex.co
         ports:
         - containerPort: 8081
           name: health

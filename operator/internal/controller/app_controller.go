@@ -18,8 +18,10 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,7 +59,7 @@ const (
 // and run it as a revision on the selected runtime, recording status.
 type AppReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
+	Scheme        *runtime.Scheme
 	Mode          string                  // ModeOpenSandbox | ModeKubernetes
 	Registry      string                  // e.g. 127.0.0.1:5050
 	CNBBuilder    string                  // e.g. paketobuildpacks/builder-jammy-base
@@ -202,15 +204,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, "ServiceFailed", err)
 	}
 
-	// Optional external exposure: when Host (or Expose+BaseDomain) is set, front the
-	// Service with an Ingress (TLS issued by cert-manager). Empty => in-cluster only,
-	// exactly as before. The operator emits a standard networking.k8s.io Ingress, so
-	// the ingress controller (traefik today) stays swappable.
-	host := app.Spec.Host
-	if host == "" && app.Spec.Expose && r.BaseDomain != "" {
-		host = fmt.Sprintf("%s.%s", app.Name, r.BaseDomain)
-	}
-	if host != "" {
+	// Optional external exposure: when any host resolves (spec.host, the computed
+	// platform hostname, or spec.hosts custom domains), front the Service with one
+	// Ingress carrying a rule + TLS certificate per host. No hosts => in-cluster
+	// only, exactly as before. The operator emits a standard networking.k8s.io
+	// Ingress, so the ingress controller (traefik today) stays swappable.
+	hosts := effectiveHosts(app, r.BaseDomain)
+	if len(hosts) > 0 {
 		ingressClass := "traefik"
 		pathType := networkingv1.PathTypePrefix
 		ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
@@ -222,33 +222,37 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 				ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
 			}
 			ing.Spec.IngressClassName = &ingressClass
-			ing.Spec.TLS = []networkingv1.IngressTLS{{
-				Hosts:      []string{host},
-				SecretName: app.Name + "-tls",
-			}}
-			ing.Spec.Rules = []networkingv1.IngressRule{{
-				Host: host,
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/",
-							PathType: &pathType,
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: app.Name,
-									Port: networkingv1.ServiceBackendPort{Number: int32(port)},
+			ing.Spec.TLS = nil
+			ing.Spec.Rules = nil
+			for i, host := range hosts {
+				ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
+					Hosts:      []string{host},
+					SecretName: tlsSecretName(app.Name, i, host),
+				})
+				ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
+					Host: host,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/",
+								PathType: &pathType,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: app.Name,
+										Port: networkingv1.ServiceBackendPort{Number: int32(port)},
+									},
 								},
-							},
-						}},
+							}},
+						},
 					},
-				},
-			}}
+				})
+			}
 			return controllerutil.SetControllerReference(app, ing, r.Scheme)
 		}); err != nil {
 			return r.fail(ctx, app, "IngressFailed", err)
 		}
 	} else {
-		// Exposure turned off (host cleared): remove any Ingress we previously created.
+		// Exposure turned off (all hosts cleared): remove any Ingress we previously created.
 		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
 			return r.fail(ctx, app, "IngressCleanupFailed", err)
@@ -266,10 +270,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.Image = image
-	if host != "" {
-		app.Status.URL = "https://" + host
+	if len(hosts) > 0 {
+		app.Status.URL = "https://" + hosts[0]
+		app.Status.URLs = nil
+		for _, h := range hosts {
+			app.Status.URLs = append(app.Status.URLs, "https://"+h)
+		}
 	} else {
 		app.Status.URL = fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, port)
+		app.Status.URLs = nil
 	}
 	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
 	app.Status.ObservedGeneration = app.Generation
@@ -322,6 +331,45 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 	}
 	log.Info("app running (opensandbox)", "name", app.Name, "image", image, "url", app.Status.URL)
 	return ctrl.Result{}, nil
+}
+
+// effectiveHosts resolves every external FQDN an App serves, in canonical order:
+// spec.host first (the legacy single host — first position keeps existing Apps'
+// TLS secret name stable), then the platform hostname "<name>.<BaseDomain>" when
+// exposed, then spec.hosts (custom domains). Deduplicated, empties dropped.
+func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
+	var hosts []string
+	seen := map[string]bool{}
+	add := func(h string) {
+		if h != "" && !seen[h] {
+			seen[h] = true
+			hosts = append(hosts, h)
+		}
+	}
+	add(app.Spec.Host)
+	if app.Spec.Expose && baseDomain != "" {
+		add(fmt.Sprintf("%s.%s", app.Name, baseDomain))
+	}
+	for _, h := range app.Spec.Hosts {
+		add(h)
+	}
+	return hosts
+}
+
+// tlsSecretName gives each host its own certificate secret so one domain's
+// failed issuance/renewal (e.g. a customer's deleted CNAME) can't block the
+// others. The first host keeps the legacy "<app>-tls" name — renaming it would
+// point the Ingress at an empty secret until cert-manager re-issues.
+func tlsSecretName(appName string, i int, host string) string {
+	if i == 0 {
+		return appName + "-tls"
+	}
+	name := appName + "-tls-" + strings.ReplaceAll(host, "*", "wildcard")
+	if len(name) > 253 { // secret names are RFC 1123 subdomains, max 253 chars
+		sum := sha256.Sum256([]byte(host))
+		name = fmt.Sprintf("%s-tls-%x", appName, sum[:8])
+	}
+	return name
 }
 
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {

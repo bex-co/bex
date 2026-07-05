@@ -72,9 +72,9 @@ spec:
                 type: string
               expose:
                 description: |-
-                  Expose, when true and Host is empty, makes the operator compute the host as
-                  "<name>.<BEX_BASE_DOMAIN>" (requires the controller's BEX_BASE_DOMAIN env). Use
-                  once a wildcard domain exists; with sslip.io set Host explicitly.
+                  Expose, when true and the controller's BEX_BASE_DOMAIN env is set, serves the
+                  App at the platform hostname "<name>.<BEX_BASE_DOMAIN>" (in addition to Host
+                  and Hosts, if given). Requires wildcard DNS for the base domain.
                 type: boolean
               healthCheckPath:
                 default: /
@@ -83,11 +83,22 @@ spec:
                 type: string
               host:
                 description: |-
-                  Host is the external FQDN to expose this App at (e.g. "beancount.1.2.3.4.sslip.io",
-                  or a tenant's custom domain). On the kubernetes runtime the operator creates an
-                  Ingress (+ TLS via cert-manager) routing this host to the App's Service. Empty =>
-                  in-cluster only (ClusterIP).
+                  Host is the primary external FQDN to expose this App at (e.g.
+                  "beancount.1.2.3.4.sslip.io", or a tenant's custom domain). On the kubernetes
+                  runtime the operator creates an Ingress (+ TLS via cert-manager) routing this
+                  host to the App's Service. When neither Host, Expose nor Hosts yields a host =>
+                  in-cluster only (ClusterIP). Host keeps first position in the effective host
+                  list, so existing Apps keep their "<name>-tls" certificate secret untouched.
                 type: string
+              hosts:
+                description: |-
+                  Hosts are additional external FQDNs to serve this App at — typically tenants'
+                  custom domains, CNAME'd to the platform hostname. Every effective host gets its
+                  own Ingress rule and its own cert-manager certificate/secret, so one domain's
+                  broken DNS can never block another's issuance or renewal.
+                items:
+                  type: string
+                type: array
               idleTTLSeconds:
                 description: IdleTTLSeconds before the service hibernates ("sleep
                   = free"). 0 = controller default.
@@ -221,8 +232,14 @@ spec:
                   (OpenSandbox sandbox id).
                 type: string
               url:
-                description: URL is the stable serving URL (*-<id>.bex.co).
+                description: URL is the canonical serving URL (first effective host).
                 type: string
+              urls:
+                description: URLs are all serving URLs when the App has multiple hosts
+                  (canonical first).
+                items:
+                  type: string
+                type: array
             type: object
         required:
         - spec

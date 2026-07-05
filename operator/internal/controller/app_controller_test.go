@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -79,6 +80,96 @@ var _ = Describe("App Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
 			// Example: If you expect a certain status condition after reconciliation, verify it here.
+		})
+	})
+
+	Context("When reconciling an exposed App on the kubernetes runtime", func() {
+		const name = "multi-host-app"
+		ctx := context.Background()
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+
+		// k8sClient is only set in BeforeSuite — build the reconciler lazily, never
+		// in the container body (tree construction runs before the suite starts).
+		var r *AppReconciler
+		BeforeEach(func() {
+			r = &AppReconciler{
+				Client: k8sClient, Scheme: k8sClient.Scheme(),
+				Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod",
+			}
+		})
+		// First pass only adds the finalizer and requeues; later passes stop at
+		// Deploying (no kubelet in envtest), which is past the Ingress write.
+		reconcileN := func() {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		getIngress := func() *networkingv1.Ingress {
+			ing := &networkingv1.Ingress{}
+			Expect(k8sClient.Get(ctx, nn, ing)).To(Succeed())
+			return ing
+		}
+
+		AfterEach(func() {
+			app := &appv1alpha1.App{}
+			if err := k8sClient.Get(ctx, nn, app); err == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcileN() // let the finalizer path run
+			}
+		})
+
+		It("keeps the single-host Ingress byte-stable and grows it additively", func() {
+			By("creating an App with only the legacy spec.host set")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami",
+					Port:  3000,
+					Host:  "app.1.2.3.4.sslip.io",
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+
+			By("asserting the live-App invariants: one rule, legacy TLS secret name")
+			ing := getIngress()
+			Expect(ing.Spec.Rules).To(HaveLen(1))
+			Expect(ing.Spec.Rules[0].Host).To(Equal("app.1.2.3.4.sslip.io"))
+			Expect(ing.Spec.TLS).To(HaveLen(1))
+			Expect(ing.Spec.TLS[0].SecretName).To(Equal(name + "-tls"))
+			Expect(ing.Annotations).To(HaveKeyWithValue("cert-manager.io/cluster-issuer", "letsencrypt-prod"))
+
+			By("adding expose + a custom domain")
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			app.Spec.Expose = true
+			app.Spec.Hosts = []string{"www.example.com"}
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+
+			By("asserting hosts grew additively with per-host TLS secrets")
+			ing = getIngress()
+			Expect(ing.Spec.Rules).To(HaveLen(3))
+			Expect(ing.Spec.Rules[0].Host).To(Equal("app.1.2.3.4.sslip.io"))
+			Expect(ing.Spec.Rules[1].Host).To(Equal(name + ".onbex.co"))
+			Expect(ing.Spec.Rules[2].Host).To(Equal("www.example.com"))
+			Expect(ing.Spec.TLS).To(HaveLen(3))
+			Expect(ing.Spec.TLS[0].SecretName).To(Equal(name+"-tls"), "first host must keep the legacy secret")
+			Expect(ing.Spec.TLS[1].SecretName).To(Equal(name + "-tls-" + name + ".onbex.co"))
+			Expect(ing.Spec.TLS[2].SecretName).To(Equal(name + "-tls-www.example.com"))
+			for i, tls := range ing.Spec.TLS {
+				Expect(tls.Hosts).To(Equal([]string{ing.Spec.Rules[i].Host}), "TLS entries pair 1:1 with rules")
+			}
+
+			By("clearing all exposure removes the Ingress")
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			app.Spec.Host = ""
+			app.Spec.Expose = false
+			app.Spec.Hosts = nil
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			err := k8sClient.Get(ctx, nn, &networkingv1.Ingress{})
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "Ingress should be deleted when no hosts remain")
 		})
 	})
 })
