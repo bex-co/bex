@@ -18,6 +18,8 @@ resources:
 - ../crd
 - ../rbac
 - ../manager
+# The control-plane-seed API (REST + GraphQL for restart/suspend/resume).
+- ../api
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- ../webhook
@@ -40,6 +42,7 @@ patches:
 - path: manager_metrics_patch.yaml
   target:
     kind: Deployment
+    name: controller-manager # scope to the operator only; the api Deployment has no metrics args
 
 # Uncomment the patches line if you enable Metrics and CertManager
 # [METRICS-WITH-CERTS] To enable metrics protected with certManager, uncomment the following line.

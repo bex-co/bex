@@ -70,6 +70,21 @@ type AppSpec struct {
 	// +optional
 	IdleTTLSeconds int32 `json:"idleTTLSeconds,omitempty"`
 
+	// RestartedAt requests a rolling restart when set or changed (verb-as-timestamp,
+	// e.g. RFC3339 now): the operator copies it to the pod template annotation
+	// "app.bex.co/restarted-at"; the changed template rolls new pods with no gap.
+	// Empty = never requested; re-setting the same value is a no-op.
+	// See docs/restart-suspend-and-resume.md.
+	// +optional
+	RestartedAt string `json:"restartedAt,omitempty"`
+
+	// Suspended parks the App without losing anything: the kubernetes runtime
+	// scales the Deployment to 0 (Service, Ingress, TLS and Replicas are all
+	// kept, so resume just scales back); the opensandbox runtime pauses the
+	// sandbox. Phase becomes Hibernated. See docs/restart-suspend-and-resume.md.
+	// +optional
+	Suspended bool `json:"suspended,omitempty"`
+
 	// Tier is the plan/size; the operator sets the pod's resources (requests==limits)
 	// from it. Empty => no resource constraints (best-effort); the control plane sets
 	// a tier explicitly. Resource ladder lives in docs/control-plane.md.

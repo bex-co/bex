@@ -20,12 +20,13 @@ sequenceDiagram
   participant O as bex operator<br/>(pod, in-cluster)
   participant N as app node<br/>(containerd + kubelet + traefik)
 
+  O->>A: (at startup) operator opens a long-lived WATCH —<br/>"notify me whenever an App changes"
   L->>I: ⓪ ssh — read secret bex-kubeconfig → KUBECONFIG
   Note over L: ① docker build --platform linux/amd64<br/>-t my-app:#lt;sha#gt;
   Note over L: ② smoke test — docker run + curl → 200
   L->>N: ③ docker save | ssh 'ctr -n k8s.io images import -'
   L->>A: ④ kubectl patch app … spec.image (generation++)
-  A->>O: watch fires — App spec changed
+  A-->>O: event pushed down the watch stream —<br/>App spec changed (a notification, not a call)
   O->>A: reconcile — update owned Deployment's image
   A->>N: kubelet: new pod (IfNotPresent → finds local image),<br/>then old pod terminates (RollingUpdate)
   L->>A: ⑤ kubectl rollout status · get app (revision bump)

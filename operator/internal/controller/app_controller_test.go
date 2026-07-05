@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -170,6 +171,84 @@ var _ = Describe("App Controller", func() {
 			reconcileN()
 			err := k8sClient.Get(ctx, nn, &networkingv1.Ingress{})
 			Expect(errors.IsNotFound(err)).To(BeTrue(), "Ingress should be deleted when no hosts remain")
+		})
+	})
+
+	Context("Lifecycle verbs: restart, suspend, resume (kubernetes runtime)", func() {
+		const name = "lifecycle-app"
+		ctx := context.Background()
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+
+		var r *AppReconciler
+		BeforeEach(func() {
+			r = &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes}
+		})
+		reconcileN := func() {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		getDep := func() *appsv1.Deployment {
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			return dep
+		}
+		getApp := func() *appv1alpha1.App {
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			return app
+		}
+
+		AfterEach(func() {
+			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcileN()
+			}
+		})
+
+		It("rolls on restartedAt, hibernates on suspend, restores on resume", func() {
+			By("creating a running-shaped App with 2 replicas and a host")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000, Replicas: 2,
+					Host: "lifecycle.1.2.3.4.sslip.io",
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+			dep := getDep()
+			Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
+			Expect(dep.Spec.Template.Annotations).NotTo(HaveKey("app.bex.co/restarted-at"))
+
+			By("restart: setting spec.restartedAt stamps the pod template")
+			app = getApp()
+			app.Spec.RestartedAt = "2026-07-05T00:00:00Z"
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			dep = getDep()
+			Expect(dep.Spec.Template.Annotations).To(HaveKeyWithValue("app.bex.co/restarted-at", "2026-07-05T00:00:00Z"))
+			Expect(*dep.Spec.Replicas).To(Equal(int32(2)), "restart must not touch scale")
+
+			By("suspend: scales to 0, phase Hibernated, Ingress kept, spec.replicas kept")
+			app = getApp()
+			app.Spec.Suspended = true
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)))
+			app = getApp()
+			Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+			Expect(app.Spec.Replicas).To(Equal(int32(2)), "suspend must not rewrite the stored count")
+			Expect(k8sClient.Get(ctx, nn, &networkingv1.Ingress{})).To(Succeed(), "suspend keeps the Ingress (host + certs)")
+
+			By("resume: restores spec.replicas and leaves Hibernated")
+			app.Spec.Suspended = false
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)))
+			// envtest has no kubelet, so readiness never arrives: Deploying, not Running
+			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
 		})
 	})
 })

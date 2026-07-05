@@ -124,6 +124,21 @@ spec:
                   Repo is the git repository URL (or local path) to deploy from. Either Repo
                   (build-from-git) or Image (prebuilt) must be set.
                 type: string
+              restartedAt:
+                description: |-
+                  RestartedAt requests a rolling restart when set or changed (verb-as-timestamp,
+                  e.g. RFC3339 now): the operator copies it to the pod template annotation
+                  "app.bex.co/restarted-at"; the changed template rolls new pods with no gap.
+                  Empty = never requested; re-setting the same value is a no-op.
+                  See docs/restart-suspend-and-resume.md.
+                type: string
+              suspended:
+                description: |-
+                  Suspended parks the App without losing anything: the kubernetes runtime
+                  scales the Deployment to 0 (Service, Ingress, TLS and Replicas are all
+                  kept, so resume just scales back); the opensandbox runtime pauses the
+                  sandbox. Phase becomes Hibernated. See docs/restart-suspend-and-resume.md.
+                type: boolean
               tier:
                 description: |-
                   Tier is the plan/size; the operator sets the pod's resources (requests==limits)

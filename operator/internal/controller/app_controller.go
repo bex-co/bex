@@ -114,6 +114,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// --- resolve the image: prebuilt, or build from git ---
 	image := app.Spec.Image
+	if image == "" && app.Spec.Suspended && app.Status.Image != "" {
+		image = app.Status.Image // suspending must not trigger a rebuild
+	}
 	if image == "" {
 		if app.Spec.Repo == "" {
 			return r.fail(ctx, &app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required"))
@@ -171,10 +174,7 @@ func resourcesForTier(tier string) corev1.ResourceRequirements {
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
-	replicas := app.Spec.Replicas
-	if replicas == 0 {
-		replicas = 1
-	}
+	replicas := effectiveReplicas(app)
 	labels := map[string]string{labelApp: app.Name}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
@@ -182,6 +182,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		dep.Spec.Replicas = &replicas
 		dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
 		dep.Spec.Template.ObjectMeta.Labels = labels
+		// restart = roll the template (same mechanism as kubectl rollout restart,
+		// recorded in the contract). Never removed once set — removal would
+		// itself roll the pods again.
+		if app.Spec.RestartedAt != "" {
+			if dep.Spec.Template.ObjectMeta.Annotations == nil {
+				dep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
+			}
+			dep.Spec.Template.ObjectMeta.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
+		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:      "app",
 			Image:     image,
@@ -259,6 +268,26 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		}
 	}
 
+	// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
+	// all kept — resume is just scaling back. Report Hibernated and stop.
+	if app.Spec.Suspended {
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		app.Status.Image = image
+		if len(hosts) > 0 {
+			app.Status.URL = "https://" + hosts[0]
+		}
+		app.Status.ObservedGeneration = app.Generation
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Message:            "suspended (scaled to 0; config, host and certs kept)",
+			ObservedGeneration: app.Generation,
+		})
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// Readiness: requeue until the Deployment has its replicas ready.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	if dep.Status.ReadyReplicas < replicas {
@@ -297,6 +326,47 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 // reconcileOpenSandbox runs the revision as an OpenSandbox sandbox (host runtime).
 func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
+
+	// Suspend: real pause (checkpoint snapshot) on this runtime.
+	if app.Spec.Suspended {
+		if app.Status.SandboxID != "" {
+			if err := r.Runtime.Pause(ctx, app.Status.SandboxID); err != nil {
+				return r.fail(ctx, app, "PauseFailed", err)
+			}
+		}
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		app.Status.ObservedGeneration = app.Generation
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Message: "sandbox paused (snapshot kept)", ObservedGeneration: app.Generation,
+		})
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Resume a paused sandbox instead of creating a new one. The host port
+	// changes across pause/resume, so re-read the endpoint from the Target.
+	if app.Status.Phase == appv1alpha1.PhaseHibernated && app.Status.SandboxID != "" {
+		if target, err := r.Runtime.Resume(ctx, app.Status.SandboxID, port); err == nil {
+			app.Status.Phase = appv1alpha1.PhaseRunning
+			app.Status.Endpoint = fmt.Sprintf("%s:%d%s", target.Host, target.Port, target.Prefix)
+			app.Status.URL = target.URL()
+			app.Status.ObservedGeneration = app.Generation
+			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+				Type: "Ready", Status: metav1.ConditionTrue, Reason: "Resumed",
+				Message: "sandbox resumed", ObservedGeneration: app.Generation,
+			})
+			if err := r.Status().Update(ctx, app); err != nil {
+				return ctrl.Result{}, err
+			}
+			log.Info("app resumed (opensandbox)", "name", app.Name, "url", app.Status.URL)
+			return ctrl.Result{}, nil
+		}
+		log.Info("resume failed; creating a fresh sandbox", "name", app.Name)
+	}
+
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Starting revision for "+image)
 	old := app.Status.SandboxID
 	id, err := r.Runtime.Create(ctx, image, port, nil, string(app.UID))
@@ -354,6 +424,19 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 		add(h)
 	}
 	return hosts
+}
+
+// effectiveReplicas derives the Deployment size: spec.replicas (default 1),
+// overridden to 0 while suspended. spec.replicas itself is never rewritten —
+// it keeps meaning "how many when running", so resume knows what to restore.
+func effectiveReplicas(app *appv1alpha1.App) int32 {
+	if app.Spec.Suspended {
+		return 0
+	}
+	if app.Spec.Replicas == 0 {
+		return 1
+	}
+	return app.Spec.Replicas
 }
 
 // tlsSecretName gives each host its own certificate secret so one domain's

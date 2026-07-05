@@ -1,6 +1,6 @@
 # bex control plane (source of truth) vs. operator (mechanism)
 
-> **Status: planned direction, not built yet.** Today there is **no control plane and no Postgres** — you `kubectl apply` an `App` CR, the **operator** reconciles it, and the only store is the app cluster's **etcd**. This doc describes where bex is going and why, so the boundary is clear before the code exists.
+> **Status: planned direction, mostly not built yet.** Today there is **no Postgres source of truth** — you `kubectl apply` an `App` CR, the **operator** reconciles it, and the only store is the app cluster's **etcd**. This doc describes where bex is going and why, so the boundary is clear before the rest of the code exists. **The first seed now exists:** [bex-api.md](bex-api.md) — a bearer-authed REST + GraphQL service that writes App-spec intent (restart/suspend/resume) exactly as this doc prescribes (control plane → App CR → operator). Still no tenants, no auth beyond one token, no Postgres.
 
 bex's Go layer splits into **two collaborating components** — keep them distinct:
 

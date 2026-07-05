@@ -1,0 +1,9 @@
+# bex-api: the control-plane-seed service (REST + GraphQL for restart/suspend/
+# resume). Ships in the operator image (command: /api) and is reached at
+# api.<BEX_BASE_DOMAIN> via Traefik + a cert-manager cert. namePrefix/namespace
+# come from config/default (bex-, bex-system).
+resources:
+  - rbac.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

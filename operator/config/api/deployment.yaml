@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: system
+  labels:
+    app.kubernetes.io/name: bex-api
+    app.kubernetes.io/component: control-plane-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bex-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bex-api
+    spec:
+      serviceAccountName: api
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          # Same image as the operator; Argo's image override (controller=...)
+          # rewrites this tag. The command selects the api binary.
+          image: controller:latest
+          command: ["/api"]
+          env:
+            - name: BEX_API_ADDR
+              value: ":8090"
+            - name: BEX_API_NAMESPACE # Apps live in the default namespace
+              value: default
+            - name: BEX_API_TOKEN # created out-of-band (see .env / repo docs)
+              valueFrom:
+                secretKeyRef:
+                  name: bex-api-token
+                  key: token
+          ports:
+            - name: http
+              containerPort: 8090
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
