@@ -1,20 +1,20 @@
-# w1 · m1 — Reliability: fix config drift + back up etcd
+# w2 · m1 — MCP server over bex-api verbs
 
-**Worker:** worker1 **Goal:** Make the currently-live single-node deployment correct and recoverable — the operator must propagate operator-level config changes to running Apps, and App state in etcd must survive a node rebuild. **Status:** todo
+**Worker:** worker2 **Goal:** Expose the bex-api lifecycle verbs over MCP as "just another thin adapter over the same `Core`" — so an agent operates bex natively (list/get/deploy/restart/suspend/resume/logs) instead of screen-scraping a dashboard. Delivers pillar 3. **Status:** todo
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Drop the Reconcile early-return so desired state always applies | 25m | — |
-| t002 | Requeue all Apps on operator startup / config change | 30m | t001 |
-| t003 | etcd snapshot CronJob → Wasabi | 30m | — |
-| t004 | Snapshot retention + documented restore | 20m | t003 |
+| t001 | MCP adapter over `Core` (list/get/restart/suspend/resume) | 30m | — |
+| t002 | Add a `Logs` verb to `Core` + expose over MCP | 30m | t001 |
+| t003 | Auth + transport: reuse `bex-api-token`, stdio + streamable-http | 25m | t001 |
+| t004 | Manifests + deploy + end-to-end acceptance | 30m | t001,t003 |
 
 ## Definition of done
 
-Flipping an operator-level config (e.g. `BEX_CLUSTER_ISSUER`) re-reconciles every running App with no manual nudge; a daily etcd snapshot lands in Wasabi and a documented restore onto a fresh node recovers the `App` objects.
+An MCP client (e.g. Claude) can list apps, get one, restart/suspend/resume, and tail logs — every verb delegating to the same `Core` (`operator/internal/api/core.go`) as REST/GraphQL, authed by the `bex-api-token` Secret. No verb has a second implementation.
 
 ## Source
 
-Converted from `.tmp/009-operator-reconcile-drift.md` and `.tmp/007-etcd-snapshot-backup.md`.
+`docs/vision.md` pillar 3 (MCP server); `docs/bex-api.md` "one Core, thin adapters".
