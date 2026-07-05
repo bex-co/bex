@@ -6,6 +6,9 @@ projects-to-deploy/
 node_modules/
 .tmp/
 
+# internal PM notes — not public docs
+.pm/
+
 # vendored third-party chart (don't reformat upstream)
 deploy/gitops/charts/opensandbox-controller/
 
