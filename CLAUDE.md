@@ -57,4 +57,5 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - Never commit or print `.env` or `*.kubeconfig` contents.
 - New Go files carry the Apache-2.0 header from `operator/hack/boilerplate.go.txt`.
 - Markdown is CI-checked: `npx prettier@3.4.2 --write "**/*.md"` before finishing doc changes.
+- **`.pm` done items move to `done/` folders.** When a task or milestone is completed, never leave it in place: a done task moves to `wN/mN/done/tNNN.md`; a milestone with no open tasks moves whole to `wN/done/mN/`; a done inbox note moves to `wN/done/NNN.md`. Sync status in all three places (task frontmatter, milestone README `**Status:**` + `— **DONE**` row, workstream README checkbox). Full conventions: `.pm/CLAUDE.md`.
 - Playwright MCP writes to `.playwright-mcp/` (`--output-dir` in `.mcp.json`, gitignored). When taking screenshots, pass a **bare** filename (e.g. `render-logs.png`) so it lands there — never a path that resolves to the repo root. If an image ever appears at the project root, move it into `.playwright-mcp/`.
