@@ -19,13 +19,18 @@ allowed-tools: Read, Bash(ls:*), Bash(find:*), Bash(cat:*)
 
 ## Steps
 
-1. **Load context.** Read the relevant `.pm` (workstream `README.md`s, open milestones, inbox notes — `find .pm -name README.md`, plus loose notes) so proposals fit the existing roadmap and reuse its numbering/naming. Pick the workstream the topic belongs to (or propose a new `wN`).
-2. **Discuss & decompose.** Talk the topic through with the user: pressure-test scope, surface dependencies and risks, and break it into candidate tasks, each with a rough estimate (tens of minutes) and `depends_on` links.
-3. **Apply the sizing rule** to each cluster of work — sum the task estimates:
+1. **Load anti-goals first.** Read `.pm/DO_NOT_DO.md` and treat it as a hard constraint. If a proposed item conflicts, reject it explicitly and explain why.
+2. **Load context.** Read the relevant `.pm` (workstream `README.md`s, open milestones, inbox notes — `find .pm -name README.md`, plus loose notes) so proposals fit the existing roadmap and reuse its numbering/naming. Pick the workstream the topic belongs to (or propose a new `wN`).
+3. **Discuss & decompose.** Talk the topic through with the user: pressure-test scope, surface dependencies and risks, and break it into candidate tasks, each with a rough estimate (tens of minutes) and `depends_on` links.
+4. **Apply the sizing rule** to each cluster of work — sum the task estimates:
    - **> ~1h across more than one task** → propose a **milestone**: a title, an ordered task table (`id | title | est | depends_on`), and a definition of done.
    - **≤ ~1h** → propose a **loose inbox note** instead, not a milestone. Say so explicitly (too small for a milestone).
-4. **Emit the proposal as text only** — the target workstream, each proposed milestone (with its task table + definition of done) and/or inbox note. Do **not** write files.
-5. **Hand off.** End by giving the exact `/pm` command(s) to materialize it, e.g.:
+5. **Quality gate for meaningful work.** For each milestone candidate, require all of:
+   - direct goal linkage (which project goal/pillar it advances),
+   - expected outcome (observable impact),
+   - why it matters now (dependency/risk/sequence reason). If any are missing or weak, mark it **not meaningful**, do not propose it as a milestone, and suggest a better-scoped alternative.
+6. **Emit the proposal as text only** — the target workstream, each proposed milestone (with task table + definition of done + source + goal linkage + expected outcome + why-now rationale) and/or inbox note. Do **not** write files.
+7. **Hand off.** End by giving the exact `/pm` command(s) to materialize it, e.g.:
    - `/pm new milestone w1 <title>` (then the tasks), or
    - `/pm add w1 <idea>` for sub-hour work, or
    - `/pm promote w1/NNN` to promote an existing inbox note.

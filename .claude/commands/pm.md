@@ -19,18 +19,26 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 
 ## Rules (enforce every time)
 
+- **Respect the anti-goals.** Read `.pm/DO_NOT_DO.md` before proposing or materializing work. Do not create milestones/tasks that conflict with it.
 - **Sizing rule.** A milestone must be **> ~1 hour of work across more than one task**. If a chunk is ≤ ~1h (tens of minutes, a task or two), do **NOT** create an `mN/` directory — record it as a loose inbox note `wN/NNN.md`. Tasks take tens of minutes; milestones take hours.
 - **IDs must match the path.** A task's `id: wN/mN/tNNN` frontmatter must equal the directory it lives in. Never create a milestone dir whose path disagrees with the IDs inside it (the existing `w2/m1`-holds-`w1/m1`-IDs drift is the anti-example — if you touch it, flag/repair, don't copy it).
 - **Keep status in sync** across all three places it lives: the workstream `README.md` milestone checkbox, the milestone `README.md` `**Status:**` line + the `— DONE` marker in the task table, and each task's `status:` frontmatter.
 - **Numbering:** next free zero-padded 3-digit for inbox notes (`NNN`) and tasks (`tNNN`); next free `wN` / `mN`. Scan the tree first; don't reuse a number.
 - Use `worker: worker1` unless the workstream README names another worker.
+- **Milestones must be meaningful.** Every milestone must include direct project-goal linkage, an observable expected outcome, and why this work matters now (dependency/risk/sequence rationale).
 - After editing any `.md`, run `npx prettier@3.4.2 --write "**/*.md"` (repo rule).
 
 ## Subcommands
 
 ### `status` (default)
 
-Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`). Print, per open workstream: its milestones with `**Status:**`, and the **next actionable task** per milestone — the first non-done task whose `depends_on` are all satisfied. Also list open inbox notes. Touch no files.
+Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NOT_DO.md`. Print, per open workstream: its milestones with `**Status:**`, and the **next actionable task** per milestone — the first non-done task whose `depends_on` are all satisfied. Also list open inbox notes. Then run a lightweight validation pass and flag:
+
+- items conflicting with `.pm/DO_NOT_DO.md`,
+- milestones missing `## Source + Goal linkage`,
+- milestones whose definition of done is vague/non-testable.
+
+Touch no files.
 
 ### `new workstream <title>`
 
@@ -44,7 +52,7 @@ Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdow
 
 Apply the **sizing rule first.**
 
-- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template), add the `- [ ] **mN** — …` line to the workstream `README.md`, and cite the source (`## Source` → the inbox note or brainstorm).
+- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template), add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale.
 - If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`
@@ -91,9 +99,12 @@ Show the intended moves before mutating if the user passed `DRY_RUN=1`.
 
 <observable, testable end state>
 
-## Source
+## Source + Goal linkage
 
-<pointer to the inbox note / brainstorm / docs this came from>
+- **Source:** <pointer to the inbox note / brainstorm / docs this came from>
+- **Goal linkage:** <which project goal / pillar this advances>
+- **Expected outcome:** <observable impact after shipping>
+- **Why now:** <dependency / risk / sequence rationale>
 ```
 
 ### Task `tNNN.md`
