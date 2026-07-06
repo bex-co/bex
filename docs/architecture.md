@@ -7,7 +7,7 @@ bex is the **deploy-from-git half** of bex.co (strategy 211.09): a Git repo beco
 ```mermaid
 %% arrow  A --> B  means  "A depends on B"  (points to what it needs)
 flowchart TB
-  dev["dev · kubectl"]
+  dev@{ shape: tri, label: "dev · kubectl" }
   subgraph app["APP CLUSTER · substrate — bex + your Apps run here"]
     api["📦 apiserver · etcd · scheduler"]
     op["📦 bex operator"]
@@ -91,7 +91,8 @@ Business/product logic belongs in the **control plane**; the operator stays a th
 
 ```mermaid
 flowchart TB
-  ci["you / CI · from outside"] -->|"terraform · clusterctl"| infra["day-0 · infra/ → clusters and machines exist"]
+  ci@{ shape: tri, label: "you / CI · from outside" }
+  ci -->|"terraform · clusterctl"| infra["day-0 · infra/ → clusters and machines exist"]
   infra -->|"Argo CD installed in-cluster"| gitops["day-1+ · Argo reconciles deploy/gitops/<br/>Zot · OpenSandbox · CAPI · bex operator"]
   gitops --> push["user git push"]
   push -->|"bex's own loop · not GitOps"| op["product runtime · bex operator"]

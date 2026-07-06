@@ -23,7 +23,7 @@ Users call the **control plane**, never the operator — the operator has no use
 
 ```mermaid
 flowchart TB
-  tenant["tenant · Web UI / API / CLI"]
+  tenant@{ shape: tri, label: "tenant · Web UI / API / CLI" }
   cp["bex control plane<br/>Go service · source of truth"]
   pg[("Postgres")]
   cr["App CR · etcd"]

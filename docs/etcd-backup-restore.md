@@ -21,7 +21,7 @@ graph LR
   bucket[("Hetzner Object Storage<br/>(external, etcd-snapshots/)")]
 
   subgraph "disaster recovery — manual runbook, any docker host"
-    op([human operator])
+    op@{ shape: tri, label: "human operator" }
     tmp["throwaway etcd container"]
   end
   op -->|fetch snapshot into| tmp
