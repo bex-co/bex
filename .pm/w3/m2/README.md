@@ -1,6 +1,6 @@
 # w3 · m2 — Metrics API: resource + request metrics
 
-**Worker:** worker3 **Goal:** Render-compatible read-only metrics over bex-api — CPU/memory/instance-count time series plus request rate, latency percentiles, status codes, and bandwidth for an App. **Status:** todo
+**Worker:** worker3 **Goal:** Render-compatible read-only metrics over bex-api — CPU/memory/instance-count time series plus request rate, latency percentiles, status codes, and bandwidth for an App. **Status:** done
 
 ## Tasks (in order)
 

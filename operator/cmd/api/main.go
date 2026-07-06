@@ -65,13 +65,23 @@ func main() {
 		log.Fatalf("kube clientset: %v", err)
 	}
 
+	core := &api.Core{
+		Client:        cl,
+		Namespace:     envOr("BEX_API_NAMESPACE", "default"),
+		PodLogs:       api.NewPodLogSource(cs),
+		PodLogsFollow: api.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
+		// Resource metrics (cpu/memory) via metrics-server; instance count needs no
+		// source. Left nil if metrics-server is absent => those metrics report 503.
+		ResourceMetrics: api.NewResourceMetricsSource(cs),
+	}
+	// Request metrics (http_requests/latency/bandwidth) need Traefik scraped by
+	// Prometheus; wired only when BEX_PROM_URL is set, else those metrics 503.
+	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
+		core.RequestMetrics = api.NewPrometheusRequestSource(prom, nil)
+	}
+
 	srv := &api.Server{
-		Core: &api.Core{
-			Client:        cl,
-			Namespace:     envOr("BEX_API_NAMESPACE", "default"),
-			PodLogs:       api.NewPodLogSource(cs),
-			PodLogsFollow: api.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
-		},
+		Core:       core,
 		Token:      os.Getenv("BEX_API_TOKEN"),
 		CORSOrigin: os.Getenv("BEX_API_CORS_ORIGIN"),
 	}

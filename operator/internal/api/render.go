@@ -19,6 +19,7 @@ package api
 import (
 	"fmt"
 	"hash/fnv"
+	"sort"
 )
 
 // render.go maps bex's neutral AppView onto Render's public-API "service" shape,
@@ -179,5 +180,60 @@ func toRenderLogList(entries []LogEntry, limit int64) renderLogList {
 		out.NextEndTime = entries[0].Timestamp     // oldest
 	}
 	out.HasMore = limit > 0 && int64(len(entries)) >= limit
+	return out
+}
+
+// --- Metrics (Render metrics-API shape) ---
+//
+// Render's metrics endpoints return an array of time-series, each with a `labels`
+// array ({field, value}), a `unit`, and `values` ({timestamp, value}). Core's
+// MetricSeries carries the same data with map labels; these helpers map it onto
+// Render's array-of-{field,value} label shape, exactly as the logs helpers map
+// LogEntry's map labels onto Render's {name,value} log labels.
+
+// renderMetricLabel is Render's metric label ({field, value}); note logs use
+// {name, value} but metrics use {field, value} in Render's spec — kept distinct.
+type renderMetricLabel struct {
+	Field string `json:"field"`
+	Value string `json:"value"`
+}
+
+type renderMetricValue struct {
+	Timestamp string  `json:"timestamp"`
+	Value     float64 `json:"value"`
+}
+
+// renderMetricSeries is one element of a Render metrics response array.
+type renderMetricSeries struct {
+	Labels []renderMetricLabel `json:"labels"`
+	Unit   string              `json:"unit"`
+	Values []renderMetricValue `json:"values"`
+}
+
+func toRenderMetricSeries(s MetricSeries) renderMetricSeries {
+	// Deterministic label order (sorted by field) so output is stable.
+	fields := make([]string, 0, len(s.Labels))
+	for k := range s.Labels {
+		fields = append(fields, k)
+	}
+	sort.Strings(fields)
+	labels := make([]renderMetricLabel, 0, len(fields))
+	for _, f := range fields {
+		labels = append(labels, renderMetricLabel{Field: f, Value: s.Labels[f]})
+	}
+	values := make([]renderMetricValue, 0, len(s.Points))
+	for _, p := range s.Points {
+		values = append(values, renderMetricValue(p))
+	}
+	return renderMetricSeries{Labels: labels, Unit: s.Unit, Values: values}
+}
+
+// toRenderMetrics maps Core series onto Render's metrics response array. Always a
+// non-nil slice so an empty result serializes as [] (Render's shape), not null.
+func toRenderMetrics(series []MetricSeries) []renderMetricSeries {
+	out := make([]renderMetricSeries, 0, len(series))
+	for _, s := range series {
+		out = append(out, toRenderMetricSeries(s))
+	}
 	return out
 }

@@ -60,6 +60,10 @@ spec:
             expose:
               default: true            # bind on hostNetwork (external Database URLs)
             protocol: TCP
+          metrics:
+            port: 9100                 # Prometheus scrape target (in-cluster only)
+            expose:
+              default: false           # not on the public hostNetwork edge
         service:
           spec:
             type: ClusterIP            # no Hetzner LB (single-node uses hostNetwork node IP); LoadBalancer for multi-node
@@ -70,6 +74,19 @@ spec:
         providers:
           kubernetesIngress:
             enabled: true              # watch standard networking.k8s.io/Ingress
+        # Prometheus request metrics — the backend for bex-api's request metrics
+        # (GET /v1/metrics/{http-requests,http-latency,bandwidth}). addServicesLabels
+        # exposes the per-service counters (traefik_service_requests_total,
+        # _request_duration_seconds_bucket, _responses_bytes_total) that
+        # NewPrometheusRequestSource queries via `service=~".*<app>.*"`. A Prometheus
+        # deployment must scrape the metrics entrypoint and bex-api must point at it
+        # with BEX_PROM_URL; until then request metrics return 503.
+        metrics:
+          prometheus:
+            entryPoint: metrics
+            addEntryPointsLabels: true
+            addServicesLabels: true    # per-service labels (service=…) for App attribution
+            addRoutersLabels: true     # per-router labels (host/path attribution, future use)
         # entrypoints web(:80) + websecure(:443) with NO forced web->websecure redirect,
         # so cert-manager HTTP-01 challenges on :80 succeed.
   destination:

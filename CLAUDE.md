@@ -38,6 +38,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 | operator | `BEX_OPENSANDBOX_URL` | OpenSandbox endpoint (opensandbox runtime) |
 | operator | `BEX_BASE_DOMAIN`, `BEX_CLUSTER_ISSUER` | `*.onbex.co` app URLs, cert-manager issuer |
 | bex-api | `BEX_API_ADDR` (:8090), `BEX_API_NAMESPACE`, `BEX_API_TOKEN`, `BEX_API_CORS_ORIGIN` | listen addr, watched ns, bearer token (required), CORS |
+| bex-api | `BEX_PROM_URL` | Prometheus base URL for request metrics (Traefik); unset ⇒ request metrics 503 |
 
 ## Docs index
 

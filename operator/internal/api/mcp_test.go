@@ -62,9 +62,9 @@ func staticLogs(lines map[string][]string) PodLogSource {
 
 func TestCore_LogsAggregatesAndSorts(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(testScheme()).
-		WithObjects(sampleApp("web"), podFor("web", "web-1"), podFor("web", "web-2")).Build()
+		WithObjects(sampleApp("web"), podFor("web", webInst), podFor("web", "web-2")).Build()
 	core := &Core{Client: cl, Namespace: "default", PodLogs: staticLogs(map[string][]string{
-		"web-1": {"2026-07-05T00:00:01Z hello from 1", "2026-07-05T00:00:03Z later from 1"},
+		webInst: {"2026-07-05T00:00:01Z hello from 1", "2026-07-05T00:00:03Z later from 1"},
 		"web-2": {"2026-07-05T00:00:02Z hello from 2"},
 	})}
 
@@ -83,7 +83,7 @@ func TestCore_LogsAggregatesAndSorts(t *testing.T) {
 		}
 	}
 	// Render log-label shape: each entry is tagged with its instance + service.
-	if entries[0].Labels["instance"] != "web-1" || entries[0].Labels["service"] != "web" {
+	if entries[0].Labels["instance"] != webInst || entries[0].Labels["service"] != "web" {
 		t.Errorf("missing render log labels: %+v", entries[0].Labels)
 	}
 }
@@ -151,7 +151,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 	}
 	// Names track Render's official MCP server (render-oss/render-mcp-server).
 	for _, want := range []string{
-		"list_services", "get_service", "list_logs",
+		"list_services", "get_service", "list_logs", "get_metrics",
 		"restart_service", "suspend_service", "resume_service",
 	} {
 		if !got[want] {
@@ -163,11 +163,11 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 func TestMCP_ToolsDelegateToCore(t *testing.T) {
 	web := sampleApp("web")
 	cl := fake.NewClientBuilder().WithScheme(testScheme()).
-		WithObjects(web, podFor("web", "web-1")).Build()
+		WithObjects(web, podFor("web", webInst)).Build()
 	core := &Core{
 		Client: cl, Namespace: "default",
 		Now:     func() time.Time { return time.Unix(1_000_000, 0).UTC() },
-		PodLogs: staticLogs(map[string][]string{"web-1": {"2026-07-05T00:00:01Z booting"}}),
+		PodLogs: staticLogs(map[string][]string{webInst: {"2026-07-05T00:00:01Z booting"}}),
 	}
 	cs := mcpClient(t, core)
 
@@ -198,7 +198,7 @@ func TestMCP_ToolsDelegateToCore(t *testing.T) {
 	if len(logs.Logs) != 1 || logs.Logs[0].Message != "booting" {
 		t.Fatalf("list_logs: %+v", logs.Logs)
 	}
-	if logs.Logs[0].Labels["instance"] != "web-1" {
+	if logs.Logs[0].Labels["instance"] != webInst {
 		t.Errorf("list_logs missing instance label: %+v", logs.Logs[0].Labels)
 	}
 
@@ -208,16 +208,36 @@ func TestMCP_ToolsDelegateToCore(t *testing.T) {
 	}
 }
 
+// TestMCP_GetMetrics checks the metrics tool delegates to Core.Metrics and tags
+// each series with its metric — instance_count needs no metrics source.
+func TestMCP_GetMetrics(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).
+		WithObjects(sampleApp("web"), podFor("web", webInst)).Build()
+	core := &Core{Client: cl, Namespace: "default", Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+	cs := mcpClient(t, core)
+
+	var out getMetricsResult
+	callTool(t, cs, "get_metrics", map[string]any{
+		"resource": []string{"web"}, "metricTypes": []string{"instance_count"},
+	}, &out)
+	if len(out.Series) != 1 || out.Series[0].Unit != unitCount {
+		t.Fatalf("get_metrics instance_count: %+v", out.Series)
+	}
+	if out.Series[0].Labels["metric"] != "instance_count" || out.Series[0].Points[0].Value != 1 {
+		t.Errorf("series should be metric-tagged with one running instance: %+v", out.Series[0])
+	}
+}
+
 // TestMCP_ListLogsResourceArrayAndLimit checks Render's list_logs shape: the
 // `resource` array aggregates multiple services, re-sorted by timestamp, and
 // `limit` caps the total to the newest N lines.
 func TestMCP_ListLogsResourceArrayAndLimit(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
-		sampleApp("web"), podFor("web", "web-1"),
+		sampleApp("web"), podFor("web", webInst),
 		sampleApp("api"), podFor("api", "api-1"),
 	).Build()
 	core := &Core{Client: cl, Namespace: "default", PodLogs: staticLogs(map[string][]string{
-		"web-1": {"2026-07-05T00:00:01Z w1", "2026-07-05T00:00:04Z w2"},
+		webInst: {"2026-07-05T00:00:01Z w1", "2026-07-05T00:00:04Z w2"},
 		"api-1": {"2026-07-05T00:00:02Z a1", "2026-07-05T00:00:03Z a2"},
 	})}
 	cs := mcpClient(t, core)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/graphql-go/graphql"
 )
@@ -164,6 +165,87 @@ func logQueryFromArgs(args map[string]any) LogQuery {
 	return q
 }
 
+// --- Metrics GraphQL types (Render metrics shape, flat rows) ---
+
+var metricPointGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricPoint",
+	Fields: graphql.Fields{
+		"timestamp": &graphql.Field{Type: graphql.String, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(MetricPoint).Timestamp, nil
+		}},
+		"value": &graphql.Field{Type: graphql.Float, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(MetricPoint).Value, nil
+		}},
+	},
+})
+
+var metricLabelGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricLabel",
+	Fields: graphql.Fields{
+		"field": &graphql.Field{Type: graphql.String, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(renderMetricLabel).Field, nil
+		}},
+		"value": &graphql.Field{Type: graphql.String, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(renderMetricLabel).Value, nil
+		}},
+	},
+})
+
+// metricSeriesGQLType projects Core's MetricSeries; labels are exposed as Render's
+// sorted {field,value} array (reusing the REST mapper) so both surfaces agree.
+var metricSeriesGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MetricSeries",
+	Fields: graphql.Fields{
+		"unit": &graphql.Field{Type: graphql.String, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(MetricSeries).Unit, nil
+		}},
+		"labels": &graphql.Field{Type: graphql.NewList(metricLabelGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
+			return toRenderMetricSeries(p.Source.(MetricSeries)).Labels, nil
+		}},
+		"points": &graphql.Field{Type: graphql.NewList(metricPointGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
+			return p.Source.(MetricSeries).Points, nil
+		}},
+	},
+})
+
+// metricQueryFromArgs maps the GraphQL metrics() args onto a Core MetricQuery,
+// accepting the same vocabulary as the REST adapter.
+func metricQueryFromArgs(args map[string]any) MetricQuery {
+	q := MetricQuery{App: args["resource"].(string), Metric: args["metric"].(string)}
+	if s, ok := args["startTime"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			q.Start = t
+		}
+	}
+	if e, ok := args["endTime"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, e); err == nil {
+			q.End = t
+		}
+	}
+	if n, ok := args["resolutionSeconds"].(int); ok {
+		q.Resolution = time.Duration(n) * time.Second
+	}
+	if f, ok := args["quantile"].(float64); ok {
+		q.Quantile = f
+	}
+	if b, ok := args["percentage"].(bool); ok {
+		q.Percentage = b
+	}
+	if s, ok := args["statusCode"].(string); ok {
+		q.StatusCode = s
+	}
+	if s, ok := args["host"].(string); ok {
+		q.Host = s
+	}
+	if s, ok := args["path"].(string); ok {
+		q.Path = s
+	}
+	if s, ok := args["groupBy"].(string); ok {
+		q.GroupBy = s
+	}
+	return q
+}
+
 // newSchema builds the schema once; the Core is injected per-request via context.
 func newSchema() (graphql.Schema, error) {
 	idArg := graphql.FieldConfigArgument{
@@ -218,6 +300,25 @@ func newSchema() (graphql.Schema, error) {
 					},
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						return coreFrom(p.Context).QueryLogs(p.Context, logQueryFromArgs(p.Args))
+					},
+				},
+				"metrics": &graphql.Field{
+					Type: graphql.NewList(metricSeriesGQLType),
+					Args: graphql.FieldConfigArgument{
+						"resource":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+						"metric":            &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}, // cpu|memory|instance_count|http_requests|http_latency|bandwidth
+						"startTime":         &graphql.ArgumentConfig{Type: graphql.String},
+						"endTime":           &graphql.ArgumentConfig{Type: graphql.String},
+						"resolutionSeconds": &graphql.ArgumentConfig{Type: graphql.Int},
+						"quantile":          &graphql.ArgumentConfig{Type: graphql.Float},
+						"percentage":        &graphql.ArgumentConfig{Type: graphql.Boolean},
+						"statusCode":        &graphql.ArgumentConfig{Type: graphql.String},
+						"host":              &graphql.ArgumentConfig{Type: graphql.String},
+						"path":              &graphql.ArgumentConfig{Type: graphql.String},
+						"groupBy":           &graphql.ArgumentConfig{Type: graphql.String},
+					},
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						return coreFrom(p.Context).Metrics(p.Context, metricQueryFromArgs(p.Args))
 					},
 				},
 			},

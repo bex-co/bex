@@ -15,7 +15,7 @@ flowchart LR
   cr --> op["operator (mechanism)"]
 ```
 
-`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`). REST (`rest.go`, `rest_logs.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
+`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`/`Metrics`). REST (`rest.go`, `rest_logs.go`, `rest_metrics.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
 ## Auth
 
@@ -95,7 +95,7 @@ Deferred (map to unbuilt features): `suspend`/`resume`/`restart`, `failover` (ne
 
 ## MCP (Render official-server compatible)
 
-The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent operates bex natively instead of screen-scraping the dashboard. Tool names, argument names, and the returned `service` object track Render's official MCP server (`render-oss/render-mcp-server`), just as REST tracks the OpenAPI spec: `list_services`, `get_service` and `list_logs` are 1:1 with Render's tools, and single-service tools key on Render's `serviceId`. Render's official MCP is read-heavy and omits restart/suspend/resume, so bex adds `restart_service` / `suspend_service` / `resume_service` — named after Render's REST verbs, keyed on the same `serviceId`, so they read as native to a Render-shaped agent. Every tool delegates to the same `Core` method REST/GraphQL call.
+The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent operates bex natively instead of screen-scraping the dashboard. Tool names, argument names, and the returned `service` object track Render's official MCP server (`render-oss/render-mcp-server`), just as REST tracks the OpenAPI spec: `list_services`, `get_service` and `list_logs` are 1:1 with Render's tools, and single-service tools key on Render's `serviceId`. Render's official MCP is read-heavy and omits restart/suspend/resume, so bex adds `restart_service` / `suspend_service` / `resume_service` — named after Render's REST verbs, keyed on the same `serviceId`, so they read as native to a Render-shaped agent. `list_logs` and `get_metrics` give an agent the same observability reads as the REST/GraphQL surfaces (three-adapter parity). Every tool delegates to the same `Core` method REST/GraphQL call.
 
 | tool | args | Core verb | returns |
 | --- | --- | --- | --- |
@@ -103,6 +103,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `get_service` | `{serviceId}` | `Get` | `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `list_logs` | `{resource: [id, ...], limit?}` | `Logs` | `{logs: [{timestamp, message, labels}, ...]}` |
+| `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 
 `list_logs` takes Render's required `resource` array of service ids and reads pod logs for each App's instances (selected by the controller's `app.bex.co/app` label), aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`service`/`instance`/`container`). bex omits Render's structured-log filters (`level`, `statusCode`, `method`, …) it can't honor over raw pod logs — the same rule REST follows for build plans / regions / disks; `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). The `serviceId` / `resource` ids are App names, opaque and round-tripped from `list_services`, exactly as in REST/GraphQL.
 
@@ -126,9 +127,31 @@ curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs?resou
 curl -N -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs/subscribe?resource=eden-cms-v2"
 ```
 
+## Metrics — REST + GraphQL (Render metrics-API compatible)
+
+Resource and request metrics through the same `Core.Metrics` verb, shaped to Render's metrics endpoints. Full design in [observability.md](observability.md).
+
+| method + path | metric |
+| --- | --- |
+| `GET /v1/metrics/cpu` | per-instance CPU (cores, or % of limit with `percentage=true`) |
+| `GET /v1/metrics/memory` | per-instance memory (bytes, or %) |
+| `GET /v1/metrics/instance-count` | running replica count (needs no metrics-server) |
+| `GET /v1/metrics/http-requests` | request rate |
+| `GET /v1/metrics/http-latency` | latency percentile (`quantile`, default p95) |
+| `GET /v1/metrics/bandwidth` | outbound bytes/s |
+
+Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`endTime` (RFC3339), `resolutionSeconds`, `quantile`, `statusCode`/`host`/`path`/`groupBy` (request filters), plus a bex extra `percentage`. Each endpoint returns Render's time-series array `[{labels:[{field,value}], unit, values:[{timestamp,value}]}]`. GraphQL: `metrics(resource, metric, …)` → `MetricSeries { unit, labels{field,value}, points{timestamp,value} }`.
+
+Resource metrics need **metrics-server** (`cpu`/`memory`; `instance_count` doesn't); request metrics need **Traefik scraped by Prometheus** (`BEX_PROM_URL`). A metric whose source isn't wired returns **503**. metrics-server is a snapshot, so cpu/memory carry a single current point (the time range is accepted for compatibility); request metrics honor it. `host`/`path` filters are accepted but not yet applied (Traefik service counters lack those labels).
+
+```sh
+curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/metrics/cpu?resource=eden-cms-v2&percentage=true"
+curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/metrics/http-latency?resource=eden-cms-v2&quantile=0.99"
+```
+
 ## Deploy
 
-Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb), wired from `config/default`. One-time Secret creation:
+Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. One-time Secret creation:
 
 ```sh
 source .env && kubectl -n bex-system create secret generic bex-api-token \
@@ -137,4 +160,4 @@ source .env && kubectl -n bex-system create secret generic bex-api-token \
 
 ## Scope
 
-Lifecycle verbs, read-only logs, and managed Postgres. Not yet: deploy/rollback, service creation, metrics, tenants/auth beyond the single token, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs, read-only logs and metrics, and managed Postgres. Not yet: deploy/rollback, service creation, tenants/auth beyond the single token, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

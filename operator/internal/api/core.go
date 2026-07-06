@@ -50,6 +50,13 @@ var ErrNotFound = errors.New("app not found")
 // error rather than a 404.
 var ErrLogsUnavailable = errors.New("logs source not configured")
 
+// ErrMetricsUnavailable is returned by the Metrics verb when the backend a metric
+// needs isn't wired: resource metrics (cpu/memory) need a ResourceMetrics source
+// (metrics-server), request metrics need a RequestMetrics source (Traefik via
+// Prometheus). Adapters surface it as 503, like ErrLogsUnavailable — the App
+// exists, the data source doesn't. Instance count needs neither (it counts pods).
+var ErrMetricsUnavailable = errors.New("metrics source not configured")
+
 // podLabelApp is the label the controller stamps on an App's pods
 // (internal/controller labelApp). Kept in sync by hand: the api package must not
 // import the controller. Log selection keys on it.
@@ -107,6 +114,12 @@ type Core struct {
 	// PodLogsFollow streams live pod logs for FollowLogs (the SSE tail); nil =>
 	// FollowLogs reports ErrLogsUnavailable. See logs.go.
 	PodLogsFollow PodLogStream
+	// ResourceMetrics reads current per-pod CPU/memory (metrics-server); nil =>
+	// the cpu/memory metrics report ErrMetricsUnavailable. See metrics.go.
+	ResourceMetrics ResourceMetricsSource
+	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
+	// the http_requests/http_latency/bandwidth metrics report ErrMetricsUnavailable.
+	RequestMetrics RequestMetricsSource
 }
 
 func (c *Core) now() time.Time {

@@ -1,8 +1,9 @@
 # bex-api touches Apps and Databases (the product resources), reads the
-# CNPG-generated connection Secrets, and reads App pods' logs — least privilege.
-# It writes intent (App lifecycle fields, Database CRs); the operator does all
-# the mechanism. Pod read + pods/log is where the list_logs verb
-# (REST/GraphQL/MCP) tails an App's instance logs.
+# CNPG-generated connection Secrets, reads App pods' logs, and reads pod resource
+# usage from metrics-server — least privilege. It writes intent (App lifecycle
+# fields, Database CRs); the operator does all the mechanism. Pod read + pods/log
+# is where the list_logs verb (REST/GraphQL/MCP) tails an App's instance logs;
+# metrics.k8s.io/pods backs the resource-metrics verb (cpu/memory).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -30,13 +31,18 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
-  # Read-only pod access for the logs verb: list pods by App label, read logs.
+  # Read-only pod access for the logs + metrics verbs: list pods by App label,
+  # read logs, and read pod resource limits for percentage-mode metrics.
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
+  # Resource metrics (cpu/memory) read metrics-server's aggregated API.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

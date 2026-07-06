@@ -9,6 +9,7 @@ resources:
   - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
   - autoscaler.yaml              # Cluster Autoscaler (reacts to pending pods -> add/remove machines)
   - traefik.yaml                 # edge / ingress controller (Hetzner LB front door)
+  - metrics-server.yaml          # resource-metrics backend (metrics.k8s.io) for bex-api metrics
   - cert-manager.yaml            # automated Let's Encrypt TLS
   - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
