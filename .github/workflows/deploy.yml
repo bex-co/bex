@@ -145,6 +145,17 @@ jobs:
           done
           bash scripts/auth-secrets.sh
 
+      # --- 4c. bootstrap API key --------------------------------------------
+      # bex-api has no shared static token (docs/bex-api.md#auth): seed the
+      # `bex-bootstrap` OAuth2 client once Hydra is Ready. Idempotent.
+      - name: seed bootstrap client
+        env:
+          BEX_BOOTSTRAP_CLIENT_SECRET: ${{ secrets.BEX_BOOTSTRAP_CLIENT_SECRET }}
+        run: |
+          kubectl -n auth rollout status deploy/hydra --timeout=600s \
+            || { echo "hydra not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          bash scripts/auth-bootstrap-client.sh
+
       - name: wait for the bex operator
         run: |
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \

@@ -107,7 +107,7 @@ Resource metrics add read on `metrics.k8s.io` `pods` (`get`/`list`) to the api S
 
 ```sh
 # deploy a sample App, then:
-curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8090/v1/logs?resource=<app>&type=app" | jq .
 
 # resource metrics (needs metrics-server; instance-count works without it):

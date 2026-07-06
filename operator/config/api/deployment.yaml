@@ -35,11 +35,13 @@ spec:
               value: ":8090"
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
-            - name: BEX_API_TOKEN # created out-of-band (see .env / repo docs)
-              valueFrom:
-                secretKeyRef:
-                  name: bex-api-token
-                  key: token
+            # Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's
+            # admin API; Kratos sessions for humans. No shared static token —
+            # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.
+            - name: BEX_HYDRA_ADMIN_URL # required; the binary refuses to start without it
+              value: http://hydra-admin.auth.svc:4445
+            - name: BEX_KRATOS_URL # optional; unset disables session auth
+              value: http://kratos-public.auth.svc:80
           ports:
             - name: http
               containerPort: 8090

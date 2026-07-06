@@ -13,4 +13,4 @@ bex-api is **one `Core` (`core.go`) with three thin adapters** — `rest.go`, `g
 
 Omit Render fields/filters bex can't honor rather than faking them — the returned object stays a safe superset (Render clients ignore unknown keys; bex clients get the extras like `phase`/`replicas`/`revision`).
 
-**Transports & auth.** Every HTTP route (REST, GraphQL, MCP streamable-HTTP at `/mcp`) sits behind the shared `bearerAuth` bex-api-token gate; the binary refuses to start without the token (`server.go`). MCP's stdio transport (`api mcp-stdio`) is the exception — its trust boundary is the subprocess itself, so no bearer applies.
+**Transports & auth.** Every HTTP route (REST, GraphQL, MCP streamable-HTTP at `/mcp`) sits behind the same auth gate ([docs/bex-api.md#auth](../../../docs/bex-api.md)): OAuth2 API-key tokens via Hydra introspection, Kratos sessions for humans, no shared static token. Missing `BEX_HYDRA_ADMIN_URL` refuses to start; Ory outages fail closed. MCP's stdio transport (`api mcp-stdio`) is the exception — its trust boundary is the subprocess itself, so no auth gate applies.

@@ -24,10 +24,11 @@ set_file() {
   echo "set   $name  (from $path)"
 }
 
-# KRATOS_*/HYDRA_* feed deploy.yml's "apply auth secrets" step (docs/auth.md).
+# KRATOS_*/HYDRA_*/BEX_BOOTSTRAP_* feed deploy.yml's auth steps (docs/auth.md).
 for s in HCLOUD_TOKEN TF_STATE_BUCKET TF_STATE_ENDPOINT TF_STATE_REGION TF_STATE_ACCESS_KEY TF_STATE_SECRET_KEY \
          KRATOS_SECRETS_DEFAULT KRATOS_SECRETS_COOKIE KRATOS_SECRETS_CIPHER \
-         HYDRA_SECRETS_SYSTEM HYDRA_SECRETS_COOKIE HYDRA_OIDC_PAIRWISE_SALT; do
+         HYDRA_SECRETS_SYSTEM HYDRA_SECRETS_COOKIE HYDRA_OIDC_PAIRWISE_SALT \
+         BEX_BOOTSTRAP_CLIENT_SECRET; do
   set_scalar "$s"
 done
 set_file BEX_SSH_PUBLIC_KEY  "${BEX_SSH_PUBLIC_KEY_FILE:?set BEX_SSH_PUBLIC_KEY_FILE in .env}"

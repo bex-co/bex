@@ -1,10 +1,10 @@
 # ADR: platform auth — Ory Kratos (identity) + Ory Hydra (OAuth2/OIDC)
 
-**Status:** accepted (deployed as GitOps base components, verified end-to-end on the local mock cluster). This ADR covers the auth _substrate_ — the identity and token services and their databases. Wiring bex-api to them (introspection middleware, `BEX_AUTH_MODE`, static-token fallback) is w4/m2 and will extend this doc.
+**Status:** accepted and consumed (substrate deployed as GitOps base components and live in prod; bex-api validates against it — see [bex-api.md#auth](bex-api.md)). The static `BEX_API_TOKEN` is **gone** (w4/m3): every machine caller holds an **API key** = its own OAuth2 client in Hydra, exchanged for short-lived tokens; the first key (`bex-bootstrap`) is seeded by `scripts/auth-bootstrap-client.sh` on every deploy, and further keys are minted via bex-api's `/v1/api-keys`.
 
 ## Context
 
-bex-api authenticates every caller with **one static bearer token** (`BEX_API_TOKEN`). That is fine for a single operator but is _the_ blocker for multi-tenancy: the vision's control plane needs tenants and accounts (roadmap #1), and the AI-native pillars need **per-client credentials** — an agent that deploys from chat must hold its own revocable token, not the shared admin secret. So the platform needs real identity (who is this?) and real tokens (what may this credential do, until when?) as infrastructure that bex-api and the control plane consume.
+bex-api used to authenticate every caller with **one static bearer token** (`BEX_API_TOKEN`; removed in w4/m3). That was fine for a single operator but is _the_ blocker for multi-tenancy: the vision's control plane needs tenants and accounts (roadmap #1), and the AI-native pillars need **per-client credentials** — an agent that deploys from chat must hold its own revocable token, not the shared admin secret. So the platform needs real identity (who is this?) and real tokens (what may this credential do, until when?) as infrastructure that bex-api and the control plane consume.
 
 ## Decision
 
@@ -92,7 +92,7 @@ Local-CAPD quirks (mock cluster only, none apply to prod):
 
 ## Consequences
 
-- w4/m2 can build on real primitives: bex-api introspects Hydra tokens (admin API is reachable in-cluster), `BEX_AUTH_MODE` gates the rollout, the static token remains as fallback until cutover.
+- bex-api is hard-dependent on Hydra by design: introspection outage ⇒ the whole API 503s (fail closed). Operational recovery during an Ory incident goes through kubectl, not bex-api — accepted trade-off of deleting the shared-secret escape hatch.
 - Like `bex-db`, both auth DBs are `instances: 1` with no backup schedule yet — **`kratos-db`/`hydra-db` must join the w1/m7 backup/HA work**; losing them loses all identities and clients.
 - No SMTP is configured, so Kratos' courier (verification/recovery mail) is off; email flows need an SMTP secret + `courier.enabled: true` later.
 - Prod DNS records for `auth.bex.co`/`oauth.bex.co` must exist before first sync, or ACME HTTP-01 will retry until they do.

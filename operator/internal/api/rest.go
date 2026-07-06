@@ -72,7 +72,44 @@ func (s *Server) restHandler() http.Handler {
 	s.registerPostgresRoutes(mux)
 	s.registerLogRoutes(mux)
 	s.registerMetricRoutes(mux)
+	s.registerAPIKeyRoutes(mux)
 	return mux
+}
+
+// registerAPIKeyRoutes adds the machine-credential endpoints (bex extension —
+// Render manages API keys only via its dashboard; naming follows Render's
+// kebab-case noun style). The secret appears once, in the create response.
+func (s *Server) registerAPIKeyRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeErr(w, ErrBadRequest)
+			return
+		}
+		key, err := s.Core.CreateAPIKey(r.Context(), req.Name)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, key)
+	})
+	mux.HandleFunc("GET /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		keys, err := s.Core.ListAPIKeys(r.Context())
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, keys)
+	})
+	mux.HandleFunc("DELETE /v1/api-keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Core.RevokeAPIKey(r.Context(), r.PathValue("id")); err != nil {
+			writeErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 }
 
 // registerPostgresRoutes adds the managed-Postgres endpoints, Render-shaped
@@ -137,10 +174,12 @@ func writeErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
-	case errors.Is(err, ErrLogsUnavailable):
+	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrAPIKeysUnavailable):
 		code = http.StatusServiceUnavailable
 	case errors.Is(err, ErrMetricsUnavailable):
 		code = http.StatusServiceUnavailable
+	case errors.Is(err, ErrBadRequest):
+		code = http.StatusBadRequest
 	}
 	writeJSON(w, code, map[string]string{"error": err.Error()})
 }

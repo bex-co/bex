@@ -50,7 +50,7 @@ func logServer(t *testing.T, logs map[string][]string, objs ...client.Object) ht
 			PodLogs:       staticLogs(logs),
 			PodLogsFollow: staticLogStream(logs),
 		},
-		Token: testToken,
+		HydraAdminURL: fakeHydraURL(t),
 	}
 	h, err := srv.Handler()
 	if err != nil {
@@ -144,7 +144,7 @@ func TestREST_LogsErrors(t *testing.T) {
 func TestREST_LogsUnavailableWithoutSource(t *testing.T) {
 	// A Core with no PodLogs wired => 503, not a 500/404.
 	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(sampleApp("web")).Build()
-	srv := &Server{Core: &Core{Client: cl, Namespace: "default"}, Token: testToken}
+	srv := &Server{Core: &Core{Client: cl, Namespace: "default"}, HydraAdminURL: fakeHydraURL(t)}
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)

@@ -109,7 +109,7 @@ func TestCore_LogsErrors(t *testing.T) {
 func mcpClient(t *testing.T, core *Core) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
-	srv := (&Server{Core: core, Token: testToken}).MCPServer()
+	srv := (&Server{Core: core}).MCPServer()
 	serverT, clientT := mcp.NewInMemoryTransports()
 	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
 		t.Fatalf("server connect: %v", err)

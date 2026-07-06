@@ -38,7 +38,8 @@ import (
 
 const testToken = "secret-token"
 
-func newServer(t *testing.T, apps ...*appv1alpha1.App) (http.Handler, client.Client) {
+// fakeAppClient builds the scheme + fake client every server test uses.
+func fakeAppClient(t *testing.T, apps ...*appv1alpha1.App) client.Client {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
@@ -47,10 +48,15 @@ func newServer(t *testing.T, apps ...*appv1alpha1.App) (http.Handler, client.Cli
 	for i, a := range apps {
 		objs[i] = a
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+}
+
+func newServer(t *testing.T, apps ...*appv1alpha1.App) (http.Handler, client.Client) {
+	t.Helper()
+	cl := fakeAppClient(t, apps...)
 	srv := &Server{
-		Core:  &Core{Client: cl, Namespace: "default", Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() }},
-		Token: testToken,
+		Core:          &Core{Client: cl, Namespace: "default", Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() }},
+		HydraAdminURL: fakeHydraURL(t), // introspects testToken as active
 	}
 	h, err := srv.Handler()
 	if err != nil {
@@ -81,13 +87,6 @@ func do(t *testing.T, h http.Handler, method, path, token, body string) *httptes
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	return w
-}
-
-func TestEmptyTokenRefusesToServe(t *testing.T) {
-	srv := &Server{Core: &Core{Namespace: "default"}, Token: ""}
-	if _, err := srv.Handler(); err == nil {
-		t.Fatal("expected Handler to fail with empty token")
-	}
 }
 
 func TestAuth(t *testing.T) {

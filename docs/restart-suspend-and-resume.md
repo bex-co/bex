@@ -68,7 +68,7 @@ Two ways, same field write:
 - **bex-api** (the control-plane seed, implemented) — a bearer-authed service at `api.<base-domain>` exposing the verbs over **both REST and GraphQL**, shaped to Render's public API (verified against its OpenAPI spec) and dashboard operation names, each a thin adapter over one shared `Core` that patches these spec fields. See [bex-api.md](bex-api.md). It needs only App-write RBAC, never Deployment access.
 
 ```sh
-curl -X POST -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/services/eden-cms-v2/restart
+curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/eden-cms-v2/restart
 ```
 
 **These verbs do not belong in `bex.yml`**: the manifest declares how the app runs (repo config); restart/suspend are runtime intent with no home in git.

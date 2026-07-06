@@ -23,28 +23,36 @@ import (
 )
 
 // Server wires the adapters (REST + GraphQL + MCP) over one Core and one auth
-// token. All surfaces mount on the same mux, share the bearer middleware, and
+// gate. All surfaces mount on the same mux, share the auth middleware, and
 // call identical Core methods — so they cannot diverge in behavior.
+//
+// Auth (docs/auth.md): OAuth2 bearer tokens are validated via Hydra
+// introspection (API keys, client_credentials) and Ory sessions via Kratos
+// whoami. There is no shared-secret mode — every caller holds its own
+// revocable credential.
 type Server struct {
 	Core       *Core
-	Token      string // bearer token; empty => Handler refuses to build
 	CORSOrigin string // exact allowed origin; empty => no CORS
+
+	HydraAdminURL string // Hydra admin base URL (introspection); required
+	KratosURL     string // Kratos public base URL (whoami); empty disables sessions
 
 	schema graphql.Schema
 }
 
 // Handler returns the fully wired http.Handler, or an error if misconfigured
-// (empty token, or an invalid GraphQL schema). Routes (REST is Render-public-API
+// (missing Hydra URL, or an invalid GraphQL schema). Routes (REST is Render-public-API
 // compatible, served under both /v1/services and /v1/apps):
 //
 //	GET  /healthz                              (open)
-//	GET  /v1/services, /v1/services/{id}       (bearer)   REST
-//	POST /v1/services/{id}/{suspend|resume|restart}  (bearer)   REST
-//	POST /graphql                              (bearer)   GraphQL
-//	     /mcp                                  (bearer)   MCP (streamable-http)
+//	GET  /v1/services, /v1/services/{id}       (auth)   REST
+//	POST /v1/services/{id}/{suspend|resume|restart}  (auth)   REST
+//	POST /graphql                              (auth)   GraphQL
+//	     /mcp                                  (auth)   MCP (streamable-http)
 func (s *Server) Handler() (http.Handler, error) {
-	if s.Token == "" {
-		return nil, errEmptyToken
+	auth, err := s.authMiddleware()
+	if err != nil {
+		return nil, err
 	}
 	schema, err := newSchema()
 	if err != nil {
@@ -57,16 +65,25 @@ func (s *Server) Handler() (http.Handler, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	// All three adapters sit behind the same bearer gate.
-	mux.Handle("/v1/", bearerAuth(s.Token, s.restHandler()))
-	mux.Handle("/graphql", bearerAuth(s.Token, s.graphqlHandler()))
-	mux.Handle("/mcp", bearerAuth(s.Token, s.mcpHTTPHandler()))
+	// All three adapters sit behind the same auth gate.
+	mux.Handle("/v1/", auth(s.restHandler()))
+	mux.Handle("/graphql", auth(s.graphqlHandler()))
+	mux.Handle("/mcp", auth(s.mcpHTTPHandler()))
 
 	return withCORS(s.CORSOrigin, mux), nil
+}
+
+// authMiddleware builds the auth gate, validating its configuration up front
+// so a misconfigured binary refuses to start.
+func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
+	if s.HydraAdminURL == "" {
+		return nil, errNoHydraURL
+	}
+	return newOryAuth(s.HydraAdminURL, s.KratosURL).middleware, nil
 }
 
 type apiError string
 
 func (e apiError) Error() string { return string(e) }
 
-const errEmptyToken = apiError("bex-api: BEX_API_TOKEN must be set (refusing to serve without auth)")
+const errNoHydraURL = apiError("bex-api: BEX_HYDRA_ADMIN_URL must be set (refusing to serve without a token validator)")

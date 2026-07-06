@@ -31,13 +31,16 @@ import (
 // the string `suspended` enum. Every resolver delegates to Core — the schema is
 // presentation, the behavior is shared with REST.
 
-func appField(f func(AppView) any) graphql.FieldResolveFn {
+// gqlField adapts a typed projection into a GraphQL resolver: it type-asserts
+// the source and applies f, resolving nil for foreign sources. One helper for
+// every object type (AppView, PostgresView, connection info, logs, API keys).
+func gqlField[T any](f func(T) any) graphql.FieldResolveFn {
 	return func(p graphql.ResolveParams) (any, error) {
-		a, ok := p.Source.(AppView)
+		v, ok := p.Source.(T)
 		if !ok {
 			return nil, nil
 		}
-		return f(a), nil
+		return f(v), nil
 	}
 }
 
@@ -45,17 +48,17 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
 		// Render-shaped fields (id is the App name; type is always web_service).
-		"id":           &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Name })},
-		"name":         &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Name })},
-		"type":         &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return renderWebService })},
-		"suspended":    &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return suspendedEnum(a.Suspended) })},
-		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.URL })},
-		"url":          &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.URL })},
-		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.CreatedAt })},
+		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.Name })},
+		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.Name })},
+		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return renderWebService })},
+		"suspended":    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return suspendedEnum(a.Suspended) })},
+		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.URL })},
+		"url":          &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.URL })},
+		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.CreatedAt })},
 		// bex-native extras.
-		"phase":    &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Phase })},
-		"replicas": &graphql.Field{Type: graphql.Int, Resolve: appField(func(a AppView) any { return a.Replicas })},
-		"revision": &graphql.Field{Type: graphql.String, Resolve: appField(func(a AppView) any { return a.Revision })},
+		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.Phase })},
+		"replicas": &graphql.Field{Type: graphql.Int, Resolve: gqlField(func(a AppView) any { return a.Replicas })},
+		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(a AppView) any { return a.Revision })},
 	},
 })
 
@@ -66,26 +69,6 @@ func suspendedEnum(b bool) string {
 	return renderNotSuspended
 }
 
-func pgField(f func(PostgresView) any) graphql.FieldResolveFn {
-	return func(p graphql.ResolveParams) (any, error) {
-		v, ok := p.Source.(PostgresView)
-		if !ok {
-			return nil, nil
-		}
-		return f(v), nil
-	}
-}
-
-func ciField(f func(PostgresConnectionInfo) any) graphql.FieldResolveFn {
-	return func(p graphql.ResolveParams) (any, error) {
-		v, ok := p.Source.(PostgresConnectionInfo)
-		if !ok {
-			return nil, nil
-		}
-		return f(v), nil
-	}
-}
-
 // Render's dashboard GraphQL calls a managed Postgres a "database" (query
 // database(id), databaseStatusQuery, databaseCredentialList, ...) — captured
 // live — even though its REST noun is "postgres". bex mirrors that split: REST
@@ -93,41 +76,44 @@ func ciField(f func(PostgresConnectionInfo) any) graphql.FieldResolveFn {
 var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Database",
 	Fields: graphql.Fields{
-		"id":                      &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.ID })},
-		"name":                    &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Name })},
-		"plan":                    &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Plan })},
-		"version":                 &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Version })},
-		"status":                  &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Status })},
-		"databaseName":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.DatabaseName })},
-		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.DatabaseUser })},
-		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: pgField(func(v PostgresView) any { return v.DiskSizeGB })},
-		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: pgField(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
-		"suspended":               &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.Suspended })},
-		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.CreatedAt })},
-		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: pgField(func(v PostgresView) any { return v.ExternalHost })},
-		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: pgField(func(v PostgresView) any { return v.Public })},
+		"id":                      &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.ID })},
+		"name":                    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.Name })},
+		"plan":                    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.Plan })},
+		"version":                 &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.Version })},
+		"status":                  &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.Status })},
+		"databaseName":            &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.DatabaseName })},
+		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.DatabaseUser })},
+		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: gqlField(func(v PostgresView) any { return v.DiskSizeGB })},
+		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlField(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
+		"suspended":               &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.Suspended })},
+		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.CreatedAt })},
+		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresView) any { return v.ExternalHost })},
+		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: gqlField(func(v PostgresView) any { return v.Public })},
 	},
 })
 
 var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PostgresConnectionInfo",
 	Fields: graphql.Fields{
-		"password":                 &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.Password })},
-		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
-		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
-		"psqlCommand":              &graphql.Field{Type: graphql.String, Resolve: ciField(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
+		"password":                 &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresConnectionInfo) any { return v.Password })},
+		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
+		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
+		"psqlCommand":              &graphql.Field{Type: graphql.String, Resolve: gqlField(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
 	},
 })
 
-func logField(f func(LogEntry) any) graphql.FieldResolveFn {
-	return func(p graphql.ResolveParams) (any, error) {
-		e, ok := p.Source.(LogEntry)
-		if !ok {
-			return nil, nil
-		}
-		return f(e), nil
-	}
-}
+// apiKeyGQLType mirrors the REST APIKey object (bex extension; Render's
+// dashboard manages keys outside its public schemas). secret is non-empty only
+// in the createApiKey payload — list resolves it empty.
+var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ApiKey",
+	Fields: graphql.Fields{
+		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlField(func(k APIKey) any { return k.ID })},
+		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlField(func(k APIKey) any { return k.Name })},
+		"secret":    &graphql.Field{Type: graphql.String, Resolve: gqlField(func(k APIKey) any { return k.Secret })},
+		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(k APIKey) any { return k.CreatedAt })},
+	},
+})
 
 // logGQLType is the GraphQL projection of a LogEntry — a flat row (the REST
 // adapter renders the same data as Render's labels array instead). type is
@@ -135,10 +121,10 @@ func logField(f func(LogEntry) any) graphql.FieldResolveFn {
 var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "LogEntry",
 	Fields: graphql.Fields{
-		"timestamp": &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Timestamp })},
-		"message":   &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Message })},
-		"type":      &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return renderLogTypeApp })},
-		"instance":  &graphql.Field{Type: graphql.String, Resolve: logField(func(e LogEntry) any { return e.Labels["instance"] })},
+		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlField(func(e LogEntry) any { return e.Timestamp })},
+		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlField(func(e LogEntry) any { return e.Message })},
+		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlField(func(e LogEntry) any { return renderLogTypeApp })},
+		"instance":  &graphql.Field{Type: graphql.String, Resolve: gqlField(func(e LogEntry) any { return e.Labels["instance"] })},
 	},
 })
 
@@ -290,6 +276,10 @@ func newSchema() (graphql.Schema, error) {
 						return coreFrom(p.Context).PostgresConnectionInfo(p.Context, p.Args["id"].(string))
 					},
 				},
+				"apiKeys": &graphql.Field{
+					Type:    graphql.NewList(apiKeyGQLType),
+					Resolve: func(p graphql.ResolveParams) (any, error) { return coreFrom(p.Context).ListAPIKeys(p.Context) },
+				},
 				"logs": &graphql.Field{
 					Type: graphql.NewList(logGQLType),
 					Args: graphql.FieldConfigArgument{
@@ -360,6 +350,23 @@ func newSchema() (graphql.Schema, error) {
 					Args: idArg,
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						err := coreFrom(p.Context).DeletePostgres(p.Context, p.Args["id"].(string))
+						return err == nil, err
+					},
+				},
+				"createApiKey": &graphql.Field{
+					Type: apiKeyGQLType,
+					Args: graphql.FieldConfigArgument{
+						"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+					},
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						return coreFrom(p.Context).CreateAPIKey(p.Context, p.Args["name"].(string))
+					},
+				},
+				"revokeApiKey": &graphql.Field{
+					Type: graphql.Boolean,
+					Args: idArg,
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						err := coreFrom(p.Context).RevokeAPIKey(p.Context, p.Args["id"].(string))
 						return err == nil, err
 					},
 				},

@@ -71,7 +71,7 @@ func metricServer(t *testing.T, rm ResourceMetricsSource, req RequestMetricsSour
 			ResourceMetrics: rm,
 			RequestMetrics:  req,
 		},
-		Token: testToken,
+		HydraAdminURL: fakeHydraURL(t),
 	}
 	h, err := srv.Handler()
 	if err != nil {

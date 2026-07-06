@@ -181,7 +181,47 @@ func (s *Server) MCPServer() *mcp.Server {
 		return nil, getMetricsResult{Series: all}, nil
 	})
 
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_api_key",
+		Description: "Create a machine credential (OAuth2 client) for the platform API. The secret is returned once — store it. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
+		key, err := s.Core.CreateAPIKey(ctx, in.Name)
+		return nil, key, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_api_keys",
+		Description: "List the platform API's machine credentials (secrets never included). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listAPIKeysResult, error) {
+		keys, err := s.Core.ListAPIKeys(ctx)
+		return nil, listAPIKeysResult{APIKeys: keys}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "revoke_api_key",
+		Description: "Revoke a machine credential by keyId; its tokens stop working. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
+		err := s.Core.RevokeAPIKey(ctx, in.KeyID)
+		return nil, revokeAPIKeyResult{Revoked: err == nil}, err
+	})
+
 	return srv
+}
+
+type createAPIKeyArgs struct {
+	Name string `json:"name" jsonschema:"human-readable name for the credential"`
+}
+
+type listAPIKeysResult struct {
+	APIKeys []APIKey `json:"apiKeys"`
+}
+
+type revokeAPIKeyArgs struct {
+	KeyID string `json:"keyId" jsonschema:"the API key id (OAuth2 client_id)"`
+}
+
+type revokeAPIKeyResult struct {
+	Revoked bool `json:"revoked"`
 }
 
 // serviceTool adapts a single-service Core verb (Get/Restart/Suspend/Resume) into
@@ -198,8 +238,8 @@ func (s *Server) serviceTool(fn func(*Core, context.Context, string) (AppView, e
 }
 
 // mcpHTTPHandler serves the MCP streamable-HTTP transport. Mounted at /mcp behind
-// the same bearer gate as REST/GraphQL (see Handler), so an HTTP MCP client
-// authenticates with the bex-api-token exactly like every other route.
+// the same auth gate as REST/GraphQL (see Handler), so an HTTP MCP client
+// authenticates with an API-key token or session exactly like every other route.
 func (s *Server) mcpHTTPHandler() http.Handler {
 	srv := s.MCPServer()
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)

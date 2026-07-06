@@ -79,11 +79,20 @@ func main() {
 	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
 		core.RequestMetrics = api.NewPrometheusRequestSource(prom, nil)
 	}
+	// Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's admin API,
+	// Kratos sessions optional. Handler() fails fast without the Hydra URL.
+	// nil key store (stdio mode without a Hydra URL) keeps the api-key verbs
+	// answering ErrAPIKeysUnavailable instead of dialing nowhere.
+	hydraAdminURL := os.Getenv("BEX_HYDRA_ADMIN_URL")
+	if hydraAdminURL != "" {
+		core.APIKeys = api.NewHydraAPIKeys(hydraAdminURL)
+	}
 
 	srv := &api.Server{
-		Core:       core,
-		Token:      os.Getenv("BEX_API_TOKEN"),
-		CORSOrigin: os.Getenv("BEX_API_CORS_ORIGIN"),
+		Core:          core,
+		CORSOrigin:    os.Getenv("BEX_API_CORS_ORIGIN"),
+		HydraAdminURL: hydraAdminURL,
+		KratosURL:     os.Getenv("BEX_KRATOS_URL"),
 	}
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP

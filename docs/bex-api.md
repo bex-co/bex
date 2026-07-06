@@ -19,7 +19,21 @@ flowchart LR
 
 ## Auth
 
-Every route except `GET /healthz` requires `Authorization: Bearer <token>` (constant-time compare). The token lives in the Secret `bex-api-token` (namespace `bex-system`), created out-of-band from `.env`'s `BEX_API_TOKEN`; the binary refuses to start without it (fail closed). `BEX_API_CORS_ORIGIN` optionally enables CORS for a browser frontend.
+Every route except `GET /healthz` requires real, per-client credentials from the auth substrate ([auth.md](auth.md)) — **there is no shared static token**:
+
+- **API keys (machines)** — an API key _is_ an OAuth2 client (`client_credentials` grant). Exchange it for a short-lived bearer token, then call the API:
+
+  ```sh
+  TOKEN=$(curl -s -X POST https://oauth.bex.co/oauth2/token \
+    -d "grant_type=client_credentials&client_id=$KEY_ID&client_secret=$KEY_SECRET" | yq .access_token)
+  curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services
+  ```
+
+  Tokens are introspected at Hydra's admin API (`BEX_HYDRA_ADMIN_URL`, cluster-internal, required — the binary refuses to start without it; positive results cached ≤ 30s). Keys are managed through the API itself: `POST /v1/api-keys` (the secret is returned exactly once), `GET /v1/api-keys`, `DELETE /v1/api-keys/{id}` — with GraphQL (`apiKeys`, `createApiKey`, `revokeApiKey`) and MCP (`create_api_key`, `list_api_keys`, `revoke_api_key`) parity. "API key" means the Hydra clients bex minted (stamped `bex.co/api-key` metadata): list hides and revoke refuses everything else, so platform clients can't be revoked through this endpoint. The **first** key, `bex-bootstrap`, is deliberately such a platform client — seeded and rotated only by [scripts/auth-bootstrap-client.sh](../scripts/auth-bootstrap-client.sh) (CI runs it on every deploy; secret from `.env`'s `BEX_BOOTSTRAP_CLIENT_SECRET`).
+
+- **Sessions (humans)** — with no bearer present, an Ory session (cookie or `X-Session-Token`) is validated via Kratos' `whoami` (`BEX_KRATOS_URL` — optional; unset disables sessions). A present bearer is authoritative: an inactive token is 401 with no session fallthrough.
+
+Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl, not this API). The resolved caller (OAuth2 `client_id` or Kratos identity id) is attached to the request context (`api.IdentityFrom`) — the tenant-scoping hook. `BEX_API_CORS_ORIGIN` optionally enables CORS for a browser frontend.
 
 ## REST (Render public-API compatible)
 
@@ -37,8 +51,8 @@ Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the 
 Verbs return the updated service object (the patch is accepted; the operator converges asynchronously — poll `GET` for `suspended`/`phase`). The service object carries Render's fields (`id`, `name`, `type: "web_service"`, `suspended`, `dashboardUrl`, `createdAt`, `serviceDetails.url`) plus bex extras (`phase`, `replicas`, `revision`) — a superset Render clients safely ignore. bex has no build plans, regions or disks, so those Render fields are omitted.
 
 ```sh
-curl -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/services
-curl -X POST -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/services/eden-cms-v2/suspend
+curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services
+curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/eden-cms-v2/suspend
 ```
 
 ## GraphQL (Render dashboard compatible)
@@ -47,7 +61,7 @@ curl -X POST -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/ser
 
 ```sh
 curl -X POST https://api.bex.co/graphql \
-  -H "Authorization: Bearer $BEX_API_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"query":"mutation { suspendService(id:\"eden-cms-v2\") { id suspended phase } }"}'
 ```
 
@@ -86,9 +100,9 @@ CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (s
 **Noun split, mirroring Render** (verified: REST spec + dashboard GraphQL captured via Playwright): Render's REST uses `postgres` (`/v1/postgres`) but its **dashboard GraphQL uses `database`** (`database(id)`, `databaseStatusQuery`, `databaseCredentialList`). bex matches both — REST `/v1/postgres` (+ `/v1/databases` alias), GraphQL `databases` / `database(id)` / `databaseConnectionInfo(id)` queries and `createDatabase` / `deleteDatabase` mutations (which also matches bex's own `Database` CRD).
 
 ```sh
-curl -X POST -H "Authorization: Bearer $BEX_API_TOKEN" -H "Content-Type: application/json" \
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"my-db","plan":"free","public":true}' https://api.bex.co/v1/postgres
-curl -H "Authorization: Bearer $BEX_API_TOKEN" https://api.bex.co/v1/postgres/my-db/connection-info
+curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/postgres/my-db/connection-info
 ```
 
 Deferred (map to unbuilt features): `suspend`/`resume`/`restart`, `failover` (needs HA), `recovery`/PITR (needs backups), `credentials`, `export`, and the pooler connection strings (needs a PgBouncer `Pooler`).
@@ -123,8 +137,8 @@ Query params (verified against `render-public-api-1.json`): `resource` (App id, 
 `GET /v1/logs/subscribe` streams over **SSE** where Render upgrades to a **WebSocket** (bex's choice: no dependency, curl-friendly, same "stream new lines live" contract).
 
 ```sh
-curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs?resource=eden-cms-v2&type=app"
-curl -N -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/logs/subscribe?resource=eden-cms-v2"
+curl -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs?resource=eden-cms-v2&type=app"
+curl -N -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs/subscribe?resource=eden-cms-v2"
 ```
 
 ## Metrics — REST + GraphQL (Render metrics-API compatible)
@@ -151,13 +165,8 @@ curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/metrics/ht
 
 ## Deploy
 
-Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. One-time Secret creation:
-
-```sh
-source .env && kubectl -n bex-system create secret generic bex-api-token \
-  --from-literal=token=$BEX_API_TOKEN
-```
+Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. No token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
 
 ## Scope
 
-Lifecycle verbs, read-only logs and metrics, and managed Postgres. Not yet: deploy/rollback, service creation, tenants/auth beyond the single token, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs, read-only logs and metrics, API keys, and managed Postgres. Not yet: deploy/rollback, service creation, tenant scoping of credentials, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

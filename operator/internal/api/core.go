@@ -57,6 +57,13 @@ var ErrLogsUnavailable = errors.New("logs source not configured")
 // exists, the data source doesn't. Instance count needs neither (it counts pods).
 var ErrMetricsUnavailable = errors.New("metrics source not configured")
 
+// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is
+// wired (e.g. the binary was started without a Hydra admin URL).
+var ErrAPIKeysUnavailable = errors.New("api-key store not configured")
+
+// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
+var ErrBadRequest = errors.New("bad request")
+
 // podLabelApp is the label the controller stamps on an App's pods
 // (internal/controller labelApp). Kept in sync by hand: the api package must not
 // import the controller. Log selection keys on it.
@@ -120,6 +127,9 @@ type Core struct {
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// the http_requests/http_latency/bandwidth metrics report ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
+	// APIKeys manages machine credentials (OAuth2 clients in Hydra); nil =>
+	// the api-key verbs report ErrAPIKeysUnavailable. See apikeys.go.
+	APIKeys APIKeyStore
 }
 
 func (c *Core) now() time.Time {
