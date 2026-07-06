@@ -187,16 +187,19 @@ jobs:
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
           # A previous revision's sync can be wedged mid-operation (e.g. waiting
-          # on a hook that can never fire), which blocks auto-sync of the current
-          # revision — terminate any in-flight operation so the new sync starts.
+          # on a hook that can never fire), which blocks any new sync — terminate
+          # it, then REQUEST a sync explicitly (auto-sync won't re-fire after
+          # exhausted retries on an unchanged revision; an explicit operation
+          # always runs, hooks included).
           kubectl -n argocd patch application openfga --type=json \
             -p '[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
-          # The openfga Application is created by the app-of-apps sync, which can
-          # lag the git push — wait for the Deployment to EXIST before waiting on
-          # its rollout (rollout status errors instantly on a missing Deployment).
-          timeout 600 bash -c "until kubectl -n auth get deploy/openfga >/dev/null 2>&1; do sleep 10; done" \
-            || { echo "openfga Deployment never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
-          kubectl -n auth rollout status deploy/openfga --timeout=600s || {
+          sleep 5
+          kubectl -n argocd patch application openfga --type=merge \
+            -p '{"operation":{"sync":{"prune":true}}}' 2>/dev/null || true
+          # Poll actual availability: `rollout status` returns instantly on a
+          # deployment whose progress deadline already lapsed, even as the fix
+          # is still converging.
+          timeout 600 bash -c 'until [ "$(kubectl -n auth get deploy openfga -o jsonpath="{.status.availableReplicas}" 2>/dev/null)" = "1" ]; do sleep 10; done' || {
             echo "openfga not ready — diagnosis:"
             kubectl -n auth get pods -o wide
             kubectl -n auth describe deploy openfga | tail -20
