@@ -64,6 +64,14 @@ var ErrAPIKeysUnavailable = errors.New("api-key store not configured")
 // ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 var ErrBadRequest = errors.New("bad request")
 
+// ErrForbidden is returned when the authenticated caller lacks the permission
+// a verb requires (adapters map it to 403; distinct from the auth gate's 401).
+var ErrForbidden = errors.New("forbidden")
+
+// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
+// consulted — requests fail closed (503), never pass through.
+var ErrAuthzUnavailable = errors.New("authorization service unavailable")
+
 // podLabelApp is the label the controller stamps on an App's pods
 // (internal/controller labelApp). Kept in sync by hand: the api package must not
 // import the controller. Log selection keys on it.
@@ -130,6 +138,9 @@ type Core struct {
 	// APIKeys manages machine credentials (OAuth2 clients in Hydra); nil =>
 	// the api-key verbs report ErrAPIKeysUnavailable. See apikeys.go.
 	APIKeys APIKeyStore
+	// Authz decides what the authenticated caller may do (OpenFGA); nil =>
+	// every verb allowed (pre-authorization behavior). See authz.go.
+	Authz Checker
 }
 
 func (c *Core) now() time.Time {
@@ -159,6 +170,9 @@ func view(a *appv1alpha1.App) AppView {
 
 // List returns every App in the namespace.
 func (c *Core) List(ctx context.Context) ([]AppView, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return nil, err
+	}
 	var list appv1alpha1.AppList
 	if err := c.Client.List(ctx, &list, client.InNamespace(c.Namespace)); err != nil {
 		return nil, err
@@ -172,6 +186,9 @@ func (c *Core) List(ctx context.Context) ([]AppView, error) {
 
 // Get returns one App, or ErrNotFound.
 func (c *Core) Get(ctx context.Context, name string) (AppView, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return AppView{}, err
+	}
 	a, err := c.fetch(ctx, name)
 	if err != nil {
 		return AppView{}, err
@@ -182,6 +199,9 @@ func (c *Core) Get(ctx context.Context, name string) (AppView, error) {
 // Restart requests a rolling restart (spec.restartedAt = now). The operator
 // stamps the pod template and Kubernetes rolls the pods with no downtime.
 func (c *Core) Restart(ctx context.Context, name string) (AppView, error) {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return AppView{}, err
+	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = c.now().UTC().Format(time.RFC3339)
 	})
@@ -189,12 +209,18 @@ func (c *Core) Restart(ctx context.Context, name string) (AppView, error) {
 
 // Suspend parks the App (spec.suspended = true): scaled to 0, host/certs kept.
 func (c *Core) Suspend(ctx context.Context, name string) (AppView, error) {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return AppView{}, err
+	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = true })
 }
 
 // Resume brings a suspended App back (spec.suspended = false); the operator
 // restores spec.replicas.
 func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return AppView{}, err
+	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = false })
 }
 
@@ -204,6 +230,9 @@ func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
 // ErrNotFound for an unknown App (same as Get) and ErrLogsUnavailable when no
 // pod-log source is wired. This is the read path the MCP list_logs tool uses.
 func (c *Core) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return nil, err
+	}
 	if c.PodLogs == nil {
 		return nil, ErrLogsUnavailable
 	}

@@ -1,0 +1,41 @@
+# bex platform authorization model (docs/auth.md) — the human-readable source.
+# The applied artifact is model.json (OpenFGA's wire format, same directory);
+# when you edit this file, regenerate it:  fga model transform --file model.fga
+# scripts/authz-model.sh applies model.json idempotently.
+#
+# Subjects (`user`) are the strings bex-api's auth gate resolves via
+# api.IdentityFrom: a Hydra client_id (API key) or a Kratos identity id.
+# Until the control plane grows real tenants (w1/m2), everything hangs off the
+# single `tenant:default` object; per-object tuples (app/database/api_key)
+# arrive with tenant onboarding.
+
+model
+  schema 1.1
+
+type user
+
+type tenant
+  relations
+    define admin: [user]
+    define member: [user] or admin
+    define can_view: member
+    define can_manage: admin
+    define can_mint_keys: admin
+
+type app
+  relations
+    define owner: [tenant]
+    define can_view: member from owner
+    define can_manage: admin from owner
+
+type database
+  relations
+    define owner: [tenant]
+    define can_view: member from owner
+    define can_manage: admin from owner
+
+type api_key
+  relations
+    define owner: [tenant]
+    define can_view: member from owner
+    define can_manage: admin from owner

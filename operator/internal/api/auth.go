@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -68,21 +69,66 @@ type oryAuth struct {
 	// Positive introspections are cached briefly so a chatty agent doesn't cost
 	// one Hydra round trip per request. Negatives are never cached (a token can
 	// become valid; a revoked one must die within the TTL). Concurrent misses
-	// for one token are coalesced into a single Hydra call (group).
-	mu    sync.Mutex
-	cache map[string]cacheEntry
+	// for one token are coalesced into a single Hydra call (group), which also
+	// writes the cache exactly once per upstream call.
+	cache *ttlCache[Identity]
 	group singleflight.Group
 }
 
-type cacheEntry struct {
-	id      Identity
+const (
+	positiveTTL = 30 * time.Second // how long a positive introspection/authz answer may be reused
+	cacheMax    = 4096             // hard bound; sweep expired then reset beyond it (negatives are never cached)
+)
+
+// ttlCache is the package's positive-result cache (introspections, authz
+// checks): entries expire after positiveTTL, expired entries are dropped on
+// lookup, and at cacheMax the expired are swept before a wholesale reset.
+type ttlCache[V any] struct {
+	mu sync.Mutex
+	m  map[string]ttlEntry[V]
+}
+
+type ttlEntry[V any] struct {
+	v       V
 	expires time.Time
 }
 
-const (
-	introspectTTL = 30 * time.Second
-	cacheMax      = 4096 // hard bound; wholesale reset beyond it (garbage tokens are never cached)
-)
+func newTTLCache[V any]() *ttlCache[V] { return &ttlCache[V]{m: map[string]ttlEntry[V]{}} }
+
+func (c *ttlCache[V]) get(key string) (V, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.m[key]
+	if !ok {
+		var zero V
+		return zero, false
+	}
+	if !time.Now().Before(e.expires) {
+		delete(c.m, key) // dead entry — don't let it linger until cacheMax
+		var zero V
+		return zero, false
+	}
+	return e.v, true
+}
+
+// put caches v until the given expiry (callers may clamp below positiveTTL,
+// e.g. to a token's own exp).
+func (c *ttlCache[V]) put(key string, v V, expires time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.m) >= cacheMax {
+		now := time.Now()
+		for k, e := range c.m { // sweep the expired before nuking the live
+			if !now.Before(e.expires) {
+				delete(c.m, k)
+			}
+		}
+		if len(c.m) >= cacheMax {
+			c.m = map[string]ttlEntry[V]{}
+		}
+	}
+	c.m[key] = ttlEntry[V]{v: v, expires: expires}
+}
 
 // oryTransport is the one connection pool shared by every Ory-bound client
 // (introspection, whoami, key management): the traffic all targets one or two
@@ -100,12 +146,55 @@ func drainClose(resp *http.Response) {
 	_ = resp.Body.Close()
 }
 
+// httpStatusError is doJSON's unexpected-status error; callers may map
+// specific codes (e.g. 404 -> ErrNotFound) via errors.As.
+type httpStatusError struct {
+	code    int
+	summary string // "METHOD path returned 404 Not Found"
+}
+
+func (e *httpStatusError) Error() string { return e.summary }
+
+// doJSON runs one JSON-over-HTTP call against an Ory/FGA-style API: optional
+// JSON body, optional bearer, drain-close for connection reuse, unexpected
+// status -> *httpStatusError, response decoded into out when non-nil. Shared
+// by the Hydra admin store and the OpenFGA checker so request mechanics can't
+// drift between them.
+func doJSON(ctx context.Context, client *http.Client, method, endpoint, bearer string, body []byte, want int, out any) error {
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, rdr)
+	if err != nil {
+		return err
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer drainClose(resp)
+	if resp.StatusCode != want {
+		return &httpStatusError{code: resp.StatusCode, summary: method + " " + endpoint + " returned " + resp.Status}
+	}
+	if out != nil {
+		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
+}
+
 func newOryAuth(hydraAdminURL, kratosURL string) *oryAuth {
 	return &oryAuth{
 		hydraAdminURL: strings.TrimSuffix(hydraAdminURL, "/"),
 		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: oryTransport},
-		cache:         map[string]cacheEntry{},
+		cache:         newTTLCache[Identity](),
 	}
 }
 
@@ -148,16 +237,9 @@ func hasSessionCredential(r *http.Request) bool {
 // introspect validates an OAuth2 token at Hydra's admin API. Returns the zero
 // Identity for an inactive/unknown token, an error when Hydra is unreachable.
 func (a *oryAuth) introspect(ctx context.Context, token string) (Identity, error) {
-	a.mu.Lock()
-	if e, ok := a.cache[token]; ok {
-		if time.Now().Before(e.expires) {
-			a.mu.Unlock()
-			return e.id, nil
-		}
-		delete(a.cache, token) // dead entry — don't let it linger until cacheMax
+	if id, ok := a.cache.get(token); ok {
+		return id, nil
 	}
-	a.mu.Unlock()
-
 	// Coalesce concurrent misses for the same token into one Hydra call.
 	v, err, _ := a.group.Do(token, func() (any, error) {
 		return a.introspectUpstream(ctx, token)
@@ -202,24 +284,11 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (Identit
 	}
 	id := Identity{Subject: subject, Method: "oauth2"}
 
-	expires := time.Now().Add(introspectTTL)
+	expires := time.Now().Add(positiveTTL)
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {
 		expires = exp
 	}
-	a.mu.Lock()
-	if len(a.cache) >= cacheMax {
-		now := time.Now()
-		for k, e := range a.cache { // sweep the expired before nuking the live
-			if !now.Before(e.expires) {
-				delete(a.cache, k)
-			}
-		}
-		if len(a.cache) >= cacheMax {
-			a.cache = map[string]cacheEntry{}
-		}
-	}
-	a.cache[token] = cacheEntry{id: id, expires: expires}
-	a.mu.Unlock()
+	a.cache.put(token, id, expires)
 	return id, nil
 }
 

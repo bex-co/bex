@@ -161,6 +161,9 @@ type RequestMetricsSource func(ctx context.Context, req RequestMetricsRequest) (
 // and returns Render-shaped series. resource/request metrics need their source
 // wired (ErrMetricsUnavailable otherwise); instance count never does.
 func (c *Core) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return nil, err
+	}
 	if _, err := c.fetch(ctx, q.App); err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}

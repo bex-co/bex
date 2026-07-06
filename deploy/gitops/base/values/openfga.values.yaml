@@ -1,0 +1,23 @@
+# OpenFGA values (chart 0.3.10). No secret material here: the DSN and the
+# preshared API key both come from the out-of-band `openfga` Secret created by
+# scripts/auth-secrets.sh (keys `uri` and `keys` — the names this chart's
+# templates hardcode). Cluster-internal only: no ingress, playground off,
+# every API call must present the preshared key.
+
+# Single app node today (chart defaults to 3); bump alongside the HA work.
+replicaCount: 1
+
+datastore:
+  engine: postgres
+  uriSecret: openfga # -> env OPENFGA_DATASTORE_URI from key `uri`
+  # applyMigrations/migrationType default to true/job — schema migrations run
+  # as a helm hook against openfga-db on install/upgrade.
+
+authn:
+  method: preshared
+  preshared:
+    keysSecret: openfga # -> env OPENFGA_AUTHN_PRESHARED_KEYS from key `keys`
+
+# The playground is a browser UI with no auth story — never run it in-cluster.
+playground:
+  enabled: false

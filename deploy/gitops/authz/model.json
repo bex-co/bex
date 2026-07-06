@@ -1,0 +1,189 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    {
+      "type": "user"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "admin": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "can_manage": {},
+          "can_mint_keys": {},
+          "can_view": {},
+          "member": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "admin": {
+          "this": {}
+        },
+        "can_manage": {
+          "computedUserset": {
+            "relation": "admin"
+          }
+        },
+        "can_mint_keys": {
+          "computedUserset": {
+            "relation": "admin"
+          }
+        },
+        "can_view": {
+          "computedUserset": {
+            "relation": "member"
+          }
+        },
+        "member": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "type": "tenant"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "can_manage": {},
+          "can_view": {},
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "tenant"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "can_manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "admin"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "can_view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "member"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "owner": {
+          "this": {}
+        }
+      },
+      "type": "app"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "can_manage": {},
+          "can_view": {},
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "tenant"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "can_manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "admin"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "can_view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "member"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "owner": {
+          "this": {}
+        }
+      },
+      "type": "database"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "can_manage": {},
+          "can_view": {},
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "tenant"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "can_manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "admin"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "can_view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "member"
+            },
+            "tupleset": {
+              "relation": "owner"
+            }
+          }
+        },
+        "owner": {
+          "this": {}
+        }
+      },
+      "type": "api_key"
+    }
+  ]
+}

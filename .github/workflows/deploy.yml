@@ -158,8 +158,9 @@ jobs:
           HYDRA_SECRETS_SYSTEM: ${{ secrets.HYDRA_SECRETS_SYSTEM }}
           HYDRA_SECRETS_COOKIE: ${{ secrets.HYDRA_SECRETS_COOKIE }}
           HYDRA_OIDC_PAIRWISE_SALT: ${{ secrets.HYDRA_OIDC_PAIRWISE_SALT }}
+          OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
-          for s in kratos-db-app hydra-db-app; do
+          for s in kratos-db-app hydra-db-app openfga-db-app; do
             timeout 300 bash -c "until kubectl -n auth get secret $s >/dev/null 2>&1; do sleep 5; done" \
               || { echo "CNPG credentials $s never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
           done
@@ -175,6 +176,17 @@ jobs:
           kubectl -n auth rollout status deploy/hydra --timeout=600s \
             || { echo "hydra not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
           bash scripts/auth-bootstrap-client.sh
+
+      # --- 4d. authorization model + seed tuples (docs/auth.md) ---------------
+      # Idempotent: store `bex` ensured, deploy/gitops/authz/model.json written
+      # only when changed, bootstrap tuples tolerated as already-present.
+      - name: apply authorization model
+        env:
+          OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
+        run: |
+          kubectl -n auth rollout status deploy/openfga --timeout=600s \
+            || { echo "openfga not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          bash scripts/authz-model.sh
 
       - name: wait for the bex operator
         run: |

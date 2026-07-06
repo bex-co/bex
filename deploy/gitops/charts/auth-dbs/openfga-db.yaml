@@ -1,0 +1,22 @@
+# The OpenFGA authorization database — same shape as kratos-db.yaml (see its
+# header for the separate-clusters rationale). CNPG creates openfga-db-rw +
+# openfga-db-app; scripts/auth-secrets.sh composes the DSN into auth/openfga.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: openfga-db
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: hcloud-volumes
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  bootstrap:
+    initdb:
+      database: openfga
+      owner: openfga

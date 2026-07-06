@@ -44,6 +44,18 @@ spec:
               value: http://kratos-public.auth.svc:80
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
+            # Authorization (docs/auth.md#authorization): setting BEX_OPENFGA_URL
+            # is the deliberate enforcement flip — every verb then requires a
+            # tenant permission, and identities without tuples get 403. Off until
+            # tenant onboarding (w1/m2) gives minted keys their membership grants.
+            # - name: BEX_OPENFGA_URL
+            #   value: http://openfga.auth.svc:8080
+            - name: BEX_OPENFGA_TOKEN # OpenFGA preshared key; unused until the URL is set
+              valueFrom:
+                secretKeyRef:
+                  name: bex-openfga
+                  key: token
+                  optional: true
           ports:
             - name: http
               containerPort: 8090

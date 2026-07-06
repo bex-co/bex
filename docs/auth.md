@@ -83,6 +83,22 @@ The charts' built-in Secret rendering is **disabled** (`secret.enabled: false`) 
 - **Prod path**: `scripts/gh-secrets.sh` pushes the six keys from `.env` into GitHub Actions secrets, and `deploy.yml`'s "apply auth secrets" step runs `auth-secrets.sh` against the Hetzner app cluster on every deploy (it waits for the CNPG-generated credentials first; the kratos/hydra Applications carry a sync `retry` so the first sync self-heals once the Secrets exist).
 - Production-grade committed secrets (SOPS/sealed-secrets) are w1/m7 t003; when that lands, these Secrets become sealed and the script retires.
 
+## Authorization (OpenFGA)
+
+Authentication says who is calling; **authorization** says what they may touch. bex uses **OpenFGA** (Zanzibar-style ReBAC, Apache-2.0/CNCF — the same governance test CNPG and Ory passed) as a fourth base component: [base/openfga.yaml](../deploy/gitops/base/openfga.yaml) (pinned chart 0.3.10, cluster-internal only — no ingress, playground off, preshared-key API) against its own CNPG cluster `openfga-db` ([charts/auth-dbs](../deploy/gitops/charts/auth-dbs/)).
+
+**Why OpenFGA and not…** _roles in the control-plane Postgres_ — role checks ossify into `if admin` conditionals; relations ("member of the tenant that owns this app") are the actual product semantics and stay queryable both ways (list what X can see). _Ory Keto_ — would keep the Ory family, but OpenFGA has the healthier ecosystem, a first-class model DSL + CLI, and a CNCF track; Keto's Zanzibar implementation has lagged. The model is small enough that switching later is a rewrite of one file and one seam implementation.
+
+**The model** ([deploy/gitops/authz/model.fga](../deploy/gitops/authz/model.fga), applied as `model.json`): `tenant` with `admin`/`member` (admin ⊂ member) deriving `can_view` / `can_manage` / `can_mint_keys`; `app`/`database`/`api_key` objects own-able by tenants. Until the control plane grows real tenants (w1/m2), every check targets the single `tenant:default`. Subjects are exactly the strings the auth gate resolves (`api.IdentityFrom`): Hydra `client_id`s and Kratos identity ids.
+
+**Enforcement** lives in bex-api's Core (one guard per verb — read ⇒ `can_view`, mutate ⇒ `can_manage`, key management ⇒ `can_mint_keys`, connection-info ⇒ `can_manage` since it surfaces the DB password) through the injected `Checker` seam (`operator/internal/api/authz.go`):
+
+- `BEX_OPENFGA_URL` **unset ⇒ nil checker ⇒ every verb allowed** — the pre-authorization behavior, byte-for-byte. Setting the URL is the deliberate enforcement flip (commented in [operator/config/api/deployment.yaml](../operator/config/api/deployment.yaml); off in prod until tenant onboarding grants minted keys their membership tuples — today a freshly minted key would 403 on everything).
+- Wired ⇒ **fail closed**: denial is 403 (`ErrForbidden`, distinct from the gate's 401), an unreachable OpenFGA is 503, never a pass-through. Positive checks cache ≤ 30s (revocation latency bound), negatives never (fresh grants apply immediately).
+- The **stdio MCP transport never wires the checker** (main.go): its trust boundary is the subprocess itself — no auth gate, no identity, so a wired checker would deny every tool. A reflection sweep in the test suite (`TestAuthzGuardsEveryCoreVerb`) asserts every exported Core verb carries its guard, so a new verb can't silently ship unguarded.
+
+**Ops**: [scripts/authz-model.sh](../scripts/authz-model.sh) idempotently ensures the `bex` store, applies `model.json` only when it differs from the latest applied model (models are append-only), and seeds `bex-bootstrap → admin of tenant:default`; deploy.yml runs it after the OpenFGA rollout on every deploy. bex-api's copy of the preshared key lives in `bex-system/bex-openfga` (written by `auth-secrets.sh`, `.env` key `OPENFGA_PRESHARED_KEY`).
+
 ## Verification
 
 `scripts/auth-verify.sh` (exit 0 = pass, used as the milestone's behavioral test) proves on the local mock cluster, via port-forwards to the cluster-internal Services:

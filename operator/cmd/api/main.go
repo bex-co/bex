@@ -87,6 +87,13 @@ func main() {
 	if hydraAdminURL != "" {
 		core.APIKeys = api.NewHydraAPIKeys(hydraAdminURL)
 	}
+	// Authorization (docs/auth.md): unset => authz disabled (every verb allowed,
+	// the pre-m4 behavior); set => every Core verb checks OpenFGA, fail closed.
+	// NOT wired in stdio mode: that transport's trust boundary is the subprocess
+	// itself (no auth gate, so no identity — a wired checker would deny all).
+	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
+		core.Authz = api.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+	}
 
 	srv := &api.Server{
 		Core:          core,

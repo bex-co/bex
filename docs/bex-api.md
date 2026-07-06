@@ -35,6 +35,8 @@ Every route except `GET /healthz` requires real, per-client credentials from the
 
 Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl, not this API). The resolved caller (OAuth2 `client_id` or Kratos identity id) is attached to the request context (`api.IdentityFrom`) — the tenant-scoping hook. `BEX_API_CORS_ORIGIN` optionally enables CORS for a browser frontend.
 
+**Authorization** ([auth.md#authorization-openfga](auth.md)): with `BEX_OPENFGA_URL` set, every Core verb additionally checks the caller's permission against OpenFGA (read ⇒ `can_view`, mutate ⇒ `can_manage`, key management ⇒ `can_mint_keys`, on the default tenant) — denial is **403**, OpenFGA unreachable is **503**. Unset (the current prod default until tenant onboarding exists), all authenticated callers may do everything, exactly as before.
+
 ## REST (Render public-API compatible)
 
 Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the `{service, cursor}` list envelope, the **string** `suspended` enum (`"suspended"` / `"not_suspended"`, _not_ a boolean), and the verb status codes. Served under Render's noun `/v1/services` and bex's `/v1/apps` alias (same handlers). The App name is the service `id` (Render ids are opaque; a client just round-trips whatever the list returned).

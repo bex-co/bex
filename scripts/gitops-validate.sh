@@ -21,21 +21,38 @@ done
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# For each Ory component: pull the pinned chart once, then render it with the
-# base values alone and with the local overlay's values layered on top (the
-# same order Argo's valueFiles use).
-for chart in kratos hydra; do
-  version="$(yq '.spec.sources[0].targetRevision' "deploy/gitops/base/$chart.yaml")"
-  helm pull "$chart" --repo https://k8s.ory.sh/helm/charts --version "$version" -d "$tmp" \
+# For each multi-source base Application with vendored values (kratos, hydra,
+# openfga, ...): pull the pinned chart once from ITS repo, then render it with
+# the base values alone and — when a local override file exists — with the
+# local overlay's values layered on top (the same order Argo's valueFiles use).
+for chart in kratos hydra openfga; do
+  app="deploy/gitops/base/$chart.yaml"
+  version="$(yq '.spec.sources[0].targetRevision' "$app")"
+  repo="$(yq '.spec.sources[0].repoURL' "$app")"
+  helm pull "$chart" --repo "$repo" --version "$version" -d "$tmp" \
     || { echo "FAIL: cannot pull $chart $version" >&2; fail=1; continue; }
-  for values in \
-    "deploy/gitops/base/values/$chart.values.yaml" \
-    "deploy/gitops/base/values/$chart.values.yaml -f deploy/gitops/overlays/local/values/$chart.values.yaml"; do
+  layerings=("deploy/gitops/base/values/$chart.values.yaml")
+  if [ -f "deploy/gitops/overlays/local/values/$chart.values.yaml" ]; then
+    layerings+=("deploy/gitops/base/values/$chart.values.yaml -f deploy/gitops/overlays/local/values/$chart.values.yaml")
+  fi
+  for values in "${layerings[@]}"; do
     echo "==> helm template $chart $version -f $values"
     # shellcheck disable=SC2086 — $values intentionally splits into -f args
     helm template "$chart" "$tmp/$chart-$version.tgz" -n auth -f $values >/dev/null \
       || { echo "FAIL: $chart values do not render against chart $version" >&2; fail=1; }
   done
 done
+
+# The authz model ships as DSL (model.fga, human-edited) + JSON (model.json,
+# applied) — guard the pair against drift when the fga CLI is available.
+if command -v fga >/dev/null 2>&1; then
+  echo "==> fga model transform (model.fga vs model.json)"
+  if ! diff <(fga model transform --file deploy/gitops/authz/model.fga | yq -o=json 'sort_keys(..)' -)             <(yq -o=json 'sort_keys(..)' deploy/gitops/authz/model.json) >/dev/null; then
+    echo "FAIL: deploy/gitops/authz/model.fga and model.json have drifted — regenerate: fga model transform --file model.fga > model.json" >&2
+    fail=1
+  fi
+else
+  echo "WARN: fga CLI not installed — skipping model.fga <-> model.json drift check" >&2
+fi
 
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

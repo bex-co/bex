@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - kratos-db.yaml
   - hydra-db.yaml
+  - openfga-db.yaml

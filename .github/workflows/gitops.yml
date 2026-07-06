@@ -29,5 +29,9 @@ jobs:
     runs-on: ubuntu-latest # ships kubectl, helm 3, and yq v4 preinstalled
     steps:
       - uses: actions/checkout@v4
+      - name: install fga CLI # model.fga <-> model.json drift gate
+        run: |
+          curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin fga
       - name: validate
         run: bash scripts/gitops-validate.sh

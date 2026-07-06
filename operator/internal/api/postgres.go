@@ -130,6 +130,9 @@ func (c *Core) fetchDatabase(ctx context.Context, name string) (*appv1alpha1.Dat
 
 // ListPostgres returns every managed Postgres in the namespace.
 func (c *Core) ListPostgres(ctx context.Context) ([]PostgresView, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return nil, err
+	}
 	var list appv1alpha1.DatabaseList
 	if err := c.Client.List(ctx, &list, client.InNamespace(c.Namespace)); err != nil {
 		return nil, err
@@ -143,6 +146,9 @@ func (c *Core) ListPostgres(ctx context.Context) ([]PostgresView, error) {
 
 // GetPostgres returns one managed Postgres, or ErrNotFound.
 func (c *Core) GetPostgres(ctx context.Context, name string) (PostgresView, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return PostgresView{}, err
+	}
 	d, err := c.fetchDatabase(ctx, name)
 	if err != nil {
 		return PostgresView{}, err
@@ -153,6 +159,9 @@ func (c *Core) GetPostgres(ctx context.Context, name string) (PostgresView, erro
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (c *Core) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return PostgresView{}, err
+	}
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("name is required")
 	}
@@ -174,6 +183,9 @@ func (c *Core) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (P
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,
 // Secret and any external route via owner refs).
 func (c *Core) DeletePostgres(ctx context.Context, name string) error {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return err
+	}
 	d, err := c.fetchDatabase(ctx, name)
 	if err != nil {
 		return err
@@ -185,6 +197,9 @@ func (c *Core) DeletePostgres(ctx context.Context, name string) error {
 // from CNPG's generated "<name>-app" Secret (the only place the password is
 // surfaced, to an authenticated caller).
 func (c *Core) PostgresConnectionInfo(ctx context.Context, name string) (PostgresConnectionInfo, error) {
+	if err := c.authorize(ctx, relCanManage); err != nil {
+		return PostgresConnectionInfo{}, err
+	}
 	d, err := c.fetchDatabase(ctx, name)
 	if err != nil {
 		return PostgresConnectionInfo{}, err

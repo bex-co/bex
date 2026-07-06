@@ -1,0 +1,37 @@
+# OpenFGA — the platform authorization service (Zanzibar-style ReBAC; decides
+# what an authenticated identity may touch — docs/auth.md). Pinned upstream
+# chart; values vendored in this repo (multi-source, like kratos.yaml).
+# Cluster-internal ONLY: bex-api is the sole intended caller, so there is no
+# ingress and the API requires a preshared key. sync-wave 3: after the CNPG
+# operator (1) and openfga-db (2). Runtime secrets (DSN + preshared key) are
+# NOT in git — scripts/auth-secrets.sh creates the `openfga` Secret out-of-band.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openfga
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://openfga.github.io/helm-charts
+      chart: openfga
+      targetRevision: "0.3.10" # app v1.18.1; pin exact for reproducibility
+      helm:
+        valueFiles:
+          - $values/deploy/gitops/base/values/openfga.values.yaml
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: auth
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+    # first sync can race the out-of-band `openfga` Secret (deploy.yml wave 4b);
+    # the migration hook fails until it exists — retry instead of staying red.
+    retry:
+      limit: 10
+      backoff: { duration: 30s, factor: 2, maxDuration: 5m }

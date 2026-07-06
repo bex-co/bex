@@ -7,6 +7,10 @@
 #      key's token also authenticates; the key lists without its secret.
 #   4. Revoking the key kills it: no new tokens can be minted with it.
 #      (Already-issued tokens may ride bex-api's ≤30s introspection cache.)
+#   5. Authorization (BEX_OPENFGA_URL set): the seeded bootstrap identity (admin
+#      of tenant:default) passes and can mint; the freshly minted key has no
+#      tuples and gets 403; with the env unset the same key passes again
+#      (allow-all regression).
 #
 # bex-api runs on the host (go build ./cmd/api) talking to the cluster's
 # apiserver; Hydra is reached via kubectl port-forwards — so this works on the
@@ -68,11 +72,22 @@ token_for() {
 boot_token="$(token_for bex-bootstrap "$BEX_BOOTSTRAP_CLIENT_SECRET")"
 [ -n "$boot_token" ] || fail "no access_token for the bootstrap client"
 
+API_PID=""
+start_api() { # extra env...
+  env "$@" "BEX_HYDRA_ADMIN_URL=http://$HYDRA_ADMIN" BEX_API_ADDR=":18090" BEX_API_NAMESPACE=default \
+    "$bin" >/dev/null 2>&1 &
+  API_PID=$!
+  PIDS+=("$API_PID")
+  wait_http "http://$API/healthz"
+}
+
+stop_api() {
+  kill "$API_PID" 2>/dev/null || true
+  wait "$API_PID" 2>/dev/null || true
+}
+
 echo "==> starting bex-api"
-env "BEX_HYDRA_ADMIN_URL=http://$HYDRA_ADMIN" BEX_API_ADDR=":18090" BEX_API_NAMESPACE=default \
-  "$bin" >/dev/null 2>&1 &
-PIDS+=($!)
-wait_http "http://$API/healthz"
+start_api
 
 # request METHOD PATH TOKEN BODY — sets LAST_CODE + LAST_BODY (no subshell, so
 # the globals survive; capturing via $() would lose them).
@@ -115,4 +130,38 @@ request DELETE "/v1/api-keys/$key_id" "$boot_token" "";          assert_code 204
 [ -z "$(token_for "$key_id" "$key_secret")" ] || fail "revoked key still mints tokens"
 echo "    ok: revoked key can no longer mint tokens"
 
-echo "PASS: bootstrap client + API-key lifecycle verified end-to-end"
+# --- act 5: authorization (docs/auth.md#authorization) -------------------------
+echo "==> enabling authorization (OpenFGA)"
+OPENFGA=127.0.0.1:24446
+kubectl -n "$NS" port-forward service/openfga 24446:8080 >/dev/null 2>&1 &
+PIDS+=($!)
+wait_http "http://$OPENFGA/healthz"
+# Ensure store + model + seed tuples (idempotent) with the same key bex-api uses.
+if [ -z "${OPENFGA_PRESHARED_KEY:-}" ] && [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ./.env
+  set +a
+fi
+OPENFGA_URL="http://$OPENFGA" bash scripts/authz-model.sh | tail -1
+
+stop_api
+start_api "BEX_OPENFGA_URL=http://$OPENFGA" "BEX_OPENFGA_TOKEN=$OPENFGA_PRESHARED_KEY"
+
+request GET /v1/services "$boot_token" "";                       assert_code 200 "authz: seeded bootstrap may read"
+request POST /v1/api-keys "$boot_token" '{"name":"e2e-unauthorized"}'
+assert_code 201 "authz: seeded bootstrap may mint"
+k2_id="$(printf '%s' "$LAST_BODY" | yq '.id' -)"
+k2_secret="$(printf '%s' "$LAST_BODY" | yq '.secret' -)"
+k2_token="$(token_for "$k2_id" "$k2_secret")"
+[ -n "$k2_token" ] || fail "no token for the unauthorized key"
+request GET /v1/services "$k2_token" "";                         assert_code 403 "authz: tuple-less key is forbidden"
+request POST /v1/api-keys "$k2_token" '{"name":"nope"}';         assert_code 403 "authz: tuple-less key may not mint"
+
+echo "==> disabling authorization (regression: allow-all)"
+stop_api
+start_api
+request GET /v1/services "$k2_token" "";                         assert_code 200 "no-authz: same key passes again"
+request DELETE "/v1/api-keys/$k2_id" "$boot_token" "";           assert_code 204 "cleanup: revoke the test key"
+
+echo "PASS: bootstrap client + API-key lifecycle + authorization verified end-to-end"

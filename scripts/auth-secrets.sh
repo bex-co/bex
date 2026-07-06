@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Create the Kubernetes Secrets Ory Kratos + Hydra consume, out-of-band of GitOps
-# (no secret material in git or Argo-managed manifests — repo rule; prod-grade
-# committed secrets are w1/m7 SOPS/sealed-secrets territory).
+# Create the Kubernetes Secrets Ory Kratos + Hydra + OpenFGA consume, out-of-band
+# of GitOps (no secret material in git or Argo-managed manifests — repo rule;
+# prod-grade committed secrets are w1/m7 SOPS/sealed-secrets territory).
 #
 # Reads the repo-local .env (gitignored — never commit or print it). Required keys
 # (names only; values are never echoed):
@@ -11,9 +11,10 @@
 #   HYDRA_SECRETS_SYSTEM      hydra system secret            (>= 16 chars)
 #   HYDRA_SECRETS_COOKIE      hydra cookie secret            (>= 16 chars)
 #   HYDRA_OIDC_PAIRWISE_SALT  hydra pairwise subject salt    (>= 8 chars)
+#   OPENFGA_PRESHARED_KEY     openfga API preshared key      (>= 16 chars)
 #
 # The DSNs are composed from the CNPG-generated DB credentials (Secrets
-# kratos-db-app / hydra-db-app, created by the Clusters in
+# kratos-db-app / hydra-db-app / openfga-db-app, created by the Clusters in
 # deploy/gitops/charts/auth-dbs/) — DB passwords never live in .env.
 #
 # Usage: scripts/auth-secrets.sh             # create/update the Secrets (idempotent)
@@ -51,11 +52,13 @@ require KRATOS_SECRETS_CIPHER 32 exact
 require HYDRA_SECRETS_SYSTEM 16
 require HYDRA_SECRETS_COOKIE 16
 require HYDRA_OIDC_PAIRWISE_SALT 8
+require OPENFGA_PRESHARED_KEY 16
 
 if [ "${DRY_RUN:-}" = "1" ]; then
   echo "would ensure namespace $NS"
   echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher)"
   echo "would apply secret $NS/hydra (keys: dsn secretsSystem secretsCookie oidcPairwiseSalt)"
+  echo "would apply secret $NS/openfga (keys: uri keys)"
   exit 0
 fi
 
@@ -84,4 +87,17 @@ kubectl create secret generic hydra -n "$NS" \
   --from-literal=secretsSystem="$HYDRA_SECRETS_SYSTEM" \
   --from-literal=secretsCookie="$HYDRA_SECRETS_COOKIE" \
   --from-literal=oidcPairwiseSalt="$HYDRA_OIDC_PAIRWISE_SALT" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Key names `uri`/`keys` are what the openfga chart's templates hardcode
+# (datastore.uriSecret / authn.preshared.keysSecret).
+kubectl create secret generic openfga -n "$NS" \
+  --from-literal=uri="$(dsn openfga-db openfga)" \
+  --from-literal=keys="$OPENFGA_PRESHARED_KEY" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# bex-api (ns bex-system) presents the same preshared key to OpenFGA — it can't
+# mount the auth-namespace Secret, so it gets its own copy.
+kubectl create secret generic bex-openfga -n bex-system \
+  --from-literal=token="$OPENFGA_PRESHARED_KEY" \
   --dry-run=client -o yaml | kubectl apply -f -

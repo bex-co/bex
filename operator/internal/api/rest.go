@@ -174,12 +174,13 @@ func writeErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
-	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrAPIKeysUnavailable):
-		code = http.StatusServiceUnavailable
-	case errors.Is(err, ErrMetricsUnavailable):
+	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrAPIKeysUnavailable),
+		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable):
 		code = http.StatusServiceUnavailable
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest
+	case errors.Is(err, ErrForbidden):
+		code = http.StatusForbidden
 	}
 	writeJSON(w, code, map[string]string{"error": err.Error()})
 }

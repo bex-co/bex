@@ -17,10 +17,9 @@ limitations under the License.
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -51,6 +50,9 @@ type APIKeyStore interface {
 // CreateAPIKey mints a new machine credential. The returned Secret is shown
 // exactly once.
 func (c *Core) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
+	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+		return APIKey{}, err
+	}
 	if c.APIKeys == nil {
 		return APIKey{}, ErrAPIKeysUnavailable
 	}
@@ -62,6 +64,9 @@ func (c *Core) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
 
 // ListAPIKeys returns every machine credential (secrets omitted).
 func (c *Core) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
+	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+		return nil, err
+	}
 	if c.APIKeys == nil {
 		return nil, ErrAPIKeysUnavailable
 	}
@@ -71,6 +76,9 @@ func (c *Core) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
 // introspecting active (subject to bex-api's ≤30s introspection cache).
 func (c *Core) RevokeAPIKey(ctx context.Context, id string) error {
+	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+		return err
+	}
 	if c.APIKeys == nil {
 		return ErrAPIKeysUnavailable
 	}
@@ -165,33 +173,13 @@ func (h *hydraAPIKeys) Delete(ctx context.Context, id string) error {
 	return h.do(ctx, http.MethodDelete, "/admin/clients/"+id, nil, http.StatusNoContent, nil)
 }
 
-// do runs one Hydra admin call, mapping 404 to ErrNotFound and any other
-// unexpected status to an error.
+// do runs one Hydra admin call (shared doJSON mechanics), mapping 404 to
+// ErrNotFound.
 func (h *hydraAPIKeys) do(ctx context.Context, method, path string, body []byte, want int, out any) error {
-	var rdr io.Reader
-	if body != nil {
-		rdr = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, h.adminURL+path, rdr)
-	if err != nil {
-		return err
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := h.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer drainClose(resp)
-	switch {
-	case resp.StatusCode == http.StatusNotFound:
+	err := doJSON(ctx, h.client, method, h.adminURL+path, "", body, want, out)
+	var se *httpStatusError
+	if errors.As(err, &se) && se.code == http.StatusNotFound {
 		return ErrNotFound
-	case resp.StatusCode != want:
-		return apiError("hydra admin " + method + " " + path + " returned " + resp.Status)
 	}
-	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
-	}
-	return nil
+	return err
 }
