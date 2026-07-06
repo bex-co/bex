@@ -47,6 +47,7 @@ spec:
           prometheus.yml:
             scrape_configs:
               - job_name: traefik
+                scrape_interval: 15s # fine-grained so request-metric rates resolve quickly
                 kubernetes_sd_configs:
                   - role: pod
                     namespaces:
