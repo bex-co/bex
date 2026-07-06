@@ -1,0 +1,19 @@
+# Local overrides for Ory Kratos: local host, plain HTTP (no ACME/DNS on the
+# mock cluster). Layered over base/values/kratos.values.yaml by the Application
+# patch in ../kustomization.yaml (later valueFiles win).
+kratos:
+  config:
+    serve:
+      public:
+        base_url: http://auth.bex.local/
+    selfservice:
+      default_browser_return_url: http://auth.bex.local/
+
+ingress:
+  public:
+    hosts:
+      - host: auth.bex.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []

@@ -23,8 +23,13 @@ if [ "${1:-}" = scale ]; then scale "${2:?usage: scale N}"; exit 0; fi
 kind get clusters 2>/dev/null | grep -qx bex-mgmt || kind create cluster --config infra/local/kind-mgmt.yaml
 kubectl config use-context "$MGMT" >/dev/null
 
-# 2. Cluster API core + Docker provider (topology enabled from the start)
+# 2. Cluster API core + Docker provider (topology enabled from the start).
+# clusterctl init returns before the webhooks serve; wait or the apply below
+# fails with "failed calling webhook ... connection refused".
 kubectl get ns capd-system >/dev/null 2>&1 || clusterctl init --infrastructure docker
+for ns in capi-system capd-system capi-kubeadm-bootstrap-system capi-kubeadm-control-plane-system; do
+  kubectl -n "$ns" wait deploy --all --for=condition=Available --timeout=300s
+done
 
 # 3. the app cluster (Cluster + ClusterClass + MachineDeployment, machines = containers)
 kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml
@@ -43,6 +48,13 @@ sed -i '' "s#server: https://[0-9.]*:6443#server: https://127.0.0.1:$LBPORT#" "$
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s || true
+# Keep cluster DNS on the control-plane node: worker-node pods can't reach the
+# apiserver / cross-node services under OrbStack+Calico (docs/deployment.md), so
+# coredns scheduled onto a worker silently kills DNS for the whole cluster.
+KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy coredns --type merge -p \
+  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+   "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"},
+   {"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}' >/dev/null
 
 echo
 echo "app cluster 'bex' up. kubeconfig: $WL_KUBECONFIG"

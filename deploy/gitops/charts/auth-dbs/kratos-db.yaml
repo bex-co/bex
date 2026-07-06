@@ -1,0 +1,27 @@
+# The Kratos identity database — a dedicated CloudNativePG Cluster (Ory requires
+# Kratos and Hydra to have separate databases; separate *clusters* keep failover,
+# upgrades, and backups independent — same reasoning as bex-db, see
+# charts/bex-postgres/cluster.yaml). 1 instance for now; bump `instances` to 3 for HA.
+# CNPG creates:
+#   - service  kratos-db-rw    (read-write endpoint Kratos connects to)
+#   - secret   kratos-db-app   (user/password for database `kratos`; the DSN is
+#                               composed from it by scripts/auth-secrets.sh)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: kratos-db
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: hcloud-volumes
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  bootstrap:
+    initdb:
+      database: kratos
+      owner: kratos

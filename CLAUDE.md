@@ -50,12 +50,14 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.
 - [docs/etcd-backup-restore.md](docs/etcd-backup-restore.md) — nightly etcd snapshot → object storage; restore runbook.
+- [docs/auth.md](docs/auth.md) — ADR: Ory Kratos (identity) + Hydra (OAuth2) on CNPG; secrets out-of-band.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 
 ## Rules
 
 - **Never `git commit` or `git push` unless the user runs `/ship`.** Leave work uncommitted otherwise.
 - Never commit or print `.env` or `*.kubeconfig` contents.
+- **Keep `.env.example` and `.env.template` in sync with `.env`'s variable names.** They're the checked-in, value-less mirrors of the local runtime env (`.env.example`) and CI secrets env (`.env.template`) — whenever a var is added, renamed, or removed from one, mirror the change (name + comment, never the value) in the other(s) so `cp .env.example .env` / `cp .env.template .env` never falls out of date.
 - New Go files carry the Apache-2.0 header from `operator/hack/boilerplate.go.txt`.
 - Markdown is CI-checked: `npx prettier@3.4.2 --write "**/*.md"` before finishing doc changes.
 - **`.pm` done items move to `done/` folders.** When a task or milestone is completed, never leave it in place: a done task moves to `wN/mN/done/tNNN.md`; a milestone with no open tasks moves whole to `wN/done/mN/`; a done inbox note moves to `wN/done/NNN.md`. Sync status in all three places (task frontmatter, milestone README `**Status:**` + `— **DONE**` row, workstream README checkbox). Full conventions: `.pm/CLAUDE.md`.

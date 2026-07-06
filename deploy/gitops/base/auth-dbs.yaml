@@ -1,0 +1,25 @@
+# The auth databases (CNPG Clusters kratos-db + hydra-db), vendored in this repo
+# (Argo reads them via the SSH deploy key, like bex-postgres.yaml). One Application
+# for both: they share namespace, sizing, and lifecycle policy — the *Clusters*
+# stay separate (Ory requires separate databases; independent failover/backup),
+# Argo granularity doesn't. sync-wave 2 so the CNPG operator + CRDs from wave 1
+# exist first.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: auth-dbs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/auth-dbs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: auth
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

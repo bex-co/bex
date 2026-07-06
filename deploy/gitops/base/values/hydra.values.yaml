@@ -1,0 +1,56 @@
+# Ory Hydra values (chart 0.62.1). No secret material here: the chart's built-in
+# Secret is disabled and everything sensitive (dsn, secretsSystem, secretsCookie,
+# oidcPairwiseSalt) comes from the out-of-band `hydra` Secret created by
+# scripts/auth-secrets.sh. Public OAuth2/OIDC endpoints are exposed at
+# oauth.<base-domain> via Traefik + cert-manager; the admin API (client
+# management, token introspection — consumed by bex-api in w4/m2) stays
+# cluster-internal (no ingress).
+
+secret:
+  enabled: false # do NOT let the chart render a Secret into git/Argo state
+  nameOverride: hydra # created out-of-band by scripts/auth-secrets.sh
+
+hydra:
+  automigration:
+    enabled: true # `hydra migrate sql` job against hydra-db on install/upgrade
+
+  config:
+    urls:
+      self:
+        issuer: https://oauth.bex.co # must match the public host (t005/ingress)
+    oidc:
+      subject_identifiers:
+        supported_types: [public, pairwise]
+        # pairwise.salt is secret — injected as OIDC_SUBJECT_IDENTIFIERS_PAIRWISE_SALT
+        # from the `hydra` Secret (deployment.extraEnv below), never committed.
+
+deployment:
+  extraEnv:
+    - name: OIDC_SUBJECT_IDENTIFIERS_PAIRWISE_SALT
+      valueFrom:
+        secretKeyRef:
+          name: hydra
+          key: oidcPairwiseSalt
+
+# OAuth2 clients are managed through the admin API (bex-api, w4/m2), not the
+# hydra-maester CRD controller — keep the extra controller off.
+maester:
+  enabled: false
+
+ingress:
+  public:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: oauth.bex.co
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: hydra-public-tls
+        hosts:
+          - oauth.bex.co
+  admin:
+    enabled: false # chart default, pinned: the admin API must never get an ingress

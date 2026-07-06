@@ -15,3 +15,39 @@ patches:
         name: etcd-backup
         namespace: argocd
       $patch: delete
+  # Auth DBs: shrink to CAPD scale — 1Gi on local-path (no hcloud-volumes here;
+  # the CAPD cluster needs the local-path provisioner installed, see docs/auth.md).
+  - patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: auth-dbs
+        namespace: argocd
+      spec:
+        source:
+          kustomize:
+            patches:
+              - target: { kind: Cluster }
+                patch: |-
+                  - { op: replace, path: /spec/storage/size, value: 1Gi }
+                  - { op: replace, path: /spec/storage/storageClass, value: local-path }
+  # Kratos/Hydra: layer the local values files (hosts, plain HTTP, dev mode)
+  # over the base values — Argo merges valueFiles in order, later wins.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: kratos
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/local/values/kratos.values.yaml
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: hydra
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/local/values/hydra.values.yaml

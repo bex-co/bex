@@ -14,3 +14,6 @@ resources:
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
   - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
   - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)
+  - auth-dbs.yaml                # kratos-db + hydra-db CNPG Clusters, after CNPG
+  - kratos.yaml                  # Ory Kratos — platform identity (docs/auth.md)
+  - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/auth.md)

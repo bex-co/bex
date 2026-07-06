@@ -1,0 +1,77 @@
+# Ory Kratos values (chart 0.62.1). No secret material here: the chart's built-in
+# Secret is disabled and everything sensitive (dsn, secretsDefault, secretsCookie,
+# secretsCipher) comes from the out-of-band `kratos` Secret created by
+# scripts/auth-secrets.sh. Public endpoint is exposed at auth.<base-domain> via
+# Traefik + cert-manager; the admin API stays cluster-internal (no ingress).
+
+secret:
+  enabled: false # do NOT let the chart render a Secret into git/Argo state
+  nameOverride: kratos # created out-of-band by scripts/auth-secrets.sh
+
+kratos:
+  automigration:
+    enabled: true # `kratos migrate sql` job against kratos-db on install/upgrade
+
+  identitySchemas:
+    "identity.schema.json": |
+      {
+        "$id": "https://schemas.bex.co/identity.schema.json",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Person",
+        "type": "object",
+        "properties": {
+          "traits": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "title": "E-Mail",
+                "ory.sh/kratos": {
+                  "credentials": { "password": { "identifier": true } },
+                  "verification": { "via": "email" },
+                  "recovery": { "via": "email" }
+                }
+              }
+            },
+            "required": ["email"],
+            "additionalProperties": false
+          }
+        }
+      }
+
+  config:
+    serve:
+      public:
+        base_url: https://auth.bex.co/
+    identity:
+      default_schema_id: default
+      schemas:
+        - id: default
+          url: file:///etc/config/identity.schema.json
+    selfservice:
+      default_browser_return_url: https://auth.bex.co/
+
+# No SMTP is configured yet, so don't run the courier (it sends the
+# verification/recovery mail); enable it together with courier.smtp when
+# email flows land.
+courier:
+  enabled: false
+
+ingress:
+  public:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: auth.bex.co
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: kratos-public-tls
+        hosts:
+          - auth.bex.co
+  admin:
+    enabled: false # chart default, pinned: the admin API must never get an ingress

@@ -125,6 +125,26 @@ jobs:
       - name: apply prod app-of-apps
         run: kubectl apply -f deploy/gitops/bootstrap/prod.yaml
 
+      # --- 4b. auth substrate secrets (docs/auth.md) — out-of-band of GitOps ---
+      # Argo creates the CNPG Clusters (auth-dbs, sync-wave 2); once CNPG has
+      # generated their DB credentials, auth-secrets.sh composes the DSNs and
+      # writes the auth/kratos + auth/hydra Secrets that the kratos/hydra
+      # Applications (wave 3) consume. Idempotent — safe on every deploy.
+      - name: apply auth secrets
+        env:
+          KRATOS_SECRETS_DEFAULT: ${{ secrets.KRATOS_SECRETS_DEFAULT }}
+          KRATOS_SECRETS_COOKIE: ${{ secrets.KRATOS_SECRETS_COOKIE }}
+          KRATOS_SECRETS_CIPHER: ${{ secrets.KRATOS_SECRETS_CIPHER }}
+          HYDRA_SECRETS_SYSTEM: ${{ secrets.HYDRA_SECRETS_SYSTEM }}
+          HYDRA_SECRETS_COOKIE: ${{ secrets.HYDRA_SECRETS_COOKIE }}
+          HYDRA_OIDC_PAIRWISE_SALT: ${{ secrets.HYDRA_OIDC_PAIRWISE_SALT }}
+        run: |
+          for s in kratos-db-app hydra-db-app; do
+            timeout 300 bash -c "until kubectl -n auth get secret $s >/dev/null 2>&1; do sleep 5; done" \
+              || { echo "CNPG credentials $s never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          done
+          bash scripts/auth-secrets.sh
+
       - name: wait for the bex operator
         run: |
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \

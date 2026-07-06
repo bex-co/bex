@@ -1,0 +1,18 @@
+# Local overrides for Ory Hydra: local host, plain HTTP (no ACME/DNS on the
+# mock cluster). Layered over base/values/hydra.values.yaml by the Application
+# patch in ../kustomization.yaml (later valueFiles win).
+hydra:
+  dev: true # plain-HTTP issuer is only allowed in dev mode
+  config:
+    urls:
+      self:
+        issuer: http://oauth.bex.local
+
+ingress:
+  public:
+    hosts:
+      - host: oauth.bex.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []

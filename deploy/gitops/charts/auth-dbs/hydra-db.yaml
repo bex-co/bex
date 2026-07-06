@@ -1,0 +1,21 @@
+# The Hydra OAuth2 database — same shape as kratos-db.yaml (see its header for
+# the separate-clusters rationale). CNPG creates hydra-db-rw + hydra-db-app.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hydra-db
+  namespace: auth
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: hcloud-volumes
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  bootstrap:
+    initdb:
+      database: hydra
+      owner: hydra

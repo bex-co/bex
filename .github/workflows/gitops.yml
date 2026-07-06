@@ -1,0 +1,33 @@
+name: gitops (render)
+
+# The GitOps tree must always render: kustomize build of base + overlays and
+# helm template of the pinned Ory charts against the vendored values. Catches
+# broken manifests/values before Argo CD ever sees them. Fix locally with:
+#   bash scripts/gitops-validate.sh
+on:
+  pull_request:
+    paths:
+      - "deploy/gitops/**"
+      - "scripts/gitops-validate.sh"
+      - ".github/workflows/gitops.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/gitops/**"
+      - "scripts/gitops-validate.sh"
+      - ".github/workflows/gitops.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest # ships kubectl, helm 3, and yq v4 preinstalled
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate
+        run: bash scripts/gitops-validate.sh
