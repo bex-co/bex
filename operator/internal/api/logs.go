@@ -65,8 +65,12 @@ type LogQuery struct {
 	Since  time.Time // zero == no lower bound
 	End    time.Time // zero == no upper bound
 	Limit  int64     // max lines (most recent kept)
+
+	searchLower string // Search lowercased once by normalized(); read by keep()
 }
 
+// normalized clamps Limit to Render's paging range and precomputes searchLower
+// so keep() doesn't re-lower the constant search term for every line.
 func (q LogQuery) normalized() LogQuery {
 	if q.Limit <= 0 {
 		q.Limit = defaultLogLimit
@@ -74,13 +78,20 @@ func (q LogQuery) normalized() LogQuery {
 	if q.Limit > maxLogLimit {
 		q.Limit = maxLogLimit
 	}
+	q.searchLower = strings.ToLower(q.Search)
 	return q
 }
 
-// keep reports whether an entry satisfies the search/time filters (type scoping
-// is handled at the source level in QueryLogs).
+// hasFilters reports whether any line-level filter (search/time) is set; type
+// scoping is handled at the source level in QueryLogs.
+func (q LogQuery) hasFilters() bool {
+	return q.Search != "" || !q.Since.IsZero() || !q.End.IsZero()
+}
+
+// keep reports whether an entry satisfies the search/time filters. Assumes
+// normalized() has run (searchLower populated).
 func (q LogQuery) keep(e LogEntry) bool {
-	if q.Search != "" && !strings.Contains(strings.ToLower(e.Message), strings.ToLower(q.Search)) {
+	if q.Search != "" && !strings.Contains(strings.ToLower(e.Message), q.searchLower) {
 		return false
 	}
 	if !q.Since.IsZero() || !q.End.IsZero() {
@@ -121,16 +132,21 @@ func (c *Core) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]LogEntry, 0, len(entries))
-	for _, e := range entries {
-		if q.keep(e) {
-			out = append(out, e)
+	// Filter in place into collectPodLogs's own slice; skip the pass entirely on
+	// the common no-filter query.
+	if q.hasFilters() {
+		kept := entries[:0]
+		for _, e := range entries {
+			if q.keep(e) {
+				kept = append(kept, e)
+			}
 		}
+		entries = kept
 	}
-	if int64(len(out)) > q.Limit {
-		out = out[int64(len(out))-q.Limit:] // keep the newest Limit
+	if int64(len(entries)) > q.Limit {
+		entries = entries[int64(len(entries))-q.Limit:] // keep the newest Limit
 	}
-	return out, nil
+	return entries, nil
 }
 
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or

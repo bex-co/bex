@@ -23,12 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
 )
 
 // reqLine is a sample request-log message reused across log assertions.
@@ -46,10 +42,7 @@ func staticLogStream(lines map[string][]string) PodLogStream {
 // logServer wires a Server whose Core reads canned pod logs (query + follow).
 func logServer(t *testing.T, logs map[string][]string, objs ...client.Object) http.Handler {
 	t.Helper()
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
 	srv := &Server{
 		Core: &Core{
 			Client:        cl,
@@ -150,10 +143,7 @@ func TestREST_LogsErrors(t *testing.T) {
 
 func TestREST_LogsUnavailableWithoutSource(t *testing.T) {
 	// A Core with no PodLogs wired => 503, not a 500/404.
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(sampleApp("web")).Build()
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(sampleApp("web")).Build()
 	srv := &Server{Core: &Core{Client: cl, Namespace: "default"}, Token: testToken}
 	h, err := srv.Handler()
 	if err != nil {
