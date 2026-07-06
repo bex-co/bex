@@ -50,11 +50,35 @@ function phaseVariant(phase: string): "default" | "secondary" | "outline" {
   return "outline";
 }
 
+const serviceStats = [
+  { label: "Total services", value: sampleServices.length },
+  {
+    label: "Running",
+    value: sampleServices.filter((s) => s.phase === "running").length,
+  },
+  {
+    label: "Suspended",
+    value: sampleServices.filter((s) => s.phase === "suspended").length,
+  },
+];
+
 export function HomePage() {
   return (
     <DashboardLayout>
-      <div className="flex-1 bg-background px-6 py-10 sm:px-10">
-        <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-4xl space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {serviceStats.map((stat) => (
+              <Card key={stat.label}>
+                <CardHeader>
+                  <CardDescription>{stat.label}</CardDescription>
+                  <CardTitle className="text-2xl tabular-nums">
+                    {stat.value}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>Services</CardTitle>

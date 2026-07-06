@@ -1,9 +1,9 @@
 import { useSearch } from "@tanstack/react-router";
 import { Recovery } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig } from "@/common/lib/ory/config";
-import { Card, CardContent } from "@/common/components/ui/card";
+import { oryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
 /**
  * Forgot-password page — Kratos's recovery flow. Submitting an email sends a
@@ -16,22 +16,18 @@ export default function ForgotPasswordPage() {
   const flow = useOryFlow("recovery", search.flow);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardContent className="pt-6">
-            {flow ? (
-              <Recovery flow={flow} config={oryConfig} />
-            ) : (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-64 mx-auto" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <AuthPageShell
+      title="Reset your password"
+      subtitle="Enter your email to receive a recovery code"
+    >
+      {flow ? (
+        <Recovery flow={flow} config={oryConfig} components={oryHideCardLogo} />
+      ) : (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
+    </AuthPageShell>
   );
 }

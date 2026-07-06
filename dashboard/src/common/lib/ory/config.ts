@@ -1,4 +1,7 @@
-import type { OryClientConfiguration } from "@ory/elements-react";
+import type {
+  OryClientConfiguration,
+  OryFlowComponentOverrides,
+} from "@ory/elements-react";
 
 /** Ory Kratos public API base URL, reachable from the browser (docs/auth.md). */
 export const KRATOS_PUBLIC_URL =
@@ -29,6 +32,9 @@ export const oryConfig: OryClientConfiguration = {
   },
   project: {
     name: "bex",
+    // Ory Elements shows its own badge on the account experience card by
+    // default — this is bex's dashboard, not a vendor widget.
+    hide_ory_branding: true,
     default_redirect_url: "/",
     error_ui_url: "/auth/error",
     login_ui_url: "/auth/login",
@@ -40,4 +46,24 @@ export const oryConfig: OryClientConfiguration = {
     verification_ui_url: "/auth/verification",
     verification_enabled: false,
   },
+};
+
+/**
+ * Every auth page already renders its own hero heading (e.g. "Welcome back")
+ * above the Ory card — the card's own text-logo header would just repeat
+ * "bex" a second time right below it. Pass to every flow component's
+ * `components` prop to drop that redundant inner heading.
+ */
+export const oryHideCardLogo: OryFlowComponentOverrides = {
+  Card: { Logo: () => null },
+};
+
+/**
+ * `<Settings>` renders its own page-level header (project logo + a user-menu
+ * avatar with settings/logout links) above the settings cards — this repeats
+ * `DashboardLayout`'s own header/sidebar navigation on a page that's already
+ * inside `DashboardLayout`. Drop it in favor of the page's own heading.
+ */
+export const oryHideSettingsPageHeader: OryFlowComponentOverrides = {
+  Page: { Header: () => null },
 };

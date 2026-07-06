@@ -2,7 +2,7 @@ import { useSearch } from "@tanstack/react-router";
 import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig } from "@/common/lib/ory/config";
+import { oryConfig, oryHideSettingsPageHeader } from "@/common/lib/ory/config";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 
@@ -18,15 +18,24 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col items-center gap-8 px-6 py-10 sm:px-10">
-        <div className="w-full max-w-2xl">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-2xl space-y-6">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your account profile and password.
+            </p>
+          </div>
           {flow ? (
             <SessionProvider>
-              <Settings flow={flow} config={oryConfig} />
+              <Settings
+                flow={flow}
+                config={oryConfig}
+                components={oryHideSettingsPageHeader}
+              />
             </SessionProvider>
           ) : (
             <div className="space-y-4">
-              <Skeleton className="h-8 w-64" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>

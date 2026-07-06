@@ -5,3 +5,4 @@
 ## Milestones
 
 - [x] **m1** — Scaffold dashboard from beancount-dashboard, stripped to sample content (7 tasks) ← from user request 2026-07-05 — done 2026-07-06, moved to `done/m1/`
+- [x] **m2** — Polish dashboard UI: beancount-style layout, remove Ory branding (7 tasks) ← from user request 2026-07-06 — done 2026-07-06, moved to `done/m2/`

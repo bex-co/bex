@@ -1,7 +1,7 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { Registration } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig } from "@/common/lib/ory/config";
+import { oryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { AUTH_FEATURES } from "@/features/auth/components/auth-page-shell/auth-features";
@@ -22,6 +22,7 @@ export default function RegisterPage() {
         <Registration
           flow={flow}
           config={oryConfig}
+          components={oryHideCardLogo}
           onSuccess={async () => {
             // The root route's beforeLoad cached the (unauthenticated)
             // session on first load — force it to refetch before navigating

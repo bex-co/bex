@@ -39,6 +39,19 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 
 `codegen.ts` generates typed queries/mutations from `src/**/*.graphql` into `src/graphql/definitions.ts` — no `.graphql` files exist yet. Point `schema` at bex-api's `/graphql` (`docs/bex-api.md`) once wiring up real queries. This is unrelated to Kratos — bex-api and Kratos are separate services (`docs/architecture.md`, `docs/auth.md`).
 
+## Visual layout pattern (w5/m2)
+
+Reused from `beancount-dashboard`'s reports/overview page and ledger-layout chrome — reference files (read-only, not in this repo): `.../src/features/reports/overview/{index.tsx,components/overview-stat-card.tsx,components/overview-metrics-panel.tsx}`, `.../src/common/components/ledger-layout/{index.tsx,layout-header.tsx}`. Reuse our own `Card`/shadcn primitives — don't import beancount's components or CSS.
+
+- **Section rhythm:** `space-y-6` between major page sections (the reference's own pages vary between `space-y-2 md:space-y-4` and `space-y-6 md:space-y-8`; standardize on `space-y-6` — matches this repo's existing `routes/index.tsx`).
+- **Card grids:** `gap-4` — `grid grid-cols-1 gap-4 lg:grid-cols-2` for paired panels, `grid-cols-4 gap-4` for a stat-card row.
+- **Stat card shape** (`overview-stat-card.tsx`, `variant="card"`): a bare `Card` with only a `CardHeader` — `CardDescription` as the label, `CardTitle` (`text-base font-semibold tabular-nums`, scaling up at container breakpoints) as the value. No `CardContent`. Use this shape for any future label+value summary tile (e.g. a services-count/status tile above `routes/index.tsx`'s sample table).
+- **Header chrome:** `h-16` header (`h-12` when compact), `px-4`, `flex items-center justify-between`, `border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60` — this repo's `dashboard-layout/index.tsx` `DashboardHeader` already matches this exactly; keep it as the baseline other pages should read as consistent with.
+- **Content padding:** reference wraps routed content in `p-4 sm:p-6` (`p-2` on mobile) inside the layout's `<main>`, at `max-w-full`. This repo's `routes/index.tsx` currently uses a heavier `px-6 py-10 sm:px-10` + `mx-auto max-w-4xl` landing-page treatment — tighten toward the reference's denser `p-4 sm:p-6` when polishing (t005).
+- **Typography:** card titles/headings use shadcn's default `CardTitle` sizing (no oversized hero headings inside dashboard content); reserve larger type for the auth pages' hero copy (`auth-page-shell`), not for in-app content.
+
+Pages/components this pattern applies to (w5/m2 scope): `features/auth/pages/{login,register,forgot-password,settings,logout}-page/index.tsx`, `routes/index.tsx`, `common/components/dashboard-layout/{index.tsx,dashboard-sidebar.tsx}`.
+
 ## SSR gotcha
 
 `vite.config.ts` sets `ssr.noExternal: ["@ory/elements-react"]` — the package ships extensionless relative imports (e.g. `"./session-provider"`) that only resolve under bundler resolution, not Node's strict ESM loader. Without this, `yarn dev`/`yarn build` SSR-render any page importing `@ory/elements-react` with "Cannot find module" and silently falls back to full client rendering. Don't remove it.
