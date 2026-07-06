@@ -173,6 +173,8 @@ jobs:
         env:
           BEX_BOOTSTRAP_CLIENT_SECRET: ${{ secrets.BEX_BOOTSTRAP_CLIENT_SECRET }}
         run: |
+          timeout 600 bash -c "until kubectl -n auth get deploy/hydra >/dev/null 2>&1; do sleep 10; done" \
+            || { echo "hydra Deployment never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
           kubectl -n auth rollout status deploy/hydra --timeout=600s \
             || { echo "hydra not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
           bash scripts/auth-bootstrap-client.sh
@@ -184,6 +186,11 @@ jobs:
         env:
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
+          # The openfga Application is created by the app-of-apps sync, which can
+          # lag the git push — wait for the Deployment to EXIST before waiting on
+          # its rollout (rollout status errors instantly on a missing Deployment).
+          timeout 600 bash -c "until kubectl -n auth get deploy/openfga >/dev/null 2>&1; do sleep 10; done" \
+            || { echo "openfga Deployment never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
           kubectl -n auth rollout status deploy/openfga --timeout=600s \
             || { echo "openfga not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
           bash scripts/authz-model.sh
