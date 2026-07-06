@@ -28,7 +28,23 @@ kubectl -n auth port-forward service/kratos-public 4433:80
 VITE_KRATOS_PUBLIC_URL=http://localhost:4433 yarn dev
 ```
 
-This has been verified end-to-end (registration → session → dashboard, logout → login) by driving a real browser against the local mock cluster.
+This has been verified end-to-end (registration → session → dashboard, logout → login) two ways: against `yarn dev` above, and against the actually-deployed container (`deploy/`, below) port-forwarded to the same `localhost:5173`.
+
+## Deployment
+
+`deploy/` is this app's own kustomize base (Deployment + Service + Ingress at `dashboard.bex.co`, namespace `dashboard`) — see [`docs/auth.md` §5](../docs/auth.md) for the full mechanics (CI build/push, Argo Application, the SSR-vs-browser Kratos/bex-api URL split, a real `runAsNonRoot` gotcha this surfaced). Locally (no Argo on the mock cluster):
+
+```sh
+docker build --build-arg VITE_KRATOS_PUBLIC_URL=http://localhost:4433 \
+  --build-arg VITE_KRATOS_SSR_URL=http://kratos-public.auth.svc:80 \
+  -t dashboard:local .
+kind load docker-image dashboard:local --name bex
+kubectl apply -k deploy/
+kubectl -n dashboard set image deployment/dashboard dashboard=dashboard:local
+kubectl -n dashboard patch deployment dashboard --type=json \
+  -p '[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]'
+kubectl -n dashboard port-forward service/dashboard 5173:80
+```
 
 ## Development
 
@@ -43,8 +59,8 @@ yarn test            # vitest run
 
 ## Status
 
-Scaffold only — the sample route on `/` renders hardcoded data shaped like bex-api's `GET /v1/services`. No live GraphQL wiring yet; `codegen.ts` has a `TODO` pointing at bex-api's `/graphql` endpoint for when that lands.
+Auth (login/registration/recovery/settings/logout) is real, deployed, and verified end-to-end against Ory Kratos. Everything else is still scaffold: the sample route on `/` renders hardcoded data shaped like bex-api's `GET /v1/services`. No live GraphQL wiring yet; `codegen.ts` has a `TODO` pointing at bex-api's `/graphql` endpoint for when that lands.
 
 ## Environment variables
 
-See `.env.example`. `VITE_API_URL` is bex-api's GraphQL endpoint (default: a local bex-api dev instance at `http://localhost:8090/graphql`). `VITE_KRATOS_PUBLIC_URL` is Ory Kratos's public API (default: `https://auth.bex.co`).
+See `.env.example`. `VITE_API_URL`/`VITE_KRATOS_PUBLIC_URL` are the browser-facing bex-api/Kratos endpoints (defaults: local dev instances). `VITE_SSR_API_URL`/`VITE_KRATOS_SSR_URL` are the in-cluster equivalents the SSR server uses instead, once deployed (see Deployment above) — all four are Vite **build-time** values, baked into the image; changing them means rebuilding.

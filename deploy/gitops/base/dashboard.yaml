@@ -1,0 +1,32 @@
+# The bex dashboard: Render-style human-facing UI (docs/architecture.md),
+# deployed straight from dashboard/deploy (kustomize) into its own namespace.
+# Same mutable-tag caveat as bex.yaml: Argo syncs git, not image digests, so
+# a new :latest push doesn't change the Deployment spec — the deploy workflow
+# rollout-restarts it after each push (imagePullPolicy: Always).
+# NOTE: if the GHCR package is private, add an imagePullSecret in the
+# dashboard namespace (or make the package public) so app-cluster nodes can pull it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bex-dashboard
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: dashboard/deploy
+    kustomize:
+      images:
+        - dashboard=ghcr.io/bex-co/bex-dashboard:latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

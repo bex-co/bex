@@ -21,6 +21,14 @@ ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_SSR_API_URL
 ENV VITE_SSR_API_URL=$VITE_SSR_API_URL
 
+# Build arg for Ory Kratos public API (required at build time — docs/auth.md)
+ARG VITE_KRATOS_PUBLIC_URL
+ENV VITE_KRATOS_PUBLIC_URL=$VITE_KRATOS_PUBLIC_URL
+
+# Optional: in-cluster Kratos URL for SSR (defaults to VITE_KRATOS_PUBLIC_URL)
+ARG VITE_KRATOS_SSR_URL
+ENV VITE_KRATOS_SSR_URL=$VITE_KRATOS_SSR_URL
+
 # Build the application (produces .output/)
 RUN yarn build
 
@@ -32,8 +40,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy built output
-COPY --from=builder /app/.output ./.output
+# Copy built output — owned by the non-root `node` user node:22-alpine ships
+# (readOnlyRootFilesystem: false in dashboard/deploy lets it write its cache).
+COPY --from=builder --chown=node:node /app/.output ./.output
+
+USER node
 
 EXPOSE 3000
 

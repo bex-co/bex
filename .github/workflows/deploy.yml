@@ -1,18 +1,18 @@
 name: deploy (bex via Argo)
 
 # Phase 3: deploy the bex platform onto the app cluster via GitOps.
-#   1. build + push the operator image to GHCR (linux/amd64 = Hetzner cpx)
+#   1. build + push the operator + dashboard images to GHCR (linux/amd64 = Hetzner cpx)
 #   2. discover the app cluster (terraform state -> infra IP -> SSH -> clusterctl kubeconfig)
 #   3. install Argo CD on the app cluster (idempotent)
 #   4. apply the prod app-of-apps -> Argo reconciles deploy/gitops/overlays/prod
-#      (zot, opensandbox-controller, the bex operator) continuously from git
+#      (zot, opensandbox-controller, the bex operator, the bex dashboard) continuously from git
 #
 # After this the operator is running; deploy a user App with `kubectl apply`
 # (that's the product runtime — NOT GitOps). CI-only, idempotent.
 #
 # Secrets: same as app-cluster.yml (HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY, TF_STATE_*).
-# GITHUB_TOKEN (auto) pushes to GHCR. ⚠ Make the GHCR package public, or add an
-# imagePullSecret in bex-system, so app-cluster nodes can pull the operator image.
+# GITHUB_TOKEN (auto) pushes to GHCR. ⚠ Make the GHCR packages public, or add an
+# imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
 
 on:
@@ -20,6 +20,7 @@ on:
     branches: [main]
     paths:
       - "operator/**"
+      - "dashboard/**"
       - "deploy/gitops/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
@@ -30,6 +31,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/bex-co/bex-operator
+  DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
   CLUSTER_NAME: bex
   CLUSTERCTL_VERSION: v1.13.2
 
@@ -54,6 +56,24 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
+
+      # --- 1b. build + push the dashboard image (docs/auth.md §5) ---
+      # VITE_* are Vite build-time values baked into the JS bundle — the SSR
+      # ones use in-cluster Service DNS (the dashboard's own pod reaches
+      # Kratos/bex-api directly, not back out through the public ingress).
+      - uses: docker/build-push-action@v6
+        with:
+          context: dashboard
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VITE_API_URL=https://api.bex.co/graphql
+            VITE_SSR_API_URL=http://bex-api.bex-system.svc:8090/graphql
+            VITE_KRATOS_PUBLIC_URL=https://auth.bex.co
+            VITE_KRATOS_SSR_URL=http://kratos-public.auth.svc:80
+          tags: |
+            ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }}
+            ${{ env.DASHBOARD_IMAGE }}:latest
 
       # --- 2. discover the app cluster kubeconfig (same path as app-cluster.yml) ---
       - uses: hashicorp/setup-terraform@v3
@@ -175,3 +195,12 @@ jobs:
           kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
+
+      # --- 6. roll the dashboard onto the freshly-pushed image ---
+      # Same mutable-:latest caveat as step 5 (deploy/gitops/base/dashboard.yaml).
+      - name: roll dashboard onto the freshly-pushed image
+        run: |
+          kubectl -n dashboard rollout status deploy/dashboard --timeout=300s \
+            || { echo "dashboard not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          kubectl -n dashboard rollout restart deploy/dashboard
+          kubectl -n dashboard rollout status deploy/dashboard --timeout=300s

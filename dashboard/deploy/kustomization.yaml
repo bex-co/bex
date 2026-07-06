@@ -1,0 +1,10 @@
+# The bex dashboard: Render-style human-facing UI (docs/architecture.md), a
+# client of bex-api's GraphQL and Ory Kratos (docs/auth.md). Deployed as its
+# own image (dashboard/Dockerfile) — unlike bex-api it doesn't ship in the
+# operator image, since it's a separate Node.js app. Reached at
+# dashboard.<BEX_BASE_DOMAIN> via Traefik + a cert-manager cert.
+namespace: dashboard
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
