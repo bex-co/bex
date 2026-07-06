@@ -1,0 +1,95 @@
+# Nightly etcd snapshot → S3-compatible object storage (Hetzner Object Storage).
+#
+# Why: App state lives only in the single control-plane node's etcd (local disk,
+# no HA) — a node rebuild loses every App CR. Until the control-plane Postgres is
+# the source of truth, this ships a daily `etcdctl snapshot save` off-node.
+# Restore runbook: docs/etcd-backup-restore.md.
+#
+# Wiring:
+#  - Runs on the control-plane node (nodeSelector + toleration) with hostNetwork
+#    so etcd is reachable on https://127.0.0.1:2379, and a read-only hostPath for
+#    the etcd client certs in /etc/kubernetes/pki/etcd.
+#  - The etcd image matches the kubeadm etcd already on the node (k8s v1.31.0 →
+#    etcd 3.5.15-0), so the initContainer costs no extra pull.
+#  - Credentials come from the `etcd-backup-s3` Secret (NOT in git), created
+#    once per cluster from .env — exact command in the runbook.
+#  - aws-cli pinned <2.23: newer CLIs send CRC64 checksums many S3-compatibles
+#    reject (same quirk as `skip_s3_checksum` in infra/terraform/versions.tf).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: kube-system
+spec:
+  schedule: "15 3 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          hostNetwork: true
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          initContainers:
+            - name: snapshot
+              image: registry.k8s.io/etcd:3.5.15-0
+              command:
+                - etcdctl
+                - --endpoints=https://127.0.0.1:2379
+                - --cacert=/etc/kubernetes/pki/etcd/ca.crt
+                - --cert=/etc/kubernetes/pki/etcd/server.crt
+                - --key=/etc/kubernetes/pki/etcd/server.key
+                - snapshot
+                - save
+                - /backup/etcd-snapshot.db
+              volumeMounts:
+                - name: etcd-certs
+                  mountPath: /etc/kubernetes/pki/etcd
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+            - name: compress # separate step: neither the etcd nor aws-cli image ships gzip
+              image: busybox:1.37
+              command: ["gzip", "-9", "/backup/etcd-snapshot.db"]
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: amazon/aws-cli:2.22.35
+              command: ["/bin/bash", "-ceu"]
+              args:
+                - |
+                  retain=7 # rolling window: keep the newest N snapshots
+                  aws configure set default.s3.addressing_style path
+                  ts="$(date -u +%Y%m%d-%H%M%S)"
+                  aws --endpoint-url "$S3_ENDPOINT" s3 cp \
+                    /backup/etcd-snapshot.db.gz \
+                    "s3://$S3_BUCKET/etcd-snapshots/etcd-$ts.db.gz"
+                  aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://$S3_BUCKET/etcd-snapshots/" \
+                    | awk '{print $NF}' | grep '^etcd-.*\.db\.gz$' | sort | head -n "-$retain" \
+                    | while read -r old; do
+                        aws --endpoint-url "$S3_ENDPOINT" s3 rm "s3://$S3_BUCKET/etcd-snapshots/$old"
+                      done
+              envFrom:
+                - secretRef:
+                    name: etcd-backup-s3
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: etcd-certs
+              hostPath:
+                path: /etc/kubernetes/pki/etcd
+                type: Directory
+            - name: backup
+              emptyDir: {}

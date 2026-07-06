@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	appv1alpha1 "github.com/bex-co/bex/operator/api/v1alpha1"
@@ -484,6 +485,26 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Config propagation on restart: operator-level settings (cluster issuer, base
+	// domain, tier ladder) come from env, so a config change always arrives as an
+	// operator restart — and reaches every running App because informer replay
+	// enqueues a Create per App once the cache syncs (GenerationChangedPredicate
+	// only filters Updates). That invariant is pinned by startup_requeue_test.go;
+	// this runnable only makes the fleet-wide pass visible in the logs.
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		if !mgr.GetCache().WaitForCacheSync(ctx) {
+			return nil // manager shutting down before the cache synced
+		}
+		var apps appv1alpha1.AppList
+		if err := mgr.GetClient().List(ctx, &apps); err != nil {
+			mgr.GetLogger().Error(err, "listing Apps at startup failed")
+			return nil
+		}
+		mgr.GetLogger().Info("operator start: all Apps re-reconcile via informer replay", "count", len(apps.Items))
+		return nil
+	})); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.App{}).
 		Owns(&appsv1.Deployment{}).

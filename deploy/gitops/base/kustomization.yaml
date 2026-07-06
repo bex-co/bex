@@ -13,3 +13,4 @@ resources:
   - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
   - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
   - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
+  - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)

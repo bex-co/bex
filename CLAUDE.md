@@ -49,6 +49,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - [docs/deployment.md](docs/deployment.md) — deploy flow, health gating, revisions.
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.
+- [docs/etcd-backup-restore.md](docs/etcd-backup-restore.md) — nightly etcd snapshot → object storage; restore runbook.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 
 ## Rules

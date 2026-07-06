@@ -471,6 +471,8 @@ spec:
       kind: HCloudMachineTemplate
       name: bex-control-plane
   replicas: 1 # single-node app cluster (no HA) at current scale; bump for etcd quorum (3) later
+  # Bumping this k8s version? Also bump the kubeadm-matched etcd image in
+  # deploy/gitops/charts/etcd-backup/cronjob.yaml (and the runbook it links).
   version: v1.31.0
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
