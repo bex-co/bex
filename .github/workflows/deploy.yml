@@ -186,6 +186,11 @@ jobs:
         env:
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
+          # A previous revision's sync can be wedged mid-operation (e.g. waiting
+          # on a hook that can never fire), which blocks auto-sync of the current
+          # revision — terminate any in-flight operation so the new sync starts.
+          kubectl -n argocd patch application openfga --type=json \
+            -p '[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
           # The openfga Application is created by the app-of-apps sync, which can
           # lag the git push — wait for the Deployment to EXIST before waiting on
           # its rollout (rollout status errors instantly on a missing Deployment).
