@@ -11,7 +11,21 @@ datastore:
   engine: postgres
   uriSecret: openfga # -> env OPENFGA_DATASTORE_URI from key `uri`
   # applyMigrations/migrationType default to true/job — schema migrations run
-  # as a helm hook against openfga-db on install/upgrade.
+  # against openfga-db on install/upgrade (Argo hook annotations below).
+
+# The chart's default `helm.sh/hook: post-install` deadlocks under Argo: it
+# becomes a PostSync hook that only runs once the app is Healthy, while the
+# Deployment's wait-for-migration init container blocks Health until the Job
+# has run. Run it as an Argo Sync hook instead (recreated each sync); plain
+# helm installs treat these annotations as inert and create the Job normally.
+migrate:
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    # null out the chart's default helm hooks (deep-merged otherwise)
+    helm.sh/hook: null
+    helm.sh/hook-delete-policy: null
+    helm.sh/hook-weight: null
 
 authn:
   method: preshared
