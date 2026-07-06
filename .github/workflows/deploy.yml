@@ -186,16 +186,20 @@ jobs:
         env:
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
-          # A previous revision's sync can be wedged mid-operation (e.g. waiting
-          # on a hook that can never fire), which blocks any new sync — terminate
-          # it, then REQUEST a sync explicitly (auto-sync won't re-fire after
-          # exhausted retries on an unchanged revision; an explicit operation
-          # always runs, hooks included).
-          kubectl -n argocd patch application openfga --type=json \
-            -p '[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
-          sleep 5
-          kubectl -n argocd patch application openfga --type=merge \
-            -p '{"operation":{"sync":{"prune":true}}}' 2>/dev/null || true
+          # A sync can wedge mid-operation (e.g. a hook that can never fire —
+          # the original openfga revision's PostSync deadlock) and the wedged
+          # state survives operation patches. Deterministic recovery: recreate
+          # the Application. It carries no resources finalizer, so deletion is
+          # non-cascading, and the app-of-apps (selfHeal) recreates it fresh;
+          # a fresh app auto-syncs with hooks.
+          if [ "$(kubectl -n argocd get application openfga -o jsonpath='{.status.health.status}' 2>/dev/null)" = "Degraded" ]; then
+            echo "openfga app Degraded — recreating the Application to clear wedged sync state"
+            kubectl -n argocd delete application openfga --ignore-not-found --wait=true
+            timeout 300 bash -c 'until kubectl -n argocd get application openfga >/dev/null 2>&1; do sleep 10; done' \
+              || { echo "app-of-apps did not recreate openfga"; kubectl -n argocd get applications; exit 1; }
+            kubectl -n argocd patch application openfga --type=merge \
+              -p '{"operation":{"sync":{"prune":true}}}' 2>/dev/null || true
+          fi
           # Poll actual availability: `rollout status` returns instantly on a
           # deployment whose progress deadline already lapsed, even as the fix
           # is still converging.
@@ -206,6 +210,7 @@ jobs:
             kubectl -n auth describe pods -l app.kubernetes.io/name=openfga | grep -A12 "Events:" || true
             kubectl -n auth logs deploy/openfga --all-containers --tail=30 || true
             kubectl -n auth get jobs || true
+            kubectl -n argocd get application openfga -o yaml | grep -B2 -A25 "operationState:" || true
             kubectl -n argocd get applications
             exit 1
           }
