@@ -1,0 +1,68 @@
+# Prometheus — the request-metrics backend. bex-api's request metrics
+# (GET /v1/metrics/{http-requests,http-latency,bandwidth}, via
+# NewPrometheusRequestSource) query Traefik's per-service counters
+# (traefik_service_requests_total / _request_duration_seconds_bucket /
+# _responses_bytes_total, exposed by traefik.yaml's metrics.prometheus with
+# addServicesLabels). Without this those endpoints return 503; resource metrics
+# (cpu/memory via metrics-server) and instance-count work without it.
+#
+# Server-only (no alertmanager/pushgateway/exporters), short retention, ephemeral
+# storage — this exists solely to feed bex-api's request-metric range queries.
+# bex-api points at it with BEX_PROM_URL=http://prometheus-server.monitoring.
+#
+# NOTE: the Traefik scrape target below matches pods labelled
+# app.kubernetes.io/name=traefik on port 9100 (the metrics entrypoint). If the
+# ingress chart's pod labels/port differ on this cluster, tune the relabel keep +
+# port here (the label matching is the one cluster-specific knob).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1" # after traefik/metrics-server exist
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus
+    targetRevision: "25.*" # pin minor; server subchart serves /api/v1/query_range
+    helm:
+      releaseName: prometheus
+      values: |
+        fullnameOverride: prometheus
+        alertmanager: { enabled: false }
+        prometheus-pushgateway: { enabled: false }
+        kube-state-metrics: { enabled: false }
+        prometheus-node-exporter: { enabled: false }
+        server:
+          retention: 3h
+          persistentVolume:
+            enabled: false # ephemeral; request metrics are a short live window
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+        # Scrape ONLY Traefik's metrics entrypoint (per-service request counters).
+        serverFiles:
+          prometheus.yml:
+            scrape_configs:
+              - job_name: traefik
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [traefik]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                    action: keep
+                    regex: traefik
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9100
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
