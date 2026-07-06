@@ -5,6 +5,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 ## Repo map
 
 - `operator/` — the Go product (kubebuilder). See `operator/CLAUDE.md` before editing.
+- `dashboard/` — the human-facing dashboard (TanStack Start + Apollo + shadcn), client of `bex-api`'s GraphQL. See `dashboard/CLAUDE.md` before editing.
 - `infra/` — day-0 provisioning: Terraform + Cluster API; overlays `local-capd` (Docker) ⇄ `hetzner-caph`. The operator never references `infra/`.
 - `deploy/gitops/` — day-1+: what Argo CD reconciles into the cluster (zot registry, opensandbox controller, CAPI, autoscaler, bex itself). GitOps is for platform infra, not user deploys.
 - `examples/` — `whoami-app.yaml` (prebuilt image), `hello-go/` (build-from-git sample).

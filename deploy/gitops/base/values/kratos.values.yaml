@@ -44,6 +44,11 @@ kratos:
     serve:
       public:
         base_url: https://auth.bex.co/
+        cors:
+          enabled: true # dashboard.bex.co is a different origin — needs explicit CORS + credentials
+          allowed_origins:
+            - https://dashboard.bex.co
+          allow_credentials: true
     identity:
       default_schema_id: default
       schemas:
@@ -51,6 +56,42 @@ kratos:
           url: file:///etc/config/identity.schema.json
     selfservice:
       default_browser_return_url: https://auth.bex.co/
+      # dashboard.bex.co is the "custom UI" for every self-service flow (docs/auth.md);
+      # without these, Kratos redirects flows back to its own domain instead.
+      allowed_return_urls:
+        - https://dashboard.bex.co
+      flows:
+        login:
+          ui_url: https://dashboard.bex.co/auth/login
+        registration:
+          enabled: true
+          ui_url: https://dashboard.bex.co/auth/sign-up
+          # Kratos doesn't auto-issue a session after registration unless told
+          # to — without this hook the user registers successfully but lands
+          # back at the login screen with no session.
+          after:
+            password:
+              hooks:
+                - hook: session
+        recovery:
+          # Flow initializes but can't deliver mail until courier.smtp lands
+          # (courier is disabled below) — see docs/auth.md consequences.
+          enabled: true
+          ui_url: https://dashboard.bex.co/auth/forgot-password
+        settings:
+          ui_url: https://dashboard.bex.co/settings
+        verification:
+          enabled: false
+          ui_url: https://dashboard.bex.co/auth/verification
+        error:
+          ui_url: https://dashboard.bex.co/auth/error
+    session:
+      cookie:
+        # Scopes the session cookie to every *.bex.co subdomain so it's sent
+        # as same-site (not cross-site) from dashboard.bex.co to auth.bex.co —
+        # avoids needing the weaker SameSite=None.
+        domain: bex.co
+        same_site: Lax
 
 # No SMTP is configured yet, so don't run the courier (it sends the
 # verification/recovery mail); enable it together with courier.smtp when

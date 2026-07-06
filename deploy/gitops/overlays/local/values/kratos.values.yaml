@@ -1,13 +1,49 @@
 # Local overrides for Ory Kratos: local host, plain HTTP (no ACME/DNS on the
 # mock cluster). Layered over base/values/kratos.values.yaml by the Application
 # patch in ../kustomization.yaml (later valueFiles win).
+#
+# base_url/return_url point at localhost:4433 (reached via
+# `kubectl -n auth port-forward service/kratos-public 4433:80`), matching how
+# scripts/auth-verify.sh and scripts/auth-e2e.sh already reach these services
+# locally — auth.bex.local has no DNS/hosts entry and Traefik isn't exposed to
+# the host, so a hostname-based URL here would never actually be reachable.
 kratos:
   config:
     serve:
       public:
-        base_url: http://auth.bex.local/
+        base_url: http://localhost:4433/
+        cors:
+          enabled: true
+          allowed_origins:
+            - http://localhost:5173
+          allow_credentials: true
     selfservice:
-      default_browser_return_url: http://auth.bex.local/
+      default_browser_return_url: http://localhost:5173/
+      allowed_return_urls:
+        - http://localhost:5173
+      flows:
+        login:
+          ui_url: http://localhost:5173/auth/login
+        registration:
+          enabled: true
+          ui_url: http://localhost:5173/auth/sign-up
+        recovery:
+          enabled: true
+          ui_url: http://localhost:5173/auth/forgot-password
+        settings:
+          ui_url: http://localhost:5173/settings
+        verification:
+          enabled: false
+          ui_url: http://localhost:5173/auth/verification
+        error:
+          ui_url: http://localhost:5173/auth/error
+    session:
+      cookie:
+        # Override base's `domain: bex.co` (a bare "domain" attribute isn't
+        # valid for `localhost` — leaving it empty makes it a host-only
+        # cookie, which is what we want since 4433/5173 are already same-site).
+        domain: ""
+        same_site: Lax
 
 ingress:
   public:

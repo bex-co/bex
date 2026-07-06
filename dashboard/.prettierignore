@@ -1,0 +1,14 @@
+# Ignore artifacts:
+build
+dist
+node_modules
+.cursor
+.claude
+.vscode
+coverage
+
+api-gateway.graphql
+src/graphql/definitions.ts
+src/components/ui
+docs/*
+src/features/ai-agent/types/agent-tool-types.ts

@@ -57,7 +57,20 @@ Everything is an Argo Application in `deploy/gitops/base/`, synced in waves: CNP
 
 Public endpoints ride the standard edge ([custom-domain.md](custom-domain.md)): chart-native `Ingress` objects, `ingressClassName: traefik`, cert-manager `letsencrypt-prod` certs — `auth.bex.co` (Kratos public) and `oauth.bex.co` (Hydra public; equals Hydra's `urls.self.issuer`, which OIDC requires to match). The admin Services have **no** Ingress.
 
-### 5. Secrets: out-of-band, never in git
+### 5. `dashboard/` is Kratos's "custom UI" (w5)
+
+Kratos ships no UI of its own — it expects a "bring your own UI" consumer, registered via `selfservice.flows.*.ui_url`. That consumer is [`dashboard/`](../dashboard) (`docs/vision.md`'s human-facing surface): its login/registration/recovery/settings pages render [`@ory/elements-react`](https://www.ory.com/docs/elements)'s flow components against the same Kratos instance, not a hand-rolled auth backend (`dashboard/README.md#authentication`). `kratos.values.yaml` wires this up:
+
+- `selfservice.flows.{login,registration,recovery,settings,verification,error}.ui_url` → `dashboard.bex.co/auth/*` (+ `/settings`) — without these, Kratos redirects self-service flows back to its own domain instead of the dashboard.
+- `selfservice.allowed_return_urls` — whitelists the dashboard's origin for the `return_to` param the flow-initiation redirect carries.
+- `serve.public.cors` — `dashboard.bex.co` is a different origin from `auth.bex.co`; the dashboard's credentialed cross-origin fetches need explicit CORS + `allow_credentials: true`.
+- `session.cookie.domain: bex.co` — scopes the session cookie to every `*.bex.co` subdomain so it's sent as same-site (not cross-site) from the dashboard to Kratos, avoiding the weaker `SameSite=None`.
+- `selfservice.flows.registration.after.password.hooks: [{hook: session}]` — Kratos does **not** auto-issue a session after registration by default; without this hook the user registers successfully but lands back at the login screen with no session (a real, easy-to-miss gotcha — confirmed by driving an actual browser through the flow against the local mock cluster).
+- Recovery initializes but can't deliver mail until `courier.smtp` lands (courier is disabled — no SMTP yet); see Consequences.
+
+**Local dev**: `auth.bex.local`'s Ingress has no DNS/hosts entry and Traefik isn't exposed to the host, so it's unreachable from a laptop-run dashboard dev server. `overlays/local/values/kratos.values.yaml` instead points `base_url`/the flow `ui_url`s at `localhost:4433`/`localhost:5173` — reach Kratos via `kubectl -n auth port-forward service/kratos-public 4433:80` (the same pattern `scripts/auth-verify.sh`/`scripts/auth-e2e.sh` already use), then `VITE_KRATOS_PUBLIC_URL=http://localhost:4433 yarn dev` in `dashboard/`.
+
+### 6. Secrets: out-of-band, never in git
 
 The charts' built-in Secret rendering is **disabled** (`secret.enabled: false`) so no secret material can appear in git or Argo state. [scripts/auth-secrets.sh](../scripts/auth-secrets.sh) creates the two Secrets (`auth/kratos`, `auth/hydra`) out-of-band:
 

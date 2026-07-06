@@ -1,0 +1,5 @@
+{
+  "routeFileIgnorePattern": "__tests__",
+  "quoteStyle": "double",
+  "semicolons": true
+}

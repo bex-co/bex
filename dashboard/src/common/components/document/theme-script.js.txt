@@ -1,0 +1,42 @@
+(function () {
+  try {
+    var theme = window.__THEME__;
+
+    // 1. URL query parameter: ?theme=dark or ?theme=light
+    if (!theme) {
+      var params = new URLSearchParams(window.location.search);
+      var queryTheme = params.get("theme");
+      if (queryTheme === "light" || queryTheme === "dark") {
+        theme = queryTheme;
+      }
+    }
+
+    // 2. localStorage preference
+    if (!theme) {
+      var stored = localStorage.getItem("vite-ui-theme");
+      if (stored === "light" || stored === "dark") {
+        theme = stored;
+      }
+    }
+
+    // 3. System preference
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+
+    // Apply theme class to <html>
+    var root = document.documentElement;
+    if (!root.classList.contains(theme)) {
+      root.classList.remove("light", "dark");
+      root.classList.add(theme);
+    }
+
+    // Persist via cookie (for SSR) if not already set server-side
+    if (!window.__THEME__) {
+      document.cookie =
+        "vite-ui-theme=" + theme + "; path=/; max-age=31536000; SameSite=Lax";
+    }
+  } catch (e) {}
+})();
