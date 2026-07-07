@@ -84,7 +84,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 - Every verb is auditable, idempotent, and replayable — rebuilding the cluster from App CRs reproduces suspended state correctly.
 - A suspended App still owns its hostname and Ingress; until a wake page exists, visitors see a bare edge error (404/503) rather than something friendly.
-- Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism.
+- Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism. For agent **sandboxes**, that idle-hibernate + wake-on-connect is designed in [sandboxes.md](sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
 - Implementation size: 2 CRD fields + ~40 lines in `reconcileKubernetes` + envtest cases (suspend keeps Ingress/TLS and zeroes replicas; restart changes only the template annotation; resume restores and readiness-gates).
 
 ## Verification (when implemented)
