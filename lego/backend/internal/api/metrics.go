@@ -31,16 +31,19 @@ import (
 // logs it is ONE domain implementation the REST + GraphQL adapters share, and it
 // reaches its backends through injected sources so Core stays clientset-free:
 //
-//   - resource metrics (cpu/memory) come from metrics-server via ResourceMetrics;
-//   - instance count is derived from the App's pods (no source needed);
+//   - resource metrics (cpu/memory/instance_count) come from cAdvisor-over-
+//     Prometheus via ResourceMetricsRange (stepped history) when it's wired,
+//     else from metrics-server via ResourceMetrics (single current point) —
+//     instance count in that fallback is derived from the App's pods directly;
 //   - request metrics (count/latency/bandwidth) come from Traefik-over-Prometheus
 //     via RequestMetrics.
 //
 // Shapes are Render's metrics-API time-series (see render.go: a series carries a
-// unit, labels and points). metrics-server is a point-in-time snapshot, so bex's
-// cpu/memory/instance_count series carry a single current point regardless of the
-// requested time range; the Prometheus-backed request metrics honor start/end/
-// resolution. Both intentional deviations are documented in observability.md.
+// unit, labels and points). The Prometheus-backed sources honor start/end/
+// resolution like Render; the metrics-server fallback is a point-in-time
+// snapshot, so there cpu/memory/instance_count series carry a single current
+// point regardless of the requested time range — an intentional deviation
+// documented in observability.md.
 
 // Metric ids — bex's canonical names (underscored). They map 1:1 to Render's
 // metrics endpoints (path segments cpu, memory, instance-count, http-requests,
@@ -145,6 +148,26 @@ type PodResourceUsage struct {
 // report ErrMetricsUnavailable.
 type ResourceMetricsSource func(ctx context.Context, namespace, app string) ([]PodResourceUsage, error)
 
+// ResourceMetricsRangeRequest is the backend-neutral ranged resource-metric ask
+// handed to a ResourceMetricsRangeSource — the resource sibling of
+// RequestMetricsRequest. The source owns the query language; Core only resolves
+// defaults and delegates.
+type ResourceMetricsRangeRequest struct {
+	Namespace  string
+	App        string
+	Metric     string // cpu | memory | instance_count
+	Start, End time.Time
+	Resolution time.Duration
+}
+
+// ResourceMetricsRangeSource returns stepped resource time-series for an App
+// over a time range (cAdvisor scraped by Prometheus) — per-instance series for
+// cpu/memory, a single series for instance_count. When non-nil, Core prefers it
+// over the snapshot ResourceMetrics source; nil => cpu/memory come from
+// ResourceMetrics and instance_count from counting pods. Production wires it via
+// NewPrometheusResourceSource.
+type ResourceMetricsRangeSource func(ctx context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error)
+
 // RequestMetricsRequest is the backend-neutral request-metric ask handed to a
 // RequestMetricsSource. The source (Prometheus over Traefik) owns the query
 // language; Core only resolves defaults and delegates, so swapping the ingress
@@ -230,11 +253,16 @@ func aggregateMaxSeries(app string, series []MetricSeries) []MetricSeries {
 	}}
 }
 
-// resourceMetric returns one current series per replica (labels instance +
-// resource) of CPU or memory usage. With Percentage set, each value is divided by
-// that pod's limit (from the pod spec) and reported as a 0..100 percentage; a pod
-// with no limit is skipped from percentage output (division is undefined).
+// resourceMetric returns one series per replica (labels instance + resource) of
+// CPU or memory usage: stepped history over the queried range when the ranged
+// source (Prometheus) is wired, else a single current point (metrics-server
+// snapshot). With Percentage set, each value is divided by that pod's limit
+// (from the pod spec) and reported as a 0..100 percentage; a pod with no limit
+// is skipped from percentage output (division is undefined).
 func (c *Core) resourceMetric(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	if c.ResourceMetricsRange != nil {
+		return c.resourceMetricRange(ctx, q)
+	}
 	if c.ResourceMetrics == nil {
 		return nil, ErrMetricsUnavailable
 	}
@@ -248,10 +276,7 @@ func (c *Core) resourceMetric(ctx context.Context, q MetricQuery) ([]MetricSerie
 	}
 	limits := podResourceLimits(pods, q.Metric) // by pod name
 
-	unit := unitCores
-	if q.Metric == MetricMemory {
-		unit = unitBytes
-	}
+	unit := resourceUnit(q.Metric)
 	if q.Percentage {
 		unit = unitPercentage
 	}
@@ -285,6 +310,65 @@ func (c *Core) resourceMetric(ctx context.Context, q MetricQuery) ([]MetricSerie
 	return out, nil
 }
 
+// rangedResourceSeries funnels one resource-family metric through the ranged
+// (Prometheus) source: it owns the MetricQuery→request mapping and the unit
+// stamping, so the per-verb wrappers keep only their genuinely different
+// fallbacks — the resource-family sibling of requestMetric's single funnel.
+func (c *Core) rangedResourceSeries(ctx context.Context, q MetricQuery, metric, unit string) ([]MetricSeries, error) {
+	series, err := c.ResourceMetricsRange(ctx, ResourceMetricsRangeRequest{
+		Namespace:  c.Namespace,
+		App:        q.App,
+		Metric:     metric,
+		Start:      q.Start,
+		End:        q.End,
+		Resolution: q.Resolution,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for i := range series {
+		series[i].Unit = unit
+	}
+	return series, nil
+}
+
+// resourceMetricRange serves cpu/memory from the ranged (Prometheus) source:
+// one stepped series per replica over [Start, End]. Percentage mode divides
+// every point by the pod's current spec limit, keyed by the series' instance
+// label — an instance with no limit (including a pod that no longer exists) is
+// omitted rather than faked, exactly like the snapshot path.
+func (c *Core) resourceMetricRange(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	unit := resourceUnit(q.Metric)
+	if q.Percentage {
+		unit = unitPercentage
+	}
+	series, err := c.rangedResourceSeries(ctx, q, q.Metric, unit)
+	if err != nil {
+		return nil, err
+	}
+	if q.Percentage && len(series) > 0 {
+		pods, err := c.appPods(ctx, q.App)
+		if err != nil {
+			return nil, err
+		}
+		limits := podResourceLimits(pods, q.Metric)
+		kept := series[:0]
+		for _, s := range series {
+			lim, ok := limits[s.Labels["instance"]]
+			if !ok || lim <= 0 {
+				continue
+			}
+			for i := range s.Points {
+				s.Points[i].Value = s.Points[i].Value / lim * 100
+			}
+			kept = append(kept, s)
+		}
+		series = kept
+	}
+	sort.SliceStable(series, func(i, j int) bool { return series[i].Labels["instance"] < series[j].Labels["instance"] })
+	return series, nil
+}
+
 // resourceLimitMetric returns one current series per replica of the pod's
 // configured CPU/memory limit (from the pod spec, not metrics-server — so it
 // needs no ResourceMetrics source and works even without metrics-server wired).
@@ -299,11 +383,10 @@ func (c *Core) resourceLimitMetric(ctx context.Context, q MetricQuery) ([]Metric
 		return nil, err
 	}
 	baseMetric := MetricCPU
-	unit := unitCores
 	if q.Metric == MetricMemoryLimit {
 		baseMetric = MetricMemory
-		unit = unitBytes
 	}
+	unit := resourceUnit(q.Metric)
 	limits := podResourceLimits(pods, baseMetric)
 	nowStr := c.now().UTC().Format(time.RFC3339)
 
@@ -323,10 +406,14 @@ func (c *Core) resourceLimitMetric(ctx context.Context, q MetricQuery) ([]Metric
 	return out, nil
 }
 
-// instanceCountMetric returns a single-series current replica count (running
-// pods). It needs no metrics source — it counts the App's pods directly — so it
-// works even on a cluster without metrics-server.
+// instanceCountMetric returns the App's replica count: a stepped
+// count-over-time series when the ranged (Prometheus) source is wired, else a
+// single-series current count of the App's pods — the fallback needs no metrics
+// source at all, so it works even on a cluster without metrics-server.
 func (c *Core) instanceCountMetric(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	if c.ResourceMetricsRange != nil {
+		return c.rangedResourceSeries(ctx, q, MetricInstanceCount, unitCount)
+	}
 	pods, err := c.appPods(ctx, q.App)
 	if err != nil {
 		return nil, err
@@ -374,6 +461,15 @@ func (c *Core) requestMetric(ctx context.Context, q MetricQuery) ([]MetricSeries
 		}
 	}
 	return series, nil
+}
+
+// resourceUnit maps a resource metric to its absolute unit — the resource
+// sibling of requestUnit. Percentage mode overrides it at the call sites.
+func resourceUnit(metric string) string {
+	if metric == MetricMemory || metric == MetricMemoryLimit {
+		return unitBytes
+	}
+	return unitCores
 }
 
 func requestUnit(metric string) string {

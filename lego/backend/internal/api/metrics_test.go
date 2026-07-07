@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -584,6 +585,240 @@ func TestNewMonthToDateBandwidthSource_FutureSinceIsZero(t *testing.T) {
 	}
 	if bytesTotal != 0 {
 		t.Errorf("want 0 for a since in the future, got %v", bytesTotal)
+	}
+}
+
+// --- Ranged resource metrics (cAdvisor via Prometheus) ---
+
+// staticRangeSource fakes a ResourceMetricsRangeSource: it captures the request
+// Core resolved (when got is non-nil) and returns canned stepped series.
+func staticRangeSource(got *ResourceMetricsRangeRequest, series []MetricSeries) ResourceMetricsRangeSource {
+	return func(_ context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		if got != nil {
+			*got = req
+		}
+		return series, nil
+	}
+}
+
+// twoPoints is a stepped two-sample series for one instance — what a ranged
+// source returns and a snapshot source never can.
+func twoPoints(instance string, v1, v2 float64) MetricSeries {
+	return MetricSeries{
+		Labels: map[string]string{"resource": "web", "instance": instance},
+		Points: []MetricPoint{
+			{Timestamp: "2026-07-05T00:00:00Z", Value: v1},
+			{Timestamp: "2026-07-05T00:01:00Z", Value: v2},
+		},
+	}
+}
+
+// TestCore_RangedResourceMetricsPreferred: with a ranged source wired, cpu/memory
+// come from it — stepped multi-point series, range/step resolved by Core — and
+// the metrics-server snapshot source is not consulted.
+func TestCore_RangedResourceMetricsPreferred(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podWithLimits(webInst),
+	).Build()
+	var got ResourceMetricsRangeRequest
+	core := &Core{
+		Client: cl, Namespace: "default",
+		Now:                  func() time.Time { return time.Unix(1_000_000, 0).UTC() },
+		ResourceMetricsRange: staticRangeSource(&got, []MetricSeries{twoPoints(webInst, 0.5, 0.25)}),
+		ResourceMetrics: func(_ context.Context, _, _ string) ([]PodResourceUsage, error) {
+			t.Error("snapshot source consulted although a ranged source is wired")
+			return nil, nil
+		},
+	}
+
+	start, end := time.Unix(990_000, 0).UTC(), time.Unix(1_000_000, 0).UTC()
+	series, err := core.Metrics(context.Background(), MetricQuery{
+		App: "web", Metric: MetricCPU, Start: start, End: end, Resolution: 30 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("cpu: %v", err)
+	}
+	if len(series) != 1 || len(series[0].Points) != 2 {
+		t.Fatalf("want 1 stepped series with 2 points, got %+v", series)
+	}
+	if series[0].Unit != unitCores || series[0].Labels["instance"] != webInst {
+		t.Errorf("unit/labels wrong: %+v", series[0])
+	}
+	if got.Metric != MetricCPU || !got.Start.Equal(start) || !got.End.Equal(end) || got.Resolution != 30*time.Second {
+		t.Errorf("range request not propagated: %+v", got)
+	}
+	if got.Namespace != "default" || got.App != "web" {
+		t.Errorf("namespace/app not propagated: %+v", got)
+	}
+
+	// Zero range still resolves defaults (end=now, start=end-1h) before the source.
+	if _, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricMemory}); err != nil {
+		t.Fatalf("memory: %v", err)
+	}
+	if got.End.IsZero() || !got.Start.Equal(got.End.Add(-defaultMetricSpan)) {
+		t.Errorf("defaults not resolved for the source: %+v", got)
+	}
+}
+
+// TestCore_RangedResourceMetricsPercentage: percentage mode divides every point
+// by the instance's current pod limit and omits instances with no matching pod
+// (e.g. one that no longer exists) — same omit-don't-fake rule as the snapshot.
+func TestCore_RangedResourceMetricsPercentage(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podWithLimits(webInst), // 1 core / 1Gi limits
+	).Build()
+	core := &Core{
+		Client: cl, Namespace: "default",
+		Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() },
+		ResourceMetricsRange: staticRangeSource(nil, []MetricSeries{
+			twoPoints(webInst, 0.5, 0.25),
+			twoPoints("web-gone", 0.5, 0.5), // no current pod => no limit => omitted
+		}),
+	}
+
+	series, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU, Percentage: true})
+	if err != nil {
+		t.Fatalf("cpu%%: %v", err)
+	}
+	if len(series) != 1 {
+		t.Fatalf("instance with no limit should be omitted, got %+v", series)
+	}
+	if series[0].Unit != unitPercentage {
+		t.Errorf("unit should be percentage, got %q", series[0].Unit)
+	}
+	if series[0].Points[0].Value != 50 || series[0].Points[1].Value != 25 {
+		t.Errorf("every point should be divided by the 1-core limit: %+v", series[0].Points)
+	}
+}
+
+// TestCore_RangedInstanceCount: with a ranged source wired, instance_count is a
+// stepped count-over-time series from it, not a single pod-count point.
+func TestCore_RangedInstanceCount(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podFor("web", webInst),
+	).Build()
+	var got ResourceMetricsRangeRequest
+	core := &Core{
+		Client: cl, Namespace: "default",
+		Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() },
+		ResourceMetricsRange: staticRangeSource(&got, []MetricSeries{{
+			Labels: map[string]string{"resource": "web"},
+			Points: []MetricPoint{
+				{Timestamp: "2026-07-05T00:00:00Z", Value: 1},
+				{Timestamp: "2026-07-05T00:01:00Z", Value: 2},
+			},
+		}}),
+	}
+
+	series, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricInstanceCount})
+	if err != nil {
+		t.Fatalf("instance_count: %v", err)
+	}
+	if got.Metric != MetricInstanceCount {
+		t.Errorf("source should be asked for instance_count, got %q", got.Metric)
+	}
+	if len(series) != 1 || series[0].Unit != unitCount || len(series[0].Points) != 2 {
+		t.Fatalf("want one stepped count series, got %+v", series)
+	}
+}
+
+// TestCore_RangedSourceErrorSurfaces: Prometheus wired but failing at query time
+// surfaces the error — no silent fallback to the snapshot source.
+func TestCore_RangedSourceErrorSurfaces(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podWithLimits(webInst),
+	).Build()
+	core := &Core{
+		Client: cl, Namespace: "default",
+		ResourceMetricsRange: func(_ context.Context, _ ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+			return nil, context.DeadlineExceeded
+		},
+		ResourceMetrics: staticResourceMetrics(map[string]PodResourceUsage{webInst: {CPUCores: 0.5}}),
+	}
+
+	if _, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU}); err != context.DeadlineExceeded {
+		t.Errorf("ranged-source error should surface, got %v", err)
+	}
+	if _, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricInstanceCount}); err != context.DeadlineExceeded {
+		t.Errorf("instance_count ranged-source error should surface, got %v", err)
+	}
+}
+
+func TestPromResourceQueryFor(t *testing.T) {
+	req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Resolution: 60 * time.Second}
+	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}",container!=""`
+
+	req.Metric = MetricCPU
+	if got, want := promResourceQueryFor(req),
+		`sum by (pod) (rate(container_cpu_usage_seconds_total{`+matchers+`}[60s]))`; got != want {
+		t.Errorf("cpu query:\n got %q\nwant %q", got, want)
+	}
+	req.Metric = MetricMemory
+	if got, want := promResourceQueryFor(req),
+		`sum by (pod) (container_memory_working_set_bytes{`+matchers+`})`; got != want {
+		t.Errorf("memory query:\n got %q\nwant %q", got, want)
+	}
+	req.Metric = MetricInstanceCount
+	if got, want := promResourceQueryFor(req),
+		`count(sum by (pod) (container_memory_working_set_bytes{`+matchers+`}))`; got != want {
+		t.Errorf("instance_count query:\n got %q\nwant %q", got, want)
+	}
+}
+
+// TestNewPrometheusResourceSource_RoundTrip exercises the whole resource-history
+// path (URL build + HTTP + matrix parse + label rewrite) against an httptest
+// Prometheus stand-in.
+func TestNewPrometheusResourceSource_RoundTrip(t *testing.T) {
+	var gotValues url.Values
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotValues = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[
+		  {"metric":{"pod":"web-abc123-x2f4z"},"values":[[1000000,"0.5"],[1000060,"0.25"]]}]}}`))
+	}))
+	defer ts.Close()
+
+	src := NewPrometheusResourceSource(ts.URL, ts.Client())
+	series, err := src(context.Background(), ResourceMetricsRangeRequest{
+		Namespace: "default", App: "web", Metric: MetricCPU,
+		Start: time.Unix(1_000_000, 0), End: time.Unix(1_003_600, 0), Resolution: 60 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if gotValues.Get("start") != "1000000" || gotValues.Get("end") != "1003600" || gotValues.Get("step") != "60" {
+		t.Errorf("range params not propagated: %v", gotValues)
+	}
+	if !strings.Contains(gotValues.Get("query"), "container_cpu_usage_seconds_total") {
+		t.Errorf("unexpected query: %q", gotValues.Get("query"))
+	}
+	if len(series) != 1 || len(series[0].Points) != 2 {
+		t.Fatalf("want one two-point series, got %+v", series)
+	}
+	// Prometheus's pod label is rewritten into Core's instance/resource vocabulary.
+	if series[0].Labels["instance"] != "web-abc123-x2f4z" || series[0].Labels["resource"] != "web" {
+		t.Errorf("labels not rewritten: %+v", series[0].Labels)
+	}
+	if _, still := series[0].Labels["pod"]; still {
+		t.Errorf("raw pod label should not leak out: %+v", series[0].Labels)
+	}
+}
+
+func TestNewPrometheusResourceSource_ErrorStatus(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "boom", http.StatusBadGateway)
+	}))
+	defer ts.Close()
+
+	src := NewPrometheusResourceSource(ts.URL, ts.Client())
+	if _, err := src(context.Background(), ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: MetricCPU}); err == nil {
+		t.Error("non-200 from prometheus should error")
+	}
+
+	// Unreachable endpoint errors too (no swallow-into-empty).
+	down := NewPrometheusResourceSource("http://127.0.0.1:1", http.DefaultClient)
+	if _, err := down(context.Background(), ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: MetricMemory}); err == nil {
+		t.Error("unreachable prometheus should error")
 	}
 }
 

@@ -1,10 +1,13 @@
-# Prometheus — the request-metrics backend. bex-api's request metrics
+# Prometheus — the metrics-history backend. bex-api's request metrics
 # (GET /v1/metrics/{http-requests,http-latency,bandwidth}, via
 # NewPrometheusRequestSource) query Traefik's per-service counters
 # (traefik_service_requests_total / _request_duration_seconds_bucket /
 # _responses_bytes_total, exposed by traefik.yaml's metrics.prometheus with
-# addServicesLabels). Without this those endpoints return 503; resource metrics
-# (cpu/memory via metrics-server) and instance-count work without it.
+# addServicesLabels), and its resource metrics (cpu/memory/instance-count, via
+# NewPrometheusResourceSource) query the kubelets' cAdvisor series
+# (container_cpu_usage_seconds_total / container_memory_working_set_bytes).
+# Without this, request metrics return 503 and resource metrics fall back to
+# metrics-server's single-point snapshot.
 #
 # Server-only (no alertmanager/pushgateway/exporters), short retention, ephemeral
 # storage — this exists solely to feed bex-api's request-metric range queries.
@@ -42,7 +45,8 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 256Mi }
             limits: { cpu: 500m, memory: 512Mi }
-        # Scrape ONLY Traefik's metrics entrypoint (per-service request counters).
+        # Two scrape jobs only: Traefik's metrics entrypoint (per-service request
+        # counters) and the kubelets' cAdvisor endpoint (per-container cpu/memory).
         serverFiles:
           prometheus.yml:
             scrape_configs:
@@ -61,6 +65,42 @@ spec:
                     replacement: ${1}:9100
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
+              # cAdvisor: the raw series behind bex-api's cpu/memory/instance-count
+              # history. Node SD, scraped THROUGH the apiserver proxy
+              # (/api/v1/nodes/<node>/proxy/metrics/cadvisor) rather than the
+              # kubelet directly: the pod network can't always reach every node's
+              # :10250 (true on the CAPD mock), the apiserver always can, and the
+              # ServiceAccount CA verifies the apiserver properly (no
+              # insecure_skip_verify). The chart's default ClusterRole already
+              # grants nodes + nodes/proxy + nodes/metrics, so no extra RBAC.
+              # cAdvisor series natively carry namespace/pod/container labels; App
+              # pods are matched downstream by Deployment pod-name shape
+              # (<app>-<rs-hash>-<suffix>, see promResourceQueryFor) since kubelet
+              # metrics don't carry pod labels like app.bex.co/app.
+              - job_name: kubernetes-cadvisor
+                scrape_interval: 15s
+                scheme: https
+                kubernetes_sd_configs:
+                  - role: node
+                tls_config:
+                  ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                authorization:
+                  credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                relabel_configs:
+                  - target_label: __address__
+                    replacement: kubernetes.default.svc:443
+                  - source_labels: [__meta_kubernetes_node_name]
+                    regex: (.+)
+                    target_label: __metrics_path__
+                    replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+                  - source_labels: [__meta_kubernetes_node_name]
+                    target_label: node
+                metric_relabel_configs:
+                  # keep only real-container series; drop the pod-sandbox/aggregate
+                  # rows (container="") that would double-count sum-by-pod queries
+                  - source_labels: [container]
+                    regex: ""
+                    action: drop
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

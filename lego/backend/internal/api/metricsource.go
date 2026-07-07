@@ -116,33 +116,37 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
-		q := promQueryFor(req)
-		u := fmt.Sprintf("%s/api/v1/query_range?%s", base, url.Values{
-			"query": {q},
-			"start": {strconv.FormatInt(req.Start.Unix(), 10)},
-			"end":   {strconv.FormatInt(req.End.Unix(), 10)},
-			"step":  {strconv.FormatInt(stepSeconds(req.Resolution), 10)},
-		}.Encode())
-
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := hc.Do(httpReq)
-		if err != nil {
-			return nil, err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
-		}
-		dec := json.NewDecoder(resp.Body)
-		var pr promRangeResponse
-		if err := dec.Decode(&pr); err != nil {
-			return nil, fmt.Errorf("decode prometheus response: %w", err)
-		}
-		return parsePromMatrix(pr)
+		return promQueryRange(ctx, hc, base, promQueryFor(req), req.Start, req.End, stepSeconds(req.Resolution))
 	}
+}
+
+// promQueryRange runs one Prometheus query_range and parses the matrix reply —
+// the shared transport under the request- and resource-metric sources.
+func promQueryRange(ctx context.Context, hc *http.Client, base, query string, start, end time.Time, step int64) ([]MetricSeries, error) {
+	u := fmt.Sprintf("%s/api/v1/query_range?%s", base, url.Values{
+		"query": {query},
+		"start": {strconv.FormatInt(start.Unix(), 10)},
+		"end":   {strconv.FormatInt(end.Unix(), 10)},
+		"step":  {strconv.FormatInt(step, 10)},
+	}.Encode())
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := hc.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+	}
+	var pr promRangeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		return nil, fmt.Errorf("decode prometheus response: %w", err)
+	}
+	return parsePromMatrix(pr)
 }
 
 func stepSeconds(res time.Duration) int64 {
@@ -150,6 +154,63 @@ func stepSeconds(res time.Duration) int64 {
 		res = defaultResolution
 	}
 	return int64(res / time.Second)
+}
+
+// --- Resource metrics history: cAdvisor scraped by Prometheus ---
+
+// NewPrometheusResourceSource returns the production ResourceMetricsRangeSource
+// — stepped cpu/memory/instance-count series via query_range over the cAdvisor
+// series the kubernetes-cadvisor scrape job collects
+// (deploy/gitops/base/prometheus.yaml). base/hc as NewPrometheusRequestSource.
+func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRangeSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		series, err := promQueryRange(ctx, hc, base, promResourceQueryFor(req), req.Start, req.End, stepSeconds(req.Resolution))
+		if err != nil {
+			return nil, err
+		}
+		// Rewrite Prometheus's label vocabulary into Core's: pod => instance,
+		// plus the resource (App) tag every series carries. instance_count has
+		// no pod label (it's a scalar count), so it keeps just resource.
+		for i := range series {
+			labels := map[string]string{"resource": req.App}
+			if pod := series[i].Labels["pod"]; pod != "" {
+				labels["instance"] = pod
+			}
+			series[i].Labels = labels
+		}
+		return series, nil
+	}
+}
+
+// promResourceQueryFor builds the PromQL range query for a resource metric over
+// cAdvisor's per-container series:
+//
+//   - cpu:            per-pod rate of container_cpu_usage_seconds_total (cores)
+//   - memory:         per-pod sum of container_memory_working_set_bytes (bytes)
+//   - instance_count: count of pods with live cAdvisor series
+//
+// kubelet metrics carry pod NAMES but not pod labels (there is no
+// app.bex.co/app to match on), so an App's pods are matched by the Deployment
+// pod-name shape: <app>-<replicaset-hash>-<5-char-suffix>. Like the Traefik
+// service selector this is a heuristic — but anchored and two-segment, so app
+// "web" never matches a "web-api-…-…" pod. container!="" drops any
+// pod-sandbox/aggregate rows that survive the scrape-side relabeling.
+func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
+	matchers := fmt.Sprintf(`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
+		req.Namespace, promEscape(req.App))
+	switch req.Metric {
+	case MetricMemory:
+		return fmt.Sprintf(`sum by (pod) (container_memory_working_set_bytes{%s})`, matchers)
+	case MetricInstanceCount:
+		return fmt.Sprintf(`count(sum by (pod) (container_memory_working_set_bytes{%s}))`, matchers)
+	default: // cpu
+		return fmt.Sprintf(`sum by (pod) (rate(container_cpu_usage_seconds_total{%s}[%ds]))`,
+			matchers, stepSeconds(req.Resolution))
+	}
 }
 
 // promQueryFor builds the PromQL range query for a request metric over Traefik's

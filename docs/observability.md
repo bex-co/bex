@@ -64,15 +64,17 @@ The same one-Core-many-adapters shape as logs. `Core.Metrics(MetricQuery)` is th
 flowchart LR
   rest["REST GET /v1/metrics/{cpu,memory,instance-count,<br/>http-requests,http-latency,bandwidth}"] --> core
   gql["GraphQL metrics(...)"] --> core
-  core["Core.Metrics"] --> rm["ResourceMetrics source"] --> ms["metrics-server (metrics.k8s.io)"]
-  core --> pods["App pods (instance count + limits)"]
+  core["Core.Metrics"] --> rr["ResourceMetricsRange source"] --> promc["Prometheus ← cAdvisor (kubelets)"]
+  core -.fallback.-> rm["ResourceMetrics source"] --> ms["metrics-server (metrics.k8s.io)"]
+  core --> pods["App pods (limits + fallback instance count)"]
   core --> qm["RequestMetrics source"] --> prom["Prometheus ← Traefik"]
 ```
 
-- **Resource** — `cpu` / `memory` come from **metrics-server** (`metrics.k8s.io/v1beta1`, via `NewResourceMetricsSource`): one series per replica, tagged `instance` + `resource`. `instance_count` is derived from the App's pods directly, so it needs **no** source (works without metrics-server). With `percentage=true`, cpu/memory are divided by the pod's limit (read from the pod spec) and reported 0..100.
+- **Resource** — `cpu` / `memory` / `instance_count` come from **cAdvisor scraped by Prometheus** (`NewPrometheusResourceSource`, gated by `BEX_PROM_URL` like the request metrics): a `query_range` over `container_cpu_usage_seconds_total` (per-pod rate → cores) and `container_memory_working_set_bytes` (per-pod sum → bytes; also counted for `instance_count`), one stepped series per replica tagged `instance` + `resource`, honoring `startTime`/`endTime`/`resolutionSeconds`. Since kubelet metrics carry pod names but not pod labels, an App's pods are matched by the Deployment pod-name shape (`<app>-<rs-hash>-<suffix>`) — anchored, so `web` never matches `web-api` pods. With `percentage=true`, every point is divided by the pod's limit (read from the pod spec) and reported 0..100; an instance with no limit — including a pod that no longer exists — is omitted rather than faked.
+- **Resource fallback** — without `BEX_PROM_URL`, `cpu` / `memory` come from **metrics-server** (`metrics.k8s.io/v1beta1`, via `NewResourceMetricsSource`): a point-in-time snapshot, so each series carries a **single current point** regardless of the requested range. `instance_count` then derives from the App's pods directly, needing **no** source at all. When Prometheus is configured but unreachable at query time, the error surfaces (no silent fallback — same contract as request metrics).
 - **Request** — `http_requests` / `http_latency` / `bandwidth` come from **Traefik scraped by Prometheus** (`NewPrometheusRequestSource`, gated by `BEX_PROM_URL`): a `query_range` over `traefik_service_requests_total` (rate), `_request_duration_seconds_bucket` (`histogram_quantile`, default p95), and `_responses_bytes_total` (rate). `statusCode` filters the `code` label (`2xx` → `2..`); `groupBy` (`status`/`method`) breaks the result into per-label series.
 
-metrics-server is a **point-in-time snapshot**, so cpu/memory/instance_count series carry a **single current point** regardless of the requested `startTime`/`endTime` — the range params are accepted for Render compatibility; only the Prometheus-backed request metrics honor them. When a metric's source isn't wired, the endpoint returns **503** (`ErrMetricsUnavailable`) — the App exists, the data source doesn't.
+When a metric's source isn't wired at all (request metrics without `BEX_PROM_URL`, cpu/memory with neither Prometheus nor metrics-server), the endpoint returns **503** (`ErrMetricsUnavailable`) — the App exists, the data source doesn't.
 
 ### REST surface
 
@@ -89,19 +91,20 @@ Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`
 
 ### Render compatibility
 
-Shapes track Render's metrics endpoints (per-metric path segments; the `{labels, unit, values}` time-series). Known, intentional deviations:
+Shapes track Render's metrics endpoints (per-metric path segments; the `{labels, unit, values}` time-series). With Prometheus configured (`BEX_PROM_URL`), **all six metrics are resolution-stepped series honoring `startTime`/`endTime`/`resolutionSeconds`** — Render metrics-page parity. Known, intentional deviations:
 
-- **snapshot resolution** — resource metrics return a single current point (metrics-server has no history); Render returns a resolution-stepped series. Request metrics (Prometheus) are stepped.
+- **snapshot fallback** — without `BEX_PROM_URL`, resource metrics fall back to metrics-server and return a single current point (metrics-server has no history); Render always returns a stepped series.
+- **`cpu_limit`/`memory_limit` stay single-point** — limits come from the current pod spec, and bex won't fabricate a history for a value it only knows _now_ (a past limit may have differed). Safe for Render-style clients, which fetch the limit alongside the usage series and divide client-side using its latest value.
 - **`host`/`path` filters** — accepted (Render vocabulary) but not applied to request metrics: Traefik's per-service counters carry only `code`/`method`, not host/path (host/path live on router-level metrics). Documented like the logs adapter's unimplemented request filters.
-- **Traefik service selector** — the App→Traefik-service match is a heuristic (`service=~".*<app>.*"`); a real cluster may need it tuned to the ingress's actual service label.
+- **Traefik service selector** — the App→Traefik-service match is a heuristic (`service=~".*<app>.*"`); a real cluster may need it tuned to the ingress's actual service label. The resource-metrics pod match (`pod=~"<app>-[a-z0-9]+-[a-z0-9]{5}"`) is its (stricter) cAdvisor sibling.
 
 ### RBAC
 
-Resource metrics add read on `metrics.k8s.io` `pods` (`get`/`list`) to the api ServiceAccount (`lego/operator/config/api/rbac.yaml`); percentage mode reuses the existing `pods` read for limits. Request metrics reach Prometheus over HTTP (`BEX_PROM_URL`), not the kube API, so they need no extra RBAC.
+The metrics-server fallback adds read on `metrics.k8s.io` `pods` (`get`/`list`) to the api ServiceAccount (`lego/operator/config/api/rbac.yaml`); percentage mode reuses the existing `pods` read for limits. The Prometheus-backed metrics (resource history and request) reach Prometheus over HTTP (`BEX_PROM_URL`), not the kube API, so they need no extra RBAC on bex-api — the Prometheus ServiceAccount's chart-default ClusterRole covers the cAdvisor scrape (`nodes`, `nodes/proxy`, `nodes/metrics`).
 
 ### Cluster enablement
 
-`deploy/gitops/base/metrics-server.yaml` installs metrics-server (resource metrics); `deploy/gitops/base/traefik.yaml` enables Traefik's Prometheus metrics on an in-cluster `metrics` entrypoint (`:9100`, `addServicesLabels`). Request metrics additionally need a Prometheus scraping that entrypoint and `BEX_PROM_URL` pointed at it.
+`deploy/gitops/base/prometheus.yaml` runs the one Prometheus behind both history-backed metric families, with two scrape jobs: `traefik` (request counters, via `deploy/gitops/base/traefik.yaml`'s `metrics` entrypoint `:9100` with `addServicesLabels`) and `kubernetes-cadvisor` (per-container cpu/memory, scraped through the apiserver proxy so it works even where the pod network can't reach every kubelet). `BEX_PROM_URL` points bex-api at it and enables both. `deploy/gitops/base/metrics-server.yaml` installs metrics-server — now only the snapshot fallback (and `kubectl top`).
 
 ## Verify (mock cluster)
 
@@ -110,9 +113,13 @@ Resource metrics add read on `metrics.k8s.io` `pods` (`get`/`list`) to the api S
 curl -s -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8090/v1/logs?resource=<app>&type=app" | jq .
 
-# resource metrics (needs metrics-server; instance-count works without it):
+# resource metrics — with BEX_PROM_URL set these are stepped history; a ranged
+# query returns one point per resolution step per instance:
 curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
   "http://localhost:8090/v1/metrics/cpu?resource=<app>&percentage=true" | jq .
+curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
+  "http://localhost:8090/v1/metrics/memory?resource=<app>&startTime=$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)&endTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)&resolutionSeconds=60" \
+  | jq '.[0].values | length'   # ≈60 points over the hour (where data exists)
 curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
   "http://localhost:8090/v1/metrics/instance-count?resource=<app>" | jq .
 ```

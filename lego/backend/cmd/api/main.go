@@ -81,14 +81,19 @@ func main() {
 		Namespace:     envOr("BEX_API_NAMESPACE", "default"),
 		PodLogs:       api.NewPodLogSource(cs),
 		PodLogsFollow: api.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
-		// Resource metrics (cpu/memory) via metrics-server; instance count needs no
-		// source. Left nil if metrics-server is absent => those metrics report 503.
+		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback
+		// when Prometheus isn't wired below; instance count then needs no source.
+		// Left nil if metrics-server is absent => those metrics report 503.
 		ResourceMetrics: api.NewResourceMetricsSource(cs),
 	}
-	// Request metrics (http_requests/latency/bandwidth) need Traefik scraped by
-	// Prometheus; wired only when BEX_PROM_URL is set, else those metrics 503.
+	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
+	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired
+	// they 503) and resource-metrics history (cpu/memory/instance_count via
+	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
+	// unreachable surfaces the query error, it does not silently fall back).
 	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
 		core.RequestMetrics = api.NewPrometheusRequestSource(prom, nil)
+		core.ResourceMetricsRange = api.NewPrometheusResourceSource(prom, nil)
 		core.MonthToDateBandwidthSource = api.NewMonthToDateBandwidthSource(prom, nil)
 		core.MetricsFilterValuesSource = api.NewPrometheusFilterValuesSource(prom, nil)
 	}

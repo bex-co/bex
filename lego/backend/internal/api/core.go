@@ -53,10 +53,12 @@ var ErrNotFound = errors.New("app not found")
 var ErrLogsUnavailable = errors.New("logs source not configured")
 
 // ErrMetricsUnavailable is returned by the Metrics verb when the backend a metric
-// needs isn't wired: resource metrics (cpu/memory) need a ResourceMetrics source
-// (metrics-server), request metrics need a RequestMetrics source (Traefik via
+// needs isn't wired: resource metrics (cpu/memory) need a resource source
+// (ResourceMetricsRange — Prometheus history — or the metrics-server snapshot
+// ResourceMetrics), request metrics need a RequestMetrics source (Traefik via
 // Prometheus). Adapters surface it as 503, like ErrLogsUnavailable — the App
-// exists, the data source doesn't. Instance count needs neither (it counts pods).
+// exists, the data source doesn't. Instance count never errors (without a ranged
+// source it counts pods).
 var ErrMetricsUnavailable = errors.New("metrics source not configured")
 
 // ErrAPIKeysUnavailable is returned by the api-key verbs when no store is
@@ -132,8 +134,13 @@ type Core struct {
 	// FollowLogs reports ErrLogsUnavailable. See logs.go.
 	PodLogsFollow PodLogStream
 	// ResourceMetrics reads current per-pod CPU/memory (metrics-server); nil =>
-	// the cpu/memory metrics report ErrMetricsUnavailable. See metrics.go.
+	// the cpu/memory metrics report ErrMetricsUnavailable (unless
+	// ResourceMetricsRange serves them). See metrics.go.
 	ResourceMetrics ResourceMetricsSource
+	// ResourceMetricsRange reads stepped cpu/memory/instance-count history
+	// (cAdvisor via Prometheus); non-nil => preferred over ResourceMetrics and
+	// the pod-count fallback. See metrics.go.
+	ResourceMetricsRange ResourceMetricsRangeSource
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// the http_requests/http_latency/bandwidth metrics report ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
