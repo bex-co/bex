@@ -10,3 +10,6 @@
 # Re-include per-module Go module files
 !**/go.mod
 !**/go.sum
+
+# Re-include embedded assets the build needs (bex-api control-plane migrations)
+!**/*.sql

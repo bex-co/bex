@@ -148,6 +148,37 @@ func (o *openfgaChecker) checkUpstream(ctx context.Context, subject, relation, o
 	return out.Allowed, nil
 }
 
+// writeRequest is OpenFGA's /write body — a batch of tuples to add.
+type writeRequest struct {
+	Writes struct {
+		TupleKeys []struct {
+			User     string `json:"user"`
+			Relation string `json:"relation"`
+			Object   string `json:"object"`
+		} `json:"tuple_keys"`
+	} `json:"writes"`
+}
+
+// GrantWorkspaceAdmin writes the membership tuple `<subject> admin
+// workspace:<tenantID>` — how a freshly minted tenant becomes a real OpenFGA
+// workspace, replacing the model's `workspace:default` placeholder (w1/m2).
+// It satisfies store.WorkspaceGranter structurally, so the store package needs
+// no dependency on this package.
+func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
+	storeID, err := o.store(ctx)
+	if err != nil {
+		return err
+	}
+	var req writeRequest
+	req.Writes.TupleKeys = append(req.Writes.TupleKeys, struct {
+		User     string `json:"user"`
+		Relation string `json:"relation"`
+		Object   string `json:"object"`
+	}{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
+	body, _ := json.Marshal(req)
+	return doJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil)
+}
+
 // store resolves the `bex` store id by name once, deduplicating the lookup
 // across concurrent cold-start checks.
 func (o *openfgaChecker) store(ctx context.Context) (string, error) {

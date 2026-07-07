@@ -29,6 +29,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -38,6 +39,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -150,6 +152,20 @@ type Core struct {
 	// Authz decides what the authenticated caller may do (OpenFGA); nil =>
 	// every verb allowed (pre-authorization behavior). See authz.go.
 	Authz Checker
+	// Store is the Postgres source of truth for store-managed Apps (those
+	// carrying the bex.co/app-id label). Suspend/Resume write the row first —
+	// the row owns spec.suspended, and the projection loop reverts CR patches
+	// it didn't originate — then patch the CR as the fast-converge path. Nil
+	// (tests, DB-less mode) falls back to CR-only patches, safe only for
+	// hand-applied Apps. See internal/store.
+	Store IntentStore
+}
+
+// IntentStore is the slice of the source of truth Core writes through — kept to
+// the one method the lifecycle verbs need, so Core can't quietly grow into a
+// second store client and tests fake a single method. *store.PGStore satisfies it.
+type IntentStore interface {
+	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 }
 
 func (c *Core) now() time.Time {
@@ -221,7 +237,7 @@ func (c *Core) Suspend(ctx context.Context, name string) (AppView, error) {
 	if err := c.authorize(ctx, relCanOperate); err != nil {
 		return AppView{}, err
 	}
-	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = true })
+	return c.setSuspended(ctx, name, true)
 }
 
 // Resume brings a suspended App back (spec.suspended = false); the operator
@@ -230,7 +246,29 @@ func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
 	if err := c.authorize(ctx, relCanOperate); err != nil {
 		return AppView{}, err
 	}
-	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = false })
+	return c.setSuspended(ctx, name, false)
+}
+
+// setSuspended flips suspension with the row as the single writer of intent.
+// For store-managed Apps the apps row is updated first (the projection loop
+// owns spec.suspended and would revert a bare CR patch on the next resync);
+// the CR patch after it makes the change converge immediately — and if that
+// patch fails, the row is already right, so the resync converges it anyway.
+// Restart needs no row write: spec.restartedAt is not projection-owned (see
+// applyOwnedSpec in internal/store).
+func (c *Core) setSuspended(ctx context.Context, name string, suspended bool) (AppView, error) {
+	if c.Store != nil {
+		a, err := c.fetch(ctx, name)
+		if err != nil {
+			return AppView{}, err
+		}
+		if id := a.Labels[store.LabelAppID]; id != "" {
+			if err := c.Store.SetAppSuspended(ctx, id, suspended); err != nil {
+				return AppView{}, fmt.Errorf("update source of truth: %w", err)
+			}
+		}
+	}
+	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
 }
 
 // Logs returns recent log lines for an App, aggregated across its pods

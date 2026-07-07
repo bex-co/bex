@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
-- [ ] **m2** — Control plane: Go service + Postgres source of truth (7 tasks) ← from `005` (005a done)
+- [ ] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks) ← from `005` (t001 done)
 - [ ] **m3** — Elastic substrate: bin-pack + autoscale (5 tasks) ← from `002`, `004` (001 done)
 - [ ] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003`
 - [ ] **m5** — Build & deploy from git, in-cluster (3 tasks) ← from `008`

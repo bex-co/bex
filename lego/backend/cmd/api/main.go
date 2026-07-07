@@ -14,15 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command api is the bex control-plane seed: a service exposing REST, GraphQL
-// and MCP for the App lifecycle verbs (list / get / restart / suspend / resume /
-// logs). It shares the operator image but runs as a separate Deployment
-// (command: /api). Default mode serves HTTP; `api mcp-stdio` (or BEX_MCP_STDIO=1)
-// serves the MCP adapter over stdio for a local agent. It is a pure apiserver
-// client — it patches App CRs and reads pod logs; the operator does the rest.
+// Command api is bex-api: the product front door exposing REST, GraphQL and MCP
+// for the App lifecycle verbs (list / get / restart / suspend / resume / logs /
+// metrics) plus authz and API keys. It is a pure apiserver client — it patches
+// App CRs and reads pod logs; the operator does the mechanism.
+//
+// When BEX_CP_DB_URI is set it ALSO runs the control plane (the Postgres source
+// of truth, w1/m2): migrations on bex-db, the projector that turns `apps` rows
+// into App CRs, the cluster-internal tenant API on :8091, and the single-writer
+// wiring so suspend/resume update the row (not just the CR). Unset => bex-api is
+// the Render surface alone. `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the
+// MCP adapter over stdio for a local agent (DB-free).
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +37,7 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -38,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/api"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -49,6 +58,8 @@ func envOr(k, def string) string {
 }
 
 func main() {
+	ctx := ctrl.SetupSignalHandler()
+
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(appv1alpha1.AddToScheme(scheme))
@@ -93,8 +104,10 @@ func main() {
 	// the pre-m4 behavior); set => every Core verb checks OpenFGA, fail closed.
 	// NOT wired in stdio mode: that transport's trust boundary is the subprocess
 	// itself (no auth gate, so no identity — a wired checker would deny all).
+	var authz api.Checker
 	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
-		core.Authz = api.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+		authz = api.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+		core.Authz = authz
 	}
 
 	srv := &api.Server{
@@ -108,10 +121,63 @@ func main() {
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
 	if mcpStdio() {
 		log.Printf("bex-api: serving MCP over stdio (namespace %s)", srv.Core.Namespace)
-		if err := srv.RunStdio(ctrl.SetupSignalHandler()); err != nil {
+		if err := srv.RunStdio(ctx); err != nil {
 			log.Fatalf("bex-api mcp stdio: %v", err)
 		}
 		return
+	}
+
+	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
+	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
+	// the single-writer wiring, and the cluster-internal tenant API on :8091.
+	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" {
+		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
+		pool, err := pgxpool.New(ctx, dbURI)
+		if err != nil {
+			log.Fatalf("bex-api: db config: %v", err)
+		}
+		defer pool.Close()
+		// CNPG may still be coming up when the pod starts — wait for the DB
+		// rather than crash-looping, then converge the schema before serving.
+		if err := waitForDB(ctx, pool); err != nil {
+			log.Fatalf("bex-api: database unreachable: %v", err)
+		}
+		if err := store.Migrate(dbURI); err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+
+		st := store.NewPGStore(pool)
+		rec := store.NewReconciler(cl, st, appsNS)
+		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
+			v, err := time.ParseDuration(d)
+			if err != nil {
+				log.Fatalf("bex-api: bad BEX_CP_RESYNC %q: %v", d, err)
+			}
+			rec.Resync = v
+		}
+		go rec.Run(ctx)
+		core.Store = st // single writer of intent: suspend/resume write the row first
+
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN")}
+		// The OpenFGA checker also writes membership tuples (workspace:tea-<id>);
+		// give the tenant API the grant path when authz is wired.
+		if g, ok := authz.(store.WorkspaceGranter); ok {
+			internal.Grant = g
+		}
+		cpAddr := envOr("BEX_CP_ADDR", ":8091")
+		cpSrv := &http.Server{
+			Addr:              cpAddr,
+			Handler:           internal.Handler(),
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+		}
+		go func() {
+			log.Printf("bex-api control plane (source of truth) on %s (projecting Apps into %q)", cpAddr, appsNS)
+			if err := cpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("bex-api control plane: %v", err)
+			}
+		}()
 	}
 
 	handler, err := srv.Handler()
@@ -129,6 +195,22 @@ func main() {
 	}
 	log.Printf("bex-api listening on %s (namespace %s)", addr, srv.Core.Namespace)
 	log.Fatal(httpSrv.ListenAndServe())
+}
+
+// waitForDB pings until the pool answers, for up to ~2 minutes.
+func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
+	var err error
+	for range 60 {
+		if err = pool.Ping(ctx); err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+	}
+	return err
 }
 
 // mcpStdio reports whether the binary should run as a stdio MCP server rather

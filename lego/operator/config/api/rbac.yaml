@@ -15,9 +15,11 @@ kind: ClusterRole
 metadata:
   name: api-role
 rules:
+  # Render verbs patch Apps; the control-plane projector (w1/m2) also creates
+  # and deletes them (projecting/pruning apps rows), so create + delete are here.
   - apiGroups: ["app.bex.co"]
     resources: ["apps"]
-    verbs: ["get", "list", "watch", "update", "patch"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["app.bex.co"]
     resources: ["apps/status"]
     verbs: ["get"]

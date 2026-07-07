@@ -13,3 +13,8 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    # Cluster-internal tenant API (control plane); only answers when the
+    # backend is started with BEX_CP_DB_URI. Reachable at bex-api:8091.
+    - name: internal
+      port: 8091
+      targetPort: internal

@@ -1,0 +1,2 @@
+# stray binaries from `go build ./cmd/...` without -o
+/api
