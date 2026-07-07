@@ -57,6 +57,23 @@ type AppSpec struct {
 	// +kubebuilder:default=3000
 	Port int32 `json:"port,omitempty"`
 
+	// Env are plain (literal) environment variables set on the App's container,
+	// in the order given. These carry non-secret configuration only — secret
+	// material is delivered out-of-band via EnvFromSecret (docs/secrets.md), never
+	// inlined here where it would sit in plaintext in etcd. The operator-owned PORT
+	// always wins: a user Env entry named PORT is ignored, so it can never shadow
+	// the injected value.
+	// +optional
+	Env []EnvVar `json:"env,omitempty"`
+
+	// EnvFromSecret names a Secret in the App's namespace whose keys are injected
+	// into the container as environment variables (envFrom). This is where the
+	// env-vars API (docs/secrets.md) materializes a service's OpenBao-backed
+	// credentials — a per-app "<name>-env" Secret projected from the source of
+	// truth. PORT still wins over any colliding key.
+	// +optional
+	EnvFromSecret string `json:"envFromSecret,omitempty"`
+
 	// HealthCheckPath polled for 2xx before traffic is shifted to a new revision.
 	// +optional
 	// +kubebuilder:default=/
@@ -113,6 +130,19 @@ type AppSpec struct {
 	// broken DNS can never block another's issuance or renewal.
 	// +optional
 	Hosts []string `json:"hosts,omitempty"`
+}
+
+// EnvVar is a single literal name/value environment variable for an App's
+// container (the plain half of Render's envVars shape). Only literal values are
+// carried here; a secret reference belongs in AppSpec.EnvFromSecret.
+type EnvVar struct {
+	// Name of the environment variable.
+	// +required
+	Name string `json:"name"`
+
+	// Value is the literal value; empty is allowed (sets the variable to "").
+	// +optional
+	Value string `json:"value,omitempty"`
 }
 
 // AppPhase mirrors the lifecycle state machine (211.09 §Agent Lifecycle).

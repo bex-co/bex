@@ -39,6 +39,9 @@ var (
 	ErrMetricsUnavailable = errors.New("metrics source not configured")
 	// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is wired.
 	ErrAPIKeysUnavailable = errors.New("api-key store not configured")
+	// ErrSecretsUnavailable is returned by the env-vars verbs when no secret store
+	// is wired (BEX_OPENBAO_URL unset); adapters surface it as 503.
+	ErrSecretsUnavailable = errors.New("secret store not configured")
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires

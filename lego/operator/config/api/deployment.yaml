@@ -61,6 +61,13 @@ spec:
                   name: bex-openfga
                   key: token
                   optional: true
+            # Tenant secrets (docs/secrets.md): the env-vars API stores values in
+            # OpenBao KV v2, reached cluster-internally. bex-api authenticates as
+            # its own ServiceAccount via OpenBao's Kubernetes auth (role bex-api,
+            # scripts/bao-k8s-auth.sh). Unset => the env-vars verbs 503; everything
+            # else is unchanged.
+            - name: BEX_OPENBAO_URL
+              value: http://openbao.secrets.svc:8200
             # Control plane (source of truth, w1/m2): uncomment BEX_CP_DB_URI to
             # turn on the Postgres store + the projector (apps rows -> App CRs) +
             # the cluster-internal tenant API on :8091. Off by default like

@@ -51,6 +51,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -109,6 +110,12 @@ func main() {
 	hydraAdminURL := os.Getenv("BEX_HYDRA_ADMIN_URL")
 	if hydraAdminURL != "" {
 		deps.APIKeys = apikeys.NewHydraAPIKeys(hydraAdminURL)
+	}
+	// Tenant secrets (docs/secrets.md): the env-vars API stores values in OpenBao
+	// KV v2, wired only when BEX_OPENBAO_URL is set — else the env-vars verbs 503
+	// and the rest of the API is byte-for-byte unchanged.
+	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
+		deps.Secrets = secrets.NewOpenBaoStore(bao)
 	}
 	// Authorization (docs/auth.md): unset => authz disabled (every verb allowed,
 	// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT

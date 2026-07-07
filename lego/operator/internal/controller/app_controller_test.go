@@ -250,5 +250,42 @@ var _ = Describe("App Controller", func() {
 			// envtest has no kubelet, so readiness never arrives: Deploying, not Running
 			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
 		})
+
+		It("projects spec.env (PORT unshadowable) and spec.envFromSecret onto the container", func() {
+			By("creating an App with user env, a PORT shadow attempt, and an envFrom secret ref")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000,
+					Env: []appv1alpha1.EnvVar{
+						{Name: "GREETING", Value: "hello"},
+						{Name: "PORT", Value: "9999"}, // must be ignored
+					},
+					EnvFromSecret: name + "-env",
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+
+			c := getDep().Spec.Template.Spec.Containers[0]
+			By("user env is present and PORT stays operator-owned")
+			envVal := func(key string) string {
+				v := ""
+				for _, e := range c.Env {
+					if e.Name == key {
+						v = e.Value
+					}
+				}
+				return v
+			}
+			Expect(envVal("GREETING")).To(Equal("hello"))
+			Expect(envVal("PORT")).To(Equal("3000"), "user PORT=9999 must not shadow the injected port")
+			Expect(c.Env[len(c.Env)-1].Name).To(Equal("PORT"), "PORT is appended last so it wins")
+
+			By("envFromSecret wires an envFrom SecretRef")
+			Expect(c.EnvFrom).To(HaveLen(1))
+			Expect(c.EnvFrom[0].SecretRef).NotTo(BeNil())
+			Expect(c.EnvFrom[0].SecretRef.Name).To(Equal(name + "-env"))
+		})
 	})
 })

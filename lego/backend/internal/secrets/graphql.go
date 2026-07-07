@@ -1,0 +1,103 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package secrets
+
+import (
+	"github.com/graphql-go/graphql"
+)
+
+// graphql.go is the env-vars GraphQL mutation fragment. The *reads* are Render
+// dashboard-shaped and nested under the Service type (`service{ envVarKeys{ id
+// key } }` / `service{ envVar(key){ value } }`) — those fields live in the apps
+// package and reach this Service through the core.EnvVarReader seam, so the reads
+// stay on the Service object exactly like Render's dashboard. The mutations are
+// top-level (Render's dashboard mutation names weren't captured, so these are
+// bex's own) and return a success boolean; the full objects are on the REST
+// surface and the nested reads.
+
+// envVarInputGQLType is the setEnvVars input — Render's envVarInput ({key,
+// value}), value optional (empty string allowed).
+var envVarInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "EnvVarInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"key":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.String},
+	},
+})
+
+// envVarsFromArgs maps the GraphQL envVars input list onto []EnvVarView.
+func envVarsFromArgs(raw []any) []EnvVarView {
+	vars := make([]EnvVarView, 0, len(raw))
+	for _, r := range raw {
+		m, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		ev := EnvVarView{}
+		if k, ok := m["key"].(string); ok {
+			ev.Key = k
+		}
+		if v, ok := m["value"].(string); ok {
+			ev.Value = v
+		}
+		vars = append(vars, ev)
+	}
+	return vars
+}
+
+// GraphQLMutation returns the env-var write mutations for the root to merge.
+func (s *Service) GraphQLMutation() graphql.Fields {
+	svcKey := graphql.FieldConfigArgument{
+		"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+		"key":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+	}
+	return graphql.Fields{
+		"setEnvVars": &graphql.Field{ // Render's replace-all
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"envVars":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(envVarInputGQLType)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["envVars"].([]any)
+				_, err := s.SetEnvVars(p.Context, p.Args["serviceId"].(string), envVarsFromArgs(raw))
+				return err == nil, err
+			},
+		},
+		"setEnvVar": &graphql.Field{ // Render's add-or-update one
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"value":     &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				value, _ := p.Args["value"].(string)
+				_, err := s.SetEnvVar(p.Context, p.Args["serviceId"].(string), p.Args["key"].(string), value)
+				return err == nil, err
+			},
+		},
+		"deleteEnvVar": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: svcKey,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DeleteEnvVar(p.Context, p.Args["serviceId"].(string), p.Args["key"].(string))
+				return err == nil, err
+			},
+		},
+	}
+}

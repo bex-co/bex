@@ -39,6 +39,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
 const (
@@ -57,6 +58,7 @@ type Server struct {
 	Metrics  *metrics.Service
 	APIKeys  *apikeys.Service
 	Postgres *postgres.Service
+	Secrets  *secrets.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -79,6 +81,7 @@ type Deps struct {
 	MetricsFilterValues  metrics.MetricsFilterValuesSource
 	APIKeys              apikeys.APIKeyStore
 	Store                apps.IntentStore
+	Secrets              secrets.SecretStore
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -97,6 +100,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys},
 		Postgres: &postgres.Service{Base: base},
+		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
 	}
 }
 
@@ -128,6 +132,9 @@ func (s *Server) features() []any {
 	}
 	if s.Postgres != nil {
 		out = append(out, s.Postgres)
+	}
+	if s.Secrets != nil {
+		out = append(out, s.Secrets)
 	}
 	return out
 }
@@ -218,12 +225,19 @@ func (s *Server) graphqlHandler() http.Handler {
 			http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
 			return
 		}
+		// Env-var reads nest under the apps Service type but live in the secrets
+		// feature; inject the reader so those resolvers reach it via context (the
+		// shared Service GraphQL type stays stateless — no per-server closure).
+		ctx := r.Context()
+		if s.Secrets != nil {
+			ctx = core.WithEnvVars(ctx, s.Secrets)
+		}
 		result := graphql.Do(graphql.Params{
 			Schema:         s.schema,
 			RequestString:  body.Query,
 			OperationName:  body.OperationName,
 			VariableValues: body.Variables,
-			Context:        r.Context(),
+			Context:        ctx,
 		})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(result)

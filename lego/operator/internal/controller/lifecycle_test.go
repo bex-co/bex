@@ -19,8 +19,71 @@ package controller
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+func TestAppEnv(t *testing.T) {
+	mk := func(env ...appv1alpha1.EnvVar) *appv1alpha1.App {
+		return &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Env: env}}
+	}
+	// last() is what k8s uses: within a container's env, a duplicate name is
+	// resolved to the last entry — so PORT being appended last is what makes it win.
+	find := func(env []corev1.EnvVar, name string) (string, bool) {
+		val, ok := "", false
+		for _, e := range env {
+			if e.Name == name {
+				val, ok = e.Value, true // keep scanning: last wins, mirroring kubelet
+			}
+		}
+		return val, ok
+	}
+
+	t.Run("empty env still injects PORT", func(t *testing.T) {
+		env := appEnv(mk(), 8080)
+		if len(env) != 1 || env[0].Name != "PORT" || env[0].Value != "8080" {
+			t.Fatalf("want single PORT=8080, got %v", env)
+		}
+	})
+
+	t.Run("user vars precede PORT, in order", func(t *testing.T) {
+		env := appEnv(mk(
+			appv1alpha1.EnvVar{Name: "FOO", Value: "1"},
+			appv1alpha1.EnvVar{Name: "BAR", Value: ""},
+		), 3000)
+		if got := []string{env[0].Name, env[1].Name, env[2].Name}; got[0] != "FOO" || got[1] != "BAR" || got[2] != "PORT" {
+			t.Fatalf("order = %v, want [FOO BAR PORT]", got)
+		}
+		if v, _ := find(env, "BAR"); v != "" {
+			t.Fatalf("empty value should be preserved, got %q", v)
+		}
+	})
+
+	t.Run("PORT cannot be shadowed", func(t *testing.T) {
+		env := appEnv(mk(appv1alpha1.EnvVar{Name: "PORT", Value: "1"}), 3000)
+		if v, _ := find(env, "PORT"); v != "3000" {
+			t.Fatalf("PORT = %q, want 3000 (user shadow dropped)", v)
+		}
+		// The dropped entry must not linger earlier in the slice (kubelet's
+		// last-wins would otherwise resolve it to the user value on a reorder).
+		for _, e := range env[:len(env)-1] {
+			if e.Name == "PORT" {
+				t.Fatalf("a user PORT entry survived: %v", env)
+			}
+		}
+	})
+}
+
+func TestEnvFromSources(t *testing.T) {
+	if envFromSources(&appv1alpha1.App{}) != nil {
+		t.Fatal("no envFromSecret => nil (unchanged behavior)")
+	}
+	got := envFromSources(&appv1alpha1.App{Spec: appv1alpha1.AppSpec{EnvFromSecret: "web-env"}})
+	if len(got) != 1 || got[0].SecretRef == nil || got[0].SecretRef.Name != "web-env" {
+		t.Fatalf("want one SecretRef envFrom to web-env, got %v", got)
+	}
+}
 
 func TestEffectiveReplicas(t *testing.T) {
 	mk := func(replicas int32, suspended bool) *appv1alpha1.App {

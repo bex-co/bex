@@ -203,7 +203,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:      "app",
 			Image:     image,
-			Env:       []corev1.EnvVar{{Name: "PORT", Value: strconv.Itoa(port)}},
+			Env:       appEnv(app, port),
+			EnvFrom:   envFromSources(app),
 			Ports:     []corev1.ContainerPort{{ContainerPort: int32(port)}},
 			Resources: resourcesForTier(app.Spec.Tier),
 		}}
@@ -433,6 +434,38 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 		add(h)
 	}
 	return hosts
+}
+
+// appEnv builds the container's environment: the user's spec.env (literal
+// config) first, then the operator-owned PORT last. PORT is appended last and a
+// user entry named PORT is dropped, so a user variable can never shadow the
+// injected port — the one invariant the CRD contract promises. Secret-backed
+// variables arrive separately through envFrom (envFromSources); a container-level
+// Env entry overrides an envFrom key of the same name, so PORT wins over both.
+func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
+	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
+	for _, e := range app.Spec.Env {
+		if e.Name == "PORT" {
+			continue // operator-owned; never let a user shadow it
+		}
+		env = append(env, corev1.EnvVar{Name: e.Name, Value: e.Value})
+	}
+	env = append(env, corev1.EnvVar{Name: "PORT", Value: strconv.Itoa(port)})
+	return env
+}
+
+// envFromSources wires spec.envFromSecret to a Secret envFrom source — how the
+// env-vars API's materialized "<name>-env" Secret (docs/secrets.md) reaches the
+// container. Empty => no envFrom, unchanged behavior.
+func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
+	if app.Spec.EnvFromSecret == "" {
+		return nil
+	}
+	return []corev1.EnvFromSource{{
+		SecretRef: &corev1.SecretEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{Name: app.Spec.EnvFromSecret},
+		},
+	}}
 }
 
 // effectiveReplicas derives the Deployment size: spec.replicas (default 1),

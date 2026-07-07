@@ -46,8 +46,62 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
 		"replicas": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
 		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Revision })},
+		// Env vars are nested under the service, Render-dashboard-shaped (captured
+		// live: Render's `serviceEnvVarKeys` reads `service{ envVarKeys{ id key } }`):
+		// envVarKeys lists keys only; envVar(key) fetches one variable's value on
+		// demand ("Show secret"). Resolved through the core.EnvVarReader the root
+		// injects — the secrets feature, reached via context so this shared type
+		// stays stateless (no import of secrets, no per-server closure).
+		"envVarKeys": &graphql.Field{
+			Type:    graphql.NewList(envVarGQLType),
+			Resolve: envVarKeysResolve,
+		},
+		"envVar": &graphql.Field{
+			Type: envVarGQLType,
+			Args: graphql.FieldConfigArgument{
+				"key": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: envVarValueResolve,
+		},
 	},
 })
+
+// envVarGQLType renders the kernel's neutral core.EnvVar ({id,key,value}), the
+// object Render's dashboard nests under a service. bex has no separate id (the
+// key is unique within a service), so id == key; the keys-only list leaves value
+// empty (values are fetched per-key via envVar(key)).
+var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EnvVar",
+	Fields: graphql.Fields{
+		"id":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.ID })},
+		"key":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Key })},
+		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Value })},
+	},
+})
+
+func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
+	a, ok := p.Source.(AppView)
+	if !ok {
+		return nil, nil
+	}
+	r, ok := core.EnvVarsFrom(p.Context)
+	if !ok {
+		return nil, core.ErrSecretsUnavailable
+	}
+	return r.EnvVarKeys(p.Context, a.Name)
+}
+
+func envVarValueResolve(p graphql.ResolveParams) (any, error) {
+	a, ok := p.Source.(AppView)
+	if !ok {
+		return nil, nil
+	}
+	r, ok := core.EnvVarsFrom(p.Context)
+	if !ok {
+		return nil, core.ErrSecretsUnavailable
+	}
+	return r.EnvVarValue(p.Context, a.Name, p.Args["key"].(string))
+}
 
 // GraphQLQuery returns the App read fields (Render dashboard names services /
 // server(id)) for the composition root to merge into the root Query.
@@ -58,6 +112,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
 		},
 		"server": &graphql.Field{ // Render's dashboard query name
+			Type: serviceGQLType,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(p.Context, p.Args["id"].(string))
+			},
+		},
+		"service": &graphql.Field{ // Render's dashboard also queries service(id) (e.g. serviceEnvVarKeys)
 			Type: serviceGQLType,
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {

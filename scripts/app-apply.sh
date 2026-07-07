@@ -39,8 +39,10 @@ for i in $(seq 0 $((count - 1))); do
 
   # Project .apps[i] onto an App CR: name -> metadata, domains[0] -> spec.host
   # (canonical; keeps existing Apps' TLS secret stable), domains[1:] -> spec.hosts
-  # (extra hosts, e.g. customers' custom domains), everything else 1:1; drop
-  # null/absent fields so operator defaults apply.
+  # (extra hosts, e.g. customers' custom domains), envVars[] {key,value} ->
+  # spec.env[] {name,value} (literal config only — secrets go through the env-vars
+  # API, docs/secrets.md), everything else 1:1; drop null/absent fields so
+  # operator defaults apply.
   cr="$(yq -o=yaml "
     .apps[$i] as \$a |
     {
@@ -58,6 +60,7 @@ for i in $(seq 0 $((count - 1))); do
         \"healthCheckPath\": \$a.healthCheckPath,
         \"host\": \$a.domains[0],
         \"hosts\": ((\$a.domains // []) | .[1:] | select(length > 0) // null),
+        \"env\": ((\$a.envVars // []) | map({\"name\": .key, \"value\": .value}) | select(length > 0) // null),
         \"expose\": $expose_json
       } | with_entries(select(.value != null))
     } | ... comments=\"\"" "$manifest")"

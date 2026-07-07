@@ -1,6 +1,6 @@
 # ADR: platform secrets — OpenBao for tenant credentials
 
-**Status:** accepted; substrate deployed on the local mock cluster (w4/m5). bex-api does not yet read/write through it — that's product wiring in w4/m6.
+**Status:** accepted; substrate deployed on the local mock cluster (w4/m5), and wired into the product in w4/m6 — bex-api's env-vars API now reads/writes tenant credentials through it (see [Product usage](#product-usage-w4m6-the-env-vars-api) below).
 
 ## Context
 
@@ -63,6 +63,28 @@ Local-CAPD quirks (mock cluster only, don't apply to prod):
 
 - The `secrets` namespace needs the same `pod-security.kubernetes.io/enforce=privileged` label the `auth` namespace already carries — local-path's hostPath helper pods run in the **PVC's** namespace and are blocked by the cluster's `baseline` PSA enforcement otherwise (same reasoning as [auth.md](auth.md)'s local-CAPD quirks section).
 - Unlike Kratos/Hydra/OpenFGA, OpenBao's pod **does** need pinning to the control-plane node (`overlays/local/values/openbao.values.yaml`'s `nodeSelector`/`tolerations`), and this one is easy to misdiagnose: a worker-scheduled pod comes up `Running`, its port stays in `LISTEN`, and it even accepts TCP connections — but every HTTP request just hangs forever (confirmed via `kubectl exec` to `127.0.0.1:8200` from inside the pod itself, which hung identically to a port-forward from outside). The cause is `service_registration "kubernetes" {}`, which has OpenBao call the apiserver directly from inside its own request-handling path; on a worker node under this cluster's OrbStack/Calico networking that call never returns (the same reachability gap [auth.md](auth.md)'s local-CAPD quirks section pins coredns/local-path/CNPG for). Moving the pod to the control-plane node fixed it immediately, confirming the cause.
+
+## Product usage (w4/m6): the env-vars API
+
+The consumer this substrate exists for: bex-api's Render-compatible **env-vars API** ([bex-api.md](bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)). A tenant (an API key, or a human session) sets a service's environment variables; the values live in OpenBao under that service's path; the operator materializes them into the running app.
+
+```mermaid
+flowchart LR
+  caller["API key / session"] -->|"PUT /v1/services/{id}/env-vars"| api["bex-api Core"]
+  api -->|"KV v2 write (source of truth)"| bao["OpenBao<br/>tenants/&lt;tenant&gt;/services/&lt;svc&gt;/env"]
+  api -->|"project"| sec["k8s Secret &lt;svc&gt;-env"]
+  api -->|"spec.envFromSecret + roll"| cr["App CR"]
+  cr --> op["operator"]
+  op -->|"envFrom + rolling restart"| pod["app pods (new values)"]
+```
+
+- **Path layout.** One KV v2 mount `tenants/` (§4); a service's env map lives at `tenants/<tenant>/services/<service>/env`. Until w1/m2 grows real tenants, `<tenant>` is the single `default` (the same convention m4's authorization uses for the default workspace).
+- **Authentication.** bex-api logs in with the Kubernetes auth method as its own ServiceAccount (§5, role `bex-api`, policy `tenants-rw`), caches the returned client token until just before its lease expires, and re-authenticates on demand (including when a still-cached token is rejected). Off-cluster runs (local dev, `scripts/secrets-verify.sh`) point `BEX_OPENBAO_JWT_PATH` at a token minted with `kubectl create token bex-api`.
+- **Materialization + the etcd trade-off.** On every write, bex-api stores the map in OpenBao (**the source of truth**), then projects it into a per-app Kubernetes Secret `<service>-env` (owned by the App, so it is garbage-collected with it) and points `App.spec.envFromSecret` at it; the operator wires that Secret in via `envFrom` and rolls the pods (through `spec.restartedAt`, the no-downtime restart mechanism) so the new values take effect. **Accepted trade-off:** a projection copy of the values does live in etcd, in that Secret — OpenBao buys durability, versioning, audit and policy-scoping, **not** etcd-avoidance. The future alternative that removes the etcd copy is sidecar/agent injection (an OpenBao Agent rendering the secret into the pod at runtime), recorded here as follow-up work, out of scope for m6.
+- **Authorization + leak discipline.** Reading values requires the sensitive-read scope (`can_view_sensitive`), writing the manage scope (`can_create`) — enforced by the same OpenFGA `Checker` as every other verb (a tuple-less key gets 403). Values never appear in logs, error messages, or responses beyond the authenticated `GET`/`PUT` bodies: a rejected write names the offending **key** at most, never its value, and the OpenBao client's errors carry only method + path.
+- **Fail-closed.** With `BEX_OPENBAO_URL` unset bex-api has no store and the env-vars verbs 503 (the rest of the API is byte-for-byte unchanged); a sealed or unreachable OpenBao 503s the credential-touching verb, mirroring the Hydra fail-closed precedent in [auth.md](auth.md).
+
+Verified end-to-end on the mock cluster by [scripts/secrets-verify.sh](../scripts/secrets-verify.sh): mint a key → PUT env-vars → the value is present in OpenBao (scoped read) → the `<svc>-env` Secret is materialized → the app's pods roll → the running app serves the new value; a tuple-less key gets 403; with `BEX_OPENBAO_URL` unset the endpoints 503.
 
 ## Prod deploy path
 

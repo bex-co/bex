@@ -43,7 +43,8 @@ func WriteErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
 	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrAPIKeysUnavailable),
-		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable):
+		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
+		errors.Is(err, ErrSecretsUnavailable):
 		code = http.StatusServiceUnavailable
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest

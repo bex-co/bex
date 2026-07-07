@@ -118,10 +118,15 @@ apps:
     port: 3000
     replicas: 1
     healthCheckPath: /
+    envVars: # literal (non-secret) config -> App.spec.env (PORT is operator-owned)
+      - key: LOG_LEVEL
+        value: info
     domains: # custom domains on top of the platform hostname
       - my-app.example.com # first entry -> App.spec.host (canonical URL)
       - www.customer.com # rest -> App.spec.hosts (each gets its own TLS cert)
 ```
+
+`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([bex-api.md](bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([secrets.md](secrets.md#product-usage-w4m6-the-env-vars-api)).
 
 Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
 

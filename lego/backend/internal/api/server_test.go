@@ -43,6 +43,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -343,6 +344,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&metrics.Service{Base: base},
 		&apikeys.Service{Base: base, APIKeys: newFakeKeyStore()},
 		&postgres.Service{Base: base},
+		&secrets.Service{Base: base},
 	}
 	swept := 0
 	for _, svc := range services {

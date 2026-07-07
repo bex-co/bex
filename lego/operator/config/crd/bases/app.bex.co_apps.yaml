@@ -70,6 +70,39 @@ spec:
                 - buildpack
                 - dockerfile
                 type: string
+              env:
+                description: |-
+                  Env are plain (literal) environment variables set on the App's container,
+                  in the order given. These carry non-secret configuration only — secret
+                  material is delivered out-of-band via EnvFromSecret (docs/secrets.md), never
+                  inlined here where it would sit in plaintext in etcd. The operator-owned PORT
+                  always wins: a user Env entry named PORT is ignored, so it can never shadow
+                  the injected value.
+                items:
+                  description: |-
+                    EnvVar is a single literal name/value environment variable for an App's
+                    container (the plain half of Render's envVars shape). Only literal values are
+                    carried here; a secret reference belongs in AppSpec.EnvFromSecret.
+                  properties:
+                    name:
+                      description: Name of the environment variable.
+                      type: string
+                    value:
+                      description: Value is the literal value; empty is allowed (sets
+                        the variable to "").
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              envFromSecret:
+                description: |-
+                  EnvFromSecret names a Secret in the App's namespace whose keys are injected
+                  into the container as environment variables (envFrom). This is where the
+                  env-vars API (docs/secrets.md) materializes a service's OpenBao-backed
+                  credentials — a per-app "<name>-env" Secret projected from the source of
+                  truth. PORT still wins over any colliding key.
+                type: string
               expose:
                 description: |-
                   Expose, when true and the controller's BEX_BASE_DOMAIN env is set, serves the
