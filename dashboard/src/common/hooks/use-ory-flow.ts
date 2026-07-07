@@ -74,7 +74,7 @@ function getFlow<K extends keyof OryFlowMap>(
 function createFlow<K extends keyof OryFlowMap>(
   api: FrontendApi,
   kind: K,
-  returnTo: string,
+  returnTo: string | undefined,
 ): Promise<OryFlowMap[K]> {
   const req =
     kind === "login"
@@ -162,7 +162,18 @@ export function useOryFlow<K extends keyof OryFlowMap>(
       }
 
       try {
-        const fresh = await createFlow(api, kind, returnUrl);
+        let fresh: OryFlowMap[K];
+        try {
+          fresh = await createFlow(api, kind, returnUrl);
+        } catch (err) {
+          // Kratos rejects return_to values missing from its
+          // allowed_return_urls (e.g. localhost dev against an environment
+          // that doesn't allowlist it) — the flow itself still works
+          // without one, so retry rather than fail the page.
+          if ((await oryErrorId(err)) !== "self_service_flow_return_to_forbidden")
+            throw err;
+          fresh = await createFlow(api, kind, undefined);
+        }
         if (cancelled) return;
         writeStoredFlowId(kind, fresh.id);
         setFlow(fresh);

@@ -60,6 +60,11 @@ kratos:
       # without these, Kratos redirects flows back to its own domain instead.
       allowed_return_urls:
         - https://dashboard.bex.co
+        # Local dashboard dev against this prod Kratos (dashboard/README.md
+        # "Local dev against prod" — the Vite /kratos proxy). Only a return-URL
+        # allowlist entry: redirecting a user to their own localhost is
+        # harmless, and CORS/cookies stay locked down (the proxy is same-origin).
+        - http://localhost:5173
       flows:
         login:
           ui_url: https://dashboard.bex.co/auth/login

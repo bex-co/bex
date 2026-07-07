@@ -30,6 +30,14 @@ VITE_KRATOS_PUBLIC_URL=http://localhost:4433 yarn dev
 
 This has been verified end-to-end (registration → session → dashboard, logout → login) two ways: against `yarn dev` above, and against the actually-deployed container (`deploy/`, below) port-forwarded to the same `localhost:5173`.
 
+**Local dev against prod** (the Hetzner cluster's Kratos at `auth.bex.co`): the browser can't call `auth.bex.co` from a `localhost` page directly — Kratos's CSRF/session cookies are `SameSite=Lax` on a different site, so they'd never be sent, and prod CORS only allows `dashboard.bex.co`. `vite.config.ts` ships a dev-only `/kratos` proxy that tunnels Kratos under the dev server's own origin (same-site cookies, no CORS), rewriting `Domain=bex.co` cookies to host-only `localhost`:
+
+```sh
+VITE_KRATOS_PUBLIC_URL=http://localhost:5173/kratos yarn dev
+```
+
+You're then registering/logging in against **real prod identities**. Two caveats: prod Kratos's `allowed_return_urls` must include `http://localhost:5173` (`deploy/gitops/base/values/kratos.values.yaml` — already in git; needs Argo to have synced it), and the Ory card's cross-links ("Sign up", "Recover Account") do full-page browser flows whose `ui_url` points at `dashboard.bex.co`, so they'll bounce you to the prod dashboard — use the app's own routes (`/auth/sign-up`, `/auth/forgot-password`) instead.
+
 ## Deployment
 
 `deploy/` is this app's own kustomize base (Deployment + Service + Ingress at `dashboard.bex.co`, namespace `dashboard`) — see [`docs/auth.md` §5](../docs/auth.md) for the full mechanics (CI build/push, Argo Application, the SSR-vs-browser Kratos/bex-api URL split, a real `runAsNonRoot` gotcha this surfaced). Locally (no Argo on the mock cluster):
