@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { formatMetricShort } from "@/features/metrics/lib/format";
+import {
+  CHART_WIDTH as WIDTH,
+  CHART_HEIGHT as HEIGHT,
+  CHART_PAD as PAD,
+} from "@/features/metrics/components/chart-layout";
 import type { ChartPoint } from "@/features/metrics/types";
-
-const WIDTH = 600;
-const HEIGHT = 180;
-const PAD = { top: 8, right: 8, bottom: 20, left: 44 };
 
 interface SvgLineChartProps {
   points: ChartPoint[];
@@ -71,9 +72,11 @@ export function SvgLineChart({ points, unit, color }: SvgLineChartProps) {
           }
         }}
       >
-        {/* Gridlines: hairline, recessive, one step off the surface. */}
-        {yTicks.map((t) => (
-          <g key={t.value}>
+        {/* Gridlines: hairline, recessive, one step off the surface. Keyed by
+            position, not value — a flat series (all zero) repeats the same
+            value across every tick. */}
+        {yTicks.map((t, i) => (
+          <g key={i}>
             <line
               x1={PAD.left}
               x2={WIDTH - PAD.right}

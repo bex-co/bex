@@ -25,6 +25,10 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "出站带宽",
     description: "Network metrics chart section title",
   },
+  "metrics.monthToDateBandwidth": {
+    message: "本月已使用 {amount}",
+    description: "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
+  },
   "metrics.sourceNotConfigured": {
     message: "未配置指标数据源",
     description: "Shown when bex-api reports no metrics backend is wired up",

@@ -8,10 +8,15 @@ import {
 import { SvgBarChart } from "@/features/metrics/components/svg-bar-chart";
 import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
-import { useMetrics } from "@/features/metrics/hooks/use-metrics";
+import {
+  useMetrics,
+  type UseMetricsResult,
+} from "@/features/metrics/hooks/use-metrics";
+import { useMonthToDateBandwidth } from "@/features/metrics/hooks/use-month-to-date-bandwidth";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { RangePreset } from "@/features/metrics/lib/range";
+import { formatMegabytes } from "@/features/metrics/lib/format";
 
 interface NetworkMetricsCardProps {
   resource: string;
@@ -30,13 +35,17 @@ export function NetworkMetricsCard({
   quantile,
 }: NetworkMetricsCardProps) {
   const { t } = useTranslations();
-  const queryOpts = useLiveRange(range);
+  // useLiveRange already forces a refetch every tick by changing startTime/
+  // endTime — Apollo's own pollInterval would just be a second, redundant
+  // timer re-issuing the same three queries on its own out-of-phase schedule.
+  const queryOpts = { ...useLiveRange(range), pollIntervalMs: 0 };
   const requests = useMetrics(resource, "http_requests", queryOpts);
   const latency = useMetrics(resource, "http_latency", {
     ...queryOpts,
     quantile,
   });
   const bandwidth = useMetrics(resource, "bandwidth", queryOpts);
+  const monthToDate = useMonthToDateBandwidth(resource);
 
   return (
     <Card>
@@ -75,6 +84,13 @@ export function NetworkMetricsCard({
             />
           )}
         </MetricSection>
+        {monthToDate.egressBandwidthMB != null && (
+          <p className="text-sm text-muted-foreground">
+            {t("metrics.monthToDateBandwidth", {
+              amount: formatMegabytes(monthToDate.egressBandwidthMB),
+            })}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -82,7 +98,7 @@ export function NetworkMetricsCard({
 
 interface MetricSectionProps {
   title: string;
-  result: ReturnType<typeof useMetrics>;
+  result: UseMetricsResult;
   children: (series: {
     unit: string;
     points: { timestamp: string; value: number }[];

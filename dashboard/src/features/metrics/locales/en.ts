@@ -25,6 +25,10 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Outbound Bandwidth",
     description: "Network metrics chart section title",
   },
+  "metrics.monthToDateBandwidth": {
+    message: "{amount} used this month",
+    description: "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
+  },
   "metrics.sourceNotConfigured": {
     message: "Metrics source not configured",
     description: "Shown when bex-api reports no metrics backend is wired up",

@@ -36,6 +36,11 @@ export function formatMetricShort(unit: string, value: number): string {
   }
 }
 
+/** Formats a monthToDateBandwidth MB figure using the same byte-unit scaling. */
+export function formatMegabytes(mb: number): string {
+  return formatBytes(mb * 1024 * 1024);
+}
+
 function formatBytes(value: number, digits = 0): string {
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
   let v = value;
@@ -62,6 +67,8 @@ function formatCount(value: number): string {
 export const METRIC_LABELS: Record<MetricId, string> = {
   cpu: "CPU",
   memory: "Memory",
+  cpu_limit: "CPU Limit",
+  memory_limit: "Memory Limit",
   instance_count: "Total Instances",
   http_requests: "Total Requests",
   http_latency: "Response Times",

@@ -17,7 +17,7 @@ describe("useMetrics", () => {
     mockUseQuery.mockReset();
   });
 
-  it("passes resource/metric and query options through as GraphQL variables", () => {
+  it("builds a Render-shaped MetricsQueryInput with a RESOURCE filter", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: true,
@@ -26,7 +26,6 @@ describe("useMetrics", () => {
 
     renderHook(() =>
       useMetrics("beancount-cms-v2", "cpu", {
-        percentage: true,
         quantile: 0.95,
       }),
     );
@@ -35,12 +34,41 @@ describe("useMetrics", () => {
       expect.anything(),
       expect.objectContaining({
         variables: {
-          resource: "beancount-cms-v2",
-          metric: "cpu",
-          percentage: true,
-          quantile: 0.95,
+          query: {
+            filters: [{ field: "RESOURCE", values: ["beancount-cms-v2"] }],
+            name: "CPU",
+            start: undefined,
+            end: undefined,
+            resolution: undefined,
+            parameters: [{ quantile: 0.95 }],
+            aggregateAllMethod: undefined,
+          },
         },
         pollInterval: 30_000,
+      }),
+    );
+  });
+
+  it("sends aggregateAllMethod: MAX for a limit metric when aggregateMax is set", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+
+    renderHook(() =>
+      useMetrics("app", "memory_limit", { aggregateMax: true }),
+    );
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            name: "MEMORY_LIMIT",
+            aggregateAllMethod: "MAX",
+          }),
+        }),
       }),
     );
   });
@@ -73,9 +101,9 @@ describe("useMetrics", () => {
               { field: "instance", value: "web-1" },
               null, // a malformed label must not crash the mapping
             ],
-            points: [
-              { timestamp: "2026-07-06T09:00:00Z", value: 1024 },
-              { timestamp: null, value: 2048 }, // dropped: no timestamp
+            values: [
+              { time: "2026-07-06T09:00:00Z", value: 1024 },
+              { time: null, value: 2048 }, // dropped: no time
             ],
           },
           null, // a malformed series must not crash the mapping

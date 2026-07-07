@@ -7,7 +7,10 @@ import {
 } from "@/common/components/ui/card.tsx";
 import { StatTile } from "@/features/metrics/components/stat-tile";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
-import { useMetrics } from "@/features/metrics/hooks/use-metrics";
+import {
+  useMetrics,
+  type UseMetricsResult,
+} from "@/features/metrics/hooks/use-metrics";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 interface ApplicationMetricsCardProps {
@@ -20,6 +23,11 @@ interface ApplicationMetricsCardProps {
  * metrics-server snapshots (one current point, not a series — docs/
  * observability.md), so each renders as a stat, not a fabricated trend line.
  *
+ * Percentage/Total is computed client-side from two already-fetched series
+ * (the raw metric + its _limit counterpart, aggregated to one max value) —
+ * captured live from Render's dashboard: it fetches both regardless of which
+ * tab is selected rather than asking the backend for a percentage.
+ *
  * PoC scope: takes the first returned series' latest value. bex-api returns
  * one series per replica for cpu/memory; a multi-replica App would need a
  * sum (absolute) or average (percentage) across instances, which this PoC
@@ -31,9 +39,16 @@ export function ApplicationMetricsCard({
   percentage,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
-  const cpu = useMetrics(resource, "cpu", { percentage });
-  const memory = useMetrics(resource, "memory", { percentage });
+  const cpu = useMetrics(resource, "cpu");
+  const memory = useMetrics(resource, "memory");
+  const cpuLimit = useMetrics(resource, "cpu_limit", { aggregateMax: true });
+  const memoryLimit = useMetrics(resource, "memory_limit", {
+    aggregateMax: true,
+  });
   const instances = useMetrics(resource, "instance_count");
+
+  const memoryStat = resourceStat(memory, memoryLimit, percentage, "bytes");
+  const cpuStat = resourceStat(cpu, cpuLimit, percentage, "cpu");
 
   return (
     <Card>
@@ -47,8 +62,8 @@ export function ApplicationMetricsCard({
         ) : (
           <StatTile
             label={t("metrics.memory")}
-            unit={memory.series[0]?.unit ?? "bytes"}
-            value={latestValue(memory.series)}
+            unit={memoryStat.unit}
+            value={memoryStat.value}
             color="var(--chart-1)"
             loading={memory.loading}
           />
@@ -58,8 +73,8 @@ export function ApplicationMetricsCard({
         ) : (
           <StatTile
             label={t("metrics.cpu")}
-            unit={cpu.series[0]?.unit ?? "cpu"}
-            value={latestValue(cpu.series)}
+            unit={cpuStat.unit}
+            value={cpuStat.value}
             color="var(--chart-2)"
             loading={cpu.loading}
           />
@@ -78,6 +93,28 @@ export function ApplicationMetricsCard({
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * Absolute value (raw metric's own unit) or a 0..100 percentage of the
+ * matching _limit metric — undefined (null) rather than divide-by-zero when
+ * the limit series is empty (no pod limit configured, or not yet loaded).
+ */
+function resourceStat(
+  raw: UseMetricsResult,
+  limit: UseMetricsResult,
+  percentage: boolean,
+  fallbackUnit: string,
+): { unit: string; value: number | null } {
+  if (!percentage) {
+    return { unit: raw.series[0]?.unit ?? fallbackUnit, value: latestValue(raw.series) };
+  }
+  const rawValue = latestValue(raw.series);
+  const limitValue = latestValue(limit.series);
+  if (rawValue == null || limitValue == null || limitValue === 0) {
+    return { unit: "percentage", value: null };
+  }
+  return { unit: "percentage", value: (rawValue / limitValue) * 100 };
 }
 
 function latestValue(series: { points: { value: number }[] }[]): number | null {

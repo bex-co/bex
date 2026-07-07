@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { oryConfig, oryHideCardLogo, oryHideSettingsPageHeader } from "../config";
+import {
+  oryConfig,
+  oryHideCardLogo,
+  oryHideSettingsPageHeader,
+} from "../config";
 
 describe("oryConfig", () => {
   it("hides Ory's own branding badge", () => {

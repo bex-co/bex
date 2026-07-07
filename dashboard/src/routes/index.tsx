@@ -30,29 +30,41 @@ export const Route = createFileRoute("/")({
 
 // Sample data shaped like bex-api's `GET /v1/services` response
 // (docs/bex-api.md) — replace with a real Apollo query once wired up.
-// `beancount-cms` is a real, running App (its `.onbex.co` host is
-// `beancount-cms-v2` — the two are not the same string) — its name links to
-// the live Metrics PoC page (w3/m3).
+// `beancount-cms` is the one real, running App among these samples (its
+// `.onbex.co` host is `beancount-cms-v2` — the two are not the same string);
+// `hasLiveMetrics` gates the Metrics PoC link (w3/m3) to it alone — the other
+// rows are fake ids bex-api has never heard of, and linking them too would
+// route to a live "app not found" GraphQL error the metrics page doesn't yet
+// render distinctly from "no data".
 const sampleServices = [
   {
     id: "beancount-cms",
     name: "beancount-cms",
     phase: "running",
     url: "https://beancount-cms-v2.onbex.co",
+    hasLiveMetrics: true,
   },
   {
     id: "eden-cms-v2",
     name: "eden-cms-v2",
     phase: "running",
     url: "https://eden-cms-v2.onbex.co",
+    hasLiveMetrics: false,
   },
   {
     id: "hello-go",
     name: "hello-go",
     phase: "running",
     url: "https://hello-go.onbex.co",
+    hasLiveMetrics: false,
   },
-  { id: "worker-queue", name: "worker-queue", phase: "suspended", url: null },
+  {
+    id: "worker-queue",
+    name: "worker-queue",
+    phase: "suspended",
+    url: null,
+    hasLiveMetrics: false,
+  },
 ];
 
 function phaseVariant(phase: string): "default" | "secondary" | "outline" {
@@ -115,13 +127,17 @@ export function HomePage() {
                   {sampleServices.map((service) => (
                     <TableRow key={service.id}>
                       <TableCell className="font-medium">
-                        <Link
-                          to="/services/$serviceId/metrics"
-                          params={{ serviceId: service.id }}
-                          className="hover:underline"
-                        >
-                          {service.name}
-                        </Link>
+                        {service.hasLiveMetrics ? (
+                          <Link
+                            to="/services/$serviceId/metrics"
+                            params={{ serviceId: service.id }}
+                            className="hover:underline"
+                          >
+                            {service.name}
+                          </Link>
+                        ) : (
+                          service.name
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={phaseVariant(service.phase)}>

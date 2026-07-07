@@ -232,6 +232,10 @@ func promEscape(s string) string {
 	return b.String()
 }
 
+// promStatusSuccess is Prometheus's "status" field on a successful response,
+// shared across the range/instant/label-values response shapes below.
+const promStatusSuccess = "success"
+
 // promRangeResponse is the subset of Prometheus's query_range result bex reads.
 type promRangeResponse struct {
 	Status string `json:"status"`
@@ -244,11 +248,133 @@ type promRangeResponse struct {
 	} `json:"data"`
 }
 
+// --- Month-to-date bandwidth: a Prometheus increase() instant query ---
+
+// NewMonthToDateBandwidthSource returns the production MonthToDateBandwidthSource
+// — a single Prometheus instant query for cumulative HTTP egress since a given
+// time, via increase() over the elapsed window (see metrics.go's accuracy note:
+// Prometheus's own retention, not this query, bounds how far back a meaningful
+// figure can reach).
+func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBandwidthSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, _, app string, since time.Time) (float64, error) {
+		elapsed := time.Since(since)
+		if elapsed <= 0 {
+			return 0, nil
+		}
+		q := fmt.Sprintf(`sum(increase(traefik_service_responses_bytes_total{service=~".*%s.*"}[%ds]))`,
+			promEscape(app), int64(elapsed/time.Second))
+		u := fmt.Sprintf("%s/api/v1/query?%s", base, url.Values{"query": {q}}.Encode())
+
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return 0, err
+		}
+		resp, err := hc.Do(httpReq)
+		if err != nil {
+			return 0, err
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusOK {
+			return 0, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+		}
+		var pr promInstantResponse
+		if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+			return 0, fmt.Errorf("decode prometheus response: %w", err)
+		}
+		return parsePromScalarSum(pr)
+	}
+}
+
+// promInstantResponse is the subset of Prometheus's instant /api/v1/query
+// result bex reads: a vector of {metric, value: [unixSeconds, "value"]}.
+type promInstantResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Value []any `json:"value"` // [unixSeconds(float), "value"(string)]
+		} `json:"result"`
+	} `json:"data"`
+}
+
+// parsePromScalarSum sums every returned vector element's value — normally
+// exactly one (the query already sum()s server-side), but summing here too
+// tolerates an unexpected multi-series result at no real cost.
+func parsePromScalarSum(pr promInstantResponse) (float64, error) {
+	if pr.Status != "" && pr.Status != promStatusSuccess {
+		return 0, fmt.Errorf("prometheus status %q", pr.Status)
+	}
+	var total float64
+	for _, res := range pr.Data.Result {
+		if len(res.Value) != 2 {
+			continue
+		}
+		str, ok := res.Value[1].(string)
+		if !ok {
+			continue
+		}
+		val, err := strconv.ParseFloat(str, 64)
+		if err != nil || math.IsNaN(val) {
+			continue
+		}
+		total += val
+	}
+	return total, nil
+}
+
+// --- Filter-value discovery: Prometheus's label-values API ---
+
+// NewPrometheusFilterValuesSource returns the production
+// MetricsFilterValuesSource, backed by Prometheus's /api/v1/label/<name>/values
+// endpoint — real discovery of a label's observed values (e.g. which HTTP
+// status codes an App has actually returned), not a hardcoded guess.
+func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilterValuesSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, _, app, label string) ([]string, error) {
+		match := fmt.Sprintf(`traefik_service_requests_total{service=~".*%s.*"}`, promEscape(app))
+		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), url.Values{"match[]": {match}}.Encode())
+
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := hc.Do(httpReq)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+		}
+		var lr promLabelValuesResponse
+		if err := json.NewDecoder(resp.Body).Decode(&lr); err != nil {
+			return nil, fmt.Errorf("decode prometheus response: %w", err)
+		}
+		if lr.Status != "" && lr.Status != promStatusSuccess {
+			return nil, fmt.Errorf("prometheus status %q", lr.Status)
+		}
+		return lr.Data, nil
+	}
+}
+
+// promLabelValuesResponse is Prometheus's /api/v1/label/<name>/values shape:
+// {"status":"success","data":["200","404","500"]}.
+type promLabelValuesResponse struct {
+	Status string   `json:"status"`
+	Data   []string `json:"data"`
+}
+
 // parsePromMatrix maps a Prometheus matrix response onto Core MetricSeries: one
 // series per result (labels = its metric labels), points RFC3339-stamped and
 // oldest-first. NaN/parse-failures drop the point rather than fail the series.
 func parsePromMatrix(pr promRangeResponse) ([]MetricSeries, error) {
-	if pr.Status != "" && pr.Status != "success" {
+	if pr.Status != "" && pr.Status != promStatusSuccess {
 		return nil, fmt.Errorf("prometheus status %q", pr.Status)
 	}
 	out := make([]MetricSeries, 0, len(pr.Data.Result))

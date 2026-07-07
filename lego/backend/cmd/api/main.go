@@ -78,6 +78,8 @@ func main() {
 	// Prometheus; wired only when BEX_PROM_URL is set, else those metrics 503.
 	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
 		core.RequestMetrics = api.NewPrometheusRequestSource(prom, nil)
+		core.MonthToDateBandwidthSource = api.NewMonthToDateBandwidthSource(prom, nil)
+		core.MetricsFilterValuesSource = api.NewPrometheusFilterValuesSource(prom, nil)
 	}
 	// Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL.

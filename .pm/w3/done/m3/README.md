@@ -1,6 +1,6 @@
 # w3 · m3 — Metrics page PoC: beancount-cms (Render-style)
 
-**Worker:** worker3 **Goal:** the dashboard's first real bex-api data page — a Render-style Metrics page for `beancount-cms` rendering all six live metrics (memory, CPU, instances, requests, response times, bandwidth) from bex-api's GraphQL `metrics(...)` query. **Status:** todo (t001, t002 done)
+**Worker:** worker3 **Goal:** the dashboard's first real bex-api data page — a Render-style Metrics page for `beancount-cms` rendering all six live metrics (memory, CPU, instances, requests, response times, bandwidth) from bex-api's GraphQL `metrics(...)` query. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,9 +8,9 @@
 | ---- | ------------------------------------------------------------------------- | --- | ------------ |
 | t001 | Wire Apollo to bex-api GraphQL: metrics query + codegen types + session auth — **DONE** | 40m | — |
 | t002 | Metrics page route with Render IA: Application + Network metric charts — **DONE** | 45m | t001 |
-| t003 | Live wiring: CORS for the dashboard origin, empty/503 states, verify against prod | 30m | t002         |
-| t004 | Simplify — `/simplify` over the code this milestone changed               | 20m | t003         |
-| t005 | Test coverage — meaningful tests for query mapping + chart/page behavior  | 30m | t003         |
+| t003 | Live wiring: CORS for the dashboard origin, empty/503 states, verify against prod — **DONE** | 30m | t002 |
+| t004 | Simplify — `/simplify` over the code this milestone changed — **DONE**    | 20m | t003         |
+| t005 | Test coverage — meaningful tests for query mapping + chart/page behavior — **DONE** | 30m | t003 |
 
 ## Definition of done
 

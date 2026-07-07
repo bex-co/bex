@@ -4,11 +4,13 @@ import {
   ChartTooltip,
   EmptyChart,
 } from "@/features/metrics/components/svg-line-chart";
+import {
+  CHART_WIDTH as WIDTH,
+  CHART_HEIGHT as HEIGHT,
+  CHART_PAD as PAD,
+} from "@/features/metrics/components/chart-layout";
 import type { ChartPoint } from "@/features/metrics/types";
 
-const WIDTH = 600;
-const HEIGHT = 180;
-const PAD = { top: 8, right: 8, bottom: 20, left: 44 };
 const MAX_BAR_WIDTH = 24;
 const BAR_GAP = 2;
 
@@ -51,10 +53,11 @@ export function SvgBarChart({ points, unit, color }: SvgBarChartProps) {
         role="img"
         aria-label={`Bar chart with ${points.length} data points`}
       >
-        {yTicks.map((v) => {
+        {/* Keyed by position, not value — an all-zero series repeats 0 at every tick. */}
+        {yTicks.map((v, i) => {
           const y = baseline - (maxVal === 0 ? 0 : (v / maxVal) * innerHeight);
           return (
-            <g key={v}>
+            <g key={i}>
               <line
                 x1={PAD.left}
                 x2={WIDTH - PAD.right}

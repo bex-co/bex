@@ -135,6 +135,15 @@ type Core struct {
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// the http_requests/http_latency/bandwidth metrics report ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
+	// MonthToDateBandwidthSource reads cumulative HTTP egress since a given
+	// time (Prometheus increase()); nil => MonthToDateBandwidth reports
+	// ErrMetricsUnavailable. See metrics.go.
+	MonthToDateBandwidthSource MonthToDateBandwidthSource
+	// MetricsFilterValuesSource discovers a Prometheus label's observed values
+	// (e.g. STATUS_CODE); nil => that filter's discovered values are empty
+	// rather than erroring — RESOURCE/INSTANCE/HOST need no source (real data
+	// already on hand). See metrics.go.
+	MetricsFilterValuesSource MetricsFilterValuesSource
 	// APIKeys manages machine credentials (OAuth2 clients in Hydra); nil =>
 	// the api-key verbs report ErrAPIKeysUnavailable. See apikeys.go.
 	APIKeys APIKeyStore

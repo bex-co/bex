@@ -1,33 +1,53 @@
-# bex-api's Metrics query (operator/internal/api/graphql.go), Render-shaped:
-# metric ids are cpu | memory | instance_count | http_requests | http_latency |
-# bandwidth. Labels are Render's {field,value} array; points are
-# oldest-first {timestamp, value}.
-query Metrics(
-  $resource: String!
-  $metric: String!
-  $startTime: String
-  $endTime: String
-  $resolutionSeconds: Int
-  $quantile: Float
-  $percentage: Boolean
-) {
-  metrics(
-    resource: $resource
-    metric: $metric
-    startTime: $startTime
-    endTime: $endTime
-    resolutionSeconds: $resolutionSeconds
-    quantile: $quantile
-    percentage: $percentage
-  ) {
+# bex-api's Metrics verb (operator/internal/api/graphql.go), Render-shaped:
+# a single MetricsQueryInput carries the filters array (RESOURCE/STATUS_CODE/
+# HOST/PATH), the uppercase metric `name` enum, and aggregation options.
+# Values are oldest-first {time, value} — note `time`, not `timestamp` (REST's
+# name for the same data; each adapter mirrors its own Render counterpart).
+query Metrics($query: MetricsQueryInput!) {
+  metrics(query: $query) {
     unit
     labels {
       field
       value
     }
-    points {
-      timestamp
+    values {
+      time
       value
     }
+    parameters {
+      quantile
+    }
+  }
+}
+
+# Render's "Usage this month" bandwidth footer, captured live from the
+# dashboard. bex only meters HTTP egress (Traefik-scraped) — nat/privateLink/
+# websocket always report 0, an honest subset, never a fabricated total.
+query MonthToDateBandwidth($resourceId: String!) {
+  monthToDateBandwidth(resourceId: $resourceId) {
+    egressBandwidthMB
+    httpEgressBandwidthMB
+    natEgressBandwidthMB
+    privateLinkEgressBandwidthMB
+    websocketEgressBandwidthMB
+  }
+}
+
+# Populates the Status Code / Host / Path filter dropdowns from real observed
+# label values (Prometheus label-value discovery) rather than a fixed list.
+query MetricsFilters($query: MetricsFiltersQueryInput!) {
+  metricsFilters(query: $query) {
+    values {
+      field
+      values
+    }
+  }
+}
+
+# bex always answers with no suggestions — Traefik's service-level metrics
+# carry no path label, so there's no real path data to offer.
+query MetricsPathFilterSuggestions($query: MetricsPathFilterSuggestionsInput!) {
+  metricsPathFilterSuggestions(query: $query) {
+    paths
   }
 }

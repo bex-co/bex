@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -43,10 +44,15 @@ import (
 
 // Metric ids — bex's canonical names (underscored). They map 1:1 to Render's
 // metrics endpoints (path segments cpu, memory, instance-count, http-requests,
-// http-latency, bandwidth) in the REST adapter and are the GraphQL `metric` enum.
+// http-latency, bandwidth) in the REST adapter, and to Render's dashboard
+// GraphQL `name` enum (MEMORY, MEMORY_LIMIT, CPU, CPU_LIMIT, INSTANCES,
+// HTTP_REQUESTS, HTTP_LATENCY, ENRICHED_BANDWIDTH — see graphql.go's
+// metricNameFromRender) verified live against a real Render dashboard session.
 const (
 	MetricCPU           = "cpu"
+	MetricCPULimit      = "cpu_limit"
 	MetricMemory        = "memory"
+	MetricMemoryLimit   = "memory_limit"
 	MetricInstanceCount = "instance_count"
 	MetricHTTPRequests  = "http_requests"
 	MetricHTTPLatency   = "http_latency"
@@ -99,6 +105,11 @@ type MetricQuery struct {
 	Host       string        // request filter (Render vocabulary; see source for support)
 	Path       string        // request filter (Render vocabulary; see source for support)
 	GroupBy    string        // request group-by: "status" | "method" | "instance" | ""
+	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
+	// to one series holding the max value across instances — Render's dashboard
+	// GraphQL requests this via aggregateAllMethod:"MAX" (captured live) when it
+	// wants a single "Limit" figure rather than one per replica.
+	AggregateMax bool
 }
 
 func (q MetricQuery) normalized(now time.Time) MetricQuery {
@@ -168,16 +179,55 @@ func (c *Core) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, erro
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	q = q.normalized(c.now())
+	var series []MetricSeries
+	var err error
 	switch q.Metric {
 	case MetricCPU, MetricMemory:
-		return c.resourceMetric(ctx, q)
+		series, err = c.resourceMetric(ctx, q)
+	case MetricCPULimit, MetricMemoryLimit:
+		series, err = c.resourceLimitMetric(ctx, q)
 	case MetricInstanceCount:
-		return c.instanceCountMetric(ctx, q)
+		series, err = c.instanceCountMetric(ctx, q)
 	case MetricHTTPRequests, MetricHTTPLatency, MetricBandwidth:
-		return c.requestMetric(ctx, q)
+		series, err = c.requestMetric(ctx, q)
 	default:
 		return nil, fmt.Errorf("unknown metric %q", q.Metric)
 	}
+	if err != nil {
+		return nil, err
+	}
+	if q.AggregateMax {
+		series = aggregateMaxSeries(q.App, series)
+	}
+	return series, nil
+}
+
+// aggregateMaxSeries collapses a per-instance series list to a single series
+// holding the max of each input series' latest point — Render's
+// aggregateAllMethod:"MAX" (used for *_LIMIT metrics: one "Limit" figure for
+// the App, not one per replica).
+func aggregateMaxSeries(app string, series []MetricSeries) []MetricSeries {
+	if len(series) == 0 {
+		return series
+	}
+	unit := series[0].Unit
+	var maxVal float64
+	var maxTs string
+	for _, s := range series {
+		if len(s.Points) == 0 {
+			continue
+		}
+		p := s.Points[len(s.Points)-1]
+		if p.Value > maxVal {
+			maxVal = p.Value
+			maxTs = p.Timestamp
+		}
+	}
+	return []MetricSeries{{
+		Labels: map[string]string{"resource": app},
+		Unit:   unit,
+		Points: []MetricPoint{{Timestamp: maxTs, Value: maxVal}},
+	}}
 }
 
 // resourceMetric returns one current series per replica (labels instance +
@@ -231,6 +281,44 @@ func (c *Core) resourceMetric(ctx context.Context, q MetricQuery) ([]MetricSerie
 		})
 	}
 	// Stable instance order so output is deterministic across calls.
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Labels["instance"] < out[j].Labels["instance"] })
+	return out, nil
+}
+
+// resourceLimitMetric returns one current series per replica of the pod's
+// configured CPU/memory limit (from the pod spec, not metrics-server — so it
+// needs no ResourceMetrics source and works even without metrics-server wired).
+// Render's dashboard queries this alongside the raw cpu/memory metric and
+// computes Percentage/Total client-side from the two, rather than asking bex-api
+// to compute a percentage server-side (confirmed live: MEMORY and MEMORY_LIMIT
+// are fetched with the same params regardless of which tab is selected). A pod
+// with no limit configured is omitted — there's no value to report, not a zero.
+func (c *Core) resourceLimitMetric(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	pods, err := c.appPods(ctx, q.App)
+	if err != nil {
+		return nil, err
+	}
+	baseMetric := MetricCPU
+	unit := unitCores
+	if q.Metric == MetricMemoryLimit {
+		baseMetric = MetricMemory
+		unit = unitBytes
+	}
+	limits := podResourceLimits(pods, baseMetric)
+	nowStr := c.now().UTC().Format(time.RFC3339)
+
+	out := make([]MetricSeries, 0, len(limits))
+	for _, pod := range pods {
+		lim, ok := limits[pod.Name]
+		if !ok {
+			continue
+		}
+		out = append(out, MetricSeries{
+			Labels: map[string]string{"resource": q.App, "instance": pod.Name},
+			Unit:   unit,
+			Points: []MetricPoint{{Timestamp: nowStr, Value: lim}},
+		})
+	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Labels["instance"] < out[j].Labels["instance"] })
 	return out, nil
 }
@@ -335,6 +423,149 @@ func podResourceLimits(pods []corev1.Pod, metric string) map[string]float64 {
 		if found {
 			out[pods[i].Name] = total
 		}
+	}
+	return out
+}
+
+// --- monthToDateBandwidth (Render's dashboard GraphQL, captured live) ---
+
+// MonthToDateBandwidth is bex's answer to Render's monthToDateBandwidth query —
+// a cumulative bandwidth figure for the current calendar month (the "Usage
+// this month" footer under Outbound Bandwidth). Render tracks several egress
+// paths (HTTP, NAT gateway, private link, websocket); bex only has
+// Traefik-scraped HTTP egress, so only the HTTP figure is real — the others
+// are always 0, a documented subset rather than a fabricated total.
+type MonthToDateBandwidth struct {
+	EgressBandwidthMB            float64
+	HTTPEgressBandwidthMB        float64
+	NATEgressBandwidthMB         float64
+	PrivateLinkEgressBandwidthMB float64
+	WebsocketEgressBandwidthMB   float64
+}
+
+// MonthToDateBandwidthSource returns an App's cumulative HTTP egress in bytes
+// since the given time. nil => MonthToDateBandwidth reports
+// ErrMetricsUnavailable. Production wires it via NewMonthToDateBandwidthSource
+// (a Prometheus increase() query); tests fake it.
+type MonthToDateBandwidthSource func(ctx context.Context, namespace, app string, since time.Time) (bytesTotal float64, err error)
+
+// MonthToDateBandwidth returns the App's month-to-date bandwidth usage.
+// ACCURACY NOTE: bex's Prometheus retains only a few hours of history (see
+// deploy/gitops/base/prometheus.yaml) — a real calendar-month figure needs
+// retention to match, which this PoC-scale deployment doesn't have. The query
+// itself is real (a genuine increase() over the elapsed month), it just
+// under-counts on a short-retention Prometheus; extending retention is a
+// deploy-config change, not a code change.
+func (c *Core) MonthToDateBandwidth(ctx context.Context, app string) (MonthToDateBandwidth, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return MonthToDateBandwidth{}, err
+	}
+	if _, err := c.fetch(ctx, app); err != nil {
+		return MonthToDateBandwidth{}, err
+	}
+	if c.MonthToDateBandwidthSource == nil {
+		return MonthToDateBandwidth{}, ErrMetricsUnavailable
+	}
+	now := c.now().UTC()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	bytesTotal, err := c.MonthToDateBandwidthSource(ctx, c.Namespace, app, monthStart)
+	if err != nil {
+		return MonthToDateBandwidth{}, err
+	}
+	mb := bytesTotal / (1 << 20)
+	return MonthToDateBandwidth{EgressBandwidthMB: mb, HTTPEgressBandwidthMB: mb}, nil
+}
+
+// --- metricsFilters (Status Code/Host/Path filter-dropdown population) ---
+
+// MetricsFiltersQuery asks which values are available for a set of output
+// filter fields (Render's outputFilters — e.g. RESOURCE, INSTANCE, BUILD for
+// application-type filters; HOST, STATUS_CODE for HTTP-type filters), for one
+// App.
+// filterFieldResource is the "RESOURCE" output-filter/query-filter field name,
+// shared between Core.MetricsFilters and graphql.go's filter-array parsing.
+const filterFieldResource = "RESOURCE"
+
+type MetricsFiltersQuery struct {
+	App           string
+	OutputFilters []string
+}
+
+// MetricsFilterValues is one {field, values} entry of a MetricsFilters result.
+type MetricsFilterValues struct {
+	Field  string
+	Values []string
+}
+
+// MetricsFilterValuesSource discovers a Prometheus label's observed values
+// (e.g. the `code` label backing STATUS_CODE) for an App's request metrics.
+// nil => that field's values come back empty rather than erroring — unlike
+// ResourceMetrics/RequestMetrics, a missing source here isn't fatal (the UI
+// just shows no suggestions for that one field, matching bex's declared
+// filter capability rather than reporting an outage). Production wires it via
+// NewPrometheusFilterValuesSource.
+type MetricsFilterValuesSource func(ctx context.Context, namespace, app, label string) ([]string, error)
+
+// MetricsFilters resolves available values for each requested output filter.
+// RESOURCE/INSTANCE/HOST are answered from data Core already has (no source
+// needed); STATUS_CODE needs MetricsFilterValuesSource; BUILD and PATH have no
+// bex equivalent and always report empty — an honest gap, not a guess.
+func (c *Core) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
+	if err := c.authorize(ctx, relCanView); err != nil {
+		return nil, err
+	}
+	a, err := c.fetch(ctx, q.App)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]MetricsFilterValues, 0, len(q.OutputFilters))
+	for _, field := range q.OutputFilters {
+		switch field {
+		case filterFieldResource:
+			out = append(out, MetricsFilterValues{Field: field, Values: []string{q.App}})
+		case "INSTANCE":
+			pods, err := c.appPods(ctx, q.App)
+			if err != nil {
+				return nil, err
+			}
+			instances := make([]string, 0, len(pods))
+			for _, p := range pods {
+				instances = append(instances, p.Name)
+			}
+			out = append(out, MetricsFilterValues{Field: field, Values: instances})
+		case "HOST":
+			out = append(out, MetricsFilterValues{Field: field, Values: hostsFromURLs(a.Status.URLs)})
+		case "STATUS_CODE":
+			values, err := c.filterValuesOrEmpty(ctx, q.App, "code")
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, MetricsFilterValues{Field: field, Values: values})
+		default: // BUILD, PATH — no bex equivalent
+			out = append(out, MetricsFilterValues{Field: field, Values: []string{}})
+		}
+	}
+	return out, nil
+}
+
+func (c *Core) filterValuesOrEmpty(ctx context.Context, app, label string) ([]string, error) {
+	if c.MetricsFilterValuesSource == nil {
+		return []string{}, nil
+	}
+	return c.MetricsFilterValuesSource(ctx, c.Namespace, app, label)
+}
+
+// hostsFromURLs strips the scheme (and any trailing slash) from an App's
+// status URLs, matching Render's HOST filter's bare-hostname vocabulary.
+func hostsFromURLs(urls []string) []string {
+	out := make([]string, 0, len(urls))
+	for _, u := range urls {
+		host := u
+		if _, after, ok := strings.Cut(u, "://"); ok {
+			host = after
+		}
+		out = append(out, strings.TrimSuffix(host, "/"))
 	}
 	return out
 }

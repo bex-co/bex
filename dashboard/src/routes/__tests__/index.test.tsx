@@ -41,10 +41,16 @@ describe("HomePage", () => {
     expect(within(table).getAllByText("running")).toHaveLength(3);
     expect(within(table).getByText("suspended")).toBeInTheDocument();
 
-    // each service name links to its Metrics page (w3/m3)
+    // beancount-cms is the one real App — its name links to the live Metrics
+    // PoC page (w3/m3). The other rows are fake ids with no backend App, so
+    // they render as plain text (no link) rather than routing to a live
+    // "app not found" error.
     expect(
       within(table).getByText("beancount-cms").closest("a"),
     ).toHaveAttribute("href", "/services/beancount-cms/metrics");
+    expect(within(table).getByText("eden-cms-v2").closest("a")).toBeNull();
+    expect(within(table).getByText("hello-go").closest("a")).toBeNull();
+    expect(within(table).getByText("worker-queue").closest("a")).toBeNull();
 
     // URL column falls back to an em dash when a service has no URL
     expect(

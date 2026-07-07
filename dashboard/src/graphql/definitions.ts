@@ -54,17 +54,83 @@ export type MetricLabel = {
   value: Maybe<Scalars['String']['output']>;
 };
 
-export type MetricPoint = {
-  __typename: 'MetricPoint';
-  timestamp: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['Float']['output']>;
-};
-
 export type MetricSeries = {
   __typename: 'MetricSeries';
   labels: Maybe<Array<Maybe<MetricLabel>>>;
-  points: Maybe<Array<Maybe<MetricPoint>>>;
+  parameters: Maybe<Array<Maybe<MetricSeriesParameter>>>;
   unit: Maybe<Scalars['String']['output']>;
+  values: Maybe<Array<Maybe<MetricValue>>>;
+};
+
+export type MetricSeriesParameter = {
+  __typename: 'MetricSeriesParameter';
+  quantile: Maybe<Scalars['Float']['output']>;
+};
+
+export type MetricValue = {
+  __typename: 'MetricValue';
+  time: Maybe<Scalars['String']['output']>;
+  value: Maybe<Scalars['Float']['output']>;
+};
+
+export type MetricsFilterInput = {
+  field: Scalars['String']['input'];
+  values: Array<Scalars['String']['input']>;
+};
+
+export type MetricsFilterValues = {
+  __typename: 'MetricsFilterValues';
+  field: Maybe<Scalars['String']['output']>;
+  values: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+};
+
+export type MetricsFiltersQueryInput = {
+  end?: InputMaybe<Scalars['String']['input']>;
+  filters: Array<MetricsFilterInput>;
+  outputFilters: Array<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  start?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type MetricsFiltersResult = {
+  __typename: 'MetricsFiltersResult';
+  values: Maybe<Array<Maybe<MetricsFilterValues>>>;
+};
+
+export type MetricsParameterInput = {
+  quantile?: InputMaybe<Scalars['Float']['input']>;
+};
+
+export type MetricsPathFilterSuggestions = {
+  __typename: 'MetricsPathFilterSuggestions';
+  paths: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+};
+
+export type MetricsPathFilterSuggestionsInput = {
+  paths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  serviceIDs: Array<Scalars['String']['input']>;
+};
+
+export type MetricsQueryInput = {
+  aggregateAllMethod?: InputMaybe<Scalars['String']['input']>;
+  aggregateBy?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  aggregationMethod?: InputMaybe<Scalars['String']['input']>;
+  end?: InputMaybe<Scalars['String']['input']>;
+  filters: Array<MetricsFilterInput>;
+  name: Scalars['String']['input'];
+  parameters?: InputMaybe<Array<InputMaybe<MetricsParameterInput>>>;
+  resolution?: InputMaybe<Scalars['Int']['input']>;
+  start?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type MonthToDateBandwidth = {
+  __typename: 'MonthToDateBandwidth';
+  egressBandwidthMB: Maybe<Scalars['Float']['output']>;
+  httpEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
+  natEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
+  privateLinkEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
+  websocketEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
 };
 
 export type Mutation = {
@@ -133,6 +199,9 @@ export type Query = {
   databases: Maybe<Array<Maybe<Database>>>;
   logs: Maybe<Array<Maybe<LogEntry>>>;
   metrics: Maybe<Array<Maybe<MetricSeries>>>;
+  metricsFilters: Maybe<MetricsFiltersResult>;
+  metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
+  monthToDateBandwidth: Maybe<MonthToDateBandwidth>;
   server: Maybe<Service>;
   services: Maybe<Array<Maybe<Service>>>;
 };
@@ -157,17 +226,22 @@ export type QueryLogsArgs = {
 
 
 export type QueryMetricsArgs = {
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  groupBy?: InputMaybe<Scalars['String']['input']>;
-  host?: InputMaybe<Scalars['String']['input']>;
-  metric: Scalars['String']['input'];
-  path?: InputMaybe<Scalars['String']['input']>;
-  percentage?: InputMaybe<Scalars['Boolean']['input']>;
-  quantile?: InputMaybe<Scalars['Float']['input']>;
-  resolutionSeconds?: InputMaybe<Scalars['Int']['input']>;
-  resource: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  statusCode?: InputMaybe<Scalars['String']['input']>;
+  query: MetricsQueryInput;
+};
+
+
+export type QueryMetricsFiltersArgs = {
+  query: MetricsFiltersQueryInput;
+};
+
+
+export type QueryMetricsPathFilterSuggestionsArgs = {
+  query: MetricsPathFilterSuggestionsInput;
+};
+
+
+export type QueryMonthToDateBandwidthArgs = {
+  resourceId: Scalars['String']['input'];
 };
 
 
@@ -190,17 +264,35 @@ export type Service = {
 };
 
 export type MetricsQueryVariables = Exact<{
-  resource: Scalars['String']['input'];
-  metric: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  resolutionSeconds?: InputMaybe<Scalars['Int']['input']>;
-  quantile?: InputMaybe<Scalars['Float']['input']>;
-  percentage?: InputMaybe<Scalars['Boolean']['input']>;
+  query: MetricsQueryInput;
 }>;
 
 
-export type MetricsQuery = { metrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, points: Array<{ __typename: 'MetricPoint', timestamp: string | null, value: number | null } | null> | null } | null> | null };
+export type MetricsQuery = { metrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: Array<{ __typename: 'MetricSeriesParameter', quantile: number | null } | null> | null } | null> | null };
+
+export type MonthToDateBandwidthQueryVariables = Exact<{
+  resourceId: Scalars['String']['input'];
+}>;
 
 
-export const MetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Metrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"resource"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"metric"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"resolutionSeconds"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"quantile"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"percentage"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"resource"},"value":{"kind":"Variable","name":{"kind":"Name","value":"resource"}}},{"kind":"Argument","name":{"kind":"Name","value":"metric"},"value":{"kind":"Variable","name":{"kind":"Name","value":"metric"}}},{"kind":"Argument","name":{"kind":"Name","value":"startTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"endTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"resolutionSeconds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"resolutionSeconds"}}},{"kind":"Argument","name":{"kind":"Name","value":"quantile"},"value":{"kind":"Variable","name":{"kind":"Name","value":"quantile"}}},{"kind":"Argument","name":{"kind":"Name","value":"percentage"},"value":{"kind":"Variable","name":{"kind":"Name","value":"percentage"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"labels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"points"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]} as unknown as DocumentNode<MetricsQuery, MetricsQueryVariables>;
+export type MonthToDateBandwidthQuery = { monthToDateBandwidth: { __typename: 'MonthToDateBandwidth', egressBandwidthMB: number | null, httpEgressBandwidthMB: number | null, natEgressBandwidthMB: number | null, privateLinkEgressBandwidthMB: number | null, websocketEgressBandwidthMB: number | null } | null };
+
+export type MetricsFiltersQueryVariables = Exact<{
+  query: MetricsFiltersQueryInput;
+}>;
+
+
+export type MetricsFiltersQuery = { metricsFilters: { __typename: 'MetricsFiltersResult', values: Array<{ __typename: 'MetricsFilterValues', field: string | null, values: Array<string | null> | null } | null> | null } | null };
+
+export type MetricsPathFilterSuggestionsQueryVariables = Exact<{
+  query: MetricsPathFilterSuggestionsInput;
+}>;
+
+
+export type MetricsPathFilterSuggestionsQuery = { metricsPathFilterSuggestions: { __typename: 'MetricsPathFilterSuggestions', paths: Array<string | null> | null } | null };
+
+
+export const MetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Metrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"MetricsQueryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"labels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"values"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"parameters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantile"}}]}}]}}]}}]} as unknown as DocumentNode<MetricsQuery, MetricsQueryVariables>;
+export const MonthToDateBandwidthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MonthToDateBandwidth"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"resourceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"monthToDateBandwidth"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"resourceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"resourceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"egressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"httpEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"natEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"privateLinkEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"websocketEgressBandwidthMB"}}]}}]}}]} as unknown as DocumentNode<MonthToDateBandwidthQuery, MonthToDateBandwidthQueryVariables>;
+export const MetricsFiltersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MetricsFilters"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"MetricsFiltersQueryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metricsFilters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"values"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"values"}}]}}]}}]}}]} as unknown as DocumentNode<MetricsFiltersQuery, MetricsFiltersQueryVariables>;
+export const MetricsPathFilterSuggestionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MetricsPathFilterSuggestions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"MetricsPathFilterSuggestionsInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metricsPathFilterSuggestions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paths"}}]}}]}}]} as unknown as DocumentNode<MetricsPathFilterSuggestionsQuery, MetricsPathFilterSuggestionsQueryVariables>;

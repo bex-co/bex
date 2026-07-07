@@ -18,8 +18,10 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,6 +127,70 @@ func TestCore_ResourceMetricsAbsoluteAndPercentage(t *testing.T) {
 	}
 	if mem[0].Points[0].Value != 50 {
 		t.Errorf("web-1 mem%% should be 50, got %v", mem[0].Points[0].Value)
+	}
+}
+
+func TestCore_ResourceLimitMetricNeedsNoResourceMetricsSource(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podWithLimits(webInst), podWithLimits("web-2"),
+	).Build()
+	// No ResourceMetrics source wired — limits come from the pod spec, not
+	// metrics-server, so cpu_limit/memory_limit must still work.
+	core := &Core{Client: cl, Namespace: "default", Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+
+	cpuLim, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPULimit})
+	if err != nil {
+		t.Fatalf("cpu_limit: %v", err)
+	}
+	if len(cpuLim) != 2 || cpuLim[0].Labels["instance"] != webInst || cpuLim[0].Unit != unitCores {
+		t.Fatalf("unexpected cpu_limit series: %+v", cpuLim)
+	}
+	if cpuLim[0].Points[0].Value != 1 {
+		t.Errorf("web-1 cpu_limit should be 1 core, got %v", cpuLim[0].Points[0].Value)
+	}
+
+	memLim, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricMemoryLimit})
+	if err != nil {
+		t.Fatalf("memory_limit: %v", err)
+	}
+	if memLim[0].Unit != unitBytes || memLim[0].Points[0].Value != float64(1<<30) { // 1Gi
+		t.Errorf("web-1 memory_limit should be 1Gi bytes, got %+v", memLim[0])
+	}
+}
+
+func TestCore_ResourceLimitMetricOmitsPodsWithNoLimit(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podFor("web", webInst), // no container limits set
+	).Build()
+	core := &Core{Client: cl, Namespace: "default"}
+
+	series, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPULimit})
+	if err != nil {
+		t.Fatalf("cpu_limit: %v", err)
+	}
+	if len(series) != 0 {
+		t.Errorf("a pod with no limit should be omitted, not zeroed: %+v", series)
+	}
+}
+
+func TestCore_AggregateMaxCollapsesToOneSeries(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(
+		sampleApp("web"), podWithLimits(webInst), podWithLimits("web-2"),
+	).Build()
+	core := &Core{Client: cl, Namespace: "default", Now: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+
+	series, err := core.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPULimit, AggregateMax: true})
+	if err != nil {
+		t.Fatalf("cpu_limit aggregateMax: %v", err)
+	}
+	if len(series) != 1 {
+		t.Fatalf("AggregateMax should collapse to exactly one series, got %d", len(series))
+	}
+	if _, hasInstance := series[0].Labels["instance"]; hasInstance {
+		t.Errorf("the collapsed series should drop the per-instance label: %+v", series[0].Labels)
+	}
+	if series[0].Points[0].Value != 1 {
+		t.Errorf("both replicas have a 1-core limit, max should be 1, got %v", series[0].Points[0].Value)
 	}
 }
 
@@ -260,12 +326,16 @@ func TestREST_MetricsErrors(t *testing.T) {
 
 // --- GraphQL metrics adapter ---
 
+// TestGraphQL_Metrics exercises Render's real dashboard GraphQL contract
+// (docs/observability.md) — captured live, not the older flat-args shape:
+// metrics(query: {filters, name, ...}) with values{time value}, not
+// points{timestamp value}.
 func TestGraphQL_Metrics(t *testing.T) {
 	h := metricServer(t, staticResourceMetrics(map[string]PodResourceUsage{
 		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
 	}), nil, sampleApp("web"), podWithLimits(webInst))
 
-	data := gql(t, h, `{ metrics(resource:"web", metric:"cpu") { unit labels { field value } points { value } } }`)
+	data := gql(t, h, `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "CPU"}) { unit labels { field value } values { value } } }`)
 	series := data["metrics"].([]any)
 	if len(series) != 1 {
 		t.Fatalf("want 1 series, got %d", len(series))
@@ -274,16 +344,71 @@ func TestGraphQL_Metrics(t *testing.T) {
 	if first["unit"] != unitCores {
 		t.Errorf("unit should be cpu, got %v", first["unit"])
 	}
-	points := first["points"].([]any)
-	if points[0].(map[string]any)["value"].(float64) != 0.5 {
-		t.Errorf("cpu point should be 0.5, got %v", points[0])
+	values := first["values"].([]any)
+	if values[0].(map[string]any)["value"].(float64) != 0.5 {
+		t.Errorf("cpu value should be 0.5, got %v", values[0])
 	}
 
-	// instance_count over GraphQL (same Core dispatch).
-	data = gql(t, h, `{ metrics(resource:"web", metric:"instance_count") { unit points { value } } }`)
+	// INSTANCES (Render's name for instance_count) over GraphQL, same dispatch.
+	data = gql(t, h, `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "INSTANCES"}) { unit values { value } } }`)
 	ic := data["metrics"].([]any)[0].(map[string]any)
 	if ic["unit"] != unitCount {
 		t.Errorf("instance_count unit should be count, got %v", ic["unit"])
+	}
+
+	// CPU_LIMIT with aggregateAllMethod:MAX collapses to one series with no
+	// per-instance label — exactly the shape Render's dashboard requests for
+	// the "Limit" figure.
+	data = gql(t, h, `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "CPU_LIMIT", aggregateAllMethod: "MAX"}) { unit labels { field value } values { value } } }`)
+	limSeries := data["metrics"].([]any)
+	if len(limSeries) != 1 {
+		t.Fatalf("aggregateAllMethod:MAX should collapse to 1 series, got %d", len(limSeries))
+	}
+	lim := limSeries[0].(map[string]any)
+	if lim["values"].([]any)[0].(map[string]any)["value"].(float64) != 1 {
+		t.Errorf("cpu_limit should be 1 core, got %+v", lim)
+	}
+	for _, l := range lim["labels"].([]any) {
+		if l.(map[string]any)["field"] == "instance" {
+			t.Errorf("aggregated series should have no instance label: %+v", lim["labels"])
+		}
+	}
+
+	// HTTP_LATENCY carries the requested quantile back in `parameters`.
+	req := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Points: []MetricPoint{{Timestamp: "2026-07-05T00:00:00Z", Value: 0.2}}}}, nil
+	}
+	h2 := metricServer(t, nil, req, sampleApp("web"))
+	data = gql(t, h2, `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "HTTP_LATENCY", parameters: [{quantile: 0.9}]}) { parameters { quantile } } }`)
+	latSeries := data["metrics"].([]any)[0].(map[string]any)
+	params := latSeries["parameters"].([]any)
+	if len(params) != 1 || params[0].(map[string]any)["quantile"].(float64) != 0.9 {
+		t.Errorf("http_latency should echo the requested quantile in parameters, got %+v", params)
+	}
+
+	// A non-latency metric carries no parameters (Render only ever shows
+	// quantile on latency responses).
+	data = gql(t, h, `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "INSTANCES"}) { parameters { quantile } } }`)
+	icParams := data["metrics"].([]any)[0].(map[string]any)["parameters"].([]any)
+	if len(icParams) != 0 {
+		t.Errorf("instance_count should carry no parameters, got %+v", icParams)
+	}
+}
+
+func TestGraphQL_MetricsRequiresResourceFilter(t *testing.T) {
+	h := metricServer(t, nil, nil, sampleApp("web"))
+	body, _ := json.Marshal(map[string]string{
+		"query": `{ metrics(query: {filters: [], name: "CPU"}) { unit } }`,
+	})
+	w := do(t, h, "POST", "/graphql", testToken, string(body))
+	var out struct {
+		Errors []any `json:"errors"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out.Errors) == 0 {
+		t.Error("filters without a RESOURCE entry should error, got none")
 	}
 }
 
@@ -403,4 +528,89 @@ func newPromStub(t *testing.T, gotQuery *string) *httptest.Server {
 		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[
 		  {"metric":{"code":"200"},"values":[[1000000,"7"]]}]}}`))
 	}))
+}
+
+func TestParsePromScalarSum(t *testing.T) {
+	pr := promInstantResponse{Status: "success"}
+	pr.Data.Result = []struct {
+		Value []any `json:"value"`
+	}{
+		{Value: []any{float64(1_000_000), "12.5"}},
+		{Value: []any{float64(1_000_000), "7.5"}},
+	}
+	got, err := parsePromScalarSum(pr)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got != 20 {
+		t.Errorf("want sum 20, got %v", got)
+	}
+
+	if _, err := parsePromScalarSum(promInstantResponse{Status: "error"}); err == nil {
+		t.Error("want error on non-success status")
+	}
+}
+
+// TestNewMonthToDateBandwidthSource_RoundTrip exercises the whole instant-query
+// path (URL build + HTTP + scalar-sum parse) against an httptest stand-in.
+func TestNewMonthToDateBandwidthSource_RoundTrip(t *testing.T) {
+	var gotQuery string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("query")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[
+		  {"metric":{},"value":[1000000,"104857600"]}]}}`))
+	}))
+	defer ts.Close()
+
+	src := NewMonthToDateBandwidthSource(ts.URL, ts.Client())
+	bytesTotal, err := src(context.Background(), "default", "web", time.Now().Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if !strings.Contains(gotQuery, "increase(traefik_service_responses_bytes_total") || !strings.Contains(gotQuery, `service=~".*web.*"`) {
+		t.Errorf("unexpected query sent to prometheus: %q", gotQuery)
+	}
+	if bytesTotal != 104857600 {
+		t.Errorf("want 104857600 bytes, got %v", bytesTotal)
+	}
+}
+
+func TestNewMonthToDateBandwidthSource_FutureSinceIsZero(t *testing.T) {
+	src := NewMonthToDateBandwidthSource("http://unused.invalid", http.DefaultClient)
+	bytesTotal, err := src(context.Background(), "default", "web", time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if bytesTotal != 0 {
+		t.Errorf("want 0 for a since in the future, got %v", bytesTotal)
+	}
+}
+
+// TestNewPrometheusFilterValuesSource_RoundTrip exercises the label-values path
+// against an httptest stand-in.
+func TestNewPrometheusFilterValuesSource_RoundTrip(t *testing.T) {
+	var gotPath, gotMatch string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMatch = r.URL.Query().Get("match[]")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":["200","404","500"]}`))
+	}))
+	defer ts.Close()
+
+	src := NewPrometheusFilterValuesSource(ts.URL, ts.Client())
+	values, err := src(context.Background(), "default", "web", "code")
+	if err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if gotPath != "/api/v1/label/code/values" {
+		t.Errorf("unexpected path: %q", gotPath)
+	}
+	if !strings.Contains(gotMatch, `traefik_service_requests_total{service=~".*web.*"}`) {
+		t.Errorf("unexpected match[] selector: %q", gotMatch)
+	}
+	if len(values) != 3 || values[0] != "200" {
+		t.Errorf("unexpected values: %+v", values)
+	}
 }
