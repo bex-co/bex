@@ -14,7 +14,14 @@ export function createFrontendApi(cookie?: string): FrontendApi {
     new Configuration({
       basePath: import.meta.env.SSR ? KRATOS_SSR_URL : KRATOS_PUBLIC_URL,
       credentials: cookie ? undefined : "include",
-      headers: cookie ? { Cookie: cookie } : {},
+      // Accept: application/json is what makes Kratos treat calls as AJAX/SPA
+      // and answer `/self-service/*/browser` with the flow as JSON — without
+      // it Kratos 303-redirects to the ui_url with `?flow=` appended (the
+      // very thing use-ory-flow exists to avoid).
+      headers: {
+        Accept: "application/json",
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
     }),
   );
 }
