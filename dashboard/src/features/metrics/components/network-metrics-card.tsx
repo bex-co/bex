@@ -10,6 +10,7 @@ import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
+import { useTranslations } from "@/common/hooks/use-translations";
 import type { RangePreset } from "@/features/metrics/lib/range";
 
 interface NetworkMetricsCardProps {
@@ -28,6 +29,7 @@ export function NetworkMetricsCard({
   range,
   quantile,
 }: NetworkMetricsCardProps) {
+  const { t } = useTranslations();
   const queryOpts = useLiveRange(range);
   const requests = useMetrics(resource, "http_requests", queryOpts);
   const latency = useMetrics(resource, "http_latency", {
@@ -39,11 +41,11 @@ export function NetworkMetricsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Network Metrics</CardTitle>
-        <CardDescription>Aggregated across all instances</CardDescription>
+        <CardTitle>{t("metrics.networkTitle")}</CardTitle>
+        <CardDescription>{t("metrics.networkDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <MetricSection title="Total Requests" result={requests}>
+        <MetricSection title={t("metrics.totalRequests")} result={requests}>
           {(series) => (
             <SvgBarChart
               points={series.points}
@@ -52,7 +54,10 @@ export function NetworkMetricsCard({
             />
           )}
         </MetricSection>
-        <MetricSection title={`Response Times (${quantile})`} result={latency}>
+        <MetricSection
+          title={t("metrics.responseTimes", { quantile })}
+          result={latency}
+        >
           {(series) => (
             <SvgLineChart
               points={series.points}
@@ -61,7 +66,7 @@ export function NetworkMetricsCard({
             />
           )}
         </MetricSection>
-        <MetricSection title="Outbound Bandwidth" result={bandwidth}>
+        <MetricSection title={t("metrics.outboundBandwidth")} result={bandwidth}>
           {(series) => (
             <SvgLineChart
               points={series.points}

@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutGrid, Settings } from "lucide-react";
+import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Sidebar,
   SidebarContent,
@@ -15,23 +16,24 @@ import {
 // Static nav for now — grows into a real services list once this dashboard
 // is wired to bex-api's GraphQL (see docs/bex-api.md).
 const NAV_ITEMS = [
-  { label: "Services", to: "/", icon: LayoutGrid },
-  { label: "Settings", to: "/settings", icon: Settings },
-];
+  { labelKey: "common.navServices", to: "/", icon: LayoutGrid },
+  { labelKey: "common.navSettings", to: "/settings", icon: Settings },
+] as const;
 
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { t } = useTranslations();
 
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <span className="font-semibold">bex</span>
+          <span className="font-semibold">{t("common.appName")}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("common.navDashboardGroup")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
@@ -39,7 +41,7 @@ export function DashboardSidebar() {
                   <SidebarMenuButton asChild isActive={pathname === item.to}>
                     <Link to={item.to}>
                       <item.icon />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -12,15 +12,19 @@ src/
 │   └── settings.tsx        # account settings (Kratos settings flow)
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
 ├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
+├── features/i18n/           # language-switcher component
+├── i18n/                    # i18next core: config, init, detect-language, resource aggregation
 ├── common/
 │   ├── apollo/             # Apollo Client, pointed at bex-api's /graphql (VITE_API_URL)
 │   ├── lib/ory/            # Kratos config + FrontendApi factory (@ory/client-fetch)
 │   ├── lib/auth/            # requireAuth beforeLoad guard
 │   ├── hooks/use-ory-flow.ts # client-side Kratos flow fetch/redirect
+│   ├── hooks/use-translations.ts # i18next wrapper (see Internationalization below)
+│   ├── locales/              # common.* translation keys
 │   ├── components/
 │   │   ├── ui/              # shadcn/Radix component kit
 │   │   └── dashboard-layout/ # sidebar + header chrome wrapping authenticated pages
-│   ├── providers/           # RootProvider: theme + toaster + viewport-height only
+│   ├── providers/           # RootProvider: theme + toaster + i18next + viewport-height
 │   ├── root-route/          # Root shell, 404, and error page components
 │   ├── hooks/, lib/, types/  # generic utilities kept from the scaffold
 ├── config/                  # config.ts — VITE_API_URL / VITE_SSR_API_URL
@@ -32,7 +36,7 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 ## Code standards
 
 - React 19+ patterns: no `FC` type, use plain function components.
-- No i18n — this scaffold ships hardcoded English strings. Reintroduce an i18n layer only when there's an actual multi-language requirement, not preemptively.
+- Every user-visible string goes through `useTranslations()`'s `t()`, not a hardcoded literal — see Internationalization below.
 - Tests live in `__tests__` directories adjacent to the code they test, e.g. `src/common/hooks/__tests__/use-mobile.test.ts`.
 - Don't hand-roll auth forms — `@ory/elements-react`'s flow components already track whatever methods/fields Kratos's config actually enables; hardcoding form shapes would drift out of sync with it.
 
@@ -56,6 +60,19 @@ Pages/components this pattern applies to (w5/m2 scope): `features/auth/pages/{lo
 ## SSR gotcha
 
 `vite.config.ts` sets `ssr.noExternal: ["@ory/elements-react"]` — the package ships extensionless relative imports (e.g. `"./session-provider"`) that only resolve under bundler resolution, not Node's strict ESM loader. Without this, `yarn dev`/`yarn build` SSR-render any page importing `@ory/elements-react` with "Cannot find module" and silently falls back to full client rendering. Don't remove it.
+
+## Internationalization (i18n)
+
+i18next + react-i18next (w5/m3), modeled on `beancount-dashboard`'s `docs/i18n.md` but adapted for TanStack Start SSR (no custom `entry-server.tsx` here — detection happens in the root route's `beforeLoad`).
+
+- **Feature-based locales:** every feature that owns user-visible strings has `locales/{en,zh}.ts` (`src/common/locales/`, `src/features/{auth,metrics,services}/locales/`) exporting `Record<string, TranslationEntry>` where `TranslationEntry = { message: string; description: string }`. `src/i18n/index.ts` imports every namespace, flattens each via `extractMessages`, and merges them into per-language `{ key: message }` resources (`en`, `zh`) fed to i18next.
+- **Namespaced keys:** every key is prefixed by feature (`common.*`, `auth.*`, `metrics.*`, `services.*`). `useTranslations()` (`src/common/hooks/use-translations.ts`) wraps `useTranslation` and in dev logs a console error on an unprefixed key and a warning on a key missing from the `en` resources — this is how a typo'd key gets caught instead of silently rendering itself.
+- **Interpolation** uses single braces (`t("metrics.responseTimes", { quantile })` → `"Response Times ({quantile})"` in the locale file) — `src/i18n/init.ts` sets `interpolation: { prefix: "{", suffix: "}" }` to match; don't switch a locale file to i18next's default `{{...}}` without also changing that config.
+- **SSR language detection + persistence** (`src/i18n/detect-language/{server,client}.ts`, isomorphic via `detectLanguage` in `index.ts`): priority is URL (`?lang=`/`?locale=`) → cookie (`i18nextLng`) → `Accept-Language` header (server only) → `DEFAULT_LANGUAGE`. The root route's `beforeLoad` (`src/routes/__root.tsx`) calls `detectLanguage()` and `await i18n.changeLanguage(...)` **before** the route component renders, on both the server and the client's initial hydration pass, so the first render always agrees — no `LanguageDetector` plugin (it reads localStorage before hydration and would cause a React hydration mismatch). `persistLanguage()` (`src/i18n/utils.ts`) writes both a 1-year cookie and localStorage; `useLanguageHydrationSync()` (mounted once in `RootComponent`) applies a post-hydration override from `?lang=` or a stale localStorage preference, never during the initial render.
+- **Switcher:** `src/features/i18n/language-switcher.tsx` — self-contained (no dashboard-chrome dependency), calls `i18n.changeLanguage(lang)` + `persistLanguage(lang)`. Mounted in `DashboardHeader` and `AuthPageShell`.
+- **Ory Elements** doesn't inherit react-i18next — `@ory/elements-react`'s flow components take their own `intl.locale`. `useOryConfig()` (`src/common/lib/ory/config.ts`) returns `oryConfig` with `intl.locale` set to the current `i18n.language`; every auth page (`login`, `register`, `forgot-password`, `settings`) calls this instead of importing the static `oryConfig` directly, so the Ory-rendered form follows the same language as the rest of the app, including on the SSR render.
+- **Adding a language:** add the code to `SUPPORTED_LANGUAGES`/`LANGUAGE_NAMES` (`src/i18n/config.ts`), add a sibling `<lang>.ts` next to every `en.ts` locale file, then register its imports in `src/i18n/index.ts`'s aggregation (`en`/`zh` exports + `resources`). Ory Elements already ships translations for most locale codes (`OryLocales` in `@ory/elements-react`) — no extra wiring needed there beyond the locale code matching.
+- **Adding a feature's own strings:** create `src/features/<name>/locales/{en,zh}.ts`, prefix every key with the feature name, and import+merge it into both `en` and `zh` in `src/i18n/index.ts`.
 
 ## Development commands
 

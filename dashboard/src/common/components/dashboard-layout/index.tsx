@@ -5,6 +5,7 @@ import {
 } from "@/common/components/ui/sidebar.tsx";
 import { Authenticated } from "@/common/components/authenticated";
 import { UserNav } from "@/common/components/user-nav.tsx";
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { DashboardSidebar } from "./dashboard-sidebar";
 
 function DashboardHeader() {
@@ -19,9 +20,12 @@ function DashboardHeader() {
         <div className="flex items-center gap-3">
           {showTrigger && <SidebarTrigger className="-ml-1" />}
         </div>
-        <Authenticated>
-          <UserNav />
-        </Authenticated>
+        <div className="flex items-center gap-1">
+          <LanguageSwitcher />
+          <Authenticated>
+            <UserNav />
+          </Authenticated>
+        </div>
       </div>
     </header>
   );

@@ -1,8 +1,9 @@
 import { useSearch } from "@tanstack/react-router";
 import { Recovery } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
 /**
@@ -14,11 +15,13 @@ import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 export default function ForgotPasswordPage() {
   const search = useSearch({ from: "/auth/forgot-password" });
   const flow = useOryFlow("recovery", search.flow);
+  const { t } = useTranslations();
+  const oryConfig = useOryConfig();
 
   return (
     <AuthPageShell
-      title="Reset your password"
-      subtitle="Enter your email to receive a recovery code"
+      title={t("auth.forgotPasswordTitle")}
+      subtitle={t("auth.forgotPasswordSubtitle")}
     >
       {flow ? (
         <Recovery flow={flow} config={oryConfig} components={oryHideCardLogo} />

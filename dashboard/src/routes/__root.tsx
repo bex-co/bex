@@ -5,6 +5,8 @@ import ErrorPage from "@/common/root-route/error-page";
 import { ShellComponent } from "@/common/root-route/shell-component";
 import { RootComponent } from "@/common/root-route/root-component";
 import { fetchSession } from "@/common/server-fn/session";
+import { detectLanguage } from "@/i18n/detect-language";
+import i18n from "@/i18n/init";
 
 import appCss from "../style.css?inline";
 import oryElementsCss from "@ory/elements-react/theme/styles.css?inline";
@@ -49,13 +51,24 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   shellComponent: ShellComponent,
   component: RootComponent,
   beforeLoad: async () => {
+    const language = detectLanguage();
+    const sessionPromise = fetchSession();
+    // Applied before this route's component renders (both on the server and
+    // on the client's initial hydration pass) so the first render on each
+    // side uses the same language — no hydration mismatch. Skipped when
+    // unchanged (the common case past the first navigation) to avoid paying
+    // i18next's resource-swap/subscriber-notify cost on every route change;
+    // run alongside the (independent) session fetch rather than after it.
+    if (i18n.language !== language) await i18n.changeLanguage(language);
     return {
-      session: await fetchSession(),
+      session: await sessionPromise,
+      language,
     };
   },
   loader: ({ context }) => {
     return {
       session: context.session,
+      language: context.language,
     };
   },
 });

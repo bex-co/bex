@@ -1,13 +1,16 @@
 import { HeadContent, Scripts } from "@tanstack/react-router";
 import { ThemeScript } from "@/common/components/document/theme-script";
+import { useRootContext } from "@/common/hooks/use-root-context";
 
 export function ShellComponent({
   children,
 }: {
   children: React.ReactNode;
 }): React.ReactNode {
+  const { language } = useRootContext();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={language} suppressHydrationWarning>
       <head>
         <ThemeScript />
         <HeadContent />

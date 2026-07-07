@@ -1,22 +1,26 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { Login } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
-import { AUTH_FEATURES } from "@/features/auth/components/auth-page-shell/auth-features";
+import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/auth/login" });
   const flow = useOryFlow("login", search.flow, search.next || "/");
+  const { t } = useTranslations();
+  const authFeatures = useAuthFeatures();
+  const oryConfig = useOryConfig();
 
   return (
     <AuthPageShell
-      title="Welcome back"
-      subtitle="Sign in to your account"
-      features={AUTH_FEATURES}
+      title={t("auth.loginTitle")}
+      subtitle={t("auth.loginSubtitle")}
+      features={authFeatures}
     >
       {flow ? (
         <Login

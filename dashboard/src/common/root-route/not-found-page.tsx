@@ -1,12 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
  * 404 Not Found page component
  * Displays a modern and clean error page when a route is not found
  */
 export default function NotFoundPage() {
+  const { t } = useTranslations();
+
   const handleGoBack = () => {
     window.history.back();
   };
@@ -20,10 +23,10 @@ export default function NotFoundPage() {
             404
           </h1>
           <h2 className="text-3xl font-semibold text-foreground">
-            Page not found
+            {t("common.notFoundTitle")}
           </h2>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            The page you're looking for doesn't exist or has been moved.
+            {t("common.notFoundDescription")}
           </p>
         </div>
 
@@ -32,7 +35,7 @@ export default function NotFoundPage() {
           <Button asChild variant="default" size="lg" className="min-w-[140px]">
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
-              Go home
+              {t("common.goHome")}
             </Link>
           </Button>
           <Button
@@ -42,7 +45,7 @@ export default function NotFoundPage() {
             className="min-w-[140px]"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Go back
+            {t("common.goBack")}
           </Button>
         </div>
       </div>

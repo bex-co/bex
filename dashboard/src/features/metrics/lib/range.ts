@@ -1,26 +1,16 @@
 export interface RangePreset {
   id: "30m" | "1h" | "12h";
-  label: string;
   spanSeconds: number;
   resolutionSeconds: number;
 }
 
 // Resolution scales with span so a request-metric series stays readable (not
 // thousands of points) while still resolving fine-grained enough to show shape.
+// Display labels live in metrics-filters.tsx's RANGE_LABEL_KEYS (i18n).
 export const RANGE_PRESETS: RangePreset[] = [
-  {
-    id: "30m",
-    label: "Last 30 minutes",
-    spanSeconds: 30 * 60,
-    resolutionSeconds: 15,
-  },
-  { id: "1h", label: "Last hour", spanSeconds: 60 * 60, resolutionSeconds: 30 },
-  {
-    id: "12h",
-    label: "Last 12 hours",
-    spanSeconds: 12 * 60 * 60,
-    resolutionSeconds: 300,
-  },
+  { id: "30m", spanSeconds: 30 * 60, resolutionSeconds: 15 },
+  { id: "1h", spanSeconds: 60 * 60, resolutionSeconds: 30 },
+  { id: "12h", spanSeconds: 12 * 60 * 60, resolutionSeconds: 300 },
 ];
 
 export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[1]; // "1h", matches bex-api's own default span

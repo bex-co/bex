@@ -2,9 +2,10 @@ import { useSearch } from "@tanstack/react-router";
 import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { oryConfig, oryHideSettingsPageHeader } from "@/common/lib/ory/config";
+import { useOryConfig, oryHideSettingsPageHeader } from "@/common/lib/ory/config";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -15,16 +16,18 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 export default function SettingsPage() {
   const search = useSearch({ strict: false }) as { flow?: string };
   const flow = useOryFlow("settings", search.flow);
+  const { t } = useTranslations();
+  const oryConfig = useOryConfig();
 
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your account profile and password.
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {t("auth.settingsTitle")}
+            </h1>
+            <p className="text-muted-foreground">{t("auth.settingsSubtitle")}</p>
           </div>
           {flow ? (
             <SessionProvider>

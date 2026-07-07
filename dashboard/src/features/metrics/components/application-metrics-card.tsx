@@ -8,6 +8,7 @@ import {
 import { StatTile } from "@/features/metrics/components/stat-tile";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 interface ApplicationMetricsCardProps {
   resource: string;
@@ -29,6 +30,7 @@ export function ApplicationMetricsCard({
   resource,
   percentage,
 }: ApplicationMetricsCardProps) {
+  const { t } = useTranslations();
   const cpu = useMetrics(resource, "cpu", { percentage });
   const memory = useMetrics(resource, "memory", { percentage });
   const instances = useMetrics(resource, "instance_count");
@@ -36,17 +38,15 @@ export function ApplicationMetricsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Application Metrics</CardTitle>
-        <CardDescription>
-          Per-instance resource usage, from metrics-server
-        </CardDescription>
+        <CardTitle>{t("metrics.applicationTitle")}</CardTitle>
+        <CardDescription>{t("metrics.applicationDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {memory.unavailable ? (
           <MetricUnavailable height={88} />
         ) : (
           <StatTile
-            label="Memory"
+            label={t("metrics.memory")}
             unit={memory.series[0]?.unit ?? "bytes"}
             value={latestValue(memory.series)}
             color="var(--chart-1)"
@@ -57,7 +57,7 @@ export function ApplicationMetricsCard({
           <MetricUnavailable height={88} />
         ) : (
           <StatTile
-            label="CPU"
+            label={t("metrics.cpu")}
             unit={cpu.series[0]?.unit ?? "cpu"}
             value={latestValue(cpu.series)}
             color="var(--chart-2)"
@@ -68,7 +68,7 @@ export function ApplicationMetricsCard({
           <MetricUnavailable height={88} />
         ) : (
           <StatTile
-            label="Total Instances"
+            label={t("metrics.totalInstances")}
             unit="count"
             value={latestValue(instances.series)}
             color="var(--chart-3)"

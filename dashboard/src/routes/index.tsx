@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useTranslations } from "@/common/hooks/use-translations";
+import type { en } from "@/i18n";
 import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   Card,
@@ -60,27 +62,34 @@ function phaseVariant(phase: string): "default" | "secondary" | "outline" {
 }
 
 const serviceStats = [
-  { label: "Total services", value: sampleServices.length },
+  { labelKey: "services.statTotal", value: sampleServices.length },
   {
-    label: "Running",
+    labelKey: "services.statRunning",
     value: sampleServices.filter((s) => s.phase === "running").length,
   },
   {
-    label: "Suspended",
+    labelKey: "services.statSuspended",
     value: sampleServices.filter((s) => s.phase === "suspended").length,
   },
-];
+] as const;
+
+const PHASE_LABEL_KEYS: Record<string, keyof typeof en> = {
+  running: "services.statusRunning",
+  suspended: "services.statusSuspended",
+};
 
 export function HomePage() {
+  const { t } = useTranslations();
+
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {serviceStats.map((stat) => (
-              <Card key={stat.label}>
+              <Card key={stat.labelKey}>
                 <CardHeader>
-                  <CardDescription>{stat.label}</CardDescription>
+                  <CardDescription>{t(stat.labelKey)}</CardDescription>
                   <CardTitle className="text-2xl tabular-nums">
                     {stat.value}
                   </CardTitle>
@@ -90,18 +99,16 @@ export function HomePage() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>Services</CardTitle>
-              <CardDescription>
-                Sample data — this scaffold isn't wired to bex-api yet.
-              </CardDescription>
+              <CardTitle>{t("services.cardTitle")}</CardTitle>
+              <CardDescription>{t("services.sampleDataNotice")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>URL</TableHead>
+                    <TableHead>{t("services.colName")}</TableHead>
+                    <TableHead>{t("services.colStatus")}</TableHead>
+                    <TableHead>{t("services.colUrl")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -118,7 +125,7 @@ export function HomePage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={phaseVariant(service.phase)}>
-                          {service.phase}
+                          {t(PHASE_LABEL_KEYS[service.phase])}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">

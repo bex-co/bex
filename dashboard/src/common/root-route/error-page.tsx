@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Home, ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
+import { useTranslations } from "@/common/hooks/use-translations";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 
 /**
@@ -8,11 +9,13 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
  * Displays a user-friendly error page when route validation or other errors occur
  */
 export default function ErrorPage({ error, reset }: ErrorComponentProps) {
+  const { t } = useTranslations();
+
   const handleGoBack = () => {
     window.history.back();
   };
 
-  const errorMessage = error?.message || "Something went wrong.";
+  const errorMessage = error?.message || t("common.errorDefaultMessage");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
@@ -27,7 +30,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
         {/* Content Section */}
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Something went wrong
+            {t("common.errorTitle")}
           </h1>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             {errorMessage}
@@ -39,7 +42,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
           <Button asChild variant="default" size="lg" className="min-w-[140px]">
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
-              Go home
+              {t("common.goHome")}
             </Link>
           </Button>
           <Button
@@ -49,7 +52,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
             className="min-w-[140px]"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Go back
+            {t("common.goBack")}
           </Button>
           <Button
             variant="outline"
@@ -57,7 +60,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
             onClick={reset}
             className="min-w-[140px]"
           >
-            Try again
+            {t("common.tryAgain")}
           </Button>
         </div>
       </div>

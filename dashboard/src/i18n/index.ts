@@ -1,0 +1,50 @@
+import enCommon from "@/common/locales/en";
+import enAuth from "@/features/auth/locales/en";
+import enMetrics from "@/features/metrics/locales/en";
+import enServices from "@/features/services/locales/en";
+import zhCommon from "@/common/locales/zh";
+import zhAuth from "@/features/auth/locales/zh";
+import zhMetrics from "@/features/metrics/locales/zh";
+import zhServices from "@/features/services/locales/zh";
+import type { SupportedLanguage, TranslationEntry } from "./config";
+
+export type { SupportedLanguage, TranslationEntry } from "./config";
+export { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, DEFAULT_LANGUAGE } from "./config";
+export { persistLanguage } from "./utils";
+export { detectLanguage } from "./detect-language";
+
+export function extractMessages(
+  obj: Record<string, TranslationEntry>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, entry]) => [key, entry.message]),
+  );
+}
+
+/**
+ * Per-language flattened `{ key: message }` resources, aggregated from every
+ * feature's `locales/<lang>.ts`. Adding a language: create `<lang>.ts` next to
+ * each `en.ts` above, add it to `SUPPORTED_LANGUAGES`/`LANGUAGE_NAMES`
+ * (config.ts), then register its imports here.
+ */
+export const en: Record<string, string> = {
+  ...extractMessages(enCommon),
+  ...extractMessages(enAuth),
+  ...extractMessages(enMetrics),
+  ...extractMessages(enServices),
+};
+
+export const zh: Record<string, string> = {
+  ...extractMessages(zhCommon),
+  ...extractMessages(zhAuth),
+  ...extractMessages(zhMetrics),
+  ...extractMessages(zhServices),
+};
+
+export const resources: Record<
+  SupportedLanguage,
+  { translation: Record<string, string> }
+> = {
+  en: { translation: en },
+  zh: { translation: zh },
+};

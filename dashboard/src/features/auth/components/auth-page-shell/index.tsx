@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 
 export type AuthFeature = {
   icon: LucideIcon;
@@ -28,7 +29,10 @@ export function AuthPageShell({
   children,
 }: AuthPageShellProps) {
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background relative">
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
+      </div>
       <div className="flex-1 flex items-center justify-center py-12 px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           <div className="space-y-2">

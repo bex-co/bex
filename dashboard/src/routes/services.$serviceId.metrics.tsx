@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { ApplicationMetricsCard } from "@/features/metrics/components/application-metrics-card";
 import { NetworkMetricsCard } from "@/features/metrics/components/network-metrics-card";
 import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/services/$serviceId/metrics")({
 
 function ServiceMetricsPage() {
   const { serviceId } = Route.useParams();
+  const { t } = useTranslations();
   const [range, setRange] = useState<RangePreset>(DEFAULT_RANGE_PRESET);
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
   const [quantile, setQuantile] = useState(0.95); // bex-api's own default quantile
@@ -33,13 +35,13 @@ function ServiceMetricsPage() {
               to="/"
               className="text-sm text-muted-foreground hover:underline"
             >
-              ← Services
+              ← {t("services.cardTitle")}
             </Link>
             <h1 className="mt-1 text-2xl font-semibold text-foreground">
               {serviceId}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Metrics — live from bex-api
+              {t("metrics.subtitle")}
             </p>
           </div>
 

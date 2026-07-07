@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import type {
   OryClientConfiguration,
   OryFlowComponentOverrides,
 } from "@ory/elements-react";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /** Ory Kratos public API base URL, reachable from the browser (docs/auth.md). */
 export const KRATOS_PUBLIC_URL =
@@ -47,6 +49,23 @@ export const oryConfig: OryClientConfiguration = {
     verification_enabled: false,
   },
 };
+
+/**
+ * `oryConfig` with `intl.locale` driven by the app's current i18next
+ * language, so Ory Elements' own bundled translations (which it doesn't pick
+ * up from react-i18next automatically) follow the same language as the rest
+ * of the app. `i18n.language` is already correct on the very first render on
+ * both the server and the client (t002's beforeLoad sets it before any
+ * component renders), so this needs no extra SSR handling of its own.
+ */
+export function useOryConfig(): OryClientConfiguration {
+  const { i18n } = useTranslations();
+
+  return useMemo(
+    () => ({ ...oryConfig, intl: { locale: i18n.language } }),
+    [i18n.language],
+  );
+}
 
 /**
  * Every auth page already renders its own hero heading (e.g. "Welcome back")
