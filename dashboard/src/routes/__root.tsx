@@ -30,6 +30,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
     ],
     styles: [
+      // Order matters: both sheets declare @layer, and layer precedence is
+      // set by declaration order. Ory's `ory-elements` layer must be declared
+      // after Tailwind's `base`, or our preflight (`button { background:
+      // transparent }`) outranks Ory's component styles and unstyles its
+      // forms. style.css's token bridge still wins from first position
+      // because it's unlayered (see the bridge block there).
       {
         children: appCss,
       },

@@ -52,26 +52,140 @@
 
 /* Bridge Ory Elements' theme tokens to this app's shadcn tokens above, so
    the Kratos-rendered login/registration/recovery/settings forms read as
-   part of the same design system rather than a visually distinct plugin. */
-:root {
+   part of the same design system rather than a visually distinct plugin.
+
+   Ory's theme is two-layered: component tokens (--input-*, --button-*)
+   derive from a base --interface-* layer (see @ory/elements-react
+   tailwind/generated/default-variables.css). We map the base layer here,
+   and override individual component tokens only where shadcn's behavior
+   diverges (e.g. inputs don't change background on hover, buttons do).
+   Anything left unmapped falls back to Ory's slate palette — which also
+   ignores our .dark class — so every base token gets a mapping.
+
+   Selector note: Ory declares these tokens directly on `.ory-elements`
+   (inside its `@layer ory-elements`), not on :root — and a property set on
+   the element itself always beats one inherited from :root. So the bridge
+   must also target `.ory-elements`; it wins because this block is
+   unlayered, and unlayered CSS outranks any @layer. */
+:root,
+.ory-elements {
   --ory-background-default: var(--background);
   --ory-foreground-default: var(--foreground);
   --ory-border-default: var(--border);
+
+  /* brand (primary buttons, links, focus) — hover mirrors shadcn's
+     hover:bg-primary/90 */
   --interface-background-brand-primary: var(--primary);
-  --interface-background-brand-primary-hover: var(--primary);
+  --interface-background-brand-primary-hover: color-mix(
+    in oklab,
+    var(--primary) 90%,
+    transparent
+  );
   --interface-foreground-brand-on-primary: var(--primary-foreground);
   --interface-foreground-brand-primary: var(--primary);
+  --interface-foreground-brand-secondary: var(--muted-foreground);
+  --interface-background-brand-secondary: var(--secondary);
+  --interface-background-brand-secondary-hover: var(--accent);
+  --interface-foreground-brand-on-secondary: var(--secondary-foreground);
   --interface-border-brand-brand: var(--ring);
+
+  /* neutral surfaces + text */
   --interface-background-default-primary: var(--card);
+  --interface-background-default-primary-hover: var(--accent);
+  --interface-background-default-secondary: var(--muted);
+  --interface-background-default-secondary-hover: var(--accent);
+  --interface-background-default-tertiary: var(--muted);
+  --interface-background-default-tertiary-hover: var(--accent);
+  --interface-background-default-inverted: var(--foreground);
+  --interface-background-default-inverted-hover: var(--foreground);
   --interface-foreground-default-primary: var(--foreground);
   --interface-foreground-default-secondary: var(--muted-foreground);
+  --interface-foreground-default-tertiary: var(--muted-foreground);
+  --interface-foreground-default-inverted: var(--background);
   --interface-border-default-primary: var(--border);
+  --interface-border-default-inverted: var(--border);
+
+  /* disabled — shadcn dims with opacity, so reuse muted rather than
+     Ory's dedicated slate steps */
+  --interface-background-disabled-disabled: var(--muted);
+  --interface-foreground-disabled-disabled: var(--muted-foreground);
+  --interface-foreground-disabled-on-disabled: var(--muted-foreground);
+  --interface-border-disabled-disabled: var(--border);
+
+  /* validation (success/warning keep Ory's universal green/yellow —
+     this palette has no tokens for them) */
   --interface-background-validation-danger: var(--destructive);
   --interface-border-validation-danger: var(--destructive);
-  --border-radius-buttons: var(--radius-sm);
-  --border-radius-forms: var(--radius-sm);
-  --border-radius-general: var(--radius-sm);
-  --border-radius-cards: var(--radius-lg);
+  --interface-foreground-validation-danger: var(--destructive);
+
+  /* component-level divergences from the base layer */
+  --input-border-default: var(--input); /* shadcn border-input */
+  --input-border-hover: var(--input); /* inputs don't react to hover */
+  --input-background-default: transparent; /* shadcn bg-transparent */
+  --input-background-hover: transparent;
+
+  /* radius + font, matching shadcn Card (rounded-xl), Button/Input
+     (rounded-md), and the app's own font stack */
+  --border-radius-buttons: var(--radius-md);
+  --border-radius-forms: var(--radius-md);
+  --border-radius-general: var(--radius-md);
+  --border-radius-cards: var(--radius-xl);
+  --font-sans-default: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+/* shadcn inputs use dark:bg-input/30; Ory's dark block keys off
+   [data-theme="dark"] which this app never sets, so mirror it here.
+   (`.dark .ory-elements`, not `.dark`: it must out-cascade the light
+   bridge's declaration directly on `.ory-elements` above.) */
+.dark .ory-elements {
+  --input-background-default: color-mix(in oklab, var(--input) 30%, transparent);
+  --input-background-hover: color-mix(in oklab, var(--input) 30%, transparent);
+}
+
+/* Geometry: Ory's controls sit on a ~46px scale (inputs px-4 py-[13px],
+   buttons p-4); this app's shadcn kit is the h-9 scale (36px, text-sm on
+   md+). Keyed on Ory's stable data-testid hooks, not its compiled class
+   names. */
+.ory-elements input[data-testid^="ory/form/node/input"] {
+  min-height: 2.25rem; /* h-9 */
+  padding: 0.25rem 0.75rem; /* px-3 py-1 */
+  font-size: 1rem; /* text-base (mobile, avoids iOS zoom) */
+  line-height: 1.25rem;
+}
+.ory-elements input[data-testid^="ory/form/node/input"] ~ button {
+  padding-block: 0.25rem; /* password show/hide toggle follows the input */
+}
+@media (min-width: 768px) {
+  .ory-elements input[data-testid^="ory/form/node/input"] {
+    font-size: 0.875rem; /* md:text-sm */
+  }
+}
+.ory-elements button[data-testid^="ory/form/node/button"] {
+  min-height: 2.25rem; /* h-9 */
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+}
+/* Focus: shadcn pairs the border swap with a soft 3px ring
+   (focus-visible:ring-ring/50 ring-[3px]); Ory only swaps the border. */
+.ory-elements input[data-testid^="ory/form/node/input"]:focus-visible,
+.ory-elements div:focus-within > input[data-testid^="ory/form/node/input"],
+.ory-elements button[data-testid^="ory/form/node/button"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+/* Card: match shadcn Card's density and shadow-sm (Ory defaults to
+   px-8 py-12 sm:px-12 sm:py-14 with gap-8 and no shadow). */
+.ory-elements [data-testid="ory/card"] {
+  gap: 1.5rem; /* gap-6 */
+  padding: 1.5rem; /* p-6 */
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1); /* shadow-sm */
+}
+@media (min-width: 640px) {
+  .ory-elements [data-testid="ory/card"] {
+    padding: 2rem; /* sm:p-8 */
+  }
 }
 
 @theme inline {
