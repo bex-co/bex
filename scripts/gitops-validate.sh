@@ -22,13 +22,16 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 # For each multi-source base Application with vendored values (kratos, hydra,
-# openfga, ...): pull the pinned chart once from ITS repo, then render it with
-# the base values alone and — when a local override file exists — with the
-# local overlay's values layered on top (the same order Argo's valueFiles use).
-for chart in kratos hydra openfga; do
+# openfga, openbao, ...): pull the pinned chart once from ITS repo, then render
+# it with the base values alone and — when a local override file exists — with
+# the local overlay's values layered on top (the same order Argo's valueFiles
+# use). Namespace comes from the Application itself so this generalizes across
+# components in different namespaces (auth vs secrets).
+for chart in kratos hydra openfga openbao; do
   app="deploy/gitops/base/$chart.yaml"
   version="$(yq '.spec.sources[0].targetRevision' "$app")"
   repo="$(yq '.spec.sources[0].repoURL' "$app")"
+  ns="$(yq '.spec.destination.namespace' "$app")"
   helm pull "$chart" --repo "$repo" --version "$version" -d "$tmp" \
     || { echo "FAIL: cannot pull $chart $version" >&2; fail=1; continue; }
   layerings=("deploy/gitops/base/values/$chart.values.yaml")
@@ -36,9 +39,9 @@ for chart in kratos hydra openfga; do
     layerings+=("deploy/gitops/base/values/$chart.values.yaml -f deploy/gitops/overlays/local/values/$chart.values.yaml")
   fi
   for values in "${layerings[@]}"; do
-    echo "==> helm template $chart $version -f $values"
+    echo "==> helm template $chart $version -n $ns -f $values"
     # shellcheck disable=SC2086 — $values intentionally splits into -f args
-    helm template "$chart" "$tmp/$chart-$version.tgz" -n auth -f $values >/dev/null \
+    helm template "$chart" "$tmp/$chart-$version.tgz" -n "$ns" -f $values >/dev/null \
       || { echo "FAIL: $chart values do not render against chart $version" >&2; fail=1; }
   done
 done

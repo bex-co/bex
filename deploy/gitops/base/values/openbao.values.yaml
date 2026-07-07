@@ -1,0 +1,44 @@
+# OpenBao — the platform tenant-credential secret store (versioned KV v2 at
+# tenants/, docs/secrets.md). Pinned upstream chart; values vendored in this
+# repo (multi-source, like kratos.yaml/openfga.yaml). Cluster-internal ONLY:
+# bex-api is the sole intended caller via the Kubernetes auth method
+# (docs/secrets.md#5) — no ingress.
+#
+# Unlike Kratos/Hydra/OpenFGA, OpenBao owns its storage directly (integrated
+# Raft, docs/secrets.md#2) instead of a CNPG cluster — no DSN Secret to
+# compose. Init/unseal is out-of-band (scripts/bao-init.sh): unseal keys +
+# root token live only in .env, never in git (same rule as the Ory secrets).
+
+injector:
+  enabled: false # no Vault Agent sidecar injection — bex-api reads via its own client
+
+ui:
+  enabled: false # cluster-internal only, no ingress — the UI Service buys nothing here
+
+server:
+  ha:
+    enabled: true
+    replicas: 1 # single-node raft locally; prod bumps to 3 for quorum (docs/secrets.md consequences)
+    raft:
+      enabled: true
+      config: |
+        ui = true
+        listener "tcp" {
+          tls_disable = 1
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+        storage "raft" {
+          path = "/openbao/data"
+        }
+        service_registration "kubernetes" {}
+  dataStorage:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 256Mi }
+  # server.authDelegator.enabled defaults to true in the chart — grants
+  # OpenBao's own ServiceAccount the TokenReview permission the Kubernetes
+  # auth method needs to validate a caller's projected SA token
+  # (docs/secrets.md#5); nothing to override here.

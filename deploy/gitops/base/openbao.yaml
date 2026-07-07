@@ -1,0 +1,32 @@
+# OpenBao — the platform secret store for tenant credentials (see
+# docs/secrets.md). Pinned upstream chart; values are vendored in this repo, so
+# this is a multi-source Application: the Helm repo provides the chart, the git
+# source (ref: values) provides base/values/openbao.values.yaml.
+# sync-wave 1: no dependency on the CNPG operator or any Cluster — OpenBao owns
+# its storage directly (integrated Raft). Init/unseal (keys + root token) and
+# the tenants/ KV v2 mount are out-of-band: scripts/bao-init.sh.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openbao
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://openbao.github.io/openbao-helm
+      chart: openbao
+      targetRevision: "0.28.4" # app v2.5.5; pin exact for reproducibility
+      helm:
+        valueFiles:
+          - $values/deploy/gitops/base/values/openbao.values.yaml
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: secrets
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

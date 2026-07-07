@@ -1,0 +1,22 @@
+# Local override for OpenBao: shrink the raft PVC to CAPD scale — 1Gi on
+# local-path (no hcloud-volumes here), mirroring the auth-dbs local patch in
+# ../kustomization.yaml. Layered over base/values/openbao.values.yaml by the
+# Application patch there (later valueFiles win).
+#
+# Pin to the control-plane node: OpenBao's `service_registration "kubernetes"`
+# stanza calls the apiserver directly, and worker-node pods can't reach it
+# under this CAPD cluster's OrbStack/Calico setup (same quirk documented in
+# docs/auth.md and scripts/mock-cluster.sh's coredns patch) — a worker-scheduled
+# pod comes up Running but hangs on its first request forever, never
+# responding, because that call blocks before the HTTP handler can serve
+# anything. Not needed in prod (real clusters don't have this networking gap).
+server:
+  dataStorage:
+    size: 1Gi
+    storageClass: local-path
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
