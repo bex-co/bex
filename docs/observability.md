@@ -54,7 +54,7 @@ Shapes verified against `render-public-api-1.json`: the `type`/`resource`/`text`
 
 ### RBAC
 
-The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`) — added with the logs verb in `operator/config/api/rbac.yaml`. No clientset lives in Core; only `podlogs.go` (and its `main.go` wiring) touch it.
+The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`) — added with the logs verb in `lego/operator/config/api/rbac.yaml`. No clientset lives in Core; only `podlogs.go` (and its `main.go` wiring) touch it.
 
 ## Metrics
 
@@ -97,7 +97,7 @@ Shapes track Render's metrics endpoints (per-metric path segments; the `{labels,
 
 ### RBAC
 
-Resource metrics add read on `metrics.k8s.io` `pods` (`get`/`list`) to the api ServiceAccount (`operator/config/api/rbac.yaml`); percentage mode reuses the existing `pods` read for limits. Request metrics reach Prometheus over HTTP (`BEX_PROM_URL`), not the kube API, so they need no extra RBAC.
+Resource metrics add read on `metrics.k8s.io` `pods` (`get`/`list`) to the api ServiceAccount (`lego/operator/config/api/rbac.yaml`); percentage mode reuses the existing `pods` read for limits. Request metrics reach Prometheus over HTTP (`BEX_PROM_URL`), not the kube API, so they need no extra RBAC.
 
 ### Cluster enablement
 

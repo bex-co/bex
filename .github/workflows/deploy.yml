@@ -19,7 +19,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "operator/**"
+      - "lego/**"
       - "dashboard/**"
       - "deploy/gitops/**"
       - ".github/workflows/deploy.yml"
@@ -50,7 +50,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: operator
+          context: lego
           platforms: linux/amd64
           push: true
           tags: |

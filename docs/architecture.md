@@ -56,7 +56,7 @@ The single most important boundary:
 | owns | placement, lifecycle, build→deploy→serve, the **auto-allocator** | clusters + machines |
 | node awareness | **reads** `Node`/`Pod` (capacity, utilization); decides placement/eviction | **creates/joins/deletes** nodes |
 | provisioning | ❌ never SSHes / runs cloud APIs | ✅ Terraform, Cluster API, autoscaler |
-| code | Go (`operator/`) | declarative (`infra/`) |
+| code | Go workspace (`lego/`) | declarative (`infra/`) |
 | how it scales machines | **indirectly**: bin-pack + idle-evict → pending pods / empty nodes | Cluster Autoscaler / CAPI react |
 
 bex is **node-aware but provision-unaware**: it never adds a machine itself; it packs pods tightly and evicts idle ones, and the autoscaler/CAPI translate that into machines added/removed.
@@ -65,7 +65,7 @@ bex is **node-aware but provision-unaware**: it never adds a machine itself; it 
 
 | layer | directory | runtime entity |
 | --- | --- | --- |
-| **bex** | `operator/` | the **BEX OPERATOR** — a **pod in the app cluster** (deploys Apps) |
+| **bex** | `lego/` (types + operator + backend) | the **BEX OPERATOR** — a **pod in the app cluster** (deploys Apps) |
 | **bex-infra** | `infra/` | the **INFRA CLUSTER** (Cluster API; makes clusters/machines) |
 | _(substrate)_ | — | the **APP CLUSTER** — runs the bex operator **and** your Apps; bex-infra builds it |
 
@@ -113,8 +113,8 @@ bex is identical locally and in prod; only the **infrastructure provider overlay
 
 ## Build → deploy → serve (the product)
 
-1. **build** — clone repo @ ref → Dockerfile (BuildKit) or Cloud Native Buildpacks (`pack`) → OCI image → push to **Zot** (`operator/internal/build`).
-2. **deploy** — run the image as a revision on **OpenSandbox** (Docker runtime, or k8s runtime → a pod) (`operator/internal/runtime`); health-gate; record `App` status (`internal/controller`).
+1. **build** — clone repo @ ref → Dockerfile (BuildKit) or Cloud Native Buildpacks (`pack`) → OCI image → push to **Zot** (`lego/operator/internal/build`).
+2. **deploy** — run the image as a revision on **OpenSandbox** (Docker runtime, or k8s runtime → a pod) (`lego/operator/internal/runtime`); health-gate; record `App` status (`internal/controller`).
 3. **serve** — reach the revision via the runtime endpoint (future: a stable `*-<id>.bex.co` URL via the gateway).
 4. **sleep = free** — idle → OpenSandbox `pause`; request → `resume` (the gateway activator). At the machine level, idle-evict frees nodes → autoscaler scales down.
 

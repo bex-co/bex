@@ -1,5 +1,5 @@
 # The bex control plane: the kubebuilder operator (App CRD + reconcilers).
-# Argo deploys it straight from operator/config/default (kustomize) into bex-system,
+# Argo deploys it straight from lego/operator/config/default (kustomize) into bex-system,
 # overriding the placeholder `controller` image with the one CI pushes to GHCR.
 #
 # NOTE: the tag is mutable (:latest). Argo syncs git, not image digests, so a new
@@ -21,7 +21,7 @@ spec:
   source:
     repoURL: git@github.com:bex-co/bex.git
     targetRevision: main
-    path: operator/config/default
+    path: lego/operator/config/default
     kustomize:
       images:
         - controller=ghcr.io/bex-co/bex-operator:latest

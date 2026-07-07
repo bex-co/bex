@@ -1,10 +1,13 @@
 # CLAUDE.md
 
-bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/vision.md)). A Go Kubernetes operator reconciles `App` CRs (`app.bex.co/v1alpha1`, namespace `bex-system`) into running services. One image, two binaries from `operator/`: the **manager** (`cmd/main.go`) and **bex-api** (`cmd/api/main.go`, Render-compatible REST + GraphQL on :8090).
+bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/vision.md)). A Go Kubernetes operator reconciles `App` CRs (`app.bex.co/v1alpha1`, namespace `bex-system`) into running services. All Go lives in **`lego/`** (Latin _legō_, "I assemble" — bex assembles bought bricks; the modules are the bricks): one image, two binaries from a Go workspace (`lego/go.work`) of three modules. **lego/types/** — the `App`/`Database` CRD contract (leaf; imports nothing); **lego/operator/** — the **manager** (`cmd/manager`), a mechanism-only, DB-free reconciler; **lego/backend/** — **bex-api** (`cmd/api`, the Render-compatible REST/GraphQL/MCP surface on :8090 + OpenFGA authz + API keys + metrics). Dependency arrows point one way: `operator → types ← backend`; the operator never imports the backend.
 
 ## Repo map
 
-- `operator/` — the Go product (kubebuilder). See `operator/CLAUDE.md` before editing.
+- `lego/` — **the product: all Go**, self-contained (workspace `go.work`, `Dockerfile` + `.dockerignore`; build context is `lego/`). Overview: [`lego/README.md`](lego/README.md).
+  - `lego/types/` — the `App`/`Database` CRD types (`app.bex.co/v1alpha1`); leaf, imports nothing.
+  - `lego/operator/` — the operator (kubebuilder): manager reconciles CRs → Deployment/Service/Ingress (mechanism, no DB). Owns codegen, `config/`, `hack/`. See `lego/operator/CLAUDE.md`.
+  - `lego/backend/` — **bex-api**, the business-logic service (Render REST/GraphQL/MCP + authz + API keys + metrics). Imports `types/`, never `operator/`. See `lego/backend/CLAUDE.md`.
 - `dashboard/` — the human-facing dashboard (TanStack Start + Apollo + shadcn), client of `bex-api`'s GraphQL. See `dashboard/CLAUDE.md` before editing.
 - `infra/` — day-0 provisioning: Terraform + Cluster API; overlays `local-capd` (Docker) ⇄ `hetzner-caph`. The operator never references `infra/`.
 - `deploy/gitops/` — day-1+: what Argo CD reconciles into the cluster (zot registry, opensandbox controller, CAPI, autoscaler, bex itself). GitOps is for platform infra, not user deploys.
@@ -13,9 +16,11 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - `docs/` — the real documentation; one file per topic, indexed below.
 - `.pm/` — internal PM notes and milestone logs. Not documentation; may be stale or aspirational.
 
-## Commands (run from `operator/`)
+## Commands (run from `lego/operator/`)
 
-- `make test` — unit + envtest; auto-runs manifests/generate/fmt/vet first. First run downloads envtest binaries to `bin/`.
+All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `backend/`). The `make` targets live in **`lego/operator/`** (codegen, manager build, image build with context `lego/`, deploy). Build/test bex-api from `lego/backend/` (`cd lego/backend && go build ./... && go test ./...`); the CRD types are in `lego/types/`. Run `make` below **from `lego/operator/`**:
+
+- `make test` — unit + envtest; auto-runs manifests/generate/fmt/vet first. First run downloads envtest binaries to `bin/`. (codegen reads CRD/deepcopy markers from `../types`, RBAC from `./...`.)
 - `make lint` / `make lint-fix` — golangci-lint.
 - `make build` — build the manager binary.
 - Dev inner loop against a cluster: `make install && BEX_RUNTIME=kubernetes make run` (runs the operator from the host).
@@ -63,7 +68,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 - **Never `git commit` or `git push` unless the user runs `/ship`.** Leave work uncommitted otherwise.
 - Never commit or print `.env` or `*.kubeconfig` contents.
 - **Keep `.env.example` and `.env.template` in sync with `.env`'s variable names.** They're the checked-in, value-less mirrors of the local runtime env (`.env.example`) and CI secrets env (`.env.template`) — whenever a var is added, renamed, or removed from one, mirror the change (name + comment, never the value) in the other(s) so `cp .env.example .env` / `cp .env.template .env` never falls out of date.
-- New Go files carry the Apache-2.0 header from `operator/hack/boilerplate.go.txt`.
+- New Go files carry the Apache-2.0 header from `lego/operator/hack/boilerplate.go.txt`.
 - Markdown is CI-checked: `npx prettier@3.4.2 --write "**/*.md"` before finishing doc changes.
 - **`.pm` done items move to `done/` folders.** When a task or milestone is completed, never leave it in place: a done task moves to `wN/mN/done/tNNN.md`; a milestone with no open tasks moves whole to `wN/done/mN/`; a done inbox note moves to `wN/done/NNN.md`. Sync status in all three places (task frontmatter, milestone README `**Status:**` + `— **DONE**` row, workstream README checkbox). Full conventions: `.pm/CLAUDE.md`.
 - Playwright MCP writes to `.playwright-mcp/` (`--output-dir` in `.mcp.json`, gitignored). When taking screenshots, pass a **bare** filename (e.g. `render-logs.png`) so it lands there — never a path that resolves to the repo root. If an image ever appears at the project root, move it into `.playwright-mcp/`.

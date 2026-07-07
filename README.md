@@ -23,12 +23,12 @@ bash scripts/mock-cluster.sh            # writes infra/local/bex.kubeconfig
 export KUBECONFIG=$PWD/infra/local/bex.kubeconfig
 
 # 2. build the operator image, load it into every node, deploy it as a pod
-( cd operator && make docker-build IMG=bex-operator:dev )
+( cd lego/operator && make docker-build IMG=bex-operator:dev )
 docker save bex-operator:dev -o /tmp/bex-op.tar
 for n in $(kubectl get nodes -o name | sed 's|node/||'); do
   docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
 done
-( cd operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
+( cd lego/operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
 # local CAPD only: pin the operator to the control-plane node (see docs/deployment.md)
 kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
@@ -44,7 +44,7 @@ bash scripts/mock-cluster.sh scale 2
 kubectl patch apps.app.bex.co whoami --type merge -p '{"spec":{"replicas":6}}'
 
 # fast dev loop (optional): run the operator from source instead of as a pod —
-# ( cd operator && make install && BEX_RUNTIME=kubernetes make run )
+# ( cd lego/operator && make install && BEX_RUNTIME=kubernetes make run )
 ```
 
 **Deploy to Hetzner:** same bex, different provider — swap `infra/clusterapi/overlays/local-capd` → `…/hetzner-caph`. See [infra/README.md](infra/README.md).
@@ -87,12 +87,15 @@ Two clusters: the **app cluster** runs the bex operator and your Apps; the **inf
 
 ## Layout
 
+All Go lives in `lego/` — a workspace of three modules; one image, two binaries. Details: [lego/README.md](lego/README.md).
+
 ```
-operator/   Go operator + bex-api (kubebuilder)
-  api/v1alpha1/     App CRD              internal/build/      build plane (CNB/Dockerfile → Zot)
-  cmd/              manager + api        internal/runtime/    OpenSandbox client
-  config/           CRD/RBAC kustomize   internal/controller/ reconcile: kubernetes + opensandbox
-                                         internal/api/        bex-api (REST + GraphQL)
+lego/            the product: ALL Go (Latin legō, "I assemble"). go.work · Dockerfile — one image, two binaries
+  types/            App/Database CRD contract (app.bex.co/v1alpha1); leaf, imports nothing
+  operator/         mechanism: cmd/manager · internal/{controller,build,runtime} · config/ · codegen (make)
+  backend/          bex-api: cmd/api · internal/api — Render REST/GraphQL/MCP + authz + API keys + metrics
+                    dependency: operator → types ← backend  (operator never imports backend)
+dashboard/       the human-facing dashboard (TanStack Start + Apollo + shadcn), client of bex-api's GraphQL
 infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
 deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts} · opensandbox/ configs
 examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)

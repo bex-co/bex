@@ -1,0 +1,12 @@
+# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
+# Root build context spans the modules (types/ operator/ backend/).
+# Ignore everything by default and re-include only what the image build needs.
+**
+
+# Re-include Go source files (but not *_test.go)
+!**/*.go
+**/*_test.go
+
+# Re-include per-module Go module files
+!**/go.mod
+!**/go.sum

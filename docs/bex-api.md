@@ -15,7 +15,7 @@ flowchart LR
   cr --> op["operator (mechanism)"]
 ```
 
-`Core` (in `operator/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`/`Metrics`). REST (`rest.go`, `rest_logs.go`, `rest_metrics.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
+`Core` (in `lego/backend/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`/`Metrics`). REST (`rest.go`, `rest_logs.go`, `rest_metrics.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
 ## Auth
 
@@ -33,7 +33,7 @@ Every route except `GET /healthz` requires real, per-client credentials from the
 
 - **Sessions (humans)** — with no bearer present, an Ory session (cookie or `X-Session-Token`) is validated via Kratos' `whoami` (`BEX_KRATOS_URL` — optional; unset disables sessions). A present bearer is authoritative: an inactive token is 401 with no session fallthrough.
 
-Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl, not this API). The resolved caller (OAuth2 `client_id` or Kratos identity id) is attached to the request context (`api.IdentityFrom`) — the tenant-scoping hook. `BEX_API_CORS_ORIGIN` optionally enables CORS for a browser frontend — prod sets it to `https://dashboard.bex.co` (`operator/config/api/deployment.yaml`); a locally-run bex-api the dashboard dev server talks to needs its own `BEX_API_CORS_ORIGIN=http://localhost:5173` (Vite's default port) since it's a separate deployment. The response carries `Access-Control-Allow-Credentials: true` — required for the dashboard's Kratos-session cookie (or an `X-Session-Token`) to be readable cross-origin at all.
+Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl, not this API). The resolved caller (OAuth2 `client_id` or Kratos identity id) is attached to the request context (`api.IdentityFrom`) — the tenant-scoping hook. `BEX_API_CORS_ORIGIN` optionally enables CORS for a browser frontend — prod sets it to `https://dashboard.bex.co` (`lego/operator/config/api/deployment.yaml`); a locally-run bex-api the dashboard dev server talks to needs its own `BEX_API_CORS_ORIGIN=http://localhost:5173` (Vite's default port) since it's a separate deployment. The response carries `Access-Control-Allow-Credentials: true` — required for the dashboard's Kratos-session cookie (or an `X-Session-Token`) to be readable cross-origin at all.
 
 **Authorization** ([auth.md#authorization-openfga](auth.md)): with `BEX_OPENFGA_URL` set, every Core verb additionally checks the caller's permission against OpenFGA (mapped to Render's workspace-role matrix (viewer/contributor/developer/admin/billing — docs/auth.md), on the default workspace) — denial is **403**, OpenFGA unreachable is **503**. Unset (the current prod default until tenant onboarding exists), all authenticated callers may do everything, exactly as before.
 
@@ -167,7 +167,7 @@ curl -H "Authorization: Bearer $BEX_API_TOKEN" "https://api.bex.co/v1/metrics/ht
 
 ## Deploy
 
-Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. No token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
+Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `lego/operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. No token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
 
 ## Scope
 

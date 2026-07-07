@@ -13,7 +13,7 @@ bex's Go layer splits into **two collaborating components** — keep them distin
 | store | **Postgres** (durable, queryable, backed up) | **none** — it's a k8s controller; its "store" is the API/etcd |
 | interface | an API / web UI for users | watches `App` CRs; writes their `status` |
 | decides | _what should exist & who's allowed_ | _how to run it_ (rollout, health-gate, idle-hibernate) |
-| code | a Go service (`operator/` repo, separate binary) | `operator/internal/controller` (kubebuilder) |
+| code | a Go service (`lego/backend/`, joins bex-api) | `lego/operator/internal/controller` (kubebuilder) |
 
 **Rule of thumb:** business/product logic lives in the **control plane**; the operator stays a thin, idempotent, **CR-driven** reconciler with **no DB** and no policy.
 

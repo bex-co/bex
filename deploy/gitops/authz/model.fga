@@ -25,7 +25,7 @@
 #     viewer       read-only, and NOT logs or sensitive fields
 #     billing      billing only (+ non-sensitive names)
 #
-# Derived permissions consumed by bex-api (operator/internal/api/authz.go):
+# Derived permissions consumed by bex-api (lego/backend/internal/api/authz.go):
 #   can_view            resource lists/details/metrics    viewer and up
 #   can_view_logs       service logs                      contributor and up
 #   can_operate         restart/suspend/resume services   contributor and up
