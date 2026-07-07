@@ -199,7 +199,7 @@ func (c *Core) Get(ctx context.Context, name string) (AppView, error) {
 // Restart requests a rolling restart (spec.restartedAt = now). The operator
 // stamps the pod template and Kubernetes rolls the pods with no downtime.
 func (c *Core) Restart(ctx context.Context, name string) (AppView, error) {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanOperate); err != nil {
 		return AppView{}, err
 	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) {
@@ -209,7 +209,7 @@ func (c *Core) Restart(ctx context.Context, name string) (AppView, error) {
 
 // Suspend parks the App (spec.suspended = true): scaled to 0, host/certs kept.
 func (c *Core) Suspend(ctx context.Context, name string) (AppView, error) {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanOperate); err != nil {
 		return AppView{}, err
 	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = true })
@@ -218,7 +218,7 @@ func (c *Core) Suspend(ctx context.Context, name string) (AppView, error) {
 // Resume brings a suspended App back (spec.suspended = false); the operator
 // restores spec.replicas.
 func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanOperate); err != nil {
 		return AppView{}, err
 	}
 	return c.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = false })
@@ -230,7 +230,7 @@ func (c *Core) Resume(ctx context.Context, name string) (AppView, error) {
 // ErrNotFound for an unknown App (same as Get) and ErrLogsUnavailable when no
 // pod-log source is wired. This is the read path the MCP list_logs tool uses.
 func (c *Core) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
-	if err := c.authorize(ctx, relCanView); err != nil {
+	if err := c.authorize(ctx, relCanViewLogs); err != nil {
 		return nil, err
 	}
 	if c.PodLogs == nil {

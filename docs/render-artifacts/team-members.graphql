@@ -1,0 +1,58 @@
+# Captured live from Render's dashboard (dashboard.render.com -> workspace
+# settings -> Team Members), 2026-07-06, via the dashboard's own GraphQL calls
+# to https://api.render.com/graphql. This is the contract bex-api's future
+# members/roles surface mirrors (the same "one Core, Render-consistent adapters"
+# rule the service/postgres/logs verbs already follow).
+
+# --- The query the Team Members tab fires on load -------------------------------
+# owner = the polymorphic parent of all resources: a user ("usr-...") or a
+# team ("tea-..."). usage.users is seat usage (Render bills per member on some
+# plans). pendingInvites expire in 7 days.
+query usersAndPendingForTeam($ownerId: String!) {
+  owner(ownerId: $ownerId) {
+    usage {
+      users {
+        used
+        limit
+      }
+    }
+    team {
+      id
+      members {
+        role # enum, UPPERCASE -- see below
+        active
+        user {
+          id
+          email
+          otpEnabled
+          hasGoogleId
+          avatarDownload {
+            url
+          }
+        }
+      }
+      pendingInvites {
+        id
+        email
+        role
+        expiresAt
+      }
+    }
+  }
+}
+
+# --- Live response (this workspace) ---------------------------------------------
+# owner.team.members[0] = { "role": "ADMIN", "active": true, "user": { "email": ... } }
+#
+# Role enum values are UPPERCASE. Verified live: ADMIN. From render.com/docs/
+# team-members (Scale/Enterprise tiers add the rest), the full set is:
+#   ADMIN  DEVELOPER  CONTRIBUTOR  VIEWER  BILLING
+# Role picker labels + descriptions (verbatim from the dashboard):
+#   Developer    "Has full access to workspace resources (except in protected environments)"
+#   Admin        "Has full access to all workspace resources, settings, and billing"
+#   (Contributor / Viewer / Billing are gated to Scale+ and not selectable on lower tiers)
+#
+# Vocabulary: Render uses THREE words for the same entity -- "workspace" (UI),
+# "team" (GraphQL: owner.team, id prefix "tea-"), and "owner" (the resource
+# parent, = user | team). bex's model type `workspace` is that entity; its
+# five member roles + capability split match Render's exactly (docs/auth.md).

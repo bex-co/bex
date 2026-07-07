@@ -1,41 +1,89 @@
 # bex platform authorization model (docs/auth.md) — the human-readable source.
 # The applied artifact is model.json (OpenFGA's wire format, same directory);
 # when you edit this file, regenerate it:  fga model transform --file model.fga
-# scripts/authz-model.sh applies model.json idempotently.
+# scripts/authz-model.sh applies model.json idempotently; scripts/
+# gitops-validate.sh gates the pair against drift.
 #
-# Subjects (`user`) are the strings bex-api's auth gate resolves via
-# api.IdentityFrom: a Hydra client_id (API key) or a Kratos identity id.
-# Until the control plane grows real tenants (w1/m2), everything hangs off the
-# single `tenant:default` object; per-object tuples (app/database/api_key)
-# arrive with tenant onboarding.
+# The shape mirrors Render.com's permissions management, verified live against
+# the real dashboard's GraphQL on 2026-07-06 (docs/render-artifacts/
+# team-members.graphql) plus render.com/docs/team-members — bex is
+# Render-consistent by design:
+#
+#   org        Render's Organization (Scale/Enterprise): groups workspaces;
+#              org admins administer every member workspace.
+#   workspace  Render's workspace — the same entity Render's GraphQL calls
+#              `owner.team` (id prefix "tea-") and its resource parent `owner`
+#              (owner = user | team). The billing/ownership unit.
+#              Five member roles; Render's `role` enum is UPPERCASE on the wire
+#              (ADMIN/DEVELOPER/CONTRIBUTOR/VIEWER/BILLING — live-verified), which
+#              a future bex members API returns verbatim and maps to these
+#              lowercase FGA relations. Render's names and semantics:
+#     admin        full resources + org settings (members, billing, protected envs)
+#     developer    full resource access, no org settings
+#     contributor  works on resources but no sensitive fields (connection
+#                  strings, env vars), no create/delete of most resources
+#     viewer       read-only, and NOT logs or sensitive fields
+#     billing      billing only (+ non-sensitive names)
+#
+# Derived permissions consumed by bex-api (operator/internal/api/authz.go):
+#   can_view            resource lists/details/metrics    viewer and up
+#   can_view_logs       service logs                      contributor and up
+#   can_operate         restart/suspend/resume services   contributor and up
+#   can_create          create/delete resources           developer and up
+#   can_view_sensitive  connection strings, env vars      developer and up
+#   can_manage_keys     workspace API keys                developer and up
+#   can_manage          workspace settings/members        admin
+#   can_manage_billing  billing settings                  billing or admin
+#
+# Subjects (`user`) are what the auth gate resolves via api.IdentityFrom: a
+# Hydra client_id (API key) or a Kratos identity id. Until the control plane
+# grows real workspaces (w1/m2), every check targets `workspace:default`.
 
 model
   schema 1.1
 
 type user
 
-type tenant
+type org
   relations
     define admin: [user]
     define member: [user] or admin
-    define can_view: member
+
+type workspace
+  relations
+    define org: [org]
+
+    define admin: [user] or admin from org
+    define developer: [user]
+    define contributor: [user]
+    define viewer: [user]
+    define billing: [user]
+
+    define can_view: viewer or contributor or developer or admin or billing
+    define can_view_logs: contributor or developer or admin
+    define can_operate: contributor or developer or admin
+    define can_create: developer or admin
+    define can_view_sensitive: developer or admin
+    define can_manage_keys: developer or admin
     define can_manage: admin
-    define can_mint_keys: admin
+    define can_manage_billing: billing or admin
 
-type app
+type service
   relations
-    define owner: [tenant]
-    define can_view: member from owner
-    define can_manage: admin from owner
+    define workspace: [workspace]
+    define can_view: can_view from workspace
+    define can_operate: can_operate from workspace
+    define can_manage: can_manage from workspace
 
-type database
+type postgres
   relations
-    define owner: [tenant]
-    define can_view: member from owner
-    define can_manage: admin from owner
+    define workspace: [workspace]
+    define can_view: can_view from workspace
+    define can_view_sensitive: can_view_sensitive from workspace
+    define can_manage: can_manage from workspace
 
 type api_key
   relations
-    define owner: [tenant]
-    define can_view: member from owner
-    define can_manage: admin from owner
+    define workspace: [workspace]
+    define can_view: can_view from workspace
+    define can_manage: can_manage_keys from workspace

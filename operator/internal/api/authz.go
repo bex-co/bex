@@ -37,15 +37,20 @@ type Checker interface {
 	Check(ctx context.Context, subject, relation, object string) (bool, error)
 }
 
-// The relations Core verbs require, matching deploy/gitops/authz/model.fga.
-// Everything is checked against the single default tenant until the control
-// plane grows real tenants (w1/m2).
+// The relations Core verbs require, matching deploy/gitops/authz/model.fga —
+// which mirrors Render's workspace roles (admin/developer/contributor/viewer/
+// billing; docs/auth.md#authorization-openfga). Everything is checked against
+// the single default workspace until the control plane grows real workspaces
+// (w1/m2).
 const (
-	relCanView     = "can_view"
-	relCanManage   = "can_manage"
-	relCanMintKeys = "can_mint_keys"
+	relCanView          = "can_view"           // viewer and up: lists, details, metrics
+	relCanViewLogs      = "can_view_logs"      // contributor and up (Render: viewers can't see logs)
+	relCanOperate       = "can_operate"        // contributor and up: restart/suspend/resume
+	relCanCreate        = "can_create"         // developer and up: create/delete resources
+	relCanViewSensitive = "can_view_sensitive" // developer and up: connection strings
+	relCanManageKeys    = "can_manage_keys"    // developer and up: workspace API keys
 
-	defaultTenant = "tenant:default"
+	defaultWorkspace = "workspace:default"
 )
 
 // authorize gates a Core verb on the caller's permission. nil checker allows
@@ -60,7 +65,7 @@ func (c *Core) authorize(ctx context.Context, relation string) error {
 	if !ok {
 		return ErrForbidden
 	}
-	allowed, err := c.Authz.Check(ctx, "user:"+id.Subject, relation, defaultTenant)
+	allowed, err := c.Authz.Check(ctx, "user:"+id.Subject, relation, defaultWorkspace)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
 	}

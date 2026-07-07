@@ -72,20 +72,20 @@ func TestAuthzEnforcement(t *testing.T) {
 		if code := do(t, h, "GET", "/v1/services", testToken, "").Code; code != 403 {
 			t.Fatalf("REST read: got %d, want 403", code)
 		}
-		if chk.lastSubject != "user:client-1" || chk.lastRelation != relCanView || chk.lastObject != defaultTenant {
+		if chk.lastSubject != "user:client-1" || chk.lastRelation != relCanView || chk.lastObject != defaultWorkspace {
 			t.Fatalf("check asked for %s/%s/%s", chk.lastSubject, chk.lastRelation, chk.lastObject)
 		}
 		if code := do(t, h, "POST", "/v1/services/web/suspend", testToken, "").Code; code != 403 {
 			t.Fatalf("REST manage: got %d, want 403", code)
 		}
-		if chk.lastRelation != relCanManage {
-			t.Fatalf("suspend checked %s, want can_manage", chk.lastRelation)
+		if chk.lastRelation != relCanOperate {
+			t.Fatalf("suspend checked %s, want can_operate", chk.lastRelation)
 		}
 		if code := do(t, h, "POST", "/v1/api-keys", testToken, `{"name":"x"}`).Code; code != 403 {
 			t.Fatalf("REST mint: got %d, want 403", code)
 		}
-		if chk.lastRelation != relCanMintKeys {
-			t.Fatalf("mint checked %s, want can_mint_keys", chk.lastRelation)
+		if chk.lastRelation != relCanManageKeys {
+			t.Fatalf("mint checked %s, want can_manage_keys", chk.lastRelation)
 		}
 
 		// GraphQL surfaces the same denial as an errors entry (HTTP stays 200).
@@ -207,7 +207,7 @@ func TestOpenFGAChecker(t *testing.T) {
 
 	// Positive checks cache; the second identical check costs no upstream call.
 	for i := range 2 {
-		ok, err := chk.Check(ctx, "user:good", relCanView, defaultTenant)
+		ok, err := chk.Check(ctx, "user:good", relCanView, defaultWorkspace)
 		if err != nil || !ok {
 			t.Fatalf("check %d: ok=%v err=%v", i, ok, err)
 		}
@@ -218,7 +218,7 @@ func TestOpenFGAChecker(t *testing.T) {
 
 	// Negatives are never cached.
 	for range 2 {
-		ok, err := chk.Check(ctx, "user:bad", relCanView, defaultTenant)
+		ok, err := chk.Check(ctx, "user:bad", relCanView, defaultWorkspace)
 		if err != nil || ok {
 			t.Fatalf("deny expected: ok=%v err=%v", ok, err)
 		}
@@ -229,13 +229,13 @@ func TestOpenFGAChecker(t *testing.T) {
 
 	// Wrong preshared key => error, not a silent deny-or-allow.
 	bad := NewOpenFGAChecker(fga.URL, "wrong-key")
-	if _, err := bad.Check(ctx, "user:good", relCanView, defaultTenant); err == nil {
+	if _, err := bad.Check(ctx, "user:good", relCanView, defaultWorkspace); err == nil {
 		t.Fatal("bad key should error")
 	}
 
 	// Unreachable OpenFGA => error (fail closed at the caller).
 	dead := NewOpenFGAChecker(deadServer(t), "fga-key")
-	if _, err := dead.Check(ctx, "user:good", relCanView, defaultTenant); err == nil {
+	if _, err := dead.Check(ctx, "user:good", relCanView, defaultWorkspace); err == nil {
 		t.Fatal("dead server should error")
 	}
 }

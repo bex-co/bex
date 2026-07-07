@@ -118,7 +118,7 @@ func (q LogQuery) appliesToApplication() bool {
 // request/build types resolve to an empty slice (no backend). Fails with
 // ErrNotFound for an unknown App and ErrLogsUnavailable when no source is wired.
 func (c *Core) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	if err := c.authorize(ctx, relCanView); err != nil {
+	if err := c.authorize(ctx, relCanViewLogs); err != nil {
 		return nil, err
 	}
 	if c.PodLogs == nil {
@@ -156,7 +156,7 @@ func (c *Core) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
 // emit errors. The same type/text filters as QueryLogs apply. Requires a
 // PodLogStream (nil => ErrLogsUnavailable).
 func (c *Core) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
-	if err := c.authorize(ctx, relCanView); err != nil {
+	if err := c.authorize(ctx, relCanViewLogs); err != nil {
 		return err
 	}
 	if c.PodLogsFollow == nil {

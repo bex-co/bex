@@ -50,7 +50,7 @@ type APIKeyStore interface {
 // CreateAPIKey mints a new machine credential. The returned Secret is shown
 // exactly once.
 func (c *Core) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
-	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+	if err := c.authorize(ctx, relCanManageKeys); err != nil {
 		return APIKey{}, err
 	}
 	if c.APIKeys == nil {
@@ -64,7 +64,7 @@ func (c *Core) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
 
 // ListAPIKeys returns every machine credential (secrets omitted).
 func (c *Core) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
-	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+	if err := c.authorize(ctx, relCanManageKeys); err != nil {
 		return nil, err
 	}
 	if c.APIKeys == nil {
@@ -76,7 +76,7 @@ func (c *Core) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
 // introspecting active (subject to bex-api's ≤30s introspection cache).
 func (c *Core) RevokeAPIKey(ctx context.Context, id string) error {
-	if err := c.authorize(ctx, relCanMintKeys); err != nil {
+	if err := c.authorize(ctx, relCanManageKeys); err != nil {
 		return err
 	}
 	if c.APIKeys == nil {

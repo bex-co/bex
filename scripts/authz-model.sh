@@ -101,7 +101,7 @@ fi
 # bex-bootstrap (the platform operator's / CI's client, docs/bex-api.md#auth)
 # administers the default tenant. Writes of existing tuples fail — tolerate that
 # one error shape and nothing else.
-seed='{"writes":{"tuple_keys":[{"user":"user:bex-bootstrap","relation":"admin","object":"tenant:default"}]}}'
+seed='{"writes":{"tuple_keys":[{"user":"user:bex-bootstrap","relation":"admin","object":"workspace:default"}]}}'
 resp="$(fga POST "/stores/$store_id/write" "$seed")"
 if [ "$(printf '%s' "$resp" | yq '.code // ""' -)" = "write_failed_due_to_invalid_input" ]; then
   echo "seed tuples already present"

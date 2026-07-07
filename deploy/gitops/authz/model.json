@@ -14,9 +14,6 @@
               }
             ]
           },
-          "can_manage": {},
-          "can_mint_keys": {},
-          "can_view": {},
           "member": {
             "directly_related_user_types": [
               {
@@ -29,21 +26,6 @@
       "relations": {
         "admin": {
           "this": {}
-        },
-        "can_manage": {
-          "computedUserset": {
-            "relation": "admin"
-          }
-        },
-        "can_mint_keys": {
-          "computedUserset": {
-            "relation": "admin"
-          }
-        },
-        "can_view": {
-          "computedUserset": {
-            "relation": "member"
-          }
         },
         "member": {
           "union": {
@@ -60,58 +42,253 @@
           }
         }
       },
-      "type": "tenant"
+      "type": "org"
     },
     {
       "metadata": {
         "relations": {
-          "can_manage": {},
-          "can_view": {},
-          "owner": {
+          "admin": {
             "directly_related_user_types": [
               {
-                "type": "tenant"
+                "type": "user"
+              }
+            ]
+          },
+          "billing": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "can_create": {},
+          "can_manage": {},
+          "can_manage_billing": {},
+          "can_manage_keys": {},
+          "can_operate": {},
+          "can_view": {},
+          "can_view_logs": {},
+          "can_view_sensitive": {},
+          "contributor": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "developer": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "org": {
+            "directly_related_user_types": [
+              {
+                "type": "org"
+              }
+            ]
+          },
+          "viewer": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
               }
             ]
           }
         }
       },
       "relations": {
+        "admin": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "tupleToUserset": {
+                  "computedUserset": {
+                    "relation": "admin"
+                  },
+                  "tupleset": {
+                    "relation": "org"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "billing": {
+          "this": {}
+        },
+        "can_create": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
         "can_manage": {
-          "tupleToUserset": {
-            "computedUserset": {
-              "relation": "admin"
-            },
-            "tupleset": {
-              "relation": "owner"
-            }
+          "computedUserset": {
+            "relation": "admin"
+          }
+        },
+        "can_manage_billing": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "billing"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "can_manage_keys": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "can_operate": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "contributor"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
           }
         },
         "can_view": {
-          "tupleToUserset": {
-            "computedUserset": {
-              "relation": "member"
-            },
-            "tupleset": {
-              "relation": "owner"
-            }
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "viewer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "contributor"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "billing"
+                }
+              }
+            ]
           }
         },
-        "owner": {
+        "can_view_logs": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "contributor"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "can_view_sensitive": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "contributor": {
+          "this": {}
+        },
+        "developer": {
+          "this": {}
+        },
+        "org": {
+          "this": {}
+        },
+        "viewer": {
           "this": {}
         }
       },
-      "type": "app"
+      "type": "workspace"
     },
     {
       "metadata": {
         "relations": {
           "can_manage": {},
+          "can_operate": {},
           "can_view": {},
-          "owner": {
+          "workspace": {
             "directly_related_user_types": [
               {
-                "type": "tenant"
+                "type": "workspace"
               }
             ]
           }
@@ -121,38 +298,49 @@
         "can_manage": {
           "tupleToUserset": {
             "computedUserset": {
-              "relation": "admin"
+              "relation": "can_manage"
             },
             "tupleset": {
-              "relation": "owner"
+              "relation": "workspace"
+            }
+          }
+        },
+        "can_operate": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_operate"
+            },
+            "tupleset": {
+              "relation": "workspace"
             }
           }
         },
         "can_view": {
           "tupleToUserset": {
             "computedUserset": {
-              "relation": "member"
+              "relation": "can_view"
             },
             "tupleset": {
-              "relation": "owner"
+              "relation": "workspace"
             }
           }
         },
-        "owner": {
+        "workspace": {
           "this": {}
         }
       },
-      "type": "database"
+      "type": "service"
     },
     {
       "metadata": {
         "relations": {
           "can_manage": {},
           "can_view": {},
-          "owner": {
+          "can_view_sensitive": {},
+          "workspace": {
             "directly_related_user_types": [
               {
-                "type": "tenant"
+                "type": "workspace"
               }
             ]
           }
@@ -162,24 +350,75 @@
         "can_manage": {
           "tupleToUserset": {
             "computedUserset": {
-              "relation": "admin"
+              "relation": "can_manage"
             },
             "tupleset": {
-              "relation": "owner"
+              "relation": "workspace"
             }
           }
         },
         "can_view": {
           "tupleToUserset": {
             "computedUserset": {
-              "relation": "member"
+              "relation": "can_view"
             },
             "tupleset": {
-              "relation": "owner"
+              "relation": "workspace"
             }
           }
         },
-        "owner": {
+        "can_view_sensitive": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_view_sensitive"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
+        "workspace": {
+          "this": {}
+        }
+      },
+      "type": "postgres"
+    },
+    {
+      "metadata": {
+        "relations": {
+          "can_manage": {},
+          "can_view": {},
+          "workspace": {
+            "directly_related_user_types": [
+              {
+                "type": "workspace"
+              }
+            ]
+          }
+        }
+      },
+      "relations": {
+        "can_manage": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_manage_keys"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
+        "can_view": {
+          "tupleToUserset": {
+            "computedUserset": {
+              "relation": "can_view"
+            },
+            "tupleset": {
+              "relation": "workspace"
+            }
+          }
+        },
+        "workspace": {
           "this": {}
         }
       },

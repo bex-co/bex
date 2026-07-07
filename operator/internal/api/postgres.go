@@ -159,7 +159,7 @@ func (c *Core) GetPostgres(ctx context.Context, name string) (PostgresView, erro
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (c *Core) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanCreate); err != nil {
 		return PostgresView{}, err
 	}
 	if req.Name == "" {
@@ -183,7 +183,7 @@ func (c *Core) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (P
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,
 // Secret and any external route via owner refs).
 func (c *Core) DeletePostgres(ctx context.Context, name string) error {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanCreate); err != nil {
 		return err
 	}
 	d, err := c.fetchDatabase(ctx, name)
@@ -197,7 +197,7 @@ func (c *Core) DeletePostgres(ctx context.Context, name string) error {
 // from CNPG's generated "<name>-app" Secret (the only place the password is
 // surfaced, to an authenticated caller).
 func (c *Core) PostgresConnectionInfo(ctx context.Context, name string) (PostgresConnectionInfo, error) {
-	if err := c.authorize(ctx, relCanManage); err != nil {
+	if err := c.authorize(ctx, relCanViewSensitive); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
 	d, err := c.fetchDatabase(ctx, name)
