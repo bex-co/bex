@@ -6,11 +6,11 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Resource-metrics backend: CPU/memory from metrics.k8s.io + instance count + RBAC | 45m | — |
-| t002 | REST adapter for resource metrics: cpu/memory/instance_count, percentage vs total, time range | 40m | t001 |
-| t003 | Request-metrics backend: request count, latency percentiles, status codes, bytes from Traefik | 45m | t001 |
-| t004 | REST + GraphQL adapters for request metrics + filters (status/host/path, group-by) | 40m | t003 |
-| t005 | Cluster enablement (metrics-server + Traefik metrics) + tests + docs | 40m | t001, t003 |
+| t001 | Resource-metrics backend: CPU/memory from metrics.k8s.io + instance count + RBAC — **DONE** | 45m | — |
+| t002 | REST adapter for resource metrics: cpu/memory/instance_count, percentage vs total, time range — **DONE** | 40m | t001 |
+| t003 | Request-metrics backend: request count, latency percentiles, status codes, bytes from Traefik — **DONE** | 45m | t001 |
+| t004 | REST + GraphQL adapters for request metrics + filters (status/host/path, group-by) — **DONE** | 40m | t003 |
+| t005 | Cluster enablement (metrics-server + Traefik metrics) + tests + docs — **DONE** | 40m | t001, t003 |
 
 ## Definition of done
 
