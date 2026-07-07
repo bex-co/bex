@@ -44,6 +44,8 @@ spec:
               value: http://kratos-public.auth.svc:80
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
+            - name: BEX_API_CORS_ORIGIN # the dashboard's credentialed cross-origin GraphQL calls
+              value: https://dashboard.bex.co
             # Authorization (docs/auth.md#authorization): setting BEX_OPENFGA_URL
             # is the deliberate enforcement flip — every verb then requires a
             # tenant permission, and identities without tuples get 403. Off until

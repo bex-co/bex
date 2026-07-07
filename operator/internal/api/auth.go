@@ -338,12 +338,16 @@ func unauthorized(w http.ResponseWriter) {
 
 // withCORS adds permissive-for-one-origin CORS when origin is set, and answers
 // preflight. Empty origin => no CORS headers (same-origin / server-to-server).
+// Allow-Credentials is required for the dashboard's Kratos-session cookie (and
+// any client sending Authorization) to be readable cross-origin — without it
+// the browser discards the response even though the request itself succeeds.
 func withCORS(origin string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-Token")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
