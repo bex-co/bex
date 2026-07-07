@@ -1,0 +1,46 @@
+# bex-api's services surface (backend/internal/api/graphql.go), Render-shaped:
+# `services` lists every App; `suspendService`/`resumeService`/`restartServer`
+# are Render's dashboard mutation names, each returning the updated Service.
+# `suspended` is Render's string enum ("suspended"/"not_suspended"), NOT a bool;
+# `phase`/`replicas`/`revision` are bex-native extras (a superset Render ignores).
+# GraphQL exposes the live URL as a flat `url` field (REST nests it under
+# serviceDetails.url — the two surfaces differ here by design).
+
+query Services {
+  services {
+    id
+    name
+    type
+    suspended
+    dashboardUrl
+    url
+    createdAt
+    phase
+    replicas
+    revision
+  }
+}
+
+mutation SuspendService($id: String!) {
+  suspendService(id: $id) {
+    id
+    suspended
+    phase
+  }
+}
+
+mutation ResumeService($id: String!) {
+  resumeService(id: $id) {
+    id
+    suspended
+    phase
+  }
+}
+
+mutation RestartServer($id: String!) {
+  restartServer(id: $id) {
+    id
+    suspended
+    phase
+  }
+}

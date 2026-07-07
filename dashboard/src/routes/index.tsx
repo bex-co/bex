@@ -19,6 +19,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table.tsx";
+import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert.tsx";
+import { Skeleton } from "@/common/components/ui/skeleton.tsx";
+import { useServices } from "@/features/services/hooks/use-services";
+import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import { deriveStatus, computeStats } from "@/features/services/lib/status";
+import { formatRelativeAge } from "@/features/services/lib/format";
+import { ServiceRowActions } from "@/features/services/components/service-row-actions";
+import type {
+  ServiceView,
+  ServiceStatusKey,
+  LifecycleAction,
+} from "@/features/services/types";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -28,70 +40,34 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-// Sample data shaped like bex-api's `GET /v1/services` response
-// (docs/bex-api.md) — replace with a real Apollo query once wired up.
-// `beancount-cms` is the one real, running App among these samples (its
-// `.onbex.co` host is `beancount-cms-v2` — the two are not the same string);
-// `hasLiveMetrics` gates the Metrics PoC link (w3/m3) to it alone — the other
-// rows are fake ids bex-api has never heard of, and linking them too would
-// route to a live "app not found" GraphQL error the metrics page doesn't yet
-// render distinctly from "no data".
-const sampleServices = [
-  {
-    id: "beancount-cms",
-    name: "beancount-cms",
-    phase: "running",
-    url: "https://beancount-cms-v2.onbex.co",
-    hasLiveMetrics: true,
-  },
-  {
-    id: "eden-cms-v2",
-    name: "eden-cms-v2",
-    phase: "running",
-    url: "https://eden-cms-v2.onbex.co",
-    hasLiveMetrics: false,
-  },
-  {
-    id: "hello-go",
-    name: "hello-go",
-    phase: "running",
-    url: "https://hello-go.onbex.co",
-    hasLiveMetrics: false,
-  },
-  {
-    id: "worker-queue",
-    name: "worker-queue",
-    phase: "suspended",
-    url: null,
-    hasLiveMetrics: false,
-  },
-];
-
-function phaseVariant(phase: string): "default" | "secondary" | "outline" {
-  if (phase === "running") return "default";
-  if (phase === "suspended") return "secondary";
-  return "outline";
-}
-
-const serviceStats = [
-  { labelKey: "services.statTotal", value: sampleServices.length },
-  {
-    labelKey: "services.statRunning",
-    value: sampleServices.filter((s) => s.phase === "running").length,
-  },
-  {
-    labelKey: "services.statSuspended",
-    value: sampleServices.filter((s) => s.phase === "suspended").length,
-  },
-] as const;
-
-const PHASE_LABEL_KEYS: Record<string, keyof typeof en> = {
+const STATUS_LABEL: Record<ServiceStatusKey, keyof typeof en> = {
   running: "services.statusRunning",
   suspended: "services.statusSuspended",
+  hibernated: "services.statusHibernated",
+  pending: "services.statusPending",
+  building: "services.statusBuilding",
+  deploying: "services.statusDeploying",
+  failed: "services.statusFailed",
+  unknown: "services.statusUnknown",
 };
 
 export function HomePage() {
   const { t } = useTranslations();
+  const { services, loading, error, refetch } = useServices();
+  const { pending, run } = useServiceLifecycle({ refetch });
+
+  const stats = computeStats(services);
+  const serviceStats = [
+    { labelKey: "services.statTotal", value: stats.total },
+    { labelKey: "services.statRunning", value: stats.running },
+    { labelKey: "services.statSuspended", value: stats.suspended },
+  ] as const;
+
+  // Only treat loading/error as page-level states while there's nothing to show;
+  // a transient poll error or background refetch must not blank an existing list.
+  const showSkeleton = loading && services.length === 0;
+  const showError = !loading && error && services.length === 0;
+  const showEmpty = !loading && !error && services.length === 0;
 
   return (
     <DashboardLayout>
@@ -112,49 +88,145 @@ export function HomePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t("services.cardTitle")}</CardTitle>
-              <CardDescription>{t("services.sampleDataNotice")}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("services.colName")}</TableHead>
-                    <TableHead>{t("services.colStatus")}</TableHead>
-                    <TableHead>{t("services.colUrl")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sampleServices.map((service) => (
-                    <TableRow key={service.id}>
-                      <TableCell className="font-medium">
-                        {service.hasLiveMetrics ? (
-                          <Link
-                            to="/services/$serviceId/metrics"
-                            params={{ serviceId: service.id }}
-                            className="hover:underline"
-                          >
-                            {service.name}
-                          </Link>
-                        ) : (
-                          service.name
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={phaseVariant(service.phase)}>
-                          {t(PHASE_LABEL_KEYS[service.phase])}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {service.url ?? "—"}
-                      </TableCell>
+              {showError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{t("services.errorTitle")}</AlertTitle>
+                  <AlertDescription>
+                    {t("services.errorBody")}
+                  </AlertDescription>
+                </Alert>
+              ) : showEmpty ? (
+                <div className="py-10 text-center">
+                  <p className="font-medium">{t("services.emptyTitle")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("services.emptyBody")}
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("services.colName")}</TableHead>
+                      <TableHead>{t("services.colStatus")}</TableHead>
+                      <TableHead className="text-right tabular-nums">
+                        {t("services.colInstances")}
+                      </TableHead>
+                      <TableHead>{t("services.colRevision")}</TableHead>
+                      <TableHead>{t("services.colCreated")}</TableHead>
+                      <TableHead>{t("services.colUrl")}</TableHead>
+                      <TableHead className="w-0 text-right">
+                        <span className="sr-only">
+                          {t("services.colActions")}
+                        </span>
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {showSkeleton
+                      ? Array.from({ length: 3 }).map((_, i) => (
+                          <ServiceSkeletonRow key={i} />
+                        ))
+                      : services.map((service) => (
+                          <ServiceRow
+                            key={service.id}
+                            service={service}
+                            pending={
+                              pending?.id === service.id
+                                ? pending.action
+                                : null
+                            }
+                            onRun={run}
+                            statusLabel={t(
+                              STATUS_LABEL[deriveStatus(service).key],
+                            )}
+                          />
+                        ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function ServiceRow({
+  service,
+  pending,
+  onRun,
+  statusLabel,
+}: {
+  service: ServiceView;
+  pending: LifecycleAction | null;
+  onRun: (action: LifecycleAction, service: ServiceView) => void;
+  statusLabel: string;
+}) {
+  const status = deriveStatus(service);
+  return (
+    <TableRow>
+      <TableCell className="font-medium">
+        <Link
+          to="/services/$serviceId/metrics"
+          params={{ serviceId: service.id }}
+          className="hover:underline"
+        >
+          {service.name}
+        </Link>
+      </TableCell>
+      <TableCell>
+        <Badge variant={status.variant}>{statusLabel}</Badge>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        {service.replicas ?? "—"}
+      </TableCell>
+      <TableCell className="font-mono text-xs text-muted-foreground">
+        {service.revision || "—"}
+      </TableCell>
+      <TableCell className="tabular-nums text-muted-foreground">
+        {formatRelativeAge(service.createdAt)}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {service.url ?? "—"}
+      </TableCell>
+      <TableCell className="text-right">
+        <ServiceRowActions
+          service={service}
+          pending={pending}
+          onRun={onRun}
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function ServiceSkeletonRow() {
+  return (
+    <TableRow>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="ml-auto h-4 w-6" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-10" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-48" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="ml-auto size-8 rounded-md" />
+      </TableCell>
+    </TableRow>
   );
 }

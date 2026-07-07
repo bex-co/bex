@@ -7,7 +7,7 @@ The bex dashboard — see [README.md](README.md) for what it is and why it exist
 ```
 src/
 ├── routes/                # File-based routes (TanStack Router)
-│   ├── index.tsx           # sample "Services" page (bex-api shaped, not wired yet)
+│   ├── index.tsx           # Services list — live bex-api `services` query + lifecycle actions (w5/m4)
 │   ├── auth.{login,sign-up,forgot-password,reset-password,logout}.tsx
 │   └── settings.tsx        # account settings (Kratos settings flow)
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell

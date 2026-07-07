@@ -17,10 +17,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Services",
     description: "Services table card title, also used as the metrics page back-link",
   },
-  "services.sampleDataNotice": {
-    message: "Sample data — this scaffold isn't wired to bex-api yet.",
-    description: "Services table card description noting the data is a placeholder",
-  },
   "services.colName": {
     message: "Name",
     description: "Services table column header",
@@ -33,13 +29,123 @@ const enServices: Record<string, TranslationEntry> = {
     message: "URL",
     description: "Services table column header",
   },
+  "services.colInstances": {
+    message: "Instances",
+    description: "Services table column header (replica count — bex-native)",
+  },
+  "services.colRevision": {
+    message: "Revision",
+    description: "Services table column header (active revision — bex-native)",
+  },
+  "services.colCreated": {
+    message: "Created",
+    description: "Services table column header (relative age from createdAt)",
+  },
+  "services.colActions": {
+    message: "Actions",
+    description: "Services table actions column header (screen-reader only)",
+  },
   "services.statusRunning": {
-    message: "running",
+    message: "Running",
     description: "Services table status badge",
   },
   "services.statusSuspended": {
-    message: "suspended",
+    message: "Suspended",
     description: "Services table status badge",
+  },
+  "services.statusHibernated": {
+    message: "Hibernated",
+    description: "Services table status badge (App scaled to zero)",
+  },
+  "services.statusPending": {
+    message: "Pending",
+    description: "Services table status badge",
+  },
+  "services.statusBuilding": {
+    message: "Building",
+    description: "Services table status badge",
+  },
+  "services.statusDeploying": {
+    message: "Deploying",
+    description: "Services table status badge",
+  },
+  "services.statusFailed": {
+    message: "Failed",
+    description: "Services table status badge",
+  },
+  "services.statusUnknown": {
+    message: "Unknown",
+    description: "Services table status badge for an unrecognized phase",
+  },
+  "services.actionsMenu": {
+    message: "Open actions menu",
+    description: "Accessible label for the per-row actions trigger",
+  },
+  "services.actionSuspend": {
+    message: "Suspend",
+    description: "Row action: park the service",
+  },
+  "services.actionResume": {
+    message: "Resume",
+    description: "Row action: bring a suspended service back",
+  },
+  "services.actionRestart": {
+    message: "Restart",
+    description: "Row action: roll the service's pods",
+  },
+  "services.confirmSuspendTitle": {
+    message: "Suspend {name}?",
+    description: "Suspend confirmation dialog title",
+  },
+  "services.confirmSuspendBody": {
+    message:
+      "The service scales to zero and stops serving traffic. Its URL and certificates are kept, and you can resume it at any time.",
+    description: "Suspend confirmation dialog body",
+  },
+  "services.confirmRestartTitle": {
+    message: "Restart {name}?",
+    description: "Restart confirmation dialog title",
+  },
+  "services.confirmRestartBody": {
+    message:
+      "The service's pods roll with no downtime. In-flight requests finish before old instances are replaced.",
+    description: "Restart confirmation dialog body",
+  },
+  "services.confirmCancel": {
+    message: "Cancel",
+    description: "Confirmation dialog cancel button",
+  },
+  "services.toastSuspendSuccess": {
+    message: "Suspending {name}…",
+    description: "Toast shown after a suspend request is accepted",
+  },
+  "services.toastResumeSuccess": {
+    message: "Resuming {name}…",
+    description: "Toast shown after a resume request is accepted",
+  },
+  "services.toastRestartSuccess": {
+    message: "Restarting {name}…",
+    description: "Toast shown after a restart request is accepted",
+  },
+  "services.toastError": {
+    message: "Could not update {name}. Please try again.",
+    description: "Toast shown when a lifecycle action fails",
+  },
+  "services.errorTitle": {
+    message: "Couldn't load services",
+    description: "Services list error card title",
+  },
+  "services.errorBody": {
+    message: "The request to bex-api failed. Check your connection and retry.",
+    description: "Services list error card body",
+  },
+  "services.emptyTitle": {
+    message: "No services yet",
+    description: "Services list empty state title",
+  },
+  "services.emptyBody": {
+    message: "Deploy your first App and it'll show up here.",
+    description: "Services list empty state body",
   },
 };
 

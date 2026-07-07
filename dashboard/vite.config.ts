@@ -89,10 +89,64 @@ function kratosDevProxy(target = "https://auth.bex.co"): Plugin {
   };
 }
 
+/**
+ * Dev-only same-origin tunnel to the prod bex-api GraphQL (the API counterpart
+ * of {@link kratosDevProxy}). A localhost page can't call `api.bex.co/graphql`
+ * directly — prod CORS only allows `dashboard.bex.co`, and the `ory_kratos_session`
+ * cookie is host-only on localhost (rewritten by the Kratos proxy on login), so a
+ * cross-site call would be blocked and send no credential. Tunnelling `/graphql`
+ * under the dev server's own origin makes the call same-site: the browser attaches
+ * the localhost session cookie, which this forwards to bex-api (auth.go reads
+ * `ory_kratos_session` and re-checks it against Kratos). Opt in with:
+ *
+ *   VITE_API_URL=http://localhost:5173/graphql yarn dev
+ *
+ * Same middleware-before-nitro requirement as the Kratos proxy.
+ */
+function graphqlDevProxy(target = "https://api.bex.co/graphql"): Plugin {
+  return {
+    name: "bex:graphql-dev-proxy",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url !== "/graphql") return next();
+        void (async () => {
+          const headers: Record<string, string> = {};
+          for (const [k, v] of Object.entries(req.headers)) {
+            if (typeof v !== "string") continue;
+            if (["host", "connection", "content-length", "accept-encoding"].includes(k))
+              continue;
+            headers[k] = v;
+          }
+          const upstream = await fetch(target, {
+            method: req.method,
+            headers,
+            body:
+              req.method === "GET" || req.method === "HEAD"
+                ? undefined
+                : await readBody(req),
+          });
+          res.statusCode = upstream.status;
+          upstream.headers.forEach((v, k) => {
+            if (["content-encoding", "content-length", "transfer-encoding"].includes(k))
+              return;
+            res.setHeader(k, v);
+          });
+          res.end(Buffer.from(await upstream.arrayBuffer()));
+        })().catch((err: unknown) => {
+          res.statusCode = 502;
+          res.end(`graphql-dev-proxy: ${String(err)}`);
+        });
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     kratosDevProxy(),
+    graphqlDevProxy(),
     devtools(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),

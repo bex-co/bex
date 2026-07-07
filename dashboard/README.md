@@ -7,7 +7,7 @@ Per [`docs/vision.md`](../docs/vision.md) pillar 1 ("API-first — no dashboard-
 ## Stack
 
 - [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) (file-based routing, SSR)
-- [Apollo Client](https://www.apollographql.com/docs/react) + [GraphQL Codegen](https://the-guild.dev/graphql/codegen) — wired but not yet pointed at a live schema (see `codegen.ts`)
+- [Apollo Client](https://www.apollographql.com/docs/react) + [GraphQL Codegen](https://the-guild.dev/graphql/codegen) — live against bex-api's `/graphql` (the home page and metrics pages; see `codegen.ts`)
 - [shadcn/ui](https://ui.shadcn.com/) on Radix primitives, Tailwind CSS v4
 - [Ory Elements](https://www.ory.com/docs/elements) (`@ory/elements-react`) + [`@ory/client-fetch`](https://www.npmjs.com/package/@ory/client-fetch) — renders Ory Kratos's login/registration/recovery/settings flows (see [Authentication](#authentication) below)
 - Vitest + Testing Library
@@ -30,13 +30,15 @@ VITE_KRATOS_PUBLIC_URL=http://localhost:4433 yarn dev
 
 This has been verified end-to-end (registration → session → dashboard, logout → login) two ways: against `yarn dev` above, and against the actually-deployed container (`deploy/`, below) port-forwarded to the same `localhost:5173`.
 
-**Local dev against prod** (the Hetzner cluster's Kratos at `auth.bex.co`): the browser can't call `auth.bex.co` from a `localhost` page directly — Kratos's CSRF/session cookies are `SameSite=Lax` on a different site, so they'd never be sent, and prod CORS only allows `dashboard.bex.co`. `vite.config.ts` ships a dev-only `/kratos` proxy that tunnels Kratos under the dev server's own origin (same-site cookies, no CORS), rewriting `Domain=bex.co` cookies to host-only `localhost`:
+**Local dev against prod** (the Hetzner cluster's Kratos at `auth.bex.co`): the browser can't call `auth.bex.co` from a `localhost` page directly — Kratos's CSRF/session cookies are `SameSite=Lax` on a different site, so they'd never be sent, and prod CORS only allows `dashboard.bex.co`. `vite.config.ts` ships a dev-only `/kratos` proxy that tunnels Kratos under the dev server's own origin (same-site cookies, no CORS), rewriting `Domain=bex.co` cookies to host-only `localhost`. The same file ships a matching `/graphql` proxy so the browser can reach prod **bex-api** (same CORS + host-only-cookie problem); with both, point `VITE_API_URL` at the tunnel too:
 
 ```sh
-VITE_KRATOS_PUBLIC_URL=http://localhost:5173/kratos yarn dev
+VITE_KRATOS_PUBLIC_URL=http://localhost:5173/kratos \
+VITE_API_URL=http://localhost:5173/graphql \
+  yarn dev
 ```
 
-You're then registering/logging in against **real prod identities**. Two caveats: prod Kratos's `allowed_return_urls` must include `http://localhost:5173` (`deploy/gitops/base/values/kratos.values.yaml` — already in git; needs Argo to have synced it), and the Ory card's cross-links ("Sign up", "Recover Account") do full-page browser flows whose `ui_url` points at `dashboard.bex.co`, so they'll bounce you to the prod dashboard — use the app's own routes (`/auth/sign-up`, `/auth/forgot-password`) instead.
+You're then registering/logging in against **real prod identities** and seeing your **real Apps** on `/`. Two caveats: prod Kratos's `allowed_return_urls` must include `http://localhost:5173` (`deploy/gitops/base/values/kratos.values.yaml` — already in git; needs Argo to have synced it), and the Ory card's cross-links ("Sign up", "Recover Account") do full-page browser flows whose `ui_url` points at `dashboard.bex.co`, so they'll bounce you to the prod dashboard — use the app's own routes (`/auth/sign-up`, `/auth/forgot-password`) instead.
 
 ## Deployment
 
@@ -67,7 +69,7 @@ yarn test            # vitest run
 
 ## Status
 
-Auth (login/registration/recovery/settings/logout) is real, deployed, and verified end-to-end against Ory Kratos. Everything else is still scaffold: the sample route on `/` renders hardcoded data shaped like bex-api's `GET /v1/services`. No live GraphQL wiring yet; `codegen.ts` has a `TODO` pointing at bex-api's `/graphql` endpoint for when that lands.
+Auth (login/registration/recovery/settings/logout) is real, deployed, and verified end-to-end against Ory Kratos. The home route (`/`) and the metrics pages are **live** GraphQL clients of bex-api: `/` lists the operator's real Apps (Render-shaped `services` query) with working suspend/resume/restart row actions (w5/m4).
 
 ## Environment variables
 
