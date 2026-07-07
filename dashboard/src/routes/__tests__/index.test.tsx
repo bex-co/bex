@@ -32,13 +32,19 @@ describe("HomePage", () => {
 
     // "Services" appears both as the sidebar nav link and the card title.
     expect(screen.getAllByText("Services").length).toBeGreaterThanOrEqual(2);
+    expect(within(table).getByText("beancount-cms")).toBeInTheDocument();
     expect(within(table).getByText("eden-cms-v2")).toBeInTheDocument();
     expect(within(table).getByText("hello-go")).toBeInTheDocument();
     expect(within(table).getByText("worker-queue")).toBeInTheDocument();
 
     // status badges
-    expect(within(table).getAllByText("running")).toHaveLength(2);
+    expect(within(table).getAllByText("running")).toHaveLength(3);
     expect(within(table).getByText("suspended")).toBeInTheDocument();
+
+    // each service name links to its Metrics page (w3/m3)
+    expect(
+      within(table).getByText("beancount-cms").closest("a"),
+    ).toHaveAttribute("href", "/services/beancount-cms/metrics");
 
     // URL column falls back to an em dash when a service has no URL
     expect(

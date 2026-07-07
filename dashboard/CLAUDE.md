@@ -11,8 +11,9 @@ src/
 │   ├── auth.{login,sign-up,forgot-password,reset-password,logout}.tsx
 │   └── settings.tsx        # account settings (Kratos settings flow)
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
+├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
 ├── common/
-│   ├── apollo/             # Apollo Client setup — kept, not yet pointed at bex-api (see codegen.ts TODO)
+│   ├── apollo/             # Apollo Client, pointed at bex-api's /graphql (VITE_API_URL)
 │   ├── lib/ory/            # Kratos config + FrontendApi factory (@ory/client-fetch)
 │   ├── lib/auth/            # requireAuth beforeLoad guard
 │   ├── hooks/use-ory-flow.ts # client-side Kratos flow fetch/redirect
@@ -37,7 +38,7 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 
 ## GraphQL (bex-api, not auth)
 
-`codegen.ts` generates typed queries/mutations from `src/**/*.graphql` into `src/graphql/definitions.ts` — no `.graphql` files exist yet. Point `schema` at bex-api's `/graphql` (`docs/bex-api.md`) once wiring up real queries. This is unrelated to Kratos — bex-api and Kratos are separate services (`docs/architecture.md`, `docs/auth.md`).
+`codegen.ts` generates typed queries/mutations from `src/**/*.graphql` into `src/graphql/definitions.ts`, introspecting bex-api's `/graphql` (`VITE_API_URL`). Every bex-api route requires a real credential (`docs/auth.md`) — introspection too — so `yarn codegen` needs `CODEGEN_SESSION_TOKEN` (an Ory session token) set in the environment; without it, codegen falls back to an unauthenticated request that bex-api will reject. This is unrelated to Kratos as a runtime dependency — bex-api and Kratos are separate services (`docs/architecture.md`, `docs/auth.md`) — the token is just how codegen authenticates _to_ bex-api.
 
 ## Visual layout pattern (w5/m2)
 

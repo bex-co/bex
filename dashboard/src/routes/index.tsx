@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Badge } from "@/common/components/ui/badge.tsx";
@@ -28,7 +28,16 @@ export const Route = createFileRoute("/")({
 
 // Sample data shaped like bex-api's `GET /v1/services` response
 // (docs/bex-api.md) — replace with a real Apollo query once wired up.
+// `beancount-cms` is a real, running App (its `.onbex.co` host is
+// `beancount-cms-v2` — the two are not the same string) — its name links to
+// the live Metrics PoC page (w3/m3).
 const sampleServices = [
+  {
+    id: "beancount-cms",
+    name: "beancount-cms",
+    phase: "running",
+    url: "https://beancount-cms-v2.onbex.co",
+  },
   {
     id: "eden-cms-v2",
     name: "eden-cms-v2",
@@ -99,7 +108,13 @@ export function HomePage() {
                   {sampleServices.map((service) => (
                     <TableRow key={service.id}>
                       <TableCell className="font-medium">
-                        {service.name}
+                        <Link
+                          to="/services/$serviceId/metrics"
+                          params={{ serviceId: service.id }}
+                          className="hover:underline"
+                        >
+                          {service.name}
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <Badge variant={phaseVariant(service.phase)}>

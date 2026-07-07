@@ -1,0 +1,33 @@
+# bex-api's Metrics query (operator/internal/api/graphql.go), Render-shaped:
+# metric ids are cpu | memory | instance_count | http_requests | http_latency |
+# bandwidth. Labels are Render's {field,value} array; points are
+# oldest-first {timestamp, value}.
+query Metrics(
+  $resource: String!
+  $metric: String!
+  $startTime: String
+  $endTime: String
+  $resolutionSeconds: Int
+  $quantile: Float
+  $percentage: Boolean
+) {
+  metrics(
+    resource: $resource
+    metric: $metric
+    startTime: $startTime
+    endTime: $endTime
+    resolutionSeconds: $resolutionSeconds
+    quantile: $quantile
+    percentage: $percentage
+  ) {
+    unit
+    labels {
+      field
+      value
+    }
+    points {
+      timestamp
+      value
+    }
+  }
+}

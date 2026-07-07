@@ -5,14 +5,21 @@ import { resolve } from "path";
 // Load environment variables from .env file
 dotenvConfig({ path: resolve(__dirname, ".env") });
 
-// TODO: point at bex-api's GraphQL endpoint once wired up (docs/bex-api.md — POST /graphql).
-// Use VITE_API_URL from .env, fallback to a local bex-api dev instance.
+// Points at bex-api's GraphQL endpoint (docs/bex-api.md — POST /graphql):
+// VITE_API_URL from .env, falling back to a local bex-api dev instance.
 const apiUrl = process.env.VITE_API_URL || "http://localhost:8090/graphql";
-const schemaUrl = `${apiUrl}`;
+
+// Every bex-api route requires a real credential (docs/auth.md) — introspection
+// is no exception. Export CODEGEN_SESSION_TOKEN (an Ory session token — the
+// dashboard's own auth mechanism; log in, or mint one via Kratos's registration
+// API) before running `yarn codegen` so it can reach the schema.
+const sessionToken = process.env.CODEGEN_SESSION_TOKEN;
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: schemaUrl,
+  schema: sessionToken
+    ? [{ [apiUrl]: { headers: { "X-Session-Token": sessionToken } } }]
+    : apiUrl,
   // This assumes that all your source files are in a top-level `src/` directory - you might need to adjust this to your file structure
   documents: ["src/**/*.graphql"],
   // Don't exit with non-zero status when there are no documents
