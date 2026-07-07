@@ -1,0 +1,92 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import "github.com/bex-co/bex/lego/backend/internal/core"
+
+// render.go maps AppView onto Render's public-API "service" shape, verified
+// against Render's OpenAPI spec (render-public-api-1.json). A client written for
+// Render sees the field names/enums/envelopes it expects; bex-only facts (phase,
+// revision) are extra fields Render clients ignore — a superset, never a break.
+
+// renderWebService is Render's serviceType for an HTTP service. Every bex App
+// serves HTTP, so it's the only type bex reports.
+const renderWebService = "web_service"
+
+// renderService mirrors components.schemas.service (the fields bex has a real
+// equivalent for) plus bex-native extras.
+type renderService struct {
+	ID             string         `json:"id"` // Render ids are opaque; bex uses the App name
+	Name           string         `json:"name"`
+	Type           string         `json:"type"` // serviceType enum; bex Apps serve HTTP => web_service
+	Suspended      string         `json:"suspended"`
+	DashboardURL   string         `json:"dashboardUrl,omitempty"`
+	CreatedAt      string         `json:"createdAt,omitempty"`
+	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
+
+	// bex-native superset (ignored by Render clients).
+	Phase    string   `json:"phase,omitempty"`
+	Replicas int32    `json:"replicas"`
+	Revision string   `json:"revision,omitempty"`
+	URLs     []string `json:"urls,omitempty"`
+}
+
+// serviceWithCursor is components.schemas.serviceWithCursor — the list-item
+// envelope. Render's GET /v1/services returns an array of these.
+type serviceWithCursor struct {
+	Service renderService `json:"service"`
+	Cursor  string        `json:"cursor"`
+}
+
+func toRenderService(a AppView) renderService {
+	var details map[string]any
+	if a.URL != "" {
+		details = map[string]any{"url": a.URL} // Render web_service exposes the live URL here
+	}
+	return renderService{
+		ID:             a.Name,
+		Name:           a.Name,
+		Type:           renderWebService,
+		Suspended:      core.SuspendedEnum(a.Suspended),
+		DashboardURL:   a.URL,
+		CreatedAt:      a.CreatedAt,
+		ServiceDetails: details,
+		Phase:          a.Phase,
+		Replicas:       a.Replicas,
+		Revision:       a.Revision,
+		URLs:           a.URLs,
+	}
+}
+
+// toRenderServices maps a slice of AppViews to bare Render service objects (no
+// cursor envelope) — the shape the MCP list_services tool returns.
+func toRenderServices(apps []AppView) []renderService {
+	out := make([]renderService, 0, len(apps))
+	for _, a := range apps {
+		out = append(out, toRenderService(a))
+	}
+	return out
+}
+
+func toServiceList(apps []AppView) []serviceWithCursor {
+	out := make([]serviceWithCursor, 0, len(apps))
+	for _, a := range apps {
+		// cursor is opaque in Render; the App name is a stable, valid cursor.
+		out = append(out, serviceWithCursor{Service: toRenderService(a), Cursor: a.Name})
+	}
+	return out
+}

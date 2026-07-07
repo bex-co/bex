@@ -17,190 +17,59 @@ limitations under the License.
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// bearerToken extracts the RFC 6750 credential from the Authorization header;
-// ok is false when the header is absent or not "Bearer "-prefixed.
+// auth.go is the shared auth gate every HTTP surface sits behind (docs/auth.md):
+// a bearer token is introspected at Hydra's admin endpoint; otherwise an Ory
+// session (cookie or X-Session-Token) is checked via Kratos' whoami. It attaches
+// the resolved core.Identity to the request context, which the feature services'
+// authorize gate reads. Upstream failures fail closed (401 / 503).
+
+// bearerToken extracts the RFC 6750 credential from the Authorization header; ok
+// is false when the header is absent or not "Bearer "-prefixed.
 func bearerToken(r *http.Request) (string, bool) {
 	tok, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	return tok, ok && tok != ""
 }
 
-// Identity is the authenticated caller: an OAuth2 client (API key) validated
-// by Hydra introspection or a Kratos identity validated by its session.
-// Subject is Hydra's client_id/sub or the Kratos identity id — the future
-// tenant-scoping hook.
-type Identity struct {
-	Subject string
-	Method  string // "oauth2" | "session"
-}
-
-type ctxKey struct{}
-
-// IdentityFrom returns the authenticated Identity the auth middleware attached
-// to the request context.
-func IdentityFrom(ctx context.Context) (Identity, bool) {
-	id, ok := ctx.Value(ctxKey{}).(Identity)
-	return id, ok
-}
-
-// oryAuth validates real credentials against the Ory substrate (docs/auth.md):
-// a bearer token is introspected at Hydra's admin endpoint; otherwise an Ory
-// session (cookie or X-Session-Token) is checked via Kratos' whoami. A bearer,
-// when present, is authoritative — an inactive token is rejected without
-// falling through to the session. Upstream failures reject the request
-// (fail closed): 401 for bad credentials, 503 when Ory itself is unreachable.
+// oryAuth validates real credentials against the Ory substrate. A bearer, when
+// present, is authoritative — an inactive token is rejected without falling
+// through to the session.
 type oryAuth struct {
 	hydraAdminURL string // e.g. http://hydra-admin.auth:4445 (required)
 	kratosURL     string // e.g. http://kratos-public.auth:80; empty disables sessions
 	client        *http.Client
 
 	// Positive introspections are cached briefly so a chatty agent doesn't cost
-	// one Hydra round trip per request. Negatives are never cached (a token can
-	// become valid; a revoked one must die within the TTL). Concurrent misses
-	// for one token are coalesced into a single Hydra call (group), which also
+	// one Hydra round trip per request. Negatives are never cached. Concurrent
+	// misses for one token coalesce into a single Hydra call (group), which also
 	// writes the cache exactly once per upstream call.
-	cache *ttlCache[Identity]
+	cache *core.TTLCache[core.Identity]
 	group singleflight.Group
-}
-
-const (
-	positiveTTL = 30 * time.Second // how long a positive introspection/authz answer may be reused
-	cacheMax    = 4096             // hard bound; sweep expired then reset beyond it (negatives are never cached)
-)
-
-// ttlCache is the package's positive-result cache (introspections, authz
-// checks): entries expire after positiveTTL, expired entries are dropped on
-// lookup, and at cacheMax the expired are swept before a wholesale reset.
-type ttlCache[V any] struct {
-	mu sync.Mutex
-	m  map[string]ttlEntry[V]
-}
-
-type ttlEntry[V any] struct {
-	v       V
-	expires time.Time
-}
-
-func newTTLCache[V any]() *ttlCache[V] { return &ttlCache[V]{m: map[string]ttlEntry[V]{}} }
-
-func (c *ttlCache[V]) get(key string) (V, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	e, ok := c.m[key]
-	if !ok {
-		var zero V
-		return zero, false
-	}
-	if !time.Now().Before(e.expires) {
-		delete(c.m, key) // dead entry — don't let it linger until cacheMax
-		var zero V
-		return zero, false
-	}
-	return e.v, true
-}
-
-// put caches v until the given expiry (callers may clamp below positiveTTL,
-// e.g. to a token's own exp).
-func (c *ttlCache[V]) put(key string, v V, expires time.Time) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if len(c.m) >= cacheMax {
-		now := time.Now()
-		for k, e := range c.m { // sweep the expired before nuking the live
-			if !now.Before(e.expires) {
-				delete(c.m, k)
-			}
-		}
-		if len(c.m) >= cacheMax {
-			c.m = map[string]ttlEntry[V]{}
-		}
-	}
-	c.m[key] = ttlEntry[V]{v: v, expires: expires}
-}
-
-// oryTransport is the one connection pool shared by every Ory-bound client
-// (introspection, whoami, key management): the traffic all targets one or two
-// hosts, where the default transport's 2 idle conns would re-dial constantly.
-var oryTransport = func() *http.Transport {
-	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.MaxIdleConnsPerHost = 32
-	return tr
-}()
-
-// drainClose drains and closes a response body so its connection returns to
-// the pool for reuse.
-func drainClose(resp *http.Response) {
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-}
-
-// httpStatusError is doJSON's unexpected-status error; callers may map
-// specific codes (e.g. 404 -> ErrNotFound) via errors.As.
-type httpStatusError struct {
-	code    int
-	summary string // "METHOD path returned 404 Not Found"
-}
-
-func (e *httpStatusError) Error() string { return e.summary }
-
-// doJSON runs one JSON-over-HTTP call against an Ory/FGA-style API: optional
-// JSON body, optional bearer, drain-close for connection reuse, unexpected
-// status -> *httpStatusError, response decoded into out when non-nil. Shared
-// by the Hydra admin store and the OpenFGA checker so request mechanics can't
-// drift between them.
-func doJSON(ctx context.Context, client *http.Client, method, endpoint, bearer string, body []byte, want int, out any) error {
-	var rdr io.Reader
-	if body != nil {
-		rdr = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, rdr)
-	if err != nil {
-		return err
-	}
-	if bearer != "" {
-		req.Header.Set("Authorization", "Bearer "+bearer)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer drainClose(resp)
-	if resp.StatusCode != want {
-		return &httpStatusError{code: resp.StatusCode, summary: method + " " + endpoint + " returned " + resp.Status}
-	}
-	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
-	}
-	return nil
 }
 
 func newOryAuth(hydraAdminURL, kratosURL string) *oryAuth {
 	return &oryAuth{
 		hydraAdminURL: strings.TrimSuffix(hydraAdminURL, "/"),
 		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
-		client:        &http.Client{Timeout: 5 * time.Second, Transport: oryTransport},
-		cache:         newTTLCache[Identity](),
+		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
+		cache:         core.NewTTLCache[core.Identity](),
 	}
 }
 
 func (a *oryAuth) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var id Identity
+		var id core.Identity
 		var err error
 		bearer, hasBearer := bearerToken(r)
 		switch {
@@ -215,17 +84,17 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		switch {
 		case err != nil: // Ory unreachable/broken — fail closed, honestly
 			http.Error(w, `{"error":"auth upstream unavailable"}`, http.StatusServiceUnavailable)
-		case id == Identity{}:
+		case id == core.Identity{}:
 			unauthorized(w)
 		default:
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, id)))
+			next.ServeHTTP(w, r.WithContext(core.WithIdentity(r.Context(), id)))
 		}
 	})
 }
 
 // hasSessionCredential reports whether the request carries something worth a
-// Kratos round trip: the session header, or Kratos' session cookie. An
-// unrelated cookie (analytics, LB affinity) must not cost an upstream call.
+// Kratos round trip: the session header, or Kratos' session cookie. An unrelated
+// cookie (analytics, LB affinity) must not cost an upstream call.
 func hasSessionCredential(r *http.Request) bool {
 	if r.Header.Get("X-Session-Token") != "" {
 		return true
@@ -236,8 +105,8 @@ func hasSessionCredential(r *http.Request) bool {
 
 // introspect validates an OAuth2 token at Hydra's admin API. Returns the zero
 // Identity for an inactive/unknown token, an error when Hydra is unreachable.
-func (a *oryAuth) introspect(ctx context.Context, token string) (Identity, error) {
-	if id, ok := a.cache.get(token); ok {
+func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, error) {
+	if id, ok := a.cache.Get(token); ok {
 		return id, nil
 	}
 	// Coalesce concurrent misses for the same token into one Hydra call.
@@ -245,26 +114,26 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (Identity, error
 		return a.introspectUpstream(ctx, token)
 	})
 	if err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
-	return v.(Identity), nil
+	return v.(core.Identity), nil
 }
 
-func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (Identity, error) {
+func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Identity, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		a.hydraAdminURL+"/admin/oauth2/introspect",
 		strings.NewReader(url.Values{"token": {token}}.Encode()))
 	if err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
-	defer drainClose(resp)
+	defer core.DrainClose(resp)
 	if resp.StatusCode != http.StatusOK {
-		return Identity{}, apiError("hydra introspection returned " + resp.Status)
+		return core.Identity{}, core.Err("hydra introspection returned " + resp.Status)
 	}
 	var out struct {
 		Active   bool    `json:"active"`
@@ -273,32 +142,32 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (Identit
 		Exp      float64 `json:"exp"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
 	if !out.Active {
-		return Identity{}, nil
+		return core.Identity{}, nil
 	}
 	subject := out.Sub
 	if subject == "" {
 		subject = out.ClientID
 	}
-	id := Identity{Subject: subject, Method: "oauth2"}
+	id := core.Identity{Subject: subject, Method: "oauth2"}
 
-	expires := time.Now().Add(positiveTTL)
+	expires := time.Now().Add(core.PositiveTTL)
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {
 		expires = exp
 	}
-	a.cache.put(token, id, expires)
+	a.cache.Put(token, id, expires)
 	return id, nil
 }
 
-// whoami validates an Ory session at Kratos' public API, forwarding the
-// caller's session credential (cookie or X-Session-Token). Returns the zero
-// Identity for a missing/expired session, an error when Kratos is unreachable.
-func (a *oryAuth) whoami(r *http.Request) (Identity, error) {
+// whoami validates an Ory session at Kratos' public API, forwarding the caller's
+// session credential (cookie or X-Session-Token). Returns the zero Identity for a
+// missing/expired session, an error when Kratos is unreachable.
+func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, a.kratosURL+"/sessions/whoami", nil)
 	if err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
 	if c := r.Header.Get("Cookie"); c != "" {
 		req.Header.Set("Cookie", c)
@@ -308,14 +177,14 @@ func (a *oryAuth) whoami(r *http.Request) (Identity, error) {
 	}
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
-	defer drainClose(resp)
+	defer core.DrainClose(resp)
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
-		return Identity{}, nil
+		return core.Identity{}, nil
 	case resp.StatusCode != http.StatusOK:
-		return Identity{}, apiError("kratos whoami returned " + resp.Status)
+		return core.Identity{}, core.Err("kratos whoami returned " + resp.Status)
 	}
 	var out struct {
 		Identity struct {
@@ -323,12 +192,12 @@ func (a *oryAuth) whoami(r *http.Request) (Identity, error) {
 		} `json:"identity"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return Identity{}, err
+		return core.Identity{}, err
 	}
 	if out.Identity.ID == "" {
-		return Identity{}, nil
+		return core.Identity{}, nil
 	}
-	return Identity{Subject: out.Identity.ID, Method: "session"}, nil
+	return core.Identity{Subject: out.Identity.ID, Method: "session"}, nil
 }
 
 func unauthorized(w http.ResponseWriter) {
@@ -338,12 +207,8 @@ func unauthorized(w http.ResponseWriter) {
 
 // withCORS adds CORS for a comma-separated allowlist of origins and answers
 // preflight. Empty origins => no CORS headers (same-origin / server-to-server).
-// The matched request Origin is echoed back: Allow-Credentials forbids "*",
-// and with more than one allowed origin the header value must vary per
-// request. Allow-Credentials is required for the dashboard's Kratos-session
-// cookie (and any client sending Authorization) to be readable cross-origin —
-// without it the browser discards the response even though the request itself
-// succeeds.
+// The matched request Origin is echoed back; Allow-Credentials is required for
+// the dashboard's Kratos-session cookie to be readable cross-origin.
 func withCORS(origins string, next http.Handler) http.Handler {
 	allowed := map[string]bool{}
 	for _, o := range strings.Split(origins, ",") {

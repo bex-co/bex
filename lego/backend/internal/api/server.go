@@ -14,24 +14,50 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package api is the composition root of bex-api: it wires the feature services
+// (apps, logs, metrics, apikeys, postgres) behind one auth gate and assembles
+// the three transports as SINGLE artifacts — one REST router, one GraphQL
+// schema, one MCP registry. Each feature contributes registration fragments
+// (RegisterREST / GraphQLQuery+GraphQLMutation / RegisterMCP); the root merges
+// them, so a verb reachable over one surface is reachable over all three and the
+// surfaces cannot drift. The root imports the features + core; features never
+// import the root (no cycle).
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"maps"
 	"net/http"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/apikeys"
+	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 )
 
-// Server wires the adapters (REST + GraphQL + MCP) over one Core and one auth
-// gate. All surfaces mount on the same mux, share the auth middleware, and
-// call identical Core methods — so they cannot diverge in behavior.
-//
-// Auth (docs/auth.md): OAuth2 bearer tokens are validated via Hydra
-// introspection (API keys, client_credentials) and Ory sessions via Kratos
-// whoami. There is no shared-secret mode — every caller holds its own
-// revocable credential.
+const (
+	mcpServerName = "bex"
+	mcpVersion    = "0.1.0"
+)
+
+const errNoHydraURL = "bex-api: BEX_HYDRA_ADMIN_URL must be set (refusing to serve without a token validator)"
+
+// Server wires the feature services over one auth gate and assembles the three
+// surfaces. All surfaces mount on the same mux, share the auth middleware, and
+// call identical Service methods — so they cannot diverge in behavior.
 type Server struct {
-	Core       *Core
+	Apps     *apps.Service
+	Logs     *logs.Service
+	Metrics  *metrics.Service
+	APIKeys  *apikeys.Service
+	Postgres *postgres.Service
+
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
 	HydraAdminURL string // Hydra admin base URL (introspection); required
@@ -40,9 +66,74 @@ type Server struct {
 	schema graphql.Schema
 }
 
+// Deps bundles the injected backends the feature services need — the seams that
+// keep the domain layer clientset/HTTP-free (nil leaves a verb reporting its
+// "…Unavailable" sentinel). NewServer wires them onto the services in one place.
+type Deps struct {
+	PodLogs              logs.PodLogSource
+	PodLogsFollow        logs.PodLogStream
+	ResourceMetrics      metrics.ResourceMetricsSource
+	ResourceMetricsRange metrics.ResourceMetricsRangeSource
+	RequestMetrics       metrics.RequestMetricsSource
+	MonthToDateBandwidth metrics.MonthToDateBandwidthSource
+	MetricsFilterValues  metrics.MetricsFilterValuesSource
+	APIKeys              apikeys.APIKeyStore
+	Store                apps.IntentStore
+}
+
+// NewServer wires the five feature services over one core.Base + deps. Callers
+// set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
+func NewServer(base *core.Base, d Deps) *Server {
+	return &Server{
+		Apps: &apps.Service{Base: base, Store: d.Store},
+		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow},
+		Metrics: &metrics.Service{
+			Base:                       base,
+			ResourceMetrics:            d.ResourceMetrics,
+			ResourceMetricsRange:       d.ResourceMetricsRange,
+			RequestMetrics:             d.RequestMetrics,
+			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
+			MetricsFilterValuesSource:  d.MetricsFilterValues,
+		},
+		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys},
+		Postgres: &postgres.Service{Base: base},
+	}
+}
+
+// Feature registration contracts. A feature implements the fragments it has; the
+// root type-asserts each service against these when assembling the surfaces, so a
+// feature with no mutations (logs, metrics) simply omits GraphQLMutation.
+type (
+	restRegistrar       interface{ RegisterREST(*http.ServeMux) }
+	gqlQueryProvider    interface{ GraphQLQuery() graphql.Fields }
+	gqlMutationProvider interface{ GraphQLMutation() graphql.Fields }
+	mcpRegistrar        interface{ RegisterMCP(*mcp.Server) }
+)
+
+// features lists the wired (non-nil) feature services in a stable order. A typed
+// nil stored in an interface is not == nil, so each is checked explicitly.
+func (s *Server) features() []any {
+	var out []any
+	if s.Apps != nil {
+		out = append(out, s.Apps)
+	}
+	if s.Logs != nil {
+		out = append(out, s.Logs)
+	}
+	if s.Metrics != nil {
+		out = append(out, s.Metrics)
+	}
+	if s.APIKeys != nil {
+		out = append(out, s.APIKeys)
+	}
+	if s.Postgres != nil {
+		out = append(out, s.Postgres)
+	}
+	return out
+}
+
 // Handler returns the fully wired http.Handler, or an error if misconfigured
-// (missing Hydra URL, or an invalid GraphQL schema). Routes (REST is Render-public-API
-// compatible, served under both /v1/services and /v1/apps):
+// (missing Hydra URL, or an invalid GraphQL schema). Routes:
 //
 //	GET  /healthz                              (open)
 //	GET  /v1/services, /v1/services/{id}       (auth)   REST
@@ -54,7 +145,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	schema, err := newSchema()
+	schema, err := s.newSchema()
 	if err != nil {
 		return nil, err
 	}
@@ -73,17 +164,96 @@ func (s *Server) Handler() (http.Handler, error) {
 	return withCORS(s.CORSOrigin, mux), nil
 }
 
-// authMiddleware builds the auth gate, validating its configuration up front
-// so a misconfigured binary refuses to start.
+// authMiddleware builds the auth gate, validating its configuration up front so a
+// misconfigured binary refuses to start.
 func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.HydraAdminURL == "" {
-		return nil, errNoHydraURL
+		return nil, core.Err(errNoHydraURL)
 	}
 	return newOryAuth(s.HydraAdminURL, s.KratosURL).middleware, nil
 }
 
-type apiError string
+// restHandler mounts every feature's REST fragment on one mux — the single REST
+// router (Render-public-API compatible), served under /v1.
+func (s *Server) restHandler() http.Handler {
+	mux := http.NewServeMux()
+	for _, f := range s.features() {
+		if r, ok := f.(restRegistrar); ok {
+			r.RegisterREST(mux)
+		}
+	}
+	return mux
+}
 
-func (e apiError) Error() string { return string(e) }
+// newSchema merges every feature's GraphQL fragments into the single root Query
+// and Mutation objects — the one schema the /graphql handler serves.
+func (s *Server) newSchema() (graphql.Schema, error) {
+	query := graphql.Fields{}
+	mutation := graphql.Fields{}
+	for _, f := range s.features() {
+		if p, ok := f.(gqlQueryProvider); ok {
+			maps.Copy(query, p.GraphQLQuery())
+		}
+		if p, ok := f.(gqlMutationProvider); ok {
+			maps.Copy(mutation, p.GraphQLMutation())
+		}
+	}
+	return graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: query}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: mutation}),
+	})
+}
 
-const errNoHydraURL = apiError("bex-api: BEX_HYDRA_ADMIN_URL must be set (refusing to serve without a token validator)")
+// graphqlHandler serves POST /graphql over the compiled schema. The request
+// context already carries the caller Identity (attached by the auth middleware),
+// which the feature resolvers' authorize gate reads.
+func (s *Server) graphqlHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Query         string         `json:"query"`
+			OperationName string         `json:"operationName"`
+			Variables     map[string]any `json:"variables"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, `{"error":"bad request"}`, http.StatusBadRequest)
+			return
+		}
+		result := graphql.Do(graphql.Params{
+			Schema:         s.schema,
+			RequestString:  body.Query,
+			OperationName:  body.OperationName,
+			VariableValues: body.Variables,
+			Context:        r.Context(),
+		})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(result)
+	})
+}
+
+// MCPServer builds the MCP server with every feature's tools registered. The
+// returned server is stateless w.r.t. sessions, so one instance is reused for
+// stdio and across HTTP sessions.
+func (s *Server) MCPServer() *mcp.Server {
+	srv := mcp.NewServer(&mcp.Implementation{Name: mcpServerName, Version: mcpVersion}, nil)
+	for _, f := range s.features() {
+		if r, ok := f.(mcpRegistrar); ok {
+			r.RegisterMCP(srv)
+		}
+	}
+	return srv
+}
+
+// mcpHTTPHandler serves the MCP streamable-HTTP transport (mounted at /mcp behind
+// the same auth gate as REST/GraphQL).
+func (s *Server) mcpHTTPHandler() http.Handler {
+	srv := s.MCPServer()
+	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, nil)
+}
+
+// RunStdio serves the MCP adapter over stdio — the transport a local agent
+// launches bex as a subprocess with. The trust boundary is the process itself
+// (no bearer applies); the HTTP transport keeps the gate. Blocks until the
+// client disconnects or ctx is cancelled.
+func (s *Server) RunStdio(ctx context.Context) error {
+	return s.MCPServer().Run(ctx, &mcp.StdioTransport{})
+}

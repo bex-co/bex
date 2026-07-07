@@ -1,0 +1,60 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package core is the leaf kernel every bex-api feature package imports: the
+// shared Base (apiserver-thin client + namespace + clock + authorization gate),
+// the caller Identity, the cross-feature error sentinels, and the HTTP/cache
+// primitives the Ory-bound clients share. It imports the CRD types but no other
+// bex package, and never the composition root — features depend on core, the
+// root depends on features + core, so there is no import cycle.
+package core
+
+import "errors"
+
+// The domain error sentinels every feature returns and the REST adapter maps to
+// status codes (see WriteErr). Shared here so one WriteErr can map them all and
+// the surfaces stay authorization/error identical.
+var (
+	// ErrNotFound is returned when a resource (App/Database) does not exist.
+	ErrNotFound = errors.New("app not found")
+	// ErrLogsUnavailable is returned by the logs verbs when no pod-log source is
+	// wired (adapters surface it as 503, not 404 — the App exists, the source
+	// doesn't).
+	ErrLogsUnavailable = errors.New("logs source not configured")
+	// ErrMetricsUnavailable is returned by the metrics verbs when the backend a
+	// metric needs isn't wired (adapters surface it as 503).
+	ErrMetricsUnavailable = errors.New("metrics source not configured")
+	// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is wired.
+	ErrAPIKeysUnavailable = errors.New("api-key store not configured")
+	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
+	ErrBadRequest = errors.New("bad request")
+	// ErrForbidden is returned when the caller lacks the permission a verb requires
+	// (adapters map it to 403; distinct from the auth gate's 401).
+	ErrForbidden = errors.New("forbidden")
+	// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
+	// consulted — requests fail closed (503), never pass through.
+	ErrAuthzUnavailable = errors.New("authorization service unavailable")
+)
+
+// constErr is a comparable string error for fixed messages (config refusals,
+// upstream "not found" summaries) — like the standard library's errors.New but
+// usable as a package-level constant.
+type constErr string
+
+func (e constErr) Error() string { return string(e) }
+
+// Err returns a comparable constant error carrying msg.
+func Err(msg string) error { return constErr(msg) }

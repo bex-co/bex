@@ -46,6 +46,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/api"
+	"github.com/bex-co/bex/lego/backend/internal/apikeys"
+	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -69,22 +74,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("kube client: %v", err)
 	}
-	// Clientset just for the pod-log subresource (the one read controller-runtime's
-	// client can't serve); Core.Logs uses it via NewPodLogSource.
+	// Clientset just for the pod-log + metrics-server subresources (the reads
+	// controller-runtime's client can't serve); wired into the logs/metrics deps.
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		log.Fatalf("kube clientset: %v", err)
 	}
 
-	core := &api.Core{
-		Client:        cl,
-		Namespace:     envOr("BEX_API_NAMESPACE", "default"),
-		PodLogs:       api.NewPodLogSource(cs),
-		PodLogsFollow: api.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
+	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
+
+	deps := api.Deps{
+		PodLogs:       logs.NewPodLogSource(cs),
+		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
 		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback
 		// when Prometheus isn't wired below; instance count then needs no source.
 		// Left nil if metrics-server is absent => those metrics report 503.
-		ResourceMetrics: api.NewResourceMetricsSource(cs),
+		ResourceMetrics: metrics.NewResourceMetricsSource(cs),
 	}
 	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
 	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired
@@ -92,58 +97,43 @@ func main() {
 	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
 	// unreachable surfaces the query error, it does not silently fall back).
 	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
-		core.RequestMetrics = api.NewPrometheusRequestSource(prom, nil)
-		core.ResourceMetricsRange = api.NewPrometheusResourceSource(prom, nil)
-		core.MonthToDateBandwidthSource = api.NewMonthToDateBandwidthSource(prom, nil)
-		core.MetricsFilterValuesSource = api.NewPrometheusFilterValuesSource(prom, nil)
+		deps.RequestMetrics = metrics.NewPrometheusRequestSource(prom, nil)
+		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(prom, nil)
+		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(prom, nil)
+		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(prom, nil)
 	}
 	// Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's admin API,
-	// Kratos sessions optional. Handler() fails fast without the Hydra URL.
-	// nil key store (stdio mode without a Hydra URL) keeps the api-key verbs
-	// answering ErrAPIKeysUnavailable instead of dialing nowhere.
+	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key
+	// store (stdio mode without a Hydra URL) keeps the api-key verbs answering
+	// ErrAPIKeysUnavailable instead of dialing nowhere.
 	hydraAdminURL := os.Getenv("BEX_HYDRA_ADMIN_URL")
 	if hydraAdminURL != "" {
-		core.APIKeys = api.NewHydraAPIKeys(hydraAdminURL)
+		deps.APIKeys = apikeys.NewHydraAPIKeys(hydraAdminURL)
 	}
 	// Authorization (docs/auth.md): unset => authz disabled (every verb allowed,
-	// the pre-m4 behavior); set => every Core verb checks OpenFGA, fail closed.
-	// NOT wired in stdio mode: that transport's trust boundary is the subprocess
-	// itself (no auth gate, so no identity — a wired checker would deny all).
-	var authz api.Checker
+	// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
+	// wired in stdio mode: that transport's trust boundary is the subprocess itself
+	// (no auth gate, so no identity — a wired checker would deny all).
+	var authzChecker core.Checker
 	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
-		authz = api.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
-		core.Authz = authz
-	}
-
-	srv := &api.Server{
-		Core:          core,
-		CORSOrigin:    os.Getenv("BEX_API_CORS_ORIGIN"),
-		HydraAdminURL: hydraAdminURL,
-		KratosURL:     os.Getenv("BEX_KRATOS_URL"),
-	}
-
-	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
-	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
-	if mcpStdio() {
-		log.Printf("bex-api: serving MCP over stdio (namespace %s)", srv.Core.Namespace)
-		if err := srv.RunStdio(ctx); err != nil {
-			log.Fatalf("bex-api mcp stdio: %v", err)
-		}
-		return
+		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+		base.Authz = authzChecker
 	}
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
 	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
-	// the single-writer wiring, and the cluster-internal tenant API on :8091.
-	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" {
+	// the single-writer wiring, and the cluster-internal tenant API on :8091. Built
+	// before NewServer so the store is wired into the apps service. DB-free in
+	// stdio mode.
+	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
 		pool, err := pgxpool.New(ctx, dbURI)
 		if err != nil {
 			log.Fatalf("bex-api: db config: %v", err)
 		}
 		defer pool.Close()
-		// CNPG may still be coming up when the pod starts — wait for the DB
-		// rather than crash-looping, then converge the schema before serving.
+		// CNPG may still be coming up when the pod starts — wait for the DB rather
+		// than crash-looping, then converge the schema before serving.
 		if err := waitForDB(ctx, pool); err != nil {
 			log.Fatalf("bex-api: database unreachable: %v", err)
 		}
@@ -161,12 +151,12 @@ func main() {
 			rec.Resync = v
 		}
 		go rec.Run(ctx)
-		core.Store = st // single writer of intent: suspend/resume write the row first
+		deps.Store = st // single writer of intent: suspend/resume write the row first
 
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN")}
 		// The OpenFGA checker also writes membership tuples (workspace:tea-<id>);
 		// give the tenant API the grant path when authz is wired.
-		if g, ok := authz.(store.WorkspaceGranter); ok {
+		if g, ok := authzChecker.(store.WorkspaceGranter); ok {
 			internal.Grant = g
 		}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
@@ -185,6 +175,21 @@ func main() {
 		}()
 	}
 
+	srv := api.NewServer(base, deps)
+	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
+	srv.HydraAdminURL = hydraAdminURL
+	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
+
+	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
+	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
+	if mcpStdio() {
+		log.Printf("bex-api: serving MCP over stdio (namespace %s)", base.Namespace)
+		if err := srv.RunStdio(ctx); err != nil {
+			log.Fatalf("bex-api mcp stdio: %v", err)
+		}
+		return
+	}
+
 	handler, err := srv.Handler()
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)
@@ -198,7 +203,7 @@ func main() {
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
 	}
-	log.Printf("bex-api listening on %s (namespace %s)", addr, srv.Core.Namespace)
+	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
 	log.Fatal(httpSrv.ListenAndServe())
 }
 
