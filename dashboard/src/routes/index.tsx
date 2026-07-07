@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
-import type { en } from "@/i18n";
-import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   Card,
   CardContent,
@@ -23,14 +21,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/aler
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
-import { deriveStatus, computeStats } from "@/features/services/lib/status";
+import { computeStats } from "@/features/services/lib/status";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
-import type {
-  ServiceView,
-  ServiceStatusKey,
-  LifecycleAction,
-} from "@/features/services/types";
+import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
+import type { ServiceView, LifecycleAction } from "@/features/services/types";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -39,17 +34,6 @@ export const Route = createFileRoute("/")({
     meta: [{ title: "bex dashboard" }],
   }),
 });
-
-const STATUS_LABEL: Record<ServiceStatusKey, keyof typeof en> = {
-  running: "services.statusRunning",
-  suspended: "services.statusSuspended",
-  hibernated: "services.statusHibernated",
-  pending: "services.statusPending",
-  building: "services.statusBuilding",
-  deploying: "services.statusDeploying",
-  failed: "services.statusFailed",
-  unknown: "services.statusUnknown",
-};
 
 export function HomePage() {
   const { t } = useTranslations();
@@ -138,9 +122,6 @@ export function HomePage() {
                                 : null
                             }
                             onRun={run}
-                            statusLabel={t(
-                              STATUS_LABEL[deriveStatus(service).key],
-                            )}
                           />
                         ))}
                   </TableBody>
@@ -158,19 +139,16 @@ function ServiceRow({
   service,
   pending,
   onRun,
-  statusLabel,
 }: {
   service: ServiceView;
   pending: LifecycleAction | null;
   onRun: (action: LifecycleAction, service: ServiceView) => void;
-  statusLabel: string;
 }) {
-  const status = deriveStatus(service);
   return (
     <TableRow>
       <TableCell className="font-medium">
         <Link
-          to="/services/$serviceId/metrics"
+          to="/services/$serviceId"
           params={{ serviceId: service.id }}
           className="hover:underline"
         >
@@ -178,7 +156,7 @@ function ServiceRow({
         </Link>
       </TableCell>
       <TableCell>
-        <Badge variant={status.variant}>{statusLabel}</Badge>
+        <ServiceStatusBadge service={service} />
       </TableCell>
       <TableCell className="text-right tabular-nums">
         {service.replicas ?? "—"}

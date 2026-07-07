@@ -145,6 +145,50 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署你的第一个 App，它就会出现在这里。",
     description: "Services list empty state body",
   },
+  "services.navLabel": {
+    message: "服务导航",
+    description: "Accessible label for the service-detail tab nav",
+  },
+  "services.navOverview": {
+    message: "概览",
+    description: "Service-detail nav item + overview panel title",
+  },
+  "services.navLogs": {
+    message: "日志",
+    description: "Service-detail nav item (logs tab)",
+  },
+  "services.overviewPhase": {
+    message: "阶段",
+    description: "Overview panel field label (operator phase, verbatim)",
+  },
+  "services.overviewSuspended": {
+    message: "已暂停",
+    description: "Overview panel field label (suspend state)",
+  },
+  "services.overviewYes": {
+    message: "是",
+    description: "Overview panel value for a true boolean field",
+  },
+  "services.overviewNo": {
+    message: "否",
+    description: "Overview panel value for a false boolean field",
+  },
+  "services.notFoundTitle": {
+    message: "未找到服务",
+    description: "Overview page state when server(id) returns nothing",
+  },
+  "services.notFoundBody": {
+    message: "不存在名为 {name} 的服务，或你没有访问权限。",
+    description: "Overview page not-found body",
+  },
+  "services.logsComingSoonTitle": {
+    message: "日志功能即将上线",
+    description: "Logs tab placeholder title (content ships in a later release)",
+  },
+  "services.logsComingSoonBody": {
+    message: "该服务的实时日志跟踪将在后续版本中提供。",
+    description: "Logs tab placeholder body",
+  },
 };
 
 export default zhServices;

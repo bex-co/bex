@@ -70,7 +70,7 @@ beforeEach(() => {
 });
 
 describe("HomePage", () => {
-  it("renders live services with status badges, metrics links, and row actions", async () => {
+  it("renders live services with status badges, overview links, and row actions", async () => {
     servicesState.services = [
       svc({ id: "beancount-cms", name: "beancount-cms", phase: "Running" }),
       svc({ id: "hello-go", name: "hello-go", phase: "Running" }),
@@ -94,10 +94,10 @@ describe("HomePage", () => {
     expect(within(table).getAllByText("Running")).toHaveLength(2);
     expect(within(table).getByText("Suspended")).toBeInTheDocument();
 
-    // name deep-links to the metrics page
+    // name links to the service overview page
     expect(
       within(table).getByText("beancount-cms").closest("a"),
-    ).toHaveAttribute("href", "/services/beancount-cms/metrics");
+    ).toHaveAttribute("href", "/services/beancount-cms");
 
     // bex-native superset columns render from the live fields
     expect(within(table).getByText("Instances")).toBeInTheDocument();

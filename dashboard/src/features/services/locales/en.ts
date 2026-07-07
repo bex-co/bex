@@ -147,6 +147,50 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploy your first App and it'll show up here.",
     description: "Services list empty state body",
   },
+  "services.navLabel": {
+    message: "Service navigation",
+    description: "Accessible label for the service-detail tab nav",
+  },
+  "services.navOverview": {
+    message: "Overview",
+    description: "Service-detail nav item + overview panel title",
+  },
+  "services.navLogs": {
+    message: "Logs",
+    description: "Service-detail nav item (logs tab)",
+  },
+  "services.overviewPhase": {
+    message: "Phase",
+    description: "Overview panel field label (operator phase, verbatim)",
+  },
+  "services.overviewSuspended": {
+    message: "Suspended",
+    description: "Overview panel field label (suspend state)",
+  },
+  "services.overviewYes": {
+    message: "Yes",
+    description: "Overview panel value for a true boolean field",
+  },
+  "services.overviewNo": {
+    message: "No",
+    description: "Overview panel value for a false boolean field",
+  },
+  "services.notFoundTitle": {
+    message: "Service not found",
+    description: "Overview page state when server(id) returns nothing",
+  },
+  "services.notFoundBody": {
+    message: "No service named {name} exists, or you don't have access to it.",
+    description: "Overview page not-found body",
+  },
+  "services.logsComingSoonTitle": {
+    message: "Logs are coming soon",
+    description: "Logs tab placeholder title (content ships in a later release)",
+  },
+  "services.logsComingSoonBody": {
+    message: "Live log tailing for this service ships in an upcoming release.",
+    description: "Logs tab placeholder body",
+  },
 };
 
 export default enServices;

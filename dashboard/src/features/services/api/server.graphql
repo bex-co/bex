@@ -1,0 +1,19 @@
+# server(id) is Render's dashboard query name for a single service — the same
+# Render-shaped `Service` the `services` list returns (backend/internal/api/graphql.go).
+# GraphQL exposes the live URL as a flat `url` field (REST nests it under
+# serviceDetails.url); `phase`/`replicas`/`revision` are bex-native extras.
+
+query Server($id: String!) {
+  server(id: $id) {
+    id
+    name
+    type
+    suspended
+    dashboardUrl
+    url
+    createdAt
+    phase
+    replicas
+    revision
+  }
+}
