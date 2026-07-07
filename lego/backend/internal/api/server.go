@@ -32,7 +32,7 @@ import (
 // revocable credential.
 type Server struct {
 	Core       *Core
-	CORSOrigin string // exact allowed origin; empty => no CORS
+	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
 	HydraAdminURL string // Hydra admin base URL (introspection); required
 	KratosURL     string // Kratos public base URL (whoami); empty disables sessions

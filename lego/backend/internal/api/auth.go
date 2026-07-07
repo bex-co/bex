@@ -336,19 +336,30 @@ func unauthorized(w http.ResponseWriter) {
 	http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 }
 
-// withCORS adds permissive-for-one-origin CORS when origin is set, and answers
-// preflight. Empty origin => no CORS headers (same-origin / server-to-server).
-// Allow-Credentials is required for the dashboard's Kratos-session cookie (and
-// any client sending Authorization) to be readable cross-origin — without it
-// the browser discards the response even though the request itself succeeds.
-func withCORS(origin string, next http.Handler) http.Handler {
+// withCORS adds CORS for a comma-separated allowlist of origins and answers
+// preflight. Empty origins => no CORS headers (same-origin / server-to-server).
+// The matched request Origin is echoed back: Allow-Credentials forbids "*",
+// and with more than one allowed origin the header value must vary per
+// request. Allow-Credentials is required for the dashboard's Kratos-session
+// cookie (and any client sending Authorization) to be readable cross-origin —
+// without it the browser discards the response even though the request itself
+// succeeds.
+func withCORS(origins string, next http.Handler) http.Handler {
+	allowed := map[string]bool{}
+	for _, o := range strings.Split(origins, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			allowed[o] = true
+		}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-Token")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		if len(allowed) > 0 {
 			w.Header().Set("Vary", "Origin")
+			if origin := r.Header.Get("Origin"); allowed[origin] {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-Token")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

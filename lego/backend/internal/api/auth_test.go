@@ -235,3 +235,58 @@ func TestIntrospectionCache(t *testing.T) {
 		t.Fatalf("introspections = %d, want 3 (negatives not cached)", got)
 	}
 }
+
+func TestWithCORS(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	do := func(origins, reqOrigin, method string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(method, "/graphql", nil)
+		if reqOrigin != "" {
+			req.Header.Set("Origin", reqOrigin)
+		}
+		rec := httptest.NewRecorder()
+		withCORS(origins, ok).ServeHTTP(rec, req)
+		return rec
+	}
+	const list = "https://dashboard.bex.co, http://localhost:5173"
+
+	// Each listed origin is echoed back (trimmed), with credentials allowed.
+	for _, origin := range []string{"https://dashboard.bex.co", "http://localhost:5173"} {
+		rec := do(list, origin, http.MethodGet)
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != origin {
+			t.Errorf("Allow-Origin for %s = %q, want the origin echoed", origin, got)
+		}
+		if rec.Header().Get("Access-Control-Allow-Credentials") != "true" {
+			t.Errorf("Allow-Credentials missing for %s", origin)
+		}
+		if rec.Header().Get("Vary") != "Origin" {
+			t.Errorf("Vary for %s = %q, want Origin", origin, rec.Header().Get("Vary"))
+		}
+	}
+
+	// Unlisted origin: Vary only, no allow headers.
+	rec := do(list, "https://evil.example", http.MethodGet)
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("Allow-Origin for unlisted origin = %q, want empty", got)
+	}
+	if rec.Header().Get("Vary") != "Origin" {
+		t.Errorf("Vary for unlisted origin = %q, want Origin", rec.Header().Get("Vary"))
+	}
+
+	// Empty config: pure pass-through, no CORS headers at all.
+	rec = do("", "http://localhost:5173", http.MethodGet)
+	for _, h := range []string{"Access-Control-Allow-Origin", "Vary"} {
+		if got := rec.Header().Get(h); got != "" {
+			t.Errorf("empty config set %s = %q, want unset", h, got)
+		}
+	}
+
+	// Preflight short-circuits with 204 and the echoed origin.
+	rec = do(list, "http://localhost:5173", http.MethodOptions)
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("preflight status = %d, want 204", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
+		t.Errorf("preflight Allow-Origin = %q, want the origin echoed", got)
+	}
+}
