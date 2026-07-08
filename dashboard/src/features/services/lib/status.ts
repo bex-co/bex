@@ -33,6 +33,19 @@ export function toServiceView(s: ServiceNode): ServiceView {
   };
 }
 
+/**
+ * Map the nullable `services` query result onto the normalized view list —
+ * the list-level projection (drop null holes, map each node), sealed here next
+ * to `toServiceView` so `useServices` stays thin (mirrors logs' `toLogLines`).
+ */
+export function toServiceViews(
+  nodes: ServicesQuery["services"] | undefined,
+): ServiceView[] {
+  return (nodes ?? [])
+    .filter((s): s is ServiceNode => s != null)
+    .map(toServiceView);
+}
+
 // Each operator phase maps to a status key + badge variant. Keyed on the
 // lower-cased phase so a change in the operator's casing can't silently fall
 // through to "unknown".

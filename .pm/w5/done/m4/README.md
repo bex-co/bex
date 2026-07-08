@@ -1,6 +1,6 @@
 # w5 · m4 — Services list + lifecycle actions, Render-consistent, wired to bex-api
 
-**Worker:** worker5 **Goal:** The dashboard home page renders the operator's real Apps from bex-api's `services` GraphQL query — using Render's `Service` field shapes and lifecycle operation names verbatim — and each row can be suspended / resumed / restarted, replacing the hardcoded `sampleServices`. **Status:** implemented — verified live against prod `api.bex.co` (screenshots in `.playwright-mcp/m4-*.png`); pending `/pm`-driven done-folder migration.
+**Worker:** worker5 **Goal:** The dashboard home page renders the operator's real Apps from bex-api's `services` GraphQL query — using Render's `Service` field shapes and lifecycle operation names verbatim — and each row can be suspended / resumed / restarted, replacing the hardcoded `sampleServices`. **Status:** done (2026-07-08) — verified live against prod `api.bex.co` (screenshots in `.playwright-mcp/m4-*.png`); t006 `/simplify` applied 2026-07-08.
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Loading / error / empty states for the list (skeleton rows, error card, "no services yet") — **DONE** | 40m | w5/m4/t002         |
 | t004 | Lifecycle row actions: `suspendService`/`resumeService`/`restartServer` mutations w/ confirm dialog, in-flight disable, poll `phase`/`suspended` until converged — **DONE** | 60m | w5/m4/t002         |
 | t005 | Verify live against prod `api.bex.co` (Kratos session); screenshot to `.playwright-mcp/` — **DONE** (`beancount-cms`, `eden-cms-v2`) | 30m | w5/m4/t003, w5/m4/t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                        | 30m | w5/m4/t005         |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                             | 30m | w5/m4/t005         |
 | t007 | Test coverage — meaningful tests for query mapping + list states + lifecycle actions — **DONE** (263 tests green) | 30m | w5/m4/t005         |
 
 ## Definition of done

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -40,7 +41,7 @@ export function HomePage() {
   const { services, loading, error, refetch } = useServices();
   const { pending, run } = useServiceLifecycle({ refetch });
 
-  const stats = computeStats(services);
+  const stats = useMemo(() => computeStats(services), [services]);
   const serviceStats = [
     { labelKey: "services.statTotal", value: stats.total },
     { labelKey: "services.statRunning", value: stats.running },

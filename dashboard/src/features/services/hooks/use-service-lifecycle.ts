@@ -7,6 +7,8 @@ import {
   RestartServerDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { sleep } from "@/common/lib/utils/time";
+import { deriveStatus } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 
 /** The action currently in flight for a given service id (or null). */
@@ -29,16 +31,15 @@ export interface UseServiceLifecycleResult {
   run: (action: LifecycleAction, service: ServiceView) => Promise<void>;
 }
 
-const delay = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
 // A service has converged once the observed state reflects the requested verb.
 // suspend/resume flip `suspended`; restart rolls the pods and lands back on
 // Running (the operator stamps a new template, Kubernetes rolls with no downtime).
+// "running" reuses the sealed derivation (`deriveStatus`) so the phase-casing
+// rule stays in lib/status.ts, not re-spelled here.
 const CONVERGED: Record<LifecycleAction, (s: ServiceView) => boolean> = {
   suspend: (s) => s.suspended,
   resume: (s) => !s.suspended,
-  restart: (s) => !s.suspended && s.phase.toLowerCase() === "running",
+  restart: (s) => deriveStatus(s).key === "running",
 };
 
 const SUCCESS_KEY: Record<LifecycleAction, string> = {
@@ -74,7 +75,7 @@ export function useServiceLifecycle(
     async (action: LifecycleAction, id: string) => {
       const done = CONVERGED[action];
       for (let i = 0; i < maxPolls; i++) {
-        await delay(pollIntervalMs);
+        await sleep(pollIntervalMs);
         const list = await refetch();
         const svc = list.find((s) => s.id === id);
         if (svc && done(svc)) return;

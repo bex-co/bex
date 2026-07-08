@@ -21,31 +21,27 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 
-// Suspend and restart are disruptive, so they confirm first; resume is a safe
-// recovery and runs immediately (matches Render's dashboard, which only guards
-// the destructive verbs).
-const CONFIRMS: Record<LifecycleAction, boolean> = {
-  suspend: true,
-  restart: true,
-  resume: false,
-};
-
 const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   suspend: "services.actionSuspend",
   resume: "services.actionResume",
   restart: "services.actionRestart",
 };
 
-const CONFIRM_TITLE: Record<LifecycleAction, keyof typeof en> = {
-  suspend: "services.confirmSuspendTitle",
-  restart: "services.confirmRestartTitle",
-  resume: "services.confirmSuspendTitle", // unused (resume never confirms)
-};
-
-const CONFIRM_BODY: Record<LifecycleAction, keyof typeof en> = {
-  suspend: "services.confirmSuspendBody",
-  restart: "services.confirmRestartBody",
-  resume: "services.confirmSuspendBody", // unused
+// Confirm copy per verb. Suspend and restart are disruptive, so they confirm
+// first (Render guards only its destructive verbs); resume is a safe recovery
+// and runs immediately — expressed by its *absence* from this table, not a dead
+// placeholder entry.
+const CONFIRM: Partial<
+  Record<LifecycleAction, { title: keyof typeof en; body: keyof typeof en }>
+> = {
+  suspend: {
+    title: "services.confirmSuspendTitle",
+    body: "services.confirmSuspendBody",
+  },
+  restart: {
+    title: "services.confirmRestartTitle",
+    body: "services.confirmRestartBody",
+  },
 };
 
 export interface ServiceRowActionsProps {
@@ -70,7 +66,7 @@ export function ServiceRowActions({
     : ["suspend", "restart"];
 
   function handleSelect(action: LifecycleAction) {
-    if (CONFIRMS[action]) {
+    if (CONFIRM[action]) {
       setConfirm(action);
     } else {
       onRun(action, service);
@@ -115,10 +111,10 @@ export function ServiceRowActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm && t(CONFIRM_TITLE[confirm], { name: service.name })}
+              {confirm && t(CONFIRM[confirm]!.title, { name: service.name })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirm && t(CONFIRM_BODY[confirm], { name: service.name })}
+              {confirm && t(CONFIRM[confirm]!.body, { name: service.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

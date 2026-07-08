@@ -5,12 +5,17 @@
 ## Milestones
 
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
-- [ ] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks) ← from `005` (t001 done)
-- [ ] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06
+- [ ] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks) ← from `005` (t001–t006 done, committed `aebbd43`; open: t007 live acceptance — prod `BEX_CP_DB_URI` still off)
+- [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
 - [ ] **m3** — Elastic substrate: bin-pack + autoscale (5 tasks) ← from `002`, `004` (001 done)
 - [ ] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003`
 - [ ] **m5** — Build & deploy from git, in-cluster (3 tasks) ← from `008`
 - [ ] **m7** — Prod hardening: network · secrets · images (5 tasks) ← from `010`
 - [x] **m8** — Instance tiers: one catalog, Render-shaped plan API, limits everywhere (6 tasks) ← from architecture discussion 2026-07-08 (metrics page's "No limit configured" gap; Render compute-plans ladder) — done 2026-07-08, moved to `done/m8/`
+
+## Inbox
+
+- `003.md` — Render custom-domains API over `App.spec.hosts[]` — candidate milestone; UI half is `w5/003`
+- `004.md` — Render scale API (`POST /v1/services/{id}/scale`) — candidate milestone; UI half is `w5/004`
 
 > **m6 (Multi-tenant isolation) removed 2026-07-07** — the plan leaned on vcluster-per-tenant, which is the wrong isolation model for bex (see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md)). If tenant isolation is re-scoped later, it must be namespace-tier → microVM, not per-tenant virtual control planes.

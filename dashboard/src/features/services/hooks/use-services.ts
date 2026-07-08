@@ -1,7 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ServicesDocument } from "@/graphql/definitions";
-import { toServiceView } from "@/features/services/lib/status";
+import { toServiceViews } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 
 export interface UseServicesResult {
@@ -23,15 +23,14 @@ export function useServices(): UseServicesResult {
     errorPolicy: "all",
   });
 
-  const services = (data?.services ?? [])
-    .filter((s) => s != null)
-    .map((s) => toServiceView(s!));
+  // Memoized on Apollo's `data` identity (stable between poll ticks / unrelated
+  // re-renders), so the mapped list keeps a stable identity and downstream
+  // `computeStats` doesn't recompute on every lifecycle-`pending` flip.
+  const services = useMemo(() => toServiceViews(data?.services), [data]);
 
   const refetchViews = useCallback(async () => {
     const res = await refetch();
-    return (res.data?.services ?? [])
-      .filter((s) => s != null)
-      .map((s) => toServiceView(s!));
+    return toServiceViews(res.data?.services);
   }, [refetch]);
 
   return { services, loading, error, refetch: refetchViews };
