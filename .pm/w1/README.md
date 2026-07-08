@@ -10,5 +10,6 @@
 - [ ] **m3** — Elastic substrate: bin-pack + autoscale (5 tasks) ← from `002`, `004` (001 done)
 - [ ] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003`
 - [ ] **m5** — Build & deploy from git, in-cluster (3 tasks) ← from `008`
-- [ ] **m6** — Multi-tenant isolation (4 tasks) ← from `006`
 - [ ] **m7** — Prod hardening: network · secrets · images (5 tasks) ← from `010`
+
+> **m6 (Multi-tenant isolation) removed 2026-07-07** — the plan leaned on vcluster-per-tenant, which is the wrong isolation model for bex (see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md)). If tenant isolation is re-scoped later, it must be namespace-tier → microVM, not per-tenant virtual control planes.
