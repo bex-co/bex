@@ -5,9 +5,9 @@ import type { en } from "@/i18n";
 
 // bex's subset of Render's service sidebar (docs .pm/w5/m5 "Render reference"):
 // an Overview landing (bex addition — Render's root lands on Events/deploys), the
-// Environment tab (env vars, w4/m6.5), and the Monitor-group Logs + Metrics items.
-// Events/Settings come later. `exact` keeps Overview from staying active on the
-// nested routes.
+// Environment tab (env vars, w4/m6.5), the Monitor-group Logs + Metrics items,
+// and Settings (Instance Type, w5/m7). Events comes later. `exact` keeps
+// Overview from staying active on the nested routes.
 interface ServiceNavItem {
   labelKey: keyof typeof en;
   to: string;
@@ -25,6 +25,11 @@ const ITEMS: ServiceNavItem[] = [
   {
     labelKey: "services.navMetrics",
     to: "/services/$serviceId/metrics",
+    exact: false,
+  },
+  {
+    labelKey: "services.navSettings",
+    to: "/services/$serviceId/settings",
     exact: false,
   },
 ];

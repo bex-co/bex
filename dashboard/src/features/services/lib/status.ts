@@ -29,6 +29,7 @@ export function toServiceView(s: ServiceNode): ServiceView {
     createdAt: s.createdAt ?? null,
     replicas: s.replicas ?? null,
     revision: s.revision ?? null,
+    plan: s.plan ?? null,
   };
 }
 

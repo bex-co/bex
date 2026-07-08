@@ -114,6 +114,49 @@ func (s *Service) List(ctx context.Context) ([]AppView, error) {
 	return out, nil
 }
 
+// InstanceType is the display-shaped projection of one lego/types/tiers
+// compute tier — the bex extension backing the dashboard's plan picker.
+// Render's own dashboard hardcodes its instance-type list (no public REST/MCP
+// equivalent exists to mirror byte-for-byte), so this is new surface, not a
+// captured-live shape; ID is Render's plan spelling (what SetPlan accepts),
+// matching the picker's other fields.
+type InstanceType struct {
+	ID     string
+	Name   string
+	CPU    string
+	Memory string
+}
+
+// InstanceTypes lists every tier in the shared compute catalog, in ladder
+// order — never a hardcoded copy (the ladder already existed in three such
+// copies before w1/m8 collapsed them; the dashboard must not become a fourth).
+func (s *Service) InstanceTypes(ctx context.Context) ([]InstanceType, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	ids := tiers.Compute.IDs()
+	out := make([]InstanceType, len(ids))
+	for i, id := range ids {
+		t, _ := tiers.Compute.ByID(id)
+		out[i] = InstanceType{ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU, Memory: t.Memory}
+	}
+	return out, nil
+}
+
+// tierDisplayName turns a hyphenated tier id into Render's display spelling,
+// e.g. "pro-plus" -> "Pro Plus" (matches the names captured live from
+// Render's plan picker: Free, Starter, Standard, Pro, Pro Plus, Pro Max, Pro Ultra).
+func tierDisplayName(id string) string {
+	words := strings.Split(id, "-")
+	for i, w := range words {
+		if w == "" {
+			continue
+		}
+		words[i] = strings.ToUpper(w[:1]) + w[1:]
+	}
+	return strings.Join(words, " ")
+}
+
 // Get returns one App, or core.ErrNotFound.
 func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {

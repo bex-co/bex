@@ -2,6 +2,9 @@
 # Render-shaped `Service` the `services` list returns (backend/internal/api/graphql.go).
 # GraphQL exposes the live URL as a flat `url` field (REST nests it under
 # serviceDetails.url); `phase`/`replicas`/`revision` are bex-native extras.
+# `plan` (w1/m8) is null for an untiered (bare-CR) App — the Settings tab's
+# Instance Type row renders an honest "not set" state for that case, not a
+# fake selection (backend/internal/apps/service.go's AppView.Plan doc comment).
 
 query Server($id: String!) {
   server(id: $id) {
@@ -15,5 +18,6 @@ query Server($id: String!) {
     phase
     replicas
     revision
+    plan
   }
 }

@@ -317,6 +317,74 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法删除 {key}",
     description: "Toast on a failed env-var delete",
   },
+  "services.navSettings": {
+    message: "设置",
+    description: "Service-detail nav item (settings tab)",
+  },
+  "services.settingsTitle": {
+    message: "设置",
+    description: "Settings tab card title",
+  },
+  "services.settingsDescription": {
+    message: "配置该服务的实例规格及其他设置。",
+    description: "Settings tab card description",
+  },
+  "services.settingsInstanceType": {
+    message: "实例类型",
+    description: "Settings tab row label for the App's current plan/tier",
+  },
+  "services.settingsNoInstanceType": {
+    message: "未设置实例类型",
+    description: "Settings tab state for an untiered (bare-CR) App",
+  },
+  "services.settingsUpdate": {
+    message: "更新",
+    description: "Settings tab link to the instance-type picker",
+  },
+  "services.planPickerTitle": {
+    message: "选择实例类型",
+    description: "Plan-picker page heading",
+  },
+  "services.planPickerFreeGroup": {
+    message: "免费",
+    description: "Plan-picker section label separating the Free tier from paid tiers",
+  },
+  "services.planPickerPaidGroup": {
+    message: "付费",
+    description: "Plan-picker section label for the paid tier ladder",
+  },
+  "services.planPickerCancel": {
+    message: "取消",
+    description: "Plan-picker footer button: discard the selection",
+  },
+  "services.planPickerSave": {
+    message: "保存更改",
+    description: "Plan-picker footer button: confirm the plan change",
+  },
+  "services.planPickerConfirmTitle": {
+    message: "将实例类型更改为 {name}？",
+    description: "Plan-change confirm dialog title",
+  },
+  "services.planPickerConfirmBody": {
+    message: "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
+    description: "Plan-change confirm dialog body",
+  },
+  "services.planPickerSuccess": {
+    message: "实例类型已更新为 {name}",
+    description: "Toast on a successful plan change",
+  },
+  "services.planPickerError": {
+    message: "无法更新实例类型，请重试。",
+    description: "Toast on a failed plan change",
+  },
+  "services.planPickerErrorTitle": {
+    message: "无法加载实例类型",
+    description: "Plan-picker error state title (instanceTypes query failed)",
+  },
+  "services.planPickerErrorBody": {
+    message: "对 bex-api 的请求失败。请检查网络连接后重试。",
+    description: "Plan-picker error state body",
+  },
 };
 
 export default zhServices;

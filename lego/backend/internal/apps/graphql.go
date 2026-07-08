@@ -71,6 +71,20 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// instanceTypeGQLType renders InstanceType — the plan picker's data source.
+// A bex extension (see InstanceType's doc comment): Render's dashboard has no
+// public instanceTypes query to mirror, so this is REST/MCP-free by design,
+// recorded in w5/m7's README rather than left silently asymmetric.
+var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "InstanceType",
+	Fields: graphql.Fields{
+		"id":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.ID })},
+		"name":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.Name })},
+		"cpu":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.CPU })},
+		"memory": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.Memory })},
+	},
+})
+
 // envVarGQLType renders the kernel's neutral core.EnvVar ({id,key,value}), the
 // object Render's dashboard nests under a service. bex has no separate id (the
 // key is unique within a service), so id == key; the keys-only list leaves value
@@ -129,6 +143,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Get(p.Context, p.Args["id"].(string))
 			},
+		},
+		"instanceTypes": &graphql.Field{ // bex extension backing the plan picker (see InstanceType)
+			Type:    graphql.NewList(instanceTypeGQLType),
+			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
 	}
 }

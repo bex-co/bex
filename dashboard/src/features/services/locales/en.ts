@@ -320,6 +320,75 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't remove {key}",
     description: "Toast on a failed env-var delete",
   },
+  "services.navSettings": {
+    message: "Settings",
+    description: "Service-detail nav item (settings tab)",
+  },
+  "services.settingsTitle": {
+    message: "Settings",
+    description: "Settings tab card title",
+  },
+  "services.settingsDescription": {
+    message: "Configure this service's instance size and other settings.",
+    description: "Settings tab card description",
+  },
+  "services.settingsInstanceType": {
+    message: "Instance Type",
+    description: "Settings tab row label for the App's current plan/tier",
+  },
+  "services.settingsNoInstanceType": {
+    message: "No instance type set",
+    description: "Settings tab state for an untiered (bare-CR) App",
+  },
+  "services.settingsUpdate": {
+    message: "Update",
+    description: "Settings tab link to the instance-type picker",
+  },
+  "services.planPickerTitle": {
+    message: "Pick an Instance Type",
+    description: "Plan-picker page heading",
+  },
+  "services.planPickerFreeGroup": {
+    message: "Free",
+    description: "Plan-picker section label separating the Free tier from paid tiers",
+  },
+  "services.planPickerPaidGroup": {
+    message: "Paid",
+    description: "Plan-picker section label for the paid tier ladder",
+  },
+  "services.planPickerCancel": {
+    message: "Cancel",
+    description: "Plan-picker footer button: discard the selection",
+  },
+  "services.planPickerSave": {
+    message: "Save Changes",
+    description: "Plan-picker footer button: confirm the plan change",
+  },
+  "services.planPickerConfirmTitle": {
+    message: "Change instance type to {name}?",
+    description: "Plan-change confirm dialog title",
+  },
+  "services.planPickerConfirmBody": {
+    message:
+      "The service resizes and rolls with no downtime — in-flight requests finish before old instances are replaced.",
+    description: "Plan-change confirm dialog body",
+  },
+  "services.planPickerSuccess": {
+    message: "Instance type updated to {name}",
+    description: "Toast on a successful plan change",
+  },
+  "services.planPickerError": {
+    message: "Couldn't update the instance type. Please try again.",
+    description: "Toast on a failed plan change",
+  },
+  "services.planPickerErrorTitle": {
+    message: "Couldn't load instance types",
+    description: "Plan-picker error state title (instanceTypes query failed)",
+  },
+  "services.planPickerErrorBody": {
+    message: "The request to bex-api failed. Check your connection and retry.",
+    description: "Plan-picker error state body",
+  },
 };
 
 export default enServices;

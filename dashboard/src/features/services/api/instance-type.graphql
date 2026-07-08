@@ -1,0 +1,25 @@
+# The instance-type picker's data source (backend/internal/apps: InstanceType,
+# Service.InstanceTypes, w5/m7). instanceTypes is a bex extension — Render's
+# dashboard hardcodes its own plan-picker list, with no public GraphQL/REST/MCP
+# equivalent to mirror byte-for-byte, so this is new surface documented as such
+# (see the resolver's doc comment), not a captured-live shape. Backed by the
+# shared lego/types/tiers catalog — never a second hardcoded ladder here.
+#
+# updateServicePlan (w1/m8) resizes the App's pod (new requests==limits) and
+# rolls it — the same restart-shaped cost as Render's own plan changes.
+
+query InstanceTypes {
+  instanceTypes {
+    id
+    name
+    cpu
+    memory
+  }
+}
+
+mutation UpdateServicePlan($id: String!, $plan: String!) {
+  updateServicePlan(id: $id, plan: $plan) {
+    id
+    plan
+  }
+}

@@ -2,8 +2,9 @@
 # `services` lists every App; `suspendService`/`resumeService`/`restartServer`
 # are Render's dashboard mutation names, each returning the updated Service.
 # `suspended` is Render's string enum ("suspended"/"not_suspended"), NOT a bool;
-# `phase`/`replicas`/`revision` are bex-native extras (a superset Render ignores).
-# GraphQL exposes the live URL as a flat `url` field (REST nests it under
+# `phase`/`replicas`/`revision`/`plan` are bex-native extras (a superset Render
+# ignores). `plan` (w1/m8) is null for an untiered (bare-CR) App. GraphQL
+# exposes the live URL as a flat `url` field (REST nests it under
 # serviceDetails.url — the two surfaces differ here by design).
 
 query Services {
@@ -18,6 +19,7 @@ query Services {
     phase
     replicas
     revision
+    plan
   }
 }
 

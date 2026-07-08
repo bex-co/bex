@@ -34,6 +34,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -377,5 +378,69 @@ func TestGraphQLUpdateServicePlan(t *testing.T) {
 		RequestString: `mutation { updateServicePlan(id: "web", plan: "gold") { plan } }`})
 	if len(res.Errors) == 0 {
 		t.Error("unknown plan should produce a GraphQL error")
+	}
+}
+
+// --- InstanceTypes (the plan picker's data source) ---
+
+func TestInstanceTypesListsTheSharedCatalogInLadderOrder(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+
+	types, err := svc.InstanceTypes(context.Background())
+	if err != nil {
+		t.Fatalf("InstanceTypes: %v", err)
+	}
+	if len(types) != len(tiers.Compute.IDs()) {
+		t.Fatalf("want %d tiers, got %d", len(tiers.Compute.IDs()), len(types))
+	}
+	// Spot-check the entry whose display name and Render id both diverge from
+	// its internal spec.tier spelling — the case tierDisplayName exists for.
+	var proPlus *InstanceType
+	for i := range types {
+		if types[i].ID == "pro_plus" {
+			proPlus = &types[i]
+		}
+	}
+	if proPlus == nil {
+		t.Fatal("pro_plus not found in InstanceTypes()")
+	}
+	if proPlus.Name != "Pro Plus" || proPlus.CPU != "4" || proPlus.Memory != "8Gi" {
+		t.Errorf("pro_plus = %+v, want Name=Pro Plus CPU=4 Memory=8Gi", *proPlus)
+	}
+}
+
+func TestTierDisplayName(t *testing.T) {
+	cases := map[string]string{
+		"free": "Free", "starter": "Starter", "standard": "Standard",
+		"pro": "Pro", "pro-plus": "Pro Plus", "pro-max": "Pro Max", "pro-ultra": "Pro Ultra",
+	}
+	for id, want := range cases {
+		if got := tierDisplayName(id); got != want {
+			t.Errorf("tierDisplayName(%q) = %q, want %q", id, got, want)
+		}
+	}
+}
+
+func TestGraphQLInstanceTypes(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ instanceTypes { id name cpu memory } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	list := res.Data.(map[string]any)["instanceTypes"].([]any)
+	if len(list) != len(tiers.Compute.IDs()) {
+		t.Fatalf("want %d instance types, got %d", len(tiers.Compute.IDs()), len(list))
+	}
+	first := list[0].(map[string]any)
+	if first["id"] != "free" || first["name"] != "Free" {
+		t.Errorf("first entry = %+v, want id=free name=Free (ladder order)", first)
 	}
 }

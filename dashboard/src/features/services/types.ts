@@ -17,6 +17,8 @@ export interface ServiceView {
   createdAt: string | null;
   replicas: number | null;
   revision: string | null;
+  /** Render's plan spelling (e.g. "pro_plus"), or null for an untiered App. */
+  plan: string | null;
 }
 
 /** The lifecycle verbs the row exposes, named after bex-api's Render mutations. */

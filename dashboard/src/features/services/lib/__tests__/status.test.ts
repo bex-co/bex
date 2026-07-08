@@ -23,6 +23,7 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     phase: "Running",
     replicas: 1,
     revision: "abc123",
+    plan: null,
     ...overrides,
   };
 }
@@ -37,6 +38,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     createdAt: "2026-01-01T00:00:00Z",
     replicas: 1,
     revision: "abc123",
+    plan: null,
     ...overrides,
   };
 }
@@ -62,7 +64,12 @@ describe("toServiceView", () => {
       createdAt: "2026-01-01T00:00:00Z",
       replicas: 1,
       revision: "abc123",
+      plan: null,
     });
+  });
+
+  it("carries the plan through when the wire Service has one", () => {
+    expect(toServiceView(node({ plan: "pro_plus" })).plan).toBe("pro_plus");
   });
 
   it("falls back to id for a missing name and null for a missing url", () => {
