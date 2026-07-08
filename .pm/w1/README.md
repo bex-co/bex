@@ -16,7 +16,6 @@
 - [ ] **m9** — Tenant onboarding: real workspaces + OpenFGA enforced in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (m2 deferrals; prod authz is allow-all)
 - [ ] **m10** — OpenBao prod wiring: env-vars live in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (docs/secrets.md "Prod deploy path")
 - [ ] **m11** — Render custom-domains API over `App.spec.hosts[]` (5 tasks) ← promoted from `003` 2026-07-08
-- [ ] **m12** — Render scale API (`POST /v1/services/{id}/scale`) (5 tasks) ← promoted from `004` 2026-07-08
 - [ ] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08
 
 ## Inbox
@@ -25,6 +24,6 @@
 - `006.md` — Triage 36 Dependabot findings (2 critical, 15 high) reported 2026-07-08
 - `007.md` — Key Value (Valkey/Redis) managed store: `KeyValue` CR + reconciler (mechanism half; surfaces follow in w2/w5) — from `/pm-brainstorm for w2` 2026-07-08
 
-> `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`.
+> `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`. m12 was subsequently relocated to **w2** (done: `w2/done/m12/`).
 
 > **m6 (Multi-tenant isolation) removed 2026-07-07** — the plan leaned on vcluster-per-tenant, which is the wrong isolation model for bex (see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md)). If tenant isolation is re-scoped later, it must be namespace-tier → microVM, not per-tenant virtual control planes.

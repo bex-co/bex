@@ -36,6 +36,12 @@ type patchServiceRequest struct {
 	} `json:"serviceDetails"`
 }
 
+// scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
+// running instance count. numInstances < 1 or > 100 is core.ErrBadRequest.
+type scaleRequest struct {
+	NumInstances int32 `json:"numInstances"`
+}
+
 // RegisterREST mounts the App-lifecycle routes — Render-public-API compatible.
 // Paths, the {service, cursor} list envelope, the string suspended enum, and the
 // verb status codes (suspend/resume 202, restart 200) all match Render's OpenAPI
@@ -88,6 +94,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderService(app))
 	}
+	// scale handles POST /v1/services/{id}/scale — sets the running instance
+	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
+	scale := func(w http.ResponseWriter, r *http.Request) {
+		var req scaleRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		app, err := s.Scale(r.Context(), r.PathValue("id"), req.NumInstances)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusAccepted, toRenderService(app)) // Render: scale => 202
+	}
 
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
@@ -97,5 +118,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
+		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
 	}
 }

@@ -40,6 +40,12 @@ const (
 	DomainIDPrefix = "cdm"
 )
 
+// MaxReplicas is the shared upper bound on an App's replica count, enforced by
+// both the create path (store/api.go) and the apps scale verb so the two can't
+// disagree about what a valid App is. The lower bounds legitimately differ
+// (create treats 0 as "default 1"; scale rejects 0 — see apps.Service.Scale).
+const MaxReplicas = 100
+
 // newID mints a typed opaque id: "<prefix>-<20-char xid>".
 func newID(prefix string) string { return prefix + "-" + xid.New().String() }
 
@@ -121,6 +127,10 @@ type Store interface {
 	// changes on store-managed Apps, same row-first rationale as
 	// SetAppSuspended.
 	SetAppTier(ctx context.Context, id string, tier string) error
+	// SetAppReplicas updates the row's replica count — the single write path
+	// for the manual-scale verb on store-managed Apps, same row-first
+	// rationale as SetAppSuspended (the projector owns spec.replicas).
+	SetAppReplicas(ctx context.Context, id string, replicas int32) error
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -303,6 +313,22 @@ func (s *PGStore) SetAppTier(ctx context.Context, id string, tier string) error 
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET tier = $2, updated_at = now() WHERE id = $1`,
 		id, tier)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetAppReplicas updates the row's replica count (the apps feature's scale
+// verb validates the bound before calling this). The projector carries it
+// onto spec.replicas the same way it carries suspended/tier.
+func (s *PGStore) SetAppReplicas(ctx context.Context, id string, replicas int32) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET replicas = $2, updated_at = now() WHERE id = $1`,
+		id, replicas)
 	if err != nil {
 		return classify("app", err)
 	}

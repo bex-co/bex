@@ -239,7 +239,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"list_services", "get_service", "list_logs", "get_metrics",
-		"restart_service", "suspend_service", "resume_service",
+		"restart_service", "suspend_service", "resume_service", "scale_service",
 		"create_api_key", "list_api_keys", "revoke_api_key",
 		"list_postgres_instances", "get_postgres", "create_postgres",
 	} {
@@ -264,6 +264,24 @@ func TestMCP_SuspendDelegatesToCore(t *testing.T) {
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a)
 	if !a.Spec.Suspended || a.Spec.Replicas != 2 {
 		t.Errorf("suspend_service must suspend and keep replicas: %+v", a.Spec)
+	}
+}
+
+func TestMCP_ScaleDelegatesToCore(t *testing.T) {
+	cl := fakeClient(sampleApp("web"), podFor("web", "web-1")) // sampleApp starts at 2
+	srv := NewServer(&core.Base{Client: cl, Namespace: "default"}, Deps{})
+	cs := mcpSession(t, srv)
+
+	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "scale_service", Arguments: map[string]any{"serviceId": "web", "numInstances": 3},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("scale_service: %v isErr=%v", err, res.IsError)
+	}
+	var a appv1alpha1.App
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a)
+	if a.Spec.Replicas != 3 {
+		t.Errorf("scale_service must set spec.replicas to 3, got %d", a.Spec.Replicas)
 	}
 }
 

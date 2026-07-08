@@ -115,6 +115,10 @@ type recordingStore struct {
 		id   string
 		tier string
 	}
+	replicasCalls []struct {
+		id       string
+		replicas int32
+	}
 	err error
 }
 
@@ -137,6 +141,17 @@ func (r *recordingStore) SetAppTier(_ context.Context, id string, tier string) e
 		id   string
 		tier string
 	}{id, tier})
+	return nil
+}
+
+func (r *recordingStore) SetAppReplicas(_ context.Context, id string, replicas int32) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.replicasCalls = append(r.replicasCalls, struct {
+		id       string
+		replicas int32
+	}{id, replicas})
 	return nil
 }
 
@@ -272,6 +287,87 @@ func TestSetPlanRowWriteFailureLeavesCRUntouched(t *testing.T) {
 	}
 }
 
+// --- Scale (manual instance-count changes) ---
+
+func TestScaleSetsReplicas(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web")) // sampleApp starts at 2
+
+	v, err := svc.Scale(context.Background(), "web", 3)
+	if err != nil {
+		t.Fatalf("Scale: %v", err)
+	}
+	if v.Replicas != 3 {
+		t.Errorf("view Replicas = %d, want 3", v.Replicas)
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
+		t.Errorf("spec.replicas = %d, want 3", got)
+	}
+
+	// 3 -> 1 converges back down (the DoD's 1->3->1 round trip).
+	if _, err := svc.Scale(context.Background(), "web", 1); err != nil {
+		t.Fatalf("Scale down: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 1 {
+		t.Errorf("spec.replicas = %d, want 1 after scale-down", got)
+	}
+}
+
+func TestScaleOutOfRangeIsBadRequestAndNoOp(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+
+	for _, n := range []int32{0, -1, 101} {
+		if _, err := svc.Scale(context.Background(), "web", n); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("Scale(%d) should be core.ErrBadRequest, got %v", n, err)
+		}
+	}
+	// sampleApp's original count must be untouched by any rejected call.
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 2 {
+		t.Errorf("a rejected scale must not touch spec.replicas, got %d", got)
+	}
+}
+
+func TestScaleManagedAppWritesRowThenCR(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.Scale(context.Background(), "web", 4); err != nil {
+		t.Fatalf("Scale: %v", err)
+	}
+	if len(rec.replicasCalls) != 1 || rec.replicasCalls[0].id != "srv-1" || rec.replicasCalls[0].replicas != 4 {
+		t.Fatalf("want row write [srv-1 4], got %v", rec.replicasCalls)
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 4 {
+		t.Errorf("CR spec.replicas = %d, want 4", got)
+	}
+}
+
+func TestScaleUnmanagedAppSkipsStore(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, sampleApp("hand"))
+
+	if _, err := svc.Scale(context.Background(), "hand", 5); err != nil {
+		t.Fatalf("Scale: %v", err)
+	}
+	if len(rec.replicasCalls) != 0 {
+		t.Fatalf("unmanaged app must not touch the store, got %v", rec.replicasCalls)
+	}
+	if got := getApp(t, cl, "hand").Spec.Replicas; got != 5 {
+		t.Errorf("CR spec.replicas = %d, want 5", got)
+	}
+}
+
+func TestScaleRowWriteFailureLeavesCRUntouched(t *testing.T) {
+	rec := &recordingStore{err: errors.New("db down")}
+	svc, cl := newService(rec, managedApp("web", "srv-1")) // starts at 2
+
+	if _, err := svc.Scale(context.Background(), "web", 7); err == nil {
+		t.Fatal("want error when the row write fails")
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 2 {
+		t.Errorf("spec.replicas must be untouched when the row write failed, got %d", got)
+	}
+}
+
 func TestViewOmitsPlanForEmptyOrUnknownTier(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("untiered"))
 	v, err := svc.Get(context.Background(), "untiered")
@@ -350,6 +446,70 @@ func TestRESTPatchServicePlan(t *testing.T) {
 	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{}`)))
 	if rec.Code != http.StatusOK {
 		t.Errorf("PATCH with no plan field => 200 (no-op), got %d", rec.Code)
+	}
+}
+
+func TestRESTScaleService(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	// scale => 202 with numInstances honored (Render's scale status code).
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":3}`)))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("scale => 202, got %d: %s", rec.Code, rec.Body)
+	}
+	var out renderService
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Replicas != 3 {
+		t.Errorf("replicas = %d, want 3", out.Replicas)
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
+		t.Errorf("spec.replicas = %d, want 3", got)
+	}
+
+	// Out-of-range numInstances => 400, and it must not change anything.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":0}`)))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("numInstances 0 => 400, got %d", rec.Code)
+	}
+	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
+		t.Errorf("a rejected scale must leave spec.replicas at 3, got %d", got)
+	}
+}
+
+func TestGraphQLScaleService(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { scaleService(id: "web", numInstances: 3) { replicas } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["scaleService"].(map[string]any)["replicas"]
+	if got != 3 {
+		t.Errorf("replicas = %v, want 3", got)
+	}
+	if r := getApp(t, cl, "web").Spec.Replicas; r != 3 {
+		t.Errorf("spec.replicas = %d, want 3", r)
+	}
+
+	// Out-of-range surfaces as a GraphQL error, not a silent no-op.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { scaleService(id: "web", numInstances: 0) { replicas } }`})
+	if len(res.Errors) == 0 {
+		t.Error("out-of-range numInstances should produce a GraphQL error")
 	}
 }
 

@@ -175,5 +175,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},
+		// scaleService: Render's manual-scaling verb. numInstances mirrors the
+		// REST scale body field; out-of-range is a GraphQL error (core.ErrBadRequest).
+		"scaleService": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"numInstances": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Scale(p.Context, p.Args["id"].(string), int32(p.Args["numInstances"].(int)))
+			},
+		},
 	}
 }

@@ -35,7 +35,7 @@ The operator copies the value to the pod template annotation `app.bex.co/restart
 
 The operator scales the owned Deployment to **0 replicas** and sets `status.phase: Hibernated`. Everything else stays: the Service, the Ingress, the hostname, and the TLS secrets — cert renewals keep working while asleep, because cert-manager's HTTP-01 solver runs its own challenge pods and doesn't need the app. Requests to the host return an error page from the edge until resume (a "sleeping, click to wake" page is future work, see below).
 
-`spec.replicas` is untouched — it keeps meaning "how many when running", so resume knows what to restore.
+`spec.replicas` is untouched — it keeps meaning "how many when running", so resume knows what to restore. The manual-**scale** verb (`POST /v1/services/{id}/scale`, `{numInstances}`; the first verb built on this precedent — see [bex-api.md](bex-api.md)) writes exactly this field the same row-first way, and suspend still wins: the operator's `effectiveReplicas` forces 0 while `suspended`, so scaling a suspended App takes visible effect on resume.
 
 ### resume — `spec.suspended: false` (or field removed)
 

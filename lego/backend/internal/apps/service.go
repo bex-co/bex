@@ -53,6 +53,7 @@ type Service struct {
 type IntentStore interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
+	SetAppReplicas(ctx context.Context, id string, replicas int32) error
 }
 
 // AppView is the neutral, bex-native projection of an App — spec intent +
@@ -215,6 +216,31 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	return s.writeThroughStore(ctx, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
+}
+
+// Scale sets the App's desired running instance count (Render's manual-scaling
+// verb; the REST body field is numInstances). It writes spec.replicas the same
+// row-first way as Suspend/SetPlan — the projector owns the field. The count is
+// what the operator runs when the App is active: suspend still wins (it forces
+// 0 in the operator's effectiveReplicas without rewriting spec.replicas), so
+// scaling a suspended App takes visible effect on resume. This is the
+// degenerate, human-driven case of m3 (bin-pack/autoscale); the field
+// semantics settled here must stay compatible with it.
+//
+// The count must be 1..store.MaxReplicas (the shared upper bound the create
+// path also enforces). 0 is rejected, not scale-to-zero: today the operator
+// maps spec.replicas 0 to 1 (the default), so 0 is ambiguous — scale-to-zero
+// (m4) owns redefining that, and will keep this 1-based verb valid.
+func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if replicas < 1 || replicas > store.MaxReplicas {
+		return AppView{}, fmt.Errorf("%w: numInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	return s.writeThroughStore(ctx, name,
+		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
+		func(a *appv1alpha1.App) { a.Spec.Replicas = replicas })
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.

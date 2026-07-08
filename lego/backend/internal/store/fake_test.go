@@ -186,3 +186,15 @@ func (m *memStore) SetAppTier(_ context.Context, id string, tier string) error {
 	m.apps[id] = a
 	return nil
 }
+
+func (m *memStore) SetAppReplicas(_ context.Context, id string, replicas int32) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	a.Replicas = replicas
+	m.apps[id] = a
+	return nil
+}

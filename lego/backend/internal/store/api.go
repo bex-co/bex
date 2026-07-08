@@ -201,8 +201,8 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 	if req.Port == 0 {
 		req.Port = 3000
 	}
-	if req.Replicas < 0 || req.Replicas > 100 {
-		return App{}, fmt.Errorf("%w: replicas must be 0-100", ErrInvalid)
+	if req.Replicas < 0 || req.Replicas > MaxReplicas {
+		return App{}, fmt.Errorf("%w: replicas must be 0-%d", ErrInvalid, MaxReplicas)
 	}
 	if req.Replicas == 0 {
 		req.Replicas = 1

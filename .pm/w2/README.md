@@ -10,6 +10,7 @@
 - [ ] **m4** — Render-shaped service create & delete (`POST /v1/services` · `create_web_service`) (6 tasks) ← from `/pm-brainstorm for w2` 2026-07-08
 - [ ] **m5** — Deploy history + trigger (`list_deploys` · `get_deploy` · `POST /deploys`) (7 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, needs w1/m2
 - [ ] **m6** — MCP `query_render_postgres` — read-only SQL for agents (5 tasks) ← from `/pm-brainstorm for w2` 2026-07-08
+- [x] **m12** — Render scale API (`POST /v1/services/{id}/scale`) (5 tasks) ← relocated from w1 2026-07-08
 
 ## Inbox
 

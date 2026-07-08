@@ -50,6 +50,7 @@ Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the 
 | `POST /v1/services/{id}/restart` | `spec.restartedAt = now`       | 200    |
 | `POST /v1/services/{id}/suspend` | `spec.suspended = true`        | 202    |
 | `POST /v1/services/{id}/resume`  | `spec.suspended = false`       | 202    |
+| `POST /v1/services/{id}/scale`   | `spec.replicas = numInstances` | 202    |
 
 Verbs return the updated service object (the patch is accepted; the operator converges asynchronously — poll `GET` for `suspended`/`phase`). The service object carries Render's fields (`id`, `name`, `type: "web_service"`, `suspended`, `dashboardUrl`, `createdAt`, `serviceDetails.url`) plus bex extras (`phase`, `replicas`, `revision`) — a superset Render clients safely ignore. bex has no build plans, regions or disks, so those Render fields are omitted.
 
@@ -60,7 +61,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 ## GraphQL (Render dashboard compatible)
 
-`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extension `updateServicePlan(id, plan)`; type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
+`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `updateServicePlan(id, plan)` and `scaleService(id, numInstances)`; type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
 
 ```sh
 curl -X POST https://api.bex.co/graphql \
@@ -122,6 +123,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `get_service` | `{serviceId}` | `Get` | `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
+| `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `list_logs` | `{resource: [id, ...], type?, text?, startTime?, endTime?, limit?}` | `QueryLogs` | `{logs: [{timestamp, message, labels}, ...]}` |
 | `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 | `list_postgres_instances` | — | `ListPostgres` | `{postgres: [postgres, ...]}` |

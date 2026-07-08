@@ -47,6 +47,13 @@ type updatePlanArgs struct {
 	Plan      string `json:"plan" jsonschema:"the new instance plan, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra"`
 }
 
+// scaleArgs is scale_service's input — the desired running instance count,
+// keyed on numInstances like Render's REST/GraphQL surfaces.
+type scaleArgs struct {
+	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	NumInstances int32  `json:"numInstances" jsonschema:"the desired number of running instances (1-100)"`
+}
+
 // RegisterMCP adds the service tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -85,6 +92,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetPlan(ctx, in.ServiceID, in.Plan)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "scale_service",
+		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Scale(ctx, in.ServiceID, in.NumInstances)
 		if err != nil {
 			return nil, renderService{}, err
 		}
