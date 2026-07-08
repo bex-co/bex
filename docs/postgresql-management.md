@@ -1,6 +1,6 @@
 # ADR: managed PostgreSQL for tenants (CNPG, plans, internal/external URLs)
 
-**Status:** proposed (MVP design, not implemented). The CloudNativePG (CNPG) operator and the control-plane's own DB `bex-db` already run on the cluster; this ADR designs the _tenant-facing_ managed-Postgres product on top of them. Grounded in a live study of Render Postgres (create → connect → delete driven through the dashboard).
+**Status:** accepted and implemented — the `Database` CRD (`lego/types/v1alpha1/database_types.go`), the CNPG-projecting controller (`lego/operator/internal/controller/database_controller.go`), the `postgres` tier family (`lego/types/tiers/tiers.yaml`), and the bex-api surface (`lego/backend/internal/postgres/`, [bex-api.md](bex-api.md#managed-postgres-render-v1postgres-compatible)) all ship. The CloudNativePG (CNPG) operator and the control-plane's own DB `bex-db` run on the cluster. Grounded in a live study of Render Postgres (create → connect → delete driven through the dashboard).
 
 ## Context
 

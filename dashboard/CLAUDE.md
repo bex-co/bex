@@ -9,8 +9,13 @@ src/
 ├── routes/                # File-based routes (TanStack Router)
 │   ├── index.tsx           # Services list — live bex-api `services` query + lifecycle actions (w5/m4)
 │   ├── auth.{login,sign-up,forgot-password,reset-password,logout}.tsx
-│   └── settings.tsx        # account settings (Kratos settings flow)
+│   ├── services.$serviceId.tsx            # service-detail shell + tab nav, with child tabs:
+│   │     services.$serviceId.{index,env,logs,metrics,plan,settings}.tsx
+│   ├── settings.tsx        # account settings (Kratos settings flow)
+│   └── $.tsx               # catch-all 404
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
+├── features/services/       # service list + detail tabs (overview/env/plan/settings), lifecycle actions
+├── features/logs/           # live logs page (query + follow) over bex-api
 ├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
 ├── features/i18n/           # language-switcher component
 ├── i18n/                    # i18next core: config, init, detect-language, resource aggregation

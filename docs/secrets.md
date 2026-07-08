@@ -40,7 +40,7 @@ No shared token. OpenBao's chart enables `server.authDelegator` by default, gran
 
 - enables the `kubernetes` auth method,
 - writes a policy (`tenants-rw`) granting `create`/`read`/`update`/`delete`/`list` on `tenants/*` and **nothing else** — no `sys/*`, no other mount, so a compromised bex-api pod can't read seal status, re-key, or touch any other tenant of the store (there is only one, but the point generalizes),
-- binds a role `bex-api` to that policy, scoped to ServiceAccount `bex-api` in namespace `bex-system` (the same ServiceAccount [operator/config/api/rbac.yaml](../operator/config/api/rbac.yaml) already defines).
+- binds a role `bex-api` to that policy, scoped to ServiceAccount `bex-api` in namespace `bex-system` (the same ServiceAccount [lego/operator/config/api/rbac.yaml](../lego/operator/config/api/rbac.yaml) already defines).
 
 This is the same shape as Hydra `client_credentials` or the OpenFGA preshared key: a machine identity, minimal scope, no human password anywhere in the loop.
 
@@ -88,7 +88,7 @@ Verified end-to-end on the mock cluster by [scripts/secrets-verify.sh](../script
 
 ## Prod deploy path
 
-Not wired into `deploy.yml` this milestone (the DoD is local-mock-cluster verification only) — this is the intended path for w4/m6 or a follow-up task to implement:
+Partially wired: the app side is live — the prod bex-api Deployment sets `BEX_OPENBAO_URL=http://openbao.secrets.svc:8200` (`lego/operator/config/api/deployment.yaml`), so a deployed bex-api serves the env-vars verbs against OpenBao. The CI/unseal side is **not** wired into `deploy.yml` yet — that remaining path:
 
 1. First deploy against a real cluster: run `scripts/bao-init.sh` once, by hand, against the prod kubeconfig. It generates the unseal keys + root token and writes them into the operator's local `.env`.
 2. `scripts/gh-secrets.sh` pushes `BAO_UNSEAL_KEY_1`/`BAO_UNSEAL_KEY_2`/`BAO_UNSEAL_KEY_3`/`BAO_ROOT_TOKEN` into this repo's GitHub Actions secrets (add them to that script's key list alongside the `KRATOS_*`/`HYDRA_*`/`OPENFGA_*` keys).
@@ -107,4 +107,4 @@ Not wired into `deploy.yml` this milestone (the DoD is local-mock-cluster verifi
 - Once w4/m6 wires product usage, bex-api becomes hard-dependent on OpenBao for any credential-touching verb — an outage or sealed state should 503 that verb, mirroring the Hydra fail-closed precedent in [auth.md](auth.md).
 - Single-node raft locally, `replicas: 1` — no quorum, no automated snapshot backup yet. **OpenBao must join the w1/m7 backup/HA work** before real tenant credentials live in it; losing the single node loses everything (same caveat `kratos-db`/`hydra-db` carry today).
 - Root token + unseal keys are a manual, high-trust bootstrap step; rotating the root token or re-keying the Shamir shares is a manual runbook not yet built.
-- Prod DNS/CI wiring (above) is deliberately deferred — the store exists and is verified locally, but nothing outside this milestone's scripts talks to it yet.
+- CI wiring (init/unseal in `deploy.yml`, unseal keys in GitHub secrets) is deliberately deferred — the store is verified locally and prod bex-api already points at it (`BEX_OPENBAO_URL` in the api Deployment), but until `bao-init.sh`/`bao-k8s-auth.sh` run against prod, the prod instance stays uninitialized and the env-vars verbs 503 there.

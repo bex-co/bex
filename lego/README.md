@@ -17,11 +17,11 @@ A Go workspace (`go.work`) of three modules. The dependency arrows point **one w
 | --- | --- | --- | --- |
 | **types/** | `github.com/bex-co/bex/lego/types` | the **contract** — `App`/`Database` CRD Go types (`app.bex.co/v1alpha1`) | nothing (leaf) |
 | **operator/** | `…/lego/operator` | **mechanism** — the manager reconciles `App` CRs → Deployment/Service/Ingress (+TLS). No DB, no business logic. | `types/` |
-| **backend/** | `…/lego/backend` | **business logic** — **bex-api**: the Render REST/GraphQL/MCP surface (:8090) + OpenFGA authz + API-key auth + metrics. | `types/` |
+| **backend/** | `…/lego/backend` | **business logic** — **bex-api**: the Render REST/GraphQL/MCP surface (:8090) + OpenFGA authz + API-key auth + metrics + the opt-in control-plane store. | `types/` |
 
 `types/` is a struct definition, not an API surface — it's the shape both layers read and write, so it's the only thing they share. That boundary is compiler-enforced: `operator/go.mod` carries none of the backend's deps (graphql/mcp), so the operator physically cannot compile against backend code.
 
-> The Postgres **source of truth** (the "control plane" — tenants/apps/domains projected into App CRs) is **planned, not built** ([`../docs/control-plane.md`](../docs/control-plane.md)). When it lands it joins the `backend/` module; today `backend/` is bex-api alone.
+> The Postgres **source of truth** (the "control plane" — tenants/apps/domains projected into App CRs) is **built into `backend/`** as `internal/store/`, opt-in: the api binary runs it when `BEX_CP_DB_URI` is set ([`../docs/control-plane.md`](../docs/control-plane.md)). Unset (today's prod default), `backend/` serves bex-api alone.
 
 ## One image, two binaries
 

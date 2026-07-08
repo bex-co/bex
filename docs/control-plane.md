@@ -1,19 +1,19 @@
 # bex control plane (source of truth) vs. operator (mechanism)
 
-> **Status: planned direction, mostly not built yet.** Today there is **no Postgres source of truth** — you `kubectl apply` an `App` CR, the **operator** reconciles it, and the only store is the app cluster's **etcd**. This doc describes where bex is going and why, so the boundary is clear before the rest of the code exists. **The first seed now exists:** [bex-api.md](bex-api.md) — a bearer-authed REST + GraphQL service that writes App-spec intent (restart/suspend/resume) exactly as this doc prescribes (control plane → App CR → operator). Still no tenants, no auth beyond one token, no Postgres.
+> **Status: built (opt-in), not yet the default path.** The Postgres source of truth exists in `lego/backend/internal/store/` — schema migrations (`tenants`/`apps`/`domains`), a reconciler that projects `apps` rows into `App` CRs, and an internal tenant API on `:8091` — running inside the bex-api binary when `BEX_CP_DB_URI` is set ([bex-api.md](bex-api.md)). Prod does not set it yet, so today's default path is still direct: you `kubectl apply` an `App` CR (or call bex-api's verbs), the **operator** reconciles it, and the store is the app cluster's **etcd**. Auth is real (Hydra API keys + Kratos sessions + OpenFGA — [auth.md](auth.md)); tenant onboarding on top of the store is the open piece.
 
-> **"control plane" is overloaded — three distinct things.** (1) The **bex operator** — a pod that _executes_ deploys (reconciles `App` CRs → Deployment/Service/Ingress); a **client** of the apiserver, runs in-cluster, never on your laptop. (2) The **control-plane node** (apiserver/etcd/scheduler) — the _cluster's_ own master. (3) The **bex control plane** _(planned)_ — the subject of this doc: a Postgres-backed service that _decides_ intent (tenants/apps/domains + business logic) and writes the `App` CRs the operator executes. Today (3) exists only as the [bex-api](bex-api.md) seed: you `kubectl apply` App CRs directly or call its lifecycle verbs.
+> **"control plane" is overloaded — three distinct things.** (1) The **bex operator** — a pod that _executes_ deploys (reconciles `App` CRs → Deployment/Service/Ingress); a **client** of the apiserver, runs in-cluster, never on your laptop. (2) The **control-plane node** (apiserver/etcd/scheduler) — the _cluster's_ own master. (3) The **bex control plane** — the subject of this doc: a Postgres-backed service that _decides_ intent (tenants/apps/domains + business logic) and writes the `App` CRs the operator executes. (3) is built into [bex-api](bex-api.md) as an opt-in (`BEX_CP_DB_URI`); with it off — today's prod default — you `kubectl apply` App CRs directly or call bex-api's lifecycle verbs.
 
 bex's Go layer splits into **two collaborating components** — keep them distinct:
 
-|  | **bex control plane** (planned) | **bex operator** (exists) |
+|  | **bex control plane** (built, opt-in) | **bex operator** (exists) |
 | --- | --- | --- |
 | role | **policy / intent** — business logic + the source of truth | **mechanism** — make reality match intent |
 | owns | tenants, apps, domains, plans/billing, quotas, auth | `App` CR → `Deployment` + `Service` + `Ingress` (+TLS) |
 | store | **Postgres** (durable, queryable, backed up) | **none** — it's a k8s controller; its "store" is the API/etcd |
 | interface | an API / web UI for users | watches `App` CRs; writes their `status` |
 | decides | _what should exist & who's allowed_ | _how to run it_ (rollout, health-gate, idle-hibernate) |
-| code | a Go service (`lego/backend/`, joins bex-api) | `lego/operator/internal/controller` (kubebuilder) |
+| code | `lego/backend/internal/store` (in the bex-api binary) | `lego/operator/internal/controller` (kubebuilder) |
 
 **Rule of thumb:** business/product logic lives in the **control plane**; the operator stays a thin, idempotent, **CR-driven** reconciler with **no DB** and no policy.
 
@@ -101,5 +101,5 @@ The control plane reconciles these rows into `App` CRs (e.g. an `apps` row + its
 
 ## What's built vs. planned
 
-- **Built:** the `App` CRD + operator (reconcile → Deployment/Service/Ingress/TLS), GitOps platform (Traefik, cert-manager, Zot, Argo), the local CAPD mock → Hetzner CAPH.
-- **Planned (this doc):** the Postgres-backed control plane (service + schema + projection to CRs), tenant/domain/billing logic, the product API/UI. Until then: `kubectl apply` App CRs directly; etcd is the store; snapshot etcd off-node for interim durability.
+- **Built:** the `App` CRD + operator (reconcile → Deployment/Service/Ingress/TLS), GitOps platform (Traefik, cert-manager, Zot, Argo), the local CAPD mock → Hetzner CAPH, the product API (bex-api: REST/GraphQL/MCP, auth, logs/metrics, env vars, managed Postgres), the dashboard, and the Postgres control plane itself (`lego/backend/internal/store/`: schema + tenant/domain rows + projection to CRs, opt-in via `BEX_CP_DB_URI`).
+- **Planned:** flipping the control plane on in prod (today `BEX_CP_DB_URI` is unset there — etcd is still the effective store; snapshot etcd off-node for interim durability, [etcd-backup-restore.md](etcd-backup-restore.md)), tenant onboarding, billing logic.

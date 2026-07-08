@@ -74,7 +74,9 @@ type AppSpec struct {
 	// +optional
 	EnvFromSecret string `json:"envFromSecret,omitempty"`
 
-	// HealthCheckPath polled for 2xx before traffic is shifted to a new revision.
+	// HealthCheckPath is the HTTP path intended for revision health checks.
+	// Declared for the bex.yml/Render contract; the operator does not read it
+	// yet — Running is gated on Deployment replica readiness instead.
 	// +optional
 	// +kubebuilder:default=/
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`

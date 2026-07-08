@@ -58,7 +58,7 @@ The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`
 
 ## Metrics
 
-The same one-Core-many-adapters shape as logs. `Core.Metrics(MetricQuery)` is the single read; REST (`rest_metrics.go`) and GraphQL (`graphql.go`) are the surfaces. Two backends, each an injected source so Core stays clientset-free (like `PodLogSource`):
+The same one-Core-many-adapters shape as logs. `Core.Metrics(MetricQuery)` is the single read; REST (`internal/metrics/rest.go`) and GraphQL (`internal/metrics/graphql.go`) are the surfaces. Two backends, each an injected source so Core stays clientset-free (like `PodLogSource`):
 
 ```mermaid
 flowchart LR
@@ -87,7 +87,7 @@ When a metric's source isn't wired at all (request metrics without `BEX_PROM_URL
 | `GET /v1/metrics/http-latency` | latency percentile (seconds) |
 | `GET /v1/metrics/bandwidth` | outbound bytes/s |
 
-Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`endTime` (RFC3339), `resolutionSeconds`, `quantile` (0..1, latency), `statusCode`/`host`/`path`/`groupBy` (request filters), and a bex extra `percentage=true` (cpu/memory as a fraction of limit). Each endpoint returns Render's metrics array — `[{labels:[{field,value}], unit, values:[{timestamp,value}]}]`. GraphQL: `metrics(resource, metric, startTime, endTime, resolutionSeconds, quantile, percentage, statusCode, host, path, groupBy)` → `MetricSeries { unit, labels{field,value}, points{timestamp,value} }`, `metric` being `cpu`/`memory`/`instance_count`/`http_requests`/`http_latency`/`bandwidth`. The MCP `get_metrics` tool (`resource[]` + `metricTypes[]`) exposes the same read to agents — three-adapter parity, like `list_logs`.
+Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`endTime` (RFC3339), `resolutionSeconds`, `quantile` (0..1, latency), `statusCode`/`host`/`path`/`groupBy` (request filters), and a bex extra `percentage=true` (cpu/memory as a fraction of limit). Each endpoint returns Render's metrics array — `[{labels:[{field,value}], unit, values:[{timestamp,value}]}]`. GraphQL mirrors Render's dashboard shape: `metrics(query: MetricsQueryInput!)` — input fields `filters` (resource selectors), `name` (the metric: `cpu`/`memory`/`instance_count`/`http_requests`/`http_latency`/`bandwidth`), `start`/`end`, `resolution`, `parameters`, `aggregateBy`, `aggregationMethod`, `aggregateAllMethod` — returning `MetricSeries { unit, labels{field,value}, values{time,value}, parameters }` (the sample field is `time` in GraphQL, `timestamp` in REST). Companion dashboard queries: `monthToDateBandwidth`, `metricsFilters`, `metricsPathFilterSuggestions`. The MCP `get_metrics` tool (`resource[]` + `metricTypes[]`) exposes the same read to agents — three-adapter parity, like `list_logs`.
 
 ### Render compatibility
 

@@ -1,6 +1,6 @@
 # bex-api — the control-plane seed (REST + GraphQL + MCP)
 
-The first slice of the bex control plane (see [control-plane.md](control-plane.md)): a thin, bearer-authed HTTP service that turns product actions into **App CR spec patches**. It contains no mechanism — it writes intent; the operator converges it. Today it exposes the lifecycle verbs from [restart-suspend-and-resume.md](restart-suspend-and-resume.md).
+The product API of the bex control plane (see [control-plane.md](control-plane.md)): an authenticated HTTP service that turns product actions into **App CR spec patches**. It contains no mechanism — it writes intent; the operator converges it. It exposes the lifecycle verbs from [restart-suspend-and-resume.md](restart-suspend-and-resume.md) plus logs, metrics, API keys, env vars, and managed Postgres — and, opt-in (`BEX_CP_DB_URI`), the Postgres source-of-truth store itself.
 
 ## One core, three adapters
 
@@ -15,7 +15,7 @@ flowchart LR
   cr --> op["operator (mechanism)"]
 ```
 
-`Core` (in `lego/backend/internal/api/core.go`) has the only implementation of each verb (`Restart`/`Suspend`/`Resume`/`List`/`Get`/`Logs`/`QueryLogs`/`FollowLogs`/`Metrics`). REST (`rest.go`, `rest_logs.go`, `rest_metrics.go`), GraphQL (`graphql.go`) and MCP (`mcp.go`) are pure presentation calling identical `Core` methods — so the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
+Each verb has exactly one implementation, in its feature package's `Service` (`lego/backend/internal/{apps,logs,metrics,apikeys,postgres,secrets}/service.go`, all embedding the shared kernel `internal/core/base.go`). Each feature ships its own thin adapter fragments — `rest.go`, `graphql.go`, `mcp.go` beside the service — that are pure presentation calling identical `Service` methods, composed by `internal/api/server.go`. So the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
 ## Auth
 
@@ -41,14 +41,15 @@ Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl,
 
 Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the `{service, cursor}` list envelope, the **string** `suspended` enum (`"suspended"` / `"not_suspended"`, _not_ a boolean), and the verb status codes. Served under Render's noun `/v1/services` and bex's `/v1/apps` alias (same handlers). The App name is the service `id` (Render ids are opaque; a client just round-trips whatever the list returned).
 
-| method + path                    | effect                     | status |
-| -------------------------------- | -------------------------- | ------ |
-| `GET /healthz`                   | liveness (open)            | 200    |
-| `GET /v1/services`               | list `[{service, cursor}]` | 200    |
-| `GET /v1/services/{id}`          | one service object         | 200    |
-| `POST /v1/services/{id}/restart` | `spec.restartedAt = now`   | 200    |
-| `POST /v1/services/{id}/suspend` | `spec.suspended = true`    | 202    |
-| `POST /v1/services/{id}/resume`  | `spec.suspended = false`   | 202    |
+| method + path                    | effect                         | status |
+| -------------------------------- | ------------------------------ | ------ |
+| `GET /healthz`                   | liveness (open)                | 200    |
+| `GET /v1/services`               | list `[{service, cursor}]`     | 200    |
+| `GET /v1/services/{id}`          | one service object             | 200    |
+| `PATCH /v1/services/{id}`        | update, e.g. the instance plan | 200    |
+| `POST /v1/services/{id}/restart` | `spec.restartedAt = now`       | 200    |
+| `POST /v1/services/{id}/suspend` | `spec.suspended = true`        | 202    |
+| `POST /v1/services/{id}/resume`  | `spec.suspended = false`       | 202    |
 
 Verbs return the updated service object (the patch is accepted; the operator converges asynchronously — poll `GET` for `suspended`/`phase`). The service object carries Render's fields (`id`, `name`, `type: "web_service"`, `suspended`, `dashboardUrl`, `createdAt`, `serviceDetails.url`) plus bex extras (`phase`, `replicas`, `revision`) — a superset Render clients safely ignore. bex has no build plans, regions or disks, so those Render fields are omitted.
 
@@ -59,7 +60,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 ## GraphQL (Render dashboard compatible)
 
-`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`; mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`; type `Service` with the string `suspended` enum. Every resolver delegates to `Core`.
+`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extension `updateServicePlan(id, plan)`; type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
 
 ```sh
 curl -X POST https://api.bex.co/graphql \
@@ -118,12 +119,13 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `list_services` | — | `List` | `{services: [service, ...]}` |
 | `get_service` | `{serviceId}` | `Get` | `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
+| `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
 | `list_logs` | `{resource: [id, ...], type?, text?, startTime?, endTime?, limit?}` | `QueryLogs` | `{logs: [{timestamp, message, labels}, ...]}` |
 | `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 
 `list_logs` takes Render's required `resource` array of service ids and reads pod logs for each App's instances (selected by the controller's `app.bex.co/app` label), aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`service`/`instance`/`container`). It honors the Render filters bex can serve over raw pod logs — `type` (`app`/`request`/`build`, app-only sourced), `text`, `startTime`/`endTime` — routed through the same `QueryLogs` the REST adapter uses; it omits Render's structured request-log filters (`level`, `instance`, `host`, `statusCode`, `method`, `path`, `direction`) it can't honor, the same rule REST follows for build plans / regions / disks; `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). The `serviceId` / `resource` ids are App names, opaque and round-tripped from `list_services`, exactly as in REST/GraphQL.
 
-**Transports & auth.** The streamable-HTTP transport mounts at `/mcp` behind the same `bex-api-token` bearer gate as every other route. The stdio transport (`api mcp-stdio`, or `BEX_MCP_STDIO=1`) serves the same tools over stdin/stdout for a locally-launched agent; there the trust boundary is the subprocess itself (it already holds the kube credentials), so no bearer applies. Logs need read-only `pods` + `pods/log` RBAC.
+**Transports & auth.** The streamable-HTTP transport mounts at `/mcp` behind the same auth gate as every other route (Hydra-introspected bearer or Kratos session — see [Auth](#auth)). The stdio transport (`api mcp-stdio`, or `BEX_MCP_STDIO=1`) serves the same tools over stdin/stdout for a locally-launched agent; there the trust boundary is the subprocess itself (it already holds the kube credentials), so no bearer applies. Logs need read-only `pods` + `pods/log` RBAC.
 
 ## Logs — REST + GraphQL (Render logs-API compatible)
 
@@ -156,7 +158,7 @@ Resource and request metrics through the same `Core.Metrics` verb, shaped to Ren
 | `GET /v1/metrics/http-latency` | latency percentile (`quantile`, default p95) |
 | `GET /v1/metrics/bandwidth` | outbound bytes/s |
 
-Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`endTime` (RFC3339), `resolutionSeconds`, `quantile`, `statusCode`/`host`/`path`/`groupBy` (request filters), plus a bex extra `percentage`. Each endpoint returns Render's time-series array `[{labels:[{field,value}], unit, values:[{timestamp,value}]}]`. GraphQL: `metrics(resource, metric, …)` → `MetricSeries { unit, labels{field,value}, points{timestamp,value} }`.
+Query params (Render vocabulary): `resource` (App id, repeatable), `startTime`/`endTime` (RFC3339), `resolutionSeconds`, `quantile`, `statusCode`/`host`/`path`/`groupBy` (request filters), plus a bex extra `percentage`. Each endpoint returns Render's time-series array `[{labels:[{field,value}], unit, values:[{timestamp,value}]}]`. GraphQL mirrors Render's dashboard: `metrics(query: MetricsQueryInput!)` (fields `filters`, `name`, `start`/`end`, `resolution`, `parameters`, `aggregateBy`, `aggregationMethod`, `aggregateAllMethod`) → `MetricSeries { unit, labels{field,value}, values{time,value}, parameters }` — note the sample list is `values` with a `time` field (REST calls the same data `values[].timestamp`). Companion dashboard queries: `monthToDateBandwidth`, `metricsFilters`, `metricsPathFilterSuggestions`.
 
 Resource metrics need **metrics-server** (`cpu`/`memory`; `instance_count` doesn't); request metrics need **Traefik scraped by Prometheus** (`BEX_PROM_URL`). A metric whose source isn't wired returns **503**. metrics-server is a snapshot, so cpu/memory carry a single current point (the time range is accepted for compatibility); request metrics honor it. `host`/`path` filters are accepted but not yet applied (Traefik service counters lack those labels).
 
@@ -199,4 +201,4 @@ Ships in the operator image (`Dockerfile` builds a second `/api` binary); the ap
 
 ## Scope
 
-Lifecycle verbs, read-only logs and metrics, API keys, and managed Postgres. Not yet: deploy/rollback, service creation, tenant scoping of credentials, a Postgres source of truth — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs (including plan changes), read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [control-plane.md](control-plane.md)). Not yet: deploy/rollback, service creation, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

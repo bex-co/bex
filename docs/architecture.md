@@ -53,7 +53,7 @@ The single most important boundary:
 
 |  | **bex** (control plane + operator) | **bex-infra** (provisioning) |
 | --- | --- | --- |
-| owns | placement, lifecycle, build→deploy→serve, the **auto-allocator** | clusters + machines |
+| owns | placement, lifecycle, build→deploy→serve, the **auto-allocator** _(planned)_ | clusters + machines |
 | node awareness | **reads** `Node`/`Pod` (capacity, utilization); decides placement/eviction | **creates/joins/deletes** nodes |
 | provisioning | ❌ never SSHes / runs cloud APIs | ✅ Terraform, Cluster API, autoscaler |
 | code | Go workspace (`lego/`) | declarative (`infra/`) |
@@ -76,11 +76,11 @@ The APP CLUSTER belongs to _neither_ layer cleanly — it's the substrate bex-in
 The `bex` layer itself splits in two — keep them distinct (full design: [`control-plane.md`](control-plane.md)):
 
 - **operator** _(today)_ — a k8s controller that reconciles `App` CRs into `Deployment`/`Service`/`Ingress` (+TLS). **No database**; idempotent; mechanical.
-- **control plane** _(planned)_ — a **Postgres-backed** service holding the product's **source of truth** (tenants / apps / domains / plans + business logic). It projects rows into `App` CRs; the operator executes them.
+- **control plane** _(built, opt-in — not yet the prod default)_ — a **Postgres-backed** service holding the product's **source of truth** (tenants / apps / domains / plans + business logic), living inside bex-api (`lego/backend/internal/store/`, enabled by `BEX_CP_DB_URI`). It projects rows into `App` CRs; the operator executes them.
 
 Business/product logic belongs in the **control plane**; the operator stays a thin, CR-driven reconciler. The **`App` CR is the contract** between them.
 
-**Data layering.** Postgres (planned) is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in the single app node's etcd (local disk, no HA) and Apps are imperative (not in git), so a node _rebuild_ loses it. Until the control plane exists: `App` CRs are applied directly and etcd is the only store (snapshot it off-node for interim durability).
+**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in the single app node's etcd (local disk, no HA) and Apps are imperative (not in git), so a node _rebuild_ loses it. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [etcd-backup-restore.md](etcd-backup-restore.md)).
 
 ## `infra/` vs `deploy/` (both hold YAML — different jobs)
 
@@ -121,15 +121,18 @@ bex is identical locally and in prod; only the **infrastructure provider overlay
 ## Repo map
 
 ```
-operator/   Go operator (+ planned control plane & gateway): api/ internal/{build,runtime,controller,allocator,gateway} cmd/  ·  control plane = Postgres source of truth (docs/control-plane.md)
+lego/            ALL Go — workspace of three modules (one image, two binaries; lego/README.md):
+  types/           the App/Database CRD contract (app.bex.co/v1alpha1); leaf
+  operator/        mechanism: cmd/manager · internal/{build,runtime,controller} · config/ (+ planned gateway/allocator)
+  backend/         bex-api: cmd/api · internal/{apps,logs,metrics,apikeys,postgres,secrets,store,…} — REST/GraphQL/MCP + the opt-in control plane (docs/control-plane.md)
 dashboard/       Render-style human UI (TanStack Start + Ory Kratos, docs/auth.md §5): deploy/ is its own GitOps-deployed kustomize base, at dashboard.<base-domain>
 infra/           bex-infra: terraform/ clusterapi/{base,overlays/{local-capd,hetzner-caph}} local/
-deploy/          GitOps: gitops/{bootstrap,base,overlays/{local,staging,prod},charts} + opensandbox/ server configs
-examples/        sample user apps (hello-go)
-docs/            this file + go-and-gitops.md
-scripts/         up.sh, mock-cluster.sh, deploy-sample.sh, start-opensandbox*.sh
+deploy/          GitOps: gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} + opensandbox/ server configs
+examples/        sample user apps (whoami-app.yaml, hello-go/)
+docs/            one file per topic — see the index in CLAUDE.md
+scripts/         mock-cluster.sh, app-apply.sh, deploy-sample.sh, auth/bao helpers, up.sh + start-opensandbox*.sh (legacy)
 ```
 
 ## What's genuinely ours vs assembled
 
-Ours (Go): the **auto-allocator** (bin-pack + idle-evict), the deploy-from-git orchestration, the gateway (edge + webhook + activator), E2B/ACP translation. Assembled: Kubernetes, Cluster API/CAPD/CAPH, Cluster Autoscaler, OpenSandbox, Zot, Cloud Native Buildpacks. bex is the glue + the economics, not the substrate.
+Ours (Go): the operator, bex-api + the control-plane store, the deploy-from-git orchestration, and — planned — the auto-allocator (bin-pack + idle-evict), the gateway (edge + webhook + activator), E2B/ACP translation. Assembled: Kubernetes, Cluster API/CAPD/CAPH, Cluster Autoscaler, OpenSandbox, Zot, Cloud Native Buildpacks. bex is the glue + the economics, not the substrate.

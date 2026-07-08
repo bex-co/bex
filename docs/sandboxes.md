@@ -8,13 +8,13 @@ bex is an AI-native PaaS: agents are first-class users ([vision.md](vision.md)).
 
 The mechanism that makes "sleep = free" viable — sub-second wake — **already exists and is inherited**, it is not ours to invent:
 
-- `operator/internal/runtime/opensandbox.go` is a client for the OpenSandbox Lifecycle API (`BEX_OPENSANDBOX_URL`) exposing `Create` / `Pause` / `Resume` / `Delete` / `Endpoint`. `Pause`/`Resume` are **real snapshots** (~80 ms wake, [restart-suspend-and-resume.md](restart-suspend-and-resume.md)). A per-sandbox **exec daemon** ships in the runtime (`execd_image = opensandbox/execd:v1.0.16`, `deploy/opensandbox/sandbox.toml`) — an exec channel is a real but currently unwired capability. The opensandbox controller also ships pre-warmed `pools` and `sandboxsnapshots`.
+- `lego/operator/internal/runtime/opensandbox.go` is a client for the OpenSandbox Lifecycle API (`BEX_OPENSANDBOX_URL`) exposing `Create` / `Pause` / `Resume` / `Delete` / `Endpoint`. `Pause`/`Resume` are **real snapshots** (~80 ms wake, [restart-suspend-and-resume.md](restart-suspend-and-resume.md)). A per-sandbox **exec daemon** ships in the runtime (`execd_image = opensandbox/execd:v1.0.16`, `deploy/opensandbox/sandbox.toml`) — an exec channel is a real but currently unwired capability. The opensandbox controller also ships pre-warmed `pools` and `sandboxsnapshots`.
 - This is the same class of mechanism E2B and Modal use to hit millisecond starts: **restore, don't boot**. E2B restores a Firecracker microVM memory snapshot (`MAP_PRIVATE` on-demand page faults + copy-on-write; template = Dockerfile→snapshot; ~5–30 ms resume, ~150 ms full restore). Modal uses gVisor `runsc` checkpoint/restore (CRIU) plus a lazy content-addressed image filesystem. bex gets this behavior **through opensandbox** rather than reimplementing it.
 - Crucially, **E2B's `autoPause` + connect-resumes semantics are exactly this milestone's idle-hibernate** — so the work is orchestration, not new mechanism.
 
 What is net-new is everything around that mechanism: a sandbox API distinct from the App CR, E2B-shaped surfaces, an idle tracker + wake-on-connect, an agent-facing exec surface, and an MCP spawn verb. Two constraints shape the design:
 
-- **Architectural gap.** bex-api's `Core` (`operator/internal/api/core.go`) only patches App CR spec; it has **no opensandbox client** — the client lives in the operator binary. And that client's `imageEntrypoint` shells out to `docker inspect` (host-local), unusable from an in-cluster pod unless bypassed.
+- **Architectural gap.** bex-api's feature services (`lego/backend/internal/*/service.go`, over the `internal/core` kernel) only patch App CR spec; they have **no opensandbox client** — the client lives in the operator binary. And that client's `imageEntrypoint` shells out to `docker inspect` (host-local), unusable from an in-cluster pod unless bypassed.
 - **Runtime limit.** Real snapshot pause/resume works today only on the **Docker-runtime** opensandbox server (:8077); the k8s-runtime path is blocked on OrbStack (cri-dockerd, not containerd-CRI — [go-and-gitops.md](go-and-gitops.md)).
 
 ## Decision
@@ -35,7 +35,7 @@ The App architecture rule (product action → **App CR contract** → operator c
 
 ### D1 — A direct synchronous sandbox service in bex-api; no CRD
 
-Add a sandbox service in `operator/internal/api/` that owns an **opensandbox client** (`BEX_OPENSANDBOX_URL`, the same endpoint the operator uses). bex-api becomes the **sandbox gateway**: control plane (create/pause/resume/kill), data-plane front (exec/connect proxy), auth (the existing bex-api credentials — API keys / OAuth2 or Kratos sessions, [auth.md](auth.md)), and activity observation, all in one place. No `Sandbox` CRD and no operator involvement — the operator keeps reconciling Apps only.
+Add a sandbox feature package in `lego/backend/internal/` that owns an **opensandbox client** (`BEX_OPENSANDBOX_URL`, the same endpoint the operator uses). bex-api becomes the **sandbox gateway**: control plane (create/pause/resume/kill), data-plane front (exec/connect proxy), auth (the existing bex-api credentials — API keys / OAuth2 or Kratos sessions, [auth.md](auth.md)), and activity observation, all in one place. No `Sandbox` CRD and no operator involvement — the operator keeps reconciling Apps only.
 
 ```mermaid
 graph LR
@@ -70,7 +70,7 @@ Serve E2B's REST **lifecycle** shapes so E2B lifecycle tooling transfers. Spawn 
 
 ### D3 — Agents are external MCP drivers
 
-Claude Code / any agent drives sandboxes **from outside** via MCP tools — `spawn_sandbox` and `sandbox_exec` (`run_code`) — following the shipped adapter pattern in `operator/internal/api/mcp.go` (streamable-HTTP at `/mcp` behind the bearer gate; stdio via `api mcp-stdio`). The sandbox holds the agent's (untrusted) generated code; the agent stays outside. _(Deferred, not chosen: Claude Code running **inside** the sandbox as a hosted workspace — a different product that needs a per-sandbox external URL + gateway auth that does not exist yet.)_
+Claude Code / any agent drives sandboxes **from outside** via MCP tools — `spawn_sandbox` and `sandbox_exec` (`run_code`) — following the shipped adapter pattern of the per-feature `mcp.go` fragments in `lego/backend/internal/` (streamable-HTTP at `/mcp` behind the auth gate; stdio via `api mcp-stdio`). The sandbox holds the agent's (untrusted) generated code; the agent stays outside. _(Deferred, not chosen: Claude Code running **inside** the sandbox as a hosted workspace — a different product that needs a per-sandbox external URL + gateway auth that does not exist yet.)_
 
 ### D4 — Idle-hibernate = gateway-observed autoPause
 
@@ -148,7 +148,7 @@ Three lessons shape D7. **First, the split is real:** the snapshot-resume camp (
 - **Capacity control is single-host until multi-node lands** (D6): concurrent-running cap + LRU evict-to-pause + per-tenant quota work today on the one Docker-runtime host; cross-node scheduling and autoscaler-driven elasticity for sandboxes wait on the k8s-runtime snapshot path.
 - **Per-user state keys on the resolved caller identity** (D7): sandbox ownership is stamped with the OAuth2/Kratos caller (`api.IdentityFrom`), not a shared token; full multi-tenant isolation matures with the control plane, and durable-across-`kill` data still needs volumes (deferred).
 - **No durability beyond the host** (D7): sandboxes + snapshots live on one opensandbox host with no HA — the same single-node-state gap as App etcd; host loss loses them until a multi-node runtime.
-- **Implementation targets** (m3, not this ADR): template-aware `Create` + `Exec` over `execd` in `operator/internal/runtime/opensandbox.go`; a sandbox service in `operator/internal/api/` + E2B REST adapter in `rest.go`; `spawn_sandbox` / `sandbox_exec` tools in `operator/internal/api/mcp.go`; an opensandbox client wired into bex-api in `operator/cmd/api/main.go`. Note: `.pm/w2/m3/t004` cites `operator/cmd/mcp/main.go`, which does not exist — the MCP tool belongs on the existing bex-api MCP server; the task file should be corrected.
+- **Implementation targets** (m3, not this ADR): template-aware `Create` + `Exec` over `execd` in `lego/operator/internal/runtime/opensandbox.go`; a sandbox feature package in `lego/backend/internal/` (service + E2B REST adapter in its `rest.go` + `spawn_sandbox` / `sandbox_exec` tools in its `mcp.go`); an opensandbox client wired into bex-api in `lego/backend/cmd/api/main.go`. The `spawn_sandbox`/`sandbox_exec` MCP tools belong on the existing bex-api MCP server (per-feature `mcp.go` fragments), as `.pm/w2/m3/t004` now records.
 
 ## Future considerations
 

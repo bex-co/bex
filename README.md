@@ -70,20 +70,21 @@ spec:
 | Deploy from git (CNB / Dockerfile) | ✅ |
 | Custom domains + TLS | ✅ |
 | Suspend / resume / restart | ✅ |
-| REST API (Render-compatible) | ✅ lifecycle verbs — create-service / deploys / logs planned |
+| REST API (Render-compatible) | ✅ lifecycle verbs, logs, metrics, env vars, API keys — create-service / deploys planned |
 | GraphQL (Render dashboard-compatible) | ✅ |
+| MCP server | ✅ `/mcp` + stdio ([docs/bex-api.md](docs/bex-api.md)) |
+| Managed Postgres | ✅ Render `/v1/postgres`-compatible ([docs/postgresql-management.md](docs/postgresql-management.md)) |
+| Auth (API keys, sessions, roles) | ✅ Ory Hydra/Kratos + OpenFGA ([docs/auth.md](docs/auth.md)) |
 | Elastic machines | ✅ manual scale — autoscaler planned |
-| Postgres control plane (tenants/auth) | 🔜 planned |
-| MCP server | 🔜 planned |
-| Managed databases | — non-goal |
+| Postgres control plane (tenants) | ✅ built, opt-in — not yet the prod default ([docs/control-plane.md](docs/control-plane.md)) |
 
 ## AI-native
 
-Today: a bearer-authed, Render-compatible REST + GraphQL API ([docs/bex-api.md](docs/bex-api.md)) an agent can drive end-to-end, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: an MCP server over the same verbs, deploy-from-chat (repo → URL in one call), and E2B-compatible sandboxes. The thesis and roadmap live in [docs/vision.md](docs/vision.md).
+Today: a Render-compatible REST + GraphQL + **MCP** API ([docs/bex-api.md](docs/bex-api.md)) an agent can drive end-to-end with its own revocable API key, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: deploy-from-chat (repo → URL in one call) and E2B-compatible sandboxes. The thesis and roadmap live in [docs/vision.md](docs/vision.md).
 
 ## Architecture
 
-Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the planned **Postgres control plane** is the intent layer (tenants/apps/domains) that will write those CRs — [docs/control-plane.md](docs/control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/architecture.md](docs/architecture.md).
+Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the **Postgres control plane** is the intent layer (tenants/apps/domains) that writes those CRs — built into bex-api as an opt-in, [docs/control-plane.md](docs/control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/architecture.md](docs/architecture.md).
 
 ## Layout
 
@@ -93,21 +94,24 @@ All Go lives in `lego/` — a workspace of three modules; one image, two binarie
 lego/            the product: ALL Go (Latin legō, "I assemble"). go.work · Dockerfile — one image, two binaries
   types/            App/Database CRD contract (app.bex.co/v1alpha1); leaf, imports nothing
   operator/         mechanism: cmd/manager · internal/{controller,build,runtime} · config/ · codegen (make)
-  backend/          bex-api: cmd/api · internal/api — Render REST/GraphQL/MCP + authz + API keys + metrics
+  backend/          bex-api: cmd/api · internal/{apps,logs,metrics,apikeys,postgres,secrets,store,…} —
+                    Render REST/GraphQL/MCP + authz + control-plane store
                     dependency: operator → types ← backend  (operator never imports backend)
 dashboard/       the human-facing dashboard (TanStack Start + Apollo + shadcn), client of bex-api's GraphQL
 infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
-deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts} · opensandbox/ configs
+deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} · opensandbox/ configs
 examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)
-docs/            vision · architecture · control-plane · bex-api · deployment · custom-domain ·
-                 restart-suspend-and-resume · go-and-gitops
+docs/            vision · architecture · control-plane · bex-api · observability · deployment ·
+                 custom-domain · restart-suspend-and-resume · auth · secrets · postgresql-management ·
+                 sandboxes · etcd-backup-restore · go-and-gitops
 scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-sample.sh ·
-                 up.sh + start-opensandbox*.sh (legacy single-host path)
+                 auth-*.sh + authz-model.sh (Ory/OpenFGA bootstrap) · bao-*.sh + secrets-verify.sh (OpenBao) ·
+                 gh-secrets.sh · gitops-validate.sh · up.sh + start-opensandbox*.sh (legacy single-host path)
 ```
 
 ## Status & roadmap
 
-Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, lifecycle verbs over REST/GraphQL, and a live Hetzner deployment. Tracked next — Postgres control plane, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds, MCP server: [docs/vision.md](docs/vision.md#roadmap).
+Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, the full REST/GraphQL/MCP surface (lifecycle, logs, metrics, env vars, API keys, managed Postgres), auth (Hydra/Kratos/OpenFGA), the opt-in Postgres control plane, the dashboard, and a live Hetzner deployment. Tracked next — control plane on-by-default + tenant onboarding, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds: [docs/vision.md](docs/vision.md#roadmap).
 
 ## Contributing
 

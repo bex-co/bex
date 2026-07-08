@@ -43,20 +43,24 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | operator | `BEX_REGISTRY`, `BEX_CNB_BUILDER` | image registry (zot) and CNB builder for build-from-git |
 | operator | `BEX_OPENSANDBOX_URL` | OpenSandbox endpoint (opensandbox runtime) |
 | operator | `BEX_BASE_DOMAIN`, `BEX_CLUSTER_ISSUER` | `*.onbex.co` app URLs, cert-manager issuer |
+| operator | `BEX_DB_DOMAIN` | public managed-Postgres hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/postgresql-management.md); unset ⇒ internal-only |
 | bex-api | `BEX_API_ADDR` (:8090), `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN` | listen addr, watched ns, CORS origin allowlist (comma-separated) |
 | bex-api | `BEX_HYDRA_ADMIN_URL` (required), `BEX_KRATOS_URL` | OAuth2 API keys via Hydra introspection; Kratos sessions (docs/auth.md) |
 | bex-api | `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN` | authorization via OpenFGA; unset ⇒ allow-all (docs/auth.md) |
 | bex-api | `BEX_PROM_URL` | Prometheus base URL for request metrics (Traefik) and resource-metrics history (cAdvisor); unset ⇒ request metrics 503, resource metrics fall back to the metrics-server snapshot |
 | bex-api | `BEX_OPENBAO_URL` | OpenBao base URL for the tenant env-vars store (docs/secrets.md); unset ⇒ env-vars verbs 503 |
 | bex-api | `BEX_OPENBAO_JWT_PATH` | override the ServiceAccount token path for OpenBao k8s-auth login (off-cluster/dev; default is the pod's projected token) |
+| bex-api | `BEX_CP_DB_URI` | Postgres URI for the control-plane store (docs/control-plane.md); set ⇒ runs migrations + the apps-rows→App-CR projector + the internal tenant API; unset ⇒ bex-api alone |
+| bex-api | `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` (:8091), `BEX_CP_RESYNC`, `BEX_CP_TOKEN` | control-plane knobs: projection target ns, internal API addr, resync interval, internal API bearer |
+| bex-api | `BEX_MCP_STDIO` | `1` ⇒ serve only the MCP tools over stdio (same as `api mcp-stdio`) |
 
 ## Docs index
 
 - [docs/vision.md](docs/vision.md) — mission, AI-native pillars, roadmap.
 - [docs/architecture.md](docs/architecture.md) — the map: two clusters, two layers, panorama diagram.
-- [docs/control-plane.md](docs/control-plane.md) — planned Postgres source of truth vs. operator mechanism.
-- [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL design: one Core, thin adapters, Render compatibility.
-- [docs/observability.md](docs/observability.md) — Logs API (query + live-tail) over REST/GraphQL/MCP; metrics next.
+- [docs/control-plane.md](docs/control-plane.md) — Postgres source of truth (built, opt-in via `BEX_CP_DB_URI`) vs. operator mechanism.
+- [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.
+- [docs/observability.md](docs/observability.md) — Logs (query + live-tail) and metrics over REST/GraphQL/MCP.
 - [docs/deployment.md](docs/deployment.md) — deploy flow, health gating, revisions.
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.
@@ -64,6 +68,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/etcd-backup-restore.md](docs/etcd-backup-restore.md) — nightly etcd snapshot → object storage; restore runbook.
 - [docs/auth.md](docs/auth.md) — ADR: Ory Kratos (identity) + Hydra (OAuth2) on CNPG; secrets out-of-band.
 - [docs/secrets.md](docs/secrets.md) — ADR: OpenBao for tenant credentials; integrated Raft storage, Shamir unseal via `.env`, Kubernetes auth scoped to `tenants/*`.
+- [docs/postgresql-management.md](docs/postgresql-management.md) — managed tenant Postgres: `Database` CR → CNPG Cluster, plans, internal/external URLs.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 
 ## Rules
