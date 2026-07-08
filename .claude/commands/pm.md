@@ -26,12 +26,13 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 - **Numbering:** next free zero-padded 3-digit for inbox notes (`NNN`) and tasks (`tNNN`); next free `wN` / `mN`. Scan the tree first; don't reuse a number.
 - Use `worker: worker1` unless the workstream README names another worker.
 - **Milestones must be meaningful.** Every milestone must include direct project-goal linkage, an observable expected outcome, and why this work matters now (dependency/risk/sequence rationale).
-- **Every milestone ends with two standing closing tasks**, appended after the implementation tasks whenever a milestone is materialized:
+- **Every milestone ends with standing closing tasks**, appended after the implementation tasks whenever a milestone is materialized:
 
-  1. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
-  2. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
+  1. **Render parity** — _only when the milestone is feature development or a fix that touches a user/tenant-facing surface._ Check that the change is consistent across every surface it exposes: REST, GraphQL, and MCP in `lego/backend/` (same fields, semantics, error shapes — bex-api is meant to be Render-compatible, see `docs/bex-api.md`) and the `dashboard/` UI (`dashboard/CLAUDE.md`). Compare against the equivalent render.com behavior/API and flag any drift as follow-up work rather than silently diverging. Omit this task only for milestones with no REST/GraphQL/MCP/UI surface change (pure infra, operator-internal mechanism, docs, etc.) — note why it was omitted in the milestone's `## Source + Goal linkage`.
+  2. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
+  3. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
 
-  Both `depends_on` the last implementation task(s) and count toward the `(N tasks)` total. `add-task` inserts new work **before** these two and updates their `depends_on`.
+  Each `depends_on` the last implementation task(s) (Simplify and Test coverage also depend on Render parity when it's present) and all count toward the `(N tasks)` total. `add-task` inserts new work **before** these and updates their `depends_on`.
 
 - After editing any `.md`, run `npx prettier@3.4.2 --write "**/*.md"` (repo rule).
 
@@ -59,12 +60,12 @@ Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdow
 
 Apply the **sizing rule first.**
 
-- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the two standing closing tasks (Simplify, Test coverage)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale.
+- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why Render parity was included or omitted).
 - If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`
 
-Create the next `tNNN.md` from the task template and add its row to the milestone `README.md` table **before the two standing closing tasks**, updating their `depends_on` to include it. Update the `(N tasks)` count in the workstream README.
+Create the next `tNNN.md` from the task template and add its row to the milestone `README.md` table **before the standing closing tasks**, updating their `depends_on` to include it. Update the `(N tasks)` count in the workstream README.
 
 ### `done <wN/mN/tNNN>`
 
