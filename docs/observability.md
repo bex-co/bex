@@ -115,11 +115,11 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 # resource metrics — with BEX_PROM_URL set these are stepped history; a ranged
 # query returns one point per resolution step per instance:
-curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8090/v1/metrics/cpu?resource=<app>&percentage=true" | jq .
-curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8090/v1/metrics/memory?resource=<app>&startTime=$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)&endTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)&resolutionSeconds=60" \
   | jq '.[0].values | length'   # ≈60 points over the hour (where data exists)
-curl -s -H "Authorization: Bearer $BEX_API_TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8090/v1/metrics/instance-count?resource=<app>" | jq .
 ```
