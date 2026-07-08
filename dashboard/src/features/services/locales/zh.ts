@@ -193,6 +193,130 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "该服务的实时日志跟踪将在后续版本中提供。",
     description: "Logs tab placeholder body",
   },
+  "services.navEnvironment": {
+    message: "环境变量",
+    description: "Service-detail nav item (environment variables tab)",
+  },
+  "services.envTitle": {
+    message: "环境变量",
+    description: "Environment tab card title",
+  },
+  "services.envDescription": {
+    message: "设置该环境的配置和密钥，然后在代码中读取这些值。",
+    description: "Environment tab card description",
+  },
+  "services.envColKey": {
+    message: "键",
+    description: "Environment table column header (variable name)",
+  },
+  "services.envColValue": {
+    message: "值",
+    description: "Environment table column header (variable value)",
+  },
+  "services.envShowSecret": {
+    message: "显示值",
+    description: "Environment row button to reveal a masked value",
+  },
+  "services.envHideSecret": {
+    message: "隐藏值",
+    description: "Environment row button to re-mask a revealed value",
+  },
+  "services.envRevealError": {
+    message: "无法加载该值。",
+    description: "Environment row inline error when a value reveal fails",
+  },
+  "services.envEmptyTitle": {
+    message: "暂无环境变量",
+    description: "Environment tab empty-state title",
+  },
+  "services.envEmptyBody": {
+    message: "添加一个变量来配置该服务。",
+    description: "Environment tab empty-state body",
+  },
+  "services.envUnavailableTitle": {
+    message: "环境变量不可用",
+    description: "Environment tab state when the secret store is unconfigured (503)",
+  },
+  "services.envUnavailableBody": {
+    message: "此部署未配置密钥存储。",
+    description: "Environment tab unavailable-state body",
+  },
+  "services.envForbiddenTitle": {
+    message: "无权访问",
+    description: "Environment tab state when the caller lacks permission (403)",
+  },
+  "services.envForbiddenBody": {
+    message: "你没有查看此服务环境变量的权限。",
+    description: "Environment tab forbidden-state body",
+  },
+  "services.envErrorTitle": {
+    message: "无法加载环境变量",
+    description: "Environment tab generic error title",
+  },
+  "services.envErrorBody": {
+    message: "出错了，请重试。",
+    description: "Environment tab generic error body",
+  },
+  "services.envAdd": {
+    message: "添加变量",
+    description: "Environment tab button to open the add-variable form",
+  },
+  "services.envEdit": {
+    message: "编辑",
+    description: "Environment row button to edit a variable's value",
+  },
+  "services.envDelete": {
+    message: "删除",
+    description: "Environment row button to remove a variable",
+  },
+  "services.envSave": {
+    message: "保存",
+    description: "Environment add/edit form save button",
+  },
+  "services.envCancel": {
+    message: "取消",
+    description: "Environment add/edit form cancel button",
+  },
+  "services.envKeyPlaceholder": {
+    message: "变量名称",
+    description: "Environment add-variable key input placeholder",
+  },
+  "services.envValuePlaceholder": {
+    message: "值",
+    description: "Environment value input placeholder",
+  },
+  "services.envInvalidKey": {
+    message: "只能使用字母、数字和下划线，且不能以数字开头。",
+    description: "Environment add-variable validation message for an invalid key",
+  },
+  "services.envDeleteConfirmTitle": {
+    message: "删除 {key}？",
+    description: "Environment delete-confirmation dialog title",
+  },
+  "services.envDeleteConfirmBody": {
+    message: "服务将在移除该变量后重新部署。",
+    description: "Environment delete-confirmation dialog body",
+  },
+  "services.envRolloutNote": {
+    message: "服务正在重新部署以应用更改。",
+    description: "Toast description after an env-var write (bex rolls the pods)",
+  },
+  "services.envSaveSuccess": {
+    message: "已保存 {key}",
+    description: "Toast on a successful env-var add/update",
+  },
+  "services.envSaveError": {
+    message: "无法保存 {key}",
+    description: "Toast on a failed env-var add/update",
+  },
+  "services.envDeleteSuccess": {
+    message: "已删除 {key}",
+    description: "Toast on a successful env-var delete",
+  },
+  "services.envDeleteError": {
+    message: "无法删除 {key}",
+    description: "Toast on a failed env-var delete",
+  },
 };
 
 export default zhServices;

@@ -22,6 +22,16 @@ export interface ServiceView {
 /** The lifecycle verbs the row exposes, named after bex-api's Render mutations. */
 export type LifecycleAction = "suspend" | "resume" | "restart";
 
+/**
+ * One env-var key on the Environment tab (Render dashboard shape: the list is
+ * keys only; a value is fetched per key on "Show secret"). `id` is bex-api's
+ * per-var id, which equals the key.
+ */
+export interface EnvVarKey {
+  id: string;
+  key: string;
+}
+
 /** A resolved status key (i18n label) + the badge variant it renders as. */
 export type ServiceStatusKey =
   | "running"

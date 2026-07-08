@@ -1,0 +1,40 @@
+# bex-api's env-vars surface, Render dashboard-shaped (backend/internal/secrets +
+# apps/graphql.go, docs/bex-api.md#env-vars). Env vars nest under the service:
+# `envVarKeys` lists keys only (each with an id == key); a value is fetched per
+# key via `envVar(key)` ("Show secret"), never in the bulk list. Mutations are
+# top-level and return a success boolean (bex's own names — Render's dashboard
+# mutation names weren't captured). `service(id)` is Render's dashboard alias for
+# a single service (beside `server(id)`).
+
+query EnvVarKeys($id: String!) {
+  service(id: $id) {
+    id
+    envVarKeys {
+      id
+      key
+    }
+  }
+}
+
+query EnvVarValue($id: String!, $key: String!) {
+  service(id: $id) {
+    id
+    envVar(key: $key) {
+      id
+      key
+      value
+    }
+  }
+}
+
+mutation SetEnvVars($serviceId: String!, $envVars: [EnvVarInput!]!) {
+  setEnvVars(serviceId: $serviceId, envVars: $envVars)
+}
+
+mutation SetEnvVar($serviceId: String!, $key: String!, $value: String) {
+  setEnvVar(serviceId: $serviceId, key: $key, value: $value)
+}
+
+mutation DeleteEnvVar($serviceId: String!, $key: String!) {
+  deleteEnvVar(serviceId: $serviceId, key: $key)
+}

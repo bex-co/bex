@@ -195,6 +195,131 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Live log tailing for this service ships in an upcoming release.",
     description: "Logs tab placeholder body",
   },
+  "services.navEnvironment": {
+    message: "Environment",
+    description: "Service-detail nav item (environment variables tab)",
+  },
+  "services.envTitle": {
+    message: "Environment Variables",
+    description: "Environment tab card title",
+  },
+  "services.envDescription": {
+    message:
+      "Set environment-specific config and secrets, then read those values from your code.",
+    description: "Environment tab card description",
+  },
+  "services.envColKey": {
+    message: "Key",
+    description: "Environment table column header (variable name)",
+  },
+  "services.envColValue": {
+    message: "Value",
+    description: "Environment table column header (variable value)",
+  },
+  "services.envShowSecret": {
+    message: "Show value",
+    description: "Environment row button to reveal a masked value",
+  },
+  "services.envHideSecret": {
+    message: "Hide value",
+    description: "Environment row button to re-mask a revealed value",
+  },
+  "services.envRevealError": {
+    message: "Couldn't load the value.",
+    description: "Environment row inline error when a value reveal fails",
+  },
+  "services.envEmptyTitle": {
+    message: "No environment variables",
+    description: "Environment tab empty-state title",
+  },
+  "services.envEmptyBody": {
+    message: "Add a variable to configure this service.",
+    description: "Environment tab empty-state body",
+  },
+  "services.envUnavailableTitle": {
+    message: "Environment variables unavailable",
+    description: "Environment tab state when the secret store is unconfigured (503)",
+  },
+  "services.envUnavailableBody": {
+    message: "The secret store isn't configured for this deployment.",
+    description: "Environment tab unavailable-state body",
+  },
+  "services.envForbiddenTitle": {
+    message: "Not authorized",
+    description: "Environment tab state when the caller lacks permission (403)",
+  },
+  "services.envForbiddenBody": {
+    message: "You don't have permission to view this service's environment variables.",
+    description: "Environment tab forbidden-state body",
+  },
+  "services.envErrorTitle": {
+    message: "Couldn't load environment variables",
+    description: "Environment tab generic error title",
+  },
+  "services.envErrorBody": {
+    message: "Something went wrong. Please try again.",
+    description: "Environment tab generic error body",
+  },
+  "services.envAdd": {
+    message: "Add variable",
+    description: "Environment tab button to open the add-variable form",
+  },
+  "services.envEdit": {
+    message: "Edit",
+    description: "Environment row button to edit a variable's value",
+  },
+  "services.envDelete": {
+    message: "Delete",
+    description: "Environment row button to remove a variable",
+  },
+  "services.envSave": {
+    message: "Save",
+    description: "Environment add/edit form save button",
+  },
+  "services.envCancel": {
+    message: "Cancel",
+    description: "Environment add/edit form cancel button",
+  },
+  "services.envKeyPlaceholder": {
+    message: "NAME_OF_VARIABLE",
+    description: "Environment add-variable key input placeholder",
+  },
+  "services.envValuePlaceholder": {
+    message: "value",
+    description: "Environment value input placeholder",
+  },
+  "services.envInvalidKey": {
+    message: "Use letters, digits and underscores; can't start with a digit.",
+    description: "Environment add-variable validation message for an invalid key",
+  },
+  "services.envDeleteConfirmTitle": {
+    message: "Remove {key}?",
+    description: "Environment delete-confirmation dialog title",
+  },
+  "services.envDeleteConfirmBody": {
+    message: "The service will redeploy without this variable.",
+    description: "Environment delete-confirmation dialog body",
+  },
+  "services.envRolloutNote": {
+    message: "The service is redeploying to apply the change.",
+    description: "Toast description after an env-var write (bex rolls the pods)",
+  },
+  "services.envSaveSuccess": {
+    message: "Saved {key}",
+    description: "Toast on a successful env-var add/update",
+  },
+  "services.envSaveError": {
+    message: "Couldn't save {key}",
+    description: "Toast on a failed env-var add/update",
+  },
+  "services.envDeleteSuccess": {
+    message: "Removed {key}",
+    description: "Toast on a successful env-var delete",
+  },
+  "services.envDeleteError": {
+    message: "Couldn't remove {key}",
+    description: "Toast on a failed env-var delete",
+  },
 };
 
 export default enServices;
