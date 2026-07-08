@@ -159,6 +159,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Logs",
     description: "Service-detail nav item (logs tab)",
   },
+  "services.navMetrics": {
+    message: "Metrics",
+    description: "Service-detail nav item (metrics tab)",
+  },
   "services.overviewPhase": {
     message: "Phase",
     description: "Overview panel field label (operator phase, verbatim)",

@@ -38,8 +38,42 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description: "Application metrics card title",
   },
   "metrics.applicationDescription": {
-    message: "来自 metrics-server 的单实例资源使用情况",
+    message: "所选时间范围内各实例的资源使用情况",
     description: "Application metrics card description",
+  },
+  "metrics.limitLabel": {
+    message: "限额 {value}",
+    description:
+      "Resource limit annotation on the Memory/CPU chart headers, e.g. 'Limit 512 MiB'",
+  },
+  "metrics.noLimitConfigured": {
+    message: "未配置资源限额——无法计算百分比",
+    description:
+      "Shown instead of a percentage chart when the App's pods declare no resource limit",
+  },
+  "metrics.statusCode": {
+    message: "状态码",
+    description: "Toolbar filter label for HTTP status code",
+  },
+  "metrics.statusCodeAll": {
+    message: "全部",
+    description: "Status-code filter option meaning no filtering",
+  },
+  "metrics.groupBy": {
+    message: "分组",
+    description: "Total Requests chart control label",
+  },
+  "metrics.groupByAllRequests": {
+    message: "全部请求",
+    description: "Group-by option: one aggregate series",
+  },
+  "metrics.groupByStatus": {
+    message: "按状态码",
+    description: "Group-by option: one series per HTTP status code",
+  },
+  "metrics.groupByMethod": {
+    message: "按方法",
+    description: "Group-by option: one series per HTTP method",
   },
   "metrics.memory": {
     message: "内存",
@@ -69,8 +103,20 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "过去一小时",
     description: "Metrics time-range filter option",
   },
+  "metrics.rangeLast3Hours": {
+    message: "过去 3 小时",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast6Hours": {
+    message: "过去 6 小时",
+    description: "Metrics time-range filter option",
+  },
   "metrics.rangeLast12Hours": {
     message: "过去 12 小时",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLastDay": {
+    message: "过去 1 天",
     description: "Metrics time-range filter option",
   },
 };

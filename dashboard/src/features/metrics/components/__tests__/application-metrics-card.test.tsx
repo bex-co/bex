@@ -9,17 +9,29 @@ vi.mock("@/features/metrics/hooks/use-metrics", () => ({
 
 const mockUseMetrics = vi.mocked(useMetrics);
 
+// The page-level resolved live window, passed down by the route.
+const WINDOW = {
+  startTime: "2026-07-06T09:00:00Z",
+  endTime: "2026-07-06T10:00:00Z",
+  resolutionSeconds: 30,
+  pollIntervalMs: 0,
+};
+
 function emptyResult() {
   return { series: [], loading: false, unavailable: false, error: undefined };
 }
 
-function seriesResult(unit: string, values: number[]) {
+/** A stepped series with real timestamps (the chart maps x by time). */
+function seriesResult(unit: string, values: number[], instance?: string) {
   return {
     series: [
       {
         unit,
-        labels: {},
-        points: values.map((value, i) => ({ timestamp: `t${i}`, value })),
+        labels: instance ? { instance } : {},
+        points: values.map((value, i) => ({
+          timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
+          value,
+        })),
       },
     ],
     loading: false,
@@ -33,65 +45,113 @@ describe("ApplicationMetricsCard", () => {
     mockUseMetrics.mockReset();
   });
 
-  it("fetches cpu/memory raw and their _limit counterparts (aggregateMax), plus instance_count", () => {
+  function renderCard(percentage: boolean, resource = "app") {
+    return render(
+      <ApplicationMetricsCard
+        resource={resource}
+        percentage={percentage}
+        window={WINDOW}
+      />,
+    );
+  }
+
+  it("fetches cpu/memory/instances over the shared window; the _limit queries ride the same window aggregated", () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 
-    render(<ApplicationMetricsCard resource="beancount-cms" percentage />);
+    renderCard(true, "beancount-cms");
 
-    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu");
-    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "memory");
+    expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu", WINDOW);
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "memory",
+      WINDOW,
+    );
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "instance_count",
+      WINDOW,
+    );
+    // Limits share the window's cadence (no second Apollo poll timer).
     expect(mockUseMetrics).toHaveBeenCalledWith("beancount-cms", "cpu_limit", {
+      ...WINDOW,
       aggregateMax: true,
     });
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "memory_limit",
-      { aggregateMax: true },
-    );
-    expect(mockUseMetrics).toHaveBeenCalledWith(
-      "beancount-cms",
-      "instance_count",
+      { ...WINDOW, aggregateMax: true },
     );
   });
 
-  it("renders the latest absolute value from each series as a stat when percentage is off", () => {
+  it("draws a multi-point history chart per metric on the Total tab, with the latest value in the header", () => {
     mockUseMetrics.mockImplementation((_resource, metric) => {
       if (metric === "memory") return seriesResult("bytes", [100, 200]);
-      if (metric === "instance_count") return seriesResult("count", [3]);
+      if (metric === "instance_count") return seriesResult("count", [3, 3]);
       return emptyResult();
     });
 
-    render(<ApplicationMetricsCard resource="app" percentage={false} />);
+    renderCard(false);
 
-    // Memory takes the LAST point (200 bytes), not the first.
-    expect(screen.getByText("200 B")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    // Memory renders a 2-point line chart, not a lone stat…
+    expect(
+      screen.getAllByRole("img", { name: /2 data points/ }).length,
+    ).toBeGreaterThanOrEqual(2); // memory + instances
+    // …and its header shows the LAST point (200 bytes), not the first —
+    // getAllBy: the y-axis max tick legitimately shows the same value.
+    expect(screen.getAllByText("200 B").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   });
 
-  it("computes a client-side percentage from the raw metric and its _limit series", () => {
+  it("scales every percentage point by the _limit series and shows the limit label", () => {
     mockUseMetrics.mockImplementation((_resource, metric) => {
-      if (metric === "memory") return seriesResult("bytes", [50]);
+      if (metric === "memory") return seriesResult("bytes", [50, 100]);
       if (metric === "memory_limit") return seriesResult("bytes", [200]);
       return emptyResult();
     });
 
-    render(<ApplicationMetricsCard resource="app" percentage />);
+    renderCard(true);
 
-    expect(screen.getByText("25.0%")).toBeInTheDocument();
+    // Latest 100/200 => 50.0%; the limit label renders alongside.
+    expect(screen.getByText("50.0%")).toBeInTheDocument();
+    expect(screen.getByText("Limit 200 B")).toBeInTheDocument();
   });
 
-  it("renders — for percentage when the limit series is empty (no pod limit configured)", () => {
+  it("shows the honest no-limit state for percentage when no _limit series exists", () => {
     mockUseMetrics.mockImplementation((_resource, metric) => {
       if (metric === "cpu") return seriesResult("cpu", [0.5]);
       return emptyResult();
     });
 
-    render(<ApplicationMetricsCard resource="app" percentage />);
+    renderCard(true);
 
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/No limit configured/).length,
+    ).toBeGreaterThan(0);
   });
 
-  it("renders the unavailable state instead of a stat when a metric has no source", () => {
+  it("draws one line per instance and a legend naming each", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "memory") {
+        return {
+          series: [
+            seriesResult("bytes", [1, 2], "web-a").series[0],
+            seriesResult("bytes", [3, 4], "web-b").series[0],
+          ],
+          loading: false,
+          unavailable: false,
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard(false);
+
+    expect(screen.getByText("web-a")).toBeInTheDocument();
+    expect(screen.getByText("web-b")).toBeInTheDocument();
+  });
+
+  it("renders the unavailable state instead of a chart when a metric has no source", () => {
     mockUseMetrics.mockImplementation((_resource, metric) => {
       if (metric === "cpu") {
         return {
@@ -104,12 +164,12 @@ describe("ApplicationMetricsCard", () => {
       return emptyResult();
     });
 
-    render(<ApplicationMetricsCard resource="app" percentage={false} />);
+    renderCard(false);
 
     expect(
       screen.getByText("Metrics source not configured"),
     ).toBeInTheDocument();
-    // Memory and Total Instances still render as ordinary (empty) stats, not unavailable.
-    expect(screen.getAllByText("—")).toHaveLength(2);
+    // Memory and Total Instances still render their (empty) charts, not unavailable.
+    expect(screen.getAllByText("No data in range")).toHaveLength(2);
   });
 });

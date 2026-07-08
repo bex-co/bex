@@ -38,8 +38,42 @@ const enMetrics: Record<string, TranslationEntry> = {
     description: "Application metrics card title",
   },
   "metrics.applicationDescription": {
-    message: "Per-instance resource usage, from metrics-server",
+    message: "Per-instance resource usage over the selected range",
     description: "Application metrics card description",
+  },
+  "metrics.limitLabel": {
+    message: "Limit {value}",
+    description:
+      "Resource limit annotation on the Memory/CPU chart headers, e.g. 'Limit 512 MiB'",
+  },
+  "metrics.noLimitConfigured": {
+    message: "No limit configured — percentage is undefined",
+    description:
+      "Shown instead of a percentage chart when the App's pods declare no resource limit",
+  },
+  "metrics.statusCode": {
+    message: "Status Code",
+    description: "Toolbar filter label for HTTP status code",
+  },
+  "metrics.statusCodeAll": {
+    message: "All",
+    description: "Status-code filter option meaning no filtering",
+  },
+  "metrics.groupBy": {
+    message: "Group by",
+    description: "Total Requests chart control label",
+  },
+  "metrics.groupByAllRequests": {
+    message: "All requests",
+    description: "Group-by option: one aggregate series",
+  },
+  "metrics.groupByStatus": {
+    message: "Status code",
+    description: "Group-by option: one series per HTTP status code",
+  },
+  "metrics.groupByMethod": {
+    message: "Method",
+    description: "Group-by option: one series per HTTP method",
   },
   "metrics.memory": {
     message: "Memory",
@@ -69,8 +103,20 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Last hour",
     description: "Metrics time-range filter option",
   },
+  "metrics.rangeLast3Hours": {
+    message: "Last 3 hours",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLast6Hours": {
+    message: "Last 6 hours",
+    description: "Metrics time-range filter option",
+  },
   "metrics.rangeLast12Hours": {
     message: "Last 12 hours",
+    description: "Metrics time-range filter option",
+  },
+  "metrics.rangeLastDay": {
+    message: "Last day",
     description: "Metrics time-range filter option",
   },
 };

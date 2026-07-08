@@ -3,8 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { NetworkMetricsCard } from "../network-metrics-card";
 import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 import { useMonthToDateBandwidth } from "@/features/metrics/hooks/use-month-to-date-bandwidth";
-import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import { RANGE_PRESETS } from "@/features/metrics/lib/range";
 
 vi.mock("@/features/metrics/hooks/use-metrics", () => ({
   useMetrics: vi.fn(),
@@ -12,27 +10,36 @@ vi.mock("@/features/metrics/hooks/use-metrics", () => ({
 vi.mock("@/features/metrics/hooks/use-month-to-date-bandwidth", () => ({
   useMonthToDateBandwidth: vi.fn(),
 }));
-vi.mock("@/features/metrics/hooks/use-live-range", () => ({
-  useLiveRange: vi.fn(),
-}));
 
 const mockUseMetrics = vi.mocked(useMetrics);
 const mockUseMonthToDateBandwidth = vi.mocked(useMonthToDateBandwidth);
-const mockUseLiveRange = vi.mocked(useLiveRange);
+
+// The page-level resolved live window, passed down by the route.
+const WINDOW = {
+  startTime: "2026-07-06T09:00:00Z",
+  endTime: "2026-07-06T10:00:00Z",
+  resolutionSeconds: 30,
+  pollIntervalMs: 0,
+};
 
 function emptyResult() {
   return { series: [], loading: false, unavailable: false, error: undefined };
 }
 
+function renderCard(statusCode = "") {
+  return render(
+    <NetworkMetricsCard
+      resource="beancount-cms"
+      window={WINDOW}
+      quantile={0.95}
+      statusCode={statusCode}
+    />,
+  );
+}
+
 describe("NetworkMetricsCard", () => {
   beforeEach(() => {
     mockUseMetrics.mockReset();
-    mockUseLiveRange.mockReset();
-    mockUseLiveRange.mockReturnValue({
-      startTime: "2026-07-06T09:00:00Z",
-      endTime: "2026-07-06T10:00:00Z",
-      resolutionSeconds: 30,
-    });
     mockUseMonthToDateBandwidth.mockReset();
     mockUseMonthToDateBandwidth.mockReturnValue({
       egressBandwidthMB: null,
@@ -41,45 +48,47 @@ describe("NetworkMetricsCard", () => {
     });
   });
 
-  it("queries the live range's resolved window for all three request metrics, and passes quantile only to latency", () => {
+  it("queries the shared window for all three request metrics, and passes quantile only to latency", () => {
     mockUseMetrics.mockReturnValue(emptyResult());
-    const range = RANGE_PRESETS.find((p) => p.id === "1h")!;
 
-    render(
-      <NetworkMetricsCard
-        resource="beancount-cms"
-        range={range}
-        quantile={0.95}
-      />,
-    );
+    renderCard();
 
-    // pollIntervalMs: 0 disables Apollo's own poll timer — useLiveRange's tick
-    // (asserted separately) already forces a refetch every cycle, so a second,
-    // out-of-phase timer would only add redundant requests.
-    const expectedWindow = {
-      startTime: "2026-07-06T09:00:00Z",
-      endTime: "2026-07-06T10:00:00Z",
-      resolutionSeconds: 30,
-      pollIntervalMs: 0,
-    };
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "http_requests",
-      expectedWindow,
+      expect.objectContaining(WINDOW),
     );
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "bandwidth",
-      expectedWindow,
+      WINDOW,
     );
     expect(mockUseMetrics).toHaveBeenCalledWith(
       "beancount-cms",
       "http_latency",
-      {
-        ...expectedWindow,
-        quantile: 0.95,
-      },
+      expect.objectContaining({ ...WINDOW, quantile: 0.95 }),
     );
+  });
+
+  it("applies the status-code filter to requests and latency but never bandwidth (no code label on the bytes counter)", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard("5xx");
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_requests",
+      expect.objectContaining({ statusCode: "5xx" }),
+    );
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_latency",
+      expect.objectContaining({ statusCode: "5xx" }),
+    );
+    const bandwidthCall = mockUseMetrics.mock.calls.find(
+      ([, metric]) => metric === "bandwidth",
+    )!;
+    expect(bandwidthCall[2]).not.toHaveProperty("statusCode");
   });
 
   it("renders a populated chart for a metric with data", () => {
@@ -90,7 +99,7 @@ describe("NetworkMetricsCard", () => {
             {
               unit: "count",
               labels: {},
-              points: [{ timestamp: "t", value: 1 }],
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
             },
           ],
           loading: false,
@@ -101,14 +110,42 @@ describe("NetworkMetricsCard", () => {
       return emptyResult();
     });
 
-    render(
-      <NetworkMetricsCard
-        resource="app"
-        range={RANGE_PRESETS.find((p) => p.id === "1h")!}
-        quantile={0.95}
-      />,
-    );
+    renderCard();
 
+    expect(
+      screen.getByRole("img", { name: /Bar chart with 1 data points/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("stacks grouped request series into shared time buckets", () => {
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "http_requests" && opts && "groupBy" in opts) {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: { code: "200" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
+            },
+            {
+              unit: "count",
+              labels: { code: "500" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+
+    // Group-by is off by default, so series labels aren't shown as a legend…
+    expect(screen.queryByText("200")).not.toBeInTheDocument();
+    // …but both series stack into the single shared time bucket.
     expect(
       screen.getByRole("img", { name: /Bar chart with 1 data points/ }),
     ).toBeInTheDocument();
@@ -127,13 +164,7 @@ describe("NetworkMetricsCard", () => {
       return emptyResult();
     });
 
-    render(
-      <NetworkMetricsCard
-        resource="app"
-        range={RANGE_PRESETS.find((p) => p.id === "1h")!}
-        quantile={0.95}
-      />,
-    );
+    renderCard();
 
     expect(
       screen.getByText("Metrics source not configured"),
@@ -150,13 +181,7 @@ describe("NetworkMetricsCard", () => {
       error: undefined,
     });
 
-    render(
-      <NetworkMetricsCard
-        resource="app"
-        range={RANGE_PRESETS.find((p) => p.id === "1h")!}
-        quantile={0.95}
-      />,
-    );
+    renderCard();
 
     expect(screen.getByText(/used this month/)).toBeInTheDocument();
   });

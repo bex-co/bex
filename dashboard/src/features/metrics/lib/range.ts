@@ -1,16 +1,21 @@
 export interface RangePreset {
-  id: "30m" | "1h" | "12h";
+  id: "30m" | "1h" | "3h" | "6h" | "12h" | "1d";
   spanSeconds: number;
   resolutionSeconds: number;
 }
 
-// Resolution scales with span so a request-metric series stays readable (not
-// thousands of points) while still resolving fine-grained enough to show shape.
+// Resolution scales with span so a series stays readable (~120 points, not
+// thousands) while still resolving fine-grained enough to show shape.
 // Display labels live in metrics-filters.tsx's RANGE_LABEL_KEYS (i18n).
+// Ranges beyond Prometheus's retention (deploy/gitops/base/prometheus.yaml)
+// simply show the retained window — same as Render past its own horizon.
 export const RANGE_PRESETS: RangePreset[] = [
   { id: "30m", spanSeconds: 30 * 60, resolutionSeconds: 15 },
   { id: "1h", spanSeconds: 60 * 60, resolutionSeconds: 30 },
+  { id: "3h", spanSeconds: 3 * 60 * 60, resolutionSeconds: 90 },
+  { id: "6h", spanSeconds: 6 * 60 * 60, resolutionSeconds: 180 },
   { id: "12h", spanSeconds: 12 * 60 * 60, resolutionSeconds: 300 },
+  { id: "1d", spanSeconds: 24 * 60 * 60, resolutionSeconds: 720 },
 ];
 
 export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[1]; // "1h", matches bex-api's own default span

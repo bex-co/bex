@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -369,6 +370,21 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	}
 	if method, _ := input["aggregateAllMethod"].(string); method == "MAX" {
 		q.AggregateMax = true
+	}
+	// aggregateBy carries Render's per-chart "Group by" breakdown: an entry
+	// naming the label to break the series out by (STATUS_CODE / METHOD, the
+	// captured filter-field vocabulary), mapped onto Core's GroupBy exactly
+	// like REST's `groupBy` param so the two surfaces stay parity-equal.
+	// Other values (Render also sends instance-flavored ones) keep today's
+	// behavior — ignored, since bex's request PromQL already always sums
+	// across instances.
+	for _, v := range stringsFromAny(input["aggregateBy"]) {
+		switch strings.ToUpper(v) {
+		case "STATUS_CODE":
+			q.GroupBy = "status"
+		case "METHOD":
+			q.GroupBy = "method"
+		}
 	}
 
 	return resources, q, nil

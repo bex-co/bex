@@ -277,6 +277,45 @@ func TestGraphQLMetrics(t *testing.T) {
 	}
 }
 
+// TestGraphQLAggregateByMapsToGroupBy: aggregateBy carries Render's per-chart
+// "Group by" (STATUS_CODE/METHOD) onto Core's GroupBy — the same knob REST's
+// `groupBy` param sets, keeping the two surfaces parity-equal. Instance-
+// flavored values stay ignored (bex always sums across instances).
+func TestGraphQLAggregateByMapsToGroupBy(t *testing.T) {
+	var got RequestMetricsRequest
+	req := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		got = r
+		return []MetricSeries{{Points: []MetricPoint{{Timestamp: "2026-07-05T00:00:00Z", Value: 1}}}}, nil
+	}
+	svc := newService(nil, req, sampleApp("web"))
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	ask := func(aggregateBy string) {
+		t.Helper()
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+			RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "STATUS_CODE", values: ["5xx"]}], name: "HTTP_REQUESTS", aggregateBy: [` + aggregateBy + `]}) { unit } }`})
+		if len(res.Errors) > 0 {
+			t.Fatalf("gql: %v", res.Errors)
+		}
+	}
+
+	ask(`"STATUS_CODE"`)
+	if got.GroupBy != "status" || got.StatusCode != "5xx" {
+		t.Errorf(`aggregateBy STATUS_CODE => groupBy "status" (+ filter passthrough), got %+v`, got)
+	}
+	ask(`"METHOD"`)
+	if got.GroupBy != "method" {
+		t.Errorf(`aggregateBy METHOD => groupBy "method", got %q`, got.GroupBy)
+	}
+	ask(`"instance"`)
+	if got.GroupBy != "" {
+		t.Errorf("instance-flavored aggregateBy should stay ignored, got %q", got.GroupBy)
+	}
+}
+
 // --- Production source parsers (no live backend) ---
 
 func TestParsePodMetrics(t *testing.T) {

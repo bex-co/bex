@@ -49,6 +49,51 @@ describe("useMetrics", () => {
     );
   });
 
+  it("sends the status-code filter as a STATUS_CODE filters entry and group-by as aggregateBy", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+
+    renderHook(() =>
+      useMetrics("app", "http_requests", {
+        statusCode: "5xx",
+        groupBy: "status",
+      }),
+    );
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            filters: [
+              { field: "RESOURCE", values: ["app"] },
+              { field: "STATUS_CODE", values: ["5xx"] },
+            ],
+            aggregateBy: ["STATUS_CODE"],
+          }),
+        }),
+      }),
+    );
+
+    renderHook(() =>
+      useMetrics("app", "http_requests", { groupBy: "method" }),
+    );
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            filters: [{ field: "RESOURCE", values: ["app"] }],
+            aggregateBy: ["METHOD"],
+          }),
+        }),
+      }),
+    );
+  });
+
   it("sends aggregateAllMethod: MAX for a limit metric when aggregateMax is set", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,

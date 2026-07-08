@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { MetricsDocument } from "@/graphql/definitions";
@@ -26,6 +27,17 @@ export interface UseMetricsOptions {
    * contract) — see application-metrics-card.tsx.
    */
   aggregateMax?: boolean;
+  /**
+   * Render's toolbar Status Code filter: a class ("2xx"/"5xx") or exact code
+   * ("500"), sent as a STATUS_CODE filters entry alongside RESOURCE.
+   */
+  statusCode?: string;
+  /**
+   * Render's per-chart "Group by": breaks the series out per status code or
+   * method, sent as aggregateBy (the captured vocabulary — bex-api maps it
+   * onto Core's groupBy exactly like REST's `groupBy` param).
+   */
+  groupBy?: "status" | "method";
   /** Polling cadence; 0 disables polling. Defaults to 30s. */
   pollIntervalMs?: number;
 }
@@ -60,17 +72,30 @@ export function useMetrics(
     resolutionSeconds,
     quantile,
     aggregateMax,
+    statusCode,
+    groupBy,
   } = opts;
 
   const { data, loading, error } = useQuery(MetricsDocument, {
     variables: {
       query: {
-        filters: [{ field: "RESOURCE", values: [resource] }],
+        filters: [
+          { field: "RESOURCE", values: [resource] },
+          ...(statusCode
+            ? [{ field: "STATUS_CODE", values: [statusCode] }]
+            : []),
+        ],
         name: RENDER_METRIC_NAMES[metric],
         start: startTime,
         end: endTime,
         resolution: resolutionSeconds,
         parameters: quantile != null ? [{ quantile }] : undefined,
+        aggregateBy:
+          groupBy === "status"
+            ? ["STATUS_CODE"]
+            : groupBy === "method"
+              ? ["METHOD"]
+              : undefined,
         aggregateAllMethod: aggregateMax ? "MAX" : undefined,
       },
     },
@@ -85,22 +110,28 @@ export function useMetrics(
     error.errors.some((e) => e.message === METRICS_UNAVAILABLE_MESSAGE),
   );
 
-  const series: ChartSeries[] = (data?.metrics ?? [])
-    .filter((s) => s != null)
-    .map((s) => ({
-      unit: s.unit ?? "",
-      labels: Object.fromEntries(
-        (s.labels ?? [])
-          .filter((l) => l?.field != null && l.value != null)
-          .map((l) => [l!.field as string, l!.value as string]),
-      ),
-      points: (s.values ?? [])
-        .filter((p) => p?.time != null && p.value != null)
-        .map((p) => ({
-          timestamp: p!.time as string,
-          value: p!.value as number,
+  // Memoized on data identity: a stable series identity is what lets the
+  // charts' geometry useMemos actually cache across poll-tick re-renders.
+  const series: ChartSeries[] = useMemo(
+    () =>
+      (data?.metrics ?? [])
+        .filter((s) => s != null)
+        .map((s) => ({
+          unit: s.unit ?? "",
+          labels: Object.fromEntries(
+            (s.labels ?? [])
+              .filter((l) => l?.field != null && l.value != null)
+              .map((l) => [l!.field as string, l!.value as string]),
+          ),
+          points: (s.values ?? [])
+            .filter((p) => p?.time != null && p.value != null)
+            .map((p) => ({
+              timestamp: p!.time as string,
+              value: p!.value as number,
+            })),
         })),
-    }));
+    [data],
+  );
 
   return {
     series,

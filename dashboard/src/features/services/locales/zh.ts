@@ -157,6 +157,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "日志",
     description: "Service-detail nav item (logs tab)",
   },
+  "services.navMetrics": {
+    message: "指标",
+    description: "Service-detail nav item (metrics tab)",
+  },
   "services.overviewPhase": {
     message: "阶段",
     description: "Overview panel field label (operator phase, verbatim)",

@@ -2,12 +2,27 @@ import { describe, it, expect } from "vitest";
 import { RANGE_PRESETS, DEFAULT_RANGE_PRESET, resolveRange } from "../range";
 
 describe("RANGE_PRESETS", () => {
-  it("has the three PoC presets in ascending span order", () => {
-    expect(RANGE_PRESETS.map((p) => p.id)).toEqual(["30m", "1h", "12h"]);
+  it("offers Render's preset ladder in ascending span order", () => {
+    expect(RANGE_PRESETS.map((p) => p.id)).toEqual([
+      "30m",
+      "1h",
+      "3h",
+      "6h",
+      "12h",
+      "1d",
+    ]);
     for (let i = 1; i < RANGE_PRESETS.length; i++) {
       expect(RANGE_PRESETS[i].spanSeconds).toBeGreaterThan(
         RANGE_PRESETS[i - 1].spanSeconds,
       );
+    }
+  });
+
+  it("keeps every preset readable: ~120-150 points at its own resolution", () => {
+    for (const p of RANGE_PRESETS) {
+      const points = p.spanSeconds / p.resolutionSeconds;
+      expect(points).toBeGreaterThanOrEqual(60);
+      expect(points).toBeLessThanOrEqual(150);
     }
   });
 

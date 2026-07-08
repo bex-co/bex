@@ -9,9 +9,11 @@
 # Without this, request metrics return 503 and resource metrics fall back to
 # metrics-server's single-point snapshot.
 #
-# Server-only (no alertmanager/pushgateway/exporters), short retention, ephemeral
-# storage — this exists solely to feed bex-api's request-metric range queries.
-# bex-api points at it with BEX_PROM_URL=http://prometheus-server.monitoring.
+# Server-only (no alertmanager/pushgateway/exporters), days-scale retention on a
+# small PV — this exists solely to feed bex-api's metric range queries (the
+# dashboard's presets reach back 24h, so retention must comfortably cover that
+# and survive a pod restart). bex-api points at it with
+# BEX_PROM_URL=http://prometheus-server.monitoring.
 #
 # NOTE: the Traefik scrape target below matches pods labelled
 # app.kubernetes.io/name=traefik on port 9100 (the metrics entrypoint). If the
@@ -39,9 +41,15 @@ spec:
         kube-state-metrics: { enabled: false }
         prometheus-node-exporter: { enabled: false }
         server:
-          retention: 3h
+          # Covers the dashboard's widest range preset (24h) with headroom;
+          # cardinality is tiny (two scrape jobs), so this is disk-bounded, not
+          # memory-bounded. The PV (cluster default StorageClass, local-path on
+          # both the CAPD mock and prod) keeps history across pod restarts —
+          # with emptyDir a reschedule silently wiped every chart.
+          retention: 3d
           persistentVolume:
-            enabled: false # ephemeral; request metrics are a short live window
+            enabled: true
+            size: 8Gi
           resources:
             requests: { cpu: 50m, memory: 256Mi }
             limits: { cpu: 500m, memory: 512Mi }

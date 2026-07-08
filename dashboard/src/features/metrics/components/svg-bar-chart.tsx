@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatMetricShort } from "@/features/metrics/lib/format";
 import {
   ChartTooltip,
@@ -8,42 +8,50 @@ import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
   CHART_PAD as PAD,
+  groupPointsByTime,
+  frameTooltipRows,
+  type SeriesInput,
 } from "@/features/metrics/components/chart-layout";
-import type { ChartPoint } from "@/features/metrics/types";
 
 const MAX_BAR_WIDTH = 24;
 const BAR_GAP = 2;
 
+/** One stack segment source of a (possibly grouped) bar chart. */
+export type BarSeriesInput = SeriesInput;
+
 interface SvgBarChartProps {
-  points: ChartPoint[];
   unit: string;
-  color: string;
+  /** Segments stack per time bucket (e.g. per status code); one entry = plain bars. */
+  series: BarSeriesInput[];
 }
 
 /**
- * A single-series bar chart: bars capped at 24px with a 4px rounded top and
- * square baseline, a 2px surface gap between neighbors, hairline gridlines,
- * and a per-bar hover/focus tooltip (the bar itself is the hit target — no
- * crosshair, per dataviz's bar-vs-line interaction split).
+ * A bar chart: bars capped at 24px with a 4px rounded top and square baseline,
+ * a 2px surface gap between neighbors, hairline gridlines, and a per-bar
+ * hover/focus tooltip (the bar itself is the hit target — no crosshair, per
+ * dataviz's bar-vs-line interaction split). With multiple series the segments
+ * stack per time bucket (Render's grouped Total Requests), sharing one y scale
+ * normalized to the tallest stack.
  */
-export function SvgBarChart({ points, unit, color }: SvgBarChartProps) {
+export function SvgBarChart({ unit, series }: SvgBarChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  if (points.length === 0) {
+  const frames = useMemo(() => groupPointsByTime(series), [series]);
+
+  if (frames.length === 0) {
     return <EmptyChart height={HEIGHT} />;
   }
 
-  const values = points.map((p) => p.value);
-  const maxVal = Math.max(...values, 0);
+  const maxVal = Math.max(...frames.map((f) => f.total), 0);
   const innerWidth = WIDTH - PAD.left - PAD.right;
   const innerHeight = HEIGHT - PAD.top - PAD.bottom;
   const baseline = PAD.top + innerHeight;
 
-  const slot = innerWidth / points.length;
+  const slot = innerWidth / frames.length;
   const barWidth = Math.max(1, Math.min(MAX_BAR_WIDTH, slot - BAR_GAP));
 
   const yTicks = [0, maxVal / 2, maxVal];
-  const active = activeIndex != null ? points[activeIndex] : null;
+  const active = activeIndex != null ? frames[activeIndex] : null;
 
   return (
     <div className="relative">
@@ -51,7 +59,7 @@ export function SvgBarChart({ points, unit, color }: SvgBarChartProps) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"
         role="img"
-        aria-label={`Bar chart with ${points.length} data points`}
+        aria-label={`Bar chart with ${frames.length} data points`}
       >
         {/* Keyed by position, not value — an all-zero series repeats 0 at every tick. */}
         {yTicks.map((v, i) => {
@@ -79,36 +87,48 @@ export function SvgBarChart({ points, unit, color }: SvgBarChartProps) {
           );
         })}
 
-        {points.map((p, i) => {
-          const h = maxVal === 0 ? 0 : (p.value / maxVal) * innerHeight;
+        {frames.map((frame, i) => {
           const x = PAD.left + i * slot + (slot - barWidth) / 2;
-          const y = baseline - h;
           const isActive = activeIndex === i;
+          const stackH =
+            maxVal === 0 ? 0 : (frame.total / maxVal) * innerHeight;
+          let yCursor = baseline;
           return (
-            <path
-              key={p.timestamp + i}
-              d={roundedTopBarPath(x, y, barWidth, h, 4)}
-              fill={color}
-              opacity={isActive ? 1 : 0.85}
+            <g
+              key={frame.time + i}
               tabIndex={0}
               role="graphics-symbol"
-              aria-label={`${formatMetricShort(unit, p.value)} at ${new Date(p.timestamp).toLocaleTimeString()}`}
+              aria-label={`${formatMetricShort(unit, frame.total)} at ${new Date(frame.time).toLocaleTimeString()}`}
               onPointerEnter={() => setActiveIndex(i)}
               onFocus={() => setActiveIndex(i)}
               onPointerLeave={() =>
                 setActiveIndex((cur) => (cur === i ? null : cur))
               }
               onBlur={() => setActiveIndex((cur) => (cur === i ? null : cur))}
-            />
+            >
+              {frame.rows.map((row, j) => {
+                const h =
+                  maxVal === 0 ? 0 : (row.value / maxVal) * innerHeight;
+                yCursor -= h;
+                const isTop = yCursor - (baseline - stackH) < 0.5;
+                return (
+                  <path
+                    key={j}
+                    d={roundedTopBarPath(x, yCursor, barWidth, h, isTop ? 4 : 0)}
+                    fill={row.color}
+                    opacity={isActive ? 1 : 0.85}
+                  />
+                );
+              })}
+            </g>
           );
         })}
       </svg>
 
       {active && (
         <ChartTooltip
-          label={new Date(active.timestamp).toLocaleTimeString()}
-          value={formatMetricShort(unit, active.value)}
-          color={color}
+          label={new Date(active.time).toLocaleTimeString()}
+          rows={frameTooltipRows(active, unit)}
         />
       )}
     </div>

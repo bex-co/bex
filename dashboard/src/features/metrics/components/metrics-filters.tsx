@@ -22,8 +22,17 @@ const QUANTILES = [
 const RANGE_LABEL_KEYS: Record<RangePreset["id"], keyof typeof en> = {
   "30m": "metrics.rangeLast30Minutes",
   "1h": "metrics.rangeLastHour",
+  "3h": "metrics.rangeLast3Hours",
+  "6h": "metrics.rangeLast6Hours",
   "12h": "metrics.rangeLast12Hours",
+  "1d": "metrics.rangeLastDay",
 };
+
+// Render's Status Code dropdown offers the class presets plus the codes the
+// App has actually returned (discovered via metricsFilters). "all" is the
+// no-filter sentinel — Radix Select can't represent an empty-string value.
+const STATUS_CODE_ALL = "all";
+const STATUS_CODE_CLASSES = ["2xx", "4xx", "5xx"];
 
 interface MetricsFiltersProps {
   range: RangePreset;
@@ -32,6 +41,11 @@ interface MetricsFiltersProps {
   onPercentageChange: (percentage: boolean) => void;
   quantile: number;
   onQuantileChange: (quantile: number) => void;
+  /** Active status-code filter ("" = all) applied to the request metrics. */
+  statusCode: string;
+  onStatusCodeChange: (statusCode: string) => void;
+  /** Codes the App has actually returned (metricsFilters discovery). */
+  discoveredStatusCodes: string[];
 }
 
 /**
@@ -46,12 +60,22 @@ export function MetricsFilters({
   onPercentageChange,
   quantile,
   onQuantileChange,
+  statusCode,
+  onStatusCodeChange,
+  discoveredStatusCodes,
 }: MetricsFiltersProps) {
   const { t } = useTranslations();
 
+  const statusCodeOptions = [
+    ...STATUS_CODE_CLASSES,
+    ...discoveredStatusCodes
+      .filter((c) => !STATUS_CODE_CLASSES.includes(c))
+      .sort(),
+  ];
+
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1">
         {RANGE_PRESETS.map((preset) => (
           <Button
             key={preset.id}
@@ -85,6 +109,30 @@ export function MetricsFilters({
           {QUANTILES.map((q) => (
             <SelectItem key={q.value} value={q.value}>
               {q.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
+        onValueChange={(v) =>
+          onStatusCodeChange(v === STATUS_CODE_ALL ? "" : v)
+        }
+      >
+        <SelectTrigger size="sm" className="w-40" aria-label={t("metrics.statusCode")}>
+          <span className="text-muted-foreground">
+            {t("metrics.statusCode")}
+          </span>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={STATUS_CODE_ALL}>
+            {t("metrics.statusCodeAll")}
+          </SelectItem>
+          {statusCodeOptions.map((code) => (
+            <SelectItem key={code} value={code}>
+              {code}
             </SelectItem>
           ))}
         </SelectContent>
