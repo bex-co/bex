@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-activator
+  namespace: bex-system
+rules:
+  # Read Apps to find which app owns an incoming host.
+  - apiGroups: ["app.bex.co"]
+    resources: ["apps"]
+    verbs: ["get", "list", "watch", "patch"]
+  # Bump Deployment replicas to 1 to trigger the operator reconcile.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]

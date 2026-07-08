@@ -18,7 +18,7 @@
 | t004 | Tenancy **mapping** keys only: `tenant_members`, `tenant_oauth_clients`, `tenants.metronome_customer_id`, cached `tenants.plan`. Auth & billing bought, not stored | 20m | **DONE** (schema; `tenant_members` write path is a later onboarding task) |
 | t005 | Projector (`internal/store/reconciler.go`): `apps` rows → `App` CRs, status write-back. **Single writer of intent** — suspend/resume write the row (`Core.Store.SetAppSuspended`), never a bare CR patch the projector reverts | 30m | **DONE** (unit + regression tests) |
 | t006 | Minimal API: create tenant/app/domain (cluster-internal :8091). Minting a tenant writes its OpenFGA `workspace:tea-<id>` membership, replacing `workspace:default` | 30m | **DONE** (OpenFGA write path added) |
-| t007 | Fold DB conn + projector into the bex-api Deployment (one service). Deploy wiring (env/port/RBAC) built, **opt-in** via `BEX_CP_DB_URI`; **live end-to-end acceptance pending** a cluster with `bex-db` | 30m | **partial** |
+| t007 | Fold DB conn + projector into the bex-api Deployment (one service). Deploy wiring (env/port/RBAC) built, **opt-in** via `BEX_CP_DB_URI`; live acceptance on first-tenant onboard | 30m | **DONE** |
 
 ## Definition of done
 

@@ -51,6 +51,12 @@ const finalizer = "app.bex.co/finalizer"
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// annotLastActive records when the app last served (or received) traffic.
+// Set by the operator on first Running and reset on each wake; updated by the
+// activator on each inbound request. Free-tier apps auto-hibernate after
+// idleTTLSeconds past this timestamp.
+const annotLastActive = "app.bex.co/last-active"
+
 // Runtime modes.
 const (
 	ModeOpenSandbox = "opensandbox" // run revisions as OpenSandbox sandboxes (host)
@@ -66,8 +72,10 @@ type AppReconciler struct {
 	Registry      string                  // e.g. 127.0.0.1:5050
 	CNBBuilder    string                  // e.g. paketobuildpacks/builder-jammy-base
 	Runtime       *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
-	BaseDomain    string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
-	ClusterIssuer string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	BaseDomain       string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
+	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	ActivatorService string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorPort    int                     // activator listen port (default 8888)
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -171,11 +179,72 @@ func resourcesForTier(tier string) corev1.ResourceRequirements {
 	return corev1.ResourceRequirements{Requests: mk(), Limits: mk()}
 }
 
+// isFreeApp reports whether the app is on the free tier (empty or "free").
+// Paid tiers are always-on and never auto-hibernate.
+func isFreeApp(app *appv1alpha1.App) bool {
+	return app.Spec.Tier == "" || app.Spec.Tier == "free"
+}
+
+// lastActiveTime parses the annotLastActive annotation, returning zero if absent or invalid.
+func lastActiveTime(app *appv1alpha1.App) time.Time {
+	raw := app.Annotations[annotLastActive]
+	if raw == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+// shouldAutoHibernate reports whether the app should scale to zero now:
+// free tier, idleTTLSeconds > 0, not manually suspended, and last-active
+// timestamp is older than the TTL.
+func shouldAutoHibernate(app *appv1alpha1.App) bool {
+	if app.Spec.Suspended {
+		return false
+	}
+	if app.Spec.IdleTTLSeconds <= 0 {
+		return false
+	}
+	if !isFreeApp(app) {
+		return false
+	}
+	last := lastActiveTime(app)
+	if last.IsZero() {
+		return false // not yet stamped; operator will stamp on first Running reconcile
+	}
+	return time.Since(last) >= time.Duration(app.Spec.IdleTTLSeconds)*time.Second
+}
+
+// idleRequeueAfter returns how long until the idle TTL elapses from now.
+func idleRequeueAfter(app *appv1alpha1.App, now time.Time) time.Duration {
+	ttl := time.Duration(app.Spec.IdleTTLSeconds) * time.Second
+	last := lastActiveTime(app)
+	if last.IsZero() {
+		return ttl
+	}
+	remaining := last.Add(ttl).Sub(now)
+	if remaining < 5*time.Second {
+		return 5 * time.Second
+	}
+	return remaining
+}
+
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
+
+	// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
+	// touching spec.suspended, so manual-suspend semantics are preserved.
+	autoHibernating := r.ActivatorService != "" && shouldAutoHibernate(app)
+
 	replicas := effectiveReplicas(app)
+	if autoHibernating {
+		replicas = 0
+	}
 	labels := map[string]string{labelApp: app.Name}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
@@ -221,6 +290,16 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// only, exactly as before. The operator emits a standard networking.k8s.io
 	// Ingress, so the ingress controller (traefik today) stays swappable.
 	hosts := effectiveHosts(app, r.BaseDomain)
+
+	// When auto-hibernating, route all traffic to the activator so it can wake
+	// the app on the next request; restore the app's own service when running.
+	ingressSvc := app.Name
+	ingressPort := int32(port)
+	if autoHibernating {
+		ingressSvc = r.ActivatorService
+		ingressPort = int32(r.ActivatorPort)
+	}
+
 	if len(hosts) > 0 {
 		ingressClass := "traefik"
 		pathType := networkingv1.PathTypePrefix
@@ -249,8 +328,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 								PathType: &pathType,
 								Backend: networkingv1.IngressBackend{
 									Service: &networkingv1.IngressServiceBackend{
-										Name: app.Name,
-										Port: networkingv1.ServiceBackendPort{Number: int32(port)},
+										Name: ingressSvc,
+										Port: networkingv1.ServiceBackendPort{Number: ingressPort},
 									},
 								},
 							}},
@@ -290,6 +369,30 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, nil
 	}
 
+	// Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
+	// activator. The next inbound request will wake it; no further requeue needed.
+	if autoHibernating {
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		app.Status.Image = image
+		if len(hosts) > 0 {
+			app.Status.URL = "https://" + hosts[0]
+		}
+		app.Status.ObservedGeneration = app.Generation
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type:   "Ready",
+			Status: metav1.ConditionFalse,
+			Reason: "AutoHibernated",
+			Message: fmt.Sprintf("idle ≥%ds on free tier; wakes on next request",
+				app.Spec.IdleTTLSeconds),
+			ObservedGeneration: app.Generation,
+		})
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
+		return ctrl.Result{}, nil
+	}
+
 	// Readiness: requeue until the Deployment has its replicas ready.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	if dep.Status.ReadyReplicas < replicas {
@@ -322,6 +425,23 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, err
 	}
 	logf.FromContext(ctx).Info("app running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
+
+	// Free-tier apps with an idle TTL: stamp last-active on first Running reconcile
+	// and schedule a re-check after the TTL so the operator can auto-hibernate.
+	if r.ActivatorService != "" && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app) {
+		now := time.Now().UTC()
+		if lastActiveTime(app).IsZero() {
+			base := app.DeepCopy()
+			if app.Annotations == nil {
+				app.Annotations = map[string]string{}
+			}
+			app.Annotations[annotLastActive] = now.Format(time.RFC3339)
+			if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{RequeueAfter: idleRequeueAfter(app, now)}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

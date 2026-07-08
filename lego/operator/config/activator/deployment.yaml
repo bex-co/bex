@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bex-activator
+  namespace: bex-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.bex.co/component: activator
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: activator
+    spec:
+      serviceAccountName: bex-activator
+      containers:
+        - name: activator
+          image: controller:latest  # overridden by kustomize; same image as the manager, different entrypoint
+          command: ["/activator"]
+          ports:
+            - containerPort: 8888
+          env:
+            - name: BEX_ACTIVATOR_ADDR
+              value: ":8888"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8888
+            initialDelaySeconds: 2
+            periodSeconds: 5

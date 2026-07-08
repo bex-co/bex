@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -187,15 +188,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	activatorPort := 8888
+	if v := os.Getenv("BEX_ACTIVATOR_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			activatorPort = p
+		}
+	}
 	if err := (&controller.AppReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		Mode:          envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
-		Registry:      envOr("BEX_REGISTRY", "127.0.0.1:5050"),
-		CNBBuilder:    envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
-		Runtime:       bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
-		BaseDomain:    envOr("BEX_BASE_DOMAIN", ""),
-		ClusterIssuer: envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		Mode:             envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
+		Registry:         envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+		CNBBuilder:       envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
+		Runtime:          bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
+		BaseDomain:       envOr("BEX_BASE_DOMAIN", ""),
+		ClusterIssuer:    envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		ActivatorService: envOr("BEX_ACTIVATOR_SERVICE", ""),
+		ActivatorPort:    activatorPort,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "service")
 		os.Exit(1)
