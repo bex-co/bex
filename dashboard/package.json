@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 5173",
+    "local-bex": "node scripts/local-bex.mjs",
+    "dev:local": "VITE_API_URL=http://localhost:8099/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:8099 VITE_KRATOS_SSR_URL=http://localhost:8099 vite dev --port 5173",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "start": "PORT=5173 node .output/server/index.mjs",
     "generate-routes": "tsr generate",

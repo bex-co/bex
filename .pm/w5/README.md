@@ -9,7 +9,7 @@
 - [x] **m3** — Internationalization (i18n), including Ory Elements (8 tasks) ← from user request 2026-07-06 — done 2026-07-06, moved to `done/m3/`
 - [ ] **m4** — Services list + lifecycle actions, Render-consistent, wired to bex-api (7 tasks) ← from `/pm-brainstorm` 2026-07-06
 - [x] **m5** — Service overview page + Render-style service IA (Overview / Logs) (6 tasks) ← from `/pm-brainstorm` 2026-07-06 — done 2026-07-06, moved to `done/m5/`
-- [ ] **m6** — Live logs page (Render-consistent: historical query + SSE live-tail) (6 tasks) ← from `/pm-brainstorm` 2026-07-06
+- [x] **m6** — Live logs page (Render-consistent: historical query + SSE live-tail) (6 tasks) ← from `/pm-brainstorm` 2026-07-06 — done 2026-07-08, moved to `done/m6/`
 - [x] **m7** — Service Settings + instance-type picker (Render parity) (6 tasks) ← from user request 2026-07-08, Render settings/plan pages captured live; UI half of w1/m8's plan API — done 2026-07-08, moved to `done/m7/`
 
 ## Inbox

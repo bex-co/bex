@@ -137,7 +137,8 @@ func (q LogQuery) appliesToApplication() bool {
 // Logs returns recent log lines for an App, aggregated across its pods and
 // sorted by timestamp. tail caps lines per instance (<=0 => defaultLogTail). It
 // fails with core.ErrNotFound for an unknown App and core.ErrLogsUnavailable
-// when no source is wired. This is the read path the MCP list_logs tool uses.
+// when no source is wired. It's the unfiltered convenience read; the REST and
+// MCP adapters go through QueryLogs (Render's type/text/time filters).
 func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
 	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
 		return nil, err

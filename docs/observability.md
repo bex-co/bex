@@ -17,8 +17,8 @@ flowchart LR
   src --> pods["App pods (app.bex.co/app label)"]
 ```
 
-- **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; what MCP `list_logs` calls. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
-- **`Core.QueryLogs(LogQuery)`** — adds Render's filters (type/text/time) and paging; the REST + GraphQL read path.
+- **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; the unfiltered convenience read. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
+- **`Core.QueryLogs(LogQuery)`** — adds Render's filters (type/text/time) and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through.
 - **`Core.FollowLogs(LogQuery, emit)`** — live tail; the SSE stream.
 
 `PodLogSource` (and its follow sibling `PodLogStream`) is the one dependency Core reaches past the generic client for — the `pods/log` subresource controller-runtime's client can't serve. It's injected (`NewPodLogSource` / `NewPodLogStream` in `podlogs.go`), so the domain layer stays clientset-free and every read is faked in tests with no cluster.
@@ -30,7 +30,7 @@ flowchart LR
 | `GET /v1/logs` | historical query → `{hasMore, next*Time, logs}` |
 | `GET /v1/logs/subscribe` | live tail over Server-Sent Events |
 | `graphql { logs(...) }` | same query, flat `LogEntry` rows |
-| MCP `list_logs` | agent read (Core.Logs), `resource` array + `limit` |
+| MCP `list_logs` | agent read (Core.QueryLogs), `resource` array + `type`/`text`/`startTime`/`endTime`/`limit` |
 
 Query params (Render vocabulary): `resource` (App id, repeatable), `type` (repeatable), `text` (case-insensitive substring), `startTime`/`endTime` (RFC3339), `limit` (default 20, max 100 — Render's paging range). `Core` re-applies every filter, sorts oldest-first, and keeps the newest `limit`.
 

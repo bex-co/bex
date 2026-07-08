@@ -109,6 +109,36 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// narrowLogType maps Render's repeatable `type` filter onto Core's single Type.
+// bex narrows only when exactly one concrete type is requested; empty / "all" /
+// several => "" (all types). ok is false when a value isn't a recognized type —
+// the REST adapter turns that into a 400, while the MCP tool tolerates it (Render
+// clients pass filters through). `application` is the accepted alias for `app`
+// (renderLogTypeApp). Shared by the REST and MCP fragments so the two agree.
+func narrowLogType(types []string) (typ string, ok bool) {
+	ok = true
+	seen := map[string]struct{}{}
+	for _, t := range types {
+		switch t {
+		case "", "all":
+		case renderLogTypeApp, LogTypeApplication:
+			seen[LogTypeApplication] = struct{}{}
+		case LogTypeRequest:
+			seen[LogTypeRequest] = struct{}{}
+		case LogTypeBuild:
+			seen[LogTypeBuild] = struct{}{}
+		default:
+			ok = false
+		}
+	}
+	if len(seen) == 1 {
+		for t := range seen {
+			return t, ok
+		}
+	}
+	return "", ok
+}
+
 // parseLogParams maps Render's logs query string onto resources + a LogQuery.
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
@@ -122,25 +152,11 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 
 	// `type` is repeatable (Render). Narrow only when a single concrete type is
 	// asked for; several — or none — returns all types.
-	seen := map[string]struct{}{}
-	for _, t := range v["type"] {
-		switch t {
-		case "", "all":
-		case renderLogTypeApp, LogTypeApplication:
-			seen[LogTypeApplication] = struct{}{}
-		case LogTypeRequest:
-			seen[LogTypeRequest] = struct{}{}
-		case LogTypeBuild:
-			seen[LogTypeBuild] = struct{}{}
-		default:
-			return nil, LogQuery{}, fmt.Errorf("unknown type %q (want app|request|build)", t)
-		}
+	typ, ok := narrowLogType(v["type"])
+	if !ok {
+		return nil, LogQuery{}, fmt.Errorf("unknown type (want app|request|build)")
 	}
-	if len(seen) == 1 {
-		for t := range seen {
-			q.Type = t
-		}
-	}
+	q.Type = typ
 
 	if s := v.Get("startTime"); s != "" {
 		t, err := time.Parse(time.RFC3339, s)

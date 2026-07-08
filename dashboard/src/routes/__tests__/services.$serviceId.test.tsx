@@ -28,6 +28,15 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
   useServiceLifecycle: () => ({ pending: null, run }),
 }));
 
+// The Logs tab's data layer hits Apollo + SSE; this routing test only cares
+// that the viewer mounts under the shared chrome, so stub both to empty.
+vi.mock("@/features/logs/hooks/use-log-history", () => ({
+  useLogHistory: () => ({ lines: [], loading: false, error: undefined }),
+}));
+vi.mock("@/features/logs/hooks/use-live-logs", () => ({
+  useLiveLogs: () => ({ lines: [], status: "idle" }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
@@ -60,7 +69,7 @@ function renderAt(initialPath: string) {
   const logsRoute = createRoute({
     getParentRoute: () => layoutRoute,
     path: "logs",
-    component: ServiceLogsPage,
+    component: () => <ServiceLogsPage serviceId="app" />,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -98,14 +107,19 @@ describe("service-detail layout routing", () => {
       "/services/app/logs",
     );
 
-    // the logs tab is not what's rendered here
-    expect(screen.queryByText("Logs are coming soon")).not.toBeInTheDocument();
+    // the logs tab is not what's rendered here (its filter bar is absent)
+    expect(
+      screen.queryByPlaceholderText("Search logs"),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders the Logs placeholder tab at /services/$serviceId/logs under the same chrome", async () => {
+  it("renders the Logs viewer tab at /services/$serviceId/logs under the same chrome", async () => {
     renderAt("/services/app/logs");
 
-    expect(await screen.findByText("Logs are coming soon")).toBeInTheDocument();
+    // the viewer's filter bar (search box) marks the logs tab as rendered
+    expect(
+      await screen.findByPlaceholderText("Search logs"),
+    ).toBeInTheDocument();
     // still under the shared chrome (the service header shows the name)
     expect(screen.getByRole("heading", { name: "app" })).toBeInTheDocument();
     // and not showing the overview panel (its "Phase" field is absent)

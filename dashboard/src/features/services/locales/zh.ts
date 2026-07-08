@@ -185,14 +185,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "不存在名为 {name} 的服务，或你没有访问权限。",
     description: "Overview page not-found body",
   },
-  "services.logsComingSoonTitle": {
-    message: "日志功能即将上线",
-    description: "Logs tab placeholder title (content ships in a later release)",
-  },
-  "services.logsComingSoonBody": {
-    message: "该服务的实时日志跟踪将在后续版本中提供。",
-    description: "Logs tab placeholder body",
-  },
   "services.navEnvironment": {
     message: "环境变量",
     description: "Service-detail nav item (environment variables tab)",

@@ -1,0 +1,14 @@
+# bex-api's logs read (internal/logs/graphql.go), Render-shaped: a historical
+# query across an App's replicas. Application logs only — `type=request`/`build`
+# resolve to an empty page (docs/observability.md), never an error. The flat
+# `LogEntry` row (timestamp/message/type/instance) is the GraphQL projection of
+# Core's LogEntry; the REST adapter renders the same data as Render's labels
+# array instead. Live tail is a separate stream (SSE), not a GraphQL field.
+query Logs($resource: String!, $type: String, $text: String, $limit: Int) {
+  logs(resource: $resource, type: $type, text: $text, limit: $limit) {
+    timestamp
+    message
+    type
+    instance
+  }
+}

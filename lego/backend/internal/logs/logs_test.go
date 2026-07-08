@@ -139,6 +139,42 @@ func TestLogsErrors(t *testing.T) {
 	}
 }
 
+// narrowLogType (shared by the REST + MCP fragments) turns Render's repeatable
+// `type` filter into Core's single Type: narrow only on one concrete type,
+// tolerate the `application` alias, report ok=false for an unknown value.
+func TestNarrowLogType(t *testing.T) {
+	cases := []struct {
+		in     []string
+		want   string
+		wantOK bool
+	}{
+		{nil, "", true},                                     // no filter => all
+		{[]string{"all"}, "", true},                         // explicit all
+		{[]string{"app"}, LogTypeApplication, true},         // Render's `app`
+		{[]string{"application"}, LogTypeApplication, true}, // alias
+		{[]string{"request"}, LogTypeRequest, true},
+		{[]string{"build"}, LogTypeBuild, true},
+		{[]string{"app", "request"}, "", true}, // several => all
+		{[]string{"app", "app"}, LogTypeApplication, true},
+		{[]string{"bogus"}, "", false}, // unknown => not ok
+	}
+	for _, c := range cases {
+		got, ok := narrowLogType(c.in)
+		if got != c.want || ok != c.wantOK {
+			t.Errorf("narrowLogType(%v) = (%q,%v), want (%q,%v)", c.in, got, ok, c.want, c.wantOK)
+		}
+	}
+}
+
+func TestFirstNonEmpty(t *testing.T) {
+	if got := firstNonEmpty(nil); got != "" {
+		t.Errorf("nil => %q", got)
+	}
+	if got := firstNonEmpty([]string{"", "hit", "miss"}); got != "hit" {
+		t.Errorf("first non-empty => %q", got)
+	}
+}
+
 // --- REST logs fragment (Render envelope) ---
 
 func serveREST(svc *Service, method, path string) *httptest.ResponseRecorder {

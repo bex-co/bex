@@ -187,14 +187,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No service named {name} exists, or you don't have access to it.",
     description: "Overview page not-found body",
   },
-  "services.logsComingSoonTitle": {
-    message: "Logs are coming soon",
-    description: "Logs tab placeholder title (content ships in a later release)",
-  },
-  "services.logsComingSoonBody": {
-    message: "Live log tailing for this service ships in an upcoming release.",
-    description: "Logs tab placeholder body",
-  },
   "services.navEnvironment": {
     message: "Environment",
     description: "Service-detail nav item (environment variables tab)",

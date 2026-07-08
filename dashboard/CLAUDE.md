@@ -77,7 +77,9 @@ i18next + react-i18next (w5/m3), modeled on `beancount-dashboard`'s `docs/i18n.m
 ## Development commands
 
 ```bash
-yarn dev                # Start Vite dev server
+yarn dev                # Start Vite dev server (expects VITE_API_URL to point at a real bex-api)
+yarn local-bex          # Local bex-api + Kratos dev stub on :8099 (scripts/local-bex.mjs)
+yarn dev:local          # Vite dev wired to yarn local-bex (no cluster/Ory/prod-CORS)
 yarn build              # Build for production
 yarn typecheck          # generate-routes + tsc -b
 yarn lint               # typecheck + eslint
@@ -86,3 +88,20 @@ yarn test               # Vitest
 yarn test:coverage      # Vitest with coverage
 yarn kill               # Kill process on port 5173
 ```
+
+### Local development without a cluster (`local-bex`)
+
+Pointing a localhost dashboard at **prod** bex-api doesn't work: `api.bex.co`'s CORS
+allowlist rejects most localhost origins, and even where it doesn't, the Kratos
+session cookie is host-scoped to `*.bex.co` and isn't sent from a `localhost`
+origin — so every bex-api call 401s. Full-fidelity local bex needs the mock cluster
+
+- Ory stack (`scripts/mock-cluster.sh`), which is heavy for frontend work.
+
+`scripts/local-bex.mjs` (run via `yarn local-bex`, wired by `yarn dev:local`) is a
+tiny **dev stub** — no deps, no auth, wide-open CORS — that speaks just enough of
+bex-api's wire protocol to run the app offline: the GraphQL reads (`services`,
+`server`, `logs`, safe empties for the rest), the SSE live-log tail
+(`GET /v1/logs/subscribe`), and Kratos `GET /sessions/whoami` (so the auth guard
+passes). It streams synthetic app logs so the Logs viewer's history + live tail are
+exercised end-to-end. It is a DEV TOOL only — never a real backend.
