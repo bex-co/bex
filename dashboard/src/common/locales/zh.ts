@@ -17,6 +17,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "服务",
     description: "Sidebar nav link to the services list page",
   },
+  "common.navDatabases": {
+    message: "数据库",
+    description: "Sidebar nav link to the databases list page",
+  },
   "common.navSettings": {
     message: "设置",
     description: "Sidebar nav link to the account settings page",

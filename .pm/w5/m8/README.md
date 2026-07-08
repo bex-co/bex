@@ -1,19 +1,19 @@
 # w5 · m8 — Databases page (managed Postgres, Render-consistent)
 
-**Worker:** worker5 **Goal:** The dashboard gains a Databases surface over bex-api's already-shipped managed-Postgres GraphQL (`databases` / `database(id)` / `databaseConnectionInfo(id)` + `createDatabase` / `deleteDatabase`) — list, create, detail with on-demand connection-info reveal, delete — matching Render's **dashboard** noun (`database`, not the REST `postgres`) and its database IA. **Status:** todo
+**Worker:** worker5 **Goal:** The dashboard gains a Databases surface over bex-api's already-shipped managed-Postgres GraphQL (`databases` / `database(id)` / `databaseConnectionInfo(id)` + `createDatabase` / `deleteDatabase`) — list, create, detail with on-demand connection-info reveal, delete — matching Render's **dashboard** noun (`database`, not the REST `postgres`) and its database IA. **Status:** done (2026-07-08)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                                    | est | depends_on             |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------------------- |
-| t001 | Capture Render's databases dashboard IA via Playwright (list, create flow, info page with credentials) as design source                                                    | 30m | —                      |
-| t002 | `databases.graphql` (queries + both mutations) + codegen; postgres-tier catalog read (extend the `instanceTypes` surface to the postgres family — small `lego/backend` add) | 40m | w5/m8/t001             |
-| t003 | Databases list page + top-level nav item (dashboard becomes two-resource); status badges, loading/error/empty states                                                       | 45m | w5/m8/t002             |
-| t004 | Create-database dialog (name / plan from catalog / version / diskSizeGB / public) + delete with confirm                                                                    | 60m | w5/m8/t003             |
-| t005 | Database detail page: status + metadata + on-demand connection-info reveal (masked password, copy buttons, psql command — never auto-fetched)                              | 60m | w5/m8/t002             |
-| t006 | Live verify on the mock cluster (create → ready → connection info → delete) + screenshots to `.playwright-mcp/`                                                            | 30m | w5/m8/t004, w5/m8/t005 |
-| t007 | Simplify — run `/simplify` over the code this milestone changed                                                                                                            | 30m | w5/m8/t006             |
-| t008 | Test coverage — meaningful tests for query/mutation mapping, list/detail states, create/delete flows, connection-info reveal gating                                        | 30m | w5/m8/t006             |
+| t001 | Capture Render's databases dashboard IA via Playwright (list, create flow, info page with credentials) as design source — **DONE (design sourced from the already-captured Render `database` noun/IA in `docs/bex-api.md` §Managed Postgres + `docs/postgresql-management.md`; no fresh Render login available)** | 30m | —                      |
+| t002 | `databases.graphql` (queries + both mutations) + codegen; postgres-tier catalog read (extend the `instanceTypes` surface to the postgres family — small `lego/backend` add) — **DONE (added `databaseInstanceTypes` query in `internal/postgres`; codegen against live bex-api)** | 40m | w5/m8/t001             |
+| t003 | Databases list page + top-level nav item (dashboard becomes two-resource); status badges, loading/error/empty states — **DONE**                                            | 45m | w5/m8/t002             |
+| t004 | Create-database dialog (name / plan from catalog / version / diskSizeGB / public) + delete with confirm (typed-name) — **DONE**                                            | 60m | w5/m8/t003             |
+| t005 | Database detail page: status + metadata + on-demand connection-info reveal (masked password, copy buttons, psql command — never auto-fetched) — **DONE**                   | 60m | w5/m8/t002             |
+| t006 | Live verify on the mock cluster (create → ready → connection info → delete) + screenshots to `.playwright-mcp/` — **DONE (full CNPG lifecycle verified via the real API + operator; needed two mock-cluster accommodations — `hcloud-volumes` SC alias + pin CNPG pod to control-plane, see memory `mock-cluster-managed-postgres-quirks`; UI screenshots via the `local-bex` stub)** | 30m | w5/m8/t004, w5/m8/t005 |
+| t007 | Simplify — run `/simplify` over the code this milestone changed — **DONE (gated detail poll, shared `useCopyToClipboard` hook, dropped unused refetch mapping, HA metadata row, collapsed header)** | 30m | w5/m8/t006             |
+| t008 | Test coverage — meaningful tests for query/mutation mapping, list/detail states, create/delete flows, connection-info reveal gating — **DONE (24 tests across lib/hooks/components/route)** | 30m | w5/m8/t006             |
 
 ## Definition of done
 

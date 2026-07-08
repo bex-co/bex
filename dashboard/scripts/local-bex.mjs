@@ -3,7 +3,8 @@
 //
 // It speaks just enough of bex-api's wire protocol for the app to run:
 //   • POST /graphql             — the reads the dashboard fires (services, server,
-//                                 logs, and safe empties for the rest)
+//                                 logs, managed-Postgres databases, and safe
+//                                 empties for the rest)
 //   • GET  /v1/logs/subscribe   — the SSE live-log tail (docs/observability.md)
 //   • GET  /sessions/whoami     — Kratos session check, so the auth guard passes
 // CORS is wide-open (echoes the Origin, allows credentials) and there is NO auth —
@@ -39,6 +40,41 @@ const SERVICE = {
 };
 
 const INSTANCES = ["eden-cms-v2-7d9f8-abcde", "eden-cms-v2-7d9f8-fghij"];
+
+// The managed-Postgres tier catalog (backend databaseInstanceTypes, w5/m8) — the
+// create dialog's plan picker source. Kept in sync with lego/types/tiers.yaml's
+// postgres family so the offline stub renders the same plans as the real API.
+const DB_INSTANCE_TYPES = [
+  { __typename: "DatabaseInstanceType", id: "free", name: "Free", cpu: "100m", memory: "256Mi", storageGB: 1 },
+  { __typename: "DatabaseInstanceType", id: "basic-256mb", name: "Basic 256MB", cpu: "100m", memory: "256Mi", storageGB: 1 },
+  { __typename: "DatabaseInstanceType", id: "basic-1gb", name: "Basic 1GB", cpu: "500m", memory: "1Gi", storageGB: 5 },
+];
+
+// In-memory managed-Postgres store (Render dashboard `database` shape) so the
+// Databases page's create/list/detail/delete + on-demand connection-info are
+// interactive offline. Seeded with one available DB so the list isn't empty.
+function makeDatabase(over = {}) {
+  const name = over.name ?? "orders-db";
+  const dbn = name.toLowerCase().replaceAll("-", "_");
+  return {
+    __typename: "Database",
+    id: name,
+    name,
+    plan: "basic-1gb",
+    version: "16",
+    status: "available",
+    databaseName: dbn,
+    databaseUser: `${dbn}_user`,
+    diskSizeGB: 5,
+    highAvailabilityEnabled: false,
+    suspended: "not_suspended",
+    createdAt: "2026-06-20T10:00:00Z",
+    externalHost: "orders-db.db.bex.co",
+    public: true,
+    ...over,
+  };
+}
+const DATABASES = [makeDatabase()];
 
 // A pool of realistic-looking app log messages the generator draws from.
 const MESSAGES = [
@@ -136,6 +172,52 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { instanceTypes: [] };
     case "EnvVarKeys":
       return { service: { __typename: "Service", id: variables.id, envVarKeys: [] } };
+    // Managed Postgres (w5/m8) — an interactive in-memory store.
+    case "Databases":
+      return { databases: DATABASES };
+    case "Database":
+      return { database: DATABASES.find((d) => d.id === variables.id) ?? null };
+    case "DatabaseInstanceTypes":
+      return { databaseInstanceTypes: DB_INSTANCE_TYPES };
+    case "DatabaseConnectionInfo": {
+      const d = DATABASES.find((db) => db.id === variables.id);
+      if (!d) return { databaseConnectionInfo: null };
+      const pw = "s3cr3t_stub_password_not_real_0123456789abcdef";
+      const internal = `postgresql://${d.databaseUser}:${pw}@${d.id}-rw.default:5432/${d.databaseName}`;
+      return {
+        databaseConnectionInfo: {
+          __typename: "PostgresConnectionInfo",
+          password: pw,
+          internalConnectionString: internal,
+          externalConnectionString: d.public
+            ? `postgresql://${d.databaseUser}:${pw}@${d.externalHost}:5432/${d.databaseName}?sslmode=require&sslnegotiation=direct`
+            : "",
+          psqlCommand: `PGPASSWORD=${pw} psql -h ${d.id}-rw.default.svc -U ${d.databaseUser} ${d.databaseName}`,
+        },
+      };
+    }
+    case "CreateDatabase": {
+      const created = makeDatabase({
+        name: variables.name,
+        plan: variables.plan ?? "free",
+        version: variables.version ?? "",
+        diskSizeGB: variables.diskSizeGB ?? 0,
+        public: Boolean(variables.public),
+        status: "creating", // converges to available on the next list poll
+        externalHost: variables.public ? `${variables.name}.db.bex.co` : "",
+      });
+      DATABASES.push(created);
+      // Simulate async provisioning: flip to available shortly after.
+      setTimeout(() => {
+        created.status = "available";
+      }, 4000);
+      return { createDatabase: created };
+    }
+    case "DeleteDatabase": {
+      const i = DATABASES.findIndex((d) => d.id === variables.id);
+      if (i >= 0) DATABASES.splice(i, 1);
+      return { deleteDatabase: true };
+    }
     default:
       return {};
   }

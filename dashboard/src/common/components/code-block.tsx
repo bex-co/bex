@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
-import { toast } from "sonner";
+import { useCopyToClipboard } from "@/common/hooks/use-copy-to-clipboard";
 
 interface CodeBlockProps {
   code: string;
@@ -10,32 +9,11 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ code, language, inline }: CodeBlockProps) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success("Copied to clipboard");
-      // Clear any existing timer
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
+  const { copied, copy } = useCopyToClipboard({
+    successText: "Copied to clipboard",
+    errorText: "Failed to copy",
+  });
+  const handleCopy = () => void copy(code);
 
   // Inline code
   if (inline) {

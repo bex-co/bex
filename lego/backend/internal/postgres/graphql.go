@@ -45,6 +45,22 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// databaseInstanceTypeGQLType renders DatabaseInstanceType — the create
+// dialog's plan-picker source, the managed-Postgres sibling of apps'
+// instanceTypes. A bex extension (see DatabaseInstanceType's doc comment):
+// Render's dashboard has no public query to mirror, so this is REST/MCP-free
+// by design, recorded in w5/m8's README rather than left silently asymmetric.
+var databaseInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseInstanceType",
+	Fields: graphql.Fields{
+		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.ID })},
+		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.Name })},
+		"cpu":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.CPU })},
+		"memory":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.Memory })},
+		"storageGB": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.StorageGB })},
+	},
+})
+
 var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PostgresConnectionInfo",
 	Fields: graphql.Fields{
@@ -75,6 +91,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PostgresConnectionInfo(p.Context, p.Args["id"].(string))
 			},
+		},
+		"databaseInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
+			Type:    graphql.NewList(databaseInstanceTypeGQLType),
+			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
 	}
 }

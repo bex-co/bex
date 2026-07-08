@@ -1,0 +1,89 @@
+# bex-api's managed-Postgres surface, Render dashboard-shaped
+# (backend/internal/postgres/graphql.go, docs/bex-api.md §Managed Postgres).
+# Render's dashboard GraphQL noun is `database` (its REST noun is `postgres`);
+# bex mirrors that split. `status` is Render's databaseStatus enum
+# (available/unavailable/creating); `suspended` is the string enum shared with
+# services; `plan` is the Database CRD's spec.plan spelling (the
+# databaseInstanceTypes id). `databaseName`/`databaseUser` are the normalized
+# unquoted-identifier db + owner role (list omits them; the detail query reads them).
+
+query Databases {
+  databases {
+    id
+    name
+    plan
+    version
+    status
+    diskSizeGB
+    suspended
+    createdAt
+    public
+  }
+}
+
+query Database($id: String!) {
+  database(id: $id) {
+    id
+    name
+    plan
+    version
+    status
+    databaseName
+    databaseUser
+    diskSizeGB
+    highAvailabilityEnabled
+    suspended
+    createdAt
+    externalHost
+    public
+  }
+}
+
+# The one place the DB password is surfaced (docs/bex-api.md §Managed Postgres):
+# fetched on demand from the detail page's "Reveal", never in the bulk list and
+# never on page load. Returns the Render-shaped `PostgresConnectionInfo`.
+query DatabaseConnectionInfo($id: String!) {
+  databaseConnectionInfo(id: $id) {
+    password
+    internalConnectionString
+    externalConnectionString
+    psqlCommand
+  }
+}
+
+# The create dialog's plan-picker source (w5/m8): the shared lego/types/tiers
+# Postgres family, read live — never a hardcoded ladder in the frontend.
+query DatabaseInstanceTypes {
+  databaseInstanceTypes {
+    id
+    name
+    cpu
+    memory
+    storageGB
+  }
+}
+
+mutation CreateDatabase(
+  $name: String!
+  $plan: String
+  $version: String
+  $diskSizeGB: Int
+  $public: Boolean
+) {
+  createDatabase(
+    name: $name
+    plan: $plan
+    version: $version
+    diskSizeGB: $diskSizeGB
+    public: $public
+  ) {
+    id
+    name
+    plan
+    status
+  }
+}
+
+mutation DeleteDatabase($id: String!) {
+  deleteDatabase(id: $id)
+}

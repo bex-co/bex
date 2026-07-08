@@ -11,12 +11,11 @@
 - [x] **m5** — Service overview page + Render-style service IA (Overview / Logs) (6 tasks) ← from `/pm-brainstorm` 2026-07-06 — done 2026-07-06, moved to `done/m5/`
 - [x] **m6** — Live logs page (Render-consistent: historical query + SSE live-tail) (6 tasks) ← from `/pm-brainstorm` 2026-07-06 — done 2026-07-08, moved to `done/m6/`
 - [x] **m7** — Service Settings + instance-type picker (Render parity) (6 tasks) ← from user request 2026-07-08, Render settings/plan pages captured live; UI half of w1/m8's plan API — done 2026-07-08, moved to `done/m7/`
-- [ ] **m8** — Databases page (managed Postgres, Render-consistent) (8 tasks) ← promoted from `001` via `/pm-brainstorm` 2026-07-08
+- [x] **m8** — Databases page (managed Postgres, Render-consistent) (8 tasks) ← promoted from `001` via `/pm-brainstorm` 2026-07-08 — done 2026-07-08 (kept at `m8/`, the active `/goal` target; move to `done/m8/` on the next `/pm` sweep)
 
 ## Inbox
 
 - `003.md` — Custom-domains section in service Settings — blocked on `w1/003` (backend API half)
 - `004.md` — Manual-scaling section in service Settings — blocked on `w1/004` (backend API half)
-- `005.md` — Fix `docs/vision.md` stale "managed databases" non-goal — sub-hour, can ride with m8/t001
 
-> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08.
+> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08.

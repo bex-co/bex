@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -174,5 +175,98 @@ func TestGraphQLPostgres(t *testing.T) {
 	var made appv1alpha1.Database
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-new"}, &made); err != nil || made.Spec.Plan != "basic-1gb" {
 		t.Fatalf("createDatabase did not create the CR with plan: %v %+v", err, made.Spec)
+	}
+
+	// databaseInstanceTypes surfaces the shared Postgres catalog (w5/m8) — the
+	// create dialog's plan picker source, never a hardcoded ladder.
+	tt := run(`{ databaseInstanceTypes { id name cpu memory storageGB } }`)["databaseInstanceTypes"].([]any)
+	if len(tt) == 0 {
+		t.Fatal("databaseInstanceTypes want >=1")
+	}
+	first := tt[0].(map[string]any)
+	if first["id"] != "free" || first["name"] != "Free" {
+		t.Fatalf("first tier = %+v, want free/Free", first)
+	}
+}
+
+func TestMCPPostgres(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "mcp-db")
+
+	// Register the postgres tools into an MCP server, connect an in-memory client.
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	call := func(name string, args map[string]any) map[string]any {
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: err=%v isErr=%v", name, err, res.IsError)
+		}
+		out := map[string]any{}
+		if res.StructuredContent != nil {
+			b, _ := json.Marshal(res.StructuredContent)
+			_ = json.Unmarshal(b, &out)
+		}
+		return out
+	}
+
+	// Render's tool names + arg (postgresId), delegating to the same Core verbs.
+	if list, ok := call("list_postgres_instances", nil)["postgres"].([]any); !ok || len(list) != 1 {
+		t.Fatalf("list_postgres_instances want 1, got %v", call("list_postgres_instances", nil))
+	}
+	if got := call("get_postgres", map[string]any{"postgresId": "mcp-db"}); got["id"] != "mcp-db" {
+		t.Fatalf("get_postgres id = %v", got["id"])
+	}
+	// create_postgres delegates to CreatePostgres — verify the CR lands.
+	if got := call("create_postgres", map[string]any{"name": "mcp-new", "plan": "basic-1gb"}); got["id"] != "mcp-new" {
+		t.Fatalf("create_postgres id = %v", got["id"])
+	}
+	var made appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-new"}, &made); err != nil || made.Spec.Plan != "basic-1gb" {
+		t.Fatalf("create_postgres did not create the CR: %v %+v", err, made.Spec)
+	}
+}
+
+func TestInstanceTypesCatalog(t *testing.T) {
+	svc, _ := newService()
+	tt, err := svc.InstanceTypes(context.Background())
+	if err != nil {
+		t.Fatalf("InstanceTypes: %v", err)
+	}
+	// Sourced from lego/types/tiers.Postgres (basic-256mb, basic-1gb, …) — the
+	// id is the spec.plan spelling createDatabase accepts, so it must round-trip
+	// verbatim, and each tier carries its resource specs for the picker card.
+	byID := map[string]DatabaseInstanceType{}
+	for _, it := range tt {
+		byID[it.ID] = it
+	}
+	b, ok := byID["basic-1gb"]
+	if !ok {
+		t.Fatalf("basic-1gb missing from catalog: %+v", tt)
+	}
+	if b.Name != "Basic 1GB" || b.CPU == "" || b.Memory == "" || b.StorageGB <= 0 {
+		t.Fatalf("basic-1gb projection wrong: %+v", b)
+	}
+}
+
+func TestPGTierDisplayName(t *testing.T) {
+	for _, c := range []struct{ id, want string }{
+		{"free", "Free"},
+		{"basic-256mb", "Basic 256MB"},
+		{"basic-1gb", "Basic 1GB"},
+	} {
+		if got := pgTierDisplayName(c.id); got != c.want {
+			t.Errorf("pgTierDisplayName(%q) = %q, want %q", c.id, got, c.want)
+		}
 	}
 }

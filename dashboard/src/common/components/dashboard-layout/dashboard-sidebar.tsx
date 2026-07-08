@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutGrid, Settings } from "lucide-react";
+import { Database, LayoutGrid, Settings } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Sidebar,
@@ -13,10 +13,11 @@ import {
   SidebarMenuButton,
 } from "@/common/components/ui/sidebar.tsx";
 
-// Static nav for now — grows into a real services list once this dashboard
-// is wired to bex-api's GraphQL (see docs/bex-api.md).
+// The dashboard's two live resources (Services + Databases) plus account
+// settings. Each is a client of bex-api's GraphQL (see docs/bex-api.md).
 const NAV_ITEMS = [
   { labelKey: "common.navServices", to: "/", icon: LayoutGrid },
+  { labelKey: "common.navDatabases", to: "/databases", icon: Database },
   { labelKey: "common.navSettings", to: "/settings", icon: Settings },
 ] as const;
 
