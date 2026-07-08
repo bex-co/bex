@@ -34,23 +34,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
-
-// dbPlan is one entry in the managed-Postgres plan catalog: a fixed allocation,
-// exactly like the compute tier ladder. MVP plans are single-instance and fit
-// one node (docs/postgresql-management.md).
-type dbPlan struct {
-	cpu, mem  string
-	storageGB int32
-	instances int32
-}
-
-var dbPlans = map[string]dbPlan{
-	"free":        {cpu: "100m", mem: "256Mi", storageGB: 1, instances: 1},
-	"basic-256mb": {cpu: "100m", mem: "256Mi", storageGB: 1, instances: 1},
-	"basic-1gb":   {cpu: "500m", mem: "1Gi", storageGB: 5, instances: 1},
-}
 
 // cnpgClusterGVK is the CloudNativePG Cluster type. We project onto it via
 // unstructured so the operator needn't vendor CNPG's Go API (and stays decoupled
@@ -74,32 +60,34 @@ func normalizeIdent(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, "-", "_"))
 }
 
-// resolvePlan returns the plan (defaulting to free) and the effective storage
-// size in GB (never below the plan floor — storage only grows).
-func resolvePlan(spec appv1alpha1.DatabaseSpec) (dbPlan, int32) {
-	plan, ok := dbPlans[spec.Plan]
+// resolvePlan returns the plan (defaulting per the shared catalog — free)
+// and the effective storage size in GB (never below the plan floor — storage
+// only grows). The ladder is lego/types/tiers' postgres family, the Database
+// sibling of the compute ladder resourcesForTier reads.
+func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
+	plan, ok := tiers.Postgres.ByID(spec.Plan)
 	if !ok {
-		plan = dbPlans["free"]
+		plan = tiers.Postgres.Default()
 	}
 	storageGB := spec.StorageGB
-	if storageGB < plan.storageGB {
-		storageGB = plan.storageGB
+	if storageGB < plan.StorageGB {
+		storageGB = plan.StorageGB
 	}
 	return plan, storageGB
 }
 
 // cnpgClusterSpec builds the CloudNativePG Cluster .spec for a Database. Pure
 // (no client) so the plan->Cluster projection is unit-testable.
-func cnpgClusterSpec(plan dbPlan, storageGB int32, version, dbname, owner string) map[string]any {
+func cnpgClusterSpec(plan tiers.PostgresTier, storageGB int32, version, dbname, owner string) map[string]any {
 	spec := map[string]any{
-		"instances": int64(plan.instances),
+		"instances": int64(plan.Instances),
 		"storage": map[string]any{
 			"size":         fmt.Sprintf("%dGi", storageGB),
 			"storageClass": dbStorageClass,
 		},
 		"resources": map[string]any{
-			"requests": map[string]any{"cpu": plan.cpu, "memory": plan.mem},
-			"limits":   map[string]any{"cpu": plan.cpu, "memory": plan.mem},
+			"requests": map[string]any{"cpu": plan.CPU, "memory": plan.Memory},
+			"limits":   map[string]any{"cpu": plan.CPU, "memory": plan.Memory},
 		},
 		"bootstrap": map[string]any{
 			"initdb": map[string]any{"database": dbname, "owner": owner},
@@ -209,7 +197,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err == nil {
 		ready, _, _ = unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
 	}
-	if ready >= int64(plan.instances) {
+	if ready >= int64(plan.Instances) {
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Provisioned",

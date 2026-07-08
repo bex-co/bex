@@ -22,8 +22,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -108,6 +110,10 @@ type recordingStore struct {
 		id        string
 		suspended bool
 	}
+	tierCalls []struct {
+		id   string
+		tier string
+	}
 	err error
 }
 
@@ -119,6 +125,17 @@ func (r *recordingStore) SetAppSuspended(_ context.Context, id string, suspended
 		id        string
 		suspended bool
 	}{id, suspended})
+	return nil
+}
+
+func (r *recordingStore) SetAppTier(_ context.Context, id string, tier string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.tierCalls = append(r.tierCalls, struct {
+		id   string
+		tier string
+	}{id, tier})
 	return nil
 }
 
@@ -184,6 +201,87 @@ func TestSuspendWithoutStorePatchesCR(t *testing.T) {
 	}
 }
 
+// --- SetPlan (instance-tier changes) ---
+
+func TestSetPlanValidatesAndMapsRenderSpelling(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+
+	v, err := svc.SetPlan(context.Background(), "web", "pro_plus")
+	if err != nil {
+		t.Fatalf("SetPlan: %v", err)
+	}
+	if v.Plan != "pro_plus" {
+		t.Errorf("view Plan = %q, want %q", v.Plan, "pro_plus")
+	}
+	if got := getApp(t, cl, "web").Spec.Tier; got != "pro-plus" {
+		t.Errorf("spec.tier = %q, want %q (hyphenated id, not the Render spelling)", got, "pro-plus")
+	}
+}
+
+func TestSetPlanUnknownPlanIsBadRequestAndNoOp(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+
+	if _, err := svc.SetPlan(context.Background(), "web", "gold"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("unknown plan should be core.ErrBadRequest, got %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Tier; got != "" {
+		t.Errorf("a rejected plan must not touch spec.tier, got %q", got)
+	}
+}
+
+func TestSetPlanManagedAppWritesRowThenCR(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.SetPlan(context.Background(), "web", "standard"); err != nil {
+		t.Fatalf("SetPlan: %v", err)
+	}
+	if len(rec.tierCalls) != 1 || rec.tierCalls[0].id != "srv-1" || rec.tierCalls[0].tier != "standard" {
+		t.Fatalf("want row write [srv-1 standard], got %v", rec.tierCalls)
+	}
+	if got := getApp(t, cl, "web").Spec.Tier; got != "standard" {
+		t.Errorf("CR spec.tier = %q, want %q", got, "standard")
+	}
+}
+
+func TestSetPlanUnmanagedAppSkipsStore(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, sampleApp("hand"))
+
+	if _, err := svc.SetPlan(context.Background(), "hand", "standard"); err != nil {
+		t.Fatalf("SetPlan: %v", err)
+	}
+	if len(rec.tierCalls) != 0 {
+		t.Fatalf("unmanaged app must not touch the store, got %v", rec.tierCalls)
+	}
+	if got := getApp(t, cl, "hand").Spec.Tier; got != "standard" {
+		t.Errorf("CR spec.tier = %q, want %q", got, "standard")
+	}
+}
+
+func TestSetPlanRowWriteFailureLeavesCRUntouched(t *testing.T) {
+	rec := &recordingStore{err: errors.New("db down")}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.SetPlan(context.Background(), "web", "standard"); err == nil {
+		t.Fatal("want error when the row write fails")
+	}
+	if got := getApp(t, cl, "web").Spec.Tier; got != "" {
+		t.Errorf("spec.tier must be untouched when the row write failed, got %q", got)
+	}
+}
+
+func TestViewOmitsPlanForEmptyOrUnknownTier(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("untiered"))
+	v, err := svc.Get(context.Background(), "untiered")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if v.Plan != "" {
+		t.Errorf("an untiered App's view should omit Plan, got %q", v.Plan)
+	}
+}
+
 // --- REST + GraphQL fragments (Render shape), without the auth gate ---
 
 func TestRESTFragmentRenderShape(t *testing.T) {
@@ -217,5 +315,67 @@ func TestRESTFragmentRenderShape(t *testing.T) {
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/nope", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("unknown => 404, got %d", rec.Code)
+	}
+}
+
+func TestRESTPatchServicePlan(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := strings.NewReader(`{"serviceDetails":{"plan":"pro_plus"}}`)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PATCH plan => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var out renderService
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.ServiceDetails["plan"] != "pro_plus" {
+		t.Errorf("serviceDetails.plan = %v, want %q", out.ServiceDetails["plan"], "pro_plus")
+	}
+
+	// Unknown plan => 400, and it must not have changed anything.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"serviceDetails":{"plan":"gold"}}`)))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("unknown plan => 400, got %d", rec.Code)
+	}
+
+	// A PATCH with no serviceDetails.plan is a no-op read, not an error.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{}`)))
+	if rec.Code != http.StatusOK {
+		t.Errorf("PATCH with no plan field => 200 (no-op), got %d", rec.Code)
+	}
+}
+
+func TestGraphQLUpdateServicePlan(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { updateServicePlan(id: "web", plan: "standard") { plan } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["updateServicePlan"].(map[string]any)["plan"]
+	if got != "standard" {
+		t.Errorf("plan = %v, want %q", got, "standard")
+	}
+
+	// Unknown plan surfaces as a GraphQL error, not a silent no-op.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { updateServicePlan(id: "web", plan: "gold") { plan } }`})
+	if len(res.Errors) == 0 {
+		t.Error("unknown plan should produce a GraphQL error")
 	}
 }

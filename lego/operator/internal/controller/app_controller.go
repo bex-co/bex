@@ -42,6 +42,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -151,29 +152,20 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return r.reconcileOpenSandbox(ctx, &app, image, port)
 }
 
-// tierResources maps an App tier (plan) to a fixed pod allocation, set as
-// requests == limits (Guaranteed). Empty/unknown tier => no constraints
-// (best-effort, prior behavior); the control plane sets a tier explicitly.
-// Ladder mirrors docs/control-plane.md.
-var tierResources = map[string]struct{ cpu, mem string }{
-	"free":      {"100m", "512Mi"},
-	"starter":   {"500m", "512Mi"},
-	"standard":  {"1", "2Gi"},
-	"pro":       {"2", "4Gi"},
-	"pro-plus":  {"4", "8Gi"},
-	"pro-max":   {"4", "16Gi"},
-	"pro-ultra": {"8", "32Gi"},
-}
-
+// resourcesForTier maps an App tier (plan) to a fixed pod allocation, set as
+// requests == limits (Guaranteed) — one ladder, lego/types/tiers' compute
+// family, shared with the backend store's tier/plan validation. Empty/unknown
+// tier => no constraints (best-effort, prior behavior); the control plane
+// sets a tier explicitly.
 func resourcesForTier(tier string) corev1.ResourceRequirements {
-	t, ok := tierResources[tier]
+	cpu, mem, ok := tiers.Compute.Resources(tier)
 	if !ok {
 		return corev1.ResourceRequirements{} // unset => best-effort, unchanged behavior
 	}
 	mk := func() corev1.ResourceList {
 		return corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(t.cpu),
-			corev1.ResourceMemory: resource.MustParse(t.mem),
+			corev1.ResourceCPU:    resource.MustParse(cpu),
+			corev1.ResourceMemory: resource.MustParse(mem),
 		}
 	}
 	return corev1.ResourceRequirements{Requests: mk(), Limits: mk()}

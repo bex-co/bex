@@ -36,13 +36,13 @@ func TestNormalizeIdent(t *testing.T) {
 }
 
 func TestResolvePlan(t *testing.T) {
-	// known plan
-	if p, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}); p.mem != "1Gi" || gb != 5 {
-		t.Errorf("basic-1gb => mem %q storage %d, want 1Gi/5", p.mem, gb)
+	// known plan (from the shared lego/types/tiers postgres family)
+	if p, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}); p.Memory != "1Gi" || gb != 5 {
+		t.Errorf("basic-1gb => mem %q storage %d, want 1Gi/5", p.Memory, gb)
 	}
 	// unknown plan falls back to free
-	if p, _ := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "nonsense"}); p.mem != "256Mi" {
-		t.Errorf("unknown plan should default to free (256Mi), got %q", p.mem)
+	if p, _ := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "nonsense"}); p.Memory != "256Mi" {
+		t.Errorf("unknown plan should default to free (256Mi), got %q", p.Memory)
 	}
 	// storage only grows: a request below the plan floor is raised to the floor
 	if _, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb", StorageGB: 2}); gb != 5 {

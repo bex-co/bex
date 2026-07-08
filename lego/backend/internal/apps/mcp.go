@@ -40,6 +40,13 @@ type listServicesResult struct {
 	Services []renderService `json:"services"`
 }
 
+// updatePlanArgs is update_service_plan's input — Render's plan spelling
+// (e.g. "pro_plus"), same as the REST/GraphQL surfaces.
+type updatePlanArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Plan      string `json:"plan" jsonschema:"the new instance plan, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra"`
+}
+
 // RegisterMCP adds the service tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -72,6 +79,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "resume_service",
 		Description: "Resume a suspended service, restoring its replicas. bex extension over Render's MCP.",
 	}, s.serviceTool(s.Resume))
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_service_plan",
+		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetPlan(ctx, in.ServiceID, in.Plan)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
 }
 
 // serviceTool adapts a single-service verb (Get/Restart/Suspend/Resume) into an

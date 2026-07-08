@@ -1,0 +1,73 @@
+# The bex instance-size catalog — one reviewed file, one family per product
+# surface, mirroring render.com's split:
+#
+#   compute:  web-service instance types (render.com/docs/compute-plans,
+#             verified 2026-07-08). id is the App CRD's spec.tier value (and
+#             the store's app/tenant "plan" column); renderPlan is Render's
+#             own REST `plan` spelling, used only at the public API boundary.
+#             The operator sets pod requests == limits (Guaranteed QoS).
+#
+#   postgres: managed-Postgres instance types (the Database CRD's spec.plan),
+#             named in Render's newer family-size style (their Postgres
+#             instance-type redesign: basic-256mb, basic-1gb, ...). storageGB
+#             is the plan's volume floor — spec.storageGB can grow past it,
+#             never below; instances is the CNPG cluster size.
+#
+# No pricing here — prices are Metronome's (see lego/backend/internal/store/
+# api.go's normalizeTier comment); this file is a resource catalog, not a
+# price list. Runtime behavior (mechanism) must never depend on money, and
+# this catalog is imported by the operator, so it carries none to depend on.
+compute:
+  # The tier a plan-less App/tenant defaults to (mirrors the store's prior
+  # normalizeTier("") => "free" default).
+  default: free
+  tiers:
+    - id: free
+      renderPlan: free
+      cpu: 100m
+      memory: 512Mi
+    - id: starter
+      renderPlan: starter
+      cpu: 500m
+      memory: 512Mi
+    - id: standard
+      renderPlan: standard
+      cpu: "1"
+      memory: 2Gi
+    - id: pro
+      renderPlan: pro
+      cpu: "2"
+      memory: 4Gi
+    - id: pro-plus
+      renderPlan: pro_plus
+      cpu: "4"
+      memory: 8Gi
+    - id: pro-max
+      renderPlan: pro_max
+      cpu: "4"
+      memory: 16Gi
+    - id: pro-ultra
+      renderPlan: pro_ultra
+      cpu: "8"
+      memory: 32Gi
+
+postgres:
+  # Unknown/empty Database plans resolve to free (the operator's prior
+  # dbPlans fallback).
+  default: free
+  tiers:
+    - id: free
+      cpu: 100m
+      memory: 256Mi
+      storageGB: 1
+      instances: 1
+    - id: basic-256mb
+      cpu: 100m
+      memory: 256Mi
+      storageGB: 1
+      instances: 1
+    - id: basic-1gb
+      cpu: 500m
+      memory: 1Gi
+      storageGB: 5
+      instances: 1

@@ -23,12 +23,14 @@ package apps
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -46,10 +48,11 @@ type Service struct {
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
-// to the one method the lifecycle verbs need, so the service can't grow into a
+// to the methods the lifecycle verbs need, so the service can't grow into a
 // second store client and tests fake a single method. *store.PGStore satisfies it.
 type IntentStore interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
+	SetAppTier(ctx context.Context, id string, tier string) error
 }
 
 // AppView is the neutral, bex-native projection of an App — spec intent +
@@ -63,14 +66,23 @@ type AppView struct {
 	Image     string   `json:"image"`
 	Replicas  int32    `json:"replicas"`
 	Suspended bool     `json:"suspended"`
-	Revision  string   `json:"revision"`
-	CreatedAt string   `json:"createdAt"`
+	// Plan is Render's public spelling of the App's tier (e.g. "pro_plus" for
+	// spec.tier "pro-plus"), sourced from lego/types/tiers. Omitted — not
+	// faked as "" — when spec.tier is empty or not a recognized tier, so a
+	// Render-shaped client sees a real superset rather than a bogus plan.
+	Plan      string `json:"plan,omitempty"`
+	Revision  string `json:"revision"`
+	CreatedAt string `json:"createdAt"`
 }
 
 func view(a *appv1alpha1.App) AppView {
 	created := ""
 	if !a.CreationTimestamp.IsZero() {
 		created = a.CreationTimestamp.UTC().Format(time.RFC3339)
+	}
+	plan := ""
+	if t, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
+		plan = t.RenderPlan
 	}
 	return AppView{
 		Name:      a.Name,
@@ -80,6 +92,7 @@ func view(a *appv1alpha1.App) AppView {
 		Image:     a.Status.Image,
 		Replicas:  a.Spec.Replicas,
 		Suspended: a.Spec.Suspended,
+		Plan:      plan,
 		Revision:  a.Status.ActiveRevision,
 		CreatedAt: created,
 	}
@@ -141,25 +154,58 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 	return s.setSuspended(ctx, name, false)
 }
 
-// setSuspended flips suspension with the row as the single writer of intent. For
-// store-managed Apps the apps row is updated first (the projection loop owns
-// spec.suspended and would revert a bare CR patch on the next resync); the CR
-// patch after it makes the change converge immediately — and if that patch
-// fails, the row is already right, so the resync converges it anyway. Restart
-// needs no row write: spec.restartedAt is not projection-owned.
+// SetPlan changes the App's instance size (Render's `plan`, spelled per
+// lego/types/tiers). Unknown plans are rejected before any write — the
+// caller maps core.ErrInvalid to 400/a GraphQL error, listing the valid
+// plans. A plan change resizes the pod (new requests==limits), which is a
+// Deployment rollout — the same restart-shaped cost as Render's own plan
+// changes.
+func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	t, ok := tiers.Compute.ByRenderPlan(plan)
+	if !ok {
+		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	}
+	tier := t.ID
+	return s.writeThroughStore(ctx, name,
+		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
+		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
+}
+
+// setSuspended flips suspension with the row as the single writer of intent.
+// Restart needs no row write: spec.restartedAt is not projection-owned.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (AppView, error) {
+	return s.writeThroughStore(ctx, name,
+		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
+		func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
+}
+
+// writeThroughStore is the shared shape of every intent-field verb with a row
+// as the single writer of truth (suspend/resume, plan): for store-managed
+// Apps the row is updated first — the projection loop owns the field and
+// would revert a bare CR patch on the next resync — then the CR patch after
+// it makes the change converge immediately; if the row write fails, the CR is
+// left untouched (the row is already wrong, so retrying is safe). Unmanaged
+// (bare-CR) Apps skip the row entirely and go straight to the CR patch.
+func (s *Service) writeThroughStore(
+	ctx context.Context, name string,
+	writeRow func(ctx context.Context, id string) error,
+	mutate func(*appv1alpha1.App),
+) (AppView, error) {
 	if s.Store != nil {
 		a, err := s.GetApp(ctx, name)
 		if err != nil {
 			return AppView{}, err
 		}
 		if id := a.Labels[store.LabelAppID]; id != "" {
-			if err := s.Store.SetAppSuspended(ctx, id, suspended); err != nil {
+			if err := writeRow(ctx, id); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
 	}
-	return s.patch(ctx, name, func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
+	return s.patch(ctx, name, mutate)
 }
 
 // patch fetches the App, applies mutate to its spec, and merge-patches — only

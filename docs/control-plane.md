@@ -71,15 +71,7 @@ Only the last row ties a tenant to dedicated machines — and even then it's "pi
 
 A **tier/plan** (Free, Starter, Standard, Pro, …) is just a fixed **resource allocation** per pod — RAM + CPU, nothing more. The operator expresses it as the pod's `requests` = `limits` (that's k8s's only knob for "give this pod exactly X"); same mechanism for every tier, only the numbers differ.
 
-| tier (Render-style) | RAM    | CPU | pod `requests`=`limits` |
-| ------------------- | ------ | --- | ----------------------- |
-| Free                | 512 MB | 0.1 | `512Mi` / `100m`        |
-| Starter             | 512 MB | 0.5 | `512Mi` / `500m`        |
-| Standard            | 2 GB   | 1   | `2Gi` / `1`             |
-| Pro                 | 4 GB   | 2   | `4Gi` / `2`             |
-| Pro Plus            | 8 GB   | 4   | `8Gi` / `4`             |
-| Pro Max             | 16 GB  | 4   | `16Gi` / `4`            |
-| Pro Ultra           | 32 GB  | 8   | `32Gi` / `8`            |
+**The ladders live in one place:** [`lego/types/tiers/tiers.yaml`](../lego/types/tiers/tiers.yaml), one family per product surface — `compute` (App instance types, mirrors render.com/docs/compute-plans) and `postgres` (Database instance types, Render's family-size naming: `basic-256mb`, `basic-1gb`, …). The operator (pod resources + CNPG cluster sizing), the control-plane store (tier/plan validation), and the public API (Render's `plan` field, `serviceDetails.plan` in REST / `plan` in GraphQL) all read this one catalog rather than keeping their own copies. It carries no pricing — prices are Metronome's.
 
 **Provisioning = bin-pack the sum, autoscale by the sum.** Pods of all tiers **bin-pack onto the shared worker pools** (scheduler `MostAllocated`, for density). The machine capacity you must run ≈ **Σ(running pods' tiers)**; as that sum grows the autoscaler/CAPI **adds a machine**, as it shrinks (after idle-evict) it **removes** one. There are **no per-tier pools** — a tier only sets how big the pod is.
 
@@ -87,7 +79,7 @@ A **tier/plan** (Free, Starter, Standard, Pro, …) is just a fixed **resource a
 
 **Free tier = sleep-when-idle (decided).** Idle free apps **hibernate** (`sleep = free`) and **wake on the next request** via the gateway **activator** (Knative-style); a sleeping pod occupies nothing, so the cluster **overcommits well beyond Σ** and Free approaches \$0. So the `Σ(running pods)` above is really `Σ(paid pods + currently-awake free pods)` — sleeping free apps don't count. **Paid tiers stay reserved** (always-on, `request=limit`). The price of this choice: a **cold-start** on wake (hold/queue the first request while the pod resumes) and an **idle-detector + activator in the request path**. This is the same `sleep = free` loop bex already runs for the OpenSandbox runtime (idle → pause, request → resume) — see [`architecture.md`](architecture.md).
 
-**Where it lives in bex:** `App.tier` (set from the plan in Postgres) → the operator translates it to the pod's `requests/limits`; the **auto-allocator** bin-packs + idle-evicts; CAPI / Cluster Autoscaler turns the aggregate into machines. _(Planned: the `tier` field on `App` and the autoscaler wiring — today pod resources are implicit and machine count is manual.)_
+**Where it lives in bex:** `App.spec.tier` (set from the row's plan in Postgres for store-managed Apps, or via the public API's plan-change verb for bare-CR Apps) → the operator translates it to the pod's `requests/limits` from the shared tier catalog; the **auto-allocator** bin-packs + idle-evicts; CAPI / Cluster Autoscaler turns the aggregate into machines. _(Planned: the autoscaler wiring — today machine count is manual.)_
 
 ## One Postgres, owned by the control plane
 

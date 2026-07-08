@@ -63,6 +63,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			},
 			Resolve: envVarValueResolve,
 		},
+		// plan is a bex extension (not yet captured live from Render's dashboard
+		// traffic — the instance-type field/mutation naming there is unconfirmed);
+		// it follows the existing suspendService/resumeService/restartServer
+		// convention rather than inventing a different shape.
+		"plan": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Plan })},
 	},
 })
 
@@ -140,5 +145,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Suspend)},
 		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		"restartServer":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Restart)},
+		// updateServicePlan: a bex extension (naming unconfirmed against a live
+		// Render dashboard capture — see the "plan" field comment above).
+		"updateServicePlan": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+			},
+		},
 	}
 }

@@ -174,3 +174,15 @@ func (m *memStore) SetAppSuspended(_ context.Context, id string, suspended bool)
 	m.apps[id] = a
 	return nil
 }
+
+func (m *memStore) SetAppTier(_ context.Context, id string, tier string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	a.Tier = tier
+	m.apps[id] = a
+	return nil
+}

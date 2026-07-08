@@ -117,6 +117,10 @@ type Store interface {
 	// this (row first, then the CR fast-path) so the projection loop never
 	// reverts a suspend it didn't know about.
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
+	// SetAppTier updates the row's tier — the single write path for plan
+	// changes on store-managed Apps, same row-first rationale as
+	// SetAppSuspended.
+	SetAppTier(ctx context.Context, id string, tier string) error
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -283,6 +287,22 @@ func (s *PGStore) SetAppSuspended(ctx context.Context, id string, suspended bool
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET suspended = $2, updated_at = now() WHERE id = $1`,
 		id, suspended)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetAppTier updates the row's tier (the apps feature's plan-change verb
+// validates it against lego/types/tiers before calling this). The projector
+// carries it onto spec.tier the same way it carries suspended.
+func (s *PGStore) SetAppTier(ctx context.Context, id string, tier string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET tier = $2, updated_at = now() WHERE id = $1`,
+		id, tier)
 	if err != nil {
 		return classify("app", err)
 	}

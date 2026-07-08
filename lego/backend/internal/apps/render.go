@@ -57,6 +57,12 @@ func toRenderService(a AppView) renderService {
 	if a.URL != "" {
 		details = map[string]any{"url": a.URL} // Render web_service exposes the live URL here
 	}
+	if a.Plan != "" {
+		if details == nil {
+			details = map[string]any{}
+		}
+		details["plan"] = a.Plan // webServiceDetails.plan (render-public-api-1.json)
+	}
 	return renderService{
 		ID:             a.Name,
 		Name:           a.Name,

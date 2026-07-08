@@ -23,8 +23,9 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
+
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // API is the minimal product surface over the source of truth: create a
@@ -322,21 +323,19 @@ func validateName(field, v string) error {
 	return nil
 }
 
-// tiers is the plan ladder (docs/control-plane.md §Tiers); it mirrors the App
-// CRD's spec.tier enum. Resources per tier live in the operator, prices in
-// Metronome — this list is only the validity gate.
-const tierFree = "free"
-
-var tiers = []string{tierFree, "starter", "standard", "pro", "pro-plus", "pro-max", "pro-ultra"}
-
+// normalizeTier validates a tier/plan string against lego/types/tiers'
+// compute family, the one shared ladder (also consumed by the operator for
+// pod resources). Prices are Metronome's, not this validity gate's concern.
+// Empty => the catalog's default tier (today "free"), matching the prior
+// behavior.
 func normalizeTier(field, v string) (string, error) {
 	if v == "" {
-		return tierFree, nil
+		return tiers.Compute.Default().ID, nil
 	}
-	if slices.Contains(tiers, v) {
+	if _, ok := tiers.Compute.ByID(v); ok {
 		return v, nil
 	}
-	return "", fmt.Errorf("%w: %s must be one of %s", ErrInvalid, field, strings.Join(tiers, "|"))
+	return "", fmt.Errorf("%w: %s must be one of %s", ErrInvalid, field, strings.Join(tiers.Compute.IDs(), "|"))
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
