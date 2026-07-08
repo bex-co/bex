@@ -23,6 +23,7 @@
 
 - `005.md` — Wire `spec.healthCheckPath` into a ReadinessProbe (or drop the field) — from the 2026-07-08 docs-vs-code audit
 - `006.md` — Triage 36 Dependabot findings (2 critical, 15 high) reported 2026-07-08
+- `007.md` — Key Value (Valkey/Redis) managed store: `KeyValue` CR + reconciler (mechanism half; surfaces follow in w2/w5) — from `/pm-brainstorm for w2` 2026-07-08
 
 > `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`.
 
