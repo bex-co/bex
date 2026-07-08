@@ -11,10 +11,11 @@
 | t003 | Secrets at rest (sealed-secrets / SOPS)           | 30m | —          |
 | t004 | Encrypt node-to-node (Cilium WireGuard)           | 25m | —          |
 | t005 | Private network + stable LB IP (Traefik LB)       | 30m | t004       |
+| t006 | OpenBao Raft snapshot backup (etcd-backup CronJob pattern) | 30m | —          |
 
 ## Definition of done
 
-The kube-API is firewalled (not internet-exposed); the operator runs a SHA-pinned image; repo/registry/Hetzner creds are encrypted at rest; node traffic is WireGuard-encrypted; Traefik has a stable LB IP on a Hetzner private network.
+The kube-API is firewalled (not internet-exposed); the operator runs a SHA-pinned image; repo/registry/Hetzner creds are encrypted at rest; node traffic is WireGuard-encrypted; Traefik has a stable LB IP on a Hetzner private network; OpenBao raft snapshots land nightly in object storage with a verified restore.
 
 ## Source
 
