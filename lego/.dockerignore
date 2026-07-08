@@ -11,5 +11,7 @@
 !**/go.mod
 !**/go.sum
 
-# Re-include embedded assets the build needs (bex-api control-plane migrations)
+# Re-include embedded assets the build needs (bex-api control-plane migrations,
+# the instance-tier catalog)
 !**/*.sql
+!types/tiers/tiers.yaml
