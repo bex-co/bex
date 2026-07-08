@@ -41,6 +41,15 @@ kratos:
       }
 
   config:
+    # Native Hydra bridge (w4/m9, docs/auth.md): with the admin URL set, Kratos
+    # itself resolves + accepts Hydra login challenges — a login/registration
+    # flow carrying ?login_challenge= links to the OAuth2 request, and an
+    # existing session (skip=true) is accepted with no UI. No custom login
+    # provider exists anywhere (DO_NOT_DO.md). override_return_to keeps the
+    # browser returning to Hydra's authorize URL across flows.
+    oauth2_provider:
+      url: http://hydra-admin.auth.svc:4445
+      override_return_to: true
     serve:
       public:
         base_url: https://auth.bex.co/

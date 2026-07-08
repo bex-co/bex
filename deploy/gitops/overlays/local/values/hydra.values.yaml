@@ -7,6 +7,10 @@ hydra:
     urls:
       self:
         issuer: http://oauth.bex.local
+      # Local dashboard dev server (w4/m9) — mirrors base's dashboard login +
+      # headless consent, on the local origin.
+      login: http://localhost:5173/auth/login
+      consent: http://localhost:5173/auth/consent
 
 ingress:
   public:

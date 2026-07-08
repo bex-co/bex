@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -28,8 +29,9 @@ import (
 )
 
 // fakeHydra serves POST /admin/oauth2/introspect: testToken is active (sub
-// "client-1"), everything else inactive. hits counts real introspections.
-func fakeHydra(t *testing.T, hits *atomic.Int32) *httptest.Server {
+// "client-1", with the given aud list, if any), everything else inactive. hits
+// counts real introspections.
+func fakeHydra(t *testing.T, hits *atomic.Int32, aud ...string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/admin/oauth2/introspect" || r.Method != http.MethodPost {
@@ -40,7 +42,9 @@ func fakeHydra(t *testing.T, hits *atomic.Int32) *httptest.Server {
 		_ = r.ParseForm()
 		w.Header().Set("Content-Type", "application/json")
 		if r.PostFormValue("token") == testToken {
-			_, _ = fmt.Fprint(w, `{"active":true,"sub":"client-1","client_id":"client-1"}`)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"active": true, "sub": "client-1", "client_id": "client-1", "aud": aud,
+			})
 			return
 		}
 		_, _ = fmt.Fprint(w, `{"active":false}`)
@@ -188,7 +192,7 @@ func TestAuthGate(t *testing.T) {
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits)
-	mw := newOryAuth(hydra.URL, "").middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "").middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)

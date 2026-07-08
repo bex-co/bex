@@ -14,5 +14,5 @@
 
 ## Inbox
 
-- `001.md` — bex as an OAuth 2.1 provider for agents (Kratos native `oauth2_provider` + headless consent acceptor + DCR) — deferred from the reverted w4/m9; candidate milestone alongside the MCP auth spec
+- (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 - `002.md` — Workspace MCP tools (`list_workspaces`/`select_workspace`/`get_selected_workspace`) — blocked on w1/m9 (real workspaces)

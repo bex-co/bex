@@ -9,6 +9,7 @@ import type {
 } from "@ory/client-fetch";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { KRATOS_PUBLIC_URL } from "@/common/lib/ory/config";
+import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 
 type OryFlowMap = {
   login: LoginFlow;
@@ -70,34 +71,47 @@ function getFlow<K extends keyof OryFlowMap>(
  * URL, which is exactly what this hook exists to avoid. Anti-CSRF cookies
  * still get set: auth and dashboard share a site (bex.co / localhost), so
  * the browser sends them on Ory Elements' subsequent form-submit fetches.
+ *
+ * `loginChallenge` (login/registration only) links the flow to a Hydra OAuth2
+ * authorization request — Kratos's native `oauth2_provider` integration then
+ * accepts the challenge itself on success (docs/auth.md, w4/m9).
  */
 function createFlow<K extends keyof OryFlowMap>(
   api: FrontendApi,
   kind: K,
   returnTo: string | undefined,
+  loginChallenge?: string,
 ): Promise<OryFlowMap[K]> {
   const req =
     kind === "login"
-      ? api.createBrowserLoginFlow({ returnTo })
+      ? api.createBrowserLoginFlow({ returnTo, loginChallenge })
       : kind === "registration"
-        ? api.createBrowserRegistrationFlow({ returnTo })
+        ? api.createBrowserRegistrationFlow({ returnTo, loginChallenge })
         : kind === "recovery"
           ? api.createBrowserRecoveryFlow({ returnTo })
           : api.createBrowserSettingsFlow({ returnTo });
   return req as Promise<OryFlowMap[K]>;
 }
 
-/** Extracts Kratos's machine-readable error id (e.g. `session_already_available`). */
-async function oryErrorId(err: unknown): Promise<string | undefined> {
+/**
+ * Extracts Kratos's machine-readable error id (e.g. `session_already_available`)
+ * and, for `browser_location_change_required`, where to send the browser (how
+ * Kratos answers an AJAX call whose flow must continue elsewhere — e.g. an
+ * OAuth2 login challenge short-circuited by an existing session).
+ */
+async function oryErrorInfo(
+  err: unknown,
+): Promise<{ id?: string; redirectBrowserTo?: string }> {
   const response = (err as { response?: Response })?.response;
-  if (!response) return undefined;
+  if (!response) return {};
   try {
     const body = (await response.clone().json()) as {
       error?: { id?: string };
+      redirect_browser_to?: string;
     };
-    return body.error?.id;
+    return { id: body.error?.id, redirectBrowserTo: body.redirect_browser_to };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -120,10 +134,17 @@ async function oryErrorId(err: unknown): Promise<string | undefined> {
  * creation when a valid session exists (`session_already_available`) and
  * we navigate to `returnTo` — pointing it back at an auth page would loop.
  */
+export interface UseOryFlowOptions {
+  /** Where to land after the flow succeeds (must not be an auth page). */
+  returnTo?: string;
+  /** Hydra OAuth2 challenge linking this flow to an authorization request (w4/m9). */
+  loginChallenge?: string;
+}
+
 export function useOryFlow<K extends keyof OryFlowMap>(
   kind: K,
   flowIdFromUrl: string | undefined,
-  returnTo = "/",
+  { returnTo = "/", loginChallenge }: UseOryFlowOptions = {},
 ): OryFlowMap[K] | null {
   const [flow, setFlow] = useState<OryFlowMap[K] | null>(null);
   const navigate = useNavigate();
@@ -150,7 +171,11 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     const returnUrl = new URL(returnTo, window.location.origin).toString();
 
     async function load() {
-      const knownId = readStoredFlowId(kind);
+      // A login_challenge visit is an OAuth2 authorization in progress
+      // (docs/auth.md, w4/m9): always mint a fresh flow bound to the challenge —
+      // a stored flow isn't linked to the Hydra request — and don't persist it
+      // (a later ordinary visit must not resume an OAuth-linked flow).
+      const knownId = loginChallenge ? null : readStoredFlowId(kind);
       if (knownId) {
         try {
           const existing = await getFlow(api, kind, knownId);
@@ -164,22 +189,35 @@ export function useOryFlow<K extends keyof OryFlowMap>(
       try {
         let fresh: OryFlowMap[K];
         try {
-          fresh = await createFlow(api, kind, returnUrl);
+          fresh = await createFlow(api, kind, returnUrl, loginChallenge);
         } catch (err) {
-          // Kratos rejects return_to values missing from its
-          // allowed_return_urls (e.g. localhost dev against an environment
-          // that doesn't allowlist it) — the flow itself still works
-          // without one, so retry rather than fail the page.
-          if ((await oryErrorId(err)) !== "self_service_flow_return_to_forbidden")
+          const { id, redirectBrowserTo } = await oryErrorInfo(err);
+          if (id === "browser_location_change_required" && redirectBrowserTo) {
+            // OAuth2 short-circuit: an existing session satisfied the login
+            // challenge (Kratos accepted it) — continue the authorize flow.
+            window.location.href = redirectBrowserTo;
+            return;
+          }
+          if (id === "self_service_flow_return_to_forbidden") {
+            // Kratos rejects return_to values missing from its
+            // allowed_return_urls (e.g. localhost dev against an environment
+            // that doesn't allowlist it) — the flow itself still works
+            // without one, so retry rather than fail the page.
+            fresh = await createFlow(api, kind, undefined, loginChallenge);
+          } else if (loginChallenge) {
+            // Stale/invalid challenge (single-use, short TTL) — the challenge
+            // is advisory, never load-bearing: degrade to the ordinary page.
+            fresh = await createFlow(api, kind, returnUrl);
+          } else {
             throw err;
-          fresh = await createFlow(api, kind, undefined);
+          }
         }
         if (cancelled) return;
-        writeStoredFlowId(kind, fresh.id);
+        if (!loginChallenge) writeStoredFlowId(kind, fresh.id);
         setFlow(fresh);
       } catch (err) {
         if (cancelled) return;
-        const errorId = await oryErrorId(err);
+        const { id: errorId } = await oryErrorInfo(err);
         if (errorId === "session_already_available") {
           // Already signed in — Kratos refuses to create login/registration
           // flows. Go where the user was headed instead.
@@ -190,7 +228,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
           // Settings without a session — sign in first.
           void navigate({
             to: "/auth/login",
-            search: { next: undefined, flow: undefined },
+            search: EMPTY_LOGIN_SEARCH,
             replace: true,
           });
           return;
@@ -205,7 +243,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     return () => {
       cancelled = true;
     };
-  }, [kind, flowIdFromUrl, returnTo, navigate]);
+  }, [kind, flowIdFromUrl, returnTo, navigate, loginChallenge]);
 
   return flow;
 }

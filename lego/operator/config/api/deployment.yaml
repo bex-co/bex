@@ -42,6 +42,14 @@ spec:
               value: http://hydra-admin.auth.svc:4445
             - name: BEX_KRATOS_URL # optional; unset disables session auth
               value: http://kratos-public.auth.svc:80
+            # OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/auth.md):
+            # issuer = Hydra's public URL; resource = this API's canonical URI.
+            # Drives the RFC 9728 metadata endpoint, the 401 WWW-Authenticate
+            # resource_metadata hint, and the token-audience check.
+            - name: BEX_OAUTH_ISSUER
+              value: https://oauth.bex.co
+            - name: BEX_OAUTH_RESOURCE
+              value: https://api.bex.co/mcp
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
             - name: BEX_API_CORS_ORIGIN # comma-separated origins for the dashboard's credentialed

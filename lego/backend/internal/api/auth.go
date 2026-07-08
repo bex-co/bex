@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,6 +51,19 @@ type oryAuth struct {
 	kratosURL     string // e.g. http://kratos-public.auth:80; empty disables sessions
 	client        *http.Client
 
+	// Audience discipline (MCP authorization spec / RFC 8707, w4/m9): when set
+	// (the resource's canonical URI, e.g. https://api.bex.co/mcp), a token whose
+	// introspected `aud` list is non-empty must include it, or the token is
+	// rejected. Tokens with an EMPTY aud are still accepted — Hydra doesn't
+	// implement RFC 8707's `resource` parameter (it has its own `audience`
+	// request param), so plain API-key (client_credentials) tokens carry no
+	// audience and must keep working. A documented subset, not full RFC 8707.
+	resource string
+	// challenge is the constant WWW-Authenticate value for 401s: bare "Bearer",
+	// or — when discovery is configured — enriched with RFC 9728's
+	// `resource_metadata="…"` so an MCP client can find the authorization server.
+	challenge string
+
 	// Positive introspections are cached briefly so a chatty agent doesn't cost
 	// one Hydra round trip per request. Negatives are never cached. Concurrent
 	// misses for one token coalesce into a single Hydra call (group), which also
@@ -58,10 +72,16 @@ type oryAuth struct {
 	group singleflight.Group
 }
 
-func newOryAuth(hydraAdminURL, kratosURL string) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string) *oryAuth {
+	challenge := "Bearer"
+	if resourceMetadataURL != "" {
+		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
+	}
 	return &oryAuth{
 		hydraAdminURL: strings.TrimSuffix(hydraAdminURL, "/"),
 		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
+		resource:      resource,
+		challenge:     challenge,
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:         core.NewTTLCache[core.Identity](),
 	}
@@ -78,14 +98,14 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		case a.kratosURL != "" && hasSessionCredential(r):
 			id, err = a.whoami(r)
 		default:
-			unauthorized(w)
+			a.unauthorized(w)
 			return
 		}
 		switch {
 		case err != nil: // Ory unreachable/broken — fail closed, honestly
 			http.Error(w, `{"error":"auth upstream unavailable"}`, http.StatusServiceUnavailable)
 		case id == core.Identity{}:
-			unauthorized(w)
+			a.unauthorized(w)
 		default:
 			next.ServeHTTP(w, r.WithContext(core.WithIdentity(r.Context(), id)))
 		}
@@ -136,15 +156,21 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 		return core.Identity{}, core.Err("hydra introspection returned " + resp.Status)
 	}
 	var out struct {
-		Active   bool    `json:"active"`
-		Sub      string  `json:"sub"`
-		ClientID string  `json:"client_id"`
-		Exp      float64 `json:"exp"`
+		Active   bool     `json:"active"`
+		Sub      string   `json:"sub"`
+		ClientID string   `json:"client_id"`
+		Exp      float64  `json:"exp"`
+		Aud      []string `json:"aud"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return core.Identity{}, err
 	}
 	if !out.Active {
+		return core.Identity{}, nil
+	}
+	// Audience discipline (see the resource field): a token minted for another
+	// resource must not authorize this one. Empty aud stays accepted (API keys).
+	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
 		return core.Identity{}, nil
 	}
 	subject := out.Sub
@@ -200,8 +226,11 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	return core.Identity{Subject: out.Identity.ID, Method: "session"}, nil
 }
 
-func unauthorized(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", "Bearer")
+// unauthorized answers 401 with the precomputed WWW-Authenticate challenge
+// (RFC 9728 resource_metadata when discovery is configured — how an MCP client
+// that hit the API unauthenticated finds the authorization server).
+func (a *oryAuth) unauthorized(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", a.challenge)
 	http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 }
 

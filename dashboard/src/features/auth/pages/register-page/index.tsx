@@ -11,7 +11,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/auth/sign-up" });
-  const flow = useOryFlow("registration", search.flow);
+  const flow = useOryFlow("registration", search.flow, {
+    loginChallenge: search.login_challenge,
+  });
   const { t } = useTranslations();
   const authFeatures = useAuthFeatures();
   const oryConfig = useOryConfig();

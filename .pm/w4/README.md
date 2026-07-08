@@ -13,3 +13,4 @@
 - [x] **m6.5** — Env vars in the dashboard: Render-style Environment tab wired to the m6 API (7 tasks) ← user request 2026-07-07, needs m6 + w5/m5 (service-detail IA)
 - [ ] **m7** — Email flows: Kratos courier + recovery/verification live (7 tasks) ← from brainstorm 2026-07-06, independent of m4–m6
 - [ ] **m8** — API keys in the dashboard (settings surface) (6 tasks) ← from brainstorm 2026-07-06, coordinates with m4's checker
+- [x] **m9** — OAuth 2.1 provider for agents: one dashboard login, first-party sessions + third-party clients (7 tasks) ← promoted from w4/001 (user request 2026-07-07), needs m1 + m2 — done 2026-07-08 (e2e-verified incl. real-browser login pass), moved to `done/m9/`

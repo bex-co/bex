@@ -186,6 +186,11 @@ func main() {
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
+	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/auth.md): the Hydra
+	// public issuer + this API's canonical resource URI. Both unset => no
+	// metadata endpoint, no audience check — behavior identical to before.
+	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
+	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.

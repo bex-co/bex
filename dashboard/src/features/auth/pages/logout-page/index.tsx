@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Loader2, CheckCircle } from "lucide-react";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
+import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
@@ -34,7 +35,7 @@ export default function LogoutPage() {
         await router.invalidate();
         void navigate({
           to: "/auth/login",
-          search: { next: undefined, flow: undefined },
+          search: EMPTY_LOGIN_SEARCH,
         });
       }
     };

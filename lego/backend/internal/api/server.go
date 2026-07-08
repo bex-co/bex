@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"maps"
 	"net/http"
+	"net/url"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -64,6 +65,16 @@ type Server struct {
 
 	HydraAdminURL string // Hydra admin base URL (introspection); required
 	KratosURL     string // Kratos public base URL (whoami); empty disables sessions
+
+	// OAuth 2.1 resource-server discovery (w4/m9, MCP authorization spec).
+	// OAuthIssuer is Hydra's public issuer (e.g. https://oauth.bex.co);
+	// OAuthResource is this API's canonical resource URI (e.g.
+	// https://api.bex.co/mcp) — advertised via RFC 9728 protected-resource
+	// metadata and enforced as the expected token audience. Both unset =>
+	// behavior is byte-identical to before (no metadata endpoint, bare
+	// WWW-Authenticate, no audience check).
+	OAuthIssuer   string
+	OAuthResource string
 
 	schema graphql.Schema
 }
@@ -168,6 +179,21 @@ func (s *Server) Handler() (http.Handler, error) {
 	mux.Handle("/graphql", auth(s.graphqlHandler()))
 	mux.Handle("/mcp", auth(s.mcpHTTPHandler()))
 
+	// RFC 9728 protected-resource metadata (w4/m9): open by design — it's how an
+	// unauthenticated MCP client discovers the authorization server (the MCP
+	// authorization spec requires it). One predicate decides both this mount and
+	// the 401 WWW-Authenticate enrichment (resourceMetadataURL), so the hint and
+	// the endpoint can't drift.
+	if s.resourceMetadataURL() != "" {
+		mux.HandleFunc("GET /.well-known/oauth-protected-resource", func(w http.ResponseWriter, _ *http.Request) {
+			core.WriteJSON(w, http.StatusOK, map[string]any{
+				"resource":                 s.OAuthResource,
+				"authorization_servers":    []string{s.OAuthIssuer},
+				"bearer_methods_supported": []string{"header"},
+			})
+		})
+	}
+
 	return withCORS(s.CORSOrigin, mux), nil
 }
 
@@ -177,7 +203,22 @@ func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.HydraAdminURL == "" {
 		return nil, core.Err(errNoHydraURL)
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL).middleware, nil
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL()).middleware, nil
+}
+
+// resourceMetadataURL derives the public URL of this API's RFC 9728 metadata
+// endpoint from the resource URI (same scheme+host, well-known path) — what the
+// 401 WWW-Authenticate header advertises. Empty when discovery isn't configured
+// or the resource URI doesn't parse.
+func (s *Server) resourceMetadataURL() string {
+	if s.OAuthIssuer == "" || s.OAuthResource == "" {
+		return ""
+	}
+	u, err := url.Parse(s.OAuthResource)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host + "/.well-known/oauth-protected-resource"
 }
 
 // restHandler mounts every feature's REST fragment on one mux — the single REST

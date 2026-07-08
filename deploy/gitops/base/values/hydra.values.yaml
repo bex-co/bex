@@ -18,11 +18,23 @@ hydra:
     urls:
       self:
         issuer: https://oauth.bex.co # must match the public host (t005/ingress)
+      # OAuth2 login + consent (w4/m9): login is the dashboard's EXISTING Kratos
+      # login page (Kratos's native oauth2_provider integration accepts the
+      # challenge itself — kratos.values.yaml); consent is the dashboard's
+      # headless acceptor route (auto-accepts trusted/skip clients, no UI).
+      login: https://dashboard.bex.co/auth/login
+      consent: https://dashboard.bex.co/auth/consent
     oidc:
       subject_identifiers:
         supported_types: [public, pairwise]
         # pairwise.salt is secret — injected as OIDC_SUBJECT_IDENTIFIERS_PAIRWISE_SALT
         # from the `hydra` Secret (deployment.extraEnv below), never committed.
+      # OpenID Dynamic Client Registration (RFC 7591, w4/m9): lets MCP/agent
+      # clients self-register public PKCE clients at the public registration
+      # endpoint per the MCP authorization spec. Registered clients are NOT
+      # auto-trusted — consent (above) denies unknown client_ids.
+      dynamic_client_registration:
+        enabled: true
 
 deployment:
   extraEnv:
