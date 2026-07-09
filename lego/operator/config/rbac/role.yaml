@@ -8,13 +8,6 @@ rules:
   - ""
   resources:
   - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - services
   verbs:
   - create
@@ -29,6 +22,7 @@ rules:
   resources:
   - apps
   - databases
+  - keyvalues
   verbs:
   - create
   - delete
@@ -42,6 +36,7 @@ rules:
   resources:
   - apps/finalizers
   - databases/finalizers
+  - keyvalues/finalizers
   verbs:
   - update
 - apiGroups:
@@ -49,6 +44,7 @@ rules:
   resources:
   - apps/status
   - databases/status
+  - keyvalues/status
   verbs:
   - get
   - patch
@@ -57,6 +53,7 @@ rules:
   - apps
   resources:
   - deployments
+  - statefulsets
   verbs:
   - create
   - delete

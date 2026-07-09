@@ -46,6 +46,20 @@ var wantPostgres = map[string]struct {
 	"basic-1gb":   {"500m", "1Gi", 5, 1},
 }
 
+// wantValkey is the managed key-value ladder shipped in tiers.yaml — Render's
+// Key Value vocabulary (free/starter/standard, shared with the web-service
+// ladder, not the Postgres basic-* names), single-instance tiers differing by
+// compute and storage.
+var wantValkey = map[string]struct {
+	cpu, mem  string
+	storageGB int32
+	instances int32
+}{
+	"free":     {"100m", "128Mi", 1, 1},
+	"starter":  {"100m", "256Mi", 1, 1},
+	"standard": {"500m", "1Gi", 5, 1},
+}
+
 func TestComputeCatalogMatchesFormerOperatorLadder(t *testing.T) {
 	if got := len(Compute.IDs()); got != len(wantCompute) {
 		t.Fatalf("want %d compute tiers, got %d", len(wantCompute), got)
@@ -76,12 +90,30 @@ func TestPostgresCatalogMatchesFormerDBPlans(t *testing.T) {
 	}
 }
 
+func TestValkeyCatalogMatchesShippedLadder(t *testing.T) {
+	if got := len(Valkey.IDs()); got != len(wantValkey) {
+		t.Fatalf("want %d valkey tiers, got %d", len(wantValkey), got)
+	}
+	for id, want := range wantValkey {
+		got, ok := Valkey.ByID(id)
+		if !ok {
+			t.Fatalf("valkey tier %q missing from embedded catalog", id)
+		}
+		if got.CPU != want.cpu || got.Memory != want.mem || got.StorageGB != want.storageGB || got.Instances != want.instances {
+			t.Errorf("valkey %q: got %+v, want %+v", id, got, want)
+		}
+	}
+}
+
 func TestDefaultsAreFree(t *testing.T) {
 	if got := Compute.Default(); got.ID != "free" {
 		t.Errorf("Compute.Default() = %q, want %q (the store's prior normalizeTier(\"\") behavior)", got.ID, "free")
 	}
 	if got := Postgres.Default(); got.ID != "free" {
 		t.Errorf("Postgres.Default() = %q, want %q (the operator's prior dbPlans fallback)", got.ID, "free")
+	}
+	if got := Valkey.Default(); got.ID != "free" {
+		t.Errorf("Valkey.Default() = %q, want %q (the KeyValue plan fallback)", got.ID, "free")
 	}
 }
 
@@ -146,10 +178,27 @@ postgres:
       memory: 256Mi
       storageGB: 1
       instances: 1
+valkey:
+  default: free
+  tiers:
+    - id: free
+      cpu: 100m
+      memory: 128Mi
+      storageGB: 1
+      instances: 1
+`
+
+// validValkey is a flow-style valkey block appended to every malformed case so
+// each only breaks the family it intends (parse rejects an absent family too).
+const validValkey = `
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
 `
 
 func TestParseAcceptsMinimalValidCatalog(t *testing.T) {
-	if _, _, err := parse([]byte(valid)); err != nil {
+	if _, _, _, err := parse([]byte(valid)); err != nil {
 		t.Fatalf("minimal valid catalog rejected: %v", err)
 	}
 }
@@ -165,13 +214,26 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"empty postgres family": `
 compute:
   default: starter
   tiers:
     - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
 postgres:
+  default: free
+  tiers: []
+` + validValkey,
+		"empty valkey family": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
   default: free
   tiers: []
 `,
@@ -184,7 +246,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"duplicate compute id": `
 compute:
   default: starter
@@ -195,7 +257,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"duplicate renderPlan": `
 compute:
   default: starter
@@ -206,7 +268,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"empty renderPlan": `
 compute:
   default: starter
@@ -216,7 +278,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"unparseable quantity": `
 compute:
   default: starter
@@ -226,7 +288,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"compute default names undefined tier": `
 compute:
   default: nonexistent
@@ -236,7 +298,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"missing postgres default": `
 compute:
   default: starter
@@ -245,7 +307,7 @@ compute:
 postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"duplicate postgres id": `
 compute:
   default: starter
@@ -256,7 +318,7 @@ postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 		"postgres zero storage": `
 compute:
   default: starter
@@ -266,7 +328,7 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 0, instances: 1}
-`,
+` + validValkey,
 		"postgres zero instances": `
 compute:
   default: starter
@@ -276,6 +338,34 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 0}
+` + validValkey,
+		"valkey zero storage": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 0, instances: 1}
+`,
+		"valkey zero instances": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 0}
 `,
 		"empty tier id": `
 compute:
@@ -286,10 +376,10 @@ postgres:
   default: free
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
-`,
+` + validValkey,
 	}
 	for name, raw := range cases {
-		if _, _, err := parse([]byte(raw)); err == nil {
+		if _, _, _, err := parse([]byte(raw)); err == nil {
 			t.Errorf("%s: should be rejected", name)
 		}
 	}

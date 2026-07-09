@@ -45,6 +45,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | operator | `BEX_OPENSANDBOX_URL` | OpenSandbox endpoint (opensandbox runtime) |
 | operator | `BEX_BASE_DOMAIN`, `BEX_CLUSTER_ISSUER` | `*.onbex.co` app URLs, cert-manager issuer |
 | operator | `BEX_DB_DOMAIN` | public managed-Postgres hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/postgresql-management.md); unset ⇒ internal-only |
+| operator | `BEX_KV_DOMAIN` | public managed key-value (Valkey) hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/keyvalue-management.md); unset ⇒ internal-only |
 | operator | `BEX_ACTIVATOR_SERVICE` | k8s Service name of the wake activator (e.g. `bex-activator`); unset ⇒ auto-sleep disabled |
 | operator | `BEX_ACTIVATOR_PORT` | activator service port (default `8888`) |
 | activator | `BEX_ACTIVATOR_ADDR` | listen address (default `:8888`) |
@@ -82,6 +83,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/secrets.md](docs/secrets.md) — ADR: OpenBao for tenant credentials; integrated Raft storage, Shamir unseal via `.env`, Kubernetes auth scoped to `tenants/*`.
 - [docs/sealed-secrets.md](docs/sealed-secrets.md) — infra creds encrypted at rest in git (SealedSecrets), controller + `kubeseal` workflow.
 - [docs/postgresql-management.md](docs/postgresql-management.md) — managed tenant Postgres: `Database` CR → CNPG Cluster, plans, internal/external URLs.
+- [docs/keyvalue-management.md](docs/keyvalue-management.md) — managed tenant key-value (Valkey): `KeyValue` CR → Valkey StatefulSet, plans, internal/external URLs.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 
 ## Rules

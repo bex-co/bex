@@ -69,8 +69,7 @@ func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
 	if !ok {
 		plan = tiers.Postgres.Default()
 	}
-	storageGB := max(spec.StorageGB, plan.StorageGB)
-	return plan, storageGB
+	return plan, growOnlyStorage(spec.StorageGB, plan.StorageGB)
 }
 
 // cnpgClusterSpec builds the CloudNativePG Cluster .spec for a Database. Pure
@@ -96,21 +95,33 @@ func cnpgClusterSpec(plan tiers.PostgresTier, storageGB int32, version, dbname, 
 	return spec
 }
 
-// ingressRouteTCPSpec builds a Traefik IngressRouteTCP .spec routing the SNI
-// hostname to the CNPG read-write Service, TLS-passthrough (Postgres speaks its
-// own TLS). Pure so the external-route projection is unit-testable.
-func ingressRouteTCPSpec(host, serviceName string) map[string]any {
+// ingressRouteTCPSpec builds a Traefik IngressRouteTCP .spec routing an SNI
+// hostname to a backend Service with TLS passthrough (the backend terminates its
+// own TLS). Shared by the Database (postgres :5432) and KeyValue (valkey :6379)
+// public routes. Pure so the external-route projection is unit-testable.
+func ingressRouteTCPSpec(entryPoint, host, serviceName string, port int64) map[string]any {
 	return map[string]any{
-		"entryPoints": []any{pgEntryPoint},
+		"entryPoints": []any{entryPoint},
 		"routes": []any{map[string]any{
 			"match": fmt.Sprintf("HostSNI(`%s`)", host),
 			"services": []any{map[string]any{
 				"name": serviceName,
-				"port": int64(5432),
+				"port": port,
 			}},
 		}},
 		"tls": map[string]any{"passthrough": true},
 	}
+}
+
+// deleteTraefikRoute best-effort deletes an optional Traefik IngressRouteTCP,
+// treating NotFound and NoMatch (the Traefik CRD not installed — e.g. envtest or
+// a Traefik-less cluster) as "nothing to delete". Shared by the Database and
+// KeyValue controllers' route cleanup.
+func deleteTraefikRoute(ctx context.Context, c client.Client, route *unstructured.Unstructured) error {
+	if err := c.Delete(ctx, route); err != nil && !apierrors.IsNotFound(err) && !meta.IsNoMatchError(err) {
+		return err
+	}
+	return nil
 }
 
 // DatabaseReconciler projects a Database into a CloudNativePG Cluster and
@@ -175,15 +186,15 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if db.Spec.Public && r.DBDomain != "" {
 		externalHost := fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, route, func() error {
-			route.Object["spec"] = ingressRouteTCPSpec(externalHost, db.Name+"-rw")
+			route.Object["spec"] = ingressRouteTCPSpec(pgEntryPoint, externalHost, db.Name+"-rw", 5432)
 			return controllerutil.SetControllerReference(&db, route, r.Scheme)
 		}); err != nil {
 			return r.dbFail(ctx, &db, "RouteFailed", err)
 		}
 		db.Status.ExternalHost = externalHost
 	} else {
-		// Not public (or no base domain): remove any route we previously made.
-		if err := r.Delete(ctx, route); err != nil && !apierrors.IsNotFound(err) {
+		// Not public (or no base domain): best-effort remove any route we made.
+		if err := deleteTraefikRoute(ctx, r.Client, route); err != nil {
 			return r.dbFail(ctx, &db, "RouteCleanupFailed", err)
 		}
 		db.Status.ExternalHost = ""

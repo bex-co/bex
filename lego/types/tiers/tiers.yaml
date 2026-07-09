@@ -13,6 +13,12 @@
 #             is the plan's volume floor — spec.storageGB can grow past it,
 #             never below; instances is the CNPG cluster size.
 #
+#   valkey:   managed key-value (Valkey) instance types (the KeyValue CRD's
+#             spec.plan), the Redis-compatible sibling of the postgres family —
+#             single-instance tiers differing by compute (requests==limits) and
+#             storage, using Render's Key Value vocabulary (free / starter /
+#             standard / …, shared with the web-service ladder).
+#
 # No pricing here — prices are Metronome's (see lego/backend/internal/store/
 # api.go's normalizeTier comment); this file is a resource catalog, not a
 # price list. Runtime behavior (mechanism) must never depend on money, and
@@ -67,6 +73,32 @@ postgres:
       storageGB: 1
       instances: 1
     - id: basic-1gb
+      cpu: 500m
+      memory: 1Gi
+      storageGB: 5
+      instances: 1
+
+valkey:
+  # Managed key-value (Valkey) instance types — the KeyValue CRD's spec.plan.
+  # Plan IDs use the SAME vocabulary as Render's Key Value product (free /
+  # starter / standard / pro / pro_plus / ...), which Render shares with its
+  # web-service ladder — NOT the Postgres family's basic-* names. (Render's KV
+  # free tier is 25MB / no persistence; bex's is more generous at 128Mi.) When a
+  # spelling-divergent tier is added (pro_plus ↔ pro-plus), introduce a
+  # renderPlan field here like the compute family has.
+  default: free
+  tiers:
+    - id: free
+      cpu: 100m
+      memory: 128Mi
+      storageGB: 1
+      instances: 1
+    - id: starter
+      cpu: 100m
+      memory: 256Mi
+      storageGB: 1
+      instances: 1
+    - id: standard
       cpu: 500m
       memory: 1Gi
       storageGB: 5

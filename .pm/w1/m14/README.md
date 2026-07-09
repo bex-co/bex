@@ -1,17 +1,17 @@
 # w1 · m14 — Key Value (Valkey/Redis) managed store: CRD + reconciler
 
-**Worker:** worker1 **Goal:** Close the first half of the Key Value parity gap — the platform mechanism: a `KeyValue` CR the operator reconciles into a running Valkey instance (single-instance per tier, internal service DNS, optional public TCP/SNI route, credentials in a Secret), exactly analogous to `Database`→CNPG. **Status:** todo
+**Worker:** worker1 **Goal:** Close the first half of the Key Value parity gap — the platform mechanism: a `KeyValue` CR the operator reconciles into a running Valkey instance (single-instance per tier, internal service DNS, optional public TCP/SNI route, credentials in a Secret), exactly analogous to `Database`→CNPG. **Status:** done (2026-07-09)
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | `KeyValue` CRD type + Valkey tier catalog in `lego/types`                       | 30m | —            |
-| t002 | Operator reconciler: `KeyValue` → Valkey workload + Service + connection Secret | 45m | t001         |
-| t003 | Optional public route (Traefik TCP/SNI, mirroring `BEX_DB_DOMAIN`)              | 30m | t002         |
-| t004 | Simplify — `/simplify` over the CRD + reconciler                                | 20m | t003         |
-| t005 | Test coverage — envtest for the `KeyValue` reconciler                           | 30m | t003         |
-| t006 | Closeout                                                                        | 10m | t005         |
+| t001 | `KeyValue` CRD type + Valkey tier catalog in `lego/types` — **DONE** (`keyvalue_types.go`; `valkey` tier family in `tiers.yaml`/`tiers.go` with shared `validateDatastore`; codegen'd deepcopy + CRD) | 30m | —            |
+| t002 | Operator reconciler: `KeyValue` → Valkey workload + Service + connection Secret — **DONE** (`keyvalue_controller.go`: tier-sized StatefulSet + headless Service + password Secret, all owner-ref'd) | 45m | t001         |
+| t003 | Optional public route (Traefik TCP/SNI, mirroring `BEX_DB_DOMAIN`) — **DONE** (`BEX_KV_DOMAIN` + `IngressRouteTCP` SNI route; connection-info Secret with `uri`/`externalUri`; generalized shared `ingressRouteTCPSpec`) | 30m | t002         |
+| t004 | Simplify — `/simplify` over the CRD + reconciler — **DONE** (4 agents → shared `deleteTraefikRoute` + `guaranteedResources` + `growOnlyStorage`, inlined the KV route wrapper; lint debt 19→15, all new code clean) | 20m | t003         |
+| t005 | Test coverage — envtest for the `KeyValue` reconciler — **DONE** (`keyvalue_test.go`: tier→compute+storage, headless Service, stable-password Secret, owner-ref cascade, pure-fn route) | 30m | t003         |
+| t006 | Closeout — **DONE** (`make test` green incl. reconciler envtest; parity ledger + `docs/keyvalue-management.md` + `BEX_KV_DOMAIN` documented; tasks → `done/`) | 10m | t005         |
 
 ## Definition of done
 

@@ -16,9 +16,10 @@ limitations under the License.
 
 // Package tiers is bex's single instance-size catalog: one reviewed YAML
 // (tiers.yaml, embedded at build time) holding one ladder per product surface
-// — Compute (App/web-service instance types) and Postgres (Database instance
-// types) — replacing what used to be independent hardcoded copies in the
-// operator, the backend store, and the docs that could only drift apart.
+// — Compute (App/web-service instance types), Postgres (Database instance
+// types), and Valkey (KeyValue instance types) — replacing what used to be
+// independent hardcoded copies in the operator, the backend store, and the
+// docs that could only drift apart.
 //
 // It mirrors Render's published ladders (render.com/docs/compute-plans and
 // their Postgres instance types) and carries no pricing — prices are
@@ -68,6 +69,21 @@ type PostgresTier struct {
 	Instances int32 `json:"instances"`
 }
 
+// ValkeyTier is one rung of the managed key-value ladder (the KeyValue CRD's
+// spec.plan), the Redis-compatible sibling of the Postgres family. MVP tiers are
+// single-instance (Instances==1), differing by compute and storage.
+type ValkeyTier struct {
+	ID string `json:"id"`
+	// CPU and Memory are k8s resource.Quantity strings (per instance).
+	CPU    string `json:"cpu"`
+	Memory string `json:"memory"`
+	// StorageGB is the plan's volume-size floor — spec.storageGB may grow
+	// past it, never shrink below.
+	StorageGB int32 `json:"storageGB"`
+	// Instances is the Valkey StatefulSet size (1 for MVP).
+	Instances int32 `json:"instances"`
+}
+
 // ComputeCatalog is the parsed, validated compute ladder with O(1) lookups
 // by both vocabularies a caller might have in hand.
 type ComputeCatalog struct {
@@ -84,11 +100,18 @@ type PostgresCatalog struct {
 	defaultID string
 }
 
-// Compute and Postgres are parsed once at package init from the embedded
-// YAML. A malformed catalog panics at init — this is checked-in data with its
-// own test (tiers_test.go); it must never fail silently at reconcile/request
-// time.
-var Compute, Postgres = mustLoad(catalogYAML)
+// ValkeyCatalog is the parsed, validated key-value (Valkey) ladder.
+type ValkeyCatalog struct {
+	tiers     []ValkeyTier
+	byID      map[string]ValkeyTier
+	defaultID string
+}
+
+// Compute, Postgres, and Valkey are parsed once at package init from the
+// embedded YAML. A malformed catalog panics at init — this is checked-in data
+// with its own test (tiers_test.go); it must never fail silently at
+// reconcile/request time.
+var Compute, Postgres, Valkey = mustLoad(catalogYAML)
 
 // --- Compute ---
 
@@ -161,6 +184,27 @@ func (c PostgresCatalog) IDs() []string {
 	return ids
 }
 
+// --- Valkey ---
+
+// Default returns the plan an empty/unknown KeyValue spec.plan resolves to
+// (mirrors the postgres family's free default).
+func (c ValkeyCatalog) Default() ValkeyTier { return c.byID[c.defaultID] }
+
+// ByID looks up a Valkey plan by the KeyValue CRD's spec.plan spelling.
+func (c ValkeyCatalog) ByID(id string) (ValkeyTier, bool) {
+	t, ok := c.byID[id]
+	return t, ok
+}
+
+// IDs returns every valid spec.plan id, in catalog order.
+func (c ValkeyCatalog) IDs() []string {
+	ids := make([]string, len(c.tiers))
+	for i, t := range c.tiers {
+		ids[i] = t.ID
+	}
+	return ids
+}
+
 // --- loading ---
 
 type catalogFile struct {
@@ -172,30 +216,38 @@ type catalogFile struct {
 		Default string         `json:"default"`
 		Tiers   []PostgresTier `json:"tiers"`
 	} `json:"postgres"`
+	Valkey struct {
+		Default string       `json:"default"`
+		Tiers   []ValkeyTier `json:"tiers"`
+	} `json:"valkey"`
 }
 
-func mustLoad(raw []byte) (ComputeCatalog, PostgresCatalog) {
-	c, p, err := parse(raw)
+func mustLoad(raw []byte) (ComputeCatalog, PostgresCatalog, ValkeyCatalog) {
+	c, p, v, err := parse(raw)
 	if err != nil {
 		panic(fmt.Sprintf("tiers: %v", err))
 	}
-	return c, p
+	return c, p, v
 }
 
-func parse(raw []byte) (ComputeCatalog, PostgresCatalog, error) {
+func parse(raw []byte) (ComputeCatalog, PostgresCatalog, ValkeyCatalog, error) {
 	var f catalogFile
 	if err := yaml.UnmarshalStrict(raw, &f); err != nil {
-		return ComputeCatalog{}, PostgresCatalog{}, fmt.Errorf("decode: %w", err)
+		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("decode: %w", err)
 	}
 	c, err := parseCompute(f.Compute.Tiers, f.Compute.Default)
 	if err != nil {
-		return ComputeCatalog{}, PostgresCatalog{}, fmt.Errorf("compute: %w", err)
+		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("compute: %w", err)
 	}
 	p, err := parsePostgres(f.Postgres.Tiers, f.Postgres.Default)
 	if err != nil {
-		return ComputeCatalog{}, PostgresCatalog{}, fmt.Errorf("postgres: %w", err)
+		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("postgres: %w", err)
 	}
-	return c, p, nil
+	v, err := parseValkey(f.Valkey.Tiers, f.Valkey.Default)
+	if err != nil {
+		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("valkey: %w", err)
+	}
+	return c, p, v, nil
 }
 
 func parseCompute(entries []ComputeTier, defaultID string) (ComputeCatalog, error) {
@@ -232,11 +284,8 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 		if err := validateEntry(t.ID, t.CPU, t.Memory, byID); err != nil {
 			return PostgresCatalog{}, err
 		}
-		if t.StorageGB <= 0 {
-			return PostgresCatalog{}, fmt.Errorf("tier %q: storageGB must be > 0", t.ID)
-		}
-		if t.Instances <= 0 {
-			return PostgresCatalog{}, fmt.Errorf("tier %q: instances must be > 0", t.ID)
+		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
+			return PostgresCatalog{}, err
 		}
 		byID[t.ID] = t
 	}
@@ -244,6 +293,38 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 		return PostgresCatalog{}, err
 	}
 	return PostgresCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
+}
+
+func parseValkey(entries []ValkeyTier, defaultID string) (ValkeyCatalog, error) {
+	if len(entries) == 0 {
+		return ValkeyCatalog{}, fmt.Errorf("no tiers defined")
+	}
+	byID := make(map[string]ValkeyTier, len(entries))
+	for _, t := range entries {
+		if err := validateEntry(t.ID, t.CPU, t.Memory, byID); err != nil {
+			return ValkeyCatalog{}, err
+		}
+		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
+			return ValkeyCatalog{}, err
+		}
+		byID[t.ID] = t
+	}
+	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
+		return ValkeyCatalog{}, err
+	}
+	return ValkeyCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
+}
+
+// validateDatastore checks the fields a datastore tier (Postgres or Valkey) has
+// beyond a plain compute rung: positive storage and instance counts.
+func validateDatastore(id string, storageGB, instances int32) error {
+	if storageGB <= 0 {
+		return fmt.Errorf("tier %q: storageGB must be > 0", id)
+	}
+	if instances <= 0 {
+		return fmt.Errorf("tier %q: instances must be > 0", id)
+	}
+	return nil
 }
 
 // validateEntry checks the fields every family shares: a unique non-empty id

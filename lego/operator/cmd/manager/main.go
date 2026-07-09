@@ -219,6 +219,15 @@ func main() {
 		setupLog.Error(err, "Failed to create controller", "controller", "database")
 		os.Exit(1)
 	}
+
+	if err := (&controller.KeyValueReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		KvDomain: envOr("BEX_KV_DOMAIN", ""),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

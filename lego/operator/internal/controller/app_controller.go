@@ -183,13 +183,19 @@ func resourcesForTier(tier string) corev1.ResourceRequirements {
 	if !ok {
 		return corev1.ResourceRequirements{} // unset => best-effort, unchanged behavior
 	}
-	mk := func() corev1.ResourceList {
-		return corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(cpu),
-			corev1.ResourceMemory: resource.MustParse(mem),
-		}
+	return guaranteedResources(cpu, mem)
+}
+
+// guaranteedResources builds a Guaranteed-QoS allocation (requests == limits)
+// from two k8s quantity strings — the mechanism every tier family (compute for
+// Apps, valkey for KeyValue) shares. Catalog quantities are validated at load,
+// so MustParse cannot panic.
+func guaranteedResources(cpu, memory string) corev1.ResourceRequirements {
+	list := corev1.ResourceList{
+		corev1.ResourceCPU:    resource.MustParse(cpu),
+		corev1.ResourceMemory: resource.MustParse(memory),
 	}
-	return corev1.ResourceRequirements{Requests: mk(), Limits: mk()}
+	return corev1.ResourceRequirements{Requests: list, Limits: list}
 }
 
 // isFreeApp reports whether the app is on the free tier (empty or "free").

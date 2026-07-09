@@ -86,7 +86,7 @@ func TestCnpgClusterSpec(t *testing.T) {
 }
 
 func TestIngressRouteTCPSpec(t *testing.T) {
-	spec := ingressRouteTCPSpec("smoke-db.db.bex.co", "smoke-db-rw")
+	spec := ingressRouteTCPSpec(pgEntryPoint, "smoke-db.db.bex.co", "smoke-db-rw", 5432)
 
 	if ep := spec["entryPoints"].([]any); len(ep) != 1 || ep[0] != pgEntryPoint {
 		t.Errorf("entryPoints = %v, want [%s]", ep, pgEntryPoint)

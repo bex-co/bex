@@ -2,7 +2,7 @@
 
 A single, evidence-based map of how far bex actually matches [render.com](https://render.com), one row per Render capability across the four surfaces bex mirrors. It replaces scattered "Render-compatible" assertions with a checkable ledger: what has parity, what diverges, what is missing, and what is a deliberate non-goal — each cell backed by a pointer to code (bex side) or Render's own spec/docs (Render side).
 
-**Method.** Four passes, 2026-07-08: bex's public REST vs Render's OpenAPI spec; bex's GraphQL vs Render's captured dashboard operations; bex's MCP tools vs `render-oss/render-mcp-server` v0.3.0 (24 tools); bex's dashboard IA vs Render's (via render.com/docs — the live dashboard needs a login). The design record for bex's side is [bex-api.md](bex-api.md) ("one Core, three adapters"); this doc is the parity ledger over it.
+**Method.** Four passes, 2026-07-08, re-verified against Render's live API/docs 2026-07-09: bex's public REST vs Render's OpenAPI spec; bex's GraphQL vs Render's captured dashboard operations; bex's MCP tools vs `render-oss/render-mcp-server` v0.3.0 (24 tools — incl. three non-functional `update_{web_service,static_site,cron_job}` stubs that return "use the dashboard/API"; Render's only functional MCP write is the single env-var tool `update_environment_variables`); bex's dashboard IA vs Render's (via render.com/docs — the live dashboard needs a login). The design record for bex's side is [bex-api.md](bex-api.md) ("one Core, three adapters"); this doc is the parity ledger over it.
 
 **Legend.** ✅ parity (evidence pointer) · ◐ partial (divergence documented) · ✖ missing (gap — see backlog) · — deliberate non-goal (rationale inline). "Render capability" = a noun/verb Render exposes on _any_ of its surfaces; a `—` on the REST column can still be a `✅` elsewhere (Render itself splits work across surfaces — e.g. read-only SQL is MCP-only on both sides).
 
@@ -22,7 +22,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Suspend / Resume | ✅ | ✅ | ✅ | ✅ | `POST …/suspend` (202) · `…/resume` (202); GraphQL `suspendService`/`resumeService`; MCP `suspend_service`/`resume_service`; row + header actions. Render parity verified in [bex-api.md](bex-api.md). |
 | Restart | ✅ | ✅ | ✅ | ✅ | `POST …/restart` (200); GraphQL `restartServer`; MCP `restart_service`; header action. Render's official MCP omits these — bex adds them (named after Render's REST verbs). |
 | Manual scale (instance count) | ✅ | ✅ | ✅ | ✖ | `POST …/scale`; GraphQL `scaleService`; MCP `scale_service` (backend shipped w2/m12). Dashboard stepper → **w5/004**. |
-| Autoscaling config (min/max + CPU/mem target) | ✖ | ✖ | ✖ | ✖ | Render `PUT /services/{id}/autoscaling`. bex has no per-service autoscaler. → **w1/008** (mechanism leans on w1/m3 bin-pack/autoscale). |
+| Autoscaling config (min/max + CPU/mem target) | ✖ | ✖ | ✖ | ✖ | Render `PUT`/`DELETE /services/{id}/autoscaling`. bex has no per-service autoscaler. → **w1/008** (mechanism leans on w1/m3 bin-pack/autoscale). |
 | Delete service | ✖ | ✖ | ✖ | ✖ | Render `DELETE /services/{id}`. Not built (scope note in [bex-api.md](bex-api.md)). → **w2/m4**. |
 | Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. bex has no event objects. → **w2/m5** (deploy objects) + **w4/m10** (audit log). |
 | Cache purge | — | — | — | — | Render `POST …/cache/purge` (static-site CDN). bex has no build CDN cache — non-goal. |
@@ -31,7 +31,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Static site | ✖ | ✖ | ✖ | ✖ | Render `static_site` type (build → CDN with redirects/rewrites/headers). A larger build→CDN effort than the compute types. → **w1/012**. |
 | One-off jobs (run a command) | — | — | — | — | Render `/services/{id}/jobs` runs an arbitrary command in the service context — an execution surface, off-roadmap (`DO_NOT_DO` §pillar 5), the same call as Shell/SSH below. (Scheduled cron jobs are a service type, tracked separately → w1/m15.) |
 | Shell / SSH into a running instance | — | — | — | — | Render Shell tab / `render ssh`. No exec surface — hosted execution is off-roadmap (DO_NOT_DO §pillar 5). Non-goal for now. |
-| PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/preview` + Previews tab. Ties to git integration + deploys; low priority, untracked. |
+| PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/previews` (plural) + Previews tab. Ties to git integration + deploys; low priority, untracked. |
 
 ## Deploys
 
@@ -39,7 +39,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | --- | :-: | :-: | :-: | :-: | --- |
 | Trigger a deploy | ◐ | ◐ | ✅ | ✖ | No dedicated endpoint: `POST /v1/services` upsert re-applies the spec (rebuild) and the HMAC webhook redeploys on push; MCP `deploy` (bexYaml) + `create_web_service`. Render `POST …/deploys` → **w2/m5**. See [deploy-from-chat.md](deploy-from-chat.md). |
 | List / get deploy objects | ✖ | ✖ | ✖ | ✖ | Render `list_deploys`/`get_deploy`, `GET …/deploys`. bex tracks only `status.revision` on the App, no deploy objects. → **w2/m5**. |
-| Cancel deploy | ✖ | ✖ | ✖ | ✖ | Render `POST …/deploys/{id}/cancel`. → **w2/m5**. |
+| Cancel deploy | ✖ | ✖ | ✖ | ✖ | Render `POST /services/{serviceId}/deploys/{deployId}/cancel`. → **w2/m5**. |
 | Rollback | ✖ | ✖ | ✖ | ✖ | Render `POST …/rollback {deployId}`. Depends on deploy objects → extends **w2/m5**. |
 
 ## Environment & config
@@ -67,12 +67,13 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Backups · PITR / recovery | ✖ | ✖ | ✖ | ✖ | Render `recovery-info`/`recover`/`exports` + Recovery tab. Needs CNPG backup wiring. → **w1/m17**. |
 | HA · failover · read replicas | ✖ | ✖ | ✖ | ✖ | Render `failover`/`promote`/`replication`. `highAvailabilityEnabled` is reported `false` today. → **w1/013** (deferred from m17). |
 | Access control (IP allowlist) · users · pooler | ✖ | ✖ | ✖ | ✖ | Render `ipAllowList`, `/users`, PgBouncer pooler strings. bex has a `public` toggle only. → **w1/m17**. |
+| Postgres observability (live queries · top-queries · sizes · table-scans · param overrides) | ✖ | ✖ | ✖ | ✖ | Render `GET /postgres/{id}/{processes,top-queries,sizes,table-scans}` + `parameter-overrides`. Runtime introspection over `pg_stat_activity`/`pg_stat_statements`. bex has none. Untracked, low (extends **w1/m17**). |
 
 ## Other datastores & storage
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` + MCP `list/get/create_key_value` + dashboard type. bex has no KV store. Mechanism-first (`KeyValue` CR) → **w1/m14**. |
+| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` (full CRUD + `connection-info` + `suspend`/`resume`, 8 endpoints) + MCP `list/get/create_key_value` + dashboard type ("Key Value", Valkey 8). Mechanism shipped (w1/m14): a `KeyValue` CR → single-instance Valkey + internal Service DNS + credentials Secret, optional public Traefik TCP/SNI route. The four surfaces (REST/GraphQL/MCP/UI) are still unbuilt → **w2/w5**. Surface contract to mirror: plans `free`/`starter`/`standard`/… (the web-service vocabulary, **not** Postgres `basic-*`); connection-info 3 keys — `internalConnectionString` (`redis://`), `externalConnectionString` (`rediss://` TLS, opt-in), `cliCommand`; create/update fields Render has that the CR lacks today — `maxmemoryPolicy`, `persistenceMode`, `ipAllowList` (CIDR). Internal URL is unauthenticated by default in Render; bex's mechanism always mints a password. |
 | Persistent disks | — | — | — | — | Render `/disks` + Disks tab. Deliberate: bex is **stateless-first** (managed Postgres for state); disks disable multi-instance + zero-downtime deploys, which fights bex's dense bin-pack + free-tier-sleep economics. Non-goal. |
 
 ## Deployment sources & IaC
@@ -110,7 +111,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Email recovery / verification | — | — | — | ◐ | Dashboard forgot/reset pages shipped; live SMTP courier → **w4/m7**. |
 | MFA (TOTP / passkeys) | — | — | — | ✖ | Kratos-native → **w4/m11**. |
 | Workspace members & roles | ✖ | ✖ | ✖ | ✖ | Render `/owners/{id}/members` + Team page. Roles already modelled in OpenFGA (`model.fga`); captured contract in [render-artifacts/team-members.graphql](render-artifacts/team-members.graphql). → **w4/m12** (gated on w1/m9). |
-| Audit logs | ✖ | ✖ | ✖ | ✖ | Render `/owners/{id}/audit-logs`. → **w4/m10**. |
+| Audit logs | ✖ | ✖ | ✖ | ✖ | Render `/owners/{id}/audit-logs` (workspace) **and** `/organizations/{id}/audit-logs` (org). → **w4/m10**. |
 | SSO / SAML · SCIM | — | — | — | — | Enterprise; Ory can add later. Non-goal for now. |
 | SSH keys | — | — | — | — | User SSH keys serve the Shell/SSH surface, which is off-roadmap. Non-goal. |
 
@@ -122,7 +123,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Outbound event webhooks | ✖ | ✖ | ✖ | ✖ | Render `/webhooks` (Render → you). bex has the _inbound_ git push webhook instead ([§ bex ahead](#bex-ahead-of-render)). Low, untracked. |
 | Maintenance runs | — | — | — | — | Render `/maintenance`. Managed-infra scheduling — non-goal. |
 | Dedicated outbound IPs | — | — | — | — | Render `/dedicated-ips`. Infra/enterprise — non-goal. |
-| Workflows & tasks (Beta) | — | — | — | — | Render Beta orchestration product. Non-goal. |
+| Workflows & tasks (Beta) | — | — | — | — | Render's orchestration product (`/workflows`, `/tasks`, `/task-runs` + SSE) — now a full surface (≥14 endpoints), not just a Beta. Non-goal for bex (off-roadmap orchestration, not a hosting primitive). |
 
 ---
 
@@ -146,7 +147,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | todo |
-| Key Value (Valkey/Redis) store | `w1/m14` | todo (mechanism-first) |
+| Key Value (Valkey/Redis) store | `w1/m14` | mechanism done (CR + reconciler); surface → w2/w5 |
 | API keys in the dashboard | `w4/m8` | done 2026-07-08 (key metadata follow-up → `w4/m13`) |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
 | Audit logs | `w4/m10` | todo |

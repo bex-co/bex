@@ -94,6 +94,11 @@ spec:
           # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).
           - name: BEX_DB_DOMAIN
             value: db.bex.co
+          # Managed key-value (Valkey) external endpoints: KeyValue{public:true}
+          # is exposed at "<name>.kv.bex.co" via Traefik TCP/SNI on the valkey
+          # entrypoint (:6379). Same DNS-only wildcard caveat as Postgres above.
+          - name: BEX_KV_DOMAIN
+            value: kv.bex.co
         ports:
         - containerPort: 8081
           name: health
