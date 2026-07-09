@@ -19,15 +19,10 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
-  # Traefik: layer the prod values file (Hetzner LoadBalancer + stable IP, w1/m7
-  # t005) over the base hostNetwork values — same mechanism the local overlay uses
-  # for kratos/hydra/openbao. Argo merges valueFiles in order, later wins.
-  - target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Application
-      name: traefik
-    patch: |-
-      - op: add
-        path: /spec/sources/0/helm/valueFiles/-
-        value: $values/deploy/gitops/overlays/prod/values/traefik.values.yaml
+  # Traefik LoadBalancer overlay (w1/m7 t005) REVERTED 2026-07-08: flipping the edge
+  # to a Hetzner LB (hostNetwork:false + new LB IP) took prod down — Cloudflare DNS
+  # still points at the node's public IP that hostNetwork bound, so :80/:443 went dark
+  # → 521 on every fronted domain (dashboard.bex.co, tenant apps). The base hostNetwork
+  # edge is restored here. Redo the LB migration deliberately: provision + verify the
+  # LB, repoint Cloudflare to its IP, THEN set hostNetwork:false. The prod values file
+  # (values/traefik.values.yaml) is kept for that follow-up but is no longer layered.
