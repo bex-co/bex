@@ -9,7 +9,7 @@ The MCP surface mirrors Render's official server the way `rest.go` mirrors Rende
 - **Snake_case tool names, Render's nouns.** `list_services`, `get_service`, `list_logs` map 1:1 onto Render's tools; each takes/returns the same `service` object bex already emits (`id`, `name`, `type: "web_service"`, string `suspended` enum, `dashboardUrl`, `serviceDetails.url`) plus bex extras (`phase`, `replicas`, `revision`) — a superset Render-trained agents safely ignore.
 - **`id` is the App name**, exactly as in REST/GraphQL — opaque, round-tripped from `list_services`.
 - **Lifecycle verbs are bex extensions.** Render's official MCP is read-heavy and does _not_ expose restart/suspend/resume; bex adds `restart_service` / `suspend_service` / `resume_service`, named after Render's REST verbs (`POST /v1/services/{id}/{verb}`) so they read as native to a Render-shaped agent. Each returns the updated `service` object; the operator converges asynchronously (poll `get_service` for `suspended`/`phase`).
-- **Out of scope, matching bex-api today.** No `create_*`, `list_deploys`/`get_deploy`, `get_metrics`, or Postgres/Key-Value tools — bex has no deploy history, metrics, or datastore surface yet. Add them when `Core` grows those verbs, keeping Render's names.
+- **Out of scope, matching bex-api today.** No `create_*`, `get_metrics`, or Postgres/Key-Value tools — bex has no metrics or datastore surface yet. Add them when `Core` grows those verbs, keeping Render's names. (`list_deploys`/`get_deploy` shipped in w2/m5, once deploy history existed to serve them.)
 
 ## Tasks (in order)
 

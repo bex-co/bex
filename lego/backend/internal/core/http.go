@@ -45,12 +45,14 @@ func WriteErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrAPIKeysUnavailable),
 		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
 		errors.Is(err, ErrSecretsUnavailable), errors.Is(err, ErrWorkspacesUnavailable),
-		errors.Is(err, ErrUsageUnavailable):
+		errors.Is(err, ErrUsageUnavailable), errors.Is(err, ErrDeploysUnavailable):
 		code = http.StatusServiceUnavailable
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest
 	case errors.Is(err, ErrForbidden):
 		code = http.StatusForbidden
+	case errors.Is(err, ErrConflict):
+		code = http.StatusConflict
 	}
 	WriteJSON(w, code, map[string]string{"error": err.Error()})
 }

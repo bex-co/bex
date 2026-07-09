@@ -42,6 +42,7 @@ type memStore struct {
 	members map[memberKey]string // (tenant, subject) -> role
 	ownerOf map[string]string    // identityID -> tenantID
 	usage   map[usageKey]HourlyRow
+	deploys map[string]Deploy
 }
 
 // memberKey is the composite key of a tenant_members row.
@@ -55,6 +56,7 @@ func newMemStore() *memStore {
 		members: map[memberKey]string{},
 		ownerOf: map[string]string{},
 		usage:   map[usageKey]HourlyRow{},
+		deploys: map[string]Deploy{},
 	}
 }
 
@@ -184,6 +186,8 @@ func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 	a.ID = ids.New(ids.Service)
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: "create", Image: a.Image, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	m.deploys[d.ID] = d
 	return a, nil
 }
 
@@ -217,6 +221,11 @@ func (m *memStore) DeleteApp(_ context.Context, id string) error {
 	for did, d := range m.domains {
 		if d.AppID == id {
 			delete(m.domains, did)
+		}
+	}
+	for depID, d := range m.deploys {
+		if d.AppID == id {
+			delete(m.deploys, depID)
 		}
 	}
 	return nil
@@ -377,4 +386,64 @@ func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now t
 		out = append(out, UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
 	}
 	return out, nil
+}
+
+func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string) (Deploy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.apps[appID]; !ok {
+		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
+	}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	m.deploys[d.ID] = d
+	return d, nil
+}
+
+func (m *memStore) ListDeploys(_ context.Context, appID string) ([]Deploy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []Deploy
+	for _, d := range m.deploys {
+		if d.AppID == appID {
+			out = append(out, d)
+		}
+	}
+	slices.SortFunc(out, func(x, y Deploy) int { return y.CreatedAt.Compare(x.CreatedAt) }) // newest first
+	return out, nil
+}
+
+func (m *memStore) GetDeploy(_ context.Context, appID, deployID string) (Deploy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[deployID]
+	if !ok || d.AppID != appID {
+		return Deploy{}, fmt.Errorf("deploy: %w", ErrNotFound)
+	}
+	return d, nil
+}
+
+func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []Deploy
+	for _, d := range m.deploys {
+		if d.Status == DeployUpdateInProgress {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+func (m *memStore) CloseDeploy(_ context.Context, id, status string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[id]
+	if !ok || d.FinishedAt != nil {
+		return nil
+	}
+	now := time.Now()
+	d.Status = status
+	d.FinishedAt = &now
+	m.deploys[id] = d
+	return nil
 }

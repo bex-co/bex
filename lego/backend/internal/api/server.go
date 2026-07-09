@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
@@ -68,6 +69,7 @@ type Server struct {
 	EnvGroups  *envgroups.Service
 	Workspaces *workspaces.Service
 	Usage      *usage.Service
+	Deploys    *deploys.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -113,6 +115,10 @@ type Deps struct {
 	// feature and the env-groups feature read/write through (docs/secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
 	Secrets core.SecretKV
+	// DeployStore, when set (the control-plane store is wired), backs the
+	// deploy-history feature (w2/m5). nil => its verbs answer
+	// core.ErrDeploysUnavailable (deploy history has no CR-only equivalent).
+	DeployStore deploys.DeployStore
 	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
@@ -163,6 +169,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		KeyValue:  &keyvalue.Service{Base: base},
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
+		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore},
 		Workspaces: &workspaces.Service{
 			Base:       base,
 			Store:      d.WorkspaceStore,
@@ -221,6 +228,9 @@ func (s *Server) features() []any {
 	}
 	if s.Usage != nil {
 		out = append(out, s.Usage)
+	}
+	if s.Deploys != nil {
+		out = append(out, s.Deploys)
 	}
 	return out
 }

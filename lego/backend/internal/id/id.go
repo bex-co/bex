@@ -59,12 +59,13 @@ var (
 	Service   = Kind{prefix: "srv", desc: "service (app)"}           // Render: services are srv-
 	Domain    = Kind{prefix: "cdm", desc: "custom domain"}           // Render: custom domains are cdm-
 	EnvGroup  = Kind{prefix: "evg", desc: "environment group"}       // Render: env groups are evg-
+	Deploy    = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

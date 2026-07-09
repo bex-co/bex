@@ -78,8 +78,61 @@ func TestPGStore(t *testing.T) {
 
 	assertErrorTaxonomy(ctx, t, s, ten)
 	assertProjectionJoin(ctx, t, s, app)
+	assertDeployLifecycle(ctx, t, s, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+// assertDeployLifecycle exercises w2/m5's deploy history against real
+// Postgres: CreateApp already opened deploy #1 (trigger "create") in the same
+// transaction as the app row; ListOpenDeploys/CloseDeploy are the
+// reconciler's write-back seam; CreateDeploy is the trigger verb's seam. Ordering
+// (newest-first) and the ErrNotFound cross-app scope guard are asserted here
+// because they depend on Postgres's ORDER BY / WHERE, not just Go logic.
+func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app App) {
+	t.Helper()
+	deploys, err := s.ListDeploys(ctx, app.ID)
+	if err != nil {
+		t.Fatalf("list deploys: %v", err)
+	}
+	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Status != DeployUpdateInProgress {
+		t.Fatalf("deploy #1 (from CreateApp) = %+v", deploys)
+	}
+	first := deploys[0]
+
+	open, ok, err := openDeployFor(ctx, s, app.ID)
+	if err != nil || !ok || open.ID != first.ID {
+		t.Fatalf("open deploy = %+v ok=%v (err %v)", open, ok, err)
+	}
+
+	if err := s.CloseDeploy(ctx, first.ID, DeployLive); err != nil {
+		t.Fatalf("close deploy: %v", err)
+	}
+	// Idempotent: a deploy that's already terminal doesn't get re-closed with a
+	// different status.
+	if err := s.CloseDeploy(ctx, first.ID, DeployUpdateFailed); err != nil {
+		t.Fatalf("re-close deploy: %v", err)
+	}
+	closed, err := s.GetDeploy(ctx, app.ID, first.ID)
+	if err != nil || closed.Status != DeployLive || closed.FinishedAt == nil {
+		t.Fatalf("closed deploy = %+v (err %v), want status live with finished_at set", closed, err)
+	}
+	if _, ok, err := openDeployFor(ctx, s, app.ID); err != nil || ok {
+		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
+	}
+
+	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image)
+	if err != nil || second.Status != DeployUpdateInProgress {
+		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
+	}
+	deploys, err = s.ListDeploys(ctx, app.ID)
+	if err != nil || len(deploys) != 2 || deploys[0].ID != second.ID {
+		t.Fatalf("list after trigger (want newest first) = %+v (err %v)", deploys, err)
+	}
+
+	if _, err := s.GetDeploy(ctx, "srv-doesnotexist00000", second.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("get deploy scoped to the wrong app: want ErrNotFound, got %v", err)
+	}
 }
 
 // assertWorkspaceLifecycle exercises the w6/m1 workspace store methods against
@@ -354,12 +407,18 @@ func assertDeleteCascades(ctx context.Context, t *testing.T, s *PGStore, pool *p
 	if err := s.DeleteApp(ctx, app.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("re-delete: want ErrNotFound, got %v", err)
 	}
-	// Domains cascade with their app.
+	// Domains and deploys cascade with their app.
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM domains`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
 		t.Errorf("domains after app delete = %d, want 0 (cascade)", n)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM deploys`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("deploys after app delete = %d, want 0 (cascade)", n)
 	}
 }

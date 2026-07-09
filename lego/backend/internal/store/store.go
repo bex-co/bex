@@ -75,6 +75,32 @@ type App struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// Deploy status vocabulary — Render's deploy status enum, the subset bex can
+// honor today (docs/deployment.md health gating). build_in_progress/
+// build_failed are reserved for w1/m5 (build-from-git); deactivated/canceled
+// are deferred (w2/m5's README).
+const (
+	DeployUpdateInProgress = "update_in_progress"
+	DeployLive             = "live"
+	DeployUpdateFailed     = "update_failed"
+)
+
+// Deploy is a row of `deploys` — one rollout attempt of an app, Render's
+// deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
+// first deploy, opened by CreateApp) or "api" (an explicit POST .../deploys).
+// Commit is omitted here — it stays empty until w1/m5 tracks build-from-git
+// commits; callers project it out rather than surface an always-empty field.
+type Deploy struct {
+	ID         string     `json:"id"`
+	AppID      string     `json:"appId"`
+	Trigger    string     `json:"trigger"`
+	Image      string     `json:"image,omitempty"`
+	Status     string     `json:"status"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	StartedAt  *time.Time `json:"startedAt,omitempty"`
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+}
+
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
 // The primary domain becomes the App CR's spec.host, the rest spec.hosts.
 // Verification + cert status are the operator's/cert-manager's concern (read
@@ -169,6 +195,25 @@ type Store interface {
 	// kind / tier) for a workspace, bounded by the caller-supplied now so tests
 	// don't depend on wall time.
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error)
+
+	// CreateDeploy opens a new deploy row for appID (status
+	// DeployUpdateInProgress) — CreateApp calls this for an app's first deploy
+	// (trigger "create"); the deploys feature's Trigger verb calls it for an
+	// explicit redeploy (trigger "api"). The reconciler's write-back closes it.
+	CreateDeploy(ctx context.Context, appID, trigger, image string) (Deploy, error)
+	// ListDeploys returns an app's deploy history, newest first.
+	ListDeploys(ctx context.Context, appID string) ([]Deploy, error)
+	// GetDeploy fetches one deploy scoped to appID — a deployID belonging to a
+	// different app is ErrNotFound, not a cross-app leak.
+	GetDeploy(ctx context.Context, appID, deployID string) (Deploy, error)
+	// ListOpenDeploys returns every non-terminal (DeployUpdateInProgress)
+	// deploy across all apps in one query — the reconciler's write-back hook
+	// calls this once per ReconcileOnce pass and looks apps up in the result,
+	// rather than one query per app in its per-app loop.
+	ListOpenDeploys(ctx context.Context) ([]Deploy, error)
+	// CloseDeploy marks a deploy row terminal (status DeployLive or
+	// DeployUpdateFailed) with finished_at = now. A no-op if already terminal.
+	CloseDeploy(ctx context.Context, id, status string) error
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -315,14 +360,31 @@ func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
 	return nil // idempotent — a key that was never bound is not an error
 }
 
+// CreateApp inserts the app row and opens its first deploy row (trigger
+// "create") in one transaction — every store-managed app has exactly one
+// deploy the instant it exists, so ListDeploys is never truthfully empty for
+// an app the reconciler is about to project (t001: "creating a service
+// records deploy #1"). Bundling a second, related insert into the row's own
+// creation is the same precedent CreateTenantWithMember already sets (a
+// tenant plus its owner membership, one transaction) — an invariant the type
+// itself guarantees is safer here than trusting every future caller to
+// remember a second call.
 func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	a.ID = ids.New(ids.Service)
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO apps (id, tenant_id, name, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended)
-		 VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6, $7, $8, $9, $10, $11)
-		 RETURNING created_at`,
-		a.ID, a.TenantID, a.Name, a.Repo, a.Image, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended,
-	).Scan(&a.CreatedAt)
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx,
+			`INSERT INTO apps (id, tenant_id, name, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended)
+			 VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6, $7, $8, $9, $10, $11)
+			 RETURNING created_at`,
+			a.ID, a.TenantID, a.Name, a.Repo, a.Image, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended,
+		).Scan(&a.CreatedAt); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`INSERT INTO deploys (id, app_id, trigger, image, status) VALUES ($1, $2, 'create', $3, $4)`,
+			ids.New(ids.Deploy), a.ID, a.Image, DeployUpdateInProgress)
+		return err
+	})
 	if err != nil {
 		return App{}, classify("app", err)
 	}
@@ -524,6 +586,77 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 		return fmt.Errorf("app: %w", ErrNotFound)
 	}
 	return nil
+}
+
+func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Status: DeployUpdateInProgress}
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO deploys (id, app_id, trigger, image, status) VALUES ($1, $2, $3, $4, $5) RETURNING created_at`,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Status,
+	).Scan(&d.CreatedAt)
+	if err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+const deployColumns = `id, app_id, trigger, image, status, created_at, started_at, finished_at`
+
+func scanDeploy(row pgx.Row) (Deploy, error) {
+	var d Deploy
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	return d, err
+}
+
+func (s *PGStore) ListDeploys(ctx context.Context, appID string) ([]Deploy, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+deployColumns+` FROM deploys WHERE app_id = $1 ORDER BY created_at DESC`, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Deploy
+	for rows.Next() {
+		d, err := scanDeploy(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (s *PGStore) GetDeploy(ctx context.Context, appID, deployID string) (Deploy, error) {
+	d, err := scanDeploy(s.Pool.QueryRow(ctx,
+		`SELECT `+deployColumns+` FROM deploys WHERE id = $1 AND app_id = $2`, deployID, appID))
+	if err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+deployColumns+` FROM deploys WHERE status = $1`, DeployUpdateInProgress)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Deploy
+	for rows.Next() {
+		d, err := scanDeploy(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (s *PGStore) CloseDeploy(ctx context.Context, id, status string) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE deploys SET status = $2, finished_at = now() WHERE id = $1 AND finished_at IS NULL`, id, status)
+	return err
 }
 
 // classify maps Postgres errors to the shared taxonomy: unique violations are

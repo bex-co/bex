@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
@@ -506,6 +507,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&secrets.Service{Base: base},
 		&envgroups.Service{Base: base},
 		&workspaces.Service{Base: base},
+		&deploys.Service{Base: base},
 	}
 	swept := 0
 	for _, svc := range services {
@@ -564,7 +566,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	h, srv := serverWith(t, base, deps)
 
 	// REST: every feature's noun answers (2xx/empty, not 404-route-missing).
-	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners", "/v1/env-groups", "/v1/services/web/secret-files"} {
+	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners", "/v1/env-groups", "/v1/services/web/secret-files", "/v1/services/web/deploys"} {
 		if code := do(t, h, "GET", path, testToken, "").Code; code == 404 {
 			t.Errorf("REST route %q not registered (404)", path)
 		}
@@ -576,7 +578,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups"} {
+	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "deploys"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
@@ -595,7 +597,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files"} {
+	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

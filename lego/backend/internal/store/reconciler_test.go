@@ -244,3 +244,95 @@ func TestReconcileDeletesRemovedRowsOnly(t *testing.T) {
 		t.Errorf("want only hand-applied to survive, got %v", names)
 	}
 }
+
+// TestRecordDeployClosesLiveOnHealthy exercises t001's core acceptance
+// criterion: a rollout produces exactly one deploy row that transitions to
+// live once the projected App CR reports Running. The reconciler only reads
+// this pass's already-observed status (cur.Status), so the test drives it the
+// same way the real operator would — a status subresource write between two
+// ReconcileOnce passes.
+func TestRecordDeployClosesLiveOnHealthy(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 1: creates the CR, no status yet
+		t.Fatalf("reconcile: %v", err)
+	}
+	if open, ok, _ := openDeployFor(ctx, store, row.ID); !ok || open.Status != DeployUpdateInProgress {
+		t.Fatalf("deploy after create = %+v ok=%v, want one open row", open, ok)
+	}
+
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 2: observes Running, closes the deploy
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("list deploys: %v", err)
+	}
+	if len(deploys) != 1 || deploys[0].Status != DeployLive || deploys[0].FinishedAt == nil {
+		t.Fatalf("deploys = %+v, want exactly one, live, with finished_at set", deploys)
+	}
+}
+
+// TestRecordDeployClosesFailedOnCRFailed mirrors the above for the CR's own
+// Failed phase (a build error, say) — closes update_failed immediately, no
+// need to wait out the gate window.
+func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID)
+	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed || deploys[0].FinishedAt == nil {
+		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed, with finished_at set", deploys, err)
+	}
+}
+
+// TestRecordDeployClosesFailedOnGateTimeout covers a deploy that never gates
+// healthy and never reaches PhaseFailed either — a bad image stuck
+// ImagePullBackOff, which the App CR's own phase machine polls PhaseDeploying
+// forever (app_controller.go). Health gating (docs/deployment.md) still needs
+// to report failure eventually, so DeployGateTimeout is the fallback: a
+// deploy open longer than it closes update_failed even with the CR still
+// mid-rollout.
+func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	rec.DeployGateTimeout = 0 // any elapsed time trips it — deterministic without sleeping
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:bad", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 1: creates the CR, phase stays Pending
+		t.Fatalf("reconcile: %v", err)
+	}
+	_ = getApp(t, cl)                              // the CR exists but never reports Running or Failed
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 2: still not decisive by phase alone, but the gate window has elapsed
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID)
+	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed {
+		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed via the gate timeout", deploys, err)
+	}
+}

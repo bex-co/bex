@@ -1,0 +1,343 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package deploys
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+// --- test harness -------------------------------------------------------------
+
+func fakeClient(objs ...client.Object) client.Client {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+}
+
+// sampleApp is a store-managed App (carries the bex.co/app-id label the
+// reconciler stamps) unless storeID is empty, in which case it's hand-applied
+// — the case with no deploy history at all.
+func sampleApp(name, storeID string) *appv1alpha1.App {
+	a := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Image: name + ":v1"},
+	}
+	if storeID != "" {
+		a.Labels = map[string]string{store.LabelAppID: storeID}
+	}
+	return a
+}
+
+func fixedNow() time.Time { return time.Unix(1_700_000_000, 0).UTC() }
+
+func newService(ds DeployStore, objs ...client.Object) (*Service, client.Client) {
+	cl := fakeClient(objs...)
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: ds}, cl
+}
+
+// fakeStore is an in-memory DeployStore, newest-first like PGStore/memStore.
+type fakeStore struct {
+	mu     sync.Mutex
+	byApp  map[string][]store.Deploy
+	nextID int
+}
+
+func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
+
+func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string) (store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.nextID++
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
+	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
+	return d, nil
+}
+
+func (f *fakeStore) ListDeploys(_ context.Context, appID string) ([]store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.Deploy(nil), f.byApp[appID]...), nil
+}
+
+func (f *fakeStore) GetDeploy(_ context.Context, appID, deployID string) (store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byApp[appID] {
+		if d.ID == deployID {
+			return d, nil
+		}
+	}
+	return store.Deploy{}, store.ErrNotFound
+}
+
+// --- List / Get -----------------------------------------------------------
+
+func TestListEmptyForHandAppliedApp(t *testing.T) {
+	ds := newFakeStore()
+	ds.byApp["srv-other"] = []store.Deploy{{ID: "dep-1", AppID: "srv-other", Status: store.DeployLive}}
+	svc, _ := newService(ds, sampleApp("manual", ""))
+
+	got, err := svc.List(context.Background(), "manual")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("hand-applied App must have empty history, got %+v", got)
+	}
+}
+
+func TestListGetTriggerLifecycle(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+
+	list, err := svc.List(context.Background(), "web")
+	if err != nil || len(list) != 1 || list[0].ID != first.ID || list[0].Trigger != "create" {
+		t.Fatalf("List = %+v (err %v)", list, err)
+	}
+
+	triggered, err := svc.Trigger(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("Trigger: %v", err)
+	}
+	if triggered.Trigger != "api" || triggered.Status != store.DeployUpdateInProgress {
+		t.Errorf("triggered deploy = %+v", triggered)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.RestartedAt == "" {
+		t.Error("Trigger must bump spec.restartedAt (a re-pull/restart now)")
+	}
+
+	list, err = svc.List(context.Background(), "web")
+	if err != nil || len(list) != 2 || list[0].ID != triggered.ID {
+		t.Fatalf("List after trigger (want newest first) = %+v (err %v)", list, err)
+	}
+
+	got, err := svc.Get(context.Background(), "web", triggered.ID)
+	if err != nil || got.ID != triggered.ID {
+		t.Fatalf("Get: %+v (err %v)", got, err)
+	}
+	if _, err := svc.Get(context.Background(), "web", "dep-doesnotexist"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("unknown deploy: want core.ErrNotFound, got %v", err)
+	}
+}
+
+func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
+	t.Helper()
+	var a appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a); err != nil {
+		t.Fatalf("get app %s: %v", name, err)
+	}
+	return &a
+}
+
+// --- Trigger refusals -------------------------------------------------------
+
+func TestTriggerRefusesSuspendedService(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("web", "srv-1")
+	app.Spec.Suspended = true
+	svc, _ := newService(ds, app)
+
+	if _, err := svc.Trigger(context.Background(), "web"); !errors.Is(err, core.ErrConflict) {
+		t.Errorf("suspended trigger: want core.ErrConflict, got %v", err)
+	}
+}
+
+func TestTriggerRequiresStoreManagedApp(t *testing.T) {
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("manual", ""))
+
+	if _, err := svc.Trigger(context.Background(), "manual"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("hand-applied trigger: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+// --- Store-off 503 ----------------------------------------------------------
+
+func TestVerbsUnavailableWithoutStore(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web", "srv-1"))
+	ctx := context.Background()
+
+	if _, err := svc.List(ctx, "web"); !errors.Is(err, core.ErrDeploysUnavailable) {
+		t.Errorf("List: want ErrDeploysUnavailable, got %v", err)
+	}
+	if _, err := svc.Get(ctx, "web", "dep-1"); !errors.Is(err, core.ErrDeploysUnavailable) {
+		t.Errorf("Get: want ErrDeploysUnavailable, got %v", err)
+	}
+	if _, err := svc.Trigger(ctx, "web"); !errors.Is(err, core.ErrDeploysUnavailable) {
+		t.Errorf("Trigger: want ErrDeploysUnavailable, got %v", err)
+	}
+}
+
+// --- REST fragment ------------------------------------------------------------
+
+func TestRESTListGetTrigger(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	do := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+
+	rec := do("GET", "/v1/services/web/deploys")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list: code=%d body=%s", rec.Code, rec.Body)
+	}
+	var list []deployWithCursor
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 || list[0].Deploy.ID != first.ID {
+		t.Fatalf("list envelope = %s (err %v)", rec.Body, err)
+	}
+
+	rec = do("POST", "/v1/services/web/deploys")
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("trigger: code=%d body=%s", rec.Code, rec.Body)
+	}
+	var created renderDeploy
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil || created.Trigger != "api" {
+		t.Fatalf("trigger body = %s (err %v)", rec.Body, err)
+	}
+
+	rec = do("GET", "/v1/services/web/deploys/"+created.ID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get: code=%d body=%s", rec.Code, rec.Body)
+	}
+	rec = do("GET", "/v1/services/web/deploys/dep-nope")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("get unknown: code=%d, want 404", rec.Code)
+	}
+}
+
+func TestREST503WithoutStore(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web", "srv-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	req := httptest.NewRequest("GET", "/v1/services/web/deploys", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("code=%d, want 503", rec.Code)
+	}
+}
+
+// --- MCP parity ---------------------------------------------------------------
+
+// TestMCPMatchesREST drives list_deploys/get_deploy over an in-memory MCP
+// session and asserts the structured results are identical to what List/Get
+// (the same Service the REST fragment calls) return — three-adapter parity,
+// not a second implementation.
+func TestMCPMatchesREST(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	tools, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	have := map[string]bool{}
+	for _, tl := range tools.Tools {
+		have[tl.Name] = true
+	}
+	for _, want := range []string{"list_deploys", "get_deploy"} {
+		if !have[want] {
+			t.Errorf("tool %q not registered", want)
+		}
+	}
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_deploys", Arguments: map[string]any{"serviceId": "web"}})
+	if err != nil || res.IsError {
+		t.Fatalf("list_deploys: %v isErr=%v", err, res.IsError)
+	}
+	var got listDeploysResult
+	if err := decodeStructured(res.StructuredContent, &got); err != nil {
+		t.Fatalf("decode list_deploys result: %v", err)
+	}
+	restList, err := svc.List(ctx, "web")
+	if err != nil || len(got.Deploys) != len(restList) || got.Deploys[0].ID != first.ID {
+		t.Fatalf("list_deploys = %+v, want to match List() = %+v (err %v)", got, restList, err)
+	}
+
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_deploy", Arguments: map[string]any{"serviceId": "web", "deployId": first.ID}})
+	if err != nil || res.IsError {
+		t.Fatalf("get_deploy: %v isErr=%v", err, res.IsError)
+	}
+	var oneGot renderDeploy
+	if err := decodeStructured(res.StructuredContent, &oneGot); err != nil {
+		t.Fatalf("decode get_deploy result: %v", err)
+	}
+	if oneGot.ID != first.ID || oneGot.Status != store.DeployUpdateInProgress {
+		t.Errorf("get_deploy = %+v", oneGot)
+	}
+
+	// An unknown deploy id is a tool error, not a silent empty result.
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_deploy", Arguments: map[string]any{"serviceId": "web", "deployId": "dep-nope"}})
+	if err != nil {
+		t.Fatalf("get_deploy unknown transport error: %v", err)
+	}
+	if !res.IsError {
+		t.Errorf("get_deploy with unknown id: want a tool error, got %+v", res)
+	}
+}
+
+func decodeStructured(v any, out any) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, out)
+}

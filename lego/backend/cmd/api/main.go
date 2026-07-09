@@ -171,7 +171,8 @@ func main() {
 			rec.Resync = v
 		}
 		go rec.Run(ctx)
-		deps.Store = st // single writer of intent: suspend/resume write the row first
+		deps.Store = st       // single writer of intent: suspend/resume write the row first
+		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
 
 		// Workspace lifecycle (w6/m1): the workspaces feature writes through the
 		// same store and nudges the same projector to prune a deleted workspace's

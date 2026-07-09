@@ -47,11 +47,19 @@ var (
 	// adapters surface it as 503 (the owners read API exists, the backing store
 	// doesn't).
 	ErrWorkspacesUnavailable = errors.New("workspaces store not configured")
+	// ErrDeploysUnavailable is returned by the deploy-history verbs when the
+	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
+	// as 503 — deploy history has no CR-only equivalent to fall back to.
+	ErrDeploysUnavailable = errors.New("deploy history store not configured")
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires
 	// (adapters map it to 403; distinct from the auth gate's 401).
 	ErrForbidden = errors.New("forbidden")
+	// ErrConflict is returned when a verb refuses because of the resource's
+	// current state (e.g. triggering a deploy on a suspended service); adapters
+	// map it to 409.
+	ErrConflict = errors.New("conflict")
 	// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
 	// consulted — requests fail closed (503), never pass through.
 	ErrAuthzUnavailable = errors.New("authorization service unavailable")

@@ -56,6 +56,14 @@ const (
 	// operator's propagation to pod templates share one canonical value.
 	LabelWorkspace      = core.LabelWorkspace
 	defaultResyncPeriod = 30 * time.Second
+	// defaultDeployGateTimeout bounds how long a deploy may sit open
+	// (update_in_progress) before recordDeploy gives up on it and calls it
+	// failed. Needed because a bad image (ImagePullBackOff) never makes the
+	// App CR's own phase machine reach PhaseFailed — it polls PhaseDeploying
+	// forever (lego/operator/internal/controller/app_controller.go) — so
+	// health gating (docs/deployment.md) needs its own timeout, not just the
+	// CR's phase, to ever report a deploy as failed.
+	defaultDeployGateTimeout = 3 * time.Minute
 )
 
 // Reconciler projects the source of truth into the cluster: each apps row
@@ -68,17 +76,22 @@ type Reconciler struct {
 	Store     Store
 	Namespace string        // namespace the App CRs are projected into
 	Resync    time.Duration // full-resync interval
+	// DeployGateTimeout bounds how long a deploy may stay open before
+	// recordDeploy closes it as failed even though the CR's phase never
+	// reached Failed on its own (see defaultDeployGateTimeout).
+	DeployGateTimeout time.Duration
 
 	kick chan struct{}
 }
 
 func NewReconciler(cl client.Client, store Store, namespace string) *Reconciler {
 	return &Reconciler{
-		Client:    cl,
-		Store:     store,
-		Namespace: namespace,
-		Resync:    defaultResyncPeriod,
-		kick:      make(chan struct{}, 1),
+		Client:            cl,
+		Store:             store,
+		Namespace:         namespace,
+		Resync:            defaultResyncPeriod,
+		DeployGateTimeout: defaultDeployGateTimeout,
+		kick:              make(chan struct{}, 1),
 	}
 }
 
@@ -129,6 +142,17 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			byID[id] = &existing.Items[i]
 		}
 	}
+	// One query for every app's open deploy (not one per app in the loop
+	// below) — at most one open deploy per app in practice, so the last
+	// write wins if that invariant is ever violated.
+	openDeploys, err := r.Store.ListOpenDeploys(ctx)
+	if err != nil {
+		return fmt.Errorf("list open deploys: %w", err)
+	}
+	openByApp := make(map[string]Deploy, len(openDeploys))
+	for _, d := range openDeploys {
+		openByApp[d.AppID] = d
+	}
 
 	var errs []error
 	seen := make(map[string]bool, len(desired))
@@ -152,6 +176,13 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 				continue
 			}
 		}
+		// Deploy write-back (w2/m5): cur.Status still holds what this pass's
+		// List observed — Update above only patches spec (status is a separate
+		// subresource) — so it's the right snapshot to decide the app's open
+		// deploy, if any, is done.
+		if open, ok := openByApp[d.ID]; ok {
+			r.recordDeploy(ctx, open, cur)
+		}
 	}
 	// Rows deleted from Postgres → delete their projected CR.
 	for id, cur := range byID {
@@ -163,6 +194,34 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// recordDeploy closes open (the app's open deploy row, t001) once this pass's
+// observed CR status is decisive: Running -> live, Failed -> update_failed,
+// or still open past DeployGateTimeout -> update_failed. The gate-window
+// fallback is not just a backstop: a stuck ImagePullBackOff never reaches
+// PhaseFailed on its own (the App CR's Deployment-readiness check just
+// re-requeues PhaseDeploying forever, lego/operator/internal/controller/
+// app_controller.go), so for that common failure mode the timeout IS the
+// mechanism that ever calls it failed, not a rare fallback. Still open inside
+// the gate window is a no-op — the next pass re-checks. Store errors are
+// logged, not fatal: a deploy-bookkeeping hiccup must never block App CR
+// reconciliation.
+func (r *Reconciler) recordDeploy(ctx context.Context, open Deploy, cur *appv1alpha1.App) {
+	status := ""
+	switch {
+	case cur.Status.Phase == appv1alpha1.PhaseRunning:
+		status = DeployLive
+	case cur.Status.Phase == appv1alpha1.PhaseFailed:
+		status = DeployUpdateFailed
+	case time.Since(open.CreatedAt) > r.DeployGateTimeout:
+		status = DeployUpdateFailed
+	default:
+		return // still converging, inside the gate window
+	}
+	if err := r.Store.CloseDeploy(ctx, open.ID, status); err != nil {
+		log.Printf("controlplane: close deploy %s: %v", open.ID, err)
+	}
 }
 
 // CRName is the projected CR's name, "<tenant>-<app>". Both parts are
