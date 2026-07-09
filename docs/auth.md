@@ -122,6 +122,8 @@ Authentication says who is calling; **authorization** says what they may touch. 
 
 **Ops**: [scripts/authz-model.sh](../scripts/authz-model.sh) idempotently ensures the `bex` store, applies `model.json` only when it differs from the latest applied model (models are append-only), and seeds `bex-bootstrap → admin of workspace:default`; deploy.yml runs it after the OpenFGA rollout on every deploy. bex-api's copy of the preshared key lives in `bex-system/bex-openfga` (written by `auth-secrets.sh`, `.env` key `OPENFGA_PRESHARED_KEY`).
 
+**Session callers (the dashboard) need no special-casing.** The auth gate resolves a Kratos session to the same `core.Identity{Subject, Method: "session"}` shape a Hydra bearer resolves to `Method: "oauth2"`; `Base.Authorize` checks both as `"user:" + id.Subject` against `workspace:default`, so every verb — including the api-key mint/list/revoke a dashboard user drives from Settings (w4/m8, [bex-api.md#auth](bex-api.md#auth) has the UI-side details) — is reachable and enforced identically regardless of which credential authenticated the request (`TestAPIKeys_SessionCaller`, `internal/api/server_test.go`). The one thing that differs is provisioning: only `bex-bootstrap` is seeded by `authz-model.sh`, so a human's Kratos identity has **no** tuple until one is written for it (`user:<kratos-id>` on `workspace:default`) — until w1/m2 grows a members/roles API, that grant is a manual `fga` write, the same gap every non-bootstrap subject has today.
+
 ## Verification
 
 `scripts/auth-verify.sh` (exit 0 = pass, used as the milestone's behavioral test) proves on the local mock cluster, via port-forwards to the cluster-internal Services:

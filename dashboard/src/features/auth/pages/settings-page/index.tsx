@@ -6,6 +6,7 @@ import { useOryConfig, oryHideSettingsPageHeader } from "@/common/lib/ory/config
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -43,6 +44,7 @@ export default function SettingsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           )}
+          <ApiKeysPanel />
         </div>
       </div>
     </DashboardLayout>

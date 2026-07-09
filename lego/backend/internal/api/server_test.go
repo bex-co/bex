@@ -85,11 +85,28 @@ func serverWith(t *testing.T, base *core.Base, d Deps) (http.Handler, *Server) {
 	t.Helper()
 	srv := NewServer(base, d)
 	srv.HydraAdminURL = fakeHydraURL(t)
+	return buildHandler(t, srv), srv
+}
+
+// serverWithKratos is serverWith plus an explicit Kratos URL, for tests that
+// also need the session (cookie) auth path alongside the usual bearer one.
+// hydraURL is a parameter (not built here) so callers can share one fakeHydra
+// across subtests instead of spinning up a new httptest.Server each time.
+func serverWithKratos(t *testing.T, base *core.Base, d Deps, hydraURL, kratosURL string) http.Handler {
+	t.Helper()
+	srv := NewServer(base, d)
+	srv.HydraAdminURL = hydraURL
+	srv.KratosURL = kratosURL
+	return buildHandler(t, srv)
+}
+
+func buildHandler(t *testing.T, srv *Server) http.Handler {
+	t.Helper()
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
 	}
-	return h, srv
+	return h
 }
 
 func do(t *testing.T, h http.Handler, method, path, token, body string) *httptest.ResponseRecorder {
@@ -310,9 +327,11 @@ type fakeChecker struct {
 	allow        bool
 	err          error
 	lastRelation string
+	lastSubject  string
 }
 
-func (f *fakeChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+func (f *fakeChecker) Check(_ context.Context, subject, relation, _ string) (bool, error) {
+	f.lastSubject = subject
 	f.lastRelation = relation
 	return f.allow, f.err
 }
@@ -356,6 +375,106 @@ func TestAuthzEnforcement(t *testing.T) {
 	t.Run("checker error fails closed 503", func(t *testing.T) {
 		if do(t, newH(&fakeChecker{err: errors.New("fga down")}), "GET", "/v1/services", testToken, "").Code != 503 {
 			t.Fatal("checker outage: want 503")
+		}
+	})
+}
+
+// gqlSession posts a GraphQL request over a Kratos session cookie (or none, for
+// cookie == "") — the dashboard's auth path, as opposed to gql/do's bearer
+// token. Decodes `data` like gql does on a 200, but — unlike gql — doesn't
+// fatal on a GraphQL error, since TestAPIKeys_SessionCaller asserts both the
+// allow and the deny path; the deny case is checked against the raw body
+// (matching this file's existing convention, e.g. TestAuthzEnforcement).
+func gqlSession(t *testing.T, h http.Handler, cookie, query string) (code int, data map[string]any, body string) {
+	t.Helper()
+	b, _ := json.Marshal(map[string]string{"query": query})
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(string(b)))
+	if cookie != "" {
+		r.Header.Set("Cookie", cookie)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code == http.StatusOK {
+		var out struct {
+			Data map[string]any `json:"data"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		data = out.Data
+	}
+	return w.Code, data, w.Body.String()
+}
+
+// TestAPIKeys_SessionCaller proves the dashboard's auth path (a Kratos session
+// cookie, not a bearer token) reaches the api-key GraphQL verbs through the same
+// Authorize gate as any other caller — no bearer-only special-casing — and that
+// the resolved session identity is checked as "user:<kratos-id>", the same tuple
+// shape a bearer subject gets (docs/auth.md's Authorization section).
+func TestAPIKeys_SessionCaller(t *testing.T) {
+	const sessionCookie = "ory_kratos_session=live" // fakeKratos => identity "identity-1"
+	kratos := fakeKratos(t)
+	hydraURL := fakeHydraURL(t) // shared across subtests, including the one bearer-path check below
+	newH := func(chk core.Checker) http.Handler {
+		base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: chk}
+		return serverWithKratos(t, base, Deps{APIKeys: newFakeKeyStore()}, hydraURL, kratos.URL)
+	}
+
+	t.Run("authorized session mints, lists, and revokes", func(t *testing.T) {
+		chk := &fakeChecker{allow: true}
+		h := newH(chk)
+
+		code, data, body := gqlSession(t, h, sessionCookie, `mutation { createApiKey(name: "agent-key") { id name secret } }`)
+		created, _ := data["createApiKey"].(map[string]any)
+		if code != 200 || created["secret"] != "s3cret" {
+			t.Fatalf("session mint: code %d body %s", code, body)
+		}
+		if chk.lastSubject != "user:identity-1" || chk.lastRelation != core.RelCanManageKeys {
+			t.Errorf("mint checked subject=%q relation=%q, want user:identity-1 / can_manage_keys", chk.lastSubject, chk.lastRelation)
+		}
+
+		code, data, body = gqlSession(t, h, sessionCookie, `{ apiKeys { id name secret } }`)
+		if code != 200 || strings.Contains(body, "s3cret") {
+			t.Fatalf("session list: code %d body %s (secret must never appear in list)", code, body)
+		}
+		found := false
+		for _, k := range data["apiKeys"].([]any) {
+			if key, _ := k.(map[string]any); key["name"] == "agent-key" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("session list: agent-key missing, got %v", data)
+		}
+
+		code, data, body = gqlSession(t, h, sessionCookie, `mutation { revokeApiKey(id: "key-1") }`)
+		if code != 200 || data["revokeApiKey"] != true {
+			t.Fatalf("session revoke: code %d body %s", code, body)
+		}
+	})
+
+	t.Run("bearer path is unchanged — still mints via GraphQL alongside the new session path", func(t *testing.T) {
+		h := newH(&fakeChecker{allow: true})
+		data := gql(t, h, `mutation { createApiKey(name: "bearer-key") { id name secret } }`)
+		created, _ := data["createApiKey"].(map[string]any)
+		if created["secret"] != "s3cret" {
+			t.Fatalf("bearer mint: got %v", data)
+		}
+	})
+
+	t.Run("session without the workspace tuple is forbidden, not silently allowed", func(t *testing.T) {
+		h := newH(&fakeChecker{allow: false})
+		code, _, body := gqlSession(t, h, sessionCookie, `mutation { createApiKey(name: "agent-key") { id } }`)
+		if code != 200 || !strings.Contains(body, "forbidden") {
+			t.Fatalf("session deny: code %d body %s", code, body)
+		}
+	})
+
+	t.Run("no session and no bearer is 401 before reaching the resolver", func(t *testing.T) {
+		h := newH(&fakeChecker{allow: true})
+		code, _, _ := gqlSession(t, h, "", `{ apiKeys { id } }`)
+		if code != 401 {
+			t.Fatalf("anonymous graphql: got %d, want 401", code)
 		}
 	})
 }

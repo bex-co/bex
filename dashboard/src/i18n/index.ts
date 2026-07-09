@@ -4,12 +4,14 @@ import enLogs from "@/features/logs/locales/en";
 import enMetrics from "@/features/metrics/locales/en";
 import enServices from "@/features/services/locales/en";
 import enDatabases from "@/features/databases/locales/en";
+import enApiKeys from "@/features/api-keys/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
 import zhMetrics from "@/features/metrics/locales/zh";
 import zhServices from "@/features/services/locales/zh";
 import zhDatabases from "@/features/databases/locales/zh";
+import zhApiKeys from "@/features/api-keys/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -38,6 +40,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enMetrics),
   ...extractMessages(enServices),
   ...extractMessages(enDatabases),
+  ...extractMessages(enApiKeys),
 };
 
 export const zh: Record<string, string> = {
@@ -47,6 +50,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhMetrics),
   ...extractMessages(zhServices),
   ...extractMessages(zhDatabases),
+  ...extractMessages(zhApiKeys),
 };
 
 export const resources: Record<

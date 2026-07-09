@@ -11,7 +11,7 @@ import { Button } from "@/common/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
-import { CopyButton } from "@/features/databases/components/copy-button";
+import { CopyButton } from "@/common/components/copy-button";
 import type { ConnectionInfoView } from "@/features/databases/types";
 
 /**
@@ -86,11 +86,17 @@ function RevealedInfo({ info }: { info: ConnectionInfoView }) {
 
 /** A labeled, monospace, horizontally-scrollable connection string + copy. */
 function ConnectionField({ label, value }: { label: string; value: string }) {
+  const { t } = useTranslations();
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">{label}</span>
-        <CopyButton value={value} label={label} />
+        <CopyButton
+          value={value}
+          label={label}
+          successText={t("databases.copied")}
+          errorText={t("databases.copyError")}
+        />
       </div>
       <div className="overflow-x-auto rounded-md border bg-muted px-3 py-2">
         <code className="font-mono text-xs whitespace-pre">{value || "—"}</code>
@@ -118,7 +124,12 @@ function PasswordField({ value }: { value: string }) {
           >
             {shown ? <EyeOff /> : <Eye />}
           </Button>
-          <CopyButton value={value} label={t("databases.connPassword")} />
+          <CopyButton
+            value={value}
+            label={t("databases.connPassword")}
+            successText={t("databases.copied")}
+            errorText={t("databases.copyError")}
+          />
         </div>
       </div>
       <div className="overflow-x-auto rounded-md border bg-muted px-3 py-2">
