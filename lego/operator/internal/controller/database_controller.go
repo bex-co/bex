@@ -165,7 +165,15 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	cluster.SetName(db.Name)
 	cluster.SetNamespace(db.Namespace)
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
-		cluster.Object["spec"] = cnpgClusterSpec(plan, storageGB, db.Spec.Version, dbname, owner)
+		spec := cnpgClusterSpec(plan, storageGB, db.Spec.Version, dbname, owner)
+		// Propagate the workspace label to CNPG-managed pods via inheritedMetadata
+		// so same-workspace NetworkPolicy selectors can reach the database.
+		if ws := db.Labels[labelWorkspace]; ws != "" {
+			spec["inheritedMetadata"] = map[string]any{
+				"labels": map[string]any{labelWorkspace: ws},
+			}
+		}
+		cluster.Object["spec"] = spec
 		return controllerutil.SetControllerReference(&db, cluster, r.Scheme)
 	}); err != nil {
 		return r.dbFail(ctx, &db, "ClusterFailed", err)

@@ -1,19 +1,19 @@
 # w7 · m1 — East-west tenant isolation: default-deny network for tenant workloads
 
-**Worker:** worker7 **Goal:** Tenant pods can no longer reach other tenants' pods/datastores or bex's platform services over the flat pod network — cross-workspace traffic is denied by default while Traefik ingress, same-workspace private services, own datastores, and public-internet egress keep working. **Status:** todo
+**Worker:** worker7 **Goal:** Tenant pods can no longer reach other tenants' pods/datastores or bex's platform services over the flat pod network — cross-workspace traffic is denied by default while Traefik ingress, same-workspace private services, own datastores, and public-internet egress keep working. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | ADR `docs/tenant-isolation.md`: threat model + namespace-tier mechanism choice                             | 45m | —          |
-| t002 | Workspace identity labels: projector stamps App CRs, operator propagates to pods                           | 45m | t001       |
-| t003 | Tenant NetworkPolicies: default-deny + Traefik / same-workspace / own-datastore / internet allows          | 60m | t002       |
-| t004 | Platform-side lockdown: deny apps+build namespaces at bex-system · bex-registry · OpenBao · monitoring     | 45m | t001       |
-| t005 | Verification script: cross-tenant + platform reachability matrix                                           | 45m | t003, t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                                | 20m | t005       |
-| t007 | Test coverage — meaningful tests for label propagation + policy generation                                 | 30m | t005       |
-| t008 | Closeout — DoD verified, milestone moved to `done/`                                                        | 15m | t007       |
+| t001 | ADR `docs/tenant-isolation.md`: threat model + namespace-tier mechanism choice                             | 45m | —          | — **DONE** |
+| t002 | Workspace identity labels: projector stamps App CRs, operator propagates to pods                           | 45m | t001       | — **DONE** |
+| t003 | Tenant NetworkPolicies: default-deny + Traefik / same-workspace / own-datastore / internet allows          | 60m | t002       | — **DONE** |
+| t004 | Platform-side lockdown: deny apps+build namespaces at bex-system · bex-registry · OpenBao · monitoring     | 45m | t001       | — **DONE** |
+| t005 | Verification script: cross-tenant + platform reachability matrix                                           | 45m | t003, t004 | — **DONE** |
+| t006 | Simplify — `/simplify` over the code this milestone changed                                                | 20m | t005       | — **DONE** |
+| t007 | Test coverage — meaningful tests for label propagation + policy generation                                 | 30m | t005       | — **DONE** |
+| t008 | Closeout — DoD verified, milestone moved to `done/`                                                        | 15m | t007       | — **DONE** |
 
 ## Definition of done
 

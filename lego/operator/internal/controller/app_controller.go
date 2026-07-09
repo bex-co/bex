@@ -53,6 +53,12 @@ const finalizer = "app.bex.co/finalizer"
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// labelWorkspace carries the owning workspace (tenant) id on pod templates so
+// NetworkPolicy selectors can express "same-workspace" allow rules. Kept in
+// sync by hand with core.LabelWorkspace in the backend — the operator never
+// imports the backend (same pattern as labelApp / core.PodLabelApp).
+const labelWorkspace = "app.bex.co/workspace"
+
 // annotLastActive records when the app last served (or received) traffic.
 // Set by the operator on first Running and reset on each wake; updated by the
 // activator on each inbound request. Free-tier apps auto-hibernate after
@@ -87,6 +93,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 
@@ -286,12 +293,20 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		replicas = 0
 	}
 	labels := map[string]string{labelApp: app.Name}
+	// Propagate the workspace label to pod templates so NetworkPolicy selectors
+	// can express "allow same-workspace" rules. The selector stays stable
+	// (labelApp only) — adding labelWorkspace here would make it immutable and
+	// break existing Deployments when the label is added later.
+	podLabels := map[string]string{labelApp: app.Name}
+	if ws := app.Labels[labelWorkspace]; ws != "" {
+		podLabels[labelWorkspace] = ws
+	}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		dep.Spec.Replicas = &replicas
 		dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
-		dep.Spec.Template.Labels = labels
+		dep.Spec.Template.Labels = podLabels
 		// restart = roll the template (same mechanism as kubectl rollout restart,
 		// recorded in the contract). Never removed once set — removal would
 		// itself roll the pods again.
@@ -317,6 +332,14 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
+	}
+
+	// Reconcile the per-App NetworkPolicy (docs/tenant-isolation.md). Only when
+	// the App carries a workspace label — legacy/hand-applied Apps run without
+	// a policy (consistent with prior behavior). Workers get a policy too: they
+	// need egress to same-workspace services even though they expose no port.
+	if err := r.reconcileNetworkPolicy(ctx, app); err != nil {
+		return r.fail(ctx, app, "NetworkPolicyFailed", err)
 	}
 
 	// A worker skips the Service, the Ingress, and the URL entirely; any left over
@@ -915,6 +938,94 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	return ctrl.Result{}, err
 }
 
+// reconcileNetworkPolicy creates or updates the per-App NetworkPolicy that
+// enforces tenant isolation (docs/tenant-isolation.md §per-app-networkpolicy).
+// The policy is skipped for Apps without the workspace label (legacy/hand-applied
+// Apps) — they communicate freely, consistent with prior behavior.
+//
+// Policy shape:
+//   - Ingress: allow from same-workspace pods + from the traefik namespace
+//   - Egress: allow DNS (kube-system :53), same-workspace pods/services,
+//     and the public internet (not RFC1918/CGNAT — blocks in-cluster platforms)
+func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
+	ws := app.Labels[labelWorkspace]
+	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	if ws == "" {
+		// No workspace label: remove any stale NetworkPolicy we may have left from
+		// a prior reconcile that had the label, then skip.
+		if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	udpProto := corev1.ProtocolUDP
+	tcpProto := corev1.ProtocolTCP
+	dnsPort := intstr.FromInt(53)
+	ingressClass := networkingv1.PolicyTypeIngress
+	egressClass := networkingv1.PolicyTypeEgress
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, np, func() error {
+		np.Spec = networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{labelApp: app.Name},
+			},
+			PolicyTypes: []networkingv1.PolicyType{ingressClass, egressClass},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{
+				{
+					From: []networkingv1.NetworkPolicyPeer{
+						// same-workspace pods (private services)
+						{PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{labelWorkspace: ws},
+						}},
+						// Traefik ingress controller
+						{NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{"kubernetes.io/metadata.name": "traefik"},
+						}},
+					},
+				},
+			},
+			Egress: []networkingv1.NetworkPolicyEgressRule{
+				// DNS
+				{
+					Ports: []networkingv1.NetworkPolicyPort{
+						{Protocol: &udpProto, Port: &dnsPort},
+						{Protocol: &tcpProto, Port: &dnsPort},
+					},
+					To: []networkingv1.NetworkPolicyPeer{
+						{NamespaceSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"},
+						}},
+					},
+				},
+				// same-workspace pods and services
+				{
+					To: []networkingv1.NetworkPolicyPeer{
+						{PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{labelWorkspace: ws},
+						}},
+					},
+				},
+				// public internet (not RFC1918 / CGNAT — blocks in-cluster platform services)
+				{
+					To: []networkingv1.NetworkPolicyPeer{
+						{IPBlock: &networkingv1.IPBlock{
+							CIDR: "0.0.0.0/0",
+							Except: []string{
+								"10.0.0.0/8",
+								"172.16.0.0/12",
+								"192.168.0.0/16",
+								"100.64.0.0/10",
+							},
+						}},
+					},
+				},
+			},
+		}
+		return controllerutil.SetControllerReference(app, np, r.Scheme)
+	})
+	return err
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Config propagation on restart: operator-level settings (cluster issuer, base
@@ -941,6 +1052,7 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&appv1alpha1.App{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&networkingv1.Ingress{}).
+		Owns(&networkingv1.NetworkPolicy{}).
 		Owns(&batchv1.CronJob{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named("app").

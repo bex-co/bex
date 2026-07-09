@@ -24,3 +24,4 @@ resources:
   - openfga.yaml                 # OpenFGA — platform authorization (ReBAC, docs/auth.md)
   - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/secrets.md)
   - openbao-backup.yaml          # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
+  - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/tenant-isolation.md)

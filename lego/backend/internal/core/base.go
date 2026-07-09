@@ -73,6 +73,18 @@ func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
 // inherits the same cross-tenant gate from the one shared fetch.
 const LabelTenant = "bex.co/tenant"
 
+// LabelWorkspace carries the owning workspace (tenant) id on App CRs, Database
+// CRs, and KeyValue CRs and their descendant pods. The operator reads it and
+// propagates it to pod templates so NetworkPolicy selectors can express
+// "same-workspace" rules without touching Deployments or StatefulSets directly.
+// Value is the tenant id ("tea-<xid>") — DNS/label-safe by design (hyphen, not
+// underscore). Absent on hand-applied CRs (legacy mode): those run without
+// NetworkPolicy enforcement, consistent with prior behavior.
+//
+// Kept in sync by hand with operator's labelWorkspace — the api layer must not
+// import the operator (same pattern as LabelTenant / store.LabelTenant).
+const LabelWorkspace = "app.bex.co/workspace"
+
 // WorkspaceResolver maps an authenticated caller to its workspace: the tenant
 // id ("tea-<id>") for a tenant member or a bound API key (ok=true). ok=false
 // means the store is on but the caller resolves to no tenant — an unbound

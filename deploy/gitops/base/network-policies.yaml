@@ -1,0 +1,111 @@
+# Platform-side tenant isolation: ingress NetworkPolicies for each platform
+# namespace (docs/tenant-isolation.md §platform-side-lockdown). Together with
+# the per-App NetworkPolicies the operator creates (t003), these provide
+# defense-in-depth: even if a tenant-side policy regresses, platform services
+# refuse traffic from the tenant apps namespace.
+#
+# Each policy sets policyTypes: [Ingress] so the namespace gets default-deny
+# ingress and ONLY the listed sources can reach it. Legitimate callers are
+# enumerated per namespace; the tenant apps namespace (default / BEX_CP_APPS_NAMESPACE)
+# is implicitly blocked because it is not in any allow list.
+#
+# Build pods (app.bex.co/component: build) run in the apps namespace too.
+# They are explicitly allowed to reach bex-registry (push) — their label
+# distinguishes them from tenant app pods.
+
+---
+# bex-system: operator + bex-api
+# Allowed: bex-system itself (internal), traefik (HTTP to bex-api :8090),
+#   monitoring (Prometheus scrape of bex-api metrics).
+# Blocked: tenant pods in the apps namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-tenant-ingress
+  namespace: bex-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+
+---
+# bex-registry: zot OCI registry on :5000
+# Allowed: bex-system (operator triggers builds, not push; nodes pull directly),
+#   build pods in the apps namespace (push after in-cluster BuildKit build).
+# Blocked: tenant app pods in the apps namespace (they must not push/pull directly).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-tenant-ingress
+  namespace: bex-registry
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.bex.co/component: build
+
+---
+# secrets: OpenBao on :8200
+# Allowed: bex-system (bex-api uses k8s-auth to fetch tenant env-vars).
+# Blocked: tenant pods in the apps namespace (auth-scoped, but defense-in-depth).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-tenant-ingress
+  namespace: secrets
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: secrets
+
+---
+# monitoring: Prometheus
+# Allowed: monitoring itself (internal Alertmanager / Grafana).
+# Blocked: tenant pods (they must not scrape cross-tenant metrics).
+# Note: Prometheus scrapes targets in OTHER namespaces by design — that is
+# egress from monitoring, not ingress to it; this policy does not restrict it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-tenant-ingress
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring

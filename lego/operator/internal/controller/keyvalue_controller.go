@@ -141,6 +141,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	internalHost := fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace)
 	replicas := plan.Instances
 	labels := map[string]string{labelKeyValue: kv.Name}
+	// Build pod-template labels: selector labels plus the workspace label so
+	// same-workspace NetworkPolicy selectors can reach the Valkey instance.
+	podLabels := map[string]string{labelKeyValue: kv.Name}
+	if ws := kv.Labels[labelWorkspace]; ws != "" {
+		podLabels[labelWorkspace] = ws
+	}
 
 	// --- credentials Secret (created first so the StatefulSet's env ref resolves) ---
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
@@ -210,7 +216,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			}}
 		}
 		sts.Spec.Replicas = &replicas
-		sts.Spec.Template.ObjectMeta.Labels = labels
+		sts.Spec.Template.Labels = podLabels
 		sts.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:  "valkey",
 			Image: valkeyImage(kv.Spec.Version),

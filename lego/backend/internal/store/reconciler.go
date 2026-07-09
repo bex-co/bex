@@ -51,7 +51,10 @@ const (
 	LabelAppID     = "bex.co/app-id"
 	// LabelTenant aliases core.LabelTenant — one label, one constant, so the
 	// stamp (here) and the gate (core.Base.GetApp) can never drift apart.
-	LabelTenant         = core.LabelTenant
+	LabelTenant = core.LabelTenant
+	// LabelWorkspace aliases core.LabelWorkspace so the stamp (here) and the
+	// operator's propagation to pod templates share one canonical value.
+	LabelWorkspace      = core.LabelWorkspace
 	defaultResyncPeriod = 30 * time.Second
 )
 
@@ -183,7 +186,8 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 	}
 	set(LabelManagedBy, ManagedByValue)
 	set(LabelAppID, d.ID)
-	set(LabelTenant, d.TenantID) // the tenant id (tea-<id>), what List/Get filter on
+	set(LabelTenant, d.TenantID)    // the tenant id (tea-<id>), what List/Get filter on
+	set(LabelWorkspace, d.TenantID) // workspace identity for NetworkPolicy selectors (t002)
 	return changed
 }
 

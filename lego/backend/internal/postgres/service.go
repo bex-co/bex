@@ -200,6 +200,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Public:    req.Public,
 		},
 	}
+	// Stamp the workspace label so the database controller can propagate it to
+	// CNPG pod metadata (inheritedMetadata.labels) for same-workspace NetworkPolicy
+	// selectors (docs/tenant-isolation.md). Skip when the store is off (no resolver).
+	if tenantID, ok := s.Tenant(ctx); ok {
+		d.Labels = map[string]string{core.LabelWorkspace: tenantID}
+	}
 	if err := s.Client.Create(ctx, d); err != nil {
 		return PostgresView{}, err
 	}

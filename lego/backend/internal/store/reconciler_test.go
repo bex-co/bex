@@ -122,6 +122,91 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	}
 }
 
+func TestReconcileStampsWorkspaceLabel(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	app := getApp(t, cl)
+	if got := app.Labels[LabelWorkspace]; got != ten.ID {
+		t.Errorf("LabelWorkspace = %q; want %q", got, ten.ID)
+	}
+	// workspace label must equal the tenant label — same value, two selectors
+	if app.Labels[LabelWorkspace] != app.Labels[LabelTenant] {
+		t.Errorf("workspace label %q != tenant label %q", app.Labels[LabelWorkspace], app.Labels[LabelTenant])
+	}
+}
+
+func TestReconcileWorkspaceLabelSurvivesResync(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("first reconcile: %v", err)
+	}
+
+	// Simulate an external party removing the workspace label.
+	app := getApp(t, cl)
+	delete(app.Labels, LabelWorkspace)
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+
+	// A resync after a spec change re-stamps the label.
+	store.mu.Lock()
+	a := store.apps[row.ID]
+	a.Image = "img:2"
+	store.apps[row.ID] = a
+	store.mu.Unlock()
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("second reconcile: %v", err)
+	}
+	app = getApp(t, cl)
+	if got := app.Labels[LabelWorkspace]; got != ten.ID {
+		t.Errorf("LabelWorkspace after resync = %q; want %q", got, ten.ID)
+	}
+}
+
+// TestReconcileWorkspaceLabelDistinct verifies two tenants get distinct workspace
+// labels — a cross-workspace NetworkPolicy selector must not accidentally match.
+func TestReconcileWorkspaceLabelDistinct(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+
+	tenA, _ := store.CreateTenant(ctx, "alpha", "free")
+	tenB, _ := store.CreateTenant(ctx, "beta", "free")
+	store.CreateApp(ctx, App{TenantID: tenA.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})  //nolint:errcheck
+	store.CreateApp(ctx, App{TenantID: tenB.ID, Name: "api", Image: "img2", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}) //nolint:errcheck
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	var appA, appB appv1alpha1.App
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: "alpha-web"}, &appA); err != nil {
+		t.Fatalf("get alpha-web: %v", err)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: "beta-api"}, &appB); err != nil {
+		t.Fatalf("get beta-api: %v", err)
+	}
+	wsA := appA.Labels[LabelWorkspace]
+	wsB := appB.Labels[LabelWorkspace]
+	if wsA == "" || wsB == "" {
+		t.Errorf("workspace labels missing: A=%q B=%q", wsA, wsB)
+	}
+	if wsA == wsB {
+		t.Errorf("workspace labels must differ: both = %q", wsA)
+	}
+}
+
 func TestReconcileDeletesRemovedRowsOnly(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)

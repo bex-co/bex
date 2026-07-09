@@ -86,6 +86,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/postgresql-management.md](docs/postgresql-management.md) — managed tenant Postgres: `Database` CR → CNPG Cluster, plans, internal/external URLs.
 - [docs/keyvalue-management.md](docs/keyvalue-management.md) — managed tenant key-value (Valkey): `KeyValue` CR → Valkey StatefulSet, plans, internal/external URLs.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
+- [docs/tenant-isolation.md](docs/tenant-isolation.md) — ADR: east-west network enforcement — threat model, label-scoped NetworkPolicy mechanism, dialect choice, reachability matrix.
 
 ## Rules
 
