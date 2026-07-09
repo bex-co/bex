@@ -4,6 +4,7 @@ import {
   deriveStatus,
   computeStats,
   isSuspended,
+  isSleeping,
 } from "@/features/services/lib/status";
 import type { ServicesQuery } from "@/graphql/definitions";
 import type { ServiceView } from "@/features/services/types";
@@ -24,6 +25,7 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     replicas: 1,
     revision: "abc123",
     plan: null,
+    idleTTLSeconds: 0,
     ...overrides,
   };
 }
@@ -39,6 +41,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     replicas: 1,
     revision: "abc123",
     plan: null,
+    idleTTLSeconds: null,
     ...overrides,
   };
 }
@@ -55,7 +58,9 @@ describe("isSuspended", () => {
 
 describe("toServiceView", () => {
   it("normalizes the wire Service, decoding the suspended enum to a bool", () => {
-    expect(toServiceView(node({ suspended: "suspended", phase: "Hibernated" }))).toEqual({
+    expect(
+      toServiceView(node({ suspended: "suspended", phase: "Hibernated" })),
+    ).toEqual({
       id: "app",
       name: "app",
       suspended: true,
@@ -65,6 +70,7 @@ describe("toServiceView", () => {
       replicas: 1,
       revision: "abc123",
       plan: null,
+      idleTTLSeconds: 0,
     });
   });
 
@@ -94,9 +100,22 @@ describe("deriveStatus", () => {
     expect(deriveStatus(svc({ phase: "running" })).key).toBe("running");
   });
 
-  it("lets suspension win over phase (suspended App reports Hibernated)", () => {
+  it("lets suspension win over phase (manually suspended App => Suspended, not Sleeping)", () => {
     const s = svc({ suspended: true, phase: "Hibernated" });
     expect(deriveStatus(s)).toEqual({ key: "suspended", variant: "secondary" });
+  });
+
+  it("shows a Hibernated-but-not-suspended App as Sleeping (auto-slept free tier)", () => {
+    const s = svc({ suspended: false, phase: "Hibernated" });
+    expect(deriveStatus(s)).toEqual({ key: "sleeping", variant: "secondary" });
+    expect(isSleeping(s)).toBe(true);
+  });
+
+  it("does not treat a suspended or running App as sleeping", () => {
+    expect(isSleeping(svc({ suspended: true, phase: "Hibernated" }))).toBe(
+      false,
+    );
+    expect(isSleeping(svc({ phase: "Running" }))).toBe(false);
   });
 
   it("falls back to unknown for an unrecognized phase", () => {

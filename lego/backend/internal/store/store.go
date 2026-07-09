@@ -133,6 +133,10 @@ type Store interface {
 	// for the manual-scale verb on store-managed Apps, same row-first
 	// rationale as SetAppSuspended (the projector owns spec.replicas).
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
+	// idle-timeout verb on store-managed Apps (the projector owns
+	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
+	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -363,6 +367,22 @@ func (s *PGStore) SetAppReplicas(ctx context.Context, id string, replicas int32)
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET replicas = $2, updated_at = now() WHERE id = $1`,
 		id, replicas)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetAppIdleTTL updates the row's idle-TTL seconds (the apps feature's
+// idle-timeout verb validates the bound before calling this). The projector
+// carries it onto spec.idleTTLSeconds the same way it carries replicas.
+func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET idle_ttl_seconds = $2, updated_at = now() WHERE id = $1`,
+		id, seconds)
 	if err != nil {
 		return classify("app", err)
 	}

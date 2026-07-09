@@ -31,7 +31,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -75,7 +74,6 @@ type Options struct {
 	Client     client.Client // cluster client used to create + watch the Job
 	// BuildkitImage overrides the rootless BuildKit image (tests / air-gapped).
 	BuildkitImage string
-	Log           io.Writer // reserved for future log streaming (may be nil)
 }
 
 // Result is a successful build.

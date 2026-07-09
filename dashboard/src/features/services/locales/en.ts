@@ -54,9 +54,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Suspended",
     description: "Services table status badge",
   },
-  "services.statusHibernated": {
-    message: "Hibernated",
-    description: "Services table status badge (App scaled to zero)",
+  "services.statusSleeping": {
+    message: "Sleeping",
+    description:
+      "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
+  },
+  "services.statusSleepingHint": {
+    message: "Sleeping to save resources — wakes on the next request.",
+    description:
+      "Hint next to the Sleeping badge explaining free-tier auto-sleep + wake-on-request",
   },
   "services.statusPending": {
     message: "Pending",
@@ -340,6 +346,44 @@ const enServices: Record<string, TranslationEntry> = {
   "services.settingsUpdate": {
     message: "Update",
     description: "Settings tab link to the instance-type picker",
+  },
+  "services.settingsIdleTimeout": {
+    message: "Idle timeout",
+    description:
+      "Settings tab: label for the free-tier auto-sleep window control",
+  },
+  "services.settingsIdleTimeoutHint": {
+    message:
+      "Free services sleep after this idle window, then wake on the next request.",
+    description: "Settings tab: idle-timeout control help text (bex extension)",
+  },
+  "services.settingsIdleTimeoutPaid": {
+    message: "Paid services stay always-on and never sleep.",
+    description: "Settings tab: shown instead of the control on a paid plan",
+  },
+  "services.idleTimeoutDefault": {
+    message: "Platform default",
+    description: "Idle-timeout option: 0 seconds = the operator's own window",
+  },
+  "services.idleTimeoutMinutes": {
+    message: "{minutes} min",
+    description: "Idle-timeout option label in minutes",
+  },
+  "services.idleTimeoutHours": {
+    message: "{hours} hr",
+    description: "Idle-timeout option label in hours",
+  },
+  "services.idleTimeoutSeconds": {
+    message: "{seconds} sec",
+    description: "Idle-timeout option label in seconds (non-round values)",
+  },
+  "services.idleTimeoutSuccess": {
+    message: "Idle timeout updated.",
+    description: "Toast after setIdleTimeout succeeds",
+  },
+  "services.idleTimeoutError": {
+    message: "Couldn't update the idle timeout.",
+    description: "Toast after setIdleTimeout fails",
   },
   "services.planPickerTitle": {
     message: "Pick an Instance Type",

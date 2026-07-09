@@ -30,6 +30,7 @@ export function toServiceView(s: ServiceNode): ServiceView {
     replicas: s.replicas ?? null,
     revision: s.revision ?? null,
     plan: s.plan ?? null,
+    idleTTLSeconds: s.idleTTLSeconds ?? null,
   };
 }
 
@@ -54,7 +55,11 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
   deploying: { key: "deploying", variant: "outline" },
   building: { key: "building", variant: "outline" },
   pending: { key: "pending", variant: "outline" },
-  hibernated: { key: "hibernated", variant: "secondary" },
+  // Phase Hibernated reached here means the App auto-slept (idle past its TTL):
+  // manual suspend is caught earlier by deriveStatus (suspension wins), so a
+  // Hibernated App that is NOT suspended is a free-tier sleeper — shown as
+  // "sleeping" with the wake-on-request hint, a bex extension over Render.
+  hibernated: { key: "sleeping", variant: "secondary" },
   failed: { key: "failed", variant: "destructive" },
 };
 
@@ -68,6 +73,14 @@ export function deriveStatus(s: ServiceView): ServiceStatus {
   const status = PHASE_STATUS[s.phase.toLowerCase()];
   if (status) return status;
   return { key: "unknown", variant: "outline" };
+}
+
+/**
+ * True when the App is auto-sleeping (free-tier, idle past its TTL) rather than
+ * manually suspended — the state that gets the "wakes on the next request" hint.
+ */
+export function isSleeping(s: ServiceView): boolean {
+  return deriveStatus(s).key === "sleeping";
 }
 
 /** Stat-tile counts computed from the live list (total / running / suspended). */

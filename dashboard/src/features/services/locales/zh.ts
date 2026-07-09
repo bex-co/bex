@@ -54,9 +54,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已暂停",
     description: "Services table status badge",
   },
-  "services.statusHibernated": {
-    message: "已休眠",
-    description: "Services table status badge (App scaled to zero)",
+  "services.statusSleeping": {
+    message: "休眠中",
+    description:
+      "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
+  },
+  "services.statusSleepingHint": {
+    message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
+    description:
+      "Hint next to the Sleeping badge explaining free-tier auto-sleep + wake-on-request",
   },
   "services.statusPending": {
     message: "等待中",
@@ -337,6 +343,43 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.settingsUpdate": {
     message: "更新",
     description: "Settings tab link to the instance-type picker",
+  },
+  "services.settingsIdleTimeout": {
+    message: "空闲超时",
+    description:
+      "Settings tab: label for the free-tier auto-sleep window control",
+  },
+  "services.settingsIdleTimeoutHint": {
+    message: "免费服务在此空闲时长后休眠，下次请求时自动唤醒。",
+    description: "Settings tab: idle-timeout control help text (bex extension)",
+  },
+  "services.settingsIdleTimeoutPaid": {
+    message: "付费服务始终在线，不会休眠。",
+    description: "Settings tab: shown instead of the control on a paid plan",
+  },
+  "services.idleTimeoutDefault": {
+    message: "平台默认",
+    description: "Idle-timeout option: 0 seconds = the operator's own window",
+  },
+  "services.idleTimeoutMinutes": {
+    message: "{minutes} 分钟",
+    description: "Idle-timeout option label in minutes",
+  },
+  "services.idleTimeoutHours": {
+    message: "{hours} 小时",
+    description: "Idle-timeout option label in hours",
+  },
+  "services.idleTimeoutSeconds": {
+    message: "{seconds} 秒",
+    description: "Idle-timeout option label in seconds (non-round values)",
+  },
+  "services.idleTimeoutSuccess": {
+    message: "空闲超时已更新。",
+    description: "Toast after setIdleTimeout succeeds",
+  },
+  "services.idleTimeoutError": {
+    message: "无法更新空闲超时。",
+    description: "Toast after setIdleTimeout fails",
   },
   "services.planPickerTitle": {
     message: "选择实例类型",

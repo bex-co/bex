@@ -119,6 +119,10 @@ type recordingStore struct {
 		id       string
 		replicas int32
 	}
+	idleTTLCalls []struct {
+		id      string
+		seconds int32
+	}
 	domainAdds []struct{ id, host string }
 	domainRems []struct{ id, host string }
 	err        error
@@ -154,6 +158,17 @@ func (r *recordingStore) SetAppReplicas(_ context.Context, id string, replicas i
 		id       string
 		replicas int32
 	}{id, replicas})
+	return nil
+}
+
+func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.idleTTLCalls = append(r.idleTTLCalls, struct {
+		id      string
+		seconds int32
+	}{id, seconds})
 	return nil
 }
 
@@ -383,6 +398,73 @@ func TestScaleRowWriteFailureLeavesCRUntouched(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Spec.Replicas; got != 2 {
 		t.Errorf("spec.replicas must be untouched when the row write failed, got %d", got)
+	}
+}
+
+// --- SetIdleTTL (free-tier auto-sleep window; "sleep = free") ---
+
+func TestSetIdleTTLSetsAndReports(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+
+	v, err := svc.SetIdleTTL(context.Background(), "web", 900)
+	if err != nil {
+		t.Fatalf("SetIdleTTL: %v", err)
+	}
+	if v.IdleTTLSeconds != 900 {
+		t.Errorf("view IdleTTLSeconds = %d, want 900", v.IdleTTLSeconds)
+	}
+	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 900 {
+		t.Errorf("spec.idleTTLSeconds = %d, want 900", got)
+	}
+	// 0 restores the controller default and is a valid value (not rejected).
+	if _, err := svc.SetIdleTTL(context.Background(), "web", 0); err != nil {
+		t.Fatalf("SetIdleTTL(0): %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 0 {
+		t.Errorf("spec.idleTTLSeconds = %d, want 0 (default)", got)
+	}
+}
+
+func TestSetIdleTTLOutOfRangeIsBadRequestAndNoOp(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web")) // sampleApp starts with idleTTL unset (0)
+
+	for _, n := range []int32{-1, MaxIdleTTLSeconds + 1} {
+		if _, err := svc.SetIdleTTL(context.Background(), "web", n); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("SetIdleTTL(%d) should be core.ErrBadRequest, got %v", n, err)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 0 {
+		t.Errorf("a rejected idle-TTL must not touch spec.idleTTLSeconds, got %d", got)
+	}
+}
+
+func TestSetIdleTTLManagedAppWritesRowThenCR(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.SetIdleTTL(context.Background(), "web", 600); err != nil {
+		t.Fatalf("SetIdleTTL: %v", err)
+	}
+	if len(rec.idleTTLCalls) != 1 || rec.idleTTLCalls[0].id != "srv-1" || rec.idleTTLCalls[0].seconds != 600 {
+		t.Fatalf("want row write [srv-1 600], got %v", rec.idleTTLCalls)
+	}
+	if got := getApp(t, cl, "web").Spec.IdleTTLSeconds; got != 600 {
+		t.Errorf("CR spec.idleTTLSeconds = %d, want 600", got)
+	}
+}
+
+func TestSetIdleTTLUnmanagedAppSkipsStore(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, sampleApp("hand"))
+
+	if _, err := svc.SetIdleTTL(context.Background(), "hand", 300); err != nil {
+		t.Fatalf("SetIdleTTL: %v", err)
+	}
+	if len(rec.idleTTLCalls) != 0 {
+		t.Fatalf("unmanaged app must not touch the store, got %v", rec.idleTTLCalls)
+	}
+	if got := getApp(t, cl, "hand").Spec.IdleTTLSeconds; got != 300 {
+		t.Errorf("CR spec.idleTTLSeconds = %d, want 300", got)
 	}
 }
 

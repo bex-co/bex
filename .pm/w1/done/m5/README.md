@@ -1,6 +1,6 @@
 # w1 · m5 — Build & deploy from git, in-cluster
 
-**Worker:** worker1 **Goal:** Make `App.spec.repo` (build-from-git) work **in-cluster** on containerd nodes, image pullable by nodes, and redeploy on push. Today the operator shells `docker build` (impossible on containerd — the demo built locally and `ctr`-imported by hand). **Status:** in progress — t001–t003 DONE (2026-07-08, verified live); t004 (Simplify) + t005 (Test coverage) remain.
+**Worker:** worker1 **Goal:** Make `App.spec.repo` (build-from-git) work **in-cluster** on containerd nodes, image pullable by nodes, and redeploy on push. Today the operator shells `docker build` (impossible on containerd — the demo built locally and `ctr`-imported by hand). **Status:** DONE (2026-07-09) — in-cluster BuildKit builds, verified live; simplified + tested; unblocks w2/m2 t004.
 
 ## Tasks (in order)
 
@@ -9,8 +9,8 @@
 | t001 | Build via BuildKit/kpack Job → push to Zot — **DONE**                        | 30m | —          |
 | t002 | Verify build-from-git end-to-end (node pulls Zot) — **DONE**                 | 25m | t001       |
 | t003 | Push webhook shipped in w2 (deploy-from-chat) — verify vs m5 acceptance, close — **DONE** | 15m | —          |
-| t004 | Simplify — `/simplify` over the code this milestone changed                  | 20m | t002, t003 |
-| t005 | Test coverage — meaningful tests for the build path (+ webhook gap-fill)     | 30m | t002, t003 |
+| t004 | Simplify — `/simplify` over the code this milestone changed — **DONE**       | 20m | t002, t003 |
+| t005 | Test coverage — meaningful tests for the build path (+ webhook gap-fill) — **DONE** | 30m | t002, t003 |
 
 ## Definition of done
 
@@ -35,7 +35,10 @@ Setting `App.spec.repo` builds the image in-cluster (Dockerfile or CNB), pushes 
 - **t001 — in-cluster BuildKit Job** (`lego/operator/internal/build/build.go`): `Build()` no longer shells `docker`/`pack`; it dispatches a **rootless-BuildKit** Kubernetes Job that git-clones the repo, builds the Dockerfile, and pushes `<registry>/<name>:gen-<generation>` to Zot, blocking until the Job completes (idempotent per revision). Wired `BEX_REGISTRY`→Zot + `BEX_BUILD_NAMESPACE`; `batch/jobs` RBAC added, codegen re-run. **CNB (`builder: buildpack`) is out** — needs kpack, so it reports a clear error instead of silently failing on containerd.
 - **t002 — verified live**: ran the operator against a real apiserver → a repo-backed App dispatched a valid `bld-<name>-gen-1` Job that a containerd node **scheduled and ran rootless**; BuildKit git-cloned and **built a real image** (exported manifest + config), failing only at the push because no Zot was in the bare test cluster (a platform concern). Verification also **caught + fixed a real bug**: BuildKit was fetching the `https://…` URL as an HTTP file (parsing GitHub's HTML as the Dockerfile) — fixed by forcing a git context (`.git` suffix).
 - **t003 — done**: the bex-api webhook satisfies m5's acceptance; this milestone added the missing **`autoDeploy` gate** (webhook skips `autoDeploy:false` Apps; repo-backed creates default `autoDeploy:true`, threaded across REST/GraphQL/MCP/bex.yml).
-- **Remaining:** t004 (run `/simplify` over the changed code) + t005 (a dedicated test-coverage pass — build unit tests already added in `build_test.go`; t005 gap-fills the webhook side). **Unblocks w2/m2 t004** (deploy-from-chat live acceptance).
+- **t004 — simplify**: removed the speculative, unused `build.Options.Log` field (+ its `io` import). Left `CNBBuilder` and the `Builder*` enum constants — they're the documented `BEX_CNB_BUILDER` / `spec.builder` contract, reserved for kpack (a "not yet", not dead code).
+- **t005 — test coverage**: `build_test.go` unit-tests the Job shape, `gitContext`, `JobName`/`ImageRef`, and the adopt-completed / report-failed / create-when-absent / reject-buildpack paths; a new controller **envtest** (`app_controller_test.go`) proves the integration — a repo-backed App whose per-generation build Job is Complete gets a Deployment running the built image and records `status.image` (so a no-op reconcile never rebuilds). The autoDeploy webhook gate is covered in bex-api's `deploy_test.go`.
+
+**Unblocks w2/m2 t004** (deploy-from-chat live acceptance). **Follow-ups** (noted, not blocking): kpack for CNB builds; a `spec.rootDir` for repos whose Dockerfile isn't at the root; making the build wait async rather than blocking the reconcile.
 
 ## Notes
 

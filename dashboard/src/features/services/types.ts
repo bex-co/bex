@@ -19,6 +19,13 @@ export interface ServiceView {
   revision: string | null;
   /** Render's plan spelling (e.g. "pro_plus"), or null for an untiered App. */
   plan: string | null;
+  /**
+   * Free-tier auto-sleep window in seconds (bex extension, `spec.idleTTLSeconds`);
+   * 0 means the controller default. null when the wire result didn't select it
+   * (the list query omits it — only the detail `server` query fetches it for the
+   * Settings tab).
+   */
+  idleTTLSeconds: number | null;
 }
 
 /** The lifecycle verbs the row exposes, named after bex-api's Render mutations. */
@@ -55,7 +62,11 @@ export interface CustomDomainView {
 export type ServiceStatusKey =
   | "running"
   | "suspended"
-  | "hibernated"
+  // "sleeping" = auto-hibernated free-tier App (phase Hibernated && not
+  // manually suspended). Distinct from "suspended" so the UI can explain
+  // "wakes on the next request" — a deliberate bex divergence from Render,
+  // which keeps spun-down free services showing as live.
+  | "sleeping"
   | "pending"
   | "building"
   | "deploying"

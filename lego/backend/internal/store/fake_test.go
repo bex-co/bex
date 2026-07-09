@@ -210,3 +210,15 @@ func (m *memStore) SetAppReplicas(_ context.Context, id string, replicas int32) 
 	m.apps[id] = a
 	return nil
 }
+
+func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	a.IdleTTLSeconds = seconds
+	m.apps[id] = a
+	return nil
+}

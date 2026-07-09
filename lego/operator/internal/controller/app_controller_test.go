@@ -22,6 +22,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,6 +31,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -171,6 +174,76 @@ var _ = Describe("App Controller", func() {
 			reconcileN()
 			err := k8sClient.Get(ctx, nn, &networkingv1.Ingress{})
 			Expect(errors.IsNotFound(err)).To(BeTrue(), "Ingress should be deleted when no hosts remain")
+		})
+	})
+
+	Context("When building an App from git in-cluster", func() {
+		const name = "gitbuild-app"
+		ctx := context.Background()
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+
+		var r *AppReconciler
+		BeforeEach(func() {
+			r = &AppReconciler{
+				Client: k8sClient, Scheme: k8sClient.Scheme(),
+				Mode: ModeKubernetes, Registry: "zot.test:5000", BuildNamespace: "default",
+			}
+		})
+		reconcileN := func() {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		AfterEach(func() {
+			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcileN()
+			}
+			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+				Name: build.JobName(name, "gen-1"), Namespace: "default"}})
+		})
+
+		It("adopts the completed BuildKit Job and deploys its built image", func() {
+			By("creating a repo-backed App (no prebuilt image)")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Repo: "https://github.com/bex-co/hello", Branch: "main",
+					Builder: "dockerfile", Port: 3000,
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+
+			By("simulating the finished in-cluster build: a Complete Job named per generation")
+			// The image tag is the App's generation (1 at create); the operator's
+			// Build() adopts this already-Complete Job instead of starting a build,
+			// so the reconcile proceeds straight to running the built image.
+			image := "zot.test:5000/" + name + ":gen-1"
+			job := build.BuildJob(build.Options{
+				Name: name, Revision: "gen-1", Registry: "zot.test:5000",
+				Namespace: "default", Repo: app.Spec.Repo, Ref: "main",
+			}, image)
+			Expect(k8sClient.Create(ctx, job)).To(Succeed())
+			now := metav1.Now()
+			job.Status.StartTime = &now
+			job.Status.CompletionTime = &now
+			job.Status.Conditions = []batchv1.JobCondition{
+				{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
+				{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+			}
+			Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+
+			By("reconciling: the Deployment runs the in-cluster-built image (no host docker)")
+			reconcileN()
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			Expect(dep.Spec.Template.Spec.Containers[0].Image).To(Equal(image))
+
+			By("the App records the built image so a no-op reconcile never rebuilds")
+			got := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, got)).To(Succeed())
+			Expect(got.Status.Image).To(Equal(image))
 		})
 	})
 

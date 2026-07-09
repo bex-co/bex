@@ -46,6 +46,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"phase":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
 		"replicas": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
 		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Revision })},
+		// idleTTLSeconds is the free-tier auto-sleep window (bex extension, no
+		// Render counterpart); the Settings tab reads it and setIdleTimeout writes it.
+		"idleTTLSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.IdleTTLSeconds })},
 		// Env vars are nested under the service, Render-dashboard-shaped (captured
 		// live: Render's `serviceEnvVarKeys` reads `service{ envVarKeys{ id key } }`):
 		// envVarKeys lists keys only; envVar(key) fetches one variable's value on
@@ -272,6 +275,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Scale(p.Context, p.Args["id"].(string), int32(p.Args["numInstances"].(int)))
+			},
+		},
+		// setIdleTimeout: bex extension (no Render counterpart) — sets the free-tier
+		// auto-sleep window (spec.idleTTLSeconds; 0 restores the controller default).
+		// Out-of-range is a GraphQL error (core.ErrBadRequest).
+		"setIdleTimeout": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":             &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"idleTTLSeconds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetIdleTTL(p.Context, p.Args["id"].(string), int32(p.Args["idleTTLSeconds"].(int)))
 			},
 		},
 		// Custom domain mutations — Render-dashboard-shaped operation names.

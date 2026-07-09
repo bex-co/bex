@@ -1,0 +1,10 @@
+# setIdleTimeout is a bex extension (no Render counterpart): it sets the
+# free-tier auto-sleep window (spec.idleTTLSeconds; 0 = the controller default),
+# backing the Settings tab's idle-timeout control (backend/internal/apps/graphql.go).
+mutation SetIdleTimeout($id: String!, $idleTTLSeconds: Int!) {
+  setIdleTimeout(id: $id, idleTTLSeconds: $idleTTLSeconds) {
+    id
+    idleTTLSeconds
+    phase
+  }
+}

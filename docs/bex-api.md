@@ -49,7 +49,7 @@ Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the 
 | `POST /v1/services` | create-or-update a service (upsert) | 201 |
 | `GET /v1/services` | list `[{service, cursor}]` | 200 |
 | `GET /v1/services/{id}` | one service object | 200 |
-| `PATCH /v1/services/{id}` | update, e.g. the instance plan | 200 |
+| `PATCH /v1/services/{id}` | update `serviceDetails.plan` and/or the bex extra `serviceDetails.idleTTLSeconds` | 200 |
 | `POST /v1/services/{id}/restart` | `spec.restartedAt = now` | 200 |
 | `POST /v1/services/{id}/suspend` | `spec.suspended = true` | 202 |
 | `POST /v1/services/{id}/resume` | `spec.suspended = false` | 202 |
@@ -77,7 +77,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 ## GraphQL (Render dashboard compatible)
 
-`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `updateServicePlan(id, plan)`, `scaleService(id, numInstances)` and `createService(name, repo?, image?, branch?, plan?, port?, replicas?)` (the create-or-update upsert — its name/shape unconfirmed against a live Render capture, like the two before it); type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
+`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `updateServicePlan(id, plan)`, `scaleService(id, numInstances)`, `setIdleTimeout(id, idleTTLSeconds)` (the free-tier auto-sleep window — no Render counterpart, w1/m4.5) and `createService(name, repo?, image?, branch?, plan?, port?, replicas?)` (the create-or-update upsert — its name/shape unconfirmed against a live Render capture, like the two before it); type `Service` with the string `suspended` enum and the bex-native `idleTTLSeconds` field. Every resolver delegates to the same feature `Service`.
 
 ```sh
 curl -X POST https://api.bex.co/graphql \
@@ -142,6 +142,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
+| `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
 | `list_logs` | `{resource: [id, ...], type?, text?, startTime?, endTime?, limit?}` | `QueryLogs` | `{logs: [{timestamp, message, labels}, ...]}` |
 | `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 | `list_postgres_instances` | — | `ListPostgres` | `{postgres: [postgres, ...]}` |

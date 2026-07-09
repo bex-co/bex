@@ -9,7 +9,7 @@ import type { ServiceStatusKey } from "@/features/services/types";
 export const STATUS_LABEL: Record<ServiceStatusKey, keyof typeof en> = {
   running: "services.statusRunning",
   suspended: "services.statusSuspended",
-  hibernated: "services.statusHibernated",
+  sleeping: "services.statusSleeping",
   pending: "services.statusPending",
   building: "services.statusBuilding",
   deploying: "services.statusDeploying",

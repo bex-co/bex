@@ -34,6 +34,10 @@ import (
 type patchServiceRequest struct {
 	ServiceDetails *struct {
 		Plan string `json:"plan"`
+		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
+		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
+		// distinct from an explicit 0 (restore the controller default).
+		IdleTTLSeconds *int32 `json:"idleTTLSeconds"`
 	} `json:"serviceDetails"`
 }
 
@@ -184,14 +188,26 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		if req.ServiceDetails == nil || req.ServiceDetails.Plan == "" {
+		id := r.PathValue("id")
+		if req.ServiceDetails == nil || (req.ServiceDetails.Plan == "" && req.ServiceDetails.IdleTTLSeconds == nil) {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
-		app, err := s.SetPlan(r.Context(), r.PathValue("id"), req.ServiceDetails.Plan)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
+		// Apply the supported fields in turn; the no-op guard above guarantees at
+		// least one runs, so app is always set by the time we serialize.
+		var app AppView
+		var err error
+		if req.ServiceDetails.Plan != "" {
+			if app, err = s.SetPlan(r.Context(), id, req.ServiceDetails.Plan); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.ServiceDetails.IdleTTLSeconds != nil {
+			if app, err = s.SetIdleTTL(r.Context(), id, *req.ServiceDetails.IdleTTLSeconds); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderService(app))
 	}

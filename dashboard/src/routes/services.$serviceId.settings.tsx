@@ -10,6 +10,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
+import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 
@@ -41,10 +42,17 @@ export function ServiceSettingsPage() {
           {!service && loading ? (
             <Skeleton className="h-10 w-full" />
           ) : (
-            <InstanceTypeRow
-              serviceId={serviceId}
-              plan={service?.plan ?? null}
-            />
+            <div className="space-y-6">
+              <InstanceTypeRow
+                serviceId={serviceId}
+                plan={service?.plan ?? null}
+              />
+              <IdleTimeoutRow
+                serviceId={serviceId}
+                plan={service?.plan ?? null}
+                idleTTLSeconds={service?.idleTTLSeconds ?? 0}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

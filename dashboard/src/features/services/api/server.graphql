@@ -19,5 +19,6 @@ query Server($id: String!) {
     replicas
     revision
     plan
+    idleTTLSeconds
   }
 }

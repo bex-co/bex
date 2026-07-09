@@ -9,8 +9,8 @@
 - [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
 - [ ] **m3** — Elastic substrate: bin-pack + autoscale (7 tasks) ← from `002`, `004` (t001 done; retrofitted to current `/pm` canon 2026-07-08)
 - [x] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003` — done 2026-07-08, moved to `done/m4/`
-- [ ] **m4.5** — Sleep in the dashboard: hibernated state, idle-timeout setting, wake UX (6 tasks) ← user request 2026-07-08, UI half of m4 (unblocked — m4 shipped 2026-07-08)
-- [ ] **m5** — Build & deploy from git, in-cluster (5 tasks; t001–t003 DONE 2026-07-08 — in-cluster BuildKit builds, verified live, unblocks w2/m2 t004; t004 Simplify + t005 Test coverage remain) ← from `008` (retrofitted 2026-07-08; t003 webhook shipped by w2 deploy-from-chat — reduced to verify-and-close)
+- [x] **m4.5** — Sleep in the dashboard: hibernated state, idle-timeout setting, wake UX (6 tasks; DONE 2026-07-09 — Sleeping badge + idle-timeout control, verified live) ← user request 2026-07-08, UI half of m4, moved to `done/m4.5/`
+- [x] **m5** — Build & deploy from git, in-cluster (5 tasks; DONE 2026-07-09 — in-cluster BuildKit builds, verified live, simplified + tested; unblocks w2/m2 t004) ← from `008`, moved to `done/m5/`
 - [x] **m7** — Prod hardening: network · secrets · images (6 tasks) ← from `010` (+ OpenBao backup, added 2026-07-08) — done 2026-07-08, moved to `done/m7/`
 - [x] **m8** — Instance tiers: one catalog, Render-shaped plan API, limits everywhere (6 tasks) ← from architecture discussion 2026-07-08 (metrics page's "No limit configured" gap; Render compute-plans ladder) — done 2026-07-08, moved to `done/m8/`
 - [ ] **m9** — Tenant onboarding: real workspaces + OpenFGA enforced in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (m2 deferrals; prod authz is allow-all)

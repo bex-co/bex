@@ -55,6 +55,10 @@ type IntentStore interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
+	// idle-timeout verb on store-managed Apps, same row-first rationale as
+	// SetAppReplicas (the projector owns spec.idleTTLSeconds).
+	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
 	// AddDomain appends a custom domain row. Idempotent — conflict silently
 	// ignored. The projector carries it into spec.hosts[] on the next resync.
 	AddDomain(ctx context.Context, appID, host string) error
@@ -81,6 +85,11 @@ type AppView struct {
 	Plan      string `json:"plan,omitempty"`
 	Revision  string `json:"revision"`
 	CreatedAt string `json:"createdAt"`
+	// IdleTTLSeconds is how long a free-tier App may be idle before it
+	// auto-hibernates ("sleep = free", spec.idleTTLSeconds). 0 = the controller
+	// default. A bex extension with no Render counterpart (Render's spin-down
+	// window is fixed) — the dashboard's Settings tab reads/writes it.
+	IdleTTLSeconds int32 `json:"idleTTLSeconds"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -93,16 +102,17 @@ func view(a *appv1alpha1.App) AppView {
 		plan = t.RenderPlan
 	}
 	return AppView{
-		Name:      a.Name,
-		Phase:     string(a.Status.Phase),
-		URL:       a.Status.URL,
-		URLs:      a.Status.URLs,
-		Image:     a.Status.Image,
-		Replicas:  a.Spec.Replicas,
-		Suspended: a.Spec.Suspended,
-		Plan:      plan,
-		Revision:  a.Status.ActiveRevision,
-		CreatedAt: created,
+		Name:           a.Name,
+		Phase:          string(a.Status.Phase),
+		URL:            a.Status.URL,
+		URLs:           a.Status.URLs,
+		Image:          a.Status.Image,
+		Replicas:       a.Spec.Replicas,
+		Suspended:      a.Spec.Suspended,
+		Plan:           plan,
+		Revision:       a.Status.ActiveRevision,
+		CreatedAt:      created,
+		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
 	}
 }
 
@@ -440,6 +450,31 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	return s.writeThroughStore(ctx, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
 		func(a *appv1alpha1.App) { a.Spec.Replicas = replicas })
+}
+
+// MaxIdleTTLSeconds bounds the idle-timeout a caller may set (7 days). Free-tier
+// Apps auto-hibernate after this many idle seconds; 0 means the controller
+// default. A generous ceiling — the point is "sleep quickly to save money", not
+// an indefinite keep-alive that would defeat the free tier.
+const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
+
+// SetIdleTTL sets how long the App may idle before it auto-hibernates
+// (spec.idleTTLSeconds; "sleep = free", w1/m4). 0 restores the controller
+// default. A bex extension with no Render counterpart — Render's free spin-down
+// window is fixed — so it writes spec.idleTTLSeconds the same row-first way as
+// Scale (the projector owns the field). Only free-tier Apps ever sleep, but the
+// value is stored regardless so it takes effect if the plan later changes to
+// free; the dashboard is what gates the control per tier.
+func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if seconds < 0 || seconds > MaxIdleTTLSeconds {
+		return AppView{}, fmt.Errorf("%w: idleTTLSeconds must be 0-%d", core.ErrBadRequest, MaxIdleTTLSeconds)
+	}
+	return s.writeThroughStore(ctx, name,
+		func(ctx context.Context, id string) error { return s.Store.SetAppIdleTTL(ctx, id, seconds) },
+		func(a *appv1alpha1.App) { a.Spec.IdleTTLSeconds = seconds })
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.

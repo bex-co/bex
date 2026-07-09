@@ -39,10 +39,11 @@ type renderService struct {
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
 
 	// bex-native superset (ignored by Render clients).
-	Phase    string   `json:"phase,omitempty"`
-	Replicas int32    `json:"replicas"`
-	Revision string   `json:"revision,omitempty"`
-	URLs     []string `json:"urls,omitempty"`
+	Phase          string   `json:"phase,omitempty"`
+	Replicas       int32    `json:"replicas"`
+	Revision       string   `json:"revision,omitempty"`
+	URLs           []string `json:"urls,omitempty"`
+	IdleTTLSeconds int32    `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item
@@ -75,6 +76,7 @@ func toRenderService(a AppView) renderService {
 		Replicas:       a.Replicas,
 		Revision:       a.Revision,
 		URLs:           a.URLs,
+		IdleTTLSeconds: a.IdleTTLSeconds,
 	}
 }
 

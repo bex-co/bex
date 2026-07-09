@@ -56,6 +56,13 @@ type scaleArgs struct {
 	NumInstances int32  `json:"numInstances" jsonschema:"the desired number of running instances (1-100)"`
 }
 
+// idleTimeoutArgs is update_idle_timeout's input — the free-tier auto-sleep
+// window in seconds (0 = controller default). A bex extension, no Render tool.
+type idleTimeoutArgs struct {
+	ServiceID      string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	IdleTTLSeconds int32  `json:"idleTTLSeconds" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -192,6 +199,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.Scale(ctx, in.ServiceID, in.NumInstances)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_idle_timeout",
+		Description: "Set a service's idle timeout: seconds a free-tier service may idle before it auto-sleeps (0 = controller default). bex extension over Render's MCP (Render's spin-down window is fixed).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idleTimeoutArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetIdleTTL(ctx, in.ServiceID, in.IdleTTLSeconds)
 		if err != nil {
 			return nil, renderService{}, err
 		}
