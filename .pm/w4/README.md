@@ -26,4 +26,5 @@
 ## Inbox
 
 - `003.md` — GitHub social login via Kratos `oidc` — still parked on its two blockers (OAuth-app ownership for self-hosters; local E2E story)
+- `006.md` — Account session management (Kratos `/sessions` list + sign-out-everywhere card in Settings→Security) — sub-hour; ride alongside m11 ← `/pm-brainstorm for w4` 2026-07-09
 > `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; notes moved to `done/`.
