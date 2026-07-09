@@ -62,7 +62,7 @@ func sampleApp(name string) *appv1alpha1.App {
 
 func fixedNow() time.Time { return time.Unix(1_000_000, 0).UTC() }
 
-func newService(store SecretStore, objs ...client.Object) *Service {
+func newService(store core.SecretKV, objs ...client.Object) *Service {
 	return &Service{Base: &core.Base{Client: fakeClient(objs...), Namespace: "default", Clock: fixedNow}, Store: store}
 }
 
@@ -84,8 +84,9 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	return &a
 }
 
-// fakeSecretStore is an in-memory SecretStore. failGet/failPut inject store
-// outages so the error paths are exercised too.
+// fakeSecretStore is an in-memory core.SecretKV, keyed by logical path (e.g.
+// "services/web/env"). failGet/failPut inject store outages so the error paths are
+// exercised too.
 type fakeSecretStore struct {
 	m       map[string]map[string]string
 	deletes int
@@ -97,33 +98,53 @@ func newFakeSecretStore() *fakeSecretStore {
 	return &fakeSecretStore{m: map[string]map[string]string{}}
 }
 
-func (f *fakeSecretStore) GetEnv(_ context.Context, service string) (map[string]string, error) {
+func (f *fakeSecretStore) Get(_ context.Context, path string) (map[string]string, error) {
 	if f.failGet != nil {
 		return nil, f.failGet
 	}
 	out := map[string]string{}
-	for k, v := range f.m[service] {
+	for k, v := range f.m[path] {
 		out[k] = v
 	}
 	return out, nil
 }
 
-func (f *fakeSecretStore) PutEnv(_ context.Context, service string, env map[string]string) error {
+func (f *fakeSecretStore) Put(_ context.Context, path string, data map[string]string) error {
 	if f.failPut != nil {
 		return f.failPut
 	}
 	cp := map[string]string{}
-	for k, v := range env {
+	for k, v := range data {
 		cp[k] = v
 	}
-	f.m[service] = cp
+	f.m[path] = cp
 	return nil
 }
 
-func (f *fakeSecretStore) DeleteEnv(_ context.Context, service string) error {
+func (f *fakeSecretStore) Delete(_ context.Context, path string) error {
 	f.deletes++
-	delete(f.m, service)
+	delete(f.m, path)
 	return nil
+}
+
+func (f *fakeSecretStore) List(_ context.Context, path string) ([]string, error) {
+	prefix := path + "/"
+	seen := map[string]bool{}
+	var out []string
+	for k := range f.m {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		rest := strings.TrimPrefix(k, prefix)
+		if i := strings.IndexByte(rest, '/'); i >= 0 {
+			rest = rest[:i]
+		}
+		if !seen[rest] {
+			seen[rest] = true
+			out = append(out, rest)
+		}
+	}
+	return out, nil
 }
 
 // fakeChecker answers authorization uniformly and records the last relation.
@@ -151,8 +172,8 @@ func TestEnvVars_RoundTripAndMaterialize(t *testing.T) {
 	if len(got) != 2 || got[0].Key != "APP_KEY" || got[1].Key != "FOO" {
 		t.Fatalf("SetEnvVars should return key-sorted set, got %+v", got)
 	}
-	if store.m["web"]["APP_KEY"] != "s3cret" || store.m["web"]["FOO"] != "bar" {
-		t.Fatalf("store not written: %+v", store.m["web"])
+	if store.m[envPath("web")]["APP_KEY"] != "s3cret" || store.m[envPath("web")]["FOO"] != "bar" {
+		t.Fatalf("store not written: %+v", store.m[envPath("web")])
 	}
 
 	// Materialized into <app>-env, owned by the App, and the App consumes it + rolls.
@@ -179,8 +200,8 @@ func TestEnvVars_RoundTripAndMaterialize(t *testing.T) {
 	if err := svc.DeleteEnvVar(ctx, "web", "APP_KEY"); err != nil {
 		t.Fatalf("DeleteEnvVar last: %v", err)
 	}
-	if store.deletes != 1 || len(store.m["web"]) != 0 {
-		t.Errorf("emptying the set should DeleteEnv once: deletes=%d m=%+v", store.deletes, store.m["web"])
+	if store.deletes != 1 || len(store.m[envPath("web")]) != 0 {
+		t.Errorf("emptying the set should DeleteEnv once: deletes=%d m=%+v", store.deletes, store.m[envPath("web")])
 	}
 }
 
@@ -196,8 +217,8 @@ func TestEnvVar_SingleKey(t *testing.T) {
 	if err != nil || got.Key != "ADDED" || got.Value != "2" {
 		t.Fatalf("SetEnvVar: %+v err=%v", got, err)
 	}
-	if store.m["web"]["KEEP"] != "1" || store.m["web"]["ADDED"] != "2" {
-		t.Fatalf("SetEnvVar should merge, not replace: %+v", store.m["web"])
+	if store.m[envPath("web")]["KEEP"] != "1" || store.m[envPath("web")]["ADDED"] != "2" {
+		t.Fatalf("SetEnvVar should merge, not replace: %+v", store.m[envPath("web")])
 	}
 	one, err := svc.GetEnvVar(ctx, "web", "ADDED")
 	if err != nil || one.Value != "2" {
@@ -258,7 +279,7 @@ func TestEnvVars_Errors(t *testing.T) {
 		if !strings.Contains(err.Error(), "BAD KEY") || strings.Contains(err.Error(), "topsecret") {
 			t.Errorf("error should name the key, never the value: %v", err)
 		}
-		if _, ok := store.m["web"]; ok {
+		if _, ok := store.m[envPath("web")]; ok {
 			t.Error("invalid write should not have stored anything")
 		}
 	})
@@ -339,8 +360,8 @@ func TestREST_EnvVars(t *testing.T) {
 
 	// single-key PUT upserts (merge), body {value}.
 	_ = json.Unmarshal(serveREST(svc, "PUT", "/v1/services/web/env-vars/NEW", `{"value":"z"}`).Body.Bytes(), &one)
-	if one.Key != "NEW" || one.Value != "z" || store.m["web"]["FOO"] != "bar" {
-		t.Fatalf("single PUT should merge: %+v store=%+v", one, store.m["web"])
+	if one.Key != "NEW" || one.Value != "z" || store.m[envPath("web")]["FOO"] != "bar" {
+		t.Fatalf("single PUT should merge: %+v store=%+v", one, store.m[envPath("web")])
 	}
 
 	// DELETE one => 204; unknown key => 404; /v1/apps alias works.
@@ -403,13 +424,13 @@ func TestMCP_EnvVars(t *testing.T) {
 
 	var res envVarsResult
 	call("update_env_vars", map[string]any{"serviceId": "web", "envVars": []map[string]any{{"key": "FOO", "value": "bar"}}}, &res)
-	if len(res.EnvVars) != 1 || store.m["web"]["FOO"] != "bar" {
-		t.Fatalf("update_env_vars: %+v store=%+v", res.EnvVars, store.m["web"])
+	if len(res.EnvVars) != 1 || store.m[envPath("web")]["FOO"] != "bar" {
+		t.Fatalf("update_env_vars: %+v store=%+v", res.EnvVars, store.m[envPath("web")])
 	}
 	var single EnvVarView
 	call("set_env_var", map[string]any{"serviceId": "web", "key": "NEW", "value": "z"}, &single)
-	if single.Key != "NEW" || store.m["web"]["FOO"] != "bar" {
-		t.Fatalf("set_env_var should merge: %+v", store.m["web"])
+	if single.Key != "NEW" || store.m[envPath("web")]["FOO"] != "bar" {
+		t.Fatalf("set_env_var should merge: %+v", store.m[envPath("web")])
 	}
 	call("get_env_var", map[string]any{"serviceId": "web", "key": "FOO"}, &single)
 	if single.Value != "bar" {
@@ -421,8 +442,8 @@ func TestMCP_EnvVars(t *testing.T) {
 	}
 	var del deleteEnvVarResult
 	call("delete_env_var", map[string]any{"serviceId": "web", "key": "FOO"}, &del)
-	if !del.Deleted || len(store.m["web"]) != 1 {
-		t.Fatalf("delete_env_var: %+v store=%+v", del, store.m["web"])
+	if !del.Deleted || len(store.m[envPath("web")]) != 1 {
+		t.Fatalf("delete_env_var: %+v store=%+v", del, store.m[envPath("web")])
 	}
 }
 
@@ -503,16 +524,16 @@ func TestOpenBaoStore_RoundTrip(t *testing.T) {
 	s := newOpenBaoStoreForTest(t, srv.URL)
 	ctx := context.Background()
 
-	if got, err := s.GetEnv(ctx, "web"); err != nil || len(got) != 0 {
+	if got, err := s.Get(ctx, "services/web/env"); err != nil || len(got) != 0 {
 		t.Fatalf("empty GET: %+v err=%v", got, err)
 	}
 	if stub.logins != 1 {
 		t.Fatalf("first call logs in once, did %d", stub.logins)
 	}
-	if err := s.PutEnv(ctx, "web", map[string]string{"A": "1", "B": "2"}); err != nil {
+	if err := s.Put(ctx, "services/web/env", map[string]string{"A": "1", "B": "2"}); err != nil {
 		t.Fatalf("PutEnv: %v", err)
 	}
-	got, err := s.GetEnv(ctx, "web")
+	got, err := s.Get(ctx, "services/web/env")
 	if err != nil || got["A"] != "1" || got["B"] != "2" {
 		t.Fatalf("round-trip: %+v err=%v", got, err)
 	}
@@ -522,10 +543,10 @@ func TestOpenBaoStore_RoundTrip(t *testing.T) {
 	if _, ok := stub.data["default/services/web/env"]; !ok {
 		t.Fatalf("wrong KV path, have %v", stub.data)
 	}
-	if err := s.DeleteEnv(ctx, "web"); err != nil {
+	if err := s.Delete(ctx, "services/web/env"); err != nil {
 		t.Fatalf("DeleteEnv: %v", err)
 	}
-	if got, _ := s.GetEnv(ctx, "web"); len(got) != 0 {
+	if got, _ := s.Get(ctx, "services/web/env"); len(got) != 0 {
 		t.Fatalf("after delete, GET empty: %+v", got)
 	}
 }
@@ -535,7 +556,7 @@ func TestOpenBaoStore_ReloginOn403(t *testing.T) {
 	srv := httptest.NewServer(stub.handler())
 	t.Cleanup(srv.Close)
 	s := newOpenBaoStoreForTest(t, srv.URL)
-	if err := s.PutEnv(context.Background(), "web", map[string]string{"A": "1"}); err != nil {
+	if err := s.Put(context.Background(), "services/web/env", map[string]string{"A": "1"}); err != nil {
 		t.Fatalf("PutEnv should recover from a 403 via re-login: %v", err)
 	}
 	if stub.logins != 2 {
@@ -552,7 +573,7 @@ func TestOpenBaoStore_LoginFailure(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	s := newOpenBaoStoreForTest(t, srv.URL)
-	if _, err := s.GetEnv(context.Background(), "web"); err == nil {
+	if _, err := s.Get(context.Background(), "services/web/env"); err == nil {
 		t.Fatal("login failure should surface as an error")
 	}
 }

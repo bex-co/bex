@@ -118,6 +118,25 @@ type AppSpec struct {
 	// +optional
 	EnvFromSecret string `json:"envFromSecret,omitempty"`
 
+	// EnvFromSecrets names additional Secrets injected via envFrom, one per linked
+	// environment group (docs/secrets.md — environment groups: a "<evg-id>-env"
+	// Secret the env-groups API materializes and shares across services). These are
+	// wired BEFORE EnvFromSecret, so a service's own env var wins over a linked
+	// group's on a key collision; the operator-owned PORT still wins over all. Each
+	// is referenced as optional, so a group whose Secret is briefly absent never
+	// wedges the pod. Empty => no group env. See EnvFromSecret for the per-service set.
+	// +optional
+	EnvFromSecrets []string `json:"envFromSecrets,omitempty"`
+
+	// FilesFromSecrets names Secrets whose keys are projected as files under
+	// /etc/secrets (one file per key) via a single projected volume: the service's
+	// own secret files ("<name>-files", docs/secrets.md — secret files) plus each
+	// linked environment group's files ("<evg-id>-files"). All sources merge into
+	// the one /etc/secrets mount; each is optional, so an absent source contributes
+	// no files rather than failing the mount. Empty => no /etc/secrets volume.
+	// +optional
+	FilesFromSecrets []string `json:"filesFromSecrets,omitempty"`
+
 	// HealthCheckPath is the HTTP path intended for revision health checks.
 	// Declared for the bex.yml/Render contract; the operator does not read it
 	// yet — Running is gated on Deployment replica readiness instead.

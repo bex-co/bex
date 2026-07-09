@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
@@ -64,6 +65,7 @@ type Server struct {
 	Postgres   *postgres.Service
 	KeyValue   *keyvalue.Service
 	Secrets    *secrets.Service
+	EnvGroups  *envgroups.Service
 	Workspaces *workspaces.Service
 	Usage      *usage.Service
 
@@ -107,7 +109,10 @@ type Deps struct {
 	MetricsFilterValues  metrics.MetricsFilterValuesSource
 	APIKeys              apikeys.APIKeyStore
 	Store                apps.IntentStore
-	Secrets              secrets.SecretStore
+	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
+	// feature and the env-groups feature read/write through (docs/secrets.md). One
+	// instance, wired into both services below. nil => those verbs 503.
+	Secrets core.SecretKV
 	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
@@ -153,10 +158,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
 		},
-		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
-		Postgres: &postgres.Service{Base: base, Selections: selections},
-		KeyValue: &keyvalue.Service{Base: base},
-		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
+		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
+		Postgres:  &postgres.Service{Base: base, Selections: selections},
+		KeyValue:  &keyvalue.Service{Base: base},
+		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
+		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
 		Workspaces: &workspaces.Service{
 			Base:       base,
 			Store:      d.WorkspaceStore,
@@ -206,6 +212,9 @@ func (s *Server) features() []any {
 	}
 	if s.Secrets != nil {
 		out = append(out, s.Secrets)
+	}
+	if s.EnvGroups != nil {
+		out = append(out, s.EnvGroups)
 	}
 	if s.Workspaces != nil {
 		out = append(out, s.Workspaces)
@@ -350,6 +359,7 @@ func (s *Server) graphqlHandler() http.Handler {
 		ctx := r.Context()
 		if s.Secrets != nil {
 			ctx = core.WithEnvVars(ctx, s.Secrets)
+			ctx = core.WithSecretFiles(ctx, s.Secrets)
 		}
 		result := graphql.Do(graphql.Params{
 			Schema:         s.schema,

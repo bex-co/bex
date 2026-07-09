@@ -92,6 +92,16 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = make([]EnvVar, len(*in))
 		copy(*out, *in)
 	}
+	if in.EnvFromSecrets != nil {
+		in, out := &in.EnvFromSecrets, &out.EnvFromSecrets
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.FilesFromSecrets != nil {
+		in, out := &in.FilesFromSecrets, &out.FilesFromSecrets
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Hosts != nil {
 		in, out := &in.Hosts, &out.Hosts
 		*out = make([]string, len(*in))

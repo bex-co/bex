@@ -321,14 +321,23 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		if !worker {
 			ports = []corev1.ContainerPort{{ContainerPort: int32(port)}}
 		}
-		dep.Spec.Template.Spec.Containers = []corev1.Container{{
+		container := corev1.Container{
 			Name:      "app",
 			Image:     image,
 			Env:       appEnv(app, port),
 			EnvFrom:   envFromSources(app),
 			Ports:     ports,
 			Resources: resourcesForTier(app.Spec.Tier),
-		}}
+		}
+		// Secret files: one projected /etc/secrets volume (the service's own
+		// "<name>-files" + each linked env group's files). Rebuilt every reconcile
+		// so a removed source drops out cleanly.
+		dep.Spec.Template.Spec.Volumes = nil
+		if vol, mount := secretFileMounts(app); vol != nil {
+			container.VolumeMounts = []corev1.VolumeMount{*mount}
+			dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
+		}
+		dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
@@ -741,12 +750,18 @@ func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string
 	if app.Spec.Command != "" {
 		container.Command = []string{"/bin/sh", "-c", app.Spec.Command}
 	}
+	spec := corev1.PodSpec{
+		RestartPolicy: corev1.RestartPolicyNever,
+	}
+	// Secret files reach the cron run's container the same way as a Deployment's.
+	if vol, mount := secretFileMounts(app); vol != nil {
+		container.VolumeMounts = []corev1.VolumeMount{*mount}
+		spec.Volumes = []corev1.Volume{*vol}
+	}
+	spec.Containers = []corev1.Container{container}
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Labels: labels},
-		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			Containers:    []corev1.Container{container},
-		},
+		Spec:       spec,
 	}
 }
 
@@ -882,18 +897,74 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 	return env
 }
 
-// envFromSources wires spec.envFromSecret to a Secret envFrom source — how the
-// env-vars API's materialized "<name>-env" Secret (docs/secrets.md) reaches the
-// container. Empty => no envFrom, unchanged behavior.
+// envFromSources wires the App's secret-backed env into the container: each linked
+// environment group's "<evg-id>-env" Secret (spec.envFromSecrets) FIRST, then the
+// service's own "<name>-env" Secret (spec.envFromSecret) LAST. Kubernetes applies
+// envFrom sources in order and the last wins on a key collision, so a service's own
+// variable overrides a linked group's — matching Render (docs/secrets.md). The
+// group sources are marked optional so a briefly-absent group Secret can't wedge
+// the pod; the service's own set keeps its original (non-optional) shape. Empty
+// spec => no envFrom, unchanged behavior.
 func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
-	if app.Spec.EnvFromSecret == "" {
-		return nil
+	var out []corev1.EnvFromSource
+	optional := true
+	for _, name := range app.Spec.EnvFromSecrets {
+		if name == "" {
+			continue
+		}
+		out = append(out, corev1.EnvFromSource{
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				Optional:             &optional,
+			},
+		})
 	}
-	return []corev1.EnvFromSource{{
-		SecretRef: &corev1.SecretEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: app.Spec.EnvFromSecret},
-		},
-	}}
+	if app.Spec.EnvFromSecret != "" {
+		out = append(out, corev1.EnvFromSource{
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: app.Spec.EnvFromSecret},
+			},
+		})
+	}
+	return out
+}
+
+// secretFilesVolumeName is the single projected volume carrying every secret-file
+// source, mounted read-only at secretFilesMountPath.
+const (
+	secretFilesVolumeName = "bex-secret-files"
+	secretFilesMountPath  = "/etc/secrets"
+)
+
+// secretFileMounts projects spec.filesFromSecrets into one read-only /etc/secrets
+// volume + mount (docs/secrets.md — secret files): each named Secret's keys become
+// files "/etc/secrets/<key>". A service's own files ("<name>-files") and each
+// linked group's files ("<evg-id>-files") merge into the single projected volume,
+// each source optional so an absent one contributes no files rather than failing
+// the mount. Empty spec => (nil, nil): no volume, unchanged behavior.
+func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount) {
+	var sources []corev1.VolumeProjection
+	optional := true
+	for _, name := range app.Spec.FilesFromSecrets {
+		if name == "" {
+			continue
+		}
+		sources = append(sources, corev1.VolumeProjection{
+			Secret: &corev1.SecretProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				Optional:             &optional,
+			},
+		})
+	}
+	if len(sources) == 0 {
+		return nil, nil
+	}
+	vol := &corev1.Volume{
+		Name:         secretFilesVolumeName,
+		VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: sources}},
+	}
+	mount := &corev1.VolumeMount{Name: secretFilesVolumeName, MountPath: secretFilesMountPath, ReadOnly: true}
+	return vol, mount
 }
 
 // effectiveReplicas derives the Deployment size: spec.replicas (default 1),

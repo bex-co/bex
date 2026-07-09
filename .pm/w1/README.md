@@ -20,7 +20,7 @@
 - [x] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08 — done 2026-07-08, moved to `done/m13/` (shipped `docs/render-parity.md`; 5 gap notes filed: `008`–`011`, `w3/002`)
 - [x] **m14** — Key Value (Valkey/Redis) managed store: `KeyValue` CRD + reconciler (6 tasks) ← promoted from `007` 2026-07-08 (mechanism; REST/GraphQL/MCP surfaces done in w2/m7, UI in w5/m12) — done 2026-07-09, moved to `done/m14/`
 - [x] **m15** — Additional service types: background worker + cron job (8 tasks) ← promoted from `009` 2026-07-08 (static site split to `012`) — done 2026-07-09, moved to `done/m15/` (had been staged under `w7/m15/`)
-- [ ] **m16** — Config surfaces beyond env vars: environment groups + secret files (7 tasks) ← promoted from `010` 2026-07-08
+- [x] **m16** — Config surfaces beyond env vars: environment groups + secret files (7 tasks) ← promoted from `010` 2026-07-08
 - [ ] **m17** — Managed Postgres advanced: data-protection + lifecycle + access (8 tasks) ← promoted from `011` 2026-07-08 (HA/replicas split to `013`)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)

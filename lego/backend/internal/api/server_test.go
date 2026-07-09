@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -503,6 +504,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&apikeys.Service{Base: base, APIKeys: newFakeKeyStore()},
 		&postgres.Service{Base: base},
 		&secrets.Service{Base: base},
+		&envgroups.Service{Base: base},
 		&workspaces.Service{Base: base},
 	}
 	swept := 0
@@ -562,7 +564,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	h, srv := serverWith(t, base, deps)
 
 	// REST: every feature's noun answers (2xx/empty, not 404-route-missing).
-	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners"} {
+	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners", "/v1/env-groups", "/v1/services/web/secret-files"} {
 		if code := do(t, h, "GET", path, testToken, "").Code; code == 404 {
 			t.Errorf("REST route %q not registered (404)", path)
 		}
@@ -574,13 +576,13 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces"} {
+	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
 	}
 	mFields := schema.MutationType().Fields()
-	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace"} {
+	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile"} {
 		if mFields[f] == nil {
 			t.Errorf("Mutation.%s not wired into the single schema", f)
 		}
@@ -593,7 +595,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace"} {
+	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

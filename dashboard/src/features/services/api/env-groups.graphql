@@ -1,0 +1,42 @@
+# bex-api's environment-groups surface (backend/internal/envgroups, docs/bex-api.md):
+# a named, reusable set of env vars + secret files linkable to many services. Reads
+# are keys/names-only (no secret values); mutations return a success boolean (except
+# createEnvGroup, which returns the new group). Types are EnvGroupVar/EnvGroupSecretFile
+# (distinct from the apps feature's EnvVar/SecretFile).
+
+query EnvGroups {
+  envGroups {
+    id
+    name
+    serviceLinks
+    envVars {
+      key
+    }
+    secretFiles {
+      name
+    }
+  }
+}
+
+mutation CreateEnvGroup($name: String!) {
+  createEnvGroup(name: $name) {
+    id
+    name
+  }
+}
+
+mutation DeleteEnvGroup($id: String!) {
+  deleteEnvGroup(id: $id)
+}
+
+mutation SetEnvGroupVars($id: String!, $envVars: [EnvGroupVarInput!]!) {
+  setEnvGroupVars(id: $id, envVars: $envVars)
+}
+
+mutation LinkEnvGroup($id: String!, $serviceId: String!) {
+  linkEnvGroup(id: $id, serviceId: $serviceId)
+}
+
+mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {
+  unlinkEnvGroup(id: $id, serviceId: $serviceId)
+}

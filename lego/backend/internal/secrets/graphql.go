@@ -99,5 +99,29 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
+		"setSecretFile": &graphql.Field{ // add or update one secret file (merged)
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"content":   &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				content, _ := p.Args["content"].(string)
+				_, err := s.SetSecretFile(p.Context, p.Args["serviceId"].(string), p.Args["name"].(string), content)
+				return err == nil, err
+			},
+		},
+		"deleteSecretFile": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DeleteSecretFile(p.Context, p.Args["serviceId"].(string), p.Args["name"].(string))
+				return err == nil, err
+			},
+		},
 	}
 }

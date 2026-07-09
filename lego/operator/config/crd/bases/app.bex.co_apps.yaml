@@ -109,12 +109,35 @@ spec:
                   credentials — a per-app "<name>-env" Secret projected from the source of
                   truth. PORT still wins over any colliding key.
                 type: string
+              envFromSecrets:
+                description: |-
+                  EnvFromSecrets names additional Secrets injected via envFrom, one per linked
+                  environment group (docs/secrets.md — environment groups: a "<evg-id>-env"
+                  Secret the env-groups API materializes and shares across services). These are
+                  wired BEFORE EnvFromSecret, so a service's own env var wins over a linked
+                  group's on a key collision; the operator-owned PORT still wins over all. Each
+                  is referenced as optional, so a group whose Secret is briefly absent never
+                  wedges the pod. Empty => no group env. See EnvFromSecret for the per-service set.
+                items:
+                  type: string
+                type: array
               expose:
                 description: |-
                   Expose, when true and the controller's BEX_BASE_DOMAIN env is set, serves the
                   App at the platform hostname "<name>.<BEX_BASE_DOMAIN>" (in addition to Host
                   and Hosts, if given). Requires wildcard DNS for the base domain.
                 type: boolean
+              filesFromSecrets:
+                description: |-
+                  FilesFromSecrets names Secrets whose keys are projected as files under
+                  /etc/secrets (one file per key) via a single projected volume: the service's
+                  own secret files ("<name>-files", docs/secrets.md — secret files) plus each
+                  linked environment group's files ("<evg-id>-files"). All sources merge into
+                  the one /etc/secrets mount; each is optional, so an absent source contributes
+                  no files rather than failing the mount. Empty => no /etc/secrets volume.
+                items:
+                  type: string
+                type: array
               healthCheckPath:
                 default: /
                 description: |-

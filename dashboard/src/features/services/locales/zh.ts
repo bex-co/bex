@@ -324,6 +324,216 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法删除 {key}",
     description: "Toast on a failed env-var delete",
   },
+  "services.secretFilesTitle": {
+    message: "密钥文件",
+    description: "Environment tab secret-files section title",
+  },
+  "services.secretFilesDescription": {
+    message: "存放包含机密内容（证书、凭据）的文件，部署时挂载到此服务中。",
+    description: "Environment tab secret-files section description",
+  },
+  "services.secretFileColName": {
+    message: "文件名",
+    description: "Secret-files table column header (file name)",
+  },
+  "services.secretFileColContent": {
+    message: "内容",
+    description: "Secret-files table column header (file body)",
+  },
+  "services.secretFilesEmptyTitle": {
+    message: "暂无密钥文件",
+    description: "Secret-files empty-state title",
+  },
+  "services.secretFilesEmptyBody": {
+    message: "添加一个文件，将机密内容挂载到此服务中。",
+    description: "Secret-files empty-state body",
+  },
+  "services.secretFilesUnavailableTitle": {
+    message: "密钥文件不可用",
+    description:
+      "Secret-files state when the secret store is unconfigured (503)",
+  },
+  "services.secretFilesUnavailableBody": {
+    message: "此部署未配置密钥存储。",
+    description: "Secret-files unavailable-state body",
+  },
+  "services.secretFilesForbiddenTitle": {
+    message: "无权访问",
+    description: "Secret-files state when the caller lacks permission (403)",
+  },
+  "services.secretFilesForbiddenBody": {
+    message: "你没有查看此服务密钥文件的权限。",
+    description: "Secret-files forbidden-state body",
+  },
+  "services.secretFilesErrorTitle": {
+    message: "无法加载密钥文件",
+    description: "Secret-files generic error title",
+  },
+  "services.secretFilesErrorBody": {
+    message: "出错了，请重试。",
+    description: "Secret-files generic error body",
+  },
+  "services.secretFileAdd": {
+    message: "添加密钥文件",
+    description: "Secret-files button to open the add-file form",
+  },
+  "services.secretFileNamePlaceholder": {
+    message: "文件名.扩展名",
+    description: "Secret-files add-file name input placeholder",
+  },
+  "services.secretFileContentPlaceholder": {
+    message: "文件内容",
+    description: "Secret-files content input placeholder",
+  },
+  "services.secretFileInvalidName": {
+    message: "只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    description: "Secret-files add-file validation message for an invalid name",
+  },
+  "services.secretFileDeleteConfirmTitle": {
+    message: "删除 {name}？",
+    description: "Secret-file delete-confirmation dialog title",
+  },
+  "services.secretFileDeleteConfirmBody": {
+    message: "服务将在移除该文件后重新部署。",
+    description: "Secret-file delete-confirmation dialog body",
+  },
+  "services.secretFileSaveSuccess": {
+    message: "已保存 {name}",
+    description: "Toast on a successful secret-file add/update",
+  },
+  "services.secretFileSaveError": {
+    message: "无法保存 {name}",
+    description: "Toast on a failed secret-file add/update",
+  },
+  "services.secretFileDeleteSuccess": {
+    message: "已删除 {name}",
+    description: "Toast on a successful secret-file delete",
+  },
+  "services.secretFileDeleteError": {
+    message: "无法删除 {name}",
+    description: "Toast on a failed secret-file delete",
+  },
+  "services.envGroupsTitle": {
+    message: "环境变量组",
+    description: "Environment tab env-groups section title",
+  },
+  "services.envGroupsDescription": {
+    message: "可复用的环境变量与密钥文件集合，可链接到此服务及其他服务。",
+    description: "Environment tab env-groups section description",
+  },
+  "services.envGroupsEmptyTitle": {
+    message: "暂无环境变量组",
+    description: "Env-groups empty-state title",
+  },
+  "services.envGroupsEmptyBody": {
+    message: "创建一个组，在多个服务间共享配置。",
+    description: "Env-groups empty-state body",
+  },
+  "services.envGroupsUnavailableTitle": {
+    message: "环境变量组不可用",
+    description: "Env-groups state when the secret store is unconfigured (503)",
+  },
+  "services.envGroupsUnavailableBody": {
+    message: "此部署未配置密钥存储。",
+    description: "Env-groups unavailable-state body",
+  },
+  "services.envGroupsForbiddenTitle": {
+    message: "无权访问",
+    description: "Env-groups state when the caller lacks permission (403)",
+  },
+  "services.envGroupsForbiddenBody": {
+    message: "你没有查看环境变量组的权限。",
+    description: "Env-groups forbidden-state body",
+  },
+  "services.envGroupsErrorTitle": {
+    message: "无法加载环境变量组",
+    description: "Env-groups generic error title",
+  },
+  "services.envGroupsErrorBody": {
+    message: "出错了，请重试。",
+    description: "Env-groups generic error body",
+  },
+  "services.envGroupCreate": {
+    message: "创建组",
+    description: "Env-groups button to open the create-group form",
+  },
+  "services.envGroupCreateSubmit": {
+    message: "创建",
+    description: "Env-groups create-group form submit button",
+  },
+  "services.envGroupNamePlaceholder": {
+    message: "组名称",
+    description: "Env-groups create-group name input placeholder",
+  },
+  "services.envGroupNameLabel": {
+    message: "组名称",
+    description: "Env-groups create-group name input accessible label",
+  },
+  "services.envGroupInvalidName": {
+    message: "只能使用字母、数字、点、短横线和下划线。",
+    description:
+      "Env-groups create-group validation message for an invalid name",
+  },
+  "services.envGroupLinked": {
+    message: "已链接",
+    description: "Env-groups badge: this group is linked to the current service",
+  },
+  "services.envGroupEmptyContents": {
+    message: "暂无变量或文件。",
+    description: "Env-groups: shown when a group has no vars or secret files",
+  },
+  "services.envGroupLink": {
+    message: "链接",
+    description: "Env-groups button: attach this group to the current service",
+  },
+  "services.envGroupUnlink": {
+    message: "取消链接",
+    description: "Env-groups button: detach this group from the current service",
+  },
+  "services.envGroupDelete": {
+    message: "删除",
+    description: "Env-groups action: delete the group",
+  },
+  "services.envGroupDeleteConfirmTitle": {
+    message: "删除 {name}？",
+    description: "Env-group delete-confirmation dialog title",
+  },
+  "services.envGroupDeleteConfirmBody": {
+    message: "该组将从所有链接到它的服务中移除。此操作无法撤销。",
+    description: "Env-group delete-confirmation dialog body",
+  },
+  "services.envGroupCreateSuccess": {
+    message: "已创建 {name}",
+    description: "Toast on a successful env-group create",
+  },
+  "services.envGroupCreateError": {
+    message: "无法创建 {name}",
+    description: "Toast on a failed env-group create",
+  },
+  "services.envGroupDeleteSuccess": {
+    message: "组已删除",
+    description: "Toast on a successful env-group delete",
+  },
+  "services.envGroupDeleteError": {
+    message: "无法删除该组",
+    description: "Toast on a failed env-group delete",
+  },
+  "services.envGroupLinkSuccess": {
+    message: "组已链接",
+    description: "Toast on a successful env-group link",
+  },
+  "services.envGroupLinkError": {
+    message: "无法链接该组",
+    description: "Toast on a failed env-group link",
+  },
+  "services.envGroupUnlinkSuccess": {
+    message: "组已取消链接",
+    description: "Toast on a successful env-group unlink",
+  },
+  "services.envGroupUnlinkError": {
+    message: "无法取消链接该组",
+    description: "Toast on a failed env-group unlink",
+  },
   "services.navSettings": {
     message: "设置",
     description: "Service-detail nav item (settings tab)",

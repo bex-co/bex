@@ -78,6 +78,31 @@ export interface EnvVarKey {
 }
 
 /**
+ * One secret file on the Environment tab (per-service, Render dashboard shape:
+ * the list is names only; a file's content is fetched on demand on "Show").
+ * `id` is bex-api's per-file id, which equals the file name.
+ */
+export interface SecretFileName {
+  id: string;
+  name: string;
+}
+
+/**
+ * One environment group (a reusable bundle of env vars + secret files that can be
+ * linked to multiple services). Mapped from bex-api's nullable `EnvGroup` wire
+ * shape so the UI never re-derives the encoding. `serviceLinks` holds the service
+ * ids this group is attached to; `envVarKeys`/`secretFileNames` are read-only
+ * previews of the group's contents (keys/names only, no values).
+ */
+export interface EnvGroupView {
+  id: string;
+  name: string;
+  serviceLinks: string[];
+  envVarKeys: string[];
+  secretFileNames: string[];
+}
+
+/**
  * One custom domain on a service's Settings tab (Render dashboard shape). bex-api
  * uses the hostname as the opaque id (id === name), so this view carries just the
  * name. `verified` and `active` are derived from bex-api's string status fields

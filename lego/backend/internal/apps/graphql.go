@@ -66,6 +66,20 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			},
 			Resolve: envVarValueResolve,
 		},
+		// Secret files nest under the service the same way env vars do (through the
+		// core.SecretFileReader the root injects): secretFileNames lists names only;
+		// secretFile(name) fetches one file's contents on demand.
+		"secretFileNames": &graphql.Field{
+			Type:    graphql.NewList(secretFileGQLType),
+			Resolve: secretFileNamesResolve,
+		},
+		"secretFile": &graphql.Field{
+			Type: secretFileGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: secretFileContentResolve,
+		},
 		// plan is a bex extension (not yet captured live from Render's dashboard
 		// traffic — the instance-type field/mutation naming there is unconfirmed);
 		// it follows the existing suspendService/resumeService/restartServer
@@ -198,6 +212,42 @@ func envVarValueResolve(p graphql.ResolveParams) (any, error) {
 		return nil, core.ErrSecretsUnavailable
 	}
 	return r.EnvVarValue(p.Context, a.Name, p.Args["key"].(string))
+}
+
+// secretFileGQLType renders the kernel's neutral core.SecretFile ({id,name,content}),
+// nested under a service like env vars. id == name; the names-only list leaves
+// content empty (fetched per-file via secretFile(name)).
+var secretFileGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SecretFile",
+	Fields: graphql.Fields{
+		"id":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.ID })},
+		"name":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.Name })},
+		"content": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.Content })},
+	},
+})
+
+func secretFileNamesResolve(p graphql.ResolveParams) (any, error) {
+	a, ok := p.Source.(AppView)
+	if !ok {
+		return nil, nil
+	}
+	r, ok := core.SecretFilesFrom(p.Context)
+	if !ok {
+		return nil, core.ErrSecretsUnavailable
+	}
+	return r.SecretFileNames(p.Context, a.Name)
+}
+
+func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
+	a, ok := p.Source.(AppView)
+	if !ok {
+		return nil, nil
+	}
+	r, ok := core.SecretFilesFrom(p.Context)
+	if !ok {
+		return nil, core.ErrSecretsUnavailable
+	}
+	return r.SecretFileContent(p.Context, a.Name, p.Args["name"].(string))
 }
 
 // GraphQLQuery returns the App read fields (Render dashboard names services /

@@ -83,6 +83,52 @@ func TestEnvFromSources(t *testing.T) {
 	if len(got) != 1 || got[0].SecretRef == nil || got[0].SecretRef.Name != "web-env" {
 		t.Fatalf("want one SecretRef envFrom to web-env, got %v", got)
 	}
+
+	// Env groups (spec.envFromSecrets) come BEFORE the service's own set, so the
+	// service's own env var wins on a collision (kubelet applies envFrom in order,
+	// last wins). Group refs are optional; the service's own is not.
+	got = envFromSources(&appv1alpha1.App{Spec: appv1alpha1.AppSpec{
+		EnvFromSecret:  "web-env",
+		EnvFromSecrets: []string{"evg-1-env", "evg-2-env"},
+	}})
+	if len(got) != 3 {
+		t.Fatalf("want 3 envFrom sources, got %d: %v", len(got), got)
+	}
+	if got[0].SecretRef.Name != "evg-1-env" || got[1].SecretRef.Name != "evg-2-env" || got[2].SecretRef.Name != "web-env" {
+		t.Fatalf("order = %v, want [evg-1-env evg-2-env web-env]", got)
+	}
+	if got[0].SecretRef.Optional == nil || !*got[0].SecretRef.Optional {
+		t.Error("group env sources should be optional")
+	}
+	if got[2].SecretRef.Optional != nil {
+		t.Error("the service's own env source should not be optional")
+	}
+}
+
+func TestSecretFileMounts(t *testing.T) {
+	if vol, mount := secretFileMounts(&appv1alpha1.App{}); vol != nil || mount != nil {
+		t.Fatal("no filesFromSecrets => no volume/mount (unchanged behavior)")
+	}
+	vol, mount := secretFileMounts(&appv1alpha1.App{Spec: appv1alpha1.AppSpec{
+		FilesFromSecrets: []string{"web-files", "evg-1-files"},
+	}})
+	if vol == nil || mount == nil {
+		t.Fatal("filesFromSecrets should yield a volume + mount")
+	}
+	if mount.MountPath != "/etc/secrets" || !mount.ReadOnly {
+		t.Fatalf("mount should be read-only at /etc/secrets, got %+v", mount)
+	}
+	if vol.Projected == nil || len(vol.Projected.Sources) != 2 {
+		t.Fatalf("want a projected volume with 2 secret sources, got %+v", vol.VolumeSource)
+	}
+	for i, src := range vol.Projected.Sources {
+		if src.Secret == nil || src.Secret.Optional == nil || !*src.Secret.Optional {
+			t.Fatalf("source %d should be an optional secret projection: %+v", i, src)
+		}
+	}
+	if vol.Projected.Sources[0].Secret.Name != "web-files" || vol.Projected.Sources[1].Secret.Name != "evg-1-files" {
+		t.Fatalf("projected sources = %v, want [web-files evg-1-files]", vol.Projected.Sources)
+	}
 }
 
 func TestEffectiveReplicas(t *testing.T) {

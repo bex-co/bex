@@ -18,39 +18,64 @@ package api
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// memSecretStore is an in-memory secrets.SecretStore for the server-level
-// env-vars wiring tests (the deep behavior is covered in internal/secrets).
+// memSecretStore is an in-memory core.SecretKV (path-keyed) for the server-level
+// env-vars wiring tests (the deep behavior is covered in internal/secrets). A
+// service's env map lives at "services/<svc>/env".
 type memSecretStore struct{ m map[string]map[string]string }
 
 func newMemSecretStore() *memSecretStore { return &memSecretStore{m: map[string]map[string]string{}} }
 
-func (s *memSecretStore) GetEnv(_ context.Context, svc string) (map[string]string, error) {
+func (s *memSecretStore) Get(_ context.Context, path string) (map[string]string, error) {
 	out := map[string]string{}
-	for k, v := range s.m[svc] {
+	for k, v := range s.m[path] {
 		out[k] = v
 	}
 	return out, nil
 }
 
-func (s *memSecretStore) PutEnv(_ context.Context, svc string, env map[string]string) error {
+func (s *memSecretStore) Put(_ context.Context, path string, data map[string]string) error {
 	cp := map[string]string{}
-	for k, v := range env {
+	for k, v := range data {
 		cp[k] = v
 	}
-	s.m[svc] = cp
+	s.m[path] = cp
 	return nil
 }
 
-func (s *memSecretStore) DeleteEnv(_ context.Context, svc string) error {
-	delete(s.m, svc)
+func (s *memSecretStore) Delete(_ context.Context, path string) error {
+	delete(s.m, path)
 	return nil
 }
+
+func (s *memSecretStore) List(_ context.Context, path string) ([]string, error) {
+	prefix := path + "/"
+	seen := map[string]bool{}
+	var out []string
+	for k := range s.m {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		rest := strings.TrimPrefix(k, prefix)
+		if i := strings.IndexByte(rest, '/'); i >= 0 {
+			rest = rest[:i]
+		}
+		if !seen[rest] {
+			seen[rest] = true
+			out = append(out, rest)
+		}
+	}
+	return out, nil
+}
+
+// envKey is the store path a service's env map lives at.
+func envKey(svc string) string { return "services/" + svc + "/env" }
 
 // TestEnvVars_RESTAndGraphQLDashboardShape drives the wired server: REST is the
 // Render public-API shape (flat {key,value}), GraphQL is the dashboard shape
@@ -66,7 +91,7 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 		`[{"key":"FOO","value":"bar"},{"key":"BAZ","value":"qux"}]`).Code; code != 200 {
 		t.Fatalf("PUT env-vars => 200, got %d", code)
 	}
-	if store.m["web"]["FOO"] != "bar" {
+	if store.m[envKey("web")]["FOO"] != "bar" {
 		t.Fatal("REST PUT did not write the store")
 	}
 
@@ -96,8 +121,8 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 	if gql(t, h, `mutation { setEnvVar(serviceId:"web", key:"NEW", value:"z") }`)["setEnvVar"] != true {
 		t.Fatal("setEnvVar mutation should be true")
 	}
-	if store.m["web"]["NEW"] != "z" || store.m["web"]["FOO"] != "bar" {
-		t.Fatalf("setEnvVar should merge: %+v", store.m["web"])
+	if store.m[envKey("web")]["NEW"] != "z" || store.m[envKey("web")]["FOO"] != "bar" {
+		t.Fatalf("setEnvVar should merge: %+v", store.m[envKey("web")])
 	}
 }
 

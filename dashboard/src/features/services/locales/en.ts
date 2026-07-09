@@ -327,6 +327,218 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't remove {key}",
     description: "Toast on a failed env-var delete",
   },
+  "services.secretFilesTitle": {
+    message: "Secret Files",
+    description: "Environment tab secret-files section title",
+  },
+  "services.secretFilesDescription": {
+    message:
+      "Store files with secret contents (certificates, credentials) mounted into this service at deploy time.",
+    description: "Environment tab secret-files section description",
+  },
+  "services.secretFileColName": {
+    message: "File name",
+    description: "Secret-files table column header (file name)",
+  },
+  "services.secretFileColContent": {
+    message: "Contents",
+    description: "Secret-files table column header (file body)",
+  },
+  "services.secretFilesEmptyTitle": {
+    message: "No secret files",
+    description: "Secret-files empty-state title",
+  },
+  "services.secretFilesEmptyBody": {
+    message: "Add a file to mount secret contents into this service.",
+    description: "Secret-files empty-state body",
+  },
+  "services.secretFilesUnavailableTitle": {
+    message: "Secret files unavailable",
+    description:
+      "Secret-files state when the secret store is unconfigured (503)",
+  },
+  "services.secretFilesUnavailableBody": {
+    message: "The secret store isn't configured for this deployment.",
+    description: "Secret-files unavailable-state body",
+  },
+  "services.secretFilesForbiddenTitle": {
+    message: "Not authorized",
+    description: "Secret-files state when the caller lacks permission (403)",
+  },
+  "services.secretFilesForbiddenBody": {
+    message: "You don't have permission to view this service's secret files.",
+    description: "Secret-files forbidden-state body",
+  },
+  "services.secretFilesErrorTitle": {
+    message: "Couldn't load secret files",
+    description: "Secret-files generic error title",
+  },
+  "services.secretFilesErrorBody": {
+    message: "Something went wrong. Please try again.",
+    description: "Secret-files generic error body",
+  },
+  "services.secretFileAdd": {
+    message: "Add secret file",
+    description: "Secret-files button to open the add-file form",
+  },
+  "services.secretFileNamePlaceholder": {
+    message: "filename.ext",
+    description: "Secret-files add-file name input placeholder",
+  },
+  "services.secretFileContentPlaceholder": {
+    message: "file contents",
+    description: "Secret-files content input placeholder",
+  },
+  "services.secretFileInvalidName": {
+    message: "Use letters, digits, dot, dash and underscore; not '.' or '..'.",
+    description: "Secret-files add-file validation message for an invalid name",
+  },
+  "services.secretFileDeleteConfirmTitle": {
+    message: "Remove {name}?",
+    description: "Secret-file delete-confirmation dialog title",
+  },
+  "services.secretFileDeleteConfirmBody": {
+    message: "The service will redeploy without this file.",
+    description: "Secret-file delete-confirmation dialog body",
+  },
+  "services.secretFileSaveSuccess": {
+    message: "Saved {name}",
+    description: "Toast on a successful secret-file add/update",
+  },
+  "services.secretFileSaveError": {
+    message: "Couldn't save {name}",
+    description: "Toast on a failed secret-file add/update",
+  },
+  "services.secretFileDeleteSuccess": {
+    message: "Removed {name}",
+    description: "Toast on a successful secret-file delete",
+  },
+  "services.secretFileDeleteError": {
+    message: "Couldn't remove {name}",
+    description: "Toast on a failed secret-file delete",
+  },
+  "services.envGroupsTitle": {
+    message: "Environment Groups",
+    description: "Environment tab env-groups section title",
+  },
+  "services.envGroupsDescription": {
+    message:
+      "Reusable bundles of environment variables and secret files you can link to this and other services.",
+    description: "Environment tab env-groups section description",
+  },
+  "services.envGroupsEmptyTitle": {
+    message: "No environment groups",
+    description: "Env-groups empty-state title",
+  },
+  "services.envGroupsEmptyBody": {
+    message: "Create a group to share config across services.",
+    description: "Env-groups empty-state body",
+  },
+  "services.envGroupsUnavailableTitle": {
+    message: "Environment groups unavailable",
+    description: "Env-groups state when the secret store is unconfigured (503)",
+  },
+  "services.envGroupsUnavailableBody": {
+    message: "The secret store isn't configured for this deployment.",
+    description: "Env-groups unavailable-state body",
+  },
+  "services.envGroupsForbiddenTitle": {
+    message: "Not authorized",
+    description: "Env-groups state when the caller lacks permission (403)",
+  },
+  "services.envGroupsForbiddenBody": {
+    message: "You don't have permission to view environment groups.",
+    description: "Env-groups forbidden-state body",
+  },
+  "services.envGroupsErrorTitle": {
+    message: "Couldn't load environment groups",
+    description: "Env-groups generic error title",
+  },
+  "services.envGroupsErrorBody": {
+    message: "Something went wrong. Please try again.",
+    description: "Env-groups generic error body",
+  },
+  "services.envGroupCreate": {
+    message: "Create group",
+    description: "Env-groups button to open the create-group form",
+  },
+  "services.envGroupCreateSubmit": {
+    message: "Create",
+    description: "Env-groups create-group form submit button",
+  },
+  "services.envGroupNamePlaceholder": {
+    message: "group-name",
+    description: "Env-groups create-group name input placeholder",
+  },
+  "services.envGroupNameLabel": {
+    message: "Group name",
+    description: "Env-groups create-group name input accessible label",
+  },
+  "services.envGroupInvalidName": {
+    message: "Use letters, digits, dot, dash and underscore.",
+    description: "Env-groups create-group validation message for an invalid name",
+  },
+  "services.envGroupLinked": {
+    message: "Linked",
+    description: "Env-groups badge: this group is linked to the current service",
+  },
+  "services.envGroupEmptyContents": {
+    message: "No variables or files yet.",
+    description: "Env-groups: shown when a group has no vars or secret files",
+  },
+  "services.envGroupLink": {
+    message: "Link",
+    description: "Env-groups button: attach this group to the current service",
+  },
+  "services.envGroupUnlink": {
+    message: "Unlink",
+    description: "Env-groups button: detach this group from the current service",
+  },
+  "services.envGroupDelete": {
+    message: "Delete",
+    description: "Env-groups action: delete the group",
+  },
+  "services.envGroupDeleteConfirmTitle": {
+    message: "Delete {name}?",
+    description: "Env-group delete-confirmation dialog title",
+  },
+  "services.envGroupDeleteConfirmBody": {
+    message:
+      "The group is removed from every service it's linked to. This can't be undone.",
+    description: "Env-group delete-confirmation dialog body",
+  },
+  "services.envGroupCreateSuccess": {
+    message: "Created {name}",
+    description: "Toast on a successful env-group create",
+  },
+  "services.envGroupCreateError": {
+    message: "Couldn't create {name}",
+    description: "Toast on a failed env-group create",
+  },
+  "services.envGroupDeleteSuccess": {
+    message: "Group deleted",
+    description: "Toast on a successful env-group delete",
+  },
+  "services.envGroupDeleteError": {
+    message: "Couldn't delete the group",
+    description: "Toast on a failed env-group delete",
+  },
+  "services.envGroupLinkSuccess": {
+    message: "Group linked",
+    description: "Toast on a successful env-group link",
+  },
+  "services.envGroupLinkError": {
+    message: "Couldn't link the group",
+    description: "Toast on a failed env-group link",
+  },
+  "services.envGroupUnlinkSuccess": {
+    message: "Group unlinked",
+    description: "Toast on a successful env-group unlink",
+  },
+  "services.envGroupUnlinkError": {
+    message: "Couldn't unlink the group",
+    description: "Toast on a failed env-group unlink",
+  },
   "services.navSettings": {
     message: "Settings",
     description: "Service-detail nav item (settings tab)",
