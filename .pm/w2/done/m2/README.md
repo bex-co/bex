@@ -1,6 +1,6 @@
 # w2 · m2 — Deploy-from-chat + HMAC git webhook
 
-**Worker:** worker2 **Goal:** Make "deploy this" one agent action — a single call takes a repo + `bex.yml` to a live https URL, and a signed git push redeploys. Delivers pillar 4. **Status:** in progress (t001–t003 DONE; t004 live acceptance unblocked 2026-07-08 — w1/m5 in-cluster builds landed — and now runnable)
+**Worker:** worker2 **Goal:** Make "deploy this" one agent action — a single call takes a repo + `bex.yml` to a live https URL, and a signed git push redeploys. Delivers pillar 4. **Status:** DONE (t001–t003 DONE 2026-07-08; t004 live acceptance PASSED 2026-07-09 — MCP `deploy` → in-cluster build → Running → curl 200, then signed webhook → gen bump → new build served)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Deploy verb over `Core.Create`: {repo, bex.yml} mapped onto Render's create surface (amended 2026-07-08 — no bespoke `/v1/deploy`) — **DONE** | 30m | w2/m4, w1/m5 |
 | t002 | Expose `deploy` as an MCP verb — **DONE** | 20m | t001, w2/m1/t001 |
 | t003 | HMAC-verified git webhook endpoint → redeploy on push — **DONE** | 30m | t001 |
-| t004 | End-to-end acceptance: agent deploy → live URL; push → redeploy | 25m | t001,t002,t003 |
+| t004 | End-to-end acceptance: agent deploy → live URL; push → redeploy — **DONE** | 25m | t001,t002,t003 |
 
 ## Definition of done
 

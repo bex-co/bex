@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m1** — MCP server over bex-api verbs (4 tasks) ← pillar 3
-- [ ] **m2** — Deploy-from-chat + HMAC git webhook (4 tasks; t001–t003 DONE 2026-07-08, t004 live acceptance unblocked — w1/m5 landed) ← pillar 4, needs w2/m4 + w1/m2 + w1/m5 (t001 amended 2026-07-08 to ride m4's `Core.Create`)
+- [x] **m2** — Deploy-from-chat + HMAC git webhook (4 tasks; DONE — t001–t003 2026-07-08, t004 live acceptance PASSED 2026-07-09) ← pillar 4, needs w2/m4 + w1/m2 + w1/m5 (t001 amended 2026-07-08 to ride m4's `Core.Create`)
 - [ ] **m4** — Render-shaped service create & delete: verify shipped create + build delete (8 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, re-scoped 2026-07-08 (create half shipped via m2/t001)
 - [ ] **m5** — Deploy history + trigger (`list_deploys` · `get_deploy` · `POST /deploys`) (7 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, needs w1/m2
 - [x] **m6** — MCP `query_render_postgres` — read-only SQL for agents ← reassigned to **w5/m9** (label collision with w5's done m6) and shipped there 2026-07-08 (`w5/done/m9/`)
