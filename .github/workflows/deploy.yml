@@ -89,19 +89,27 @@ jobs:
           OP_DIGEST: ${{ steps.build_operator.outputs.digest }}
           DASH_DIGEST: ${{ steps.build_dashboard.outputs.digest }}
         run: |
-          sed -Ei "s#(controller=${IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${OP_DIGEST}#" \
-            deploy/gitops/base/bex.yaml
-          sed -Ei "s#(dashboard=${DASHBOARD_IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${DASH_DIGEST}#" \
-            deploy/gitops/base/dashboard.yaml
-          if git diff --quiet -- deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml; then
-            echo "digests already pinned — nothing to write back"
-          else
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Retry loop: concurrent runs on main can race on the push. On rejection
+          # we rebase onto the latest tip and re-apply the patches (sed is idempotent)
+          # before retrying. Three attempts cover any realistic burst of concurrent pushes.
+          for i in 1 2 3; do
+            git pull --rebase origin main
+            sed -Ei "s#(controller=${IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${OP_DIGEST}#" \
+              deploy/gitops/base/bex.yaml
+            sed -Ei "s#(dashboard=${DASHBOARD_IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${DASH_DIGEST}#" \
+              deploy/gitops/base/dashboard.yaml
+            if git diff --quiet -- deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml; then
+              echo "digests already pinned — nothing to write back"
+              break
+            fi
             git add deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml
             git commit -m "chore(deploy): pin operator+dashboard to ${GITHUB_SHA::12} [skip ci]"
-            git push origin HEAD:main
-          fi
+            git push origin HEAD:main && break
+            echo "write-back push rejected (attempt $i/3) — retrying after rebase"
+            git reset --soft HEAD~1
+          done
 
       # --- 2. discover the app cluster kubeconfig (same path as app-cluster.yml) ---
       - uses: hashicorp/setup-terraform@v3
