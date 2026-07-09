@@ -55,7 +55,10 @@ func TestPGStore(t *testing.T) {
 	}
 	s := NewPGStore(pool)
 
-	ten, err := s.CreateTenant(ctx, "acme", "starter")
+	// Plan is the workspace plan (hobby/pro/scale/enterprise) — the CHECK
+	// constraint rejects anything else. The app's compute tier ("starter") is a
+	// separate ladder on apps.tier, unconstrained here.
+	ten, err := s.CreateTenant(ctx, "acme", PlanPro)
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
@@ -74,13 +77,75 @@ func TestPGStore(t *testing.T) {
 
 	assertErrorTaxonomy(ctx, t, s, ten)
 	assertProjectionJoin(ctx, t, s, app)
+	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+// assertWorkspaceLifecycle exercises the w6/m1 workspace store methods against
+// real Postgres: atomic create (tenant + owner membership), get/rename, the
+// per-subject and per-tenant counts, and delete cascading tenant_members.
+func assertWorkspaceLifecycle(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool) {
+	t.Helper()
+	ws, err := s.CreateWorkspace(ctx, "workspace-a", PlanHobby, "user-x")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	// The owner membership landed in the same transaction.
+	members, err := s.ListTenantMembers(ctx, ws.ID)
+	if err != nil || len(members) != 1 || members[0].Subject != "user-x" || members[0].Role != "admin" {
+		t.Fatalf("owner membership = %+v (err %v)", members, err)
+	}
+	if n, _ := s.CountTenantMembers(ctx, ws.ID); n != 1 {
+		t.Errorf("member count = %d, want 1", n)
+	}
+
+	got, err := s.GetTenant(ctx, ws.ID)
+	if err != nil || got.Name != "workspace-a" || got.Plan != PlanHobby {
+		t.Fatalf("get tenant = %+v (err %v)", got, err)
+	}
+	renamed, err := s.RenameTenant(ctx, ws.ID, "workspace-a2")
+	if err != nil || renamed.Name != "workspace-a2" {
+		t.Fatalf("rename = %+v (err %v)", renamed, err)
+	}
+
+	// Per-subject plan count backs the 5-Hobby cap; the subject sees only their
+	// workspaces.
+	if n, _ := s.CountWorkspacesForSubjectPlan(ctx, "user-x", PlanHobby); n != 1 {
+		t.Errorf("hobby count for user-x = %d, want 1", n)
+	}
+	if n, _ := s.CountWorkspacesForSubjectPlan(ctx, "user-x", PlanPro); n != 0 {
+		t.Errorf("pro count for user-x = %d, want 0", n)
+	}
+	if list, _ := s.ListTenantsForSubject(ctx, "user-x"); len(list) != 1 || list[0].ID != ws.ID {
+		t.Errorf("ListTenantsForSubject = %+v", list)
+	}
+	if list, _ := s.ListTenantsForSubject(ctx, "nobody"); len(list) != 0 {
+		t.Errorf("ListTenantsForSubject(nobody) = %+v, want empty", list)
+	}
+
+	// Delete cascades the membership row (FK ON DELETE CASCADE).
+	if err := s.DeleteTenant(ctx, ws.ID); err != nil {
+		t.Fatalf("delete tenant: %v", err)
+	}
+	var remaining int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tenant_members WHERE tenant_id = $1`, ws.ID).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Errorf("tenant_members not cascaded on delete: %d rows remain", remaining)
+	}
+	if err := s.DeleteTenant(ctx, ws.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("re-delete: want ErrNotFound, got %v", err)
+	}
 }
 
 func assertErrorTaxonomy(ctx context.Context, t *testing.T, s *PGStore, ten Tenant) {
 	t.Helper()
-	if _, err := s.CreateTenant(ctx, "acme", "free"); !errors.Is(err, ErrConflict) {
+	if _, err := s.CreateTenant(ctx, "acme", PlanHobby); !errors.Is(err, ErrConflict) {
 		t.Errorf("duplicate tenant: want ErrConflict, got %v", err)
+	}
+	if _, err := s.CreateTenant(ctx, "badplan", "platinum"); !errors.Is(err, ErrInvalid) {
+		t.Errorf("invalid plan: want ErrInvalid (CHECK violation), got %v", err)
 	}
 	if _, err := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "x", Branch: "main", Port: 1, Replicas: 1, Tier: "free"}); !errors.Is(err, ErrConflict) {
 		t.Errorf("duplicate app: want ErrConflict, got %v", err)

@@ -1,0 +1,24 @@
+# golangci-lint config for the backend module (bex-api). The operator module has
+# its own richer config; this one is deliberately narrow — its job today is to
+# enforce the resource-id convention (docs/identifiers.md), not a repo-wide style
+# sweep. Grow the enabled set later; keep it green so `make lint` stays trusted.
+version: "2"
+linters:
+  default: none
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # Only internal/id may import xid — the one legitimate way to mint the
+        # random id suffix. Anywhere else, importing xid means someone is
+        # hand-rolling an id (bypassing id.New), which the compiler and the
+        # id-package guard test can't see. This is the lint layer of the
+        # identifiers ADR (docs/identifiers.md §Enforcement).
+        hand-minted-ids:
+          files:
+            - "$all"
+            - "!**/internal/id/**"
+          deny:
+            - pkg: github.com/rs/xid
+              desc: mint ids via internal/id (id.New); only internal/id may import xid — see docs/identifiers.md

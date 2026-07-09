@@ -1,0 +1,38 @@
+name: go lint (backend)
+
+# Enforces the backend module's golangci-lint config (lego/backend/.golangci.yml).
+# Its job today is the resource-id convention (docs/identifiers.md): depguard
+# forbids importing github.com/rs/xid outside internal/id, so a hand-rolled id
+# ("tea-" + xid.New()…, bypassing id.New) fails CI. Fix locally with:
+#   cd lego/operator && make lint-backend
+#
+# golangci-lint is pinned to the same version the Makefile builds (v2.11.4). The
+# backend config uses only core linters (no custom plugin), so the standard
+# binary from `go install` suffices — the custom-plugin build is operator-only.
+on:
+  pull_request:
+    paths:
+      - "lego/backend/**"
+      - ".github/workflows/go-lint.yml"
+  push:
+    branches: [main]
+    paths:
+      - "lego/backend/**"
+      - ".github/workflows/go-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: lego/backend/go.mod
+      - name: Install golangci-lint (pinned to the Makefile version)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
+      - name: Lint backend (id convention + config)
+        working-directory: lego/backend
+        run: golangci-lint run

@@ -44,6 +44,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -502,6 +503,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&apikeys.Service{Base: base, APIKeys: newFakeKeyStore()},
 		&postgres.Service{Base: base},
 		&secrets.Service{Base: base},
+		&workspaces.Service{Base: base},
 	}
 	swept := 0
 	for _, svc := range services {
@@ -572,13 +574,13 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics"} {
+	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
 	}
 	mFields := schema.MutationType().Fields()
-	for _, f := range []string{"suspendService", "createDatabase", "createApiKey"} {
+	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace"} {
 		if mFields[f] == nil {
 			t.Errorf("Mutation.%s not wired into the single schema", f)
 		}

@@ -105,15 +105,23 @@ func (o *openfgaChecker) checkUpstream(ctx context.Context, subject, relation, o
 	return out.Allowed, nil
 }
 
-// writeRequest is OpenFGA's /write body — a batch of tuples to add.
+// tupleKey is one OpenFGA tuple in a /write batch.
+type tupleKey struct {
+	User     string `json:"user"`
+	Relation string `json:"relation"`
+	Object   string `json:"object"`
+}
+
+// writeRequest is OpenFGA's /write body — a batch of tuples to add and/or
+// remove. Only the non-empty side is sent (OpenFGA rejects an empty writes or
+// deletes block), so grant marshals writes and revoke marshals deletes.
 type writeRequest struct {
-	Writes struct {
-		TupleKeys []struct {
-			User     string `json:"user"`
-			Relation string `json:"relation"`
-			Object   string `json:"object"`
-		} `json:"tuple_keys"`
-	} `json:"writes"`
+	Writes  *tupleBatch `json:"writes,omitempty"`
+	Deletes *tupleBatch `json:"deletes,omitempty"`
+}
+
+type tupleBatch struct {
+	TupleKeys []tupleKey `json:"tuple_keys"`
 }
 
 // GrantWorkspaceAdmin writes the membership tuple `<subject> admin
@@ -122,16 +130,31 @@ type writeRequest struct {
 // satisfies store.WorkspaceGranter structurally, so the store package needs no
 // dependency on this package.
 func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
+	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
+}
+
+// RevokeWorkspaceMember removes a subject's membership tuple from a workspace —
+// the delete side of workspace teardown (workspaces.WorkspaceRevoker). relation
+// is the member's role ("admin" today; w4/m12's roles revoke through the same
+// path). A tuple that's already gone is not an error to OpenFGA's delete, so a
+// retried workspace-delete is idempotent.
+func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error {
+	return o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
+}
+
+// writeTuple sends one add (delete=false) or remove (delete=true) to OpenFGA's
+// /write — the shared path for the grant/revoke membership writes.
+func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) error {
 	storeID, err := o.store(ctx)
 	if err != nil {
 		return err
 	}
 	var req writeRequest
-	req.Writes.TupleKeys = append(req.Writes.TupleKeys, struct {
-		User     string `json:"user"`
-		Relation string `json:"relation"`
-		Object   string `json:"object"`
-	}{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
+	if del {
+		req.Deletes = &tupleBatch{TupleKeys: []tupleKey{tk}}
+	} else {
+		req.Writes = &tupleBatch{TupleKeys: []tupleKey{tk}}
+	}
 	body, _ := json.Marshal(req)
 	return core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil)
 }

@@ -22,6 +22,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // memStore is the in-memory Store used by the API and reconciler tests. It
@@ -50,7 +52,7 @@ func (m *memStore) CreateTenant(_ context.Context, name, plan string) (Tenant, e
 			return Tenant{}, fmt.Errorf("tenant: %w", ErrConflict)
 		}
 	}
-	t := Tenant{ID: newID(TenantIDPrefix), Name: name, Plan: plan, CreatedAt: time.Now()}
+	t := Tenant{ID: ids.New(ids.Workspace), Name: name, Plan: plan, CreatedAt: time.Now()}
 	m.tenants[t.ID] = t
 	return t, nil
 }
@@ -65,6 +67,28 @@ func (m *memStore) ListTenants(context.Context) ([]Tenant, error) {
 	return out, nil
 }
 
+func (m *memStore) GetTenant(_ context.Context, id string) (Tenant, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	t, ok := m.tenants[id]
+	if !ok {
+		return Tenant{}, fmt.Errorf("workspace: %w", ErrNotFound)
+	}
+	return t, nil
+}
+
+func (m *memStore) CountAppsForTenant(_ context.Context, tenantID string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, a := range m.apps {
+		if a.TenantID == tenantID {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -76,7 +100,7 @@ func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 			return App{}, fmt.Errorf("app: %w", ErrConflict)
 		}
 	}
-	a.ID = newID(AppIDPrefix)
+	a.ID = ids.New(ids.Service)
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
 	return a, nil
@@ -128,7 +152,7 @@ func (m *memStore) CreateDomain(_ context.Context, appID, host string, primary b
 			return Domain{}, fmt.Errorf("domain: %w", ErrConflict)
 		}
 	}
-	d := Domain{ID: newID(DomainIDPrefix), AppID: appID, Host: host, Primary: primary, CreatedAt: time.Now()}
+	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary, CreatedAt: time.Now()}
 	m.domains[d.ID] = d
 	return d, nil
 }

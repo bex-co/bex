@@ -54,9 +54,14 @@ const (
 	RelCanCreate        = "can_create"         // developer and up: create/delete resources
 	RelCanViewSensitive = "can_view_sensitive" // developer and up: connection strings
 	RelCanManageKeys    = "can_manage_keys"    // developer and up: workspace API keys
+	RelCanManage        = "can_manage"         // admin only: manage the workspace itself (rename/delete)
 
 	DefaultWorkspace = "workspace:default"
 )
+
+// WorkspaceObject is the OpenFGA object for a workspace (tenant) id — the target
+// the workspace lifecycle verbs authorize against, e.g. workspace:tea-abc.
+func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
 
 // Render's suspended enum (a string, NOT a bool) — shared by the service and
 // database projections, so it lives in the kernel both features import.
@@ -94,12 +99,22 @@ func (b *Base) Now() time.Time {
 	return time.Now()
 }
 
-// Authorize gates a verb on the caller's permission. nil checker allows
-// (authorization not enforced); with a checker wired, no identity in context or
-// a negative check is ErrForbidden, and an unreachable checker fails closed with
-// ErrAuthzUnavailable — never a pass-through. Every feature verb starts here, so
-// the three surfaces stay authorization-identical.
+// Authorize gates a verb on the caller's permission against the default
+// workspace. Every App/logs/metrics verb starts here (they operate on the
+// single default workspace until the control plane grows real per-caller
+// workspace scoping, w1/m9).
 func (b *Base) Authorize(ctx context.Context, relation string) error {
+	return b.AuthorizeOn(ctx, relation, DefaultWorkspace)
+}
+
+// AuthorizeOn gates a verb on the caller's permission against a specific object
+// (e.g. workspace:tea-abc) — the seam for verbs scoped to a named workspace
+// rather than the default (the workspaces lifecycle verbs check `admin` on the
+// exact workspace). nil checker allows (authorization not enforced); with a
+// checker wired, no identity in context or a negative check is ErrForbidden, and
+// an unreachable checker fails closed with ErrAuthzUnavailable — never a
+// pass-through, so the three surfaces stay authorization-identical.
+func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 	if b.Authz == nil {
 		return nil
 	}
@@ -107,7 +122,7 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 	if !ok {
 		return ErrForbidden
 	}
-	allowed, err := b.Authz.Check(ctx, "user:"+id.Subject, relation, DefaultWorkspace)
+	allowed, err := b.Authz.Check(ctx, "user:"+id.Subject, relation, object)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
 	}

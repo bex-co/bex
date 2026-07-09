@@ -14,7 +14,7 @@
 ## Inbox
 
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
-- `002.md` — Workspace MCP tools (`list_workspaces`/`select_workspace`/`get_selected_workspace`) — blocked on w1/m9 (real workspaces)
+- `002.md` — Workspace MCP tools (`list_workspaces`/`select_workspace`/`get_selected_workspace`) — superseded by `w6/m2` (t005) 2026-07-08; retire to `done/` when w6/m2 closes
 - `003.md` — Key Value surfaces (REST/GraphQL/MCP, Render MCP tool names) — blocked on w1/007 mechanism
 - `004.md` — Agent-connect recipe: document Claude Code/Cursor → `/mcp` with OAuth 2.1 (w4/m9 flow)
 

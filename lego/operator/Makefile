@@ -95,12 +95,20 @@ cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint linter
-	"$(GOLANGCI_LINT)" run
+lint: golangci-lint ## Run golangci-lint over both modules (operator + backend); fails if either does
+	@rc=0; \
+	"$(GOLANGCI_LINT)" run || rc=1; \
+	( cd ../backend && "$(GOLANGCI_LINT)" run ) || rc=1; \
+	exit $$rc
+
+.PHONY: lint-backend
+lint-backend: golangci-lint ## Run golangci-lint over the backend module only (enforces the id convention, docs/identifiers.md)
+	cd ../backend && "$(GOLANGCI_LINT)" run
 
 .PHONY: lint-fix
-lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
+lint-fix: golangci-lint ## Run golangci-lint --fix over both modules (operator + backend)
 	"$(GOLANGCI_LINT)" run --fix
+	cd ../backend && "$(GOLANGCI_LINT)" run --fix
 
 .PHONY: lint-config
 lint-config: golangci-lint ## Verify golangci-lint linter configuration

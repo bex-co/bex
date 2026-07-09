@@ -91,13 +91,16 @@ A **tier/plan** (Free, Starter, Standard, Pro, …) is just a fixed **resource a
 ## Schema sketch (illustrative)
 
 ```sql
-tenants (id, name, plan, created_at, …)
-apps    (id, tenant_id→tenants, name, repo|image, port, replicas, idle_ttl, …)
-domains (id, app_id→apps, host, verified_at, cert_status, …)   -- BYOD custom domains
+tenants        (id, name, plan, created_at, …)          -- plan = WORKSPACE plan: hobby|pro|scale|enterprise
+tenant_members (tenant_id→tenants, subject, role, …)    -- who belongs to a workspace + role; PK (tenant_id, subject)
+apps           (id, tenant_id→tenants, name, repo|image, port, replicas, idle_ttl, …)
+domains        (id, app_id→apps, host, verified_at, cert_status, …)   -- BYOD custom domains
 -- + accounts/auth, usage/billing, audit
 ```
 
 The control plane reconciles these rows into `App` CRs (e.g. an `apps` row + its primary `domains` row → an `App` with `spec.host`); the operator does the rest.
+
+**Workspaces (a tenant's product lifecycle, w6/m1).** A tenant _is_ a Render "workspace". `tenants.plan` carries Render's post-2026-04-23 flat-rate **workspace** plan (`hobby`/`pro`/`scale`/`enterprise`) — distinct from `apps.tier`, the per-service compute ladder (`lego/types/tiers`); a workspace on any plan runs services of any instance size. `tenant_members` records membership + role, and is the OpenFGA `workspace:<tenant-id>` tuples' relational mirror (`subject` is the Kratos identity / Hydra client granted the matching relation). The **workspaces feature** (`lego/backend/internal/workspaces/`) is the one place a workspace's row, its `tenant_members`, and its OpenFGA tuples move together — create (atomic tenant + owner-admin, then the FGA grant, compensating-delete on grant failure), rename, and delete (FK cascade drops apps/domains/members, the projector prunes the orphaned `App` CRs, the FGA tuples are revoked, and injected purgers tear down out-of-cascade resources). Plan limits are enforced server-side: five Hobby workspaces per user, 25 services per Hobby workspace (counting suspended, in the create path), one member on Hobby (`store.CanAddMember`). The lifecycle is GraphQL-only (`workspaces` query + `createWorkspace`/`renameWorkspace`/`deleteWorkspace`) because Render exposes **no** REST workspace-mutation API — its `/v1/owners` surface is read-only (the read `owners` endpoints + MCP workspace tools are w6/m2).
 
 ## What's built vs. planned
 

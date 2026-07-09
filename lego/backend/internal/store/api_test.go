@@ -41,6 +41,30 @@ func do(t *testing.T, h http.Handler, method, path, body string) *httptest.Respo
 	return rr
 }
 
+func TestServiceCap_HobbyRefused26th(t *testing.T) {
+	api, mem, _ := newTestAPI(t)
+	ctx := context.Background()
+	ten, _ := mem.CreateTenant(ctx, "acme", PlanHobby)
+
+	// 25 apps of any kind (some suspended — the row exists regardless, so it
+	// counts toward the cap, matching Render's "including suspended").
+	for i := 0; i < 25; i++ {
+		if _, err := mem.CreateApp(ctx, App{TenantID: ten.ID, Name: fmt.Sprintf("a%d", i), Image: "x", Suspended: i%2 == 0}); err != nil {
+			t.Fatalf("seed app %d: %v", i, err)
+		}
+	}
+	if err := api.enforceServiceCap(ctx, ten.ID); err == nil {
+		t.Fatal("26th service on Hobby should be refused")
+	}
+
+	// The same workspace on a paid plan is unlimited.
+	ten.Plan = PlanPro
+	mem.tenants[ten.ID] = ten
+	if err := api.enforceServiceCap(ctx, ten.ID); err != nil {
+		t.Fatalf("pro plan should not cap: %v", err)
+	}
+}
+
 func TestCreateTenantAndApp(t *testing.T) {
 	api, _, kicks := newTestAPI(t)
 	h := api.Handler()
@@ -53,7 +77,9 @@ func TestCreateTenantAndApp(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &ten); err != nil {
 		t.Fatal(err)
 	}
-	if ten.Plan != "free" || ten.ID == "" {
+	// A plan-less create defaults to the Hobby workspace plan (w6/m1) — distinct
+	// from the app's compute-tier default ("free"), asserted below.
+	if ten.Plan != PlanHobby || ten.ID == "" {
 		t.Errorf("tenant = %+v", ten)
 	}
 

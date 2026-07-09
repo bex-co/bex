@@ -106,7 +106,9 @@ func (a *API) createTenant(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	plan, err := normalizeTier("plan", req.Plan)
+	// plan is the WORKSPACE plan (hobby/pro/scale/enterprise), not a compute
+	// tier — see store/plans.go. Empty defaults to Hobby.
+	plan, err := NormalizePlan(req.Plan)
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -169,6 +171,13 @@ func (a *API) createApp(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
+	// Enforce the workspace's per-plan service cap (Render: Hobby = 25 services,
+	// counting suspended). A missing tenant surfaces as ErrNotFound from the cap
+	// check, the same 404 CreateApp's FK violation would give.
+	if err := a.enforceServiceCap(r.Context(), app.TenantID); err != nil {
+		writeErr(w, err)
+		return
+	}
 	created, err := a.Store.CreateApp(r.Context(), app)
 	if err != nil {
 		writeErr(w, err)
@@ -224,6 +233,27 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 		Tier:           tier,
 		IdleTTLSeconds: req.IdleTTLSeconds,
 	}, nil
+}
+
+// enforceServiceCap rejects a create that would exceed the tenant's plan
+// service limit. Unlimited plans (MaxServices 0) skip the count query.
+func (a *API) enforceServiceCap(ctx context.Context, tenantID string) error {
+	t, err := a.Store.GetTenant(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	limit := LimitsFor(t.Plan).MaxServices
+	if limit == 0 {
+		return nil
+	}
+	n, err := a.Store.CountAppsForTenant(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if n >= limit {
+		return fmt.Errorf("%w: workspace on the %s plan is limited to %d services", ErrInvalid, t.Plan, limit)
+	}
+	return nil
 }
 
 func (a *API) listApps(w http.ResponseWriter, r *http.Request) {

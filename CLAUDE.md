@@ -21,7 +21,7 @@ bex is the open-source Render alternative — AI-native ([docs/vision.md](docs/v
 All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `backend/`). The `make` targets live in **`lego/operator/`** (codegen, manager build, image build with context `lego/`, deploy). Build/test bex-api from `lego/backend/` (`cd lego/backend && go build ./... && go test ./...`); the CRD types are in `lego/types/`. Run `make` below **from `lego/operator/`**:
 
 - `make test` — unit + envtest; auto-runs manifests/generate/fmt/vet first. First run downloads envtest binaries to `bin/`. (codegen reads CRD/deepcopy markers from `../types`, RBAC from `./...`.)
-- `make lint` / `make lint-fix` — golangci-lint.
+- `make lint` / `make lint-fix` — golangci-lint over **both** modules (operator + backend); `make lint-backend` runs the backend module alone (its `.golangci.yml` depguard-enforces the id convention, [docs/identifiers.md](docs/identifiers.md)).
 - `make build` — build the manager binary.
 - Dev inner loop against a cluster: `make install && BEX_RUNTIME=kubernetes make run` (runs the operator from the host).
 - `make docker-build IMG=…` / `make deploy IMG=…` — image build / kustomize deploy to the current kubeconfig.
@@ -66,6 +66,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/vision.md](docs/vision.md) — mission, AI-native pillars, roadmap.
 - [docs/architecture.md](docs/architecture.md) — the map: two clusters, two layers, panorama diagram.
 - [docs/control-plane.md](docs/control-plane.md) — Postgres source of truth (built, opt-in via `BEX_CP_DB_URI`) vs. operator mechanism.
+- [docs/identifiers.md](docs/identifiers.md) — ADR: typed opaque resource ids `<prefix>-<xid>` (`tea-`/`srv-`/`cdm-`), hyphen not underscore; minted + guarded in `lego/backend/internal/id`.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.
 - [docs/render-parity.md](docs/render-parity.md) — the parity ledger: one row per Render capability × REST/GraphQL/MCP/UI, each cell ✅/◐/✖/— with evidence; gaps mapped to owning milestones.
 - [docs/deploy-from-chat.md](docs/deploy-from-chat.md) — ADR: deploy-from-chat rides `Core.Create` (no bespoke endpoint) + the HMAC push-to-deploy webhook (pillar 4).
@@ -89,6 +90,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - Never commit or print `.env` or `*.kubeconfig` contents.
 - **Keep `.env.example` and `.env.template` in sync with `.env`'s variable names.** They're the checked-in, value-less mirrors of the local runtime env (`.env.example`) and CI secrets env (`.env.template`) — whenever a var is added, renamed, or removed from one, mirror the change (name + comment, never the value) in the other(s) so `cp .env.example .env` / `cp .env.template .env` never falls out of date.
 - New Go files carry the Apache-2.0 header from `lego/operator/hack/boilerplate.go.txt`.
+- **Mint every resource id through `lego/backend/internal/id` (`id.New(kind)`), never by hand.** Ids are typed opaque `<prefix>-<xid>` strings with a **hyphen** separator (never an underscore — they must stay valid DNS/k8s names); a new id-bearing resource adds its `id.Kind` to that package's registry (which the guard test then enforces). Rationale + known deviations: [docs/identifiers.md](docs/identifiers.md).
 - Markdown is CI-checked: `npx prettier@3.4.2 --write "**/*.md"` before finishing doc changes.
 - **`.pm` done items move to `done/` folders — move the entire folder, leave nothing behind.** When a task or milestone is completed, never leave it in place: a done task moves to `wN/mN/done/tNNN.md`; a milestone with no open tasks moves **whole** to `wN/done/mN/` (`mv` the directory, then `rmdir` the empty original — **never leave a tombstone, stub, or redirect README at the old path**; a done milestone's original path must simply not exist); a done inbox note moves to `wN/done/NNN.md`. Sync status in all three places (task frontmatter, milestone README `**Status:**` + `— **DONE**` row, workstream README checkbox). If a `/goal` (or other tooling) references a milestone by its pre-move path, that path is _expected_ to disappear on completion — do not recreate it. Full conventions: `.pm/CLAUDE.md`.
 - Playwright MCP writes to `.playwright-mcp/` (`--output-dir` in `.mcp.json`, gitignored). When taking screenshots, pass a **bare** filename (e.g. `render-logs.png`) so it lands there — never a path that resolves to the repo root. If an image ever appears at the project root, move it into `.playwright-mcp/`.

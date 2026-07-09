@@ -53,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -159,6 +160,19 @@ func main() {
 		}
 		go rec.Run(ctx)
 		deps.Store = st // single writer of intent: suspend/resume write the row first
+
+		// Workspace lifecycle (w6/m1): the workspaces feature writes through the
+		// same store and nudges the same projector to prune a deleted workspace's
+		// App CRs. The OpenFGA checker (when wired) is both the grant and revoke
+		// side, keeping workspace:tea-<id> tuples in step with tenant_members.
+		deps.WorkspaceStore = st
+		deps.WorkspaceKick = rec.Kick
+		if g, ok := authzChecker.(workspaces.WorkspaceGranter); ok {
+			deps.WorkspaceGranter = g
+		}
+		if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
+			deps.WorkspaceRevoker = rv
+		}
 
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN")}
 		// The OpenFGA checker also writes membership tuples (workspace:tea-<id>);

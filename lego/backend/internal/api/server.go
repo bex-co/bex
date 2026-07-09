@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
 
 const (
@@ -54,12 +55,13 @@ const errNoHydraURL = "bex-api: BEX_HYDRA_ADMIN_URL must be set (refusing to ser
 // surfaces. All surfaces mount on the same mux, share the auth middleware, and
 // call identical Service methods — so they cannot diverge in behavior.
 type Server struct {
-	Apps     *apps.Service
-	Logs     *logs.Service
-	Metrics  *metrics.Service
-	APIKeys  *apikeys.Service
-	Postgres *postgres.Service
-	Secrets  *secrets.Service
+	Apps       *apps.Service
+	Logs       *logs.Service
+	Metrics    *metrics.Service
+	APIKeys    *apikeys.Service
+	Postgres   *postgres.Service
+	Secrets    *secrets.Service
+	Workspaces *workspaces.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -98,6 +100,14 @@ type Deps struct {
 	APIKeys              apikeys.APIKeyStore
 	Store                apps.IntentStore
 	Secrets              secrets.SecretStore
+	// Workspace lifecycle (w6/m1): the control-plane store seam + the OpenFGA
+	// grant/revoke sides + the projector nudge. All nil when BEX_CP_DB_URI is
+	// unset — the workspace verbs then answer ErrWorkspacesUnavailable.
+	WorkspaceStore   workspaces.WorkspaceStore
+	WorkspaceGranter workspaces.WorkspaceGranter
+	WorkspaceRevoker workspaces.WorkspaceRevoker
+	WorkspaceKick    func()
+	WorkspacePurgers []workspaces.WorkspacePurger
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -117,6 +127,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys},
 		Postgres: &postgres.Service{Base: base},
 		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
+		Workspaces: &workspaces.Service{
+			Base:    base,
+			Store:   d.WorkspaceStore,
+			Granter: d.WorkspaceGranter,
+			Revoker: d.WorkspaceRevoker,
+			Kick:    d.WorkspaceKick,
+			Purgers: d.WorkspacePurgers,
+		},
 	}
 }
 
@@ -151,6 +169,9 @@ func (s *Server) features() []any {
 	}
 	if s.Secrets != nil {
 		out = append(out, s.Secrets)
+	}
+	if s.Workspaces != nil {
+		out = append(out, s.Workspaces)
 	}
 	return out
 }

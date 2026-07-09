@@ -25,29 +25,20 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/xid"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// ID prefixes, Render-style: a typed opaque id is "<prefix>-<xid>", e.g.
-// "srv-c185th5c2rvvnhbfiltg" — the type is greppable, the xid suffix is
-// k-sortable and non-guessable, and a rename never breaks a reference
-// because ids, not names, are the keys (docs/postgresql-management.md §4).
-// Prefixes follow Render's public API: tea- teams (bex tenants), srv-
-// services (bex apps), cdm- custom domains.
-const (
-	TenantIDPrefix = "tea"
-	AppIDPrefix    = "srv"
-	DomainIDPrefix = "cdm"
-)
+// Typed resource ids ("tea-…"/"srv-…"/"cdm-…") are minted through the one id
+// package (docs/identifiers.md) — never hand-concatenated here, so the format
+// and its DNS-safety stay guarded in one place. A rename never breaks a
+// reference because ids, not names, are the keys (docs/postgresql-management.md §4).
 
 // MaxReplicas is the shared upper bound on an App's replica count, enforced by
 // both the create path (store/api.go) and the apps scale verb so the two can't
 // disagree about what a valid App is. The lower bounds legitimately differ
 // (create treats 0 as "default 1"; scale rejects 0 — see apps.Service.Scale).
 const MaxReplicas = 100
-
-// newID mints a typed opaque id: "<prefix>-<20-char xid>".
-func newID(prefix string) string { return prefix + "-" + xid.New().String() }
 
 // Error taxonomy shared by the store and the API: the store classifies
 // Postgres failures into these, the API maps them to status codes
@@ -112,6 +103,10 @@ type DesiredApp struct {
 type Store interface {
 	CreateTenant(ctx context.Context, name, plan string) (Tenant, error)
 	ListTenants(ctx context.Context) ([]Tenant, error)
+	// GetTenant and CountAppsForTenant back the per-plan service cap the create
+	// path enforces (w6/m1): a Hobby workspace is capped at 25 apps.
+	GetTenant(ctx context.Context, id string) (Tenant, error)
+	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
 	CreateApp(ctx context.Context, a App) (App, error)
 	GetApp(ctx context.Context, id string) (App, error)
 	ListApps(ctx context.Context) ([]App, error)
@@ -152,7 +147,7 @@ func NewPGStore(pool *pgxpool.Pool) *PGStore { return &PGStore{Pool: pool} }
 func (s *PGStore) Ping(ctx context.Context) error { return s.Pool.Ping(ctx) }
 
 func (s *PGStore) CreateTenant(ctx context.Context, name, plan string) (Tenant, error) {
-	t := Tenant{ID: newID(TenantIDPrefix), Name: name, Plan: plan}
+	t := Tenant{ID: ids.New(ids.Workspace), Name: name, Plan: plan}
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO tenants (id, name, plan) VALUES ($1, $2, $3) RETURNING created_at`,
 		t.ID, name, plan,
@@ -182,7 +177,7 @@ func (s *PGStore) ListTenants(ctx context.Context) ([]Tenant, error) {
 }
 
 func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
-	a.ID = newID(AppIDPrefix)
+	a.ID = ids.New(ids.Service)
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO apps (id, tenant_id, name, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended)
 		 VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6, $7, $8, $9, $10, $11)
@@ -244,7 +239,7 @@ func (s *PGStore) DeleteApp(ctx context.Context, id string) error {
 }
 
 func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary bool) (Domain, error) {
-	d := Domain{ID: newID(DomainIDPrefix), AppID: appID, Host: host, Primary: primary}
+	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary}
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO domains (id, app_id, host, is_primary) VALUES ($1, $2, $3, $4)
 		 RETURNING created_at`,
