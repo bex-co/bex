@@ -21,6 +21,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "数据库",
     description: "Sidebar nav link to the databases list page",
   },
+  "common.navKeyValue": {
+    message: "键值存储",
+    description: "Sidebar nav link to the Key Value list page",
+  },
   "common.navSettings": {
     message: "设置",
     description: "Sidebar nav link to the account settings page",

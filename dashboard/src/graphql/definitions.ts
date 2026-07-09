@@ -88,6 +88,35 @@ export type InstanceType = {
   name: Maybe<Scalars['String']['output']>;
 };
 
+export type KeyValue = {
+  __typename: 'KeyValue';
+  createdAt: Maybe<Scalars['String']['output']>;
+  externalHost: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  plan: Maybe<Scalars['String']['output']>;
+  public: Maybe<Scalars['Boolean']['output']>;
+  status: Maybe<Scalars['String']['output']>;
+  suspended: Maybe<Scalars['String']['output']>;
+  version: Maybe<Scalars['String']['output']>;
+};
+
+export type KeyValueConnectionInfo = {
+  __typename: 'KeyValueConnectionInfo';
+  cliCommand: Maybe<Scalars['String']['output']>;
+  externalConnectionString: Maybe<Scalars['String']['output']>;
+  internalConnectionString: Maybe<Scalars['String']['output']>;
+};
+
+export type KeyValueInstanceType = {
+  __typename: 'KeyValueInstanceType';
+  cpu: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  memory: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  storageGB: Maybe<Scalars['Int']['output']>;
+};
+
 export type LogEntry = {
   __typename: 'LogEntry';
   instance: Maybe<Scalars['String']['output']>;
@@ -186,20 +215,24 @@ export type Mutation = {
   addCustomDomain: Maybe<CustomDomain>;
   createApiKey: Maybe<ApiKey>;
   createDatabase: Maybe<Database>;
+  createKeyValue: Maybe<KeyValue>;
   createService: Maybe<Service>;
   createWorkspace: Maybe<Workspace>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
   deleteEnvVar: Maybe<Scalars['Boolean']['output']>;
+  deleteKeyValue: Maybe<Scalars['Boolean']['output']>;
   deleteWorkspace: Maybe<Scalars['String']['output']>;
   renameWorkspace: Maybe<Workspace>;
   restartServer: Maybe<Service>;
+  resumeKeyValue: Maybe<KeyValue>;
   resumeService: Maybe<Service>;
   revokeApiKey: Maybe<Scalars['Boolean']['output']>;
   scaleService: Maybe<Service>;
   setEnvVar: Maybe<Scalars['Boolean']['output']>;
   setEnvVars: Maybe<Scalars['Boolean']['output']>;
   setIdleTimeout: Maybe<Service>;
+  suspendKeyValue: Maybe<KeyValue>;
   suspendService: Maybe<Service>;
   updateServicePlan: Maybe<Service>;
 };
@@ -221,6 +254,15 @@ export type MutationCreateDatabaseArgs = {
   name: Scalars['String']['input'];
   plan?: InputMaybe<Scalars['String']['input']>;
   public?: InputMaybe<Scalars['Boolean']['input']>;
+  version?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateKeyValueArgs = {
+  name: Scalars['String']['input'];
+  plan?: InputMaybe<Scalars['String']['input']>;
+  public?: InputMaybe<Scalars['Boolean']['input']>;
+  storageGB?: InputMaybe<Scalars['Int']['input']>;
   version?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -260,6 +302,11 @@ export type MutationDeleteEnvVarArgs = {
 };
 
 
+export type MutationDeleteKeyValueArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteWorkspaceArgs = {
   confirmation: Scalars['String']['input'];
   id: Scalars['String']['input'];
@@ -273,6 +320,11 @@ export type MutationRenameWorkspaceArgs = {
 
 
 export type MutationRestartServerArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationResumeKeyValueArgs = {
   id: Scalars['String']['input'];
 };
 
@@ -312,6 +364,11 @@ export type MutationSetIdleTimeoutArgs = {
 };
 
 
+export type MutationSuspendKeyValueArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationSuspendServiceArgs = {
   id: Scalars['String']['input'];
 };
@@ -340,6 +397,10 @@ export type Query = {
   databaseInstanceTypes: Maybe<Array<Maybe<DatabaseInstanceType>>>;
   databases: Maybe<Array<Maybe<Database>>>;
   instanceTypes: Maybe<Array<Maybe<InstanceType>>>;
+  keyValue: Maybe<KeyValue>;
+  keyValueConnectionInfo: Maybe<KeyValueConnectionInfo>;
+  keyValueInstanceTypes: Maybe<Array<Maybe<KeyValueInstanceType>>>;
+  keyValues: Maybe<Array<Maybe<KeyValue>>>;
   logs: Maybe<Array<Maybe<LogEntry>>>;
   metrics: Maybe<Array<Maybe<MetricSeries>>>;
   metricsFilters: Maybe<MetricsFiltersResult>;
@@ -375,6 +436,16 @@ export type QueryDatabaseConnectionInfoArgs = {
 
 export type QueryDatabasesArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryKeyValueArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryKeyValueConnectionInfoArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -562,6 +633,62 @@ export type DeleteDatabaseMutationVariables = Exact<{
 
 
 export type DeleteDatabaseMutation = { deleteDatabase: boolean | null };
+
+export type KeyValuesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type KeyValuesQuery = { keyValues: Array<{ __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, suspended: string | null, createdAt: string | null, externalHost: string | null, public: boolean | null } | null> | null };
+
+export type KeyValueQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type KeyValueQuery = { keyValue: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, suspended: string | null, createdAt: string | null, externalHost: string | null, public: boolean | null } | null };
+
+export type KeyValueConnectionInfoQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type KeyValueConnectionInfoQuery = { keyValueConnectionInfo: { __typename: 'KeyValueConnectionInfo', internalConnectionString: string | null, externalConnectionString: string | null, cliCommand: string | null } | null };
+
+export type KeyValueInstanceTypesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type KeyValueInstanceTypesQuery = { keyValueInstanceTypes: Array<{ __typename: 'KeyValueInstanceType', id: string | null, name: string | null, cpu: string | null, memory: string | null, storageGB: number | null } | null> | null };
+
+export type CreateKeyValueMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  plan?: InputMaybe<Scalars['String']['input']>;
+  version?: InputMaybe<Scalars['String']['input']>;
+  storageGB?: InputMaybe<Scalars['Int']['input']>;
+  public?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type CreateKeyValueMutation = { createKeyValue: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, status: string | null } | null };
+
+export type DeleteKeyValueMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type DeleteKeyValueMutation = { deleteKeyValue: boolean | null };
+
+export type SuspendKeyValueMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type SuspendKeyValueMutation = { suspendKeyValue: { __typename: 'KeyValue', id: string | null, suspended: string | null } | null };
+
+export type ResumeKeyValueMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type ResumeKeyValueMutation = { resumeKeyValue: { __typename: 'KeyValue', id: string | null, suspended: string | null } | null };
 
 export type LogsQueryVariables = Exact<{
   resource: Scalars['String']['input'];
@@ -767,6 +894,14 @@ export const DatabaseConnectionInfoDocument = {"kind":"Document","definitions":[
 export const DatabaseInstanceTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DatabaseInstanceTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"databaseInstanceTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"cpu"}},{"kind":"Field","name":{"kind":"Name","value":"memory"}},{"kind":"Field","name":{"kind":"Name","value":"storageGB"}}]}}]}}]} as unknown as DocumentNode<DatabaseInstanceTypesQuery, DatabaseInstanceTypesQueryVariables>;
 export const CreateDatabaseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateDatabase"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"plan"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"diskSizeGB"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"public"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createDatabase"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"plan"},"value":{"kind":"Variable","name":{"kind":"Name","value":"plan"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}},{"kind":"Argument","name":{"kind":"Name","value":"diskSizeGB"},"value":{"kind":"Variable","name":{"kind":"Name","value":"diskSizeGB"}}},{"kind":"Argument","name":{"kind":"Name","value":"public"},"value":{"kind":"Variable","name":{"kind":"Name","value":"public"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<CreateDatabaseMutation, CreateDatabaseMutationVariables>;
 export const DeleteDatabaseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteDatabase"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteDatabase"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteDatabaseMutation, DeleteDatabaseMutationVariables>;
+export const KeyValuesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"KeyValues"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"keyValues"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"externalHost"}},{"kind":"Field","name":{"kind":"Name","value":"public"}}]}}]}}]} as unknown as DocumentNode<KeyValuesQuery, KeyValuesQueryVariables>;
+export const KeyValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"KeyValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"keyValue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"externalHost"}},{"kind":"Field","name":{"kind":"Name","value":"public"}}]}}]}}]} as unknown as DocumentNode<KeyValueQuery, KeyValueQueryVariables>;
+export const KeyValueConnectionInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"KeyValueConnectionInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"keyValueConnectionInfo"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"internalConnectionString"}},{"kind":"Field","name":{"kind":"Name","value":"externalConnectionString"}},{"kind":"Field","name":{"kind":"Name","value":"cliCommand"}}]}}]}}]} as unknown as DocumentNode<KeyValueConnectionInfoQuery, KeyValueConnectionInfoQueryVariables>;
+export const KeyValueInstanceTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"KeyValueInstanceTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"keyValueInstanceTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"cpu"}},{"kind":"Field","name":{"kind":"Name","value":"memory"}},{"kind":"Field","name":{"kind":"Name","value":"storageGB"}}]}}]}}]} as unknown as DocumentNode<KeyValueInstanceTypesQuery, KeyValueInstanceTypesQueryVariables>;
+export const CreateKeyValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateKeyValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"plan"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"storageGB"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"public"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createKeyValue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"plan"},"value":{"kind":"Variable","name":{"kind":"Name","value":"plan"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}},{"kind":"Argument","name":{"kind":"Name","value":"storageGB"},"value":{"kind":"Variable","name":{"kind":"Name","value":"storageGB"}}},{"kind":"Argument","name":{"kind":"Name","value":"public"},"value":{"kind":"Variable","name":{"kind":"Name","value":"public"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<CreateKeyValueMutation, CreateKeyValueMutationVariables>;
+export const DeleteKeyValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteKeyValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteKeyValue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteKeyValueMutation, DeleteKeyValueMutationVariables>;
+export const SuspendKeyValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SuspendKeyValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suspendKeyValue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}}]}}]}}]} as unknown as DocumentNode<SuspendKeyValueMutation, SuspendKeyValueMutationVariables>;
+export const ResumeKeyValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResumeKeyValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resumeKeyValue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}}]}}]}}]} as unknown as DocumentNode<ResumeKeyValueMutation, ResumeKeyValueMutationVariables>;
 export const LogsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Logs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"resource"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"type"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"text"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"logs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"resource"},"value":{"kind":"Variable","name":{"kind":"Name","value":"resource"}}},{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"Variable","name":{"kind":"Name","value":"type"}}},{"kind":"Argument","name":{"kind":"Name","value":"text"},"value":{"kind":"Variable","name":{"kind":"Name","value":"text"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"instance"}}]}}]}}]} as unknown as DocumentNode<LogsQuery, LogsQueryVariables>;
 export const MetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Metrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"MetricsQueryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"labels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"values"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"parameters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantile"}}]}}]}}]}}]} as unknown as DocumentNode<MetricsQuery, MetricsQueryVariables>;
 export const MonthToDateBandwidthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MonthToDateBandwidth"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"resourceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"monthToDateBandwidth"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"resourceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"resourceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"egressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"httpEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"natEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"privateLinkEgressBandwidthMB"}},{"kind":"Field","name":{"kind":"Name","value":"websocketEgressBandwidthMB"}}]}}]}}]} as unknown as DocumentNode<MonthToDateBandwidthQuery, MonthToDateBandwidthQueryVariables>;

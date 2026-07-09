@@ -16,6 +16,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
 import { CopyButton } from "@/common/components/copy-button";
+import { ConnectionField } from "@/common/components/connection-field";
 import type { ConnectionInfoView } from "@/features/databases/types";
 
 /**
@@ -63,44 +64,31 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
 
 function RevealedInfo({ info }: { info: ConnectionInfoView }) {
   const { t } = useTranslations();
+  const copiedText = t("databases.copied");
+  const copyErrorText = t("databases.copyError");
   return (
     <div className="space-y-4">
       <PasswordField value={info.password} />
       <ConnectionField
         label={t("databases.connInternal")}
         value={info.internalConnectionString}
+        copiedText={copiedText}
+        copyErrorText={copyErrorText}
       />
       {info.externalConnectionString ? (
         <ConnectionField
           label={t("databases.connExternal")}
           value={info.externalConnectionString}
+          copiedText={copiedText}
+          copyErrorText={copyErrorText}
         />
       ) : null}
       <ConnectionField
         label={t("databases.connPsql")}
         value={info.psqlCommand}
+        copiedText={copiedText}
+        copyErrorText={copyErrorText}
       />
-    </div>
-  );
-}
-
-/** A labeled, monospace, horizontally-scrollable connection string + copy. */
-function ConnectionField({ label, value }: { label: string; value: string }) {
-  const { t } = useTranslations();
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{label}</span>
-        <CopyButton
-          value={value}
-          label={label}
-          successText={t("databases.copied")}
-          errorText={t("databases.copyError")}
-        />
-      </div>
-      <div className="overflow-x-auto rounded-md border bg-muted px-3 py-2">
-        <code className="font-mono text-xs whitespace-pre">{value || "—"}</code>
-      </div>
     </div>
   );
 }

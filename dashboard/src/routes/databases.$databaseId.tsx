@@ -2,12 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { MetadataList } from "@/common/components/metadata-list";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { formatRelativeAge } from "@/features/services/lib/format";
@@ -80,63 +75,47 @@ export function DatabaseDetailPage() {
 
 function MetadataCard({ database }: { database: DatabaseDetailView }) {
   const { t } = useTranslations();
-  const rows: Array<{ label: string; value: string }> = [
-    { label: t("databases.metaStatus"), value: database.status || "—" },
-    { label: t("databases.metaPlan"), value: database.plan ?? "—" },
-    {
-      label: t("databases.metaVersion"),
-      value: database.version ? `PostgreSQL ${database.version}` : "—",
-    },
-    {
-      label: t("databases.metaDatabaseName"),
-      value: database.databaseName ?? "—",
-    },
-    {
-      label: t("databases.metaDatabaseUser"),
-      value: database.databaseUser ?? "—",
-    },
-    {
-      label: t("databases.metaStorage"),
-      value: database.diskSizeGB ? `${database.diskSizeGB} GB` : "—",
-    },
-    {
-      label: t("databases.metaHighAvailability"),
-      value: database.highAvailabilityEnabled
-        ? t("databases.yes")
-        : t("databases.no"),
-    },
-    {
-      label: t("databases.metaPublic"),
-      value: database.public ? t("databases.yes") : t("databases.no"),
-    },
-    {
-      label: t("databases.metaExternalHost"),
-      value: database.externalHost ?? "—",
-    },
-    {
-      label: t("databases.metaCreated"),
-      value: formatRelativeAge(database.createdAt),
-    },
-  ];
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("databases.metaTitle")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-          {rows.map((row) => (
-            <div
-              key={row.label}
-              className="flex justify-between gap-4 border-b pb-2 last:border-0 sm:last:border-b"
-            >
-              <dt className="text-sm text-muted-foreground">{row.label}</dt>
-              <dd className="truncate text-sm font-medium">{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
-    </Card>
+    <MetadataList
+      title={t("databases.metaTitle")}
+      rows={[
+        { label: t("databases.metaStatus"), value: database.status || "—" },
+        { label: t("databases.metaPlan"), value: database.plan ?? "—" },
+        {
+          label: t("databases.metaVersion"),
+          value: database.version ? `PostgreSQL ${database.version}` : "—",
+        },
+        {
+          label: t("databases.metaDatabaseName"),
+          value: database.databaseName ?? "—",
+        },
+        {
+          label: t("databases.metaDatabaseUser"),
+          value: database.databaseUser ?? "—",
+        },
+        {
+          label: t("databases.metaStorage"),
+          value: database.diskSizeGB ? `${database.diskSizeGB} GB` : "—",
+        },
+        {
+          label: t("databases.metaHighAvailability"),
+          value: database.highAvailabilityEnabled
+            ? t("databases.yes")
+            : t("databases.no"),
+        },
+        {
+          label: t("databases.metaPublic"),
+          value: database.public ? t("databases.yes") : t("databases.no"),
+        },
+        {
+          label: t("databases.metaExternalHost"),
+          value: database.externalHost ?? "—",
+        },
+        {
+          label: t("databases.metaCreated"),
+          value: formatRelativeAge(database.createdAt),
+        },
+      ]}
+    />
   );
 }

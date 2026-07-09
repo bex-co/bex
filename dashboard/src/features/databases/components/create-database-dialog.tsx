@@ -21,6 +21,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useCreateDatabase } from "@/features/databases/hooks/use-create-database";
 import {
@@ -36,10 +37,6 @@ import {
 // pinning a tag that may not be pulled.
 const VERSION_DEFAULT = "default";
 const VERSIONS = ["18", "17", "16", "15", "14", "13"] as const;
-
-// A valid DNS label (the Database CR name): starts with a letter, lowercase
-// alphanumerics + hyphens, no trailing hyphen, ≤63 chars.
-const NAME_RE = /^[a-z]([-a-z0-9]*[a-z0-9])?$/;
 
 export interface CreateDatabaseDialogProps {
   /** Called with the new database id once creation is accepted. */
@@ -74,7 +71,7 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
     [instanceTypes, plan],
   );
 
-  const nameValid = NAME_RE.test(name) && name.length <= 63;
+  const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
   const canSubmit = nameValid && plan !== "" && !busy;
 

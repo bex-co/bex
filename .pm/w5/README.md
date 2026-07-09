@@ -15,7 +15,7 @@
 - [x] **m9** — MCP `query_render_postgres` — read-only SQL for agents (5 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, reassigned to w5 (original `w2/m6` label collided with w5's done m6) — done 2026-07-08, moved to `done/m9/`
 - [x] **m10** — Trustworthy dev stub (multi-service) + custom-domain DNS instructions end to end (9 tasks) ← from user report 2026-07-09 (phantom service in `local-bex`) + promoted `006` — done 2026-07-09, moved to `done/m10/`
 - [x] **m11** — Type-aware service settings (cron jobs: hide Custom Domains + Idle timeout; show Schedule + Command) (6 tasks) ← from Playwright comparison 2026-07-09 — done 2026-07-09, moved to `done/m11/`
-- [ ] **m12** — Key Value dashboard (create / list / detail, Render-consistent) (9 tasks) ← from user parity report 2026-07-09 (dashboard.render.com/new/redis); UI half of `w2/m7`, on the w1/m14 mechanism
+- [x] **m12** — Key Value dashboard (create / list / detail, Render-consistent) (9 tasks) ← from user parity report 2026-07-09 (dashboard.render.com/new/redis); UI half of `w2/m7`, on the w1/m14 mechanism — done 2026-07-09, moved to `done/m12/`
 - [ ] **m13** — Build & Deploy settings section (Root Directory) (8 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic); UI half of `w1/m18`, gated on it
 
 ## Inbox

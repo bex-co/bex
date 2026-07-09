@@ -3,8 +3,8 @@
 //
 // It speaks just enough of bex-api's wire protocol for the app to run:
 //   • POST /graphql             — the reads the dashboard fires (services, server,
-//                                 logs, managed-Postgres databases, and safe
-//                                 empties for the rest)
+//                                 logs, managed-Postgres databases, managed
+//                                 Key Value stores, and safe empties for the rest)
 //   • GET  /v1/logs/subscribe   — the SSE live-log tail (docs/observability.md)
 //   • GET  /sessions/whoami     — Kratos session check, so the auth guard passes
 // CORS is wide-open (echoes the Origin, allows credentials) and there is NO auth —
@@ -274,6 +274,70 @@ function makeDatabase(over = {}) {
 }
 const DATABASES = [makeDatabase()];
 
+// The managed Key Value tier catalog (backend keyValueInstanceTypes, w5/m12) —
+// the create form's plan picker source. Kept in sync with lego/types/tiers.yaml's
+// Valkey family so the offline stub renders the same plans as the real API.
+const KV_INSTANCE_TYPES = [
+  {
+    __typename: "KeyValueInstanceType",
+    id: "free",
+    name: "Free",
+    cpu: "100m",
+    memory: "128Mi",
+    storageGB: 1,
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "starter",
+    name: "Starter",
+    cpu: "100m",
+    memory: "256Mi",
+    storageGB: 1,
+  },
+  {
+    __typename: "KeyValueInstanceType",
+    id: "standard",
+    name: "Standard",
+    cpu: "500m",
+    memory: "1Gi",
+    storageGB: 5,
+  },
+];
+
+// In-memory managed Key Value store (Render dashboard `keyValue` shape) so the
+// Key Value page's create/list/detail/delete/suspend/resume + on-demand
+// connection-info are interactive offline. Seeded with one available store
+// (so the list/detail/connection-info paths render) and one still converging
+// (so the "creating" chip + gated poll are exercised, per t002's fixture ask).
+function makeKeyValue(over = {}) {
+  const name = over.name ?? "sessions-cache";
+  return {
+    __typename: "KeyValue",
+    id: name,
+    name,
+    plan: "starter",
+    version: "8",
+    status: "available",
+    suspended: "not_suspended",
+    createdAt: "2026-06-22T14:00:00Z",
+    externalHost: "sessions-cache.kv.bex.co",
+    public: true,
+    ...over,
+  };
+}
+const KEY_VALUES = [
+  makeKeyValue(),
+  makeKeyValue({
+    name: "rate-limiter",
+    plan: "free",
+    version: "",
+    status: "creating",
+    externalHost: "",
+    public: false,
+    createdAt: "2026-07-09T21:00:00Z",
+  }),
+];
+
 // A pool of realistic-looking app log messages the generator draws from.
 const MESSAGES = [
   'level=info msg="GET /api/health 200" duration=1.2ms',
@@ -473,6 +537,63 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const i = DATABASES.findIndex((d) => d.id === variables.id);
       if (i >= 0) DATABASES.splice(i, 1);
       return { deleteDatabase: true };
+    }
+    // Managed Key Value (w5/m12) — an interactive in-memory store, mirroring
+    // the Databases stub above (per-id lookup, unknown -> null).
+    case "KeyValues":
+      return { keyValues: KEY_VALUES };
+    case "KeyValue":
+      return { keyValue: KEY_VALUES.find((k) => k.id === variables.id) ?? null };
+    case "KeyValueInstanceTypes":
+      return { keyValueInstanceTypes: KV_INSTANCE_TYPES };
+    case "KeyValueConnectionInfo": {
+      const k = KEY_VALUES.find((kv) => kv.id === variables.id);
+      if (!k) return { keyValueConnectionInfo: null };
+      const pw = "s3cr3t_stub_kv_password_not_real_0123456789ab";
+      const internal = `redis://:${pw}@${k.id}.default.svc:6379`;
+      return {
+        keyValueConnectionInfo: {
+          __typename: "KeyValueConnectionInfo",
+          internalConnectionString: internal,
+          externalConnectionString: k.public
+            ? `rediss://:${pw}@${k.externalHost}:6379`
+            : "",
+          cliCommand: `redis-cli -u ${internal}`,
+        },
+      };
+    }
+    case "CreateKeyValue": {
+      const created = makeKeyValue({
+        name: variables.name,
+        plan: variables.plan ?? "free",
+        version: variables.version ?? "",
+        public: Boolean(variables.public),
+        status: "creating", // converges to available on the next list/detail poll
+        externalHost: variables.public ? `${variables.name}.kv.bex.co` : "",
+      });
+      KEY_VALUES.push(created);
+      // Simulate async provisioning: flip to available shortly after.
+      setTimeout(() => {
+        created.status = "available";
+      }, 4000);
+      return { createKeyValue: created };
+    }
+    case "DeleteKeyValue": {
+      const i = KEY_VALUES.findIndex((k) => k.id === variables.id);
+      if (i >= 0) KEY_VALUES.splice(i, 1);
+      return { deleteKeyValue: true };
+    }
+    case "SuspendKeyValue": {
+      const k = KEY_VALUES.find((kv) => kv.id === variables.id);
+      if (!k) return { suspendKeyValue: null };
+      k.suspended = "suspended";
+      return { suspendKeyValue: k };
+    }
+    case "ResumeKeyValue": {
+      const k = KEY_VALUES.find((kv) => kv.id === variables.id);
+      if (!k) return { resumeKeyValue: null };
+      k.suspended = "not_suspended";
+      return { resumeKeyValue: k };
     }
     case "CustomDomains":
       return { customDomains: domainsFor(variables.id) };

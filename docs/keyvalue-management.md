@@ -1,6 +1,6 @@
 # ADR: managed key-value for tenants (Valkey, plans, internal/external URLs)
 
-**Status:** accepted and implemented. The mechanism — the `KeyValue` CRD (`lego/types/v1alpha1/keyvalue_types.go`), the Valkey-projecting controller (`lego/operator/internal/controller/keyvalue_controller.go`), and the `valkey` tier family (`lego/types/tiers/tiers.yaml`) — ships and is live in prod. The Render-compatible **REST/GraphQL/MCP surface** now ships too (`lego/backend/internal/keyvalue/`, w2/m7): `/v1/key-value` CRUD + connection-info + suspend/resume, GraphQL `keyValue*`, and Render's three MCP tools (`list_key_value_instances`/`get_key_value`/`create_key_value`) — see [bex-api.md](bex-api.md) § Managed Key Value. It is the direct sibling of managed Postgres ([docs/postgresql-management.md](postgresql-management.md)) — same shape, one engine down. Only the **dashboard** surface remains (w5/m12).
+**Status:** accepted and implemented. The mechanism — the `KeyValue` CRD (`lego/types/v1alpha1/keyvalue_types.go`), the Valkey-projecting controller (`lego/operator/internal/controller/keyvalue_controller.go`), and the `valkey` tier family (`lego/types/tiers/tiers.yaml`) — ships and is live in prod. The Render-compatible **REST/GraphQL/MCP surface** now ships too (`lego/backend/internal/keyvalue/`, w2/m7): `/v1/key-value` CRUD + connection-info + suspend/resume, GraphQL `keyValue*`, and Render's three MCP tools (`list_key_value_instances`/`get_key_value`/`create_key_value`) — see [bex-api.md](bex-api.md) § Managed Key Value. It is the direct sibling of managed Postgres ([docs/postgresql-management.md](postgresql-management.md)) — same shape, one engine down. The **dashboard** surface shipped too (w5/m12): `/keyvalue` list, `/keyvalue/new` create, `/keyvalue/$id` detail with connection-info reveal + suspend/resume.
 
 ## Context
 
@@ -62,7 +62,7 @@ Ship only what fits the current single node — single-instance plans differing 
 ## Consequences
 
 - Deferred to post-MVP: HA/replication (a Valkey replica/sentinel needs a ≥3-node worker pool; you have one), TLS termination on the public path for broad-client compatibility, eviction/scale-to-zero for free-tier stores, and metering/billing.
-- The REST/GraphQL/MCP surface (`list_key_value_instances` / `get_key_value` / `create_key_value` + `/v1/key-value` CRUD/connection-info/suspend/resume + GraphQL `keyValue*`) shipped in w2/m7 on top of this mechanism; the dashboard type is w5/m12.
+- The REST/GraphQL/MCP surface (`list_key_value_instances` / `get_key_value` / `create_key_value` + `/v1/key-value` CRUD/connection-info/suspend/resume + GraphQL `keyValue*`) shipped in w2/m7 on top of this mechanism; the dashboard shipped in w5/m12.
 
 ## Verification
 

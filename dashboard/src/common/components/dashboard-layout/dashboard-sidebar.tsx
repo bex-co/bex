@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Database, LayoutGrid, Settings } from "lucide-react";
+import { Database, LayoutGrid, MemoryStick, Settings } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Sidebar,
@@ -14,11 +14,12 @@ import {
 } from "@/common/components/ui/sidebar.tsx";
 import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
 
-// The dashboard's two live resources (Services + Databases) plus account
-// settings. Each is a client of bex-api's GraphQL (see docs/bex-api.md).
+// The dashboard's three live resources (Services + Databases + Key Value) plus
+// account settings. Each is a client of bex-api's GraphQL (see docs/bex-api.md).
 const NAV_ITEMS = [
   { labelKey: "common.navServices", to: "/", icon: LayoutGrid },
   { labelKey: "common.navDatabases", to: "/databases", icon: Database },
+  { labelKey: "common.navKeyValue", to: "/keyvalue", icon: MemoryStick },
   { labelKey: "common.navSettings", to: "/settings", icon: Settings },
 ] as const;
 

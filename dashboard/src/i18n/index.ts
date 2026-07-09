@@ -4,6 +4,7 @@ import enLogs from "@/features/logs/locales/en";
 import enMetrics from "@/features/metrics/locales/en";
 import enServices from "@/features/services/locales/en";
 import enDatabases from "@/features/databases/locales/en";
+import enKeyValue from "@/features/keyvalue/locales/en";
 import enApiKeys from "@/features/api-keys/locales/en";
 import enWorkspaces from "@/features/workspaces/locales/en";
 import enTeam from "@/features/team/locales/en";
@@ -13,6 +14,7 @@ import zhLogs from "@/features/logs/locales/zh";
 import zhMetrics from "@/features/metrics/locales/zh";
 import zhServices from "@/features/services/locales/zh";
 import zhDatabases from "@/features/databases/locales/zh";
+import zhKeyValue from "@/features/keyvalue/locales/zh";
 import zhApiKeys from "@/features/api-keys/locales/zh";
 import zhWorkspaces from "@/features/workspaces/locales/zh";
 import zhTeam from "@/features/team/locales/zh";
@@ -48,6 +50,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enMetrics),
   ...extractMessages(enServices),
   ...extractMessages(enDatabases),
+  ...extractMessages(enKeyValue),
   ...extractMessages(enApiKeys),
   ...extractMessages(enWorkspaces),
   ...extractMessages(enTeam),
@@ -60,6 +63,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhMetrics),
   ...extractMessages(zhServices),
   ...extractMessages(zhDatabases),
+  ...extractMessages(zhKeyValue),
   ...extractMessages(zhApiKeys),
   ...extractMessages(zhWorkspaces),
   ...extractMessages(zhTeam),

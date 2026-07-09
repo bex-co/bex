@@ -21,6 +21,10 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Databases",
     description: "Sidebar nav link to the databases list page",
   },
+  "common.navKeyValue": {
+    message: "Key Value",
+    description: "Sidebar nav link to the Key Value list page",
+  },
   "common.navSettings": {
     message: "Settings",
     description: "Sidebar nav link to the account settings page",
