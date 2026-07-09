@@ -22,6 +22,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -168,6 +169,184 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 		return AppView{}, err
 	}
 	return view(a), nil
+}
+
+// CreateRequest is the neutral create-or-update input the three surfaces (and
+// the bex.yml deploy mapper) share — Render's create body projected onto the
+// App CR spec. One of Repo/Image is required. Zero values fall back to the
+// platform defaults the operator would apply (branch main, port 3000, one
+// replica, the catalog's default tier). Plan accepts either Render's spelling
+// ("pro_plus") or a bex tier id ("pro-plus"). Hosts are external FQDNs, the
+// first canonical (spec.host); a web service (Private false) is additionally
+// exposed at the platform hostname <name>.<BEX_BASE_DOMAIN>.
+type CreateRequest struct {
+	Name            string
+	Repo            string
+	Image           string
+	Branch          string
+	Builder         string
+	Port            int32
+	Replicas        int32
+	Plan            string
+	HealthCheckPath string
+	Env             []appv1alpha1.EnvVar
+	Hosts           []string
+	Private         bool
+}
+
+// Create writes the App CR for a new service, or updates it in place when one
+// of the same name already exists — the same verb "deploy this" rides (Deploy
+// maps a repo + bex.yml onto a CreateRequest, docs/bex-api.md). Repeating the
+// call for an existing service is a redeploy, not a duplicate: the spec fields
+// the request carries are re-applied and spec.restartedAt is bumped, so a
+// repo-backed App re-runs its build-from-git. Intent only — the operator
+// converges the CR into a running service with a live URL.
+//
+// This writes the CR directly (the hand-applied path scripts/app-apply.sh
+// uses), not through a store row: the public surface has no tenant context, and
+// the row-backed, multi-tenant create is the internal control-plane API's job
+// (store/api.go POST /v1/apps). The projector never touches a CR it didn't
+// create (it lists only its own managed-by label), so the two coexist.
+func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return AppView{}, err
+	}
+	return s.create(ctx, req)
+}
+
+// create is the unauthorized core of Create — shared with Deploy, which
+// authorizes once before mapping the bex.yml.
+func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
+	desired, err := specFromCreate(req)
+	if err != nil {
+		return AppView{}, err
+	}
+	existing, err := s.GetApp(ctx, req.Name)
+	switch {
+	case errors.Is(err, core.ErrNotFound):
+		a := &appv1alpha1.App{}
+		a.Name = req.Name
+		a.Namespace = s.Namespace
+		a.Spec = desired
+		if err := s.Client.Create(ctx, a); err != nil {
+			return AppView{}, err
+		}
+		return view(a), nil
+	case err != nil:
+		return AppView{}, err
+	default:
+		// Update-in-place = redeploy: re-apply the request's owned fields onto the
+		// live spec (leaving operator/other-feature fields like EnvFromSecret
+		// intact), then bump restartedAt so a repo-backed App rebuilds even when
+		// no other field changed.
+		base := client.MergeFrom(existing.DeepCopy())
+		applyCreateToSpec(&existing.Spec, desired)
+		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+		if err := s.Client.Patch(ctx, existing, base); err != nil {
+			return AppView{}, err
+		}
+		return view(existing), nil
+	}
+}
+
+// specFromCreate validates a CreateRequest and projects it onto a fresh App
+// spec. Validation mirrors the internal create API (store/api.go) so both paths
+// agree on what a valid App is: DNS-label name, one of repo/image, a known
+// plan, sane port/replica bounds.
+func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
+	if !store.ValidAppName(req.Name) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	}
+	if req.Repo == "" && req.Image == "" {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
+	}
+	tier, err := normalizeTierOrPlan(req.Plan)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
+	if req.Port < 0 || req.Port > 65535 {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: port must be 1-65535", core.ErrBadRequest)
+	}
+	if req.Replicas < 0 || req.Replicas > store.MaxReplicas {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: replicas must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	port := req.Port
+	if port == 0 {
+		port = 3000
+	}
+	replicas := req.Replicas
+	if replicas == 0 {
+		replicas = 1
+	}
+	branch := req.Branch
+	if branch == "" && req.Repo != "" {
+		branch = "main"
+	}
+	spec := appv1alpha1.AppSpec{
+		Repo:            req.Repo,
+		Image:           req.Image,
+		Branch:          branch,
+		Builder:         req.Builder,
+		Port:            port,
+		Replicas:        replicas,
+		Tier:            tier,
+		HealthCheckPath: req.HealthCheckPath,
+		Env:             req.Env,
+		// A web service is public: expose it at <name>.<BEX_BASE_DOMAIN> so the
+		// caller gets a live URL with no custom domain. type:private opts out.
+		Expose: !req.Private,
+	}
+	if len(req.Hosts) > 0 {
+		spec.Host = req.Hosts[0]
+		spec.Hosts = append([]string(nil), req.Hosts[1:]...)
+	}
+	return spec, nil
+}
+
+// applyCreateToSpec copies the create-owned fields of want onto an existing
+// spec, leaving fields owned by the operator or other features (EnvFromSecret,
+// Suspended, IdleTTLSeconds, AutoDeploy, RestartedAt) untouched — the same
+// discipline the store projector's applyOwnedSpec follows.
+func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+	dst.Repo = want.Repo
+	dst.Image = want.Image
+	dst.Branch = want.Branch
+	dst.Builder = want.Builder
+	dst.Port = want.Port
+	dst.Replicas = want.Replicas
+	dst.Tier = want.Tier
+	dst.HealthCheckPath = want.HealthCheckPath
+	dst.Env = want.Env
+	dst.Expose = want.Expose
+	dst.Host = want.Host
+	dst.Hosts = want.Hosts
+}
+
+// normalizeTierOrPlan resolves a plan/tier string to a bex tier id, accepting
+// either Render's plan spelling or the bex id. Empty => the catalog's default
+// tier, matching the internal create API.
+func normalizeTierOrPlan(v string) (string, error) {
+	if v == "" {
+		return tiers.Compute.Default().ID, nil
+	}
+	if t, ok := tiers.Compute.ByRenderPlan(v); ok {
+		return t.ID, nil
+	}
+	if _, ok := tiers.Compute.ByID(v); ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+}
+
+// redeploy bumps spec.restartedAt to force the operator to roll a new revision
+// — for a repo-backed App this re-runs the build-from-git (the generation bump
+// invalidates the cached Status.Image). Unauthorized on purpose: its only
+// caller is the HMAC-verified git webhook, whose signature check is the
+// authorization (there is no OpenFGA identity on a git-host callback).
+func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
 }
 
 // Restart requests a rolling restart (spec.restartedAt = now). The operator

@@ -1,0 +1,16 @@
+# bex.yml — the render.yaml-shaped manifest for deploy-from-chat (pillar 4).
+# Deploy in one call: give an agent the repo + this file via the MCP `deploy`
+# tool (or POST it to /v1/services). The operator builds from git (Dockerfile
+# here), runs it, and returns a live https URL. A signed git push then
+# redeploys (POST /v1/webhooks/git). See docs/bex-api.md.
+apps:
+  - name: hello-go
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    branch: main
+    builder: auto # Dockerfile present ⇒ docker build
+    port: 3000
+    tier: free
+    healthCheckPath: /
+    envVars:
+      - key: MESSAGE
+        value: "hello from bex"

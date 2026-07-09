@@ -98,6 +98,23 @@ var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// gqlStr / gqlInt read an optional argument, tolerating absence (graphql-go
+// omits unset optional args from the map) — the create mutation's scalar args
+// are all optional except name.
+func gqlStr(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func gqlInt(args map[string]any, key string) int {
+	if v, ok := args[key].(int); ok {
+		return v
+	}
+	return 0
+}
+
 func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
 	a, ok := p.Source.(AppView)
 	if !ok {
@@ -160,6 +177,34 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		}
 	}
 	return graphql.Fields{
+		// createService: create-or-update a service (the create half of the
+		// lifecycle). A bex extension — the create mutation's name/shape is not
+		// confirmed against a live Render dashboard capture (same caveat as
+		// updateServicePlan/scaleService); it follows their scalar-arg convention.
+		// One of repo/image is required, the rest fall back to platform defaults.
+		"createService": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"repo":     &graphql.ArgumentConfig{Type: graphql.String},
+				"image":    &graphql.ArgumentConfig{Type: graphql.String},
+				"branch":   &graphql.ArgumentConfig{Type: graphql.String},
+				"plan":     &graphql.ArgumentConfig{Type: graphql.String},
+				"port":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"replicas": &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Create(p.Context, CreateRequest{
+					Name:     p.Args["name"].(string),
+					Repo:     gqlStr(p.Args, "repo"),
+					Image:    gqlStr(p.Args, "image"),
+					Branch:   gqlStr(p.Args, "branch"),
+					Plan:     gqlStr(p.Args, "plan"),
+					Port:     int32(gqlInt(p.Args, "port")),
+					Replicas: int32(gqlInt(p.Args, "replicas")),
+				})
+			},
+		},
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Suspend)},
 		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		"restartServer":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Restart)},

@@ -191,6 +191,7 @@ func main() {
 	// metadata endpoint, no audience check — behavior identical to before.
 	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
 	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
+	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.

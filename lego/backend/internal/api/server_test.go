@@ -210,6 +210,25 @@ func TestGraphQL_RequiresAuth(t *testing.T) {
 	}
 }
 
+// TestGitWebhookBypassesAuthGate proves the push webhook is reachable WITHOUT an
+// OAuth token (its HMAC signature is its authentication) — an unsigned call is
+// rejected by the webhook itself (401), not by the auth gate, and reaches it at
+// all only because it's mounted ahead of the /v1/ auth wildcard.
+func TestGitWebhookBypassesAuthGate(t *testing.T) {
+	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	srv.WebhookSecret = "" // unset => the webhook 503s (reached, not gate-blocked)
+	h, err := srv.Handler()
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
+	// No token: the auth gate would answer 401 for a gated /v1/ route, but the
+	// webhook is not gated, so it answers its own 503 (secret unset).
+	if code := do(t, h, "POST", "/v1/webhooks/git", "", "{}").Code; code != 503 {
+		t.Errorf("webhook with no secret => 503 (reached, ungated), got %d", code)
+	}
+}
+
 func mcpSession(t *testing.T, srv *Server) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
@@ -238,7 +257,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 		got[tl.Name] = true
 	}
 	for _, want := range []string{
-		"list_services", "get_service", "list_logs", "get_metrics",
+		"list_services", "get_service", "create_web_service", "deploy", "list_logs", "get_metrics",
 		"restart_service", "suspend_service", "resume_service", "scale_service",
 		"create_api_key", "list_api_keys", "revoke_api_key",
 		"list_postgres_instances", "get_postgres", "create_postgres",

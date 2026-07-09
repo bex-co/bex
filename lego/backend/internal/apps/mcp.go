@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // mcp.go is the MCP fragment for services. Tool names track Render's official
@@ -54,6 +56,53 @@ type scaleArgs struct {
 	NumInstances int32  `json:"numInstances" jsonschema:"the desired number of running instances (1-100)"`
 }
 
+// createWebServiceArgs is create_web_service's input — Render's MCP tool name.
+// name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
+// extensions (Render's tool is git-only and has no port/replicas). One of
+// repo/image is required. Render's runtime/buildCommand/startCommand/region are
+// omitted — bex builds via Dockerfile/CNB auto-detection, one region.
+type createWebServiceArgs struct {
+	Name     string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Repo     string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image    string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch   string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Plan     string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars  []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	Port     int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000)"`
+	Replicas int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+}
+
+// envVarArg is Render's {key, value} env-var shape, shared by the create tool.
+type envVarArg struct {
+	Key   string `json:"key" jsonschema:"the environment variable name"`
+	Value string `json:"value" jsonschema:"the literal value"`
+}
+
+func (a createWebServiceArgs) toCreateRequest() CreateRequest {
+	var env []appv1alpha1.EnvVar
+	for _, e := range a.EnvVars {
+		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+	}
+	return CreateRequest{
+		Name:     a.Name,
+		Repo:     a.Repo,
+		Image:    a.Image,
+		Branch:   a.Branch,
+		Plan:     a.Plan,
+		Env:      env,
+		Port:     a.Port,
+		Replicas: a.Replicas,
+	}
+}
+
+// deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
+// is create_web_service with a manifest — one agent call takes code to a URL.
+type deployArgs struct {
+	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
+	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
+	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml (render.yaml-shaped manifest) describing the service"`
+}
+
 // RegisterMCP adds the service tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -71,6 +120,28 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_service",
 		Description: "Get details about a specific service by id.",
 	}, s.serviceTool(s.Get))
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_web_service",
+		Description: "Create (or update) a web service from a repo or a prebuilt image and get back the service to poll until its url is live. Calling it again for the same name redeploys it. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Create(ctx, in.toCreateRequest())
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "deploy",
+		Description: "Deploy a project from a git repo and its bex.yml in one call — takes code to a live https URL. Calling it again for the same service redeploys it. bex extension (pillar 4, deploy-from-chat).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Deploy(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML})
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "restart_service",

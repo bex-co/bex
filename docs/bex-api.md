@@ -41,27 +41,41 @@ Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl,
 
 Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the `{service, cursor}` list envelope, the **string** `suspended` enum (`"suspended"` / `"not_suspended"`, _not_ a boolean), and the verb status codes. Served under Render's noun `/v1/services` and bex's `/v1/apps` alias (same handlers). The App name is the service `id` (Render ids are opaque; a client just round-trips whatever the list returned).
 
-| method + path                    | effect                         | status |
-| -------------------------------- | ------------------------------ | ------ |
-| `GET /healthz`                   | liveness (open)                | 200    |
-| `GET /v1/services`               | list `[{service, cursor}]`     | 200    |
-| `GET /v1/services/{id}`          | one service object             | 200    |
-| `PATCH /v1/services/{id}`        | update, e.g. the instance plan | 200    |
-| `POST /v1/services/{id}/restart` | `spec.restartedAt = now`       | 200    |
-| `POST /v1/services/{id}/suspend` | `spec.suspended = true`        | 202    |
-| `POST /v1/services/{id}/resume`  | `spec.suspended = false`       | 202    |
-| `POST /v1/services/{id}/scale`   | `spec.replicas = numInstances` | 202    |
+| method + path | effect | status |
+| --- | --- | --- |
+| `GET /healthz` | liveness (open) | 200 |
+| `POST /v1/services` | create-or-update a service (upsert) | 201 |
+| `GET /v1/services` | list `[{service, cursor}]` | 200 |
+| `GET /v1/services/{id}` | one service object | 200 |
+| `PATCH /v1/services/{id}` | update, e.g. the instance plan | 200 |
+| `POST /v1/services/{id}/restart` | `spec.restartedAt = now` | 200 |
+| `POST /v1/services/{id}/suspend` | `spec.suspended = true` | 202 |
+| `POST /v1/services/{id}/resume` | `spec.suspended = false` | 202 |
+| `POST /v1/services/{id}/scale` | `spec.replicas = numInstances` | 202 |
+| `POST /v1/webhooks/git` | HMAC-verified push → redeploy (ungated) | 200 |
 
 Verbs return the updated service object (the patch is accepted; the operator converges asynchronously — poll `GET` for `suspended`/`phase`). The service object carries Render's fields (`id`, `name`, `type: "web_service"`, `suspended`, `dashboardUrl`, `createdAt`, `serviceDetails.url`) plus bex extras (`phase`, `replicas`, `revision`) — a superset Render clients safely ignore. bex has no build plans, regions or disks, so those Render fields are omitted.
+
+`POST /v1/services` is the create surface, and it is an **upsert**: a repeat call for the same `name` updates the service (a redeploy — the spec is re-applied and `spec.restartedAt` bumped so a repo-backed App rebuilds) rather than creating a duplicate. The body is shaped to Render's create schema (verified against its public API): top-level `type` (`web_service` default / `private_service`), `name`, `repo`, `branch`, `image` (an **object** `{imagePath}`, not a string), `envVars: [{key, value}]`, and `serviceDetails.{plan, numInstances, healthCheckPath}` — the same nested location `PATCH`/`GET` use. One of `repo` (build-from-git) or the `image` object (prebuilt) is required. Render fields bex can't yet honor are ignored (a safe superset): `ownerId` (single workspace), `region` (single region), `autoDeploy` (push-to-deploy is the webhook below, not a poll), and the `serviceDetails` runtime build/start commands (bex builds via Dockerfile/CNB auto-detection). bex adds a few extensions with no Render create-body equivalent — `builder`, `port` (Render auto-detects it), `domains` (custom domains in one call), and a top-level `plan` convenience. It writes the App CR directly (the hand-applied path); the row-backed, multi-tenant create is the internal control-plane API's job (`store` `POST /v1/apps`).
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services
 curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/eden-cms-v2/suspend
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  https://api.bex.co/v1/services -d '{"name":"hello","repo":"https://github.com/bex/hello","serviceDetails":{"plan":"starter"}}'
 ```
+
+### Deploy-from-chat (pillar 4)
+
+"Deploy this" is **one call, no bespoke endpoint** — it rides the same create surface (ADR: [deploy-from-chat.md](deploy-from-chat.md)). Over MCP the `deploy` tool takes a `{repo, bexYaml}` (`bexYaml` is the project's render.yaml-shaped `bex.yml`); it parses the manifest, maps its fields onto a `CreateRequest` (the same mapping `scripts/app-apply.sh` uses), and calls `Create`. `create_web_service` is the equivalent with structured args (a `repo` or `image`). A later push closes the loop through the webhook below.
+
+### Push-to-deploy webhook
+
+`POST /v1/webhooks/git` is the git-host push webhook. It sits **outside the OAuth gate** — a git host can't present a bearer token, so its authentication is an HMAC-SHA256 signature over the raw body (`X-Hub-Signature-256: sha256=<hex>`, GitHub/Gitea style) verified in constant time against the shared secret `BEX_WEBHOOK_SECRET`. A valid push redeploys every App whose `spec.repo` matches the pushed repository (compared across the payload's clone/ssh/html/api URL forms, canonicalized) and whose tracked branch matches the pushed ref; an absent or mismatched signature is **401** with no action, and an unset secret makes the endpoint **503**.
 
 ## GraphQL (Render dashboard compatible)
 
-`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `updateServicePlan(id, plan)` and `scaleService(id, numInstances)`; type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
+`POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `updateServicePlan(id, plan)`, `scaleService(id, numInstances)` and `createService(name, repo?, image?, branch?, plan?, port?, replicas?)` (the create-or-update upsert — its name/shape unconfirmed against a live Render capture, like the two before it); type `Service` with the string `suspended` enum. Every resolver delegates to the same feature `Service`.
 
 ```sh
 curl -X POST https://api.bex.co/graphql \
@@ -115,12 +129,14 @@ Deferred (map to unbuilt features): `suspend`/`resume`/`restart`, `failover` (ne
 
 ## MCP (Render official-server compatible)
 
-The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent operates bex natively instead of screen-scraping the dashboard. Tool names, argument names, and the returned `service` object track Render's official MCP server (`render-oss/render-mcp-server`), just as REST tracks the OpenAPI spec: `list_services`, `get_service` and `list_logs` track Render's tools (names + args), and single-service tools key on Render's `serviceId`. Render's official MCP is read-heavy and omits restart/suspend/resume, so bex adds `restart_service` / `suspend_service` / `resume_service` — named after Render's REST verbs, keyed on the same `serviceId`, so they read as native to a Render-shaped agent. `list_logs` and `get_metrics` give an agent the same observability reads as the REST/GraphQL surfaces (three-adapter parity). Managed Postgres tracks Render's official Postgres tools — `list_postgres_instances`, `get_postgres` (keyed on Render's `postgresId`), `create_postgres` and `query_render_postgres` (read-only SQL, MCP-only like Render). The read/create tools delegate to the same `Core` method REST/GraphQL call; `query_render_postgres` runs its SQL over the tenant DB's internal URI inside a read-only, timed, row-capped envelope (see the Postgres section above).
+The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent operates bex natively instead of screen-scraping the dashboard. Tool names, argument names, and the returned `service` object track Render's official MCP server (`render-oss/render-mcp-server`), just as REST tracks the OpenAPI spec: `list_services`, `get_service` and `list_logs` track Render's tools (names + args), and single-service tools key on Render's `serviceId`. Render's official MCP is read-heavy and omits restart/suspend/resume, so bex adds `restart_service` / `suspend_service` / `resume_service` — named after Render's REST verbs, keyed on the same `serviceId`, so they read as native to a Render-shaped agent. `create_web_service` tracks Render's official create tool (name/repo/branch/plan/envVars); it omits Render's `runtime`/`buildCommand`/`startCommand`/`region` (bex builds via Dockerfile/CNB auto-detection, one region) and adds `image`/`port`/`replicas` extensions. `deploy` is bex's deploy-from-chat verb (pillar 4) — `{repo, bexYaml}` in one call — riding the same `Create` Core verb, so there is no separate deploy endpoint. `list_logs` and `get_metrics` give an agent the same observability reads as the REST/GraphQL surfaces (three-adapter parity). Managed Postgres tracks Render's official Postgres tools — `list_postgres_instances`, `get_postgres` (keyed on Render's `postgresId`), `create_postgres` and `query_render_postgres` (read-only SQL, MCP-only like Render). The read/create tools delegate to the same `Core` method REST/GraphQL call; `query_render_postgres` runs its SQL over the tenant DB's internal URI inside a read-only, timed, row-capped envelope (see the Postgres section above).
 
 | tool | args | Core verb | returns |
 | --- | --- | --- | --- |
 | `list_services` | — | `List` | `{services: [service, ...]}` |
 | `get_service` | `{serviceId}` | `Get` | `service` |
+| `create_web_service` | `{name, repo?, image?, branch?, plan?, envVars?, port?, replicas?}` | `Create` | created/updated `service` |
+| `deploy` | `{repo?, branch?, bexYaml}` | `Deploy` | created/updated `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
@@ -208,4 +224,4 @@ Ships in the operator image (`Dockerfile` builds a second `/api` binary); the ap
 
 ## Scope
 
-Lifecycle verbs (including plan changes), read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [control-plane.md](control-plane.md)). Not yet: deploy/rollback, service creation, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs (including plan changes), service create-or-update + deploy-from-chat + the push-to-deploy webhook, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [control-plane.md](control-plane.md)). Not yet: service delete, rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

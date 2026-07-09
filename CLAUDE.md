@@ -55,6 +55,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_OPENBAO_JWT_PATH` | override the ServiceAccount token path for OpenBao k8s-auth login (off-cluster/dev; default is the pod's projected token) |
 | bex-api | `BEX_CP_DB_URI` | Postgres URI for the control-plane store (docs/control-plane.md); set ⇒ runs migrations + the apps-rows→App-CR projector + the internal tenant API; unset ⇒ bex-api alone |
 | bex-api | `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` (:8091), `BEX_CP_RESYNC`, `BEX_CP_TOKEN` | control-plane knobs: projection target ns, internal API addr, resync interval, internal API bearer |
+| bex-api | `BEX_WEBHOOK_SECRET` | shared HMAC-SHA256 key for the git push webhook (`POST /v1/webhooks/git`); unset ⇒ webhook 503 (docs/bex-api.md) |
 | bex-api | `BEX_MCP_STDIO` | `1` ⇒ serve only the MCP tools over stdio (same as `api mcp-stdio`) |
 | bex-api | `BEX_OAUTH_ISSUER`, `BEX_OAUTH_RESOURCE` | OAuth 2.1 discovery for MCP/agent clients (docs/auth.md §7): Hydra public issuer + this API's canonical resource URI — drives RFC 9728 metadata, 401 `resource_metadata` hints, and the token-audience check; both unset ⇒ prior behavior |
 | dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | headless OAuth2 consent acceptor at `/auth/consent` (docs/auth.md §7); server-only (not `VITE_`), unset ⇒ consent 503 |
@@ -65,6 +66,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/architecture.md](docs/architecture.md) — the map: two clusters, two layers, panorama diagram.
 - [docs/control-plane.md](docs/control-plane.md) — Postgres source of truth (built, opt-in via `BEX_CP_DB_URI`) vs. operator mechanism.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.
+- [docs/deploy-from-chat.md](docs/deploy-from-chat.md) — ADR: deploy-from-chat rides `Core.Create` (no bespoke endpoint) + the HMAC push-to-deploy webhook (pillar 4).
 - [docs/observability.md](docs/observability.md) — Logs (query + live-tail) and metrics over REST/GraphQL/MCP.
 - [docs/deployment.md](docs/deployment.md) — deploy flow, health gating, revisions.
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.

@@ -76,6 +76,11 @@ type Server struct {
 	OAuthIssuer   string
 	OAuthResource string
 
+	// WebhookSecret is the shared HMAC-SHA256 key the git push webhook verifies
+	// signatures against; empty disables the endpoint (it 503s). The webhook sits
+	// OUTSIDE the OAuth gate — its signature is its authentication.
+	WebhookSecret string
+
 	schema graphql.Schema
 }
 
@@ -174,6 +179,12 @@ func (s *Server) Handler() (http.Handler, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
+	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
+	// wins in net/http's mux). A git host can't present a bearer token.
+	if s.Apps != nil {
+		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret})
+	}
 	// All three adapters sit behind the same auth gate.
 	mux.Handle("/v1/", auth(s.restHandler()))
 	mux.Handle("/graphql", auth(s.graphqlHandler()))

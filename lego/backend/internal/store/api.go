@@ -323,6 +323,12 @@ func validateName(field, v string) error {
 	return nil
 }
 
+// ValidAppName reports whether v is a valid App/tenant name: a DNS-1123 label of
+// 1-30 chars. Exported so bex-api's public create verb enforces the exact same
+// rule as this internal create API — the two can't disagree about what a valid
+// name is (the same single-source rationale as MaxReplicas).
+func ValidAppName(v string) bool { return nameRE.MatchString(v) }
+
 // normalizeTier validates a tier/plan string against lego/types/tiers'
 // compute family, the one shared ladder (also consumed by the operator for
 // pod resources). Prices are Metronome's, not this validity gate's concern.
