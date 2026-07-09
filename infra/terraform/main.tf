@@ -84,76 +84,10 @@ resource "hcloud_firewall_attachment" "infra" {
   server_ids  = [hcloud_server.infra.id]
 }
 
-# Firewall for the CAPH-provisioned APP-cluster nodes (w1/m7 t001). The app
-# cluster's servers are created by CAPH, not Terraform, so we can't attach by
-# id — we attach by LABEL SELECTOR. CAPH stamps every server it owns with
-# `caph-cluster-<clusterName>=owned` (see the provider's api/v1beta1 tags.go,
-# constant NameHetznerProviderOwned = "caph-cluster-"), so the selector below
-# matches exactly the app cluster's nodes and nothing else. New machines the
-# autoscaler adds inherit the label and are firewalled automatically.
-#
-# Hetzner firewalls filter only the PUBLIC interface (inbound; egress is
-# unrestricted). Node-to-node Kubernetes traffic (etcd, kubelet, Cilium,
-# WireGuard, …) MUST therefore ride the private network — this firewall is
-# only safe once t005 has flipped `hcloudNetwork.enabled: true` in the CAPH
-# overlay (nodes talk over 10.0.0.0/16, which the firewall never sees). Before
-# that, nodes gossip over public IPs and this ruleset would sever the cluster.
-resource "hcloud_firewall" "app" {
-  name = "bex-app"
-
-  # SSH — admin/CI only (same allowlist as the infra node).
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "22"
-    source_ips = var.allowed_ssh_cidrs
-  }
-
-  # kube API (6443) — admin/CI only. This is the DoD's "firewall the API": the
-  # apiserver binds :6443 on every control-plane node's public IP, and without
-  # this rule it is internet-exposed. kubectl-via-LB still works — the Hetzner
-  # control-plane LB forwards to nodes over the private network (unfiltered).
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "6443"
-    source_ips = var.allowed_ssh_cidrs
-  }
-
-  # App ingress — Traefik binds the node public IP :80/:443 (docs: traefik.yaml).
-  # :80 also serves the cert-manager HTTP-01 ACME challenge. Public by design.
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "443"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
-
-  # Managed tenant Postgres — Traefik's TCP/SNI entrypoint on :5432 fronts
-  # external Database URLs (docs/postgresql-management.md). Public by design.
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "5432"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
-
-  # ICMP for diagnostics (ping / path-MTU discovery).
-  rule {
-    direction  = "in"
-    protocol   = "icmp"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
-}
-
-resource "hcloud_firewall_attachment" "app" {
-  firewall_id     = hcloud_firewall.app.id
-  label_selectors = ["caph-cluster-${var.app_cluster_name}=owned"]
-}
+# NOTE: no firewall on the CAPH-provisioned APP-cluster nodes (the `bex-app`
+# hcloud_firewall from w1/m7 t001 was removed 2026-07-09 — see
+# .pm/DO_NOT_DO.md and docs/infra-credentials.md). A static source-IP allowlist
+# fits neither a dynamic-IP operator nor GitHub-hosted CI, so :22/:6443 stay on
+# authentication-only (key-only SSH + kube TLS/RBAC). If a network second layer
+# is ever wanted, it's Tailscale/WireGuard (stable tailnet allowlist), not a
+# static CIDR.

@@ -1,0 +1,9 @@
+# FUTURE / MAYBE — deferred ideas, revisit when the trigger is met
+
+Not anti-goals (those live in [DO_NOT_DO.md](DO_NOT_DO.md)) and not committed roadmap (that's the `wN/mN` milestones). These are ideas that are **correct in principle but premature now** — each has a concrete **trigger** that should bring it back onto the board. When running `/pm-brainstorm` or `/pm`, don't schedule these unless their trigger is met; when a trigger _is_ met, promote the item to a real milestone/task.
+
+## Deferred
+
+- **Cilium WireGuard node-to-node encryption (w1/m7 t004).** Encrypt east-west traffic (cross-node pod-to-pod, and with `nodeEncryption` host-to-host) via `encryption.enabled=true / type=wireguard / nodeEncryption=true` — the flags already exist in [`.github/workflows/app-cluster.yml`](../.github/workflows/app-cluster.yml) but are **`Encryption: Disabled`** on the live cluster. Deferred 2026-07-09 because it's a **structural no-op on a single node**: WireGuard builds an encrypted tunnel between _pairs_ of nodes, and with one node all pod traffic stays in the local kernel — there is no inter-node hop to encrypt (and the current node's kernel has no `wireguard` module loaded, so enabling it is pure risk for zero benefit). Client→app encryption is unaffected (that's Traefik TLS via cert-manager, not WireGuard). **Trigger: the cluster gains a second node** (multi-node / autoscaler buildout) — do it there, where CAPH-created nodes are born on the `bex` private network and there's a real peer to encrypt to.
+
+  _(Note: `use-private-ip`, previously deferred here alongside WireGuard, was **done** 2026-07-09 — the single node was attached to the `bex` network out-of-band and the LB now targets it privately. See w1/m7 README t005 + docs/infra-credentials.md. WireGuard stays deferred because, unlike private-IP LB targeting, it genuinely has nothing to encrypt on one node.)_

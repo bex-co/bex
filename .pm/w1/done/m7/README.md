@@ -6,10 +6,10 @@
 
 | id   | title                                             | est | depends_on |            |
 | ---- | ------------------------------------------------- | --- | ---------- | ---------- |
-| t001 | Firewall the app nodes (Hetzner firewall, TF)     | 30m | —          | — **DONE** |
+| t001 | Firewall the app nodes (Hetzner firewall, TF)     | 30m | —          | — **REMOVED** → `.pm/DO_NOT_DO.md` |
 | t002 | Immutable operator image (SHA-pin, not `:latest`) | 30m | —          | — **DONE** |
 | t003 | Secrets at rest (sealed-secrets / SOPS)           | 30m | —          | — **DONE** |
-| t004 | Encrypt node-to-node (Cilium WireGuard)           | 25m | —          | — **DONE** |
+| t004 | Encrypt node-to-node (Cilium WireGuard)           | 25m | —          | — **DEFERRED** → `.pm/FUTURE-MAYBE.md` |
 | t005 | Private network + stable LB IP (Traefik LB)       | 30m | t004       | — **DONE** |
 | t006 | OpenBao Raft snapshot backup (etcd-backup CronJob pattern) | 30m | —          | — **DONE** |
 
@@ -29,11 +29,11 @@ The kube-API is firewalled (not internet-exposed); the operator runs a SHA-pinne
 
 All six shipped as declarative config (the Hetzner/CAPH surfaces are IaC that can't be applied without a live account — validated by rendering/`terraform validate`, not a live run, matching the repo's existing untested-infra convention).
 
-- **t001** — `hcloud_firewall.app` + `hcloud_firewall_attachment.app` (label selector `caph-cluster-bex=owned`, the real CAPH ownership label from its `tags.go`) in `infra/terraform/main.tf`; `:22`/`:6443` locked to `allowed_ssh_cidrs`, `:80/:443/:5432` public, ICMP. `terraform validate` + `fmt -check` pass. Safe only alongside t005 (node-to-node must be on the private net, which a public firewall never sees).
+- **t001** — ~~`hcloud_firewall.app` + attachment locking `:22`/`:6443` to `allowed_ssh_cidrs`~~ **REMOVED 2026-07-09** (Terraform code deleted; see [.pm/DO_NOT_DO.md](../../../DO_NOT_DO.md) + [docs/infra-credentials.md](../../../../docs/infra-credentials.md)). It never applied to prod (validated-only, like the rest of m7), and a static source-IP allowlist fits neither a dynamic-IP operator nor GitHub-hosted CI. `:22`/`:6443` stay authentication-only; a network second layer, if ever wanted, is Tailscale/WireGuard, not a static CIDR.
 - **t002** — digest write-back in `deploy.yml`: after build+push, the pushed `@sha256` digest is `sed`-pinned into `bex.yaml`/`dashboard.yaml` and committed back to main `[skip ci]`, so the running Deployment is content-addressed, never `:latest`.
 - **t003** — sealed-secrets controller Argo app (`deploy/gitops/base/sealed-secrets.yaml`, chart 2.19.1) + `scripts/seal-secret.sh` + `docs/sealed-secrets.md` (sealed-secrets over SOPS; which infra creds to seal; sealing-key DR).
-- **t004** — Cilium WireGuard (`encryption.enabled/type=wireguard/nodeEncryption`) in `app-cluster.yml`.
-- **t005** — CAPH `hcloudNetwork` enabled (own `bex` network; the TF infra network renamed `bex-infra` to avoid the name collision — CAPH has no existing-network reference field); CCM `networking.enabled`; Traefik refactored to multi-source and a prod overlay values file flips it to a Hetzner `LoadBalancer` with `use-private-ip` for a stable IP. Validated by `gitops-validate.sh` (extended to render `traefik` + prod-overlay layerings against the real chart).
+- **t004** — Cilium WireGuard (`encryption.enabled/type=wireguard/nodeEncryption`) flags in `app-cluster.yml`, but **DEFERRED 2026-07-09** (live cluster: `Encryption: Disabled`). A no-op on a single node (no inter-node hop to encrypt; node kernel lacks the `wireguard` module) — revisit at the multi-node buildout. See [.pm/FUTURE-MAYBE.md](../../../FUTURE-MAYBE.md).
+- **t005** — CAPH `hcloudNetwork` (own `bex` network); Traefik refactored to multi-source + a prod overlay values file flips it to a Hetzner `LoadBalancer` for a stable IP. **Delivered live 2026-07-09** (the first attempt bundled `use-private-ip` + the private net and took prod down — 521 — because the node wasn't on the network; reverted, then re-done correctly): LB `bex-traefik` (`142.132.241.247`), public-IP first, then `use-private-ip: "true"` after attaching the single node to the `bex` network out-of-band (`10.0.1.2`) and making the CCM network-aware with the route-controller off (`HCLOUD_NETWORK_ROUTES_ENABLED=false`). All targets healthy over the private net; verified serving. See `deploy/gitops/overlays/prod/values/traefik.values.yaml`, `app-cluster.yml`, docs/infra-credentials.md.
 - **t006** — `openbao-backup` CronJob chart (`bao operator raft snapshot save` → S3, retain-7), Argo app in base (local overlay excludes), least-privilege `snapshot` policy + `bao-snapshot` role added to `scripts/bao-k8s-auth.sh`, runbook `docs/openbao-backup-restore.md`.
 
 Verification: `scripts/gitops-validate.sh` PASS (whole tree renders, incl. new chart + both overlays); `terraform validate`/`fmt` PASS; shell + YAML syntax checked. Live-cluster smoke of the LB, WireGuard handshake, firewall reachability, and a real snapshot→restore remain for the first Hetzner run (flagged in the docs).

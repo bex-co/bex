@@ -58,13 +58,7 @@ variable "subnet_cidr" {
 }
 
 variable "allowed_ssh_cidrs" {
-  description = "CIDRs allowed to reach SSH (22) and the k3s / kube API (6443) on the infra AND app-cluster nodes. Lock to your CI egress + admin IPs in prod — the default is wide open."
+  description = "CIDRs allowed to reach SSH (22) and the k3s / kube API (6443) on the infra node. Lock to your CI egress + admin IPs in prod — the default is wide open."
   type        = list(string)
   default     = ["0.0.0.0/0"]
-}
-
-variable "app_cluster_name" {
-  description = "Name of the CAPH-provisioned app cluster (metadata.name in infra/clusterapi/overlays/hetzner-caph/cluster.yaml). Used to build the app-node firewall's label selector — CAPH stamps every server it creates with `caph-cluster-<name>=owned` (api/v1beta1 tags.go: NameHetznerProviderOwned)."
-  type        = string
-  default     = "bex"
 }

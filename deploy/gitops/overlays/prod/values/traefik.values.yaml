@@ -5,12 +5,12 @@
 # base/values/traefik.values.yaml by the prod overlay kustomization — Argo
 # deep-merges valueFiles in order, later wins.
 #
-# LB targets nodes over their PUBLIC IPs (no use-private-ip). The first LB attempt
-# bundled use-private-ip + the CAPH private network and took prod down; verified on
-# the live cluster that the single control-plane node registers no k8s InternalIP
-# (10.x) — so private-ip targeting has no address to use. Public-IP targeting needs
-# no private network and is the safe first step; revisit use-private-ip once nodes
-# expose an InternalIP and multi-node lands.
+# LB targets nodes over their PRIVATE IPs (use-private-ip, enabled 2026-07-09). The
+# first attempt failed because the node wasn't on the `bex` network; it now is
+# (attached live: node → 10.0.1.2), and the CCM is network-aware (HCLOUD_NETWORK=bex,
+# HCLOUD_NETWORK_ROUTES_ENABLED=false — LB uses the private net, route-controller stays
+# OFF so it can't fight Cilium tunnel-mode routing). The LB→node hop rides 10.0.0.0/16;
+# the LB's public IP is unchanged. See app-cluster.yml (CCM) + docs/infra-credentials.md.
 hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
@@ -42,7 +42,7 @@ service:
   annotations:
     load-balancer.hetzner.cloud/name: bex-traefik
     load-balancer.hetzner.cloud/location: fsn1
-    # No use-private-ip: target nodes over public IPs (node has no k8s InternalIP).
+    load-balancer.hetzner.cloud/use-private-ip: "true" # LB→node hop over the bex private net
     load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
   spec:
     type: LoadBalancer # CCM provisions the Hetzner LB (stable IP)

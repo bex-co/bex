@@ -158,16 +158,21 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       # Hetzner CCM: initializes nodes (clears the cloud-provider taint) + LoadBalancers.
-      # networking is ON (w1/m7 t005): the CAPH overlay sets hcloudNetwork.enabled=true,
-      # so the CCM programs pod-CIDR routes over the private network and LoadBalancer
-      # targets use the nodes' private IPs (load-balancer.hetzner.cloud/use-private-ip).
-      # The cluster CIDR must match the overlay's clusterNetwork.pods.cidrBlocks.
+      # Network-aware (HCLOUD_NETWORK=bex from the secret above) so the Traefik LB
+      # attaches to the bex private network and targets nodes by PRIVATE IP
+      # (load-balancer.hetzner.cloud/use-private-ip, w1/m7 t005, enabled live 2026-07-09).
+      # The CCM ROUTE controller stays OFF (HCLOUD_NETWORK_ROUTES_ENABLED=false): Cilium
+      # owns pod routing (tunnel mode), so CCM-programmed pod-CIDR routes are redundant
+      # and can fight it. NOTE: CAPH attaches nodes born after hcloudNetwork.enabled=true
+      # to the network automatically; the pre-existing single node was attached out-of-band
+      # (hcloud API attach_to_network + netplan apply → 10.0.1.2). See docs/infra-credentials.md.
       - name: install Hetzner CCM
         run: |
           helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
             -n kube-system \
             --set networking.enabled=true \
-            --set networking.clusterCIDR="${POD_CIDR}"
+            --set networking.clusterCIDR="${POD_CIDR}" \
+            --set env.HCLOUD_NETWORK_ROUTES_ENABLED.value="false"
 
       # CNI: Cilium in tunnel mode (works without a private network / native routing).
       # WireGuard node-to-node encryption is ON (w1/m7 t004): Cilium establishes a
