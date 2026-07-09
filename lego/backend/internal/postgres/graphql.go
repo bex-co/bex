@@ -42,6 +42,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.CreatedAt })},
 		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ExternalHost })},
 		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Public })},
+		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.OwnerID })},
 	},
 })
 
@@ -75,8 +76,15 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"databases": &graphql.Field{ // list; Render lists via env, bex offers a top-level list
-			Type:    graphql.NewList(postgresGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListPostgres(p.Context) },
+			Type: graphql.NewList(postgresGQLType),
+			Args: graphql.FieldConfigArgument{
+				// ownerId mirrors Render's REST/MCP databases list filter (w6/m2/t004).
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				ownerID, _ := p.Args["ownerId"].(string)
+				return s.ListPostgres(p.Context, ownerID)
+			},
 		},
 		"database": &graphql.Field{ // Render's dashboard query name
 			Type: postgresGQLType,

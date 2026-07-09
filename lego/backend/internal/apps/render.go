@@ -38,6 +38,10 @@ type renderService struct {
 	CreatedAt      string         `json:"createdAt,omitempty"`
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
 
+	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
+	// Apps the control-plane projector never labeled (see AppView.OwnerID).
+	OwnerID string `json:"ownerId,omitempty"`
+
 	// bex-native superset (ignored by Render clients).
 	Phase    string   `json:"phase,omitempty"`
 	Replicas int32    `json:"replicas"`
@@ -86,6 +90,7 @@ func toRenderService(a AppView) renderService {
 		DashboardURL:   a.URL,
 		CreatedAt:      a.CreatedAt,
 		ServiceDetails: details,
+		OwnerID:        a.OwnerID,
 		Phase:          a.Phase,
 		Replicas:       a.Replicas,
 		Revision:       a.Revision,

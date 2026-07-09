@@ -42,6 +42,12 @@ type listServicesResult struct {
 	Services []renderService `json:"services"`
 }
 
+// listServicesArgs is list_services' input — the ownerId scoping filter
+// (w6/m2/t004), mirroring the REST/GraphQL surfaces. Empty => unscoped.
+type listServicesArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
+}
+
 // updatePlanArgs is update_service_plan's input — Render's plan spelling
 // (e.g. "pro_plus"), same as the REST/GraphQL surfaces.
 type updatePlanArgs struct {
@@ -168,9 +174,9 @@ type deletedResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
-		Description: "List all services (bex Apps) in the workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listServicesResult, error) {
-		apps, err := s.List(ctx)
+		Description: "List all services (bex Apps) in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
+		apps, err := s.List(ctx, s.resolveOwnerID(req, in.OwnerID))
 		if err != nil {
 			return nil, listServicesResult{}, err
 		}
@@ -324,6 +330,20 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, toRenderCustomDomain(d), nil
 	})
+}
+
+// resolveOwnerID is list_services' ownerId-scoping precedence: an explicit
+// argument wins; otherwise fall back to the calling MCP session's selected
+// workspace (select_workspace, w6/m2/t005); with neither, "" (unscoped).
+func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
+	if arg != "" {
+		return arg
+	}
+	if s.Selections == nil || req == nil || req.Session == nil {
+		return ""
+	}
+	id, _ := s.Selections.Get(req.Session.ID())
+	return id
 }
 
 // serviceTool adapts a single-service verb (Get/Restart/Suspend/Resume) into an

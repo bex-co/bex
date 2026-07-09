@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -108,6 +109,10 @@ func (f *fakeStore) ListTenantsForSubject(_ context.Context, subject string) ([]
 			}
 		}
 	}
+	// Mirror PGStore.ListTenantsForSubject's "ORDER BY t.created_at": the map
+	// iteration above is unordered, but callers (List, GetWorkspace's own-
+	// resolution) rely on oldest-first for the "default workspace" contract.
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out, nil
 }
 
@@ -146,6 +151,22 @@ type fakeChecker struct {
 func (c *fakeChecker) Check(_ context.Context, _, relation, object string) (bool, error) {
 	c.lastRel, c.lastObject = relation, object
 	return c.allow, nil
+}
+
+// fakeResolver satisfies core.WorkspaceResolver (w1/m9) over a WorkspaceStore's
+// ListTenantsForSubject — the same underlying tenant_members data
+// TenantForIdentity reads in production, so defaultWorkspace's own- resolution
+// exercises the real code path (Base.Tenant) rather than a parallel test-only
+// heuristic. fakeStore's ListTenantsForSubject is deterministically sorted
+// (oldest first), so index 0 here is stable across test runs.
+type fakeResolver struct{ store WorkspaceStore }
+
+func (r *fakeResolver) Tenant(ctx context.Context, id core.Identity) (string, bool) {
+	ts, err := r.store.ListTenantsForSubject(ctx, id.Subject)
+	if err != nil || len(ts) == 0 {
+		return "", false
+	}
+	return ts[0].ID, true
 }
 
 // fakeGranter records grants and can be told to fail (to exercise the
@@ -193,7 +214,7 @@ func ctxAs(subject string) context.Context {
 // allowSvc builds a Service with an allow-all checker and the given collaborators.
 func allowSvc(st WorkspaceStore, g WorkspaceGranter, r WorkspaceRevoker, kick func(), purgers ...WorkspacePurger) *Service {
 	return &Service{
-		Base:    &core.Base{Authz: &fakeChecker{allow: true}},
+		Base:    &core.Base{Authz: &fakeChecker{allow: true}, Workspace: &fakeResolver{store: st}},
 		Store:   st,
 		Granter: g,
 		Revoker: r,
@@ -287,7 +308,7 @@ func TestCreate_Guards(t *testing.T) {
 	}
 	// No store wired → unavailable (still after the gate).
 	nostore := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}}
-	if _, err := nostore.Create(ctxAs("user-a"), "acme", "hobby"); !errors.Is(err, ErrWorkspacesUnavailable) {
+	if _, err := nostore.Create(ctxAs("user-a"), "acme", "hobby"); !errors.Is(err, core.ErrWorkspacesUnavailable) {
 		t.Fatalf("no store: want unavailable, got %v", err)
 	}
 }

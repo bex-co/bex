@@ -51,6 +51,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | activator | `BEX_ACTIVATOR_ADDR` | listen address (default `:8888`) |
 | bex-api | `BEX_API_ADDR` (:8090), `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN` | listen addr, watched ns, CORS origin allowlist (comma-separated) |
 | bex-api | `BEX_HYDRA_ADMIN_URL` (required), `BEX_KRATOS_URL` | OAuth2 API keys via Hydra introspection; Kratos sessions (docs/auth.md) |
+| bex-api | `BEX_KRATOS_ADMIN_URL` | Kratos' admin API for the owners/members read API's email/MFA lookup (docs/render-artifacts/owners-api.md); unset ⇒ those fields omitted |
 | bex-api | `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN` | authorization via OpenFGA; unset ⇒ allow-all (docs/auth.md) |
 | bex-api | `BEX_BASE_DOMAIN` | platform wildcard domain (e.g. `onbex.co`) — names custom-domain DNS targets `<app>.<domain>` in the DNS-instructions surface (docs/custom-domain.md); unset ⇒ derived from the App's status URL |
 | bex-api | `BEX_PROM_URL` | Prometheus base URL for request metrics (Traefik) and resource-metrics history (cAdvisor); unset ⇒ request metrics 503, resource metrics fall back to the metrics-server snapshot |

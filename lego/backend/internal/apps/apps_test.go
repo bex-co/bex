@@ -76,7 +76,7 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 func TestServiceListGetVerbs(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"), sampleApp("api"))
 
-	list, err := svc.List(context.Background())
+	list, err := svc.List(context.Background(), "")
 	if err != nil || len(list) != 2 {
 		t.Fatalf("List: %v len=%d", err, len(list))
 	}
@@ -135,7 +135,7 @@ func TestListScopedToCallerTenant(t *testing.T) {
 		tenantApp("web", "tea-a"), tenantApp("db", "tea-a"), tenantApp("other", "tea-b"))
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	list, err := svc.List(ctx)
+	list, err := svc.List(ctx, "")
 	if err != nil || len(list) != 2 {
 		t.Fatalf("List: %v len=%d, want 2 (tea-a's apps only)", err, len(list))
 	}
@@ -152,7 +152,7 @@ func TestListUnresolvedCallerSeesNothing(t *testing.T) {
 	svc, _ := newTenantService(fakeWorkspace{}, tenantApp("web", "tea-a"))
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound", Method: "oauth2"})
 
-	list, err := svc.List(ctx)
+	list, err := svc.List(ctx, "")
 	if err != nil || len(list) != 0 {
 		t.Fatalf("List for unresolved caller: %v len=%d, want 0", err, len(list))
 	}
@@ -200,7 +200,7 @@ func TestStoreOffListAndGetIgnoreTenantLabelsUnchanged(t *testing.T) {
 	svc, _ := newService(nil, tenantApp("web", "tea-a"), tenantApp("other", "tea-b"))
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	list, err := svc.List(ctx)
+	list, err := svc.List(ctx, "")
 	if err != nil || len(list) != 2 {
 		t.Fatalf("store-off List: %v len=%d, want 2 (unfiltered)", err, len(list))
 	}

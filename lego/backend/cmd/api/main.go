@@ -124,6 +124,12 @@ func main() {
 	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
 		deps.Secrets = secrets.NewOpenBaoStore(bao)
 	}
+	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
+	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
+	// email/MFA needs the admin API, not a session. Unset => those fields omitted.
+	if kratosAdmin := os.Getenv("BEX_KRATOS_ADMIN_URL"); kratosAdmin != "" {
+		deps.Identities = workspaces.NewKratosIdentities(kratosAdmin)
+	}
 	// Authorization (docs/auth.md): unset => authz disabled (every verb allowed,
 	// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
 	// wired in stdio mode: that transport's trust boundary is the subprocess itself

@@ -52,6 +52,12 @@ type listPostgresResult struct {
 	Postgres []PostgresView `json:"postgres"`
 }
 
+// listPostgresArgs is list_postgres_instances' input — the ownerId scoping
+// filter (w6/m2/t004), mirroring the REST/GraphQL surfaces. Empty => unscoped.
+type listPostgresArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
+}
+
 // queryPostgresArgs mirrors Render's query_render_postgres arguments verbatim
 // (postgresId, sql) — a Render-trained agent calls the tool literally, so the
 // names can't drift.
@@ -64,9 +70,9 @@ type queryPostgresArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_instances",
-		Description: "List all managed Postgres databases in the workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listPostgresResult, error) {
-		list, err := s.ListPostgres(ctx)
+		Description: "List all managed Postgres databases in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
+		list, err := s.ListPostgres(ctx, s.resolveOwnerID(req, in.OwnerID))
 		if err != nil {
 			return nil, listPostgresResult{}, err
 		}
@@ -111,4 +117,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, res, nil
 	})
+}
+
+// resolveOwnerID is list_postgres_instances' ownerId-scoping precedence: an
+// explicit argument wins; otherwise fall back to the calling MCP session's
+// selected workspace (select_workspace, w6/m2/t005); with neither, ""
+// (unscoped) — mirrors apps.Service.resolveOwnerID.
+func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
+	if arg != "" {
+		return arg
+	}
+	if s.Selections == nil || req == nil || req.Session == nil {
+		return ""
+	}
+	id, _ := s.Selections.Get(req.Session.ID())
+	return id
 }

@@ -78,6 +78,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(cronRunGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
 		},
+		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
+		"ownerId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
 	},
 })
 
@@ -201,8 +203,12 @@ func envVarValueResolve(p graphql.ResolveParams) (any, error) {
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"services": &graphql.Field{
-			Type:    graphql.NewList(serviceGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
+			Type: graphql.NewList(serviceGQLType),
+			Args: graphql.FieldConfigArgument{
+				// ownerId mirrors Render's REST/MCP services list filter (w6/m2/t004).
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context, gqlStr(p.Args, "ownerId")) },
 		},
 		"server": &graphql.Field{ // Render's dashboard query name
 			Type: serviceGQLType,

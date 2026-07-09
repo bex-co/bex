@@ -52,6 +52,11 @@ type Service struct {
 	// originate — then patch the CR as the fast-converge path. Nil (tests, DB-less
 	// mode) falls back to CR-only patches, safe only for hand-applied Apps.
 	Store IntentStore
+	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
+	// list_services falls back to the caller's selected workspace when its
+	// ownerId argument is omitted. Read-only (apps never selects a workspace,
+	// only workspaces.Service's select_workspace does). Nil => no fallback.
+	Selections core.WorkspaceSelectionReader
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -113,6 +118,12 @@ type AppView struct {
 	// default. A bex extension with no Render counterpart (Render's spin-down
 	// window is fixed) — the dashboard's Settings tab reads/writes it.
 	IdleTTLSeconds int32 `json:"idleTTLSeconds"`
+	// OwnerID is the workspace (tenant) this App belongs to — Render's `ownerId`
+	// scoping field (w6/m2/t004), read from the App CR's core.LabelTenant label
+	// (the same label List uses to scope to the caller's own tenant). Omitted
+	// for Apps the control-plane projector didn't stamp (the hand-applied path,
+	// scripts/app-apply.sh) — an honest superset rather than a faked id.
+	OwnerID string `json:"ownerId,omitempty"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -143,6 +154,7 @@ func view(a *appv1alpha1.App) AppView {
 		Revision:       a.Status.ActiveRevision,
 		CreatedAt:      created,
 		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
+		OwnerID:        a.Labels[core.LabelTenant],
 	}
 }
 
@@ -158,17 +170,28 @@ func cronRunViews(runs []appv1alpha1.CronRun) []CronRunView {
 	return out
 }
 
-// List returns the caller's Apps. With the store on it is scoped to the caller's
-// tenant (only its projected Apps, labeled bex.co/tenant=<id>, are visible);
-// store off it lists every App in the namespace, as before. A caller with no
-// resolvable tenant (store on, unbound) sees an empty list rather than an
-// unfiltered one.
-func (s *Service) List(ctx context.Context) ([]AppView, error) {
+// List returns the caller's Apps, optionally narrowed to a single owning
+// workspace via ownerID — Render's `ownerId` list-filter contract (w6/m2/t004).
+// ownerID == "" is the caller's own resolved tenant: with the store on, only
+// its projected Apps (labeled core.LabelTenant=<id>) are visible, and a caller
+// with no resolvable tenant sees an empty list rather than an unfiltered one;
+// store off lists every App in the namespace, as before. A non-empty ownerID
+// additionally authorizes can_view on that exact workspace explicitly — so a
+// caller who belongs to more than one workspace can pick one (an ownerId the
+// caller can't access is ErrForbidden), the same override Render's real API
+// supports for a multi-workspace key.
+func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
 	opts := []client.ListOption{client.InNamespace(s.Namespace)}
-	if s.Workspace != nil {
+	switch {
+	case ownerID != "":
+		if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+			return nil, err
+		}
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
+	case s.Workspace != nil:
 		tenantID, ok := s.Tenant(ctx)
 		if !ok {
 			return []AppView{}, nil

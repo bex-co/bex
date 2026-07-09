@@ -28,7 +28,7 @@ import (
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	for _, base := range []string{"/v1/postgres", "/v1/databases"} {
 		mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.ListPostgres(r.Context())
+			out, err := s.ListPostgres(r.Context(), r.URL.Query().Get("ownerId"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return

@@ -42,6 +42,12 @@ spec:
               value: http://hydra-admin.auth.svc:4445
             - name: BEX_KRATOS_URL # optional; unset disables session auth
               value: http://kratos-public.auth.svc:80
+            # Owner/member identity lookup (w6/m2 owners API): Kratos' admin
+            # port, distinct from the public port above — resolving another
+            # member's email/MFA needs the admin API, not a session. Optional;
+            # unset omits those fields from the owners/members responses.
+            - name: BEX_KRATOS_ADMIN_URL
+              value: http://kratos-admin.auth.svc:4434
             # OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/auth.md):
             # issuer = Hydra's public URL; resource = this API's canonical URI.
             # Drives the RFC 9728 metadata endpoint, the 401 WWW-Authenticate

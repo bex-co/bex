@@ -127,13 +127,21 @@ type Deps struct {
 	// Usage, when set (store + Prom wired), provides the month-to-date usage
 	// verb (w8/m2). nil => the verb reports ErrUsageUnavailable (503).
 	Usage *usage.Service
+	// Identities resolves owner/member email + MFA for the owners/members read
+	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
+	// fields (honest subset) rather than failing the request.
+	Identities workspaces.IdentityReader
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
+	// One selection store shared by the workspace-select tools (write) and the
+	// apps/postgres list tools (read) — w6/m2/t005. Always wired: with no MCP
+	// transport in use, it simply never gets a Get/Set call.
+	selections := core.NewWorkspaceSelections()
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, Selections: selections},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -144,15 +152,17 @@ func NewServer(base *core.Base, d Deps) *Server {
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
 		},
 		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
-		Postgres: &postgres.Service{Base: base},
+		Postgres: &postgres.Service{Base: base, Selections: selections},
 		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
 		Workspaces: &workspaces.Service{
-			Base:    base,
-			Store:   d.WorkspaceStore,
-			Granter: d.WorkspaceGranter,
-			Revoker: d.WorkspaceRevoker,
-			Kick:    d.WorkspaceKick,
-			Purgers: d.WorkspacePurgers,
+			Base:       base,
+			Store:      d.WorkspaceStore,
+			Granter:    d.WorkspaceGranter,
+			Revoker:    d.WorkspaceRevoker,
+			Kick:       d.WorkspaceKick,
+			Purgers:    d.WorkspacePurgers,
+			Identities: d.Identities,
+			Selections: selections,
 		},
 		Onboard: d.Onboard,
 		Usage:   d.Usage,

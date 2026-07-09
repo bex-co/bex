@@ -28,6 +28,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -63,6 +65,16 @@ type Service struct {
 	// OpenBao env-var secrets, its managed Databases). Each is best-effort and
 	// injected by the composition root; see WorkspacePurger.
 	Purgers []WorkspacePurger
+	// Identities looks up owner/member email + MFA from Kratos (the store carries
+	// only subjects). Nil => those fields omitted from the owners/members responses
+	// (honest subset; BEX_KRATOS_ADMIN_URL unset).
+	Identities IdentityReader
+	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
+	// select_workspace writes it, get_selected_workspace reads it, and the apps/
+	// postgres list tools read it as their default ownerId filter. Nil (should
+	// not happen in practice — the composition root always wires one) leaves the
+	// MCP workspace tools unregistered rather than panicking; see RegisterMCP.
+	Selections *core.WorkspaceSelections
 }
 
 // WorkspaceStore is the slice of the source of truth this feature writes
@@ -101,9 +113,26 @@ type WorkspacePurger interface {
 	PurgeWorkspace(ctx context.Context, tenantID string) error
 }
 
-// ErrWorkspacesUnavailable is returned when the control-plane store isn't wired
-// (bex-api running without BEX_CP_DB_URI); adapters surface it as 503.
-var ErrWorkspacesUnavailable = errors.New("workspaces store not configured")
+// ErrWorkspacesUnavailable lives in core (core.WriteErr maps it to 503, alongside
+// the other "…Unavailable" sentinels); the workspace verbs return core.ErrWorkspacesUnavailable
+// when the control-plane store isn't wired (bex-api running without BEX_CP_DB_URI).
+
+// IdentityReader looks up a subject's identity attributes from the identity
+// provider (Kratos admin API) — the email + MFA state the control-plane store
+// doesn't carry but Render's owner/member objects require. Nil (BEX_KRATOS_ADMIN_URL
+// unset) => attributes omitted (honest subset); the endpoints still answer 200.
+// bex's Kratos schema defines only an email trait (no name) — see
+// docs/render-artifacts/owners-api.md — so IdentityAttrs carries no Name.
+type IdentityReader interface {
+	Lookup(ctx context.Context, subject string) (IdentityAttrs, bool)
+}
+
+// IdentityAttrs are the IdP attributes a Render owner/member object needs that the
+// store/CRs don't hold. ok=false from Lookup => the caller omits the field.
+type IdentityAttrs struct {
+	Email      string
+	MFAEnabled bool
+}
 
 // WorkspaceView is the neutral projection of a workspace — the tenant row plus
 // the caller's role in it. Each adapter maps this to its wire format (m2's REST
@@ -132,7 +161,7 @@ func (s *Service) List(ctx context.Context) ([]WorkspaceView, error) {
 		return nil, err
 	}
 	if s.Store == nil {
-		return nil, ErrWorkspacesUnavailable
+		return nil, core.ErrWorkspacesUnavailable
 	}
 	id, _ := core.IdentityFrom(ctx)
 	ts, err := s.Store.ListTenantsForSubject(ctx, id.Subject)
@@ -149,6 +178,165 @@ func (s *Service) List(ctx context.Context) ([]WorkspaceView, error) {
 	return out, nil
 }
 
+// ownIDPrefix is Render's user-id prefix (docs/render-artifacts/owners-api.md:
+// "Workspace IDs start with tea-. If you provide a user ID (starts with own-),
+// this endpoint returns the user's default workspace."). bex mints no own- id
+// registry — Identity.Subject is a raw Kratos/Hydra string, not a typed id — so
+// there is no lookup from an arbitrary own- id to SOME other user's default
+// workspace; any own--prefixed ownerId is read as "the caller's own id" and
+// resolves to the CALLER's default workspace. Documented parity simplification
+// (w6/m2/t006).
+const ownIDPrefix = "own-"
+
+// GetWorkspace retrieves one workspace by id — GET /v1/owners/{ownerId}. An
+// own--prefixed id resolves to the caller's default workspace (see ownIDPrefix);
+// otherwise it authorizes can_view on the exact workspace, so a workspace the
+// caller isn't a member of is ErrForbidden (adapters render 403/404) and an
+// unknown tea- id is ErrNotFound.
+func (s *Service) GetWorkspace(ctx context.Context, ownerID string) (WorkspaceView, error) {
+	if strings.HasPrefix(ownerID, ownIDPrefix) {
+		return s.defaultWorkspace(ctx)
+	}
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+		return WorkspaceView{}, err
+	}
+	if s.Store == nil {
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
+	}
+	t, err := s.Store.GetTenant(ctx, ownerID)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	return view(t, "admin"), nil
+}
+
+// defaultWorkspace returns the caller's resolved tenant via core.Base.Tenant —
+// the SAME resolver (w1/m9's core.WorkspaceResolver) that apps/postgres List
+// use to auto-scope, so an own- id and "my unscoped resource list" always
+// agree on what "my workspace" means. ok=false (no resolver wired, or the
+// caller has none) is ErrNotFound — nothing to fall back to.
+func (s *Service) defaultWorkspace(ctx context.Context) (WorkspaceView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return WorkspaceView{}, err
+	}
+	if s.Store == nil {
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok {
+		return WorkspaceView{}, core.ErrNotFound
+	}
+	t, err := s.Store.GetTenant(ctx, tenantID)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	return view(t, "admin"), nil
+}
+
+// OwnerFilter narrows ListOwners (GET /v1/owners): Names/Emails are OR'd within
+// each field, AND'd across fields (Render's docs: "one of the provided names" /
+// "one of the provided email addresses"). Both empty => no filtering.
+type OwnerFilter struct {
+	Names  []string
+	Emails []string
+}
+
+// OwnerView is a workspace plus the contact email Render's owner object
+// requires — kept separate from WorkspaceView so the dashboard switcher
+// (GraphQL `workspaces`) and the lifecycle mutations don't pay for the extra
+// Identities lookup they don't need.
+type OwnerView struct {
+	WorkspaceView
+	Email string
+}
+
+// ListOwners is List (the caller's workspaces) plus t001's REST-only name/email
+// filters and the per-workspace contact email — GET /v1/owners.
+func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, error) {
+	ws, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]OwnerView, 0, len(ws))
+	for _, w := range ws {
+		if len(f.Names) > 0 && !slices.Contains(f.Names, w.Name) {
+			continue
+		}
+		email := s.ownerEmail(ctx, w.ID)
+		if len(f.Emails) > 0 && !slices.Contains(f.Emails, email) {
+			continue
+		}
+		out = append(out, OwnerView{WorkspaceView: w, Email: email})
+	}
+	return out, nil
+}
+
+// ownerEmail resolves the workspace's contact email — the earliest-admin
+// member's email via Identities. Best-effort: "" when Identities is nil, the
+// membership list can't be read, or the lookup misses (honest subset, matching
+// IdentityReader's documented omit-on-miss contract).
+func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
+	if s.Identities == nil || s.Store == nil {
+		return ""
+	}
+	members, err := s.Store.ListTenantMembers(ctx, tenantID)
+	if err != nil {
+		return ""
+	}
+	for _, m := range members { // oldest first
+		if m.Role != "admin" {
+			continue
+		}
+		if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
+			return attrs.Email
+		}
+		return ""
+	}
+	return ""
+}
+
+// MemberView is a workspace member with the identity attributes Render's
+// teamMember object needs, layered onto the tenant_members row.
+type MemberView struct {
+	Subject    string
+	Role       string
+	Email      string
+	MFAEnabled bool
+}
+
+// ListMembers lists a workspace's members — GET /v1/owners/{ownerId}/members.
+// Any member may list members (every m1/m2 role includes can_view). An unknown
+// workspace id is ErrNotFound; a workspace the caller isn't a member of is
+// ErrForbidden.
+func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+		return nil, err
+	}
+	if s.Store == nil {
+		return nil, core.ErrWorkspacesUnavailable
+	}
+	// Confirm the workspace exists — a foreign/unknown id is ErrNotFound, not a
+	// silently empty member list.
+	if _, err := s.Store.GetTenant(ctx, ownerID); err != nil {
+		return nil, mapStoreErr(err)
+	}
+	rows, err := s.Store.ListTenantMembers(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MemberView, 0, len(rows))
+	for _, m := range rows {
+		mv := MemberView{Subject: m.Subject, Role: m.Role}
+		if s.Identities != nil {
+			if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
+				mv.Email, mv.MFAEnabled = attrs.Email, attrs.MFAEnabled
+			}
+		}
+		out = append(out, mv)
+	}
+	return out, nil
+}
+
 // Create makes a new workspace owned by the caller: a tenant row + the caller's
 // admin membership (atomic in the store), then the matching OpenFGA admin tuple.
 // It refuses a plan's per-user workspace cap (Render: five Hobby workspaces per
@@ -159,7 +347,7 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
-		return WorkspaceView{}, ErrWorkspacesUnavailable
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok || id.Subject == "" {
@@ -210,7 +398,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
-		return WorkspaceView{}, ErrWorkspacesUnavailable
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
 	if !nameRE.MatchString(name) {
 		return WorkspaceView{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
@@ -234,7 +422,7 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 		return err
 	}
 	if s.Store == nil {
-		return ErrWorkspacesUnavailable
+		return core.ErrWorkspacesUnavailable
 	}
 	t, err := s.Store.GetTenant(ctx, id)
 	if err != nil {

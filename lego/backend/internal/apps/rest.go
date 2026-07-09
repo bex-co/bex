@@ -161,7 +161,7 @@ func parseYesNo(s string) *bool {
 // it holds no logic beyond routing + Render serialization.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	list := func(w http.ResponseWriter, r *http.Request) {
-		apps, err := s.List(r.Context())
+		apps, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

@@ -1,0 +1,209 @@
+# Render `owners` (workspaces) REST + MCP — pinned from the OpenAPI spec
+
+Captured 2026-07-09 from Render's primary sources (the generated OpenAPI behind `api-docs.render.com`, served as Markdown at `…/reference/*.md`, plus the official MCP server source). This is the contract bex-api's `w6/m2` owners read API + MCP workspace tools mirror — the same "one Core, Render-consistent adapters" rule the service/postgres/logs verbs already follow. The REST surface is **read-only** (research finding 9: Render exposes no POST/PATCH/DELETE on `/v1/owners`); workspace lifecycle mutations live in the dashboard GraphQL (`w6/m1`).
+
+> **Vocabulary.** Render uses three words for one entity: **workspace** (UI), **team** (dashboard GraphQL: `owner.team`, id prefix `tea-`), and **owner** (the REST resource parent — a `user` or a `team`). The `Workspaces` tag note in the spec is verbatim: _"This category was previously called `Owners`, as reflected by endpoint paths."_ bex's `workspace` model type _is_ that entity.
+
+## Sources
+
+- **REST OpenAPI** — `https://api-docs.render.com/reference/list-owners.md`, `…/retrieve-owner.md`, `…/retrieve-owner-members.md`, `…/pagination.md` (each embeds the full OpenAPI 3.0.2 fragment for its endpoint; server `https://api.render.com/v1`, auth `BearerAuth`).
+- **Endpoint index** — `https://api-docs.render.com/llms.txt`.
+- **MCP** — `github.com/render-oss/render-mcp-server` `pkg/owner/tools.go` + `pkg/session/{session,inmemory}.go` (selection persistence); docs `https://render.com/docs/mcp-server`.
+
+## `owner` object (the resource shape)
+
+Verbatim from `retrieve-owner.md` / `list-owners.md` → `components.schemas.owner`:
+
+```json
+{
+  "owner": {
+    "type": "object",
+    "required": ["id", "name", "email", "type"],
+    "properties": {
+      "id": { "type": "string" },
+      "name": { "type": "string" },
+      "email": { "type": "string" },
+      "ipAllowList": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/cidrBlockAndDescription" }
+      },
+      "twoFactorAuthEnabled": {
+        "type": "boolean",
+        "description": "Whether two-factor authentication is enabled for the owner. Only present if `type` is `user`."
+      },
+      "type": { "type": "string", "enum": ["user", "team"] }
+    }
+  },
+  "cidrBlockAndDescription": {
+    "type": "object",
+    "required": ["cidrBlock", "description"],
+    "properties": {
+      "cidrBlock": { "type": "string" },
+      "description": { "type": "string" }
+    }
+  }
+}
+```
+
+So: `id`, `name`, `email`, `type` are required; `ipAllowList` and `twoFactorAuthEnabled` are optional (`twoFactorAuthEnabled` only when `type == "user"`).
+
+## `GET /v1/owners` — List workspaces
+
+_"List the workspaces that your API key has access to, optionally filtered by name or owner email address."_
+
+Query parameters:
+
+| param | in | type | notes |
+| --- | --- | --- | --- |
+| `name` | query | array of string | "Only return workspaces with one of the provided names. Only exact matches are returned." |
+| `email` | query | array of string | "Only return workspaces owned by one of the provided email addresses." |
+| `cursor` | query | string | pagination position (`pagination.md`) |
+| `limit` | query | integer | default 20, min 1, max 100 |
+
+Response `200` — a JSON **array** of `ownerWithCursor` (NOT a `{owners:[…]}` envelope; the cursor is a **sibling** of the resource object, not a member — confirmed verbatim in `pagination.md`):
+
+```json
+[
+  {
+    "owner": { "id": "tea-…", "name": "…", "email": "…", "type": "team" },
+    "cursor": "cfQ74cE2sDI="
+  },
+  {
+    "owner": { "id": "tea-…", "name": "…", "email": "…", "type": "team" },
+    "cursor": "mpFjFKeYgnw="
+  }
+]
+```
+
+```json
+{
+  "ownerWithCursor": {
+    "type": "object",
+    "properties": {
+      "owner": { "$ref": "#/components/schemas/owner" },
+      "cursor": { "$ref": "#/components/schemas/cursor" }
+    }
+  },
+  "cursor": { "type": "string" }
+}
+```
+
+Pagination contract (`pagination.md`): omit `cursor` on the first request; each returned item pairs with its cursor; to fetch the next page, set `cursor` to the _last_ item's cursor from the prior response. Repeat until a shorter page is returned.
+
+## `GET /v1/owners/{ownerId}` — Retrieve workspace
+
+Path param `ownerId` (string, required) — _"The ID of the user or team."_ Verbatim spec note (the load-bearing sentence for the `own-` prefix):
+
+> _"Workspace IDs start with `tea-`. If you provide a user ID (starts with `own-`), this endpoint returns the user's default workspace."_
+
+Response `200` → a single `owner` object (no envelope). Errors: `401`, `404`, `406`, `410`, `429`, `500`, `503`.
+
+## `GET /v1/owners/{ownerId}/members` — List workspace members
+
+_"Retrieves the list of users belonging to the workspace with the provided ID."_ Path param `ownerId` — _"The ID of the team."_
+
+Response `200` → a plain JSON **array** of `teamMember` (no cursor — members are not cursor-paginated, unlike `/v1/owners` and `/v1/services`):
+
+```json
+{
+  "teamMember": {
+    "type": "object",
+    "required": ["userId", "name", "email", "status", "role", "mfaEnabled"],
+    "properties": {
+      "userId": { "type": "string" },
+      "name": { "type": "string" },
+      "email": { "type": "string" },
+      "status": { "type": "string", "enum": ["active", "inactive"] },
+      "role": { "$ref": "#/components/schemas/teamMemberRole" },
+      "mfaEnabled": { "type": "boolean" }
+    }
+  },
+  "teamMembers": {
+    "type": "array",
+    "items": { "$ref": "#/components/schemas/teamMember" }
+  },
+  "teamMemberRole": {
+    "type": "string",
+    "description": "The member's workspace role. Values are always returned in uppercase.",
+    "enum": [
+      "ADMIN",
+      "DEVELOPER",
+      "WORKSPACE_CONTRIBUTOR",
+      "WORKSPACE_BILLING",
+      "WORKSPACE_VIEWER"
+    ],
+    "example": "DEVELOPER"
+  }
+}
+```
+
+The role enum is **UPPERCASE** (verified live against the dashboard in [`team-members.graphql`](team-members.graphql): `"ADMIN"`). bex maps its lowercase OpenFGA relations (`admin`/`developer`/`contributor`/`viewer`/`billing`, [`deploy/gitops/authz/model.fga`](../../deploy/gitops/authz/model.fga)) to this uppercase wire enum at the adapter boundary.
+
+## `error` object
+
+```json
+{
+  "error": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string" },
+      "message": { "type": "string" }
+    }
+  }
+}
+```
+
+Used by every error response (`401Unauthorized`, `404NotFound`, `406NotAcceptable`, `410Gone`, `429RateLimit`, `500InternalServerError`, `503ServiceUnavailable`). **bex diverges here:** its existing `core.WriteErr` renders `{"error": "…"}` across all endpoints (t002: "consistent with existing endpoints"). Adopting Render's `{id, message}` would be a cross-cutting change to every endpoint, so it is a documented divergence, not an owners-only concern.
+
+## `own-` vs `usr-` — resolved
+
+**The user-ID prefix is `own-`, not `usr-`.** Primary source: the `retrieve-owner.md` spec note quoted above ("a user ID (starts with `own-`)"). The `usr-…` mention in [`team-members.graphql`](team-members.graphql) line 8 is a stale comment from an older dashboard capture (2026-07-06) and is corrected here. bex's workspace ids are `tea-` (already, via `internal/id`); user/identity ids are `own-` at the API boundary.
+
+## MCP workspace tools
+
+From `github.com/render-oss/render-mcp-server` `pkg/owner/tools.go` (the official server's `Tools()` returns exactly these three under `### Workspaces`):
+
+| tool | params | behavior |
+| --- | --- | --- |
+| `list_workspaces` | — (none) | Lists the workspaces the caller has access to. **If exactly one workspace exists, auto-selects it** (`session.SetWorkspace`) and notes "Only one workspace found, automatically selected it". |
+| `select_workspace` | `ownerID` (string, **required**) | "Select a workspace to use for all actions." Validates + stores the selection for the session. Foreign/unknown id ⇒ tool error, selection unchanged. |
+| `get_selected_workspace` | — (none) | "Get the currently selected workspace" — echoes the session's selection. |
+
+Tool-result rendering (render-mcp-server): `mcp.NewToolResultText(string)` — the workspace list is JSON-marshaled as text; `select_workspace` returns the text `"Workspace selected"`; `get_selected_workspace` returns `"The currently selected workspace is: <id>"`. bex's go-sdk adapter instead returns typed structured-result objects (MCP requires object, not array, output) — `{workspaces: […]}` / a selection-confirmation object — the same wrapper-object pattern `apps/mcp.go` uses (`{services: […]}`).
+
+### Selection persistence — per-session, in-memory
+
+Verbatim from `pkg/session/{session,inmemory}.go`:
+
+```go
+type Store interface {
+    Get(ctx context.Context, sessionID string) (Session, error)
+}
+type Session interface {
+    GetWorkspace(context.Context) (string, error)
+    SetWorkspace(context.Context, string) error
+}
+// FromContext pulls the per-session Session out of the tool-handler context.
+func FromContext(ctx context.Context) Session { return ctx.Value(sessionCtxKey).(Session) }
+```
+
+```go
+type inMemoryStore struct{ sessions map[string]*InMemorySession }
+func (i *inMemoryStore) Get(_ context.Context, sessionID string) (Session, error) {
+    if _, ok := i.sessions[sessionID]; !ok { i.sessions[sessionID] = &InMemorySession{} }
+    return i.sessions[sessionID], nil
+}
+type InMemorySession struct{ selectedWorkspaceID string }
+func (h *InMemorySession) GetWorkspace(_ context.Context) (string, error) {
+    if h.selectedWorkspaceID == "" { return "", config.ErrNoWorkspace }
+    return h.selectedWorkspaceID, nil
+}
+```
+
+So: selection is **per-session** (keyed by MCP session ID), held **in-memory** (not persisted to config/disk — research open question 3, resolved), threaded into every tool handler via context. An unselected session returns `ErrNoWorkspace`; bex's behavior (matching pre-`m1`): fall back to the caller's default workspace rather than erroring. `pkg/validate/workspace.go`'s `WorkspaceMatches` enforces that subsequent resource tools operate only within the selected workspace.
+
+bex mirrors this with an in-memory `SelectionStore` keyed by the MCP session ID (`Mcp-Session-Id` header in the streamable-HTTP transport; `""` for stdio = one session), threaded through the tool-handler context; `select_workspace` writes it, `get_selected_workspace` reads it, and the `list_services`/`list_postgres_instances` tools read it as their default `ownerId` filter (the `w6/m2/t004` scoping param).
+
+## Parity check (t006)
+
+Implemented against this pinned contract (`lego/backend/internal/workspaces/{render,rest,mcp}.go`): field names, the bare-array list/members envelopes, the `own-` retrieve quirk, the uppercase `teamMemberRole` enum, and the three MCP tool names/params all match verbatim. No POST/PATCH/DELETE exists under `/v1/owners` (`rest.go` registers `GET` only). Three intentional, source-commented divergences — `own-` resolving to the caller only (no id registry), no cursor pagination, and the `ownerId` filter being a documented no-op on `/v1/postgres` (Database CRs aren't tenant-labeled yet) — are filed as [`w6/001.md`](../../.pm/w6/001.md) rather than left silent.
