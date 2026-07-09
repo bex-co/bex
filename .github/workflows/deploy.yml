@@ -213,7 +213,12 @@ jobs:
             || { echo "hydra Deployment never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
           kubectl -n auth rollout status deploy/hydra --timeout=600s \
             || { echo "hydra not ready — Argo status:"; kubectl -n argocd get applications; exit 1; }
-          bash scripts/auth-bootstrap-client.sh
+          # Retry: port-forward tunnel to hydra-admin can take a few extra seconds
+          # to establish on a busy cluster. Three attempts covers transient delays.
+          for i in 1 2 3; do
+            bash scripts/auth-bootstrap-client.sh && break
+            [ "$i" -lt 3 ] && { echo "attempt $i failed, retrying in 15s..."; sleep 15; }
+          done
 
       # --- 4d. authorization model + seed tuples (docs/auth.md) ---------------
       # Idempotent: store `bex` ensured, deploy/gitops/authz/model.json written

@@ -43,10 +43,12 @@ if [ -z "$admin" ]; then
   kubectl -n "$NS" port-forward service/hydra-admin 34445:4445 >/dev/null 2>&1 &
   PF_PID=$!
   admin=http://127.0.0.1:34445
-  for _ in $(seq 1 30); do
-    curl -sf -o /dev/null "$admin/health/ready" && break
+  ready=0
+  for _ in $(seq 1 45); do
+    curl -sf -o /dev/null "$admin/health/ready" && ready=1 && break
     sleep 2
   done
+  [ "$ready" = "1" ] || { echo "error: hydra admin port-forward not ready after 90s — is the port-forward established?" >&2; exit 1; }
 fi
 
 body="$(printf '{"client_id":"%s","client_name":"bex bootstrap (platform operator + CI)","client_secret":"%s","grant_types":["client_credentials"],"token_endpoint_auth_method":"client_secret_post"}' "$CLIENT_ID" "$secret")"
