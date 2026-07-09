@@ -4,6 +4,7 @@
 resources:
 - bases/app.bex.co_apps.yaml
 - bases/app.bex.co_databases.yaml
+- bases/app.bex.co_keyvalues.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
