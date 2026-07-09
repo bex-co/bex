@@ -1,0 +1,30 @@
+# bex-api's custom-domains surface, Render dashboard-shaped (backend/internal/apps
+# domains.go + graphql.go, docs/bex-api.md). A service's custom domains are a thin
+# veneer over App.spec.hosts[]; the operator reconciles Traefik + cert-manager per
+# domain. bex-api uses the hostname as the opaque id (id == name).
+# `verificationStatus` is "verified"/"pending" (TLS cert issued?); `serverStatus`
+# is "active"/"pending" (cert issued and not suspended).
+# Mutations are Render-dashboard-shaped: addCustomDomain returns the new domain;
+# deleteCustomDomain returns a success boolean.
+
+query CustomDomains($id: String!) {
+  customDomains(id: $id) {
+    id
+    name
+    verificationStatus
+    serverStatus
+  }
+}
+
+mutation AddCustomDomain($id: String!, $name: String!) {
+  addCustomDomain(id: $id, name: $name) {
+    id
+    name
+    verificationStatus
+    serverStatus
+  }
+}
+
+mutation DeleteCustomDomain($id: String!, $name: String!) {
+  deleteCustomDomain(id: $id, name: $name)
+}

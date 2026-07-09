@@ -15,7 +15,8 @@
 - [x] **m8** — Instance tiers: one catalog, Render-shaped plan API, limits everywhere (6 tasks) ← from architecture discussion 2026-07-08 (metrics page's "No limit configured" gap; Render compute-plans ladder) — done 2026-07-08, moved to `done/m8/`
 - [ ] **m9** — Tenant onboarding: real workspaces + OpenFGA enforced in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (m2 deferrals; prod authz is allow-all)
 - [x] **m10** — OpenBao prod wiring: env-vars live in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (docs/secrets.md "Prod deploy path") — done 2026-07-08 (implementation shipped + locally validated), moved to `done/m10/`; prod activation (first init + live PUT) is the operator's runbook there
-- [ ] **m11** — Render custom-domains API over `App.spec.hosts[]` (5 tasks) ← promoted from `003` 2026-07-08
+- [x] **m11** — Render custom-domains API over `App.spec.hosts[]` (5 tasks) ← promoted from `003` 2026-07-08
+- [x] **m11.5** — Custom-domains dashboard section, UI half of m11 (8 tasks) ← promoted from `w5/003` 2026-07-09 — done 2026-07-09, moved to `done/m11.5/`
 - [ ] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08
 
 ## Suggested execution order (2026-07-08 refinement)

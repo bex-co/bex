@@ -211,6 +211,46 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, toRenderService(app)) // Render: create => 201
 	}
 
+	// Custom-domains sub-resource (Render-compatible).
+	listDomains := func(w http.ResponseWriter, r *http.Request) {
+		domains, err := s.ListDomains(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toCustomDomainList(domains))
+	}
+	addDomain := func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		d, err := s.AddDomain(r.Context(), r.PathValue("id"), req.Name)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, toRenderCustomDomain(d))
+	}
+	getDomain := func(w http.ResponseWriter, r *http.Request) {
+		d, err := s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderCustomDomain(d))
+	}
+	deleteDomain := func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base, list)
@@ -221,5 +261,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
 		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
+		mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
+		mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
+		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
+		mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
 	}
 }

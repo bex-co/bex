@@ -103,7 +103,23 @@ type deployArgs struct {
 	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml (render.yaml-shaped manifest) describing the service"`
 }
 
-// RegisterMCP adds the service tools to the shared MCP server.
+// domainArgs is the shared custom-domain argument (serviceId + domain name).
+type domainArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Name      string `json:"name" jsonschema:"the custom domain FQDN, e.g. www.example.com"`
+}
+
+// domainListResult wraps the array — MCP tool outputs must be JSON objects.
+type domainListResult struct {
+	CustomDomains []renderCustomDomain `json:"customDomains"`
+}
+
+// deletedResult is delete_custom_domain's return object.
+type deletedResult struct {
+	Deleted bool `json:"deleted"`
+}
+
+// RegisterMCP adds the service and custom-domain tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
@@ -178,6 +194,52 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, renderService{}, err
 		}
 		return nil, toRenderService(app), nil
+	})
+
+	// Custom domain tools — tracking render-oss/render-mcp-server tool names.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_custom_domains",
+		Description: "List all custom domains configured for a service.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, domainListResult, error) {
+		domains, err := s.ListDomains(ctx, in.ServiceID)
+		if err != nil {
+			return nil, domainListResult{}, err
+		}
+		out := make([]renderCustomDomain, 0, len(domains))
+		for _, d := range domains {
+			out = append(out, toRenderCustomDomain(d))
+		}
+		return nil, domainListResult{CustomDomains: out}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_custom_domain",
+		Description: "Get details about a specific custom domain on a service.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
+		d, err := s.GetDomain(ctx, in.ServiceID, in.Name)
+		if err != nil {
+			return nil, renderCustomDomain{}, err
+		}
+		return nil, toRenderCustomDomain(d), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "add_custom_domain",
+		Description: "Add a custom domain to a service. The domain must be CNAME'd to the service's platform hostname before TLS can be issued.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
+		d, err := s.AddDomain(ctx, in.ServiceID, in.Name)
+		if err != nil {
+			return nil, renderCustomDomain{}, err
+		}
+		return nil, toRenderCustomDomain(d), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "delete_custom_domain",
+		Description: "Remove a custom domain from a service. The operator will remove the Ingress rule and let the TLS certificate expire.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, deletedResult, error) {
+		err := s.DeleteDomain(ctx, in.ServiceID, in.Name)
+		return nil, deletedResult{Deleted: err == nil}, err
 	})
 }
 

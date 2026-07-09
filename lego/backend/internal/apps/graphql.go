@@ -115,6 +115,19 @@ func gqlInt(args map[string]any, key string) int {
 	return 0
 }
 
+// customDomainGQLType renders a DomainView as Render's CustomDomain shape.
+// Field names match Render's dashboard operations for custom domains.
+var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "CustomDomain",
+	Fields: graphql.Fields{
+		"id":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.Name })},
+		"name":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.Name })},
+		"domainType":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.DomainType })},
+		"verificationStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.VerificationStatus })},
+		"serverStatus":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.ServerStatus })},
+	},
+})
+
 func envVarKeysResolve(p graphql.ResolveParams) (any, error) {
 	a, ok := p.Source.(AppView)
 	if !ok {
@@ -164,6 +177,24 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"instanceTypes": &graphql.Field{ // bex extension backing the plan picker (see InstanceType)
 			Type:    graphql.NewList(instanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
+		},
+		// Custom domains — Render-dashboard-shaped queries.
+		"customDomains": &graphql.Field{
+			Type: graphql.NewList(customDomainGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListDomains(p.Context, p.Args["id"].(string))
+			},
+		},
+		"customDomain": &graphql.Field{
+			Type: customDomainGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
 		},
 	}
 }
@@ -230,6 +261,28 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Scale(p.Context, p.Args["id"].(string), int32(p.Args["numInstances"].(int)))
+			},
+		},
+		// Custom domain mutations — Render-dashboard-shaped operation names.
+		"addCustomDomain": &graphql.Field{
+			Type: customDomainGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AddDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
+		"deleteCustomDomain": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DeleteDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+				return err == nil, err
 			},
 		},
 	}

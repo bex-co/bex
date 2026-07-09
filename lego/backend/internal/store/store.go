@@ -117,6 +117,8 @@ type Store interface {
 	ListApps(ctx context.Context) ([]App, error)
 	DeleteApp(ctx context.Context, id string) error
 	CreateDomain(ctx context.Context, appID, host string, primary bool) (Domain, error)
+	// DeleteDomain removes a custom domain row. Not-found is ErrNotFound.
+	DeleteDomain(ctx context.Context, appID, host string) error
 	ListDesiredApps(ctx context.Context) ([]DesiredApp, error)
 	// SetAppSuspended flips the row's suspended flag — the single write path
 	// for suspend/resume on store-managed Apps. bex-api's lifecycle verbs call
@@ -248,6 +250,38 @@ func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary 
 		return Domain{}, classify("domain", err)
 	}
 	return d, nil
+}
+
+func (s *PGStore) DeleteDomain(ctx context.Context, appID, host string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM domains WHERE app_id = $1 AND host = $2`, appID, host)
+	if err != nil {
+		return classify("domain", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("domain: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// AddDomain appends a non-primary domain row for apps.IntentStore — idempotent
+// (conflict means it's already registered; silently ignored).
+func (s *PGStore) AddDomain(ctx context.Context, appID, host string) error {
+	_, err := s.CreateDomain(ctx, appID, host, false)
+	if err != nil && errors.Is(err, ErrConflict) {
+		return nil
+	}
+	return err
+}
+
+// RemoveDomain deletes a domain row for apps.IntentStore — idempotent
+// (not-found silently ignored).
+func (s *PGStore) RemoveDomain(ctx context.Context, appID, host string) error {
+	err := s.DeleteDomain(ctx, appID, host)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	return err
 }
 
 func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {

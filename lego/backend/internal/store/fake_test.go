@@ -133,6 +133,18 @@ func (m *memStore) CreateDomain(_ context.Context, appID, host string, primary b
 	return d, nil
 }
 
+func (m *memStore) DeleteDomain(_ context.Context, appID, host string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id, d := range m.domains {
+		if d.AppID == appID && d.Host == host {
+			delete(m.domains, id)
+			return nil
+		}
+	}
+	return fmt.Errorf("domain: %w", ErrNotFound)
+}
+
 func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

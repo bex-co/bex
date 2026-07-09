@@ -55,6 +55,12 @@ type IntentStore interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+	// AddDomain appends a custom domain row. Idempotent — conflict silently
+	// ignored. The projector carries it into spec.hosts[] on the next resync.
+	AddDomain(ctx context.Context, appID, host string) error
+	// RemoveDomain removes a custom domain row. Idempotent — not-found silently
+	// ignored.
+	RemoveDomain(ctx context.Context, appID, host string) error
 }
 
 // AppView is the neutral, bex-native projection of an App — spec intent +

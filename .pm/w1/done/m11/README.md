@@ -1,16 +1,16 @@
 # w1 · m11 — Render custom-domains API over `App.spec.hosts[]`
 
-**Worker:** worker1 **Goal:** Expose Render's custom-domains surface as a thin bex-api layer over the existing `App.spec.host`/`spec.hosts[]` (the operator already reconciles Traefik + cert-manager per docs/custom-domain.md), with three-adapter parity. **Status:** todo
+**Worker:** worker1 **Goal:** Expose Render's custom-domains surface as a thin bex-api layer over the existing `App.spec.host`/`spec.hosts[]` (the operator already reconciles Traefik + cert-manager per docs/custom-domain.md), with three-adapter parity. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                              | est | depends_on   |
 | ---- | ----------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | REST custom-domains endpoints, shapes verified against Render's OpenAPI             | 30m | —            |
-| t002 | GraphQL + MCP parity fragments                                                       | 30m | t001         |
-| t003 | Domain verification status from App status / cert Secret state                       | 25m | t001         |
-| t004 | Simplify — `/simplify` over the code this milestone changed                           | 20m | t002, t003   |
-| t005 | Test coverage — meaningful tests for the behavior this milestone shipped              | 30m | t002, t003   |
+| t001 | REST custom-domains endpoints, shapes verified against Render's OpenAPI             | 30m | —            | — **DONE** |
+| t002 | GraphQL + MCP parity fragments                                                       | 30m | t001         | — **DONE** |
+| t003 | Domain verification status from App status / cert Secret state                       | 25m | t001         | — **DONE** |
+| t004 | Simplify — `/simplify` over the code this milestone changed                           | 20m | t002, t003   | — **DONE** |
+| t005 | Test coverage — meaningful tests for the behavior this milestone shipped              | 30m | t002, t003   | — **DONE** |
 
 ## Definition of done
 

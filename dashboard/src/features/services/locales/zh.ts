@@ -15,7 +15,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.cardTitle": {
     message: "服务",
-    description: "Services table card title, also used as the metrics page back-link",
+    description:
+      "Services table card title, also used as the metrics page back-link",
   },
   "services.colName": {
     message: "名称",
@@ -98,7 +99,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Suspend confirmation dialog title",
   },
   "services.confirmSuspendBody": {
-    message: "服务将缩容至零并停止处理流量。其 URL 与证书会保留，你可以随时恢复。",
+    message:
+      "服务将缩容至零并停止处理流量。其 URL 与证书会保留，你可以随时恢复。",
     description: "Suspend confirmation dialog body",
   },
   "services.confirmRestartTitle": {
@@ -227,7 +229,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envUnavailableTitle": {
     message: "环境变量不可用",
-    description: "Environment tab state when the secret store is unconfigured (503)",
+    description:
+      "Environment tab state when the secret store is unconfigured (503)",
   },
   "services.envUnavailableBody": {
     message: "此部署未配置密钥存储。",
@@ -279,7 +282,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envInvalidKey": {
     message: "只能使用字母、数字和下划线，且不能以数字开头。",
-    description: "Environment add-variable validation message for an invalid key",
+    description:
+      "Environment add-variable validation message for an invalid key",
   },
   "services.envDeleteConfirmTitle": {
     message: "删除 {key}？",
@@ -291,7 +295,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envRolloutNote": {
     message: "服务正在重新部署以应用更改。",
-    description: "Toast description after an env-var write (bex rolls the pods)",
+    description:
+      "Toast description after an env-var write (bex rolls the pods)",
   },
   "services.envSaveSuccess": {
     message: "已保存 {key}",
@@ -339,7 +344,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerFreeGroup": {
     message: "免费",
-    description: "Plan-picker section label separating the Free tier from paid tiers",
+    description:
+      "Plan-picker section label separating the Free tier from paid tiers",
   },
   "services.planPickerPaidGroup": {
     message: "付费",
@@ -358,7 +364,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
-    message: "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
+    message:
+      "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
     description: "Plan-change confirm dialog body",
   },
   "services.planPickerSuccess": {
@@ -376,6 +383,145 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.planPickerErrorBody": {
     message: "对 bex-api 的请求失败。请检查网络连接后重试。",
     description: "Plan-picker error state body",
+  },
+  "services.domainsTitle": {
+    message: "自定义域名",
+    description: "Settings tab custom-domains section title",
+  },
+  "services.domainsDescription": {
+    message: "将你拥有的自定义域名指向此服务。",
+    description: "Settings tab custom-domains section description",
+  },
+  "services.domainColName": {
+    message: "名称",
+    description: "Custom-domains table column header (the FQDN)",
+  },
+  "services.domainColVerified": {
+    message: "验证状态",
+    description:
+      "Custom-domains table column header (DNS/ownership verification)",
+  },
+  "services.domainColCertificate": {
+    message: "证书状态",
+    description:
+      "Custom-domains table column header (TLS certificate serving state)",
+  },
+  "services.domainColActions": {
+    message: "操作",
+    description:
+      "Custom-domains table actions column header (screen-reader only)",
+  },
+  "services.domainVerified": {
+    message: "已验证",
+    description: "Custom-domains status badge: TLS certificate has been issued",
+  },
+  "services.domainCertActive": {
+    message: "已生效",
+    description:
+      "Custom-domains status badge: certificate issued and serving traffic",
+  },
+  "services.domainPending": {
+    message: "待处理",
+    description:
+      "Custom-domains status badge: certificate not yet issued/serving",
+  },
+  "services.domainActionsMenu": {
+    message: "打开域名操作菜单",
+    description: "Accessible label for the per-domain actions trigger",
+  },
+  "services.domainDelete": {
+    message: "删除",
+    description: "Custom-domains row action: remove the domain",
+  },
+  "services.domainCancel": {
+    message: "取消",
+    description: "Custom-domains dialog cancel button",
+  },
+  "services.domainDeleteConfirmTitle": {
+    message: "删除 {name}？",
+    description: "Custom-domain delete-confirmation dialog title",
+  },
+  "services.domainDeleteConfirmBody": {
+    message:
+      "服务将停止为此域名提供服务。其 Ingress 规则会被移除，TLS 证书将被留待过期。此操作无法撤销。",
+    description: "Custom-domain delete-confirmation dialog body",
+  },
+  "services.domainAdd": {
+    message: "添加自定义域名",
+    description: "Custom-domains button to open the add-domain dialog",
+  },
+  "services.domainAddTitle": {
+    message: "添加自定义域名",
+    description: "Add-domain dialog title",
+  },
+  "services.domainAddDescription": {
+    message: "输入你拥有的域名。将其 DNS 指向此服务，bex 会自动签发 TLS 证书。",
+    description: "Add-domain dialog description",
+  },
+  "services.domainPlaceholder": {
+    message: "www.example.com",
+    description: "Add-domain FQDN input placeholder",
+  },
+  "services.domainInvalid": {
+    message: "请输入有效的域名，例如 www.example.com。",
+    description: "Add-domain validation message for a malformed hostname",
+  },
+  "services.domainAddButton": {
+    message: "添加域名",
+    description: "Add-domain dialog submit button",
+  },
+  "services.domainAddSuccess": {
+    message: "已添加 {name}",
+    description: "Toast on a successful custom-domain add",
+  },
+  "services.domainAddError": {
+    message: "无法添加 {name}",
+    description: "Toast on a failed custom-domain add",
+  },
+  "services.domainDeleteSuccess": {
+    message: "已移除 {name}",
+    description: "Toast on a successful custom-domain delete",
+  },
+  "services.domainDeleteError": {
+    message: "无法移除 {name}",
+    description: "Toast on a failed custom-domain delete",
+  },
+  "services.domainPropagateNote": {
+    message: "DNS 与 TLS 证书会在后台生效。",
+    description:
+      "Toast description after a custom-domain add (async convergence)",
+  },
+  "services.domainsEmptyTitle": {
+    message: "暂无自定义域名",
+    description: "Custom-domains empty-state title",
+  },
+  "services.domainsEmptyBody": {
+    message: "添加一个你拥有的域名，即可通过它访问此服务。",
+    description: "Custom-domains empty-state body",
+  },
+  "services.domainsErrorTitle": {
+    message: "无法加载自定义域名",
+    description: "Custom-domains generic error title",
+  },
+  "services.domainsErrorBody": {
+    message: "对 bex-api 的请求失败。请检查网络连接后重试。",
+    description: "Custom-domains generic error body",
+  },
+  "services.platformSubdomainTitle": {
+    message: "平台子域名",
+    description: "Settings tab platform-subdomain section title",
+  },
+  "services.platformSubdomainDescription": {
+    message: "除自定义域名外，你的服务始终可通过其 bex 平台子域名访问。",
+    description: "Settings tab platform-subdomain section description",
+  },
+  "services.platformSubdomainEnabled": {
+    message: "始终启用",
+    description: "Platform-subdomain badge: the subdomain can't be turned off",
+  },
+  "services.platformSubdomainPending": {
+    message: "服务运行后将分配平台 URL。",
+    description: "Platform-subdomain state when the service has no URL yet",
   },
 };
 

@@ -34,6 +34,23 @@ export interface EnvVarKey {
   key: string;
 }
 
+/**
+ * One custom domain on a service's Settings tab (Render dashboard shape). bex-api
+ * uses the hostname as the opaque id (id === name), so this view carries just the
+ * name. `verified` and `active` are derived from bex-api's string status fields
+ * (verificationStatus / serverStatus) so the UI never re-encodes them:
+ * - `verified` — the TLS certificate has been issued for the host (Render's
+ *   "Verified Status" column).
+ * - `active` — the certificate is issued and the service isn't suspended, so it's
+ *   actively serving the host (Render's "Certificate Status" column).
+ */
+export interface CustomDomainView {
+  /** The FQDN — also bex-api's opaque id for the domain. */
+  name: string;
+  verified: boolean;
+  active: boolean;
+}
+
 /** A resolved status key (i18n label) + the badge variant it renders as. */
 export type ServiceStatusKey =
   | "running"

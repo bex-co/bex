@@ -15,7 +15,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.cardTitle": {
     message: "Services",
-    description: "Services table card title, also used as the metrics page back-link",
+    description:
+      "Services table card title, also used as the metrics page back-link",
   },
   "services.colName": {
     message: "Name",
@@ -230,7 +231,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envUnavailableTitle": {
     message: "Environment variables unavailable",
-    description: "Environment tab state when the secret store is unconfigured (503)",
+    description:
+      "Environment tab state when the secret store is unconfigured (503)",
   },
   "services.envUnavailableBody": {
     message: "The secret store isn't configured for this deployment.",
@@ -241,7 +243,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Environment tab state when the caller lacks permission (403)",
   },
   "services.envForbiddenBody": {
-    message: "You don't have permission to view this service's environment variables.",
+    message:
+      "You don't have permission to view this service's environment variables.",
     description: "Environment tab forbidden-state body",
   },
   "services.envErrorTitle": {
@@ -282,7 +285,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envInvalidKey": {
     message: "Use letters, digits and underscores; can't start with a digit.",
-    description: "Environment add-variable validation message for an invalid key",
+    description:
+      "Environment add-variable validation message for an invalid key",
   },
   "services.envDeleteConfirmTitle": {
     message: "Remove {key}?",
@@ -294,7 +298,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envRolloutNote": {
     message: "The service is redeploying to apply the change.",
-    description: "Toast description after an env-var write (bex rolls the pods)",
+    description:
+      "Toast description after an env-var write (bex rolls the pods)",
   },
   "services.envSaveSuccess": {
     message: "Saved {key}",
@@ -342,7 +347,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerFreeGroup": {
     message: "Free",
-    description: "Plan-picker section label separating the Free tier from paid tiers",
+    description:
+      "Plan-picker section label separating the Free tier from paid tiers",
   },
   "services.planPickerPaidGroup": {
     message: "Paid",
@@ -380,6 +386,147 @@ const enServices: Record<string, TranslationEntry> = {
   "services.planPickerErrorBody": {
     message: "The request to bex-api failed. Check your connection and retry.",
     description: "Plan-picker error state body",
+  },
+  "services.domainsTitle": {
+    message: "Custom Domains",
+    description: "Settings tab custom-domains section title",
+  },
+  "services.domainsDescription": {
+    message: "Point custom domains you own to this service.",
+    description: "Settings tab custom-domains section description",
+  },
+  "services.domainColName": {
+    message: "Name",
+    description: "Custom-domains table column header (the FQDN)",
+  },
+  "services.domainColVerified": {
+    message: "Verified Status",
+    description:
+      "Custom-domains table column header (DNS/ownership verification)",
+  },
+  "services.domainColCertificate": {
+    message: "Certificate Status",
+    description:
+      "Custom-domains table column header (TLS certificate serving state)",
+  },
+  "services.domainColActions": {
+    message: "Actions",
+    description:
+      "Custom-domains table actions column header (screen-reader only)",
+  },
+  "services.domainVerified": {
+    message: "Verified",
+    description: "Custom-domains status badge: TLS certificate has been issued",
+  },
+  "services.domainCertActive": {
+    message: "Active",
+    description:
+      "Custom-domains status badge: certificate issued and serving traffic",
+  },
+  "services.domainPending": {
+    message: "Pending",
+    description:
+      "Custom-domains status badge: certificate not yet issued/serving",
+  },
+  "services.domainActionsMenu": {
+    message: "Open domain actions menu",
+    description: "Accessible label for the per-domain actions trigger",
+  },
+  "services.domainDelete": {
+    message: "Delete",
+    description: "Custom-domains row action: remove the domain",
+  },
+  "services.domainCancel": {
+    message: "Cancel",
+    description: "Custom-domains dialog cancel button",
+  },
+  "services.domainDeleteConfirmTitle": {
+    message: "Delete {name}?",
+    description: "Custom-domain delete-confirmation dialog title",
+  },
+  "services.domainDeleteConfirmBody": {
+    message:
+      "The service stops serving this domain. Its Ingress rule is removed and the TLS certificate is left to expire. This can't be undone.",
+    description: "Custom-domain delete-confirmation dialog body",
+  },
+  "services.domainAdd": {
+    message: "Add Custom Domain",
+    description: "Custom-domains button to open the add-domain dialog",
+  },
+  "services.domainAddTitle": {
+    message: "Add a custom domain",
+    description: "Add-domain dialog title",
+  },
+  "services.domainAddDescription": {
+    message:
+      "Enter a domain you own. Point its DNS to this service, and bex issues a TLS certificate automatically.",
+    description: "Add-domain dialog description",
+  },
+  "services.domainPlaceholder": {
+    message: "www.example.com",
+    description: "Add-domain FQDN input placeholder",
+  },
+  "services.domainInvalid": {
+    message: "Enter a valid domain, e.g. www.example.com.",
+    description: "Add-domain validation message for a malformed hostname",
+  },
+  "services.domainAddButton": {
+    message: "Add Domain",
+    description: "Add-domain dialog submit button",
+  },
+  "services.domainAddSuccess": {
+    message: "Added {name}",
+    description: "Toast on a successful custom-domain add",
+  },
+  "services.domainAddError": {
+    message: "Couldn't add {name}",
+    description: "Toast on a failed custom-domain add",
+  },
+  "services.domainDeleteSuccess": {
+    message: "Removed {name}",
+    description: "Toast on a successful custom-domain delete",
+  },
+  "services.domainDeleteError": {
+    message: "Couldn't remove {name}",
+    description: "Toast on a failed custom-domain delete",
+  },
+  "services.domainPropagateNote": {
+    message: "DNS and the TLS certificate propagate in the background.",
+    description:
+      "Toast description after a custom-domain add (async convergence)",
+  },
+  "services.domainsEmptyTitle": {
+    message: "No custom domains",
+    description: "Custom-domains empty-state title",
+  },
+  "services.domainsEmptyBody": {
+    message: "Add a domain you own to serve this service from it.",
+    description: "Custom-domains empty-state body",
+  },
+  "services.domainsErrorTitle": {
+    message: "Couldn't load custom domains",
+    description: "Custom-domains generic error title",
+  },
+  "services.domainsErrorBody": {
+    message: "The request to bex-api failed. Check your connection and retry.",
+    description: "Custom-domains generic error body",
+  },
+  "services.platformSubdomainTitle": {
+    message: "Platform Subdomain",
+    description: "Settings tab platform-subdomain section title",
+  },
+  "services.platformSubdomainDescription": {
+    message:
+      "Your service is always reachable at its bex platform subdomain, in addition to any custom domains.",
+    description: "Settings tab platform-subdomain section description",
+  },
+  "services.platformSubdomainEnabled": {
+    message: "Always enabled",
+    description: "Platform-subdomain badge: the subdomain can't be turned off",
+  },
+  "services.platformSubdomainPending": {
+    message: "The platform URL is assigned once the service is running.",
+    description: "Platform-subdomain state when the service has no URL yet",
   },
 };
 

@@ -10,6 +10,8 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
+import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
+import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -19,9 +21,9 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
 });
 
 /**
- * The Settings tab (w5/m7): today, only the Instance Type section Render's
- * settings page leads with (captured live). Other sections (name/region/
- * build/deploy) are future milestones.
+ * The Settings tab (w5/m7, w1/m11.5): the Instance Type section Render's settings
+ * page leads with, then Custom Domains + the platform subdomain (Render parity).
+ * Other sections (name/region/build/deploy) are future milestones.
  */
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
@@ -29,18 +31,27 @@ export function ServiceSettingsPage() {
   const { t } = useTranslations();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("services.settingsTitle")}</CardTitle>
-        <CardDescription>{t("services.settingsDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!service && loading ? (
-          <Skeleton className="h-10 w-full" />
-        ) : (
-          <InstanceTypeRow serviceId={serviceId} plan={service?.plan ?? null} />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("services.settingsTitle")}</CardTitle>
+          <CardDescription>{t("services.settingsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!service && loading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <InstanceTypeRow
+              serviceId={serviceId}
+              plan={service?.plan ?? null}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <CustomDomainsSection serviceId={serviceId} />
+
+      <PlatformSubdomainSection url={service?.url ?? null} />
+    </div>
   );
 }

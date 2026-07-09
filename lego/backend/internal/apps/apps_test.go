@@ -38,14 +38,10 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func fakeClient(apps ...*appv1alpha1.App) client.Client {
+func fakeClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	objs := make([]client.Object, len(apps))
-	for i, a := range apps {
-		objs[i] = a
-	}
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 }
 
@@ -58,7 +54,11 @@ func sampleApp(name string) *appv1alpha1.App {
 }
 
 func newService(st IntentStore, apps ...*appv1alpha1.App) (*Service, client.Client) {
-	cl := fakeClient(apps...)
+	objs := make([]client.Object, len(apps))
+	for i, a := range apps {
+		objs[i] = a
+	}
+	cl := fakeClient(objs...)
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: st}, cl
 }
 
@@ -119,7 +119,9 @@ type recordingStore struct {
 		id       string
 		replicas int32
 	}
-	err error
+	domainAdds []struct{ id, host string }
+	domainRems []struct{ id, host string }
+	err        error
 }
 
 func (r *recordingStore) SetAppSuspended(_ context.Context, id string, suspended bool) error {
@@ -152,6 +154,22 @@ func (r *recordingStore) SetAppReplicas(_ context.Context, id string, replicas i
 		id       string
 		replicas int32
 	}{id, replicas})
+	return nil
+}
+
+func (r *recordingStore) AddDomain(_ context.Context, id, host string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.domainAdds = append(r.domainAdds, struct{ id, host string }{id, host})
+	return nil
+}
+
+func (r *recordingStore) RemoveDomain(_ context.Context, id, host string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.domainRems = append(r.domainRems, struct{ id, host string }{id, host})
 	return nil
 }
 

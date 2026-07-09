@@ -26,6 +26,7 @@ import {
   classifyEnvVarError,
 } from "@/features/services/hooks/use-env-vars";
 import { EnvVarRow } from "@/features/services/components/env-var-row";
+import { CenteredState } from "@/features/services/components/centered-state";
 
 // A C-locale env-var name: what bex-api (and a shell, and Kubernetes' Secret-key
 // validation) accepts — reject bad names client-side rather than round-tripping
@@ -231,22 +232,4 @@ function StatePanel({
     },
   }[kind];
   return <CenteredState icon={copy.icon} title={copy.title} body={copy.body} />;
-}
-
-function CenteredState({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="text-muted-foreground/50 mb-3 [&_svg]:size-8">{icon}</div>
-      <p className="mb-1 font-medium">{title}</p>
-      <p className="text-muted-foreground text-sm">{body}</p>
-    </div>
-  );
 }

@@ -41,13 +41,56 @@ const SERVICE = {
 
 const INSTANCES = ["eden-cms-v2-7d9f8-abcde", "eden-cms-v2-7d9f8-fghij"];
 
+// In-memory custom-domains store (Render dashboard CustomDomain shape, w1/m11.5)
+// so the Settings tab's list/add/delete + verification/serving status render
+// offline. Seeded with one issued domain and one still-provisioning.
+const CUSTOM_DOMAINS = [
+  {
+    __typename: "CustomDomain",
+    id: "www.eden-cms.com",
+    name: "www.eden-cms.com",
+    domainType: "subdomain",
+    verificationStatus: "verified",
+    serverStatus: "active",
+  },
+  {
+    __typename: "CustomDomain",
+    id: "eden-cms.com",
+    name: "eden-cms.com",
+    domainType: "apex",
+    verificationStatus: "pending",
+    serverStatus: "pending",
+  },
+];
+
 // The managed-Postgres tier catalog (backend databaseInstanceTypes, w5/m8) — the
 // create dialog's plan picker source. Kept in sync with lego/types/tiers.yaml's
 // postgres family so the offline stub renders the same plans as the real API.
 const DB_INSTANCE_TYPES = [
-  { __typename: "DatabaseInstanceType", id: "free", name: "Free", cpu: "100m", memory: "256Mi", storageGB: 1 },
-  { __typename: "DatabaseInstanceType", id: "basic-256mb", name: "Basic 256MB", cpu: "100m", memory: "256Mi", storageGB: 1 },
-  { __typename: "DatabaseInstanceType", id: "basic-1gb", name: "Basic 1GB", cpu: "500m", memory: "1Gi", storageGB: 5 },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "free",
+    name: "Free",
+    cpu: "100m",
+    memory: "256Mi",
+    storageGB: 1,
+  },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "basic-256mb",
+    name: "Basic 256MB",
+    cpu: "100m",
+    memory: "256Mi",
+    storageGB: 1,
+  },
+  {
+    __typename: "DatabaseInstanceType",
+    id: "basic-1gb",
+    name: "Basic 1GB",
+    cpu: "500m",
+    memory: "1Gi",
+    storageGB: 5,
+  },
 ];
 
 // In-memory managed-Postgres store (Render dashboard `database` shape) so the
@@ -163,7 +206,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
     }
     // Tabs the Logs flow doesn't need — answer empty so nothing errors if visited.
     case "MetricsFilters":
-      return { metricsFilters: { __typename: "MetricsFiltersResult", values: [] } };
+      return {
+        metricsFilters: { __typename: "MetricsFiltersResult", values: [] },
+      };
     case "Metrics":
       return { metrics: [] };
     case "MonthToDateBandwidth":
@@ -171,7 +216,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "InstanceTypes":
       return { instanceTypes: [] };
     case "EnvVarKeys":
-      return { service: { __typename: "Service", id: variables.id, envVarKeys: [] } };
+      return {
+        service: { __typename: "Service", id: variables.id, envVarKeys: [] },
+      };
     // Managed Postgres (w5/m8) — an interactive in-memory store.
     case "Databases":
       return { databases: DATABASES };
@@ -217,6 +264,26 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const i = DATABASES.findIndex((d) => d.id === variables.id);
       if (i >= 0) DATABASES.splice(i, 1);
       return { deleteDatabase: true };
+    }
+    case "CustomDomains":
+      return { customDomains: CUSTOM_DOMAINS };
+    case "AddCustomDomain": {
+      const domain = {
+        __typename: "CustomDomain",
+        id: variables.name,
+        name: variables.name,
+        domainType:
+          variables.name.split(".").length <= 2 ? "apex" : "subdomain",
+        verificationStatus: "pending",
+        serverStatus: "pending",
+      };
+      CUSTOM_DOMAINS.push(domain);
+      return { addCustomDomain: domain };
+    }
+    case "DeleteCustomDomain": {
+      const i = CUSTOM_DOMAINS.findIndex((d) => d.name === variables.name);
+      if (i >= 0) CUSTOM_DOMAINS.splice(i, 1);
+      return { deleteCustomDomain: true };
     }
     default:
       return {};

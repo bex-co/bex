@@ -16,7 +16,7 @@
 
 ## Inbox
 
-- `003.md` — Custom-domains section in service Settings — blocked on `w1/003` (backend API half)
 - `004.md` — Manual-scaling section in service Settings — blocked on `w1/004` (backend API half)
+- `006.md` — Post-add DNS/CNAME instructions for custom domains — follow-up split out of `w1/m11.5` 2026-07-09
 
-> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08.
+> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`.
