@@ -10,8 +10,10 @@
 | t002 | Dashboard: settings-flow enroll/unenroll rendering (Ory Elements) + the `aal2` login challenge step                        | 35m | t001       |
 | t003 | E2E on mock: enroll TOTP (otplib codes) → logout → login challenges; recovery codes work; scripted exit-0 check            | 35m | t002       |
 | t004 | Prod values + docs: WebAuthn RP ID/origin for `dashboard.bex.co`; `docs/auth.md` consequences updated                      | 20m | t003       |
-| t005 | Simplify — `/simplify` over the code this milestone changed                                                                | 20m | t004       |
-| t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                   | 30m | t004       |
+| t007 | Render parity — MFA surface check vs Render's 2FA; update the parity matrix row (retrofit 2026-07-09)                      | 15m | t004       |
+| t005 | Simplify — `/simplify` over the code this milestone changed                                                                | 20m | t007       |
+| t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                   | 30m | t007       |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                       | 10m | t006       |
 
 ## Definition of done
 

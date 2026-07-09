@@ -145,7 +145,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | todo |
 | Key Value (Valkey/Redis) store | `w1/m14` | todo (mechanism-first) |
-| API keys in the dashboard | `w4/m8` | todo |
+| API keys in the dashboard | `w4/m8` | done 2026-07-08 (key metadata follow-up → `w4/m13`) |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
 | Audit logs | `w4/m10` | todo |
 | Health-check path → readiness probe | `w1/005` | todo |

@@ -13,6 +13,7 @@
 | t005 | Prod wiring + docs: `deploy.yml` step, `docs/auth.md` consequences updated, reset-password page verified       | 25m | t004       |
 | t006 | Simplify — run `/simplify` over the code this milestone changed                                                | 20m | t005       |
 | t007 | Test coverage — meaningful tests for the behavior this milestone shipped                                       | 30m | t005       |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                           | 10m | t007       |
 
 ## Definition of done
 
@@ -24,3 +25,4 @@ On the local mock cluster with Mailpit deployed: a dashboard user completes forg
 - **Goal linkage:** roadmap #1 (multi-tenant control plane) — self-service identity is not real if account recovery dead-ends; pillar 1's API-first claim extends to the identity lifecycle.
 - **Expected outcome:** the two dashboard pages that currently dead-end (forgot-password, verification) work end-to-end, observable in Mailpit locally and a real inbox in prod.
 - **Why now:** the dead end already shipped — the dashboard advertises recovery it cannot deliver; every real-tenant signup before this lands risks a permanent lockout. Independent of m4–m6, so it parallelizes cleanly.
+- **Render parity closing task: omitted** (retrofit note 2026-07-09) — courier configuration only; the recovery/verification dashboard pages already exist unchanged, and no REST/GraphQL/MCP surface changes.

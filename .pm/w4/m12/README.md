@@ -11,8 +11,10 @@
 | t003 | REST + GraphQL surface (dashboard-GraphQL shapes where captured in `docs/render-artifacts/`, else bex's own)           | 25m | t001               |
 | t004 | Dashboard: Settings → Team page — member list with roles, invite dialog, role dropdown, remove with confirmation       | 40m | t003               |
 | t005 | Acceptance: invited viewer lists but 403s on suspend; role upgrade applies without re-login; removal revokes access    | 25m | t002, t004         |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                                            | 20m | t005               |
-| t007 | Test coverage — meaningful tests for the behavior this milestone shipped                                               | 30m | t005               |
+| t008 | Render parity — team surface vs the captured Render members contract (retrofit 2026-07-09)                             | 20m | t005               |
+| t006 | Simplify — `/simplify` over the code this milestone changed                                                            | 20m | t008               |
+| t007 | Test coverage — meaningful tests for the behavior this milestone shipped                                               | 30m | t008               |
+| t009 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                   | 10m | t007               |
 
 ## Definition of done
 

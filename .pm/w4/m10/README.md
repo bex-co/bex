@@ -10,8 +10,10 @@
 | t002 | `audit_events` table in `internal/store` + retention cap (time- or count-based, documented)                                  | 25m | t001       |
 | t003 | Read surface: REST `GET /v1/audit-events` + GraphQL query, admin-scoped (`can_manage`), filterable by resource/time          | 30m | t002       |
 | t004 | Acceptance: every write verb emits exactly one event; a 403 denial is recorded; values/secrets never appear in events        | 25m | t003       |
-| t005 | Simplify — `/simplify` over the code this milestone changed                                                                  | 20m | t004       |
-| t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                     | 30m | t004       |
+| t007 | Render parity — audit surface consistency vs Render's audit-logs page/API (retrofit 2026-07-09)                              | 20m | t004       |
+| t005 | Simplify — `/simplify` over the code this milestone changed                                                                  | 20m | t007       |
+| t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                     | 30m | t007       |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                         | 10m | t006       |
 
 ## Definition of done
 
