@@ -18,6 +18,10 @@
 - [x] **m11** — Render custom-domains API over `App.spec.hosts[]` (5 tasks) ← promoted from `003` 2026-07-08
 - [x] **m11.5** — Custom-domains dashboard section, UI half of m11 (8 tasks) ← promoted from `w5/003` 2026-07-09 — done 2026-07-09, moved to `done/m11.5/`
 - [x] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08 — done 2026-07-08, moved to `done/m13/` (shipped `docs/render-parity.md`; 5 gap notes filed: `008`–`011`, `w3/002`)
+- [ ] **m14** — Key Value (Valkey/Redis) managed store: `KeyValue` CRD + reconciler (6 tasks) ← promoted from `007` 2026-07-08 (mechanism; REST/GraphQL/MCP/UI surfaces are w2/w5 follow-ons)
+- [ ] **m15** — Additional service types: background worker + cron job (8 tasks) ← promoted from `009` 2026-07-08 (static site split to `012`)
+- [ ] **m16** — Config surfaces beyond env vars: environment groups + secret files (7 tasks) ← promoted from `010` 2026-07-08
+- [ ] **m17** — Managed Postgres advanced: data-protection + lifecycle + access (8 tasks) ← promoted from `011` 2026-07-08 (HA/replicas split to `013`)
 
 ## Suggested execution order (2026-07-08 refinement)
 
@@ -26,7 +30,9 @@
 3. **m3** — elastic substrate (replica-semantics contract settled by w2/m12; scale-down pays off most now that m4's sleep empties nodes).
 4. **m4.5** — dashboard sleep UX (pairs with shipped m4; UI-half work).
 
-> **m13 (parity audit) done 2026-07-08** — its output, `docs/render-parity.md`, now orders the remaining parity queue with evidence; the gaps it surfaced are filed as `w1/008`–`011` + `w3/002` and cross-referenced to existing owners (w2/m4 delete, w2/m5 deploys, w4/m8 keys-UI, w4/m12 members, w5/004 scaling-UI, w5/006 DNS-UI).
+> **Parity-backlog tier (promoted from the m13 audit, 2026-07-08):** **m14** Key Value · **m15** worker + cron service types · **m16** env-groups + secret-files · **m17** advanced Postgres. Sequence these after the V0 items above, ordered by the gap ranking in `docs/render-parity.md`. **008** (per-service autoscaling) stays an inbox note until **m3** settles the metric→replica loop it reuses.
+
+> **m13 (parity audit) done 2026-07-08** — its output, `docs/render-parity.md`, orders the remaining parity queue with evidence. Its gap notes were arranged into milestones on 2026-07-08: `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (with `012` static-site + `013` Postgres-HA split off as notes); `008` (autoscaling) + `w3/002` (request logs) stay notes; the rest cross-reference existing owners (w2/m4 delete, w2/m5 deploys, w4/m8 keys-UI, w4/m12 members, w5/004 scaling-UI, w5/006 DNS-UI).
 
 > **Board refinement (2026-07-08, from `/pm` + `/pm-brainstorm` conventions):** m3 and m5 retrofitted to the current canon — `## Source + Goal linkage` sections, the two standing closing tasks (Simplify, Test coverage), and pre-`lego/` paths fixed; m3/t001 (done) moved to `m3/done/`. m5/t003 reduced to verify-and-close (its webhook shipped in bex-api via w2's deploy-from-chat — where this refinement had independently concluded it belongs; operator stays mechanism-only). Planned m4/m7 retrofits and an m2/t007 rewrite were dropped — those milestones completed upstream first. No milestone was removed — all open ones map to a V0 roadmap item or Render parity and pass the DO_NOT_DO screen.
 
@@ -34,7 +40,11 @@
 
 - `005.md` — Wire `spec.healthCheckPath` into a ReadinessProbe (or drop the field) — from the 2026-07-08 docs-vs-code audit
 - `006.md` — Triage 36 Dependabot findings (2 critical, 15 high) reported 2026-07-08
-- `007.md` — Key Value (Valkey/Redis) managed store: `KeyValue` CR + reconciler (mechanism half; surfaces follow in w2/w5) — from `/pm-brainstorm for w2` 2026-07-08
+- `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** settling the metric→replica loop it reuses
+- `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
+- `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
+
+> **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above.
 
 > `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`. m12 was subsequently relocated to **w2** (done: `w2/done/m12/`).
 

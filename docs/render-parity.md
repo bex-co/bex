@@ -26,8 +26,8 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Delete service | ✖ | ✖ | ✖ | ✖ | Render `DELETE /services/{id}`. Not built (scope note in [bex-api.md](bex-api.md)). → **w2/m4**. |
 | Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. bex has no event objects. → **w2/m5** (deploy objects) + **w4/m10** (audit log). |
 | Cache purge | — | — | — | — | Render `POST …/cache/purge` (static-site CDN). bex has no build CDN cache — non-goal. |
-| Static site · background worker · cron job | ✖ | ✖ | ✖ | ✖ | Render service `type`s bex lacks (bex = web + private only; MCP `create_static_site`/`create_cron_job` unmirrored). → **w1/009**. |
-| One-off jobs (run a command) | — | — | — | — | Render `/services/{id}/jobs` runs an arbitrary command in the service context — an execution surface, off-roadmap (`DO_NOT_DO` §pillar 5), the same call as Shell/SSH below. (Scheduled cron jobs are a service type, tracked separately → w1/009.) |
+| Static site · background worker · cron job | ✖ | ✖ | ✖ | ✖ | Render service `type`s bex lacks (bex = web + private only; MCP `create_static_site`/`create_cron_job` unmirrored). → **w1/m15** (background worker + cron); static site → **w1/012**. |
+| One-off jobs (run a command) | — | — | — | — | Render `/services/{id}/jobs` runs an arbitrary command in the service context — an execution surface, off-roadmap (`DO_NOT_DO` §pillar 5), the same call as Shell/SSH below. (Scheduled cron jobs are a service type, tracked separately → w1/m15.) |
 | Shell / SSH into a running instance | — | — | — | — | Render Shell tab / `render ssh`. No exec surface — hosted execution is off-roadmap (DO_NOT_DO §pillar 5). Non-goal for now. |
 | PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/preview` + Previews tab. Ties to git integration + deploys; low priority, untracked. |
 
@@ -45,8 +45,8 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Env vars (list · get · replace · set · delete) | ✅ | ✅ | ✅ | ✅ | All 5 REST endpoints (`secrets/rest.go`, verified vs Render OpenAPI); GraphQL dashboard shape (`envVarKeys`/`envVar` nested, `setEnvVars`/`setEnvVar`/`deleteEnvVar`); MCP 5 tools; Environment tab (w4/m6.5). **Divergence:** writes roll pods immediately; omits pagination + `generateValue` — see [bex-api.md](bex-api.md). |
-| Secret files (mounted at `/etc/secrets`) | ✖ | ✖ | ✖ | ✖ | Render `/services/{id}/secret-files`. bex omits (safe-superset note in [bex-api.md](bex-api.md)). → **w1/010**. |
-| Environment groups (+ link / unlink) | ✖ | ✖ | ✖ | ✖ | Render `/env-groups` + link/unlink. bex has no shared env-var sets. → **w1/010**. |
+| Secret files (mounted at `/etc/secrets`) | ✖ | ✖ | ✖ | ✖ | Render `/services/{id}/secret-files`. bex omits (safe-superset note in [bex-api.md](bex-api.md)). → **w1/m16**. |
+| Environment groups (+ link / unlink) | ✖ | ✖ | ✖ | ✖ | Render `/env-groups` + link/unlink. bex has no shared env-var sets. → **w1/m16**. |
 
 ## Custom domains
 
@@ -61,16 +61,16 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | --- | :-: | :-: | :-: | :-: | --- |
 | Postgres CRUD + connection-info | ✅ | ✅ | ✅ | ✅ | `postgres/rest.go` `/v1/postgres` (+`/v1/databases` alias); GraphQL `databases`/`database`/`databaseConnectionInfo`/`createDatabase`/`deleteDatabase`; MCP `list_postgres_instances`/`get_postgres`/`create_postgres`; Databases pages (w5/m8). No `PATCH` update yet (◐, low). [postgresql-management.md](postgresql-management.md). |
 | Read-only SQL query | — | — | ✅ | ✖ | MCP `query_render_postgres` (read-only envelope) — MCP-only on **both** sides (Render exposes no REST/GraphQL equivalent). Dashboard SQL console: none (low). |
-| Lifecycle (suspend / resume / restart) | ✖ | ✖ | ✖ | ✖ | Render `POST /postgres/{id}/{suspend,resume,restart}`. Deferred in [bex-api.md](bex-api.md). → **w1/011**. |
-| Backups · PITR / recovery | ✖ | ✖ | ✖ | ✖ | Render `recovery-info`/`recover`/`exports` + Recovery tab. Needs CNPG backup wiring. → **w1/011**. |
-| HA · failover · read replicas | ✖ | ✖ | ✖ | ✖ | Render `failover`/`promote`/`replication`. `highAvailabilityEnabled` is reported `false` today. → **w1/011**. |
-| Access control (IP allowlist) · users · pooler | ✖ | ✖ | ✖ | ✖ | Render `ipAllowList`, `/users`, PgBouncer pooler strings. bex has a `public` toggle only. → **w1/011**. |
+| Lifecycle (suspend / resume / restart) | ✖ | ✖ | ✖ | ✖ | Render `POST /postgres/{id}/{suspend,resume,restart}`. Deferred in [bex-api.md](bex-api.md). → **w1/m17**. |
+| Backups · PITR / recovery | ✖ | ✖ | ✖ | ✖ | Render `recovery-info`/`recover`/`exports` + Recovery tab. Needs CNPG backup wiring. → **w1/m17**. |
+| HA · failover · read replicas | ✖ | ✖ | ✖ | ✖ | Render `failover`/`promote`/`replication`. `highAvailabilityEnabled` is reported `false` today. → **w1/013** (deferred from m17). |
+| Access control (IP allowlist) · users · pooler | ✖ | ✖ | ✖ | ✖ | Render `ipAllowList`, `/users`, PgBouncer pooler strings. bex has a `public` toggle only. → **w1/m17**. |
 
 ## Other datastores & storage
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` + MCP `list/get/create_key_value` + dashboard type. bex has no KV store. Mechanism-first (`KeyValue` CR) → **w1/007**. |
+| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` + MCP `list/get/create_key_value` + dashboard type. bex has no KV store. Mechanism-first (`KeyValue` CR) → **w1/m14**. |
 | Persistent disks | — | — | — | — | Render `/disks` + Disks tab. Deliberate: bex is **stateless-first** (managed Postgres for state); disks disable multi-instance + zero-downtime deploys, which fights bex's dense bin-pack + free-tier-sleep economics. Non-goal. |
 
 ## Deployment sources & IaC
@@ -81,7 +81,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Projects & environments (grouping) | ✖ | ✖ | ✖ | ✖ | Render `/projects`, `/environments`, protected environments. bex is flat apps in one workspace. Belongs to the tenancy line → nearest **w1/m9**; low. |
 | Registry credentials (private images) | ✖ | ✖ | ✖ | ✖ | Render `/registrycredentials`. bex pulls from its own zot registry; external private registries unsupported. Low, untracked. |
 | Git connections (GitHub / GitLab app) | ◐ | ✖ | ✖ | ✖ | Repo URL + HMAC push webhook works; no managed OAuth git-app connection. GitHub OAuth **login** → w4/003. Low. |
-| Header rules · redirects / rewrites | — | — | — | — | Render's static-site-only edge rules (`/headers`, `/routes`). bex serves web/private services, which have no such rules — non-goal for those types; revisit only if w1/009 adds static sites. |
+| Header rules · redirects / rewrites | — | — | — | — | Render's static-site-only edge rules (`/headers`, `/routes`). bex serves web/private services, which have no such rules — non-goal for those types; revisit only if w1/012 adds static sites. |
 
 ## Logs
 
@@ -96,7 +96,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Core metrics (CPU · memory · instance-count · HTTP requests · latency · bandwidth) | ✅ | ✅ | ✅ | ✅ | 6 REST endpoints under `/v1/metrics/*`; GraphQL `metrics(…)` + dashboard companions (`monthToDateBandwidth`, `metricsFilters`); MCP `get_metrics`; Metrics tab (w3/m2–m4.5). CPU/mem need metrics-server/Prometheus (503 otherwise). [observability.md](observability.md). |
-| Extended metrics (cpu/mem limit & target · disk · active-connections · replication-lag) | ◐ | ◐ | ◐ | ◐ | Render exposes autoscale-target, disk, and DB-connection series. bex has CPU/mem as % of limit but not the target/disk/connection series → follows **w1/008** (autoscaling) + **w1/011** (Postgres). |
+| Extended metrics (cpu/mem limit & target · disk · active-connections · replication-lag) | ◐ | ◐ | ◐ | ◐ | Render exposes autoscale-target, disk, and DB-connection series. bex has CPU/mem as % of limit but not the target/disk/connection series → follows **w1/008** (autoscaling) + **w1/m17** (Postgres). |
 | Metric streams (external) | — | — | — | — | Render `owner-metrics-stream`. External metrics-drain — non-goal. |
 
 ## Identity, workspaces & account
@@ -144,15 +144,15 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | todo |
-| Key Value (Valkey/Redis) store | `w1/007` | todo (mechanism-first) |
+| Key Value (Valkey/Redis) store | `w1/m14` | todo (mechanism-first) |
 | API keys in the dashboard | `w4/m8` | todo |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
 | Audit logs | `w4/m10` | todo |
 | Health-check path → readiness probe | `w1/005` | todo |
-| Env groups + secret files | **`w1/010`** (new) | todo |
+| Env groups + secret files | `w1/m16` | todo |
 | Per-service autoscaling config | **`w1/008`** (new) | todo |
-| Postgres advanced lifecycle & data protection | **`w1/011`** (new) | todo |
-| Additional service types (worker / static / cron) | **`w1/009`** (new) | todo |
+| Postgres advanced lifecycle & data protection | `w1/m17` (HA → `w1/013`) | todo |
+| Additional service types (worker / cron; static → `w1/012`) | `w1/m15` | todo |
 | Request/HTTP logs + structured filters | **`w3/002`** (new) | todo |
 | Projects & environments; registry creds; notifications; outbound webhooks; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |
 
