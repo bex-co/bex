@@ -152,13 +152,25 @@ func cronRunViews(runs []appv1alpha1.CronRun) []CronRunView {
 	return out
 }
 
-// List returns every App in the namespace.
+// List returns the caller's Apps. With the store on it is scoped to the caller's
+// tenant (only its projected Apps, labeled bex.co/tenant=<id>, are visible);
+// store off it lists every App in the namespace, as before. A caller with no
+// resolvable tenant (store on, unbound) sees an empty list rather than an
+// unfiltered one.
 func (s *Service) List(ctx context.Context) ([]AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
+	opts := []client.ListOption{client.InNamespace(s.Namespace)}
+	if s.Workspace != nil {
+		tenantID, ok := s.Tenant(ctx)
+		if !ok {
+			return []AppView{}, nil
+		}
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: tenantID})
+	}
 	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
 	out := make([]AppView, 0, len(list.Items))
@@ -211,7 +223,10 @@ func tierDisplayName(id string) string {
 	return strings.Join(words, " ")
 }
 
-// Get returns one App, or core.ErrNotFound.
+// Get returns one App, or core.ErrNotFound. With the store on, a cross-tenant
+// Get is core.ErrForbidden (the App exists, the caller just doesn't own it) —
+// not ErrNotFound, matching the existing error convention — enforced by the
+// shared GetApp, not a re-check here.
 func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return AppView{}, err
@@ -289,6 +304,14 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		a.Name = req.Name
 		a.Namespace = s.Namespace
 		a.Spec = desired
+		// With the store on, stamp the caller's tenant so it can see/manage what
+		// it just created — GetApp's tenant gate and List's tenant filter both key
+		// off this label, and a label-less CR would be invisible to its own owner.
+		if s.Workspace != nil {
+			if tenantID, ok := s.Tenant(ctx); ok {
+				a.Labels = map[string]string{core.LabelTenant: tenantID}
+			}
+		}
 		if err := s.Client.Create(ctx, a); err != nil {
 			return AppView{}, err
 		}
@@ -581,39 +604,48 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 }
 
 // writeThroughStore is the shared shape of every intent-field verb with a row
-// as the single writer of truth (suspend/resume, plan): for store-managed
-// Apps the row is updated first — the projection loop owns the field and
-// would revert a bare CR patch on the next resync — then the CR patch after
-// it makes the change converge immediately; if the row write fails, the CR is
-// left untouched (the row is already wrong, so retrying is safe). Unmanaged
-// (bare-CR) Apps skip the row entirely and go straight to the CR patch.
+// as the single writer of truth (suspend/resume, plan): for store-managed Apps
+// the row is updated first — the projection loop owns the field and would
+// revert a bare CR patch on the next resync — then the CR patch after it makes
+// the change converge immediately; if the row write fails, the CR is left
+// untouched (the row is already wrong, so retrying is safe). Unmanaged
+// (bare-CR) Apps skip the row entirely and go straight to the CR patch. One
+// GetApp serves both: it is the shared fetch (gated by the caller's tenant,
+// see core.Base.GetApp) and the row write's source for the store's app-id.
 func (s *Service) writeThroughStore(
 	ctx context.Context, name string,
 	writeRow func(ctx context.Context, id string) error,
 	mutate func(*appv1alpha1.App),
 ) (AppView, error) {
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
 	if s.Store != nil {
-		a, err := s.GetApp(ctx, name)
-		if err != nil {
-			return AppView{}, err
-		}
 		if id := a.Labels[store.LabelAppID]; id != "" {
 			if err := writeRow(ctx, id); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
 	}
-	return s.patch(ctx, name, mutate)
+	return s.patchFetched(ctx, a, mutate)
 }
 
-// patch fetches the App, applies mutate to its spec, and merge-patches — only
-// spec fields change; the operator reconciles the rest. The single write path
-// the lifecycle verbs share.
+// patch fetches the App by name (gated by the caller's tenant, see
+// core.Base.GetApp) then applies mutate. Restart/redeploy's single-fetch shape;
+// writeThroughStore instead reuses the App it already fetched via patchFetched.
 func (s *Service) patch(ctx context.Context, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
 	a, err := s.GetApp(ctx, name)
 	if err != nil {
 		return AppView{}, err
 	}
+	return s.patchFetched(ctx, a, mutate)
+}
+
+// patchFetched applies mutate to an already-fetched App and merge-patches —
+// only spec fields change; the operator reconciles the rest. The single write
+// path every lifecycle verb ultimately shares.
+func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
 	base := client.MergeFrom(a.DeepCopy())
 	mutate(a)
 	if err := s.Client.Patch(ctx, a, base); err != nil {

@@ -45,14 +45,22 @@ type API struct {
 	// Grant, when set, writes the new tenant's OpenFGA workspace membership so
 	// its owner can authorize resources (replacing the model's workspace:default
 	// placeholder). Nil => the tenant row is still created, without a membership.
-	Grant WorkspaceGranter
+	Grant MembershipGranter
 }
 
-// WorkspaceGranter writes the tenant's OpenFGA membership (the authz write side)
-// on tenant create. Implemented by the api package's OpenFGA client and injected
-// here — so the store keeps no dependency on the authz client. Structural.
-type WorkspaceGranter interface {
+// MembershipGranter writes/removes a subject's workspace membership in OpenFGA
+// (the authz write side). Implemented by the authz checker and injected here so
+// the store + api packages keep no dependency on the authz client. Structural.
+type MembershipGranter interface {
+	// GrantWorkspaceAdmin makes subject an admin of workspace:<tenantID> — the
+	// owner of a freshly minted tenant.
 	GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error
+	// GrantWorkspaceMember makes subject a developer of workspace:<tenantID> —
+	// the role a minted API key gets (least privilege over every resource verb).
+	GrantWorkspaceMember(ctx context.Context, tenantID, subject string) error
+	// RevokeWorkspaceMember removes subject's membership tuple for relation
+	// (e.g. "developer" for a revoked API key) — on revoke.
+	RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
 }
 
 // Handler returns the wired mux:
@@ -120,14 +128,22 @@ func (a *API) createTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	// Grow a real OpenFGA workspace: the owner gets admin on workspace:<id>,
 	// so a minted key scoped to this tenant authorizes its resources instead
-	// of falling back to workspace:default. Fail closed — a tenant nobody can
-	// administer is worse than a reported error the caller can retry.
-	if req.Admin != "" && a.Grant != nil {
-		if err := a.Grant.GrantWorkspaceAdmin(r.Context(), t.ID, "user:"+req.Admin); err != nil {
-			// Unknown error → writeErr defaults to 500. The tenant row exists;
-			// the caller sees the failure and can retry the grant.
-			writeErr(w, fmt.Errorf("tenant %s created but granting workspace admin failed: %w", t.ID, err))
+	// of falling back to workspace:default. The membership row is what lets the
+	// resolver map the admin identity to this tenant — without it the grant is
+	// useless. Fail closed — a tenant nobody can administer is worse than a
+	// reported error the caller can retry.
+	if req.Admin != "" {
+		if err := a.Store.AddMember(r.Context(), req.Admin, t.ID, "admin"); err != nil {
+			writeErr(w, fmt.Errorf("tenant %s created but adding admin member failed: %w", t.ID, err))
 			return
+		}
+		if a.Grant != nil {
+			if err := a.Grant.GrantWorkspaceAdmin(r.Context(), t.ID, "user:"+req.Admin); err != nil {
+				// Unknown error → writeErr defaults to 500. The tenant row exists;
+				// the caller sees the failure and can retry the grant.
+				writeErr(w, fmt.Errorf("tenant %s created but granting workspace admin failed: %w", t.ID, err))
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusCreated, t)

@@ -107,6 +107,30 @@ type Store interface {
 	// path enforces (w6/m1): a Hobby workspace is capped at 25 apps.
 	GetTenant(ctx context.Context, id string) (Tenant, error)
 	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
+	// TenantForIdentity returns the tenant a subject (Kratos identity id or
+	// Hydra client id) is a member of via tenant_members, or ErrNotFound — the
+	// workspace a caller resolves to (w1/m9). One lookup serves both human and
+	// machine callers since tenant_members.subject covers both kinds of id.
+	TenantForIdentity(ctx context.Context, subject string) (Tenant, error)
+	// CreateTenantWithMember mints a personal tenant for an identity on first
+	// login: a tenant row owned by the identity plus an admin membership. It is
+	// idempotent and race-safe — concurrent first logins for the same identity
+	// yield exactly one tenant (the partial unique index on owner_identity_id
+	// is the gate, not a check-then-insert). The tenant name is a placeholder
+	// (its id) pending a future rename API.
+	CreateTenantWithMember(ctx context.Context, identityID, plan string) (Tenant, error)
+	// AddMember records a subject's membership in a tenant (idempotent). The
+	// platform tenant-create path uses it to make the Admin identity a member —
+	// without the row the resolver can't map that identity to its workspace.
+	AddMember(ctx context.Context, subject, tenantID, role string) error
+	// BindClient records that an API key belongs to a tenant — a tenant_members
+	// row keyed by the key's client_id, the same table TenantForIdentity reads
+	// (idempotent — a re-bind to the same or another tenant upserts). The
+	// api-keys mint calls this after creating the Hydra client.
+	BindClient(ctx context.Context, clientID, tenantID string) error
+	// UnbindClient removes an API key's tenant binding (idempotent — a key that
+	// was never bound is not an error). The api-keys revoke calls this.
+	UnbindClient(ctx context.Context, clientID string) error
 	CreateApp(ctx context.Context, a App) (App, error)
 	GetApp(ctx context.Context, id string) (App, error)
 	ListApps(ctx context.Context) ([]App, error)
@@ -167,13 +191,115 @@ func (s *PGStore) ListTenants(ctx context.Context) ([]Tenant, error) {
 	defer rows.Close()
 	var out []Tenant
 	for rows.Next() {
-		var t Tenant
-		if err := rows.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt); err != nil {
+		t, err := scanTenant(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, t)
 	}
 	return out, rows.Err()
+}
+
+// scanTenant reads the four public tenant columns off a row (id/name/plan/
+// created_at — owner_identity_id is internal and never surfaced in the Tenant
+// shape the API returns).
+func scanTenant(row pgx.Row) (Tenant, error) {
+	var t Tenant
+	err := row.Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+	return t, err
+}
+
+func (s *PGStore) TenantForIdentity(ctx context.Context, subject string) (Tenant, error) {
+	t, err := scanTenant(s.Pool.QueryRow(ctx, `
+		SELECT t.id, t.name, t.plan, t.created_at FROM tenants t
+		JOIN tenant_members m ON m.tenant_id = t.id
+		WHERE m.subject = $1`, subject))
+	if err != nil {
+		return Tenant{}, classify("tenant", err)
+	}
+	return t, nil
+}
+
+// CreateTenantWithMember mints a personal tenant for an identity in one
+// transaction. The INSERT ... ON CONFLICT (owner_identity_id) DO UPDATE is the
+// race-safe idempotent gate: a concurrent first login that already inserted a
+// tenant for this identity makes this a no-op that returns the winner's row
+// (DO UPDATE exists only to surface RETURNING for the existing row). The
+// membership upsert is idempotent for the same reason. The tenant name is its
+// id — a unique DNS-safe placeholder.
+func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan string) (Tenant, error) {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Tenant{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // commit is the source of truth
+	id := ids.New(ids.Workspace)
+	t, err := scanTenant(tx.QueryRow(ctx, `
+		INSERT INTO tenants (id, name, plan, owner_identity_id)
+		VALUES ($1, $1, $2, $3)
+		ON CONFLICT (owner_identity_id) WHERE owner_identity_id IS NOT NULL
+		DO UPDATE SET owner_identity_id = EXCLUDED.owner_identity_id
+		RETURNING id, name, plan, created_at`,
+		id, plan, identityID))
+	if err != nil {
+		return Tenant{}, classify("tenant", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO tenant_members (tenant_id, subject, role)
+		VALUES ($1, $2, 'admin')
+		ON CONFLICT DO NOTHING`, t.ID, identityID); err != nil {
+		return Tenant{}, classify("tenant_member", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Tenant{}, err
+	}
+	return t, nil
+}
+
+// AddMember records a subject's membership in a tenant. Used both by the
+// platform tenant-create path (store/api.go, an explicit Admin) and by
+// BindClient (a minted API key is "membership" too — same table, same shape).
+func (s *PGStore) AddMember(ctx context.Context, subject, tenantID, role string) error {
+	_, err := s.Pool.Exec(ctx, `
+		INSERT INTO tenant_members (tenant_id, subject, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING`, tenantID, subject, role)
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	return nil
+}
+
+// BindClient records that an API key belongs to a tenant: a tenant_members row
+// with the key's client_id as subject and role "developer" — least privilege
+// that still covers every resource verb, matching the FGA grant apikeys mints
+// (w1/m9). The PK is (tenant_id, subject), so a rebind to a DIFFERENT tenant
+// is not a PK conflict — delete any existing binding for this client first, in
+// the same transaction, so a client is bound to at most one tenant.
+func (s *PGStore) BindClient(ctx context.Context, clientID, tenantID string) error {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO tenant_members (tenant_id, subject, role)
+			VALUES ($1, $2, 'developer')`, tenantID, clientID)
+		return err
+	})
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	return nil
+}
+
+// UnbindClient removes an API key's tenant_members row across every tenant it
+// might be bound to (idempotent — a key that was never bound is not an error).
+func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
+	_, err := s.Pool.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID)
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	return nil // idempotent — a key that was never bound is not an error
 }
 
 func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {

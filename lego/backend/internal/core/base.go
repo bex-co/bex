@@ -45,8 +45,10 @@ type Checker interface {
 }
 
 // The relations feature verbs require, matching deploy/gitops/authz/model.fga
-// (Render's workspace roles). Everything is checked against the single default
-// workspace until the control plane grows real workspaces (w1/m2).
+// (Render's workspace roles). Each check targets the caller's workspace —
+// workspace:tea-<id> when the control-plane store resolves the caller to a
+// tenant (w1/m9), workspace:default otherwise (the platform bootstrap tenant,
+// and the legacy single-tenant mode when the store is off).
 const (
 	RelCanView          = "can_view"           // viewer and up: lists, details, metrics
 	RelCanViewLogs      = "can_view_logs"      // contributor and up (Render: viewers can't see logs)
@@ -62,6 +64,25 @@ const (
 // WorkspaceObject is the OpenFGA object for a workspace (tenant) id — the target
 // the workspace lifecycle verbs authorize against, e.g. workspace:tea-abc.
 func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
+
+// LabelTenant carries a projected App CR's owning tenant id (tea-<id>) —
+// stamped by internal/store's reconciler (its LabelTenant references this
+// constant, single source of truth) and by apps.Create for a directly-created
+// App (see GetApp). GetApp checks it against the caller's resolved tenant, so
+// every feature that fetches an App by name (apps/logs/metrics/secrets)
+// inherits the same cross-tenant gate from the one shared fetch.
+const LabelTenant = "bex.co/tenant"
+
+// WorkspaceResolver maps an authenticated caller to its workspace: the tenant
+// id ("tea-<id>") for a tenant member or a bound API key (ok=true). ok=false
+// means the store is on but the caller resolves to no tenant — an unbound
+// machine key, or the platform bootstrap — and the caller is left on the
+// default workspace (bootstrap is seeded admin there; a tuple-less key 403s).
+// A nil Base.Workspace means the store is off: every caller stays on
+// workspace:default, the legacy single-tenant mode (byte-identical to before).
+type WorkspaceResolver interface {
+	Tenant(ctx context.Context, id Identity) (tenantID string, ok bool)
+}
 
 // Render's suspended enum (a string, NOT a bool) — shared by the service and
 // database projections, so it lives in the kernel both features import.
@@ -89,6 +110,10 @@ type Base struct {
 	// Authz decides what the authenticated caller may do (OpenFGA); nil => every
 	// verb allowed (pre-authorization behavior).
 	Authz Checker
+	// Workspace resolves the caller's tenant (workspace:tea-<id>) when the
+	// control-plane store is wired; nil => every check targets workspace:default
+	// (the legacy store-off mode). See WorkspaceResolver for the ok contract.
+	Workspace WorkspaceResolver
 }
 
 // Now returns the (injectable) current time.
@@ -99,18 +124,30 @@ func (b *Base) Now() time.Time {
 	return time.Now()
 }
 
-// Authorize gates a verb on the caller's permission against the default
-// workspace. Every App/logs/metrics verb starts here (they operate on the
-// single default workspace until the control plane grows real per-caller
-// workspace scoping, w1/m9).
+// Authorize gates a verb on the caller's permission against its OWN
+// workspace: workspace:tea-<id> when the resolver (Workspace) finds a tenant
+// for the caller, workspace:default otherwise (store off, or an unbound
+// machine caller that 403s on the default workspace's tuples unless it is the
+// seeded bootstrap). Every App/logs/metrics/apikeys verb starts here — it is
+// the caller-scoped case of AuthorizeOn, which every one of those verbs uses
+// implicitly by never naming a workspace itself.
 func (b *Base) Authorize(ctx context.Context, relation string) error {
-	return b.AuthorizeOn(ctx, relation, DefaultWorkspace)
+	workspace := DefaultWorkspace
+	if b.Workspace != nil {
+		if id, ok := IdentityFrom(ctx); ok {
+			if tenantID, found := b.Workspace.Tenant(ctx, id); found {
+				workspace = "workspace:" + tenantID
+			}
+		}
+	}
+	return b.AuthorizeOn(ctx, relation, workspace)
 }
 
 // AuthorizeOn gates a verb on the caller's permission against a specific object
 // (e.g. workspace:tea-abc) — the seam for verbs scoped to a named workspace
-// rather than the default (the workspaces lifecycle verbs check `admin` on the
-// exact workspace). nil checker allows (authorization not enforced); with a
+// rather than the caller's own (the workspaces lifecycle verbs check `admin` on
+// the exact workspace being renamed/deleted, which may differ from the
+// caller's default). nil checker allows (authorization not enforced); with a
 // checker wired, no identity in context or a negative check is ErrForbidden, and
 // an unreachable checker fails closed with ErrAuthzUnavailable — never a
 // pass-through, so the three surfaces stay authorization-identical.
@@ -132,9 +169,33 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 	return nil
 }
 
+// Tenant returns the caller's tenant id via the workspace resolver. ok=false
+// when there is no resolver (store off) or the caller has no tenant; callers
+// that filter to the caller's workspace check b.Workspace != nil first to
+// distinguish "store off (no filter)" from "store on (filter, maybe empty)".
+func (b *Base) Tenant(ctx context.Context) (string, bool) {
+	if b.Workspace == nil {
+		return "", false
+	}
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return "", false
+	}
+	return b.Workspace.Tenant(ctx, id)
+}
+
 // GetApp fetches one App by name, mapping absence to ErrNotFound. Shared by the
-// apps/logs/metrics services — each needs "does this App exist / read its
-// status" without reimplementing the not-found mapping.
+// apps/logs/metrics/secrets services — each needs "does this App exist / read
+// its status" without reimplementing the not-found mapping. With the
+// control-plane store on (Workspace resolver wired), it also gates the App
+// against the caller's tenant: a name that resolves to another tenant's App is
+// ErrForbidden, not a leak through the shared fetch every feature uses (a
+// cross-tenant caller who knows an App name must not read its logs, metrics,
+// or secrets just because apps.Service alone learned to check). ErrForbidden,
+// not ErrNotFound, matches the existing convention — "not yours," not "doesn't
+// exist," so a cross-tenant caller can't probe existence by name. A no-identity
+// caller (the git webhook's HMAC-authenticated redeploy, which carries no
+// core.Identity) skips the gate — it has no workspace to check against.
 func (b *Base) GetApp(ctx context.Context, name string) (*appv1alpha1.App, error) {
 	var a appv1alpha1.App
 	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &a)
@@ -143,6 +204,13 @@ func (b *Base) GetApp(ctx context.Context, name string) (*appv1alpha1.App, error
 	}
 	if err != nil {
 		return nil, err
+	}
+	if b.Workspace != nil {
+		if id, ok := IdentityFrom(ctx); ok {
+			if tenantID, found := b.Workspace.Tenant(ctx, id); found && a.Labels[LabelTenant] != tenantID {
+				return nil, ErrForbidden
+			}
+		}
 	}
 	return &a, nil
 }

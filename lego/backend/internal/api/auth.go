@@ -64,6 +64,12 @@ type oryAuth struct {
 	// `resource_metadata="…"` so an MCP client can find the authorization server.
 	challenge string
 
+	// onboard, when set (the control-plane store is wired), mints a personal
+	// tenant for a human identity on first login. nil => store off: no mint, the
+	// legacy default-workspace behavior. Only session callers mint — machine
+	// callers resolve via their key's tenant binding, never mint.
+	onboard Onboarding
+
 	// Positive introspections are cached briefly so a chatty agent doesn't cost
 	// one Hydra round trip per request. Negatives are never cached. Concurrent
 	// misses for one token coalesce into a single Hydra call (group), which also
@@ -72,7 +78,7 @@ type oryAuth struct {
 	group singleflight.Group
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, onboard Onboarding) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
@@ -82,6 +88,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string) 
 		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
 		resource:      resource,
 		challenge:     challenge,
+		onboard:       onboard,
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:         core.NewTTLCache[core.Identity](),
 	}
@@ -107,6 +114,17 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		case id == core.Identity{}:
 			a.unauthorized(w)
 		default:
+			// Tenant onboarding (w1/m9): a human's first authenticated call mints
+			// it a personal tenant. Only session callers mint — a machine caller
+			// (API key) resolves to its key's tenant binding downstream, never
+			// here. A broken store fails closed (503), like a broken Ory: a
+			// request that can't be tenanted must not be served un-tenanted.
+			if a.onboard != nil && id.Method == "session" {
+				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject); err != nil {
+					http.Error(w, `{"error":"tenant onboarding unavailable"}`, http.StatusServiceUnavailable)
+					return
+				}
+			}
 			next.ServeHTTP(w, r.WithContext(core.WithIdentity(r.Context(), id)))
 		}
 	})

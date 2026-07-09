@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -136,6 +137,168 @@ func assertWorkspaceLifecycle(ctx context.Context, t *testing.T, s *PGStore, poo
 	}
 	if err := s.DeleteTenant(ctx, ws.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("re-delete: want ErrNotFound, got %v", err)
+	}
+}
+
+// TestTenantMintIdempotentAndRaceSafe exercises w1/m9's first-login mint
+// against a real database: a second call for the same identity mints nothing,
+// and N concurrent first logins for one identity — the actual race the unique
+// partial index on owner_identity_id (not a check-then-insert) is meant to
+// close — still yield exactly one tenant + one membership row.
+func TestTenantMintIdempotentAndRaceSafe(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	first, err := s.CreateTenantWithMember(ctx, "identity-once", PlanHobby)
+	if err != nil {
+		t.Fatalf("first mint: %v", err)
+	}
+	second, err := s.CreateTenantWithMember(ctx, "identity-once", PlanHobby)
+	if err != nil {
+		t.Fatalf("second mint: %v", err)
+	}
+	if second.ID != first.ID {
+		t.Errorf("repeat mint must return the same tenant: first=%s second=%s", first.ID, second.ID)
+	}
+	assertOneTenantOneMember(ctx, t, pool, "identity-once")
+
+	// The actual race: N goroutines calling CreateTenantWithMember for the SAME
+	// identity concurrently. The unique partial index on owner_identity_id (not
+	// a Go-level check-then-insert) is what makes this converge to one row.
+	const n = 20
+	ids := make([]string, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ten, err := s.CreateTenantWithMember(ctx, "identity-racer", PlanHobby)
+			if err != nil {
+				t.Errorf("concurrent mint %d: %v", i, err)
+				return
+			}
+			ids[i] = ten.ID
+		}(i)
+	}
+	wg.Wait()
+	for i, id := range ids {
+		if id != ids[0] {
+			t.Fatalf("concurrent mints diverged: goroutine 0 got %s, goroutine %d got %s", ids[0], i, id)
+		}
+	}
+	assertOneTenantOneMember(ctx, t, pool, "identity-racer")
+}
+
+func assertOneTenantOneMember(ctx context.Context, t *testing.T, pool *pgxpool.Pool, identityID string) {
+	t.Helper()
+	var tenantCount, memberCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tenants WHERE owner_identity_id = $1`, identityID).Scan(&tenantCount); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tenant_members WHERE subject = $1`, identityID).Scan(&memberCount); err != nil {
+		t.Fatal(err)
+	}
+	if tenantCount != 1 || memberCount != 1 {
+		t.Errorf("identity %s: tenants=%d members=%d, want 1,1", identityID, tenantCount, memberCount)
+	}
+}
+
+// TestTenantForIdentityAndClient exercises the resolver's read path
+// (tenant_members.subject, shared by human identities and API-key client ids)
+// plus AddMember/BindClient/UnbindClient against a real database.
+func TestTenantForIdentityAndClient(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	if _, err := s.TenantForIdentity(ctx, "nobody"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown identity: want ErrNotFound, got %v", err)
+	}
+
+	ten, err := s.CreateTenant(ctx, "platform-tenant", PlanHobby)
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	// AddMember is the platform tenant-create path's write (store/api.go) — the
+	// membership row a resolver needs to map an admin identity to its workspace.
+	if err := s.AddMember(ctx, "identity-admin", ten.ID, "admin"); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+	if err := s.AddMember(ctx, "identity-admin", ten.ID, "admin"); err != nil {
+		t.Fatalf("add member (idempotent repeat): %v", err)
+	}
+	got, err := s.TenantForIdentity(ctx, "identity-admin")
+	if err != nil || got.ID != ten.ID {
+		t.Fatalf("TenantForIdentity: %v %+v", err, got)
+	}
+
+	if _, err := s.TenantForIdentity(ctx, "client-unbound"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unbound client: want ErrNotFound, got %v", err)
+	}
+	if err := s.BindClient(ctx, "client-1", ten.ID); err != nil {
+		t.Fatalf("bind client: %v", err)
+	}
+	got, err = s.TenantForIdentity(ctx, "client-1")
+	if err != nil || got.ID != ten.ID {
+		t.Fatalf("TenantForIdentity(bound client) after bind: %v %+v", err, got)
+	}
+	// Re-binding to a second tenant moves the binding (a key can be re-bound,
+	// not just bound once) — BindClient deletes any prior row for this client
+	// before inserting, since the PK is (tenant_id, subject) not subject alone.
+	ten2, err := s.CreateTenant(ctx, "platform-tenant-2", PlanHobby)
+	if err != nil {
+		t.Fatalf("create second tenant: %v", err)
+	}
+	if err := s.BindClient(ctx, "client-1", ten2.ID); err != nil {
+		t.Fatalf("re-bind client: %v", err)
+	}
+	got, err = s.TenantForIdentity(ctx, "client-1")
+	if err != nil || got.ID != ten2.ID {
+		t.Fatalf("TenantForIdentity(bound client) after re-bind: %v %+v", err, got)
+	}
+
+	if err := s.UnbindClient(ctx, "client-1"); err != nil {
+		t.Fatalf("unbind client: %v", err)
+	}
+	if _, err := s.TenantForIdentity(ctx, "client-1"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unbound after UnbindClient: want ErrNotFound, got %v", err)
+	}
+	// Unbinding an already-unbound (or never-bound) client is a no-op, not an
+	// error — the api-keys revoke path relies on this.
+	if err := s.UnbindClient(ctx, "client-1"); err != nil {
+		t.Errorf("re-unbind (idempotent): %v", err)
+	}
+	if err := s.UnbindClient(ctx, "client-never-bound"); err != nil {
+		t.Errorf("unbind never-bound client (idempotent): %v", err)
 	}
 }
 

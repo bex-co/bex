@@ -104,6 +104,111 @@ func TestServiceListGetVerbs(t *testing.T) {
 	}
 }
 
+// --- Workspace-scoped List/Get/Create (w1/m9) ---
+
+// fakeWorkspace is a map-backed core.WorkspaceResolver: identities not in the
+// map resolve ok=false — an unbound caller, or the store-on legacy path.
+type fakeWorkspace map[string]string
+
+func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	tid, ok := f[id.Subject]
+	return tid, ok
+}
+
+func tenantApp(name, tenantID string) *appv1alpha1.App {
+	a := sampleApp(name)
+	a.Labels = map[string]string{core.LabelTenant: tenantID}
+	return a
+}
+
+func newTenantService(ws core.WorkspaceResolver, apps ...*appv1alpha1.App) (*Service, client.Client) {
+	objs := make([]client.Object, len(apps))
+	for i, a := range apps {
+		objs[i] = a
+	}
+	cl := fakeClient(objs...)
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}}, cl
+}
+
+func TestListScopedToCallerTenant(t *testing.T) {
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"},
+		tenantApp("web", "tea-a"), tenantApp("db", "tea-a"), tenantApp("other", "tea-b"))
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	list, err := svc.List(ctx)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("List: %v len=%d, want 2 (tea-a's apps only)", err, len(list))
+	}
+	for _, a := range list {
+		if a.Name != "web" && a.Name != "db" {
+			t.Errorf("List leaked a cross-tenant App: %+v", a)
+		}
+	}
+}
+
+func TestListUnresolvedCallerSeesNothing(t *testing.T) {
+	// Store on but the caller resolves to no tenant — must not silently fall
+	// back to an unfiltered (every-tenant) list.
+	svc, _ := newTenantService(fakeWorkspace{}, tenantApp("web", "tea-a"))
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound", Method: "oauth2"})
+
+	list, err := svc.List(ctx)
+	if err != nil || len(list) != 0 {
+		t.Fatalf("List for unresolved caller: %v len=%d, want 0", err, len(list))
+	}
+}
+
+func TestGetCrossTenantIsForbiddenNotNotFound(t *testing.T) {
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, tenantApp("other", "tea-b"))
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := svc.Get(ctx, "other"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-tenant Get: got %v, want ErrForbidden (not a 404 leak)", err)
+	}
+}
+
+func TestGetSameTenantSucceeds(t *testing.T) {
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, tenantApp("web", "tea-a"))
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := svc.Get(ctx, "web"); err != nil {
+		t.Errorf("same-tenant Get: %v", err)
+	}
+}
+
+func TestCreateStampsCallerTenantLabel(t *testing.T) {
+	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := svc.create(ctx, CreateRequest{Name: "fresh", Image: "img:1"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	a := getApp(t, cl, "fresh")
+	if a.Labels[core.LabelTenant] != "tea-a" {
+		t.Fatalf("created App tenant label = %q, want tea-a", a.Labels[core.LabelTenant])
+	}
+	// The caller must be able to see/manage what it just created — the whole
+	// point of stamping the label on create.
+	if _, err := svc.Get(ctx, "fresh"); err != nil {
+		t.Errorf("Get on just-created App: %v (label must make it visible to its own owner)", err)
+	}
+}
+
+func TestStoreOffListAndGetIgnoreTenantLabelsUnchanged(t *testing.T) {
+	// Workspace nil (store off): byte-identical to before tenant onboarding —
+	// every App in the namespace is visible regardless of label.
+	svc, _ := newService(nil, tenantApp("web", "tea-a"), tenantApp("other", "tea-b"))
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	list, err := svc.List(ctx)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("store-off List: %v len=%d, want 2 (unfiltered)", err, len(list))
+	}
+	if _, err := svc.Get(ctx, "other"); err != nil {
+		t.Errorf("store-off Get across tenants: %v, want success", err)
+	}
+}
+
 // --- Single writer of intent (store-managed vs hand-applied) ---
 
 type recordingStore struct {

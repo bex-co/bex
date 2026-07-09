@@ -28,22 +28,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Labels stamped on every projected App CR. LabelAppID ties the CR back to
-// its apps row (the reconciler's join key); the managed-by label scopes
-// list/delete so hand-applied Apps are never touched.
+// its apps row (the reconciler's join key); LabelTenant carries the owning
+// tenant's id (tea-<id>) — core.Base.GetApp's single source of truth for
+// gating a fetched App against the caller's tenant, so every feature that
+// fetches by name (apps/logs/metrics/secrets) inherits the same check; the
+// managed-by label scopes list/delete so hand-applied Apps are never touched.
 //
 // ManagedByValue is PERSISTED DATA — it lives on every projected App CR in
 // live clusters. The service was renamed bex-backend, but changing this value
 // would blind the projection to existing CRs (List filters on it) and make it
 // re-Create them into name conflicts. Flip it only with a relabel migration.
+// LabelTenant is re-stamped on every resync (stampLabels), so a value change
+// (it once carried the tenant name) migrates existing CRs without a relabel.
 const (
-	LabelManagedBy      = "app.kubernetes.io/managed-by"
-	ManagedByValue      = "bex-controlplane"
-	LabelAppID          = "bex.co/app-id"
-	LabelTenant         = "bex.co/tenant"
+	LabelManagedBy = "app.kubernetes.io/managed-by"
+	ManagedByValue = "bex-controlplane"
+	LabelAppID     = "bex.co/app-id"
+	// LabelTenant aliases core.LabelTenant — one label, one constant, so the
+	// stamp (here) and the gate (core.Base.GetApp) can never drift apart.
+	LabelTenant         = core.LabelTenant
 	defaultResyncPeriod = 30 * time.Second
 )
 
@@ -131,8 +139,11 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			continue
 		}
 		// Project desired spec only; observed status (phase/url) is read from
-		// the CR by bex-api, never copied back into Postgres.
-		if applyOwnedSpec(&cur.Spec, projectSpec(d)) {
+		// the CR by bex-api, never copied back into Postgres. Labels are
+		// re-stamped so a LabelTenant value change migrates without a relabel.
+		specChanged := applyOwnedSpec(&cur.Spec, projectSpec(d))
+		labelsChanged := stampLabels(cur, d)
+		if specChanged || labelsChanged {
 			if err := r.Client.Update(ctx, cur); err != nil {
 				errs = append(errs, fmt.Errorf("update App %s: %w", cur.Name, err))
 				continue
@@ -156,19 +167,36 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 // 63-char object-name limit.
 func CRName(tenant, app string) string { return tenant + "-" + app }
 
+// stampLabels ensures cur carries the projection's three labels (managed-by,
+// app-id, tenant-id), returning whether any changed. Called on both Create and
+// Update so a LabelTenant value change (name → id) converges on the next resync.
+func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
+	if cur.Labels == nil {
+		cur.Labels = map[string]string{}
+	}
+	changed := false
+	set := func(k, v string) {
+		if cur.Labels[k] != v {
+			cur.Labels[k] = v
+			changed = true
+		}
+	}
+	set(LabelManagedBy, ManagedByValue)
+	set(LabelAppID, d.ID)
+	set(LabelTenant, d.TenantID) // the tenant id (tea-<id>), what List/Get filter on
+	return changed
+}
+
 func projectApp(d DesiredApp, namespace string) *appv1alpha1.App {
-	return &appv1alpha1.App{
+	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      CRName(d.TenantName, d.Name),
 			Namespace: namespace,
-			Labels: map[string]string{
-				LabelManagedBy: ManagedByValue,
-				LabelAppID:     d.ID,
-				LabelTenant:    d.TenantName,
-			},
 		},
 		Spec: projectSpec(d),
 	}
+	stampLabels(a, d)
+	return a
 }
 
 // projectSpec maps a row to the App.spec fields the control plane owns.

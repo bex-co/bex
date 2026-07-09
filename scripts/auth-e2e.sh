@@ -12,6 +12,11 @@
 #      tuples and gets 403; with the env unset the same key passes again
 #      (allow-all regression).
 #
+# This script runs bex-api store-OFF (no BEX_CP_DB_URI): bootstrap + tuple-less
+# key against workspace:default. The store-ON cross-tenant flow (w1/m9 — two
+# Kratos identities mint tenants, each key sees only its own services, a
+# cross-tenant Get is 403) lives in scripts/auth-tenant-e2e.sh.
+#
 # bex-api runs on the host (go build ./cmd/api) talking to the cluster's
 # apiserver; Hydra is reached via kubectl port-forwards — so this works on the
 # CAPD mock cluster with no operator image. The App CRD must be installed

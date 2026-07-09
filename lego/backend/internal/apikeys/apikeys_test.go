@@ -66,6 +66,140 @@ func newService(store APIKeyStore) *Service {
 	return &Service{Base: &core.Base{Namespace: "default"}, APIKeys: store}
 }
 
+// fakeWorkspace is a map-backed core.WorkspaceResolver: identities not in the
+// map resolve ok=false — an unbound/session-less caller, the case CreateAPIKey
+// must refuse rather than mint an orphaned, tuple-less key.
+type fakeWorkspace map[string]string
+
+func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	tid, ok := f[id.Subject]
+	return tid, ok
+}
+
+// fakeBinder is the in-memory apikeys.KeyBinder for the Binding seam's tests —
+// records bind/unbind calls and can be told to fail the next N binds, the way
+// tests simulate an OpenFGA write failure during key mint (t002/t006: no
+// orphaned Hydra client survives a failed bind).
+type fakeBinder struct {
+	failNext int
+	bound    map[string]string // clientID -> tenantID
+	unbound  []string
+}
+
+func newFakeBinder() *fakeBinder { return &fakeBinder{bound: map[string]string{}} }
+
+func (b *fakeBinder) BindKey(_ context.Context, clientID, tenantID string) error {
+	if b.failNext > 0 {
+		b.failNext--
+		return errors.New("fga write failed")
+	}
+	b.bound[clientID] = tenantID
+	return nil
+}
+
+func (b *fakeBinder) UnbindKey(_ context.Context, clientID string) error {
+	delete(b.bound, clientID)
+	b.unbound = append(b.unbound, clientID)
+	return nil
+}
+
+// --- Key→tenant binding (w1/m9) ---
+
+func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	created, err := svc.CreateAPIKey(ctx, "agent")
+	if err != nil {
+		t.Fatalf("CreateAPIKey: %v", err)
+	}
+	if binder.bound[created.ID] != "tea-a" {
+		t.Errorf("bound[%s] = %q, want tea-a", created.ID, binder.bound[created.ID])
+	}
+}
+
+func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
+	// Binding wired (store on) but the caller resolves to no tenant — a
+	// session-less machine caller. Minting must refuse, not produce an
+	// orphaned, tuple-less key nobody can ever bind later.
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound-caller", Method: "oauth2"})
+
+	if _, err := svc.CreateAPIKey(ctx, "agent"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("no-tenant caller: want ErrBadRequest, got %v", err)
+	}
+	if len(store.keys) != 0 {
+		t.Errorf("no Hydra client should have been minted, store has %d", len(store.keys))
+	}
+}
+
+func TestCreateAPIKeyBindFailureRollsBackHydraClient(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := &fakeBinder{failNext: 1, bound: map[string]string{}}
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := svc.CreateAPIKey(ctx, "agent"); err == nil {
+		t.Fatal("bind failure must surface as an error")
+	}
+	// No orphaned credential: the Hydra client created before the failed bind
+	// must be deleted, not left live with no tenant to authorize against.
+	if len(store.keys) != 0 {
+		t.Errorf("Hydra client left behind after bind failure: %d keys in store", len(store.keys))
+	}
+}
+
+func TestRevokeAPIKeyUnbindsFromTenant(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	created, err := svc.CreateAPIKey(ctx, "agent")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := svc.RevokeAPIKey(ctx, created.ID); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	if len(binder.unbound) != 1 || binder.unbound[0] != created.ID {
+		t.Errorf("unbound = %v, want [%s]", binder.unbound, created.ID)
+	}
+}
+
+func TestCreateAPIKeyNilBindingMintsUnbound(t *testing.T) {
+	// Store off (Binding nil): keys mint unbound, byte-identical to before
+	// tenant onboarding existed — no tenant lookup, no refusal.
+	store := newFakeKeyStore()
+	svc := newService(store)
+	ctx := context.Background() // no identity at all — must not matter
+
+	created, err := svc.CreateAPIKey(ctx, "agent")
+	if err != nil || created.ID == "" {
+		t.Fatalf("nil Binding: %v %+v", err, created)
+	}
+}
+
 // --- Verb behavior ---
 
 func TestAPIKeyVerbs(t *testing.T) {

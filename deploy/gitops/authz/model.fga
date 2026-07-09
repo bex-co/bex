@@ -36,8 +36,12 @@
 #   can_manage_billing  billing settings                  billing or admin
 #
 # Subjects (`user`) are what the auth gate resolves via api.IdentityFrom: a
-# Hydra client_id (API key) or a Kratos identity id. Until the control plane
-# grows real workspaces (w1/m2), every check targets `workspace:default`.
+# Hydra client_id (API key) or a Kratos identity id. Each check targets the
+# caller's workspace — workspace:tea-<id> for a tenant member or a bound key
+# (w1/m9 mint-on-first-login + key→tenant binding) — falling back to
+# workspace:default only for the platform bootstrap and the legacy store-off
+# mode. Per-service (service:srv-<id>) tuples are a future grant; today the
+# tenant label on each App CR scopes List/Get, not a service tuple.
 
 model
   schema 1.1

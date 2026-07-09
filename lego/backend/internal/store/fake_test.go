@@ -34,13 +34,25 @@ type memStore struct {
 	tenants map[string]Tenant
 	apps    map[string]App
 	domains map[string]Domain
+	// Tenancy mapping keys (mirrors 0002_workspaces + owner_identity_id):
+	// members maps a (tenant, subject) tenant_members row to its role — subject
+	// covers both Kratos identity ids and Hydra client ids, so one map serves
+	// TenantForIdentity/AddMember/BindClient/UnbindClient alike; ownerOf maps an
+	// identity to the tenant it auto-minted (the race-safety gate).
+	members map[memberKey]string // (tenant, subject) -> role
+	ownerOf map[string]string    // identityID -> tenantID
 }
+
+// memberKey is the composite key of a tenant_members row.
+type memberKey struct{ tenant, subject string }
 
 func newMemStore() *memStore {
 	return &memStore{
 		tenants: map[string]Tenant{},
 		apps:    map[string]App{},
 		domains: map[string]Domain{},
+		members: map[memberKey]string{},
+		ownerOf: map[string]string{},
 	}
 }
 
@@ -87,6 +99,73 @@ func (m *memStore) CountAppsForTenant(_ context.Context, tenantID string) (int, 
 		}
 	}
 	return n, nil
+}
+
+func (m *memStore) TenantForIdentity(_ context.Context, subject string) (Tenant, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for k := range m.members {
+		if k.subject == subject {
+			return m.tenants[k.tenant], nil
+		}
+	}
+	return Tenant{}, fmt.Errorf("tenant: %w", ErrNotFound)
+}
+
+func (m *memStore) CreateTenantWithMember(_ context.Context, identityID, plan string) (Tenant, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Race-safe: an identity auto-mints exactly one tenant. If a concurrent
+	// mint already created one, return it (the membership is re-ensured).
+	if tid, ok := m.ownerOf[identityID]; ok {
+		m.members[memberKey{tid, identityID}] = "admin"
+		return m.tenants[tid], nil
+	}
+	id := ids.New(ids.Workspace)
+	t := Tenant{ID: id, Name: id, Plan: plan, CreatedAt: time.Now()}
+	m.tenants[id] = t
+	m.ownerOf[identityID] = id
+	m.members[memberKey{id, identityID}] = "admin"
+	return t, nil
+}
+
+func (m *memStore) AddMember(_ context.Context, subject, tenantID, role string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.tenants[tenantID]; !ok {
+		return fmt.Errorf("tenant_member reference: %w", ErrNotFound)
+	}
+	m.members[memberKey{tenantID, subject}] = role
+	return nil
+}
+
+// BindClient records that an API key belongs to a tenant — a tenant_members
+// row keyed by the key's client_id, mirroring PGStore's delete-then-insert (a
+// client is bound to at most one tenant).
+func (m *memStore) BindClient(_ context.Context, clientID, tenantID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.tenants[tenantID]; !ok {
+		return fmt.Errorf("tenant_member reference: %w", ErrNotFound)
+	}
+	for k := range m.members {
+		if k.subject == clientID {
+			delete(m.members, k)
+		}
+	}
+	m.members[memberKey{tenantID, clientID}] = "developer"
+	return nil
+}
+
+func (m *memStore) UnbindClient(_ context.Context, clientID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for k := range m.members {
+		if k.subject == clientID {
+			delete(m.members, k)
+		}
+	}
+	return nil // idempotent — never bound is not an error
 }
 
 func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {

@@ -81,11 +81,7 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 // checkRequest is OpenFGA's check body (a tagged struct keeps the hot path free
 // of map allocation + key sorting).
 type checkRequest struct {
-	TupleKey struct {
-		User     string `json:"user"`
-		Relation string `json:"relation"`
-		Object   string `json:"object"`
-	} `json:"tuple_key"`
+	TupleKey tupleKey `json:"tuple_key"`
 }
 
 func (o *openfgaChecker) checkUpstream(ctx context.Context, subject, relation, object string) (bool, error) {
@@ -105,7 +101,8 @@ func (o *openfgaChecker) checkUpstream(ctx context.Context, subject, relation, o
 	return out.Allowed, nil
 }
 
-// tupleKey is one OpenFGA tuple in a /write batch.
+// tupleKey is one OpenFGA tuple (user/relation/object) — shared by writes and
+// deletes so the hot path stays allocation-light.
 type tupleKey struct {
 	User     string `json:"user"`
 	Relation string `json:"relation"`
@@ -124,26 +121,8 @@ type tupleBatch struct {
 	TupleKeys []tupleKey `json:"tuple_keys"`
 }
 
-// GrantWorkspaceAdmin writes the membership tuple `<subject> admin
-// workspace:<tenantID>` — how a freshly minted tenant becomes a real OpenFGA
-// workspace, replacing the model's `workspace:default` placeholder (w1/m2). It
-// satisfies store.WorkspaceGranter structurally, so the store package needs no
-// dependency on this package.
-func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
-	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
-}
-
-// RevokeWorkspaceMember removes a subject's membership tuple from a workspace —
-// the delete side of workspace teardown (workspaces.WorkspaceRevoker). relation
-// is the member's role ("admin" today; w4/m12's roles revoke through the same
-// path). A tuple that's already gone is not an error to OpenFGA's delete, so a
-// retried workspace-delete is idempotent.
-func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error {
-	return o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
-}
-
 // writeTuple sends one add (delete=false) or remove (delete=true) to OpenFGA's
-// /write — the shared path for the grant/revoke membership writes.
+// /write — the shared path for every grant/revoke membership write.
 func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) error {
 	storeID, err := o.store(ctx)
 	if err != nil {
@@ -157,6 +136,36 @@ func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) 
 	}
 	body, _ := json.Marshal(req)
 	return core.DoJSON(ctx, o.client, http.MethodPost, o.baseURL+"/stores/"+storeID+"/write", o.token, body, http.StatusOK, nil)
+}
+
+// GrantWorkspaceAdmin writes the membership tuple `<subject> admin
+// workspace:<tenantID>` — how a freshly minted tenant becomes a real OpenFGA
+// workspace, replacing the model's `workspace:default` placeholder (w1/m2). It
+// satisfies store.MembershipGranter (and workspaces.WorkspaceGranter)
+// structurally, so those packages keep no dependency on this one.
+func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
+	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
+}
+
+// GrantWorkspaceMember writes `<subject> developer workspace:<tenantID>` — the
+// membership a minted API key gets (w1/m9). developer is least privilege that
+// still covers every resource verb (can_create/can_operate/
+// can_view_sensitive/can_manage_keys/can_view_logs/can_view): a machine
+// credential manages resources, not org settings (members/billing), which
+// admin would unlock.
+func (o *openfgaChecker) GrantWorkspaceMember(ctx context.Context, tenantID, subject string) error {
+	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "developer", Object: "workspace:" + tenantID})
+}
+
+// RevokeWorkspaceMember removes a subject's membership tuple from a workspace —
+// the delete side of both workspace teardown (workspaces.WorkspaceRevoker) and
+// API-key revoke (w1/m9: the bound client stops authorizing, subject to
+// bex-api's ≤30s positive-check cache). relation is the member's role ("admin"
+// for a workspace owner, "developer" for a bound key; w4/m12's roles revoke
+// through the same path). A tuple that's already gone is not an error to
+// OpenFGA's delete, so a retried revoke/delete is idempotent.
+func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error {
+	return o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
 }
 
 // store resolves the `bex` store id by name once, deduplicating the lookup

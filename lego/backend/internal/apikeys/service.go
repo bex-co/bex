@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -49,13 +50,30 @@ type APIKeyStore interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// KeyBinder ties a minted API key to its tenant: the mapping row that lets a
+// machine caller resolve to workspace:tea-<id>, plus the OpenFGA membership that
+// lets it authorize there (replacing the legacy workspace:default). nil Binding
+// (the store off) => keys mint unbound, as before tenant onboarding (w1/m9).
+type KeyBinder interface {
+	BindKey(ctx context.Context, clientID, tenantID string) error
+	UnbindKey(ctx context.Context, clientID string) error
+}
+
 // Service manages machine credentials over the injected APIKeyStore.
 type Service struct {
 	*core.Base
 	APIKeys APIKeyStore
+	// Binding, when set (the control-plane store is on), ties each minted key to
+	// the caller's tenant. nil => legacy unbound mint (store off).
+	Binding KeyBinder
 }
 
 // CreateAPIKey mints a new machine credential. The returned Secret is shown once.
+// With the store on, the key is bound to the caller's tenant (a mapping row +
+// the FGA membership that lets it authorize against workspace:tea-<id>); a
+// session-less machine caller with no tenant is refused rather than minting an
+// orphaned, tuple-less key. A bind failure rolls the Hydra client back so no
+// half-bound credential lingers.
 func (s *Service) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return APIKey{}, err
@@ -66,7 +84,24 @@ func (s *Service) CreateAPIKey(ctx context.Context, name string) (APIKey, error)
 	if strings.TrimSpace(name) == "" {
 		return APIKey{}, core.ErrBadRequest
 	}
-	return s.APIKeys.Create(ctx, name)
+	if s.Binding == nil {
+		return s.APIKeys.Create(ctx, name) // store off — unbound, as before
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok {
+		return APIKey{}, fmt.Errorf("%w: caller has no tenant to bind the key to", core.ErrBadRequest)
+	}
+	key, err := s.APIKeys.Create(ctx, name)
+	if err != nil {
+		return APIKey{}, err
+	}
+	if err := s.Binding.BindKey(ctx, key.ID, tenantID); err != nil {
+		// No orphaned credentials: the Hydra client is live but unbound — delete
+		// it so a half-minted key can't authenticate (its tuple was never written).
+		_ = s.APIKeys.Delete(ctx, key.ID)
+		return APIKey{}, fmt.Errorf("bind api key to tenant: %w", err)
+	}
+	return key, nil
 }
 
 // ListAPIKeys returns every machine credential (secrets omitted).
@@ -81,7 +116,9 @@ func (s *Service) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 }
 
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
-// introspecting active (subject to bex-api's ≤30s introspection cache).
+// introspecting active (subject to bex-api's ≤30s introspection cache). With the
+// store on it also drops the tenant binding + FGA tuple (best-effort: the Hydra
+// client is already gone, so a leftover mapping is harmless, just cleaned up).
 func (s *Service) RevokeAPIKey(ctx context.Context, id string) error {
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return err
@@ -89,7 +126,13 @@ func (s *Service) RevokeAPIKey(ctx context.Context, id string) error {
 	if s.APIKeys == nil {
 		return core.ErrAPIKeysUnavailable
 	}
-	return s.APIKeys.Delete(ctx, id)
+	if err := s.APIKeys.Delete(ctx, id); err != nil {
+		return err
+	}
+	if s.Binding != nil {
+		_ = s.Binding.UnbindKey(ctx, id)
+	}
+	return nil
 }
 
 // hydraAPIKeys implements APIKeyStore over Hydra's admin API.

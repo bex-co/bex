@@ -174,12 +174,24 @@ func main() {
 			deps.WorkspaceRevoker = rv
 		}
 
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN")}
-		// The OpenFGA checker also writes membership tuples (workspace:tea-<id>);
-		// give the tenant API the grant path when authz is wired.
-		if g, ok := authzChecker.(store.WorkspaceGranter); ok {
-			internal.Grant = g
+		// Tenant onboarding + workspace scoping (w1/m9): one tenantService is the
+		// store-backed resolver (core.Base.Workspace, every verb's Authorize
+		// targets workspace:tea-<id>), the onboarding seam (mints a personal
+		// tenant on a human's first login), and the key-binder (ties minted keys
+		// to their tenant). The OpenFGA checker is the membership granter when
+		// authz is wired; a nil granter means the store isolates tenants by
+		// filtering while authz isn't yet enforcing roles (store on,
+		// BEX_OPENFGA_URL off).
+		var granter store.MembershipGranter
+		if g, ok := authzChecker.(store.MembershipGranter); ok {
+			granter = g
 		}
+		tenantSvc := api.NewTenantService(st, granter)
+		base.Workspace = tenantSvc
+		deps.Onboard = tenantSvc
+		deps.KeyBinder = tenantSvc
+
+		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN"), Grant: granter}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
 		cpSrv := &http.Server{
 			Addr:              cpAddr,

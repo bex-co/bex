@@ -192,7 +192,7 @@ func TestAuthGate(t *testing.T) {
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits)
-	mw := newOryAuth(hydra.URL, "", "", "").middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", nil).middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)

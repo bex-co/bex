@@ -68,7 +68,7 @@ func TestReconcileCreatesAppCR(t *testing.T) {
 	}
 
 	app := getApp(t, cl)
-	if app.Labels[LabelManagedBy] != ManagedByValue || app.Labels[LabelAppID] != row.ID || app.Labels[LabelTenant] != "acme" {
+	if app.Labels[LabelManagedBy] != ManagedByValue || app.Labels[LabelAppID] != row.ID || app.Labels[LabelTenant] != ten.ID {
 		t.Errorf("labels = %v", app.Labels)
 	}
 	if app.Spec.Image != "traefik/whoami" || app.Spec.Port != 80 || app.Spec.Replicas != 2 ||

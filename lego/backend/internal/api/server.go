@@ -83,6 +83,10 @@ type Server struct {
 	// OUTSIDE the OAuth gate — its signature is its authentication.
 	WebhookSecret string
 
+	// Onboard, when set (the control-plane store is wired), mints a personal
+	// tenant for a human identity on first login. nil => store off: no mint.
+	Onboard Onboarding
+
 	schema graphql.Schema
 }
 
@@ -108,6 +112,12 @@ type Deps struct {
 	WorkspaceRevoker workspaces.WorkspaceRevoker
 	WorkspaceKick    func()
 	WorkspacePurgers []workspaces.WorkspacePurger
+	// KeyBinder, when set (the control-plane store is wired), ties each minted
+	// API key to the caller's tenant (w1/m9). nil => keys mint unbound (store off).
+	KeyBinder apikeys.KeyBinder
+	// Onboard, when set (the control-plane store is wired), mints a personal
+	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
+	Onboard Onboarding
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -124,7 +134,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
 		},
-		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys},
+		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		Postgres: &postgres.Service{Base: base},
 		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
 		Workspaces: &workspaces.Service{
@@ -135,6 +145,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Kick:    d.WorkspaceKick,
 			Purgers: d.WorkspacePurgers,
 		},
+		Onboard: d.Onboard,
 	}
 }
 
@@ -235,7 +246,7 @@ func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.HydraAdminURL == "" {
 		return nil, core.Err(errNoHydraURL)
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL()).middleware, nil
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL(), s.Onboard).middleware, nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata
