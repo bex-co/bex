@@ -18,6 +18,18 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     message: "创建时间",
     description: "API Keys table column header",
   },
+  "apiKeys.colCreatedBy": {
+    message: "创建者",
+    description: "API Keys table column header — who minted the key",
+  },
+  "apiKeys.colLastUsed": {
+    message: "最近使用",
+    description: "API Keys table column header — when a token for the key was last used",
+  },
+  "apiKeys.neverUsed": {
+    message: "从未使用",
+    description: "API Keys last-used cell when the key has never been used",
+  },
   "apiKeys.emptyTitle": {
     message: "暂无 API 密钥",
     description: "API Keys empty-state title",

@@ -33,6 +33,12 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         {formatRelativeAge(entry.createdAt)}
       </TableCell>
+      <TableCell className="text-muted-foreground max-w-[12rem] truncate font-mono text-sm">
+        {entry.createdBy ?? "—"}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+        {entry.lastUsedAt ? formatRelativeAge(entry.lastUsedAt) : t("apiKeys.neverUsed")}
+      </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         <AlertDialog>
           <AlertDialogTrigger asChild>

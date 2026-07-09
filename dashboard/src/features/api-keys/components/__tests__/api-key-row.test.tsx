@@ -8,10 +8,42 @@ const entry: ApiKeyView = {
   id: "key-1",
   name: "deploy-agent",
   createdAt: "2026-07-01T00:00:00Z",
+  createdBy: "user:minter",
+  lastUsedAt: "2026-07-05T00:00:00Z",
 };
 
 beforeEach(() => {
   vi.setSystemTime(new Date("2026-07-08T00:00:00Z"));
+});
+
+describe("ApiKeyRow — metadata columns (w4/m13/t003)", () => {
+  it("shows created-by and a relative last-used age", () => {
+    render(
+      <table>
+        <tbody>
+          <ApiKeyRow entry={entry} onRevoke={vi.fn()} revoking={false} />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText("user:minter")).toBeInTheDocument();
+    expect(screen.getByText("3d")).toBeInTheDocument(); // 2026-07-05 → 2026-07-08
+  });
+
+  it("renders a 'Never' last-used and an em dash created-by when the metadata is absent", () => {
+    render(
+      <table>
+        <tbody>
+          <ApiKeyRow
+            entry={{ ...entry, createdBy: null, lastUsedAt: null }}
+            onRevoke={vi.fn()}
+            revoking={false}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
 });
 
 describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {

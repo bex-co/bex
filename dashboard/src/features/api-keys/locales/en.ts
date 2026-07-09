@@ -18,6 +18,18 @@ const enApiKeys: Record<string, TranslationEntry> = {
     message: "Created",
     description: "API Keys table column header",
   },
+  "apiKeys.colCreatedBy": {
+    message: "Created by",
+    description: "API Keys table column header — who minted the key",
+  },
+  "apiKeys.colLastUsed": {
+    message: "Last used",
+    description: "API Keys table column header — when a token for the key was last used",
+  },
+  "apiKeys.neverUsed": {
+    message: "Never",
+    description: "API Keys last-used cell when the key has never been used",
+  },
   "apiKeys.emptyTitle": {
     message: "No API keys",
     description: "API Keys empty-state title",

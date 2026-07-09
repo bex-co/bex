@@ -106,7 +106,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| API-key management (create · list · revoke) | ✅ | ✅ | ✅ | ✖ | `apikeys/rest.go` `/v1/api-keys`; GraphQL `apiKeys`/`createApiKey`/`revokeApiKey`; MCP `create/list/revoke_api_key`. **bex is ahead of Render** — Render has _no_ REST API-key surface (dashboard-only). Dashboard mint/list/revoke → **w4/m8**. |
+| API-key management (create · list · revoke · metadata) | ✅ | ✅ | ✅ | ✅ | `apikeys/rest.go` `/v1/api-keys`; GraphQL `apiKeys`/`createApiKey`/`revokeApiKey`; MCP `create/list/revoke_api_key`; dashboard mint/list/revoke (**w4/m8**). **bex is ahead of Render** — Render has _no_ REST API-key surface (dashboard-only), so the comparison target is bex's own cross-surface consistency, not a Render shape. **w4/m13** added hygiene metadata — `createdBy` + `lastUsedAt` (last-used recorded off the request path, throttled) — carried identically by all four surfaces, plus a deliberate access-token TTL ([auth.md §8](auth.md)). |
 | Login · sessions · account settings | — | — | — | ✅ | bex uses Ory Kratos (not a bex-api resource): auth pages + `/settings`. [auth.md](auth.md). |
 | Email recovery / verification | — | — | — | ◐ | Dashboard forgot/reset pages shipped; live SMTP courier → **w4/m7**. |
 | MFA (TOTP / passkeys) | — | — | — | ✖ | Kratos-native → **w4/m11**. |
@@ -148,7 +148,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | done (w5/m10) |
 | Key Value (Valkey/Redis) store | `w1/m14` | mechanism done (CR + reconciler, live in prod 2026-07-09); surface → `w2/m7` (API) + `w5/m12` (dashboard) |
-| API keys in the dashboard | `w4/m8` | done 2026-07-08 (key metadata follow-up → `w4/m13`) |
+| API keys in the dashboard | `w4/m8` | done 2026-07-08; key metadata (created-by/last-used) + token TTL → `w4/m13` done 2026-07-09 |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
 | Audit logs | `w4/m10` | todo |
 | Health-check path → readiness probe | `w1/005` | todo |

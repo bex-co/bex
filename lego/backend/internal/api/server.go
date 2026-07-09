@@ -250,7 +250,13 @@ func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.HydraAdminURL == "" {
 		return nil, core.Err(errNoHydraURL)
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL(), s.Onboard).middleware, nil
+	// Feed the gate the api-key last-used recorder when the feature is wired, so a
+	// successful API-key introspection stamps the key off the request path (w4/m13).
+	var touch func(string)
+	if s.APIKeys != nil {
+		touch = s.APIKeys.TouchAPIKey
+	}
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL(), s.Onboard, touch).middleware, nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata

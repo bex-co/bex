@@ -73,6 +73,8 @@ export function ApiKeysPanel() {
               <TableRow>
                 <TableHead>{t("apiKeys.colName")}</TableHead>
                 <TableHead>{t("apiKeys.colCreated")}</TableHead>
+                <TableHead>{t("apiKeys.colCreatedBy")}</TableHead>
+                <TableHead>{t("apiKeys.colLastUsed")}</TableHead>
                 <TableHead className="sr-only text-right">actions</TableHead>
               </TableRow>
             </TableHeader>

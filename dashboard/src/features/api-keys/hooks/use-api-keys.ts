@@ -1,14 +1,21 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { ApiKeysDocument } from "@/graphql/definitions";
+import { ApiKeysDocument, type ApiKeysQuery } from "@/graphql/definitions";
 import type { ApiKeyView } from "@/features/api-keys/types";
 
-type RawKey = { id: string | null; name: string | null; createdAt: string | null } | null;
+// Derived from the generated query so new fields can't drift from the schema.
+type RawKey = NonNullable<ApiKeysQuery["apiKeys"]>[number];
 
-function toApiKeyViews(raw: Array<RawKey> | null | undefined): ApiKeyView[] {
+function toApiKeyViews(raw: ApiKeysQuery["apiKeys"] | undefined): ApiKeyView[] {
   return (raw ?? [])
-    .filter((k): k is { id: string; name: string | null; createdAt: string | null } => !!k?.id)
-    .map((k) => ({ id: k.id, name: k.name ?? "", createdAt: k.createdAt }));
+    .filter((k): k is NonNullable<RawKey> & { id: string } => !!k?.id)
+    .map((k) => ({
+      id: k.id,
+      name: k.name ?? "",
+      createdAt: k.createdAt,
+      createdBy: k.createdBy,
+      lastUsedAt: k.lastUsedAt,
+    }));
 }
 
 export interface UseApiKeysResult {

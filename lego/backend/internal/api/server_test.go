@@ -608,10 +608,10 @@ type fakeKeyStore struct {
 
 func newFakeKeyStore() *fakeKeyStore { return &fakeKeyStore{keys: map[string]apikeys.APIKey{}} }
 
-func (f *fakeKeyStore) Create(_ context.Context, name string) (apikeys.APIKey, error) {
+func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string) (apikeys.APIKey, error) {
 	f.n++
-	k := apikeys.APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret"}
-	f.keys[k.ID] = apikeys.APIKey{ID: k.ID, Name: k.Name}
+	k := apikeys.APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedBy: createdBy}
+	f.keys[k.ID] = apikeys.APIKey{ID: k.ID, Name: k.Name, CreatedBy: createdBy}
 	return k, nil
 }
 
@@ -628,5 +628,13 @@ func (f *fakeKeyStore) Delete(_ context.Context, id string) error {
 		return core.ErrNotFound
 	}
 	delete(f.keys, id)
+	return nil
+}
+
+func (f *fakeKeyStore) Touch(_ context.Context, id string, at time.Time) error {
+	if k, ok := f.keys[id]; ok {
+		k.LastUsedAt = at.UTC().Format(time.RFC3339)
+		f.keys[id] = k
+	}
 	return nil
 }

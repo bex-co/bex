@@ -28,10 +28,12 @@ import (
 var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ApiKey",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Name })},
-		"secret":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Secret })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.CreatedAt })},
+		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.ID })},
+		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Name })},
+		"secret":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Secret })},
+		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.CreatedAt })},
+		"createdBy":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.CreatedBy })},
+		"lastUsedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.LastUsedAt })},
 	},
 })
 

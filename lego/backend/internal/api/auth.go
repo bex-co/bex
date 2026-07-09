@@ -76,9 +76,15 @@ type oryAuth struct {
 	// writes the cache exactly once per upstream call.
 	cache *core.TTLCache[core.Identity]
 	group singleflight.Group
+
+	// touch records a key's last-used metadata after a successful API-key
+	// introspection (w4/m13). Fire-and-forget + self-throttling on the callee
+	// side, so it adds no I/O to the request path; nil disables it (no apikeys
+	// feature).
+	touch func(clientID string)
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, onboard Onboarding) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, onboard Onboarding, touch func(string)) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
@@ -91,6 +97,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, 
 		onboard:       onboard,
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:         core.NewTTLCache[core.Identity](),
+		touch:         touch,
 	}
 }
 
@@ -196,6 +203,15 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 		subject = out.ClientID
 	}
 	id := core.Identity{Subject: subject, Method: "oauth2"}
+
+	// Record last-used on the key this token was minted for (w4/m13). Keyed on
+	// client_id (the API key's own id for client_credentials tokens), not the
+	// subject — a user token's subject is the Kratos id, not a key. The callee
+	// throttles + runs async and no-ops non-api-key clients, so this is cheap and
+	// only fires on cache misses (≤ once per PositiveTTL per token).
+	if a.touch != nil && out.ClientID != "" {
+		a.touch(out.ClientID)
+	}
 
 	expires := time.Now().Add(core.PositiveTTL)
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {

@@ -34,8 +34,8 @@ beforeEach(() => {
 describe("ApiKeysPanel", () => {
   it("lists the workspace's keys (w4/m8/t002)", () => {
     apiKeysState.keys = [
-      { id: "key-1", name: "deploy-agent", createdAt: null },
-      { id: "key-2", name: "ci-bot", createdAt: null },
+      { id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null },
+      { id: "key-2", name: "ci-bot", createdAt: null, createdBy: null, lastUsedAt: null },
     ];
     render(<ApiKeysPanel />);
 
@@ -62,7 +62,7 @@ describe("ApiKeysPanel", () => {
   });
 
   it("a failed revoke does not refetch — the key stays listed (t006)", async () => {
-    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null }];
+    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null }];
     revoke.mockResolvedValue(false);
     const user = userEvent.setup();
     render(<ApiKeysPanel />);
@@ -77,7 +77,7 @@ describe("ApiKeysPanel", () => {
   });
 
   it("a successful revoke refetches the list", async () => {
-    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null }];
+    apiKeysState.keys = [{ id: "key-1", name: "deploy-agent", createdAt: null, createdBy: null, lastUsedAt: null }];
     revoke.mockResolvedValue(true);
     const user = userEvent.setup();
     render(<ApiKeysPanel />);

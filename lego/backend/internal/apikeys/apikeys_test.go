@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -39,10 +40,10 @@ type fakeKeyStore struct {
 
 func newFakeKeyStore() *fakeKeyStore { return &fakeKeyStore{keys: map[string]APIKey{}} }
 
-func (f *fakeKeyStore) Create(_ context.Context, name string) (APIKey, error) {
+func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string) (APIKey, error) {
 	f.n++
-	k := APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedAt: "2026-01-01T00:00:00Z"}
-	f.keys[k.ID] = APIKey{ID: k.ID, Name: k.Name, CreatedAt: k.CreatedAt} // stored without secret
+	k := APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedAt: "2026-01-01T00:00:00Z", CreatedBy: createdBy}
+	f.keys[k.ID] = APIKey{ID: k.ID, Name: k.Name, CreatedAt: k.CreatedAt, CreatedBy: createdBy} // stored without secret
 	return k, nil
 }
 
@@ -59,6 +60,14 @@ func (f *fakeKeyStore) Delete(_ context.Context, id string) error {
 		return core.ErrNotFound
 	}
 	delete(f.keys, id)
+	return nil
+}
+
+func (f *fakeKeyStore) Touch(_ context.Context, id string, at time.Time) error {
+	if k, ok := f.keys[id]; ok {
+		k.LastUsedAt = at.UTC().Format(time.RFC3339)
+		f.keys[id] = k
+	}
 	return nil
 }
 
@@ -349,6 +358,38 @@ func fakeHydraAdmin(t *testing.T) *httptest.Server {
 			}
 			c.ClientSecret = ""
 			_ = json.NewEncoder(w).Encode(c)
+		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/admin/clients/"):
+			// Minimal JSON Patch (RFC 6902): apply `add` ops targeting a
+			// /metadata/<escaped-key> pointer, which is all bex's Touch emits.
+			id := strings.TrimPrefix(r.URL.Path, "/admin/clients/")
+			c, ok := clients[id]
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			var ops []struct {
+				Op    string `json:"op"`
+				Path  string `json:"path"`
+				Value any    `json:"value"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&ops)
+			for _, op := range ops {
+				key, ok := strings.CutPrefix(op.Path, "/metadata/")
+				if op.Op != "add" || !ok {
+					http.Error(w, "unsupported patch op", http.StatusBadRequest)
+					return
+				}
+				// Unescape JSON Pointer (RFC 6901): ~1 => /, ~0 => ~.
+				key = strings.ReplaceAll(key, "~1", "/")
+				key = strings.ReplaceAll(key, "~0", "~")
+				if c.Metadata == nil {
+					c.Metadata = map[string]any{}
+				}
+				c.Metadata[key] = op.Value
+			}
+			clients[id] = c
+			c.ClientSecret = ""
+			_ = json.NewEncoder(w).Encode(c)
 		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/admin/clients/"):
 			id := strings.TrimPrefix(r.URL.Path, "/admin/clients/")
 			if _, ok := clients[id]; !ok {
@@ -369,7 +410,7 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
 	ctx := context.Background()
 
-	created, err := store.Create(ctx, "agent-1")
+	created, err := store.Create(ctx, "agent-1", "user:minter")
 	if err != nil || created.ID == "" || created.Secret == "" || created.Name != "agent-1" {
 		t.Fatalf("Create: %v %+v", err, created)
 	}
@@ -387,4 +428,136 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	if err := store.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("Delete of missing => ErrNotFound, got %v", err)
 	}
+}
+
+// --- Metadata: created-by + last-used (w4/m13) ---
+
+func TestHydraStoreMetadata(t *testing.T) {
+	store := NewHydraAPIKeys(fakeHydraAdmin(t).URL)
+	ctx := context.Background()
+
+	created, err := store.Create(ctx, "agent-1", "user:minter")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	list := func() APIKey {
+		keys, err := store.List(ctx)
+		if err != nil || len(keys) != 1 {
+			t.Fatalf("List: %v %+v", err, keys)
+		}
+		return keys[0]
+	}
+	// created-by is stamped at mint and surfaces on list; last-used starts empty.
+	if k := list(); k.CreatedBy != "user:minter" || k.LastUsedAt != "" {
+		t.Fatalf("after create: createdBy=%q lastUsedAt=%q, want minter/empty", k.CreatedBy, k.LastUsedAt)
+	}
+
+	// Touch stamps last-used; a second read reflects it, created-by unchanged.
+	used := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+	if err := store.Touch(ctx, created.ID, used); err != nil {
+		t.Fatalf("Touch: %v", err)
+	}
+	if k := list(); k.LastUsedAt != used.Format(time.RFC3339) || k.CreatedBy != "user:minter" {
+		t.Fatalf("after touch: lastUsedAt=%q createdBy=%q", k.LastUsedAt, k.CreatedBy)
+	}
+
+	// Touch is a no-op (no error, no write) for a non-api-key platform client and
+	// for an unknown id — the auth gate calls it for every introspected token.
+	if err := store.Touch(ctx, "platform-client", used); err != nil {
+		t.Fatalf("Touch of platform client should no-op, got %v", err)
+	}
+	if err := store.Touch(ctx, "does-not-exist", used); err != nil {
+		t.Fatalf("Touch of unknown id should no-op, got %v", err)
+	}
+}
+
+func TestCreateAPIKeyStampsCaller(t *testing.T) {
+	store := newFakeKeyStore()
+	svc := newService(store)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice", Method: "session"})
+
+	created, err := svc.CreateAPIKey(ctx, "for-alice")
+	if err != nil {
+		t.Fatalf("CreateAPIKey: %v", err)
+	}
+	if created.CreatedBy != "user:alice" {
+		t.Fatalf("createdBy = %q, want user:alice", created.CreatedBy)
+	}
+	// With no identity in context, created-by is simply empty (no crash).
+	anon, err := svc.CreateAPIKey(context.Background(), "anon")
+	if err != nil || anon.CreatedBy != "" {
+		t.Fatalf("anon create: %v createdBy=%q, want empty", err, anon.CreatedBy)
+	}
+}
+
+// recordingStore counts Touch calls and signals each on a channel, so the
+// Service's async+throttled dispatch is observable deterministically.
+type recordingStore struct {
+	touchCh chan time.Time
+}
+
+func (recordingStore) Create(context.Context, string, string) (APIKey, error) {
+	return APIKey{}, nil
+}
+func (recordingStore) List(context.Context) ([]APIKey, error) { return nil, nil }
+func (recordingStore) Delete(context.Context, string) error   { return nil }
+func (r recordingStore) Touch(_ context.Context, _ string, at time.Time) error {
+	r.touchCh <- at
+	return nil
+}
+
+func TestTouchAPIKeyThrottleAndAsync(t *testing.T) {
+	st := recordingStore{touchCh: make(chan time.Time, 8)}
+	now := time.Unix(1_000_000, 0).UTC()
+	svc := &Service{Base: &core.Base{Namespace: "default", Clock: func() time.Time { return now }}, APIKeys: st}
+
+	waitTouch := func() (time.Time, bool) {
+		select {
+		case at := <-st.touchCh:
+			return at, true
+		case <-time.After(time.Second):
+			return time.Time{}, false
+		}
+	}
+	noTouch := func() {
+		select {
+		case at := <-st.touchCh:
+			t.Fatalf("unexpected touch dispatched at %v", at)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+
+	// Two touches in the same minute dispatch exactly one store write.
+	svc.TouchAPIKey("key-1")
+	svc.TouchAPIKey("key-1")
+	if at, ok := waitTouch(); !ok || !at.Equal(now) {
+		t.Fatalf("first touch not dispatched with the call-time timestamp: %v %v", at, ok)
+	}
+	noTouch()
+
+	// A different key is throttled independently.
+	svc.TouchAPIKey("key-2")
+	if _, ok := waitTouch(); !ok {
+		t.Fatal("second key should dispatch its own touch")
+	}
+
+	// Past the throttle window, key-1 dispatches again — and the elapsed entries
+	// are evicted so the throttle map stays bounded by keys used within the window
+	// (only key-1 remains; key-2's window has passed).
+	now = now.Add(touchThrottle + time.Second)
+	svc.TouchAPIKey("key-1")
+	if _, ok := waitTouch(); !ok {
+		t.Fatal("touch after the throttle window should dispatch")
+	}
+	svc.touchMu.Lock()
+	remaining := len(svc.nextTouch)
+	svc.touchMu.Unlock()
+	if remaining != 1 {
+		t.Fatalf("throttle map should evict elapsed entries, len = %d, want 1", remaining)
+	}
+
+	// Guard rails: nil store and empty id never dispatch.
+	(&Service{Base: svc.Base}).TouchAPIKey("key-1")
+	svc.TouchAPIKey("")
+	noTouch()
 }

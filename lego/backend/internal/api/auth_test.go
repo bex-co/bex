@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -192,7 +193,7 @@ func TestAuthGate(t *testing.T) {
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits)
-	mw := newOryAuth(hydra.URL, "", "", "", nil).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", nil, nil).middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)
@@ -217,6 +218,42 @@ func TestIntrospectionCache(t *testing.T) {
 	}
 	if got := hits.Load(); got != 3 {
 		t.Fatalf("introspections = %d, want 3 (negatives not cached)", got)
+	}
+}
+
+// TestIntrospectionTouchesKey asserts the gate calls its last-used recorder with
+// the token's client_id after a successful API-key introspection, and never for
+// an inactive token (w4/m13). The recorder itself is fire-and-forget; here it's a
+// synchronous capture so the assertion is deterministic.
+func TestIntrospectionTouchesKey(t *testing.T) {
+	var hits atomic.Int32
+	hydra := fakeHydra(t, &hits)
+	touched := make(chan string, 4)
+	mw := newOryAuth(hydra.URL, "", "", "", nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
+
+	do := func(token string) {
+		r := httptest.NewRequest(http.MethodGet, "/probe", nil)
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		mw.ServeHTTP(httptest.NewRecorder(), r)
+	}
+
+	do(testToken)
+	select {
+	case got := <-touched:
+		if got != "client-1" {
+			t.Fatalf("touched client = %q, want client-1", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("active introspection did not touch the key")
+	}
+
+	do("revoked") // inactive token → no touch
+	select {
+	case got := <-touched:
+		t.Fatalf("inactive token must not touch a key, got %q", got)
+	case <-time.After(100 * time.Millisecond):
 	}
 }
 
