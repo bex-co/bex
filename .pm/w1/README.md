@@ -7,7 +7,7 @@
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
 - [x] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks; DONE 2026-07-09 — committed `aebbd43`, prod `BEX_CP_DB_URI` on since m9, live acceptance via `scripts/auth-tenant-e2e.sh` in m9/t004) ← from `005`, moved to `done/m2/`
 - [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
-- [ ] **m3** — Elastic substrate: bin-pack + autoscale (7 tasks) ← from `002`, `004` (t001 done; retrofitted to current `/pm` canon 2026-07-08)
+- [ ] **m3** — Elastic substrate: bin-pack + autoscale (8 tasks) ← from `002`, `004` (t001 done; retrofitted to current `/pm` canon 2026-07-08; Closeout t008 added 2026-07-09)
 - [x] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003` — done 2026-07-08, moved to `done/m4/`
 - [x] **m4.5** — Sleep in the dashboard: hibernated state, idle-timeout setting, wake UX (6 tasks; DONE 2026-07-09 — Sleeping badge + idle-timeout control, verified live) ← user request 2026-07-08, UI half of m4, moved to `done/m4.5/`
 - [x] **m5** — Build & deploy from git, in-cluster (5 tasks; DONE 2026-07-09 — in-cluster BuildKit builds, verified live, simplified + tested; unblocks w2/m2 t004) ← from `008`, moved to `done/m5/`
@@ -33,7 +33,7 @@
 3. **m3** — elastic substrate (replica-semantics contract settled by w2/m12; scale-down pays off most now that m4's sleep empties nodes).
 4. **m4.5** — dashboard sleep UX (pairs with shipped m4; UI-half work).
 
-> **Parity-backlog tier (promoted from the m13 audit, 2026-07-08):** **m14** Key Value · **m15** worker + cron service types · **m16** env-groups + secret-files · **m17** advanced Postgres. Sequence these after the V0 items above, ordered by the gap ranking in `docs/render-parity.md`. **008** (per-service autoscaling) stays an inbox note until **m3** settles the metric→replica loop it reuses.
+> **Parity-backlog tier (promoted from the m13 audit, 2026-07-08):** **m14** Key Value · **m15** worker + cron service types · **m16** env-groups + secret-files · **m17** advanced Postgres. Sequence these after the V0 items above, ordered by the gap ranking in `docs/render-parity.md`. **008** (per-service autoscaling) stays an inbox note until **m3** lands the node elasticity its replica scale-ups need (the metric→replica reconciler itself is new work in 008; m3 moves nodes, never `spec.replicas`).
 
 > **m13 (parity audit) done 2026-07-08** — its output, `docs/render-parity.md`, orders the remaining parity queue with evidence. Its gap notes were arranged into milestones on 2026-07-08: `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (with `012` static-site + `013` Postgres-HA split off as notes); `008` (autoscaling) + `w3/002` (request logs) stay notes; the rest cross-reference existing owners (w2/m4 delete, w2/m5 deploys, w4/m8 keys-UI, w4/m12 members, w5/004 scaling-UI, w5/006 DNS-UI).
 
@@ -43,7 +43,7 @@
 
 - `005.md` — Wire `spec.healthCheckPath` into a ReadinessProbe (or drop the field) — from the 2026-07-08 docs-vs-code audit
 - `006.md` — Triage 36 Dependabot findings (2 critical, 15 high) reported 2026-07-08
-- `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** settling the metric→replica loop it reuses
+- `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** landing node elasticity (the metric→replica reconciler is new work in 008)
 - `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
 - `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
 

@@ -13,6 +13,7 @@
 | t005 | Verify pack + scale-up + scale-down end-to-end                                | 25m | t002,t004  |
 | t006 | Simplify — `/simplify` over what this milestone changed                       | 20m | t005       |
 | t007 | Test coverage — script-level checks for the elastic behavior (else close n/a) | 20m | t005       |
+| t008 | Closeout — verify DoD holds, then move the milestone to `done/`               | 10m | t007       |
 
 ## Definition of done
 
@@ -28,7 +29,8 @@ A pending pod (no room) triggers a new Hetzner node; pods land on the most-alloc
 
 ## Source + Goal linkage
 
-- **Source:** converted from `.tmp/002-binpack-scheduler.md` and `.tmp/004-cluster-autoscaler.md` (t001 already shipped — see Current state). Retrofitted to current `/pm` conventions 2026-07-08.
+- **Source:** converted from `.tmp/002-binpack-scheduler.md` and `.tmp/004-cluster-autoscaler.md` (t001 already shipped — see Current state). Retrofitted to current `/pm` conventions 2026-07-08; Closeout (t008) added 2026-07-09.
+- **Render parity closing task: omitted.** Pure infra/gitops manifests — no REST/GraphQL/MCP/UI surface change. Render keeps machine provisioning internal (no user-facing API for it); the user-facing Render autoscaling surface (`PUT /services/{id}/autoscaling`) is tracked separately as `w1/008`, gated on this milestone.
 - **Goal linkage:** V0 roadmap #6 (add & remove physical machine); the density economics that make tier pricing and free-tier sleep (m4, shipped) pay off.
 - **Expected outcome:** node count follows real demand — a pending pod self-provisions a Hetzner machine, an emptied node is removed; no human runs `mock-cluster.sh scale N` in anger.
 - **Why now:** a hand-scaled single-node pool is both a capacity ceiling and a cost floor; m4's shipped "sleep = free" only saves money if drained nodes actually scale down. The replica-semantics contract is settled (scale verb, w2/m12; sleep/suspend override the effective count without rewriting `spec.replicas`) — the autoscaler moves **nodes**, never `spec.replicas`.
