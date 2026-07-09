@@ -86,6 +86,9 @@ func main() {
 	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
 
 	deps := api.Deps{
+		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/custom-domain.md);
+		// unset falls back to deriving the platform host from an App's status URLs.
+		BaseDomain:    os.Getenv("BEX_BASE_DOMAIN"),
 		PodLogs:       logs.NewPodLogSource(cs),
 		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
 		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback

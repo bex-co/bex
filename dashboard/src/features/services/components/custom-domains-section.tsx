@@ -8,6 +8,8 @@ import {
   Clock,
   AlertTriangle,
   ExternalLink,
+  ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -54,6 +56,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
+import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useCustomDomains,
@@ -67,19 +70,23 @@ import type { CustomDomainView } from "@/features/services/types";
 // client-side rather than round-tripping to a 400; the backend stays authoritative.
 const VALID_FQDN = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
 
+// The custom-domains table has four columns (Name, Verified, Certificate, Actions);
+// the DNS-instructions detail row spans all of them.
+const COLUMN_COUNT = 4;
+
 /**
  * The Custom Domains section of the service Settings tab (Render dashboard shape,
- * captured live 2026-07-09): a table of domains with Verified/Certificate status,
- * an "Add Custom Domain" dialog, and a per-row delete — all over bex-api's
- * custom-domains GraphQL (docs/bex-api.md), which is a veneer over App.spec.hosts[].
+ * captured live 2026-07-09 + DNS instructions w5/m10): a table of domains with
+ * Verified/Certificate status, an "Add Custom Domain" dialog, a per-row delete, and
+ * — for each domain — the DNS record to create (CNAME/ALIAS → the app's platform
+ * host) with copy buttons and a "Re-check" action. All over bex-api's custom-domains
+ * GraphQL (docs/bex-api.md), a veneer over App.spec.hosts[].
  */
 export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const { domains, loading, error, refetch } = useCustomDomains(serviceId);
-  const { addDomain, deleteDomain, busy } = useCustomDomainMutations(
-    serviceId,
-    refetch,
-  );
+  const { addDomain, deleteDomain, verifyDomain, busy } =
+    useCustomDomainMutations(serviceId, refetch);
 
   const initialLoading = loading && domains.length === 0 && !error;
 
@@ -125,6 +132,7 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
                   key={domain.name}
                   domain={domain}
                   onDelete={deleteDomain}
+                  onVerify={verifyDomain}
                   busy={busy}
                 />
               ))}
@@ -136,100 +144,227 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
   );
 }
 
-/** One domain row: the FQDN as an external link, the two status badges, and a
- *  kebab menu whose Delete opens a confirmation. */
+/** One domain row: the FQDN as an external link, the two status badges, a DNS-setup
+ *  disclosure toggle + kebab menu, and (when expanded) the DNS-instructions panel. */
 function CustomDomainRow({
   domain,
   onDelete,
+  onVerify,
   busy,
 }: {
   domain: CustomDomainView;
   onDelete: (name: string) => Promise<boolean>;
+  onVerify: (name: string) => Promise<CustomDomainView | null>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const [confirming, setConfirming] = useState(false);
+  // Pending domains still need their DNS record created, so open them by default;
+  // a verified domain is done, so it starts collapsed. Toggling overrides this.
+  const [open, setOpen] = useState(() => !domain.verified);
 
   return (
-    <TableRow>
-      <TableCell className="font-medium break-all">
-        <a
-          href={`https://${domain.name}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 hover:underline"
-        >
-          {domain.name}
-          <ExternalLink className="text-muted-foreground size-3" />
-        </a>
-      </TableCell>
-      <TableCell>
-        <StatusBadge
-          ok={domain.verified}
-          okLabel={t("services.domainVerified")}
-          pendingLabel={t("services.domainPending")}
-        />
-      </TableCell>
-      <TableCell>
-        <StatusBadge
-          ok={domain.active}
-          okLabel={t("services.domainCertActive")}
-          pendingLabel={t("services.domainPending")}
-        />
-      </TableCell>
-      <TableCell className="text-right whitespace-nowrap">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              disabled={busy}
-              aria-label={t("services.domainActionsMenu")}
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={busy}
-              onSelect={() => setConfirming(true)}
-            >
-              <Trash2 /> {t("services.domainDelete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <AlertDialog
-          open={confirming}
-          onOpenChange={(open) => !open && setConfirming(false)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("services.domainDeleteConfirmTitle", { name: domain.name })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("services.domainDeleteConfirmBody")}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t("services.domainCancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  void onDelete(domain.name);
-                  setConfirming(false);
-                }}
+    <>
+      <TableRow>
+        <TableCell className="font-medium break-all">
+          <a
+            href={`https://${domain.name}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 hover:underline"
+          >
+            {domain.name}
+            <ExternalLink className="text-muted-foreground size-3" />
+          </a>
+        </TableCell>
+        <TableCell>
+          <StatusBadge
+            ok={domain.verified}
+            okLabel={t("services.domainVerified")}
+            pendingLabel={t("services.domainPending")}
+          />
+        </TableCell>
+        <TableCell>
+          <StatusBadge
+            ok={domain.active}
+            okLabel={t("services.domainCertActive")}
+            pendingLabel={t("services.domainPending")}
+          />
+        </TableCell>
+        <TableCell className="text-right whitespace-nowrap">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-expanded={open}
+            aria-label={t("services.domainDnsToggle")}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <ChevronDown
+              className={`transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={busy}
+                aria-label={t("services.domainActionsMenu")}
               >
-                {t("services.domainDelete")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
-    </TableRow>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={busy}
+                onSelect={() => setConfirming(true)}
+              >
+                <Trash2 /> {t("services.domainDelete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <AlertDialog
+            open={confirming}
+            onOpenChange={(o) => !o && setConfirming(false)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t("services.domainDeleteConfirmTitle", { name: domain.name })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("services.domainDeleteConfirmBody")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {t("services.domainCancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    void onDelete(domain.name);
+                    setConfirming(false);
+                  }}
+                >
+                  {t("services.domainDelete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </TableCell>
+      </TableRow>
+      {open && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={COLUMN_COUNT} className="bg-muted/30">
+            <DnsInstructions domain={domain} onVerify={onVerify} busy={busy} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+/** The apex/subdomain guidance line + the DNS record to create (Type/Host/Target
+ *  with copy buttons), or a fallback when the backend couldn't derive the target.
+ *  Shared by the per-row panel and the post-add dialog so the two can't drift. */
+function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
+  const { t } = useTranslations();
+  const record = domain.dnsRecord;
+  return (
+    <div className="space-y-3">
+      <p className="text-muted-foreground text-sm">
+        {domain.domainType === "apex"
+          ? t("services.domainDnsApexGuidance")
+          : t("services.domainDnsSubdomainGuidance")}
+      </p>
+      {record ? (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <RecordField
+            label={t("services.domainRecordType")}
+            value={record.type}
+          />
+          <RecordField
+            label={t("services.domainRecordHost")}
+            value={record.name}
+            copy
+          />
+          <RecordField
+            label={t("services.domainRecordTarget")}
+            value={record.value}
+            copy
+          />
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm italic">
+          {t("services.domainDnsUnavailable")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The DNS-instructions panel for a domain row: a titled header with a "Re-check"
+ *  action, then the shared record fields. */
+function DnsInstructions({
+  domain,
+  onVerify,
+  busy,
+}: {
+  domain: CustomDomainView;
+  onVerify: (name: string) => Promise<CustomDomainView | null>;
+  busy: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-3 py-1">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">{t("services.domainDnsTitle")}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => void onVerify(domain.name)}
+        >
+          <RefreshCw /> {t("services.domainRecheck")}
+        </Button>
+      </div>
+      <DnsRecordFields domain={domain} />
+    </div>
+  );
+}
+
+/** A labeled, monospace DNS-record field, optionally with a copy button. */
+function RecordField({
+  label,
+  value,
+  copy,
+}: {
+  label: string;
+  value: string;
+  copy?: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-xs font-medium">
+          {label}
+        </span>
+        {copy && value ? (
+          <CopyButton
+            value={value}
+            label={label}
+            successText={t("services.domainCopied")}
+            errorText={t("services.domainCopyError")}
+          />
+        ) : null}
+      </div>
+      <div className="bg-background overflow-x-auto rounded-md border px-3 py-2">
+        <code className="font-mono text-xs whitespace-pre">{value || "—"}</code>
+      </div>
+    </div>
   );
 }
 
@@ -258,22 +393,27 @@ function StatusBadge({
   );
 }
 
-/** The "Add Custom Domain" affordance: a button that opens an FQDN-input dialog. */
+/** The "Add Custom Domain" affordance: a button that opens an FQDN-input dialog,
+ *  then — on a successful add — swaps to the DNS record the tenant must create. */
 function AddDomainButton({
   addDomain,
   disabled,
 }: {
-  addDomain: (name: string) => Promise<boolean>;
+  addDomain: (name: string) => Promise<CustomDomainView | null>;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState(false);
+  // The just-added domain: on success the dialog swaps the input for its DNS record
+  // so the tenant sees exactly what to create without hunting for the new row.
+  const [added, setAdded] = useState<CustomDomainView | null>(null);
 
   function reset() {
     setName("");
     setInvalid(false);
+    setAdded(null);
     setOpen(false);
   }
 
@@ -285,8 +425,8 @@ function AddDomainButton({
     }
     // `disabled` (the hook's busy flag) gates the button while the write is in
     // flight, so no separate saving state is needed.
-    const ok = await addDomain(trimmed);
-    if (ok) reset();
+    const result = await addDomain(trimmed);
+    if (result) setAdded(result);
   }
 
   return (
@@ -305,44 +445,61 @@ function AddDomainButton({
         <Plus /> {t("services.domainAdd")}
       </Button>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("services.domainAddTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("services.domainAddDescription")}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2">
-          <Label htmlFor="custom-domain-name">
-            {t("services.domainColName")}
-          </Label>
-          <Input
-            id="custom-domain-name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setInvalid(false);
-            }}
-            placeholder={t("services.domainPlaceholder")}
-            aria-invalid={invalid}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void submit();
-            }}
-          />
-          {invalid && (
-            <p className="text-destructive text-xs">
-              {t("services.domainInvalid")}
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={reset}>
-            {t("services.domainCancel")}
-          </Button>
-          <Button disabled={disabled} onClick={() => void submit()}>
-            {t("services.domainAddButton")}
-          </Button>
-        </DialogFooter>
+        {added ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>{t("services.domainAddedTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("services.domainAddedDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <DnsRecordFields domain={added} />
+            <DialogFooter>
+              <Button onClick={reset}>{t("services.domainDone")}</Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>{t("services.domainAddTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("services.domainAddDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="custom-domain-name">
+                {t("services.domainColName")}
+              </Label>
+              <Input
+                id="custom-domain-name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setInvalid(false);
+                }}
+                placeholder={t("services.domainPlaceholder")}
+                aria-invalid={invalid}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void submit();
+                }}
+              />
+              {invalid && (
+                <p className="text-destructive text-xs">
+                  {t("services.domainInvalid")}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={reset}>
+                {t("services.domainCancel")}
+              </Button>
+              <Button disabled={disabled} onClick={() => void submit()}>
+                {t("services.domainAddButton")}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

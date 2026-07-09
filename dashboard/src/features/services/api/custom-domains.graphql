@@ -3,16 +3,25 @@
 # veneer over App.spec.hosts[]; the operator reconciles Traefik + cert-manager per
 # domain. bex-api uses the hostname as the opaque id (id == name).
 # `verificationStatus` is "verified"/"pending" (TLS cert issued?); `serverStatus`
-# is "active"/"pending" (cert issued and not suspended).
+# is "active"/"pending" (cert issued and not suspended). `domainType` is
+# "apex"/"subdomain"; `dnsRecord` is the record the tenant must create to point the
+# domain at the service (CNAME/ALIAS -> the app's platform host, w5/m10).
 # Mutations are Render-dashboard-shaped: addCustomDomain returns the new domain;
-# deleteCustomDomain returns a success boolean.
+# deleteCustomDomain returns a success boolean; verifyCustomDomain re-checks the
+# domain's DNS/cert state now and returns its fresh status.
 
 query CustomDomains($id: String!) {
   customDomains(id: $id) {
     id
     name
+    domainType
     verificationStatus
     serverStatus
+    dnsRecord {
+      type
+      name
+      value
+    }
   }
 }
 
@@ -20,11 +29,32 @@ mutation AddCustomDomain($id: String!, $name: String!) {
   addCustomDomain(id: $id, name: $name) {
     id
     name
+    domainType
     verificationStatus
     serverStatus
+    dnsRecord {
+      type
+      name
+      value
+    }
   }
 }
 
 mutation DeleteCustomDomain($id: String!, $name: String!) {
   deleteCustomDomain(id: $id, name: $name)
+}
+
+mutation VerifyCustomDomain($id: String!, $name: String!) {
+  verifyCustomDomain(id: $id, name: $name) {
+    id
+    name
+    domainType
+    verificationStatus
+    serverStatus
+    dnsRecord {
+      type
+      name
+      value
+    }
+  }
 }

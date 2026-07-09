@@ -9,6 +9,7 @@ import type { CustomDomainView } from "@/features/services/types";
 const mockUseCustomDomains = vi.fn();
 const mockAddDomain = vi.fn();
 const mockDeleteDomain = vi.fn();
+const mockVerifyDomain = vi.fn();
 
 vi.mock(
   "@/features/services/hooks/use-custom-domains",
@@ -23,6 +24,7 @@ vi.mock(
       useCustomDomainMutations: () => ({
         addDomain: mockAddDomain,
         deleteDomain: mockDeleteDomain,
+        verifyDomain: mockVerifyDomain,
         busy: false,
       }),
     };
@@ -46,8 +48,18 @@ function domainsResult(
 
 const verifiedDomain: CustomDomainView = {
   name: "www.example.com",
+  domainType: "subdomain",
   verified: true,
   active: true,
+  dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
+};
+
+const pendingDomain: CustomDomainView = {
+  name: "api.example.com",
+  domainType: "subdomain",
+  verified: false,
+  active: false,
+  dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
 };
 
 // Radix's DropdownMenu relies on pointer-capture APIs jsdom doesn't implement.
@@ -62,8 +74,9 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockUseCustomDomains.mockReset();
-  mockAddDomain.mockReset().mockResolvedValue(true);
+  mockAddDomain.mockReset().mockResolvedValue(pendingDomain);
   mockDeleteDomain.mockReset().mockResolvedValue(true);
+  mockVerifyDomain.mockReset().mockResolvedValue(pendingDomain);
 });
 
 describe("CustomDomainsSection", () => {
@@ -140,6 +153,66 @@ describe("CustomDomainsSection", () => {
 
     expect(screen.getByText(/Enter a valid domain/)).toBeInTheDocument();
     expect(mockAddDomain).not.toHaveBeenCalled();
+  });
+
+  it("auto-expands a pending domain and shows the DNS record to create", () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    render(<CustomDomainsSection serviceId="web" />);
+
+    // Pending rows open by default, revealing the DNS-setup panel + record.
+    expect(screen.getByText("DNS setup")).toBeInTheDocument();
+    expect(screen.getByText("CNAME")).toBeInTheDocument();
+    expect(screen.getByText("api")).toBeInTheDocument();
+    expect(screen.getByText("web.onbex.co")).toBeInTheDocument();
+    // Copy affordances for the host + target (labels double as aria-labels).
+    expect(
+      screen.getByRole("button", { name: "Target" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows apex guidance for an apex domain", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          name: "example.com",
+          domainType: "apex",
+          verified: false,
+          active: false,
+          dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
+        },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getByText("ALIAS")).toBeInTheDocument();
+    expect(screen.getByText(/Apex domains can't use a plain CNAME/)).toBeInTheDocument();
+  });
+
+  it("re-checks a pending domain from the DNS panel", async () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Re-check" }));
+    await waitFor(() =>
+      expect(mockVerifyDomain).toHaveBeenCalledWith("api.example.com"),
+    );
+  });
+
+  it("shows the DNS record after adding a domain", async () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "api.example.com");
+    await user.click(within(dialog).getByRole("button", { name: "Add Domain" }));
+
+    // The dialog swaps to the DNS-record step (mockAddDomain resolves a domain view).
+    expect(
+      await within(dialog).findByText("Domain added — set up DNS"),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("web.onbex.co")).toBeInTheDocument();
   });
 
   it("deletes a domain after confirming from the row menu", async () => {

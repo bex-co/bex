@@ -52,6 +52,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_API_ADDR` (:8090), `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN` | listen addr, watched ns, CORS origin allowlist (comma-separated) |
 | bex-api | `BEX_HYDRA_ADMIN_URL` (required), `BEX_KRATOS_URL` | OAuth2 API keys via Hydra introspection; Kratos sessions (docs/auth.md) |
 | bex-api | `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN` | authorization via OpenFGA; unset ⇒ allow-all (docs/auth.md) |
+| bex-api | `BEX_BASE_DOMAIN` | platform wildcard domain (e.g. `onbex.co`) — names custom-domain DNS targets `<app>.<domain>` in the DNS-instructions surface (docs/custom-domain.md); unset ⇒ derived from the App's status URL |
 | bex-api | `BEX_PROM_URL` | Prometheus base URL for request metrics (Traefik) and resource-metrics history (cAdvisor); unset ⇒ request metrics 503, resource metrics fall back to the metrics-server snapshot |
 | bex-api | `BEX_OPENBAO_URL` | OpenBao base URL for the tenant env-vars store (docs/secrets.md); unset ⇒ env-vars verbs 503 |
 | bex-api | `BEX_OPENBAO_JWT_PATH` | override the ServiceAccount token path for OpenBao k8s-auth login (off-cluster/dev; default is the pod's projected token) |

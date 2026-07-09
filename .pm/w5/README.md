@@ -13,13 +13,12 @@
 - [x] **m7** — Service Settings + instance-type picker (Render parity) (6 tasks) ← from user request 2026-07-08, Render settings/plan pages captured live; UI half of w1/m8's plan API — done 2026-07-08, moved to `done/m7/`
 - [x] **m8** — Databases page (managed Postgres, Render-consistent) (8 tasks) ← promoted from `001` via `/pm-brainstorm` 2026-07-08 — done 2026-07-08, moved to `done/m8/`
 - [x] **m9** — MCP `query_render_postgres` — read-only SQL for agents (5 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, reassigned to w5 (original `w2/m6` label collided with w5's done m6) — done 2026-07-08, moved to `done/m9/`
-- [ ] **m10** — Trustworthy dev stub (multi-service) + custom-domain DNS instructions end to end (9 tasks) ← from user report 2026-07-09 (phantom service in `local-bex`) + promoted `006`
+- [x] **m10** — Trustworthy dev stub (multi-service) + custom-domain DNS instructions end to end (9 tasks) ← from user report 2026-07-09 (phantom service in `local-bex`) + promoted `006` — done 2026-07-09, moved to `done/m10/`
 - [ ] **m11** — Type-aware service settings (cron jobs: hide Custom Domains + Idle timeout; show Schedule + Command) (6 tasks) ← from Playwright comparison 2026-07-09
 - [ ] **m12** — Key Value dashboard (create / list / detail, Render-consistent) (9 tasks) ← from user parity report 2026-07-09 (dashboard.render.com/new/redis); UI half of `w2/m7`, on the w1/m14 mechanism
 
 ## Inbox
 
 - `004.md` — Manual-scaling section in service Settings — blocked on `w1/004` (backend API half)
-- `006.md` — Post-add DNS/CNAME instructions for custom domains — **promoted into m10** (t003–t005); note retires to `done/` when m10 closes
 
-> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`.
+> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09.

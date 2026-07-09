@@ -5,6 +5,7 @@ import {
   CustomDomainsDocument,
   AddCustomDomainDocument,
   DeleteCustomDomainDocument,
+  VerifyCustomDomainDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { CustomDomainView } from "@/features/services/types";
@@ -17,20 +18,44 @@ import type { CustomDomainView } from "@/features/services/types";
 
 type RawDomain = {
   name: string | null;
+  domainType: string | null;
   verificationStatus: string | null;
   serverStatus: string | null;
+  dnsRecord: {
+    type: string | null;
+    name: string | null;
+    value: string | null;
+  } | null;
 } | null;
+
+function mapDomain(d: RawDomain & { name: string }): CustomDomainView {
+  return {
+    name: d.name,
+    domainType: d.domainType ?? "subdomain",
+    verified: d.verificationStatus === "verified",
+    active: d.serverStatus === "active",
+    dnsRecord: d.dnsRecord
+      ? {
+          type: d.dnsRecord.type ?? "",
+          name: d.dnsRecord.name ?? "",
+          value: d.dnsRecord.value ?? "",
+        }
+      : null,
+  };
+}
 
 function mapDomains(
   raw: Array<RawDomain> | null | undefined,
 ): CustomDomainView[] {
   return (raw ?? [])
     .filter((d): d is RawDomain & { name: string } => d?.name != null)
-    .map((d) => ({
-      name: d.name,
-      verified: d.verificationStatus === "verified",
-      active: d.serverStatus === "active",
-    }));
+    .map(mapDomain);
+}
+
+// mapRaw maps a single mutation result (add/verify return one domain or null) to a
+// view, or null when the domain/name is absent — the shared shape both write verbs use.
+function mapRaw(raw: RawDomain): CustomDomainView | null {
+  return raw?.name ? mapDomain(raw as RawDomain & { name: string }) : null;
 }
 
 export interface UseCustomDomainsResult {
@@ -67,19 +92,23 @@ export function useCustomDomains(serviceId: string): UseCustomDomainsResult {
 }
 
 export interface UseCustomDomainMutationsResult {
-  /** Add a custom domain; resolves true on success. */
-  addDomain: (name: string) => Promise<boolean>;
+  /** Add a custom domain; resolves to the created domain (with its DNS record) on
+   *  success so the caller can show the DNS instructions immediately, or null on error. */
+  addDomain: (name: string) => Promise<CustomDomainView | null>;
   /** Remove a custom domain; resolves true on success. */
   deleteDomain: (name: string) => Promise<boolean>;
+  /** Re-check a domain's DNS/cert state now; resolves to the fresh domain, or null on error. */
+  verifyDomain: (name: string) => Promise<CustomDomainView | null>;
   /** A write is in flight (disable the form/actions while true). */
   busy: boolean;
 }
 
 /**
- * Wires the custom-domain write mutations (`addCustomDomain` / `deleteCustomDomain`),
- * refetching the list after each write and toasting the result. Each write patches
- * App.spec.hosts[], which the operator reconciles into Traefik + a TLS certificate,
- * so the success toast says the change is propagating.
+ * Wires the custom-domain write mutations (`addCustomDomain` / `deleteCustomDomain`
+ * / `verifyCustomDomain`), refetching the list after each write and toasting the
+ * result. Each add/delete patches App.spec.hosts[], which the operator reconciles
+ * into Traefik + a TLS certificate, so the success toast says the change is
+ * propagating; verify is an idempotent re-read of the current DNS/cert state.
  */
 export function useCustomDomainMutations(
   serviceId: string,
@@ -88,21 +117,22 @@ export function useCustomDomainMutations(
   const { t } = useTranslations();
   const [addCustomDomain] = useMutation(AddCustomDomainDocument);
   const [deleteCustomDomain] = useMutation(DeleteCustomDomainDocument);
+  const [verifyCustomDomain] = useMutation(VerifyCustomDomainDocument);
   const [busy, setBusy] = useState(false);
 
   const addDomain = useCallback(
     async (name: string) => {
       setBusy(true);
       try {
-        await addCustomDomain({ variables: { id: serviceId, name } });
+        const res = await addCustomDomain({ variables: { id: serviceId, name } });
         await refetch();
         toast.success(t("services.domainAddSuccess", { name }), {
           description: t("services.domainPropagateNote"),
         });
-        return true;
+        return mapRaw(res.data?.addCustomDomain ?? null);
       } catch {
         toast.error(t("services.domainAddError", { name }));
-        return false;
+        return null;
       } finally {
         setBusy(false);
       }
@@ -128,5 +158,28 @@ export function useCustomDomainMutations(
     [serviceId, deleteCustomDomain, refetch, t],
   );
 
-  return { addDomain, deleteDomain, busy };
+  const verifyDomain = useCallback(
+    async (name: string) => {
+      setBusy(true);
+      try {
+        const res = await verifyCustomDomain({ variables: { id: serviceId, name } });
+        await refetch();
+        const view = mapRaw(res.data?.verifyCustomDomain ?? null);
+        if (view?.verified) {
+          toast.success(t("services.domainVerifySuccess", { name }));
+        } else {
+          toast.info(t("services.domainVerifyPending", { name }));
+        }
+        return view;
+      } catch {
+        toast.error(t("services.domainVerifyError", { name }));
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [serviceId, verifyCustomDomain, refetch, t],
+  );
+
+  return { addDomain, deleteDomain, verifyDomain, busy };
 }

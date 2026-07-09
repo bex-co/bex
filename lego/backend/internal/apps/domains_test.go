@@ -315,6 +315,77 @@ func TestDomainTypeClassification(t *testing.T) {
 	}
 }
 
+// --- DNS record (post-add instructions) ---
+
+func TestDNSRecordFromBaseDomain(t *testing.T) {
+	// BaseDomain set => target is <app>.<base>, computed without needing status.
+	svc, _ := newService(nil, appWithHosts("web", "www.example.com", "example.com", "api.staging.example.com"))
+	svc.BaseDomain = "onbex.co"
+
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("ListDomains: %v", err)
+	}
+	byName := map[string]DomainView{}
+	for _, d := range domains {
+		byName[d.Name] = d
+	}
+
+	// Subdomain: CNAME <label prefix> -> platform host.
+	if r := byName["www.example.com"].DNSRecord; r.Type != "CNAME" || r.Name != "www" || r.Value != "web.onbex.co" {
+		t.Errorf("www.example.com dnsRecord = %+v, want {CNAME www web.onbex.co}", r)
+	}
+	// Deeper subdomain: record name keeps the labels below the root zone.
+	if r := byName["api.staging.example.com"].DNSRecord; r.Type != "CNAME" || r.Name != "api.staging" || r.Value != "web.onbex.co" {
+		t.Errorf("api.staging.example.com dnsRecord = %+v, want {CNAME api.staging web.onbex.co}", r)
+	}
+	// Apex: ALIAS @ -> platform host.
+	if r := byName["example.com"].DNSRecord; r.Type != "ALIAS" || r.Name != "@" || r.Value != "web.onbex.co" {
+		t.Errorf("example.com dnsRecord = %+v, want {ALIAS @ web.onbex.co}", r)
+	}
+}
+
+func TestDNSRecordFallsBackToStatusURL(t *testing.T) {
+	// BaseDomain unset => derive the platform host from status URLs. sampleApp sets
+	// Status.URL = https://web.onbex.co, so the target must still resolve.
+	svc, _ := newService(nil, appWithHosts("web", "www.example.com"))
+	d, err := svc.GetDomain(context.Background(), "web", "www.example.com")
+	if err != nil {
+		t.Fatalf("GetDomain: %v", err)
+	}
+	if d.DNSRecord.Value != "web.onbex.co" {
+		t.Errorf("dnsRecord.Value = %q, want web.onbex.co (from status URL)", d.DNSRecord.Value)
+	}
+}
+
+// --- Verify verb (re-check) ---
+
+func TestVerifyDomainReturnsFreshStatus(t *testing.T) {
+	a := appWithHosts("web", "www.example.com")
+	a.Spec.Host = "web.onbex.co"
+	secret := tlsSecret("default", "web-tls-www.example.com")
+	cl := fakeClient(a, secret)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, BaseDomain: "onbex.co"}
+
+	d, err := svc.VerifyDomain(context.Background(), "web", "www.example.com")
+	if err != nil {
+		t.Fatalf("VerifyDomain: %v", err)
+	}
+	if d.VerificationStatus != "verified" || d.ServerStatus != "active" {
+		t.Errorf("verify status = %q/%q, want verified/active", d.VerificationStatus, d.ServerStatus)
+	}
+	if d.DNSRecord.Value != "web.onbex.co" {
+		t.Errorf("verify dnsRecord.Value = %q, want web.onbex.co", d.DNSRecord.Value)
+	}
+}
+
+func TestVerifyDomainUnknownHostNotFound(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("web", "www.example.com"))
+	if _, err := svc.VerifyDomain(context.Background(), "web", "nope.example.com"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("unknown host => ErrNotFound, got %v", err)
+	}
+}
+
 // --- REST fragment ---
 
 func TestRESTCustomDomains(t *testing.T) {
@@ -338,6 +409,23 @@ func TestRESTCustomDomains(t *testing.T) {
 	}
 	if created.DomainType != "subdomain" {
 		t.Errorf("domainType = %q, want subdomain", created.DomainType)
+	}
+	if created.DNSRecord.Type != "CNAME" || created.DNSRecord.Name != "www" {
+		t.Errorf("dnsRecord = %+v, want CNAME/www", created.DNSRecord)
+	}
+
+	// POST …/verify re-checks and returns 200 with the fresh domain.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/www.example.com/verify", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST verify => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var verified renderCustomDomain
+	if err := json.Unmarshal(rec.Body.Bytes(), &verified); err != nil {
+		t.Fatalf("decode verify: %v", err)
+	}
+	if verified.Name != "www.example.com" || verified.DNSRecord.Type != "CNAME" {
+		t.Errorf("verify result wrong: %+v", verified)
 	}
 
 	// GET list returns [{customDomain:{...}, cursor:"..."}].
@@ -439,11 +527,26 @@ func TestGraphQLCustomDomains(t *testing.T) {
 		t.Fatalf("want 1 domain, got %d", len(domains))
 	}
 
-	// customDomain query (single).
+	// customDomain query (single) — including the nested dnsRecord.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ customDomain(id: "web", name: "www.example.com") { name } }`})
+		RequestString: `{ customDomain(id: "web", name: "www.example.com") { name dnsRecord { type name value } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("customDomain: %v", res.Errors)
+	}
+	single := res.Data.(map[string]any)["customDomain"].(map[string]any)
+	rec := single["dnsRecord"].(map[string]any)
+	if rec["type"] != "CNAME" || rec["name"] != "www" {
+		t.Errorf("dnsRecord = %v, want CNAME/www", rec)
+	}
+
+	// verifyCustomDomain mutation — re-check returns the fresh domain.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { verifyCustomDomain(id: "web", name: "www.example.com") { name verificationStatus dnsRecord { type } } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("verifyCustomDomain: %v", res.Errors)
+	}
+	if v := res.Data.(map[string]any)["verifyCustomDomain"].(map[string]any); v["name"] != "www.example.com" {
+		t.Errorf("verifyCustomDomain result wrong: %v", v)
 	}
 
 	// deleteCustomDomain mutation.

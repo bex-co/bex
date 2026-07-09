@@ -30,6 +30,19 @@ Two independent certs by design: Cloudflare's at the edge (browser-facing), cert
 - **Step ② exists because the base-domain zone is proxied** (orange-cloud): the CF edge only answers for hostnames it knows, so each customer domain must be registered as a _custom hostname_ (Cloudflare for SaaS — free ≤ 100 hostnames; one-time zone setup: enable it + set the fallback origin). Without it, customer traffic dies at the edge with an SSL mismatch.
 - **Step ③ is ordinary bex mechanics**: `domains[1:]` in `bex.yml` becomes `App.spec.hosts`; the operator renders one Ingress rule and **one TLS secret per host**, so one customer's broken DNS can never block another domain's issuance or renewal (`<app>-tls` for the first host — never renamed — and `<app>-tls-<host>` for the rest).
 
+## API surface — DNS instructions & verify (w5/m10)
+
+Every custom domain the API returns carries a **`dnsRecord`** — the exact record the tenant creates at their registrar (Render's post-add DNS instructions; capture in [render-artifacts/custom-domain-dns-instructions.md](render-artifacts/custom-domain-dns-instructions.md)):
+
+| Domain kind | `dnsRecord.type` | `dnsRecord.name` | `dnsRecord.value` |
+| --- | --- | --- | --- |
+| subdomain | `CNAME` | label prefix (`www`, `api.staging`) | `<app>.<base-domain>` |
+| apex | `ALIAS` | `@` | `<app>.<base-domain>` |
+
+The target is the App's **platform host** `<app>.<BEX_BASE_DOMAIN>` — bex-api reads `BEX_BASE_DOMAIN` (falling back to the App's status URL). bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather than a bare `A`-record IP (the edge is Cloudflare-proxied), and the dashboard adds the "ALIAS/ANAME, or redirect apex → `www`" guidance.
+
+A **verify** verb re-checks a domain's DNS/cert state now and returns its fresh status — `POST /v1/services/{id}/custom-domains/{name}/verify` (REST), `verifyCustomDomain(id, name)` (GraphQL), `verify_custom_domain` (MCP). bex verification is automatic (cert-manager reconciles the per-host TLS secret continuously), so this is an idempotent re-read, not a re-verification trigger — it gives the dashboard a "Verify / re-check" action that refreshes a pending row without a mutation. All three surfaces return the same `dnsRecord` fields and verify semantics.
+
 ## Lifecycle / operational notes
 
 - **Pending window**: between "CNAME added" and "certs issued" (typically < 1 min after DNS resolves) the domain serves a mismatched cert. Every platform has this.

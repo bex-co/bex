@@ -306,6 +306,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
+	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
+	verifyDomain := func(w http.ResponseWriter, r *http.Request) {
+		d, err := s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderCustomDomain(d))
+	}
 
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
@@ -322,5 +332,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
 		mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
+		mux.HandleFunc("POST "+base+"/{id}/custom-domains/{name}/verify", verifyDomain)
 	}
 }

@@ -104,6 +104,10 @@ type Deps struct {
 	APIKeys              apikeys.APIKeyStore
 	Store                apps.IntentStore
 	Secrets              secrets.SecretStore
+	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
+	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
+	// Empty falls back to deriving the platform host from an App's status URLs.
+	BaseDomain string
 	// Workspace lifecycle (w6/m1): the control-plane store seam + the OpenFGA
 	// grant/revoke sides + the projector nudge. All nil when BEX_CP_DB_URI is
 	// unset — the workspace verbs then answer ErrWorkspacesUnavailable.
@@ -124,7 +128,7 @@ type Deps struct {
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow},
 		Metrics: &metrics.Service{
 			Base:                       base,

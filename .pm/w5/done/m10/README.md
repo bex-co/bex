@@ -1,20 +1,20 @@
 # w5 · m10 — Trustworthy dev stub (multi-service) + custom-domain DNS instructions end to end
 
-**Worker:** worker5 **Goal:** Kill the dev stub's phantom-service bug (any `/services/<id>` echoes the one hardcoded service — `nightly-report` showed `eden-cms-v2`'s data, including its custom domains) and close the last custom-domains gap: after adding a domain, the user sees exactly which DNS record to create (type + host + target, copyable), sourced from the backend across REST/GraphQL/MCP and rendered in the dashboard — Render's post-add flow, end to end. **Status:** todo
+**Worker:** worker5 **Goal:** Kill the dev stub's phantom-service bug (any `/services/<id>` echoes the one hardcoded service — `nightly-report` showed `eden-cms-v2`'s data, including its custom domains) and close the last custom-domains gap: after adding a domain, the user sees exactly which DNS record to create (type + host + target, copyable), sourced from the backend across REST/GraphQL/MCP and rendered in the dashboard — Render's post-add flow, end to end. **Status:** DONE (2026-07-09)
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------------- |
-| t001 | Fix `local-bex` stub: multi-service store, per-id resolvers, unknown id → null       | 45m | —                |
-| t002 | Dashboard not-found state for unknown service id (no phantom data)                   | 30m | t001             |
-| t003 | Capture Render's live add-domain DNS-instructions flow (m7/m11.5 pattern)            | 30m | —                |
-| t004 | Backend: per-domain DNS record target + verify verb (REST/GraphQL/MCP)               | 60m | t003             |
-| t005 | Dashboard: DNS instructions panel (add flow + per-row) with copy + status re-check   | 60m | t002, t004       |
-| t006 | Render parity — REST/GraphQL/MCP/UI consistency for the domain surface               | 30m | t005             |
-| t007 | Simplify — `/simplify` over the m10 diff                                             | 20m | t006             |
-| t008 | Test coverage — stub resolvers, not-found route, DNS-instruction fields + panel      | 30m | t006             |
-| t009 | Closeout                                                                             | 10m | t008             |
+| t001 | Fix `local-bex` stub: multi-service store, per-id resolvers, unknown id → null       | 45m | — — **DONE**     |
+| t002 | Dashboard not-found state for unknown service id (no phantom data)                   | 30m | t001 — **DONE**  |
+| t003 | Capture Render's live add-domain DNS-instructions flow (m7/m11.5 pattern)            | 30m | — — **DONE**     |
+| t004 | Backend: per-domain DNS record target + verify verb (REST/GraphQL/MCP)               | 60m | t003 — **DONE**  |
+| t005 | Dashboard: DNS instructions panel (add flow + per-row) with copy + status re-check   | 60m | t002, t004 — **DONE** |
+| t006 | Render parity — REST/GraphQL/MCP/UI consistency for the domain surface               | 30m | t005 — **DONE**  |
+| t007 | Simplify — `/simplify` over the m10 diff                                             | 20m | t006 — **DONE**  |
+| t008 | Test coverage — stub resolvers, not-found route, DNS-instruction fields + panel      | 30m | t006 — **DONE**  |
+| t009 | Closeout                                                                             | 10m | t008 — **DONE**  |
 
 ## Definition of done
 

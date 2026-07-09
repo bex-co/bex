@@ -40,6 +40,12 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// BaseDomain is the platform wildcard domain (BEX_BASE_DOMAIN, e.g. "onbex.co")
+	// — the same value the operator computes app URLs from. The custom-domain DNS
+	// instructions need it to name the CNAME/ALIAS target `<app>.<BaseDomain>` the
+	// tenant points their record at. Empty falls back to deriving the platform host
+	// from the App's status URLs (docs/custom-domain.md).
+	BaseDomain string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
 	// the bex.co/app-id label). Suspend/Resume write the row first — the row owns
 	// spec.suspended, and the projection loop reverts CR patches it didn't

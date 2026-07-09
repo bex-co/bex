@@ -35,6 +35,23 @@ type DomainView struct {
 	DomainType         string // "apex" or "subdomain" (Render's enum)
 	VerificationStatus string // "pending" or "verified" (TLS cert issued?)
 	ServerStatus       string // "active" or "pending"
+	// DNSRecord is the record the tenant must create at their registrar to point
+	// this domain at the service (Render's post-add DNS instructions, w5/m10).
+	DNSRecord DNSRecordView
+}
+
+// DNSRecordView is the single DNS record a tenant creates to point a custom
+// domain at its service — the three fields any DNS record needs. Captured from
+// Render's add-domain flow (docs/render-artifacts/custom-domain-dns-instructions.md):
+//   - subdomain → CNAME <label prefix> -> <app>.<base-domain>
+//   - apex      → ALIAS  @             -> <app>.<base-domain>
+//
+// (bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather
+// than a bare A-record IP — the edge is Cloudflare-proxied, docs/custom-domain.md.)
+type DNSRecordView struct {
+	Type  string // "CNAME" (subdomain) or "ALIAS" (apex)
+	Name  string // the record host to create: the subdomain label(s), or "@" for apex
+	Value string // the target the record points to: the platform host <app>.<base-domain>
 }
 
 // domainType classifies a hostname as "apex" (root domain, two DNS labels) or
@@ -44,6 +61,44 @@ func domainType(hostname string) string {
 		return "apex"
 	}
 	return "subdomain"
+}
+
+// platformHost returns the App's platform hostname `<app>.<base-domain>` — the
+// CNAME/ALIAS target a custom domain points at. Prefers BEX_BASE_DOMAIN (the same
+// value the operator computes URLs from, so it's correct even before the operator
+// has written status), falling back to the `<app>.<something>` entry in the App's
+// status URLs (the Expose-generated host). Empty if neither is available.
+func (s *Service) platformHost(app *appv1alpha1.App) string {
+	if s.BaseDomain != "" {
+		return app.Name + "." + s.BaseDomain
+	}
+	prefix := app.Name + "."
+	for _, u := range append([]string{app.Status.URL}, app.Status.URLs...) {
+		h := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(u, "https://"), "http://"), "/")
+		if strings.HasPrefix(h, prefix) {
+			return h
+		}
+	}
+	return ""
+}
+
+// dnsRecordFor computes the DNS record the tenant must create for host, given its
+// already-classified dtype ("apex"/"subdomain") and the app's platform host as the
+// target. A subdomain gets a CNAME whose record name is the label prefix below the
+// root zone (www.example.com -> "www"); an apex gets an ALIAS at "@". Target is the
+// platform host; empty target still yields a well-typed record (the dashboard
+// renders the type/host guidance regardless).
+func dnsRecordFor(host, dtype, platformHost string) DNSRecordView {
+	if dtype == "apex" {
+		return DNSRecordView{Type: "ALIAS", Name: "@", Value: platformHost}
+	}
+	// Subdomain: strip the trailing two labels (the root zone) to get the record name.
+	labels := strings.Split(host, ".")
+	name := host
+	if len(labels) > 2 {
+		name = strings.Join(labels[:len(labels)-2], ".")
+	}
+	return DNSRecordView{Type: "CNAME", Name: name, Value: platformHost}
 }
 
 // tlsSecretForHost returns the TLS Secret name the operator creates for a host
@@ -72,9 +127,10 @@ func (s *Service) domainVerified(ctx context.Context, app *appv1alpha1.App, host
 	return err == nil && len(sec.Data["tls.crt"]) > 0
 }
 
-// domainView builds a DomainView for one host on the given App. The TLS Secret
-// lookup makes the verification status truthful at query time.
-func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host string) DomainView {
+// domainView builds a DomainView for one host on the given App. platformHost is
+// passed in (host-independent, so callers compute it once per app rather than per
+// host). The TLS Secret lookup makes the verification status truthful at query time.
+func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, platformHost string) DomainView {
 	verified := s.domainVerified(ctx, app, host)
 	vStatus := "pending"
 	if verified {
@@ -85,11 +141,13 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host str
 	if verified && !app.Spec.Suspended {
 		sStatus = "active"
 	}
+	dtype := domainType(host)
 	return DomainView{
 		Name:               host,
-		DomainType:         domainType(host),
+		DomainType:         dtype,
 		VerificationStatus: vStatus,
 		ServerStatus:       sStatus,
+		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 	}
 }
 
@@ -102,10 +160,11 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 	if err != nil {
 		return nil, err
 	}
+	platformHost := s.platformHost(app) // host-independent — compute once for all hosts
 	out := make([]DomainView, 0, len(app.Spec.Hosts))
 	for _, h := range app.Spec.Hosts {
 		if h != "" {
-			out = append(out, s.domainView(ctx, app, h))
+			out = append(out, s.domainView(ctx, app, h, platformHost))
 		}
 	}
 	return out, nil
@@ -120,12 +179,26 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 	if err != nil {
 		return DomainView{}, err
 	}
+	platformHost := s.platformHost(app)
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
-			return s.domainView(ctx, app, h), nil
+			return s.domainView(ctx, app, h, platformHost), nil
 		}
 	}
 	return DomainView{}, core.ErrNotFound
+}
+
+// VerifyDomain re-checks a custom domain's DNS/cert state now and returns its
+// fresh view — bex's analogue of Render's POST …/custom-domains/{id}/verify. bex
+// verification is automatic (cert-manager continuously reconciles the per-host TLS
+// secret, docs/custom-domain.md), so there is no verification job to trigger and
+// "verify" is a read at read altitude: it re-evaluates the TLS-secret/serving state
+// and reports the current status, giving the dashboard a "Verify / re-check" action
+// that refreshes a pending row without a mutation. Delegating to GetDomain keeps it
+// identical to a fresh read (same RelCanView authorization, same lookup). Idempotent;
+// unknown host → core.ErrNotFound.
+func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
+	return s.GetDomain(ctx, appName, hostname)
 }
 
 // AddDomain appends hostname to App.spec.hosts[] if not already present.
@@ -144,7 +217,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 	}
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
-			return s.domainView(ctx, app, hostname), nil // already present
+			return s.domainView(ctx, app, hostname, s.platformHost(app)), nil // already present
 		}
 	}
 	if s.Store != nil {
@@ -159,7 +232,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 	if err := s.Client.Patch(ctx, app, base); err != nil {
 		return DomainView{}, err
 	}
-	return s.domainView(ctx, app, hostname), nil
+	return s.domainView(ctx, app, hostname, s.platformHost(app)), nil
 }
 
 // DeleteDomain removes hostname from App.spec.hosts[]. Idempotent — removing a
@@ -206,6 +279,17 @@ type renderCustomDomain struct {
 	DomainType         string `json:"domainType"`
 	VerificationStatus string `json:"verificationStatus"`
 	ServerStatus       string `json:"serverStatus"`
+	// DNSRecord is a bex extension (no Render REST equivalent — Render surfaces the
+	// record in the dashboard, not the API): the record the tenant must create to
+	// point this domain at the service. A safe superset, w5/m10.
+	DNSRecord renderDNSRecord `json:"dnsRecord"`
+}
+
+// renderDNSRecord is the wire shape of a DNSRecordView (the DNS record to create).
+type renderDNSRecord struct {
+	Type  string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // customDomainWithCursor is the list-item envelope (matches Render's list shape).
@@ -221,6 +305,11 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 		DomainType:         d.DomainType,
 		VerificationStatus: d.VerificationStatus,
 		ServerStatus:       d.ServerStatus,
+		DNSRecord: renderDNSRecord{
+			Type:  d.DNSRecord.Type,
+			Name:  d.DNSRecord.Name,
+			Value: d.DNSRecord.Value,
+		},
 	}
 }
 

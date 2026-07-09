@@ -113,6 +113,24 @@ describe("service-detail layout routing", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a not-found state (no service chrome) for an unknown service id", async () => {
+    serverState.service = null;
+    serverState.loading = false;
+    renderAt("/services/app");
+
+    // the shell renders not-found above every tab — no header/nav/outlet
+    expect(await screen.findByText("Service not found")).toBeInTheDocument();
+    expect(screen.getByText(/app/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Back to services" }),
+    ).toHaveAttribute("href", "/");
+    // service nav tabs are absent (the Overview child never mounts)
+    expect(
+      screen.queryByRole("link", { name: "Overview" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Phase")).not.toBeInTheDocument();
+  });
+
   it("renders the Logs viewer tab at /services/$serviceId/logs under the same chrome", async () => {
     renderAt("/services/app/logs");
 

@@ -102,29 +102,81 @@ const CRON = {
 
 const SERVICES = [SERVICE, WORKER, CRON];
 
-const INSTANCES = ["eden-cms-v2-7d9f8-abcde", "eden-cms-v2-7d9f8-fghij"];
+// Look up one service by id, or null — the stub must NEVER fabricate a service for
+// an unknown id (the 2026-07-09 phantom-service bug: any id echoed eden-cms-v2).
+function serviceById(id) {
+  return SERVICES.find((s) => s.id === id) ?? null;
+}
 
-// In-memory custom-domains store (Render dashboard CustomDomain shape, w1/m11.5)
-// so the Settings tab's list/add/delete + verification/serving status render
-// offline. Seeded with one issued domain and one still-provisioning.
-const CUSTOM_DOMAINS = [
-  {
+// Per-service synthetic instance ids (replicas), derived from the service id so
+// each service's logs are visibly its own (no cross-service bleed).
+function instancesFor(resource) {
+  return [`${resource}-7d9f8-abcde`, `${resource}-7d9f8-fghij`];
+}
+
+// The platform host a custom domain CNAMEs to: <service>.onbex.co, mirroring the
+// backend's `<app>.<BEX_BASE_DOMAIN>` target (docs/custom-domain.md).
+function platformHostFor(serviceId) {
+  return `${serviceId}.onbex.co`;
+}
+
+// apex (2 labels, e.g. example.com) vs subdomain — the backend's domainType heuristic.
+function domainTypeFor(name) {
+  return name.split(".").length <= 2 ? "apex" : "subdomain";
+}
+
+// The DNS record the tenant must create (backend DNSRecordView, w5/m10): a CNAME
+// from the subdomain label prefix, or an ALIAS at @ for an apex, pointing at the
+// platform host. Mirrors lego/backend/internal/apps/domains.go dnsRecordFor.
+function dnsRecordFor(name, platformHost) {
+  if (domainTypeFor(name) === "apex") {
+    return { __typename: "DNSRecord", type: "ALIAS", name: "@", value: platformHost };
+  }
+  // Subdomain (>= 3 labels here — apex returned above): strip the trailing two
+  // labels (the root zone) to get the record name (www.example.com -> "www").
+  const recordName = name.split(".").slice(0, -2).join(".");
+  return {
+    __typename: "DNSRecord",
+    type: "CNAME",
+    name: recordName,
+    value: platformHost,
+  };
+}
+
+// Build a full CustomDomain object (Render shape + the w5/m10 dnsRecord) for a
+// service. verificationStatus/serverStatus default to pending (just added).
+function makeDomain(serviceId, name, over = {}) {
+  return {
     __typename: "CustomDomain",
-    id: "www.eden-cms.com",
-    name: "www.eden-cms.com",
-    domainType: "subdomain",
-    verificationStatus: "verified",
-    serverStatus: "active",
-  },
-  {
-    __typename: "CustomDomain",
-    id: "eden-cms.com",
-    name: "eden-cms.com",
-    domainType: "apex",
+    id: name,
+    name,
+    domainType: domainTypeFor(name),
     verificationStatus: "pending",
     serverStatus: "pending",
-  },
-];
+    dnsRecord: dnsRecordFor(name, platformHostFor(serviceId)),
+    ...over,
+  };
+}
+
+// In-memory custom-domains store, keyed BY SERVICE (Render dashboard CustomDomain
+// shape, w1/m11.5 + w5/m10 DNS instructions) so the Settings tab's
+// list/add/delete/verify renders offline and each service owns its own domains.
+// Only the web service (eden-cms-v2) is seeded — a worker/cron has no ingress, so
+// its domain list is empty, making cross-service bleed visually obvious.
+const CUSTOM_DOMAINS_BY_SERVICE = {
+  "eden-cms-v2": [
+    makeDomain("eden-cms-v2", "www.eden-cms.com", {
+      verificationStatus: "verified",
+      serverStatus: "active",
+    }),
+    makeDomain("eden-cms-v2", "eden-cms.com"),
+  ],
+};
+
+// The domain list for a service (empty array for a service with none / unknown id).
+function domainsFor(serviceId) {
+  return CUSTOM_DOMAINS_BY_SERVICE[serviceId] ?? [];
+}
 
 // The managed-Postgres tier catalog (backend databaseInstanceTypes, w5/m8) — the
 // create dialog's plan picker source. Kept in sync with lego/types/tiers.yaml's
@@ -196,36 +248,38 @@ const MESSAGES = [
   'level=info msg="scheduler tick" jobs=3 pending=0',
 ];
 
-function line(iso, i) {
+function line(iso, i, resource) {
+  const instances = instancesFor(resource);
   return {
     __typename: "LogEntry",
     timestamp: iso,
     message: MESSAGES[i % MESSAGES.length],
     type: "app",
-    instance: INSTANCES[i % INSTANCES.length],
+    instance: instances[i % instances.length],
   };
 }
 
-// A backfill of historical lines, oldest-first, ending ~now.
-function history(count) {
+// A backfill of historical lines, oldest-first, ending ~now — scoped to the
+// requested resource (service) so each service's history is its own.
+function history(count, resource) {
   const now = Date.now();
   const out = [];
   for (let i = count - 1; i >= 0; i--) {
-    out.push(line(new Date(now - i * 3000).toISOString(), count - 1 - i));
+    out.push(line(new Date(now - i * 3000).toISOString(), count - 1 - i, resource));
   }
   return out;
 }
 
 // Render-shaped SSE frame (internal/logs/render.go): id + message + timestamp +
-// a [{name,value}] labels array.
-function renderLog(entry, seq) {
+// a [{name,value}] labels array. Labelled with the requested resource.
+function renderLog(entry, seq, resource) {
   return {
     id: `${entry.instance}-${entry.timestamp}-${seq}`,
     message: entry.message,
     timestamp: entry.timestamp,
     labels: [
       { name: "type", value: "app" },
-      { name: "resource", value: SERVICE.name },
+      { name: "resource", value: resource },
       { name: "instance", value: entry.instance },
     ],
   };
@@ -253,15 +307,14 @@ function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
     case "Services":
       return { services: SERVICES };
-    case "Server": {
-      const match = SERVICES.find((s) => s.id === variables.id);
-      return { server: match ?? { ...SERVICE, id: variables.id ?? SERVICE.id } };
-    }
+    case "Server":
+      // null for an unknown id — never borrow another service's object.
+      return { server: serviceById(variables.id) };
     case "Logs": {
       // Honor the same filters bex-api honors: type (app-only) + text substring.
       const type = variables.type;
       if (type && type !== "app" && type !== "application") return { logs: [] };
-      let logs = history(60);
+      let logs = history(60, variables.resource ?? "");
       if (variables.text) {
         const q = String(variables.text).toLowerCase();
         logs = logs.filter((l) => l.message.toLowerCase().includes(q));
@@ -331,24 +384,30 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { deleteDatabase: true };
     }
     case "CustomDomains":
-      return { customDomains: CUSTOM_DOMAINS };
+      return { customDomains: domainsFor(variables.id) };
     case "AddCustomDomain": {
-      const domain = {
-        __typename: "CustomDomain",
-        id: variables.name,
-        name: variables.name,
-        domainType:
-          variables.name.split(".").length <= 2 ? "apex" : "subdomain",
-        verificationStatus: "pending",
-        serverStatus: "pending",
-      };
-      CUSTOM_DOMAINS.push(domain);
+      const list = (CUSTOM_DOMAINS_BY_SERVICE[variables.id] ??= []);
+      const existing = list.find((d) => d.name === variables.name);
+      if (existing) return { addCustomDomain: existing }; // idempotent
+      const domain = makeDomain(variables.id, variables.name);
+      list.push(domain);
       return { addCustomDomain: domain };
     }
     case "DeleteCustomDomain": {
-      const i = CUSTOM_DOMAINS.findIndex((d) => d.name === variables.name);
-      if (i >= 0) CUSTOM_DOMAINS.splice(i, 1);
+      const list = CUSTOM_DOMAINS_BY_SERVICE[variables.id] ?? [];
+      const i = list.findIndex((d) => d.name === variables.name);
+      if (i >= 0) list.splice(i, 1);
       return { deleteCustomDomain: true };
+    }
+    case "VerifyCustomDomain": {
+      // Re-check now: bex verification is automatic, so this simulates the pending
+      // domain converging to verified/active on re-check (returns the fresh row).
+      const list = CUSTOM_DOMAINS_BY_SERVICE[variables.id] ?? [];
+      const d = list.find((dom) => dom.name === variables.name);
+      if (!d) return { verifyCustomDomain: null };
+      d.verificationStatus = "verified";
+      d.serverStatus = "active";
+      return { verifyCustomDomain: d };
     }
     default:
       return {};
@@ -398,6 +457,7 @@ const server = createServer((req, res) => {
   // SSE live tail — one `data: <renderLog JSON>` frame per new line.
   if (url.pathname === "/v1/logs/subscribe") {
     const type = url.searchParams.get("type");
+    const resource = url.searchParams.get("resource") || "";
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -408,9 +468,9 @@ const server = createServer((req, res) => {
     const text = (url.searchParams.get("text") || "").toLowerCase();
     let seq = 0;
     const timer = setInterval(() => {
-      const entry = line(new Date().toISOString(), seq);
+      const entry = line(new Date().toISOString(), seq, resource);
       if (!text || entry.message.toLowerCase().includes(text)) {
-        res.write(`data: ${JSON.stringify(renderLog(entry, seq))}\n\n`);
+        res.write(`data: ${JSON.stringify(renderLog(entry, seq, resource))}\n\n`);
       }
       seq++;
     }, 1500);

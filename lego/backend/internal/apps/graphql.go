@@ -147,6 +147,17 @@ func gqlBoolPtr(args map[string]any, key string) *bool {
 
 // customDomainGQLType renders a DomainView as Render's CustomDomain shape.
 // Field names match Render's dashboard operations for custom domains.
+// dnsRecordGQLType renders a DNSRecordView — the DNS record a tenant creates to
+// point a custom domain at the service (Render's post-add DNS instructions).
+var dnsRecordGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DNSRecord",
+	Fields: graphql.Fields{
+		"type":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Type })},
+		"name":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Name })},
+		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Value })},
+	},
+})
+
 var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CustomDomain",
 	Fields: graphql.Fields{
@@ -155,6 +166,9 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"domainType":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.DomainType })},
 		"verificationStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.VerificationStatus })},
 		"serverStatus":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.ServerStatus })},
+		// dnsRecord is the record the tenant must create (bex extension; the target is
+		// the app's platform host <app>.<base-domain>).
+		"dnsRecord": &graphql.Field{Type: dnsRecordGQLType, Resolve: gqlutil.Field(func(d DomainView) any { return d.DNSRecord })},
 	},
 })
 
@@ -335,6 +349,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 				return err == nil, err
+			},
+		},
+		// verifyCustomDomain re-checks a domain's DNS/cert state now and returns its
+		// fresh status (Render's Verify button / POST …/verify). bex verification is
+		// automatic, so this is an idempotent re-read, not a state trigger.
+		"verifyCustomDomain": &graphql.Field{
+			Type: customDomainGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.VerifyDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 			},
 		},
 	}

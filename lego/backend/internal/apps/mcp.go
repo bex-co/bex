@@ -313,6 +313,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		err := s.DeleteDomain(ctx, in.ServiceID, in.Name)
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "verify_custom_domain",
+		Description: "Re-check a custom domain's DNS/certificate state now and return its fresh verification/serving status plus the DNS record to create (Render's verify). Verification is automatic on bex, so this is a re-read, not a trigger.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
+		d, err := s.VerifyDomain(ctx, in.ServiceID, in.Name)
+		if err != nil {
+			return nil, renderCustomDomain{}, err
+		}
+		return nil, toRenderCustomDomain(d), nil
+	})
 }
 
 // serviceTool adapts a single-service verb (Get/Restart/Suspend/Resume) into an

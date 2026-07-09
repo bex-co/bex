@@ -193,6 +193,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "不存在名为 {name} 的服务，或你没有访问权限。",
     description: "Overview page not-found body",
   },
+  "services.notFoundBackToList": {
+    message: "返回服务列表",
+    description: "Link on the service-detail not-found state back to the services list",
+  },
   "services.navEnvironment": {
     message: "环境变量",
     description: "Service-detail nav item (environment variables tab)",
@@ -533,6 +537,76 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "DNS 与 TLS 证书会在后台生效。",
     description:
       "Toast description after a custom-domain add (async convergence)",
+  },
+  "services.domainDnsToggle": {
+    message: "显示 DNS 配置",
+    description: "aria-label for the per-domain DNS-instructions disclosure toggle",
+  },
+  "services.domainDnsTitle": {
+    message: "DNS 配置",
+    description: "Heading of the per-domain DNS-instructions panel",
+  },
+  "services.domainDnsSubdomainGuidance": {
+    message:
+      "请在你的 DNS 服务商处创建以下记录，然后重新检查。记录生效后，bex 会自动签发 TLS 证书。",
+    description: "Guidance line above the DNS record for a subdomain",
+  },
+  "services.domainDnsApexGuidance": {
+    message:
+      "顶级域名无法使用普通 CNAME。若你的服务商支持 ALIAS/ANAME（或 CNAME flattening），请创建此记录；否则请在注册商处将顶级域名重定向到 www 子域名。",
+    description: "Guidance line above the DNS record for an apex domain",
+  },
+  "services.domainRecordType": {
+    message: "类型",
+    description: "Label for the DNS record type field (CNAME/ALIAS)",
+  },
+  "services.domainRecordHost": {
+    message: "主机",
+    description: "Label for the DNS record host/name field",
+  },
+  "services.domainRecordTarget": {
+    message: "目标",
+    description: "Label for the DNS record target/value field",
+  },
+  "services.domainDnsUnavailable": {
+    message: "DNS 目标尚不可用——服务运行后请重新检查。",
+    description: "Shown when the backend couldn't derive the DNS record target",
+  },
+  "services.domainRecheck": {
+    message: "重新检查",
+    description: "Button that re-checks a domain's DNS/certificate status",
+  },
+  "services.domainCopied": {
+    message: "已复制到剪贴板",
+    description: "Toast when a DNS record value is copied",
+  },
+  "services.domainCopyError": {
+    message: "无法复制到剪贴板",
+    description: "Toast when copying a DNS record value fails",
+  },
+  "services.domainAddedTitle": {
+    message: "域名已添加——请配置 DNS",
+    description: "Title of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainAddedDescription": {
+    message: "请在你的 DNS 服务商处创建此记录，以完成域名连接。",
+    description: "Subtitle of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainDone": {
+    message: "完成",
+    description: "Button closing the post-add DNS-record step",
+  },
+  "services.domainVerifySuccess": {
+    message: "{name} 已验证",
+    description: "Toast when a re-check finds the domain verified",
+  },
+  "services.domainVerifyPending": {
+    message: "{name} 尚未验证——DNS 可能仍在生效中。",
+    description: "Toast when a re-check finds the domain still pending",
+  },
+  "services.domainVerifyError": {
+    message: "无法重新检查 {name}。",
+    description: "Toast when the re-check request fails",
   },
   "services.domainsEmptyTitle": {
     message: "暂无自定义域名",

@@ -81,11 +81,25 @@ export interface EnvVarKey {
  * - `active` — the certificate is issued and the service isn't suspended, so it's
  *   actively serving the host (Render's "Certificate Status" column).
  */
+/** The DNS record the tenant creates to point a custom domain at the service. */
+export interface DnsRecordView {
+  /** "CNAME" (subdomain) or "ALIAS" (apex). */
+  type: string;
+  /** The record host to create: the subdomain label(s), or "@" for apex. */
+  name: string;
+  /** The target the record points to: the app's platform host <app>.<base-domain>. */
+  value: string;
+}
+
 export interface CustomDomainView {
   /** The FQDN — also bex-api's opaque id for the domain. */
   name: string;
+  /** "apex" or "subdomain" — drives the apex vs subdomain DNS guidance. */
+  domainType: string;
   verified: boolean;
   active: boolean;
+  /** The DNS record to create; null if the backend couldn't derive the target. */
+  dnsRecord: DnsRecordView | null;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

@@ -194,6 +194,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No service named {name} exists, or you don't have access to it.",
     description: "Overview page not-found body",
   },
+  "services.notFoundBackToList": {
+    message: "Back to services",
+    description: "Link on the service-detail not-found state back to the services list",
+  },
   "services.navEnvironment": {
     message: "Environment",
     description: "Service-detail nav item (environment variables tab)",
@@ -538,6 +542,76 @@ const enServices: Record<string, TranslationEntry> = {
     message: "DNS and the TLS certificate propagate in the background.",
     description:
       "Toast description after a custom-domain add (async convergence)",
+  },
+  "services.domainDnsToggle": {
+    message: "Show DNS setup",
+    description: "aria-label for the per-domain DNS-instructions disclosure toggle",
+  },
+  "services.domainDnsTitle": {
+    message: "DNS setup",
+    description: "Heading of the per-domain DNS-instructions panel",
+  },
+  "services.domainDnsSubdomainGuidance": {
+    message:
+      "Create the following record at your DNS provider, then re-check. bex issues the TLS certificate automatically once it resolves.",
+    description: "Guidance line above the DNS record for a subdomain",
+  },
+  "services.domainDnsApexGuidance": {
+    message:
+      "Apex domains can't use a plain CNAME. Create this record if your provider supports ALIAS/ANAME (or CNAME flattening); otherwise redirect the apex to your www subdomain at your registrar.",
+    description: "Guidance line above the DNS record for an apex domain",
+  },
+  "services.domainRecordType": {
+    message: "Type",
+    description: "Label for the DNS record type field (CNAME/ALIAS)",
+  },
+  "services.domainRecordHost": {
+    message: "Host",
+    description: "Label for the DNS record host/name field",
+  },
+  "services.domainRecordTarget": {
+    message: "Target",
+    description: "Label for the DNS record target/value field",
+  },
+  "services.domainDnsUnavailable": {
+    message: "The DNS target isn't available yet — re-check once the service is running.",
+    description: "Shown when the backend couldn't derive the DNS record target",
+  },
+  "services.domainRecheck": {
+    message: "Re-check",
+    description: "Button that re-checks a domain's DNS/certificate status",
+  },
+  "services.domainCopied": {
+    message: "Copied to clipboard",
+    description: "Toast when a DNS record value is copied",
+  },
+  "services.domainCopyError": {
+    message: "Couldn't copy to clipboard",
+    description: "Toast when copying a DNS record value fails",
+  },
+  "services.domainAddedTitle": {
+    message: "Domain added — set up DNS",
+    description: "Title of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainAddedDescription": {
+    message: "Create this record at your DNS provider to finish connecting your domain.",
+    description: "Subtitle of the post-add DNS-record step in the add dialog",
+  },
+  "services.domainDone": {
+    message: "Done",
+    description: "Button closing the post-add DNS-record step",
+  },
+  "services.domainVerifySuccess": {
+    message: "{name} verified",
+    description: "Toast when a re-check finds the domain verified",
+  },
+  "services.domainVerifyPending": {
+    message: "{name} isn't verified yet — DNS may still be propagating.",
+    description: "Toast when a re-check finds the domain still pending",
+  },
+  "services.domainVerifyError": {
+    message: "Couldn't re-check {name}.",
+    description: "Toast when the re-check request fails",
   },
   "services.domainsEmptyTitle": {
     message: "No custom domains",

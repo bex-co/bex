@@ -55,7 +55,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Custom domains (list · add · get · delete) | ✅ | ✅ | ✅ | ✅ | `apps/rest.go` `/v1/services/{id}/custom-domains` (w1/m11); GraphQL `customDomains`/`addCustomDomain`/`deleteCustomDomain`; MCP 4 tools; Settings section (w1/m11.5). [custom-domain.md](custom-domain.md). |
-| Verify / DNS instructions | ◐ | ◐ | ◐ | ◐ | `verificationStatus`/`serverStatus` surfaced; verification is automatic via cert-manager (no explicit `…/verify` call). Dashboard DNS-record guidance → **w5/006**. |
+| Verify / DNS instructions | ✅ | ✅ | ✅ | ✅ | Per-domain `dnsRecord{type,name,value}` (CNAME → platform host for subdomains; ALIAS `@` for apex) + verify verb (`POST …/custom-domains/{name}/verify`, GraphQL `verifyCustomDomain`, MCP `verify_custom_domain`) re-check status now; verification stays automatic via cert-manager (verify is an idempotent re-read). Dashboard DNS-instructions panel + copy + re-check (w5/m10). [custom-domain.md](custom-domain.md), [render-artifacts/custom-domain-dns-instructions.md](render-artifacts/custom-domain-dns-instructions.md). |
 
 ## Managed Postgres
 
@@ -146,7 +146,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Delete service | `w2/m4` | todo |
 | Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
-| Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | todo |
+| Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | done (w5/m10) |
 | Key Value (Valkey/Redis) store | `w1/m14` | mechanism done (CR + reconciler, live in prod 2026-07-09); surface → `w2/m7` (API) + `w5/m12` (dashboard) |
 | API keys in the dashboard | `w4/m8` | done 2026-07-08 (key metadata follow-up → `w4/m13`) |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
