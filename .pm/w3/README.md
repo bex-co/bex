@@ -9,3 +9,12 @@
 - [x] **m3** — Metrics page PoC: beancount-cms, Render-style dashboard (5 tasks) ← from user request 2026-07-06, design learned live from Render's metrics page
 - [x] **m4** — Resource-metrics history: Prometheus-backed CPU/memory/instances (6 tasks) ← from brainstorm 2026-07-06 (Render metrics-page parity)
 - [x] **m4.5** — Metrics page parity: application charts, limits, network filters (6 tasks) ← from user request 2026-07-07, side-by-side gap check of Render's live metrics page vs dashboard.bex.co after m4
+- [ ] **m5** — Durable logs: Loki-backed history behind the same API (9 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (w3/001's explicit v0 deferral)
+- [ ] **m6** — Platform alerting: Alertmanager + rules for bex's own health (8 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (alertmanager disabled; backup CronJobs unwatched)
+
+## Inbox
+
+- `002.md` — Request/HTTP logs + structured log filters (level · status · method · path · instance) — from the w1/m13 parity audit; request logs likely ride m5's pipeline
+- `003.md` — Log Streams: forward logs to external observability tools (Render parity) — park until m5's shipper exists
+
+> `001.md` (v0 observability backend strategy → docs/observability.md) done — the doc shipped and is indexed; moved to `done/001.md` 2026-07-09.
