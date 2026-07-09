@@ -6,6 +6,7 @@ import {
   Observable,
 } from "@apollo/client";
 import { config } from "@/config/config";
+import { apolloCacheConfig } from "./cache";
 
 import { getCookie } from "@tanstack/react-start/server";
 
@@ -51,6 +52,6 @@ export function createApolloSsrClient() {
     link: import.meta.env.DEV
       ? ApolloLink.from([loggingLink, httpLink])
       : httpLink,
-    cache: new InMemoryCache(),
+    cache: new InMemoryCache(apolloCacheConfig),
   });
 }

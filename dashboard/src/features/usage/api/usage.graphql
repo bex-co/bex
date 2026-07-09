@@ -1,0 +1,16 @@
+# Workspace-scoped month-to-date usage (bex extension, no Render equivalent).
+# Three kinds: instance_seconds (compute), egress_bytes (bandwidth),
+# build_seconds (CI/build) — displayed as hours, MB/GB, and minutes respectively.
+query Usage {
+  usage {
+    workspaceId
+    services {
+      serviceId
+      rows {
+        kind
+        tier
+        total
+      }
+    }
+  }
+}

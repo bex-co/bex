@@ -442,6 +442,44 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { metrics: [] };
     case "MonthToDateBandwidth":
       return { monthToDateBandwidth: null };
+    // Workspace-scoped month-to-date usage (w8/m2 + m3): one entry per service
+    // per kind. instance_seconds drives the Compute section; egress_bytes drives
+    // Bandwidth; build_seconds drives Build Minutes. Values are intentionally
+    // realistic — a mid-month workspace consuming starter-tier compute.
+    case "Usage":
+      return {
+        usage: {
+          __typename: "UsageSummary",
+          workspaceId: "local-workspace",
+          services: [
+            {
+              __typename: "ServiceUsage",
+              serviceId: "eden-cms-v2",
+              rows: [
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: 432000 },
+                { __typename: "UsageRow", kind: "egress_bytes", tier: "", total: 524288000 },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 1800 },
+              ],
+            },
+            {
+              __typename: "ServiceUsage",
+              serviceId: "email-worker",
+              rows: [
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: 216000 },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 900 },
+              ],
+            },
+            {
+              __typename: "ServiceUsage",
+              serviceId: "nightly-report",
+              rows: [
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "free", total: 3600 },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 300 },
+              ],
+            },
+          ],
+        },
+      };
     case "InstanceTypes":
       return { instanceTypes: [] };
     case "EnvVarKeys":

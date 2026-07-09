@@ -1,5 +1,6 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client";
 import { config } from "@/config/config";
+import { apolloCacheConfig } from "./cache";
 
 let clientInstance: ReturnType<typeof createApolloCsrClientImpl> | null = null;
 
@@ -11,7 +12,7 @@ function createApolloCsrClientImpl() {
       fetch,
       credentials: "include",
     }),
-    cache: new InMemoryCache(),
+    cache: new InMemoryCache(apolloCacheConfig),
   });
 }
 

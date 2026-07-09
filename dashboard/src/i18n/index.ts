@@ -8,6 +8,7 @@ import enKeyValue from "@/features/keyvalue/locales/en";
 import enApiKeys from "@/features/api-keys/locales/en";
 import enWorkspaces from "@/features/workspaces/locales/en";
 import enTeam from "@/features/team/locales/en";
+import enUsage from "@/features/usage/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -18,6 +19,7 @@ import zhKeyValue from "@/features/keyvalue/locales/zh";
 import zhApiKeys from "@/features/api-keys/locales/zh";
 import zhWorkspaces from "@/features/workspaces/locales/zh";
 import zhTeam from "@/features/team/locales/zh";
+import zhUsage from "@/features/usage/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -54,6 +56,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enApiKeys),
   ...extractMessages(enWorkspaces),
   ...extractMessages(enTeam),
+  ...extractMessages(enUsage),
 };
 
 export const zh: Record<string, string> = {
@@ -67,6 +70,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhApiKeys),
   ...extractMessages(zhWorkspaces),
   ...extractMessages(zhTeam),
+  ...extractMessages(zhUsage),
 };
 
 export const resources: Record<
