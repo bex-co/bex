@@ -22,7 +22,10 @@ export function asSupportedLanguage(
 export function resolveUrlLanguage(
   getParam: (key: string) => string | null,
 ): SupportedLanguage | null {
-  return asSupportedLanguage(getParam("lang")) ?? asSupportedLanguage(getParam("locale"));
+  return (
+    asSupportedLanguage(getParam("lang")) ??
+    asSupportedLanguage(getParam("locale"))
+  );
 }
 
 export interface TranslationEntry {

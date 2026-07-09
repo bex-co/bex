@@ -182,7 +182,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.createSuccess": {
     message: "正在创建 {name}…",
-    description: "Toast after a create request is accepted (provisioning is async)",
+    description:
+      "Toast after a create request is accepted (provisioning is async)",
   },
   "databases.createError": {
     message: "无法创建 {name}。请重试。",
@@ -219,7 +220,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.metaHighAvailability": {
     message: "高可用",
-    description: "Database detail metadata row label (HA — single-instance MVP is No)",
+    description:
+      "Database detail metadata row label (HA — single-instance MVP is No)",
   },
   "databases.metaPublic": {
     message: "公网访问",

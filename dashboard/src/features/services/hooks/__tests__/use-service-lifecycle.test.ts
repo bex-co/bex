@@ -59,7 +59,9 @@ beforeEach(() => {
 
 describe("useServiceLifecycle", () => {
   it("fires the matching Render mutation for each verb", async () => {
-    const refetch = vi.fn(async () => [svc({ suspended: true, phase: "Hibernated" })]);
+    const refetch = vi.fn(async () => [
+      svc({ suspended: true, phase: "Hibernated" }),
+    ]);
     const { result } = renderHook(() =>
       useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
     );

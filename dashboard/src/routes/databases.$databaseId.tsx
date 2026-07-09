@@ -87,8 +87,14 @@ function MetadataCard({ database }: { database: DatabaseDetailView }) {
       label: t("databases.metaVersion"),
       value: database.version ? `PostgreSQL ${database.version}` : "—",
     },
-    { label: t("databases.metaDatabaseName"), value: database.databaseName ?? "—" },
-    { label: t("databases.metaDatabaseUser"), value: database.databaseUser ?? "—" },
+    {
+      label: t("databases.metaDatabaseName"),
+      value: database.databaseName ?? "—",
+    },
+    {
+      label: t("databases.metaDatabaseUser"),
+      value: database.databaseUser ?? "—",
+    },
     {
       label: t("databases.metaStorage"),
       value: database.diskSizeGB ? `${database.diskSizeGB} GB` : "—",

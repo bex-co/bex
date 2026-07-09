@@ -79,7 +79,10 @@ export function InstanceTypePicker({
     if (!selectedType) return;
     const ok = await updatePlan(serviceId, selectedType.id, selectedType.name);
     if (ok) {
-      void navigate({ to: "/services/$serviceId/settings", params: { serviceId } });
+      void navigate({
+        to: "/services/$serviceId/settings",
+        params: { serviceId },
+      });
     }
   }
 
@@ -92,7 +95,11 @@ export function InstanceTypePicker({
         {loading && instanceTypes.length === 0 ? (
           <PickerSkeleton />
         ) : (
-          <div role="radiogroup" aria-label={t("services.planPickerTitle")} className="space-y-4">
+          <div
+            role="radiogroup"
+            aria-label={t("services.planPickerTitle")}
+            className="space-y-4"
+          >
             {free.length > 0 && (
               <CardGroup label={t("services.planPickerFreeGroup")}>
                 {free.map((it) => (
@@ -146,14 +153,18 @@ export function InstanceTypePicker({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {selectedType &&
-                t("services.planPickerConfirmTitle", { name: selectedType.name })}
+                t("services.planPickerConfirmTitle", {
+                  name: selectedType.name,
+                })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("services.planPickerConfirmBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("services.planPickerCancel")}</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("services.planPickerCancel")}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={() => void handleConfirm()}>
               {t("services.planPickerSave")}
             </AlertDialogAction>
@@ -201,9 +212,7 @@ function InstanceTypeCard({
       className={cn(
         "rounded-lg border p-4 text-left transition-colors",
         "hover:border-foreground/50",
-        selected
-          ? "border-primary ring-1 ring-primary"
-          : "border-border",
+        selected ? "border-primary ring-1 ring-primary" : "border-border",
       )}
     >
       <div className="mb-2 font-semibold">{instanceType.name}</div>

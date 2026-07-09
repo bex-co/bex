@@ -51,7 +51,11 @@ describe("ServiceOverviewPage", () => {
   });
 
   it("shows the decoded suspended state as Yes for a suspended service", () => {
-    serverState.service = svc({ suspended: true, phase: "Hibernated", url: null });
+    serverState.service = svc({
+      suspended: true,
+      phase: "Hibernated",
+      url: null,
+    });
     render(<ServiceOverviewPage serviceId="app" />);
 
     // the string "suspended" enum decoded to a boolean → "Yes"
@@ -67,7 +71,9 @@ describe("ServiceOverviewPage", () => {
     const { container } = render(<ServiceOverviewPage serviceId="app" />);
     // no field values yet, and no error/not-found copy
     expect(screen.queryByText("Service not found")).not.toBeInTheDocument();
-    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('[data-slot="skeleton"]').length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows an error alert when the query fails with no data", () => {

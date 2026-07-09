@@ -183,7 +183,8 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.createSuccess": {
     message: "Creating {name}…",
-    description: "Toast after a create request is accepted (provisioning is async)",
+    description:
+      "Toast after a create request is accepted (provisioning is async)",
   },
   "databases.createError": {
     message: "Couldn't create {name}. Please try again.",
@@ -220,7 +221,8 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.metaHighAvailability": {
     message: "High availability",
-    description: "Database detail metadata row label (HA — single-instance MVP is No)",
+    description:
+      "Database detail metadata row label (HA — single-instance MVP is No)",
   },
   "databases.metaPublic": {
     message: "Public access",

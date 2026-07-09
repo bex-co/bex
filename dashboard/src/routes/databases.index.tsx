@@ -18,7 +18,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table.tsx";
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert.tsx";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert.tsx";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { computeStats } from "@/features/databases/lib/status";
@@ -87,7 +91,9 @@ export function DatabasesPage() {
               {showError ? (
                 <Alert variant="destructive">
                   <AlertTitle>{t("databases.errorTitle")}</AlertTitle>
-                  <AlertDescription>{t("databases.errorBody")}</AlertDescription>
+                  <AlertDescription>
+                    {t("databases.errorBody")}
+                  </AlertDescription>
                 </Alert>
               ) : showEmpty ? (
                 <div className="py-10 text-center">

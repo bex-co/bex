@@ -51,7 +51,8 @@ beforeEach(() => {
 
 describe("InstanceTypeRow", () => {
   it("renders the plan's name, CPU, and memory when the catalog resolves it", async () => {
-    instanceTypesState.byID = (id) => (id === "standard" ? STANDARD : undefined);
+    instanceTypesState.byID = (id) =>
+      id === "standard" ? STANDARD : undefined;
     renderRow("standard");
 
     expect(await screen.findByText("Standard")).toBeInTheDocument();
@@ -73,7 +74,8 @@ describe("InstanceTypeRow", () => {
 
   it("links Update to the plan picker for this service", async () => {
     renderRow("standard");
-    instanceTypesState.byID = (id) => (id === "standard" ? STANDARD : undefined);
+    instanceTypesState.byID = (id) =>
+      id === "standard" ? STANDARD : undefined;
 
     const link = await screen.findByRole("link", { name: "Update" });
     expect(link).toHaveAttribute("href", "/services/app/plan");

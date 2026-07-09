@@ -78,9 +78,7 @@ describe("useMetrics", () => {
       }),
     );
 
-    renderHook(() =>
-      useMetrics("app", "http_requests", { groupBy: "method" }),
-    );
+    renderHook(() => useMetrics("app", "http_requests", { groupBy: "method" }));
     expect(mockUseQuery).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -101,9 +99,7 @@ describe("useMetrics", () => {
       error: undefined,
     });
 
-    renderHook(() =>
-      useMetrics("app", "memory_limit", { aggregateMax: true }),
-    );
+    renderHook(() => useMetrics("app", "memory_limit", { aggregateMax: true }));
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),

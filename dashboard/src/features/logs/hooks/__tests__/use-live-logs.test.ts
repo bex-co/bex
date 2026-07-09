@@ -55,7 +55,9 @@ const renderLog = (
   ],
 });
 
-const baseOpts = (over: Partial<UseLiveLogsOptions> = {}): UseLiveLogsOptions => ({
+const baseOpts = (
+  over: Partial<UseLiveLogsOptions> = {},
+): UseLiveLogsOptions => ({
   resource: "web",
   enabled: true,
   type: "all",
@@ -105,9 +107,7 @@ describe("useLiveLogs", () => {
   });
 
   it("caps the ring buffer, dropping the oldest lines", () => {
-    const { result } = renderHook(() =>
-      useLiveLogs(baseOpts({ maxLines: 3 })),
-    );
+    const { result } = renderHook(() => useLiveLogs(baseOpts({ maxLines: 3 })));
     act(() => {
       for (let i = 1; i <= 5; i++) last!.frame(renderLog(String(i)));
     });

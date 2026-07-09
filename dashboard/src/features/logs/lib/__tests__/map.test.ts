@@ -44,9 +44,9 @@ describe("toLogLine / toLogLines", () => {
   it("drops null holes and undefined/null results", () => {
     expect(toLogLines(undefined)).toEqual([]);
     expect(toLogLines(null)).toEqual([]);
-    expect(toLogLines([gqlEntry(), null, gqlEntry({ message: "b" })])).toHaveLength(
-      2,
-    );
+    expect(
+      toLogLines([gqlEntry(), null, gqlEntry({ message: "b" })]),
+    ).toHaveLength(2);
   });
 });
 
@@ -96,12 +96,18 @@ describe("mergeLogLines", () => {
   });
 
   it("appends live lines after history, in order", () => {
-    const merged = mergeLogLines([line("a"), line("b")], [line("c"), line("d")]);
+    const merged = mergeLogLines(
+      [line("a"), line("b")],
+      [line("c"), line("d")],
+    );
     expect(merged.map((l) => l.key)).toEqual(["a", "b", "c", "d"]);
   });
 
   it("drops live lines whose key already appears in history", () => {
-    const merged = mergeLogLines([line("a"), line("b")], [line("b"), line("c")]);
+    const merged = mergeLogLines(
+      [line("a"), line("b")],
+      [line("b"), line("c")],
+    );
     expect(merged.map((l) => l.key)).toEqual(["a", "b", "c"]);
   });
 

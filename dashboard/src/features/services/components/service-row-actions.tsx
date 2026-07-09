@@ -83,11 +83,7 @@ export function ServiceRowActions({
             disabled={busy}
             aria-label={t("services.actionsMenu")}
           >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <MoreHorizontal />
-            )}
+            {busy ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

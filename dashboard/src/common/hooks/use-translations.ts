@@ -13,7 +13,10 @@ export function useTranslations() {
   const { t: i18nT, i18n } = useTranslation();
 
   const t = useCallback(
-    (key: keyof typeof en, params?: Record<string, string | number>): string => {
+    (
+      key: keyof typeof en,
+      params?: Record<string, string | number>,
+    ): string => {
       if (import.meta.env.DEV) {
         if (!key.includes(".")) {
           console.error(
@@ -22,7 +25,9 @@ export function useTranslations() {
           );
         }
         if (!(key in en)) {
-          console.warn(`Translation key "${key}" was not found in the en resources.`);
+          console.warn(
+            `Translation key "${key}" was not found in the en resources.`,
+          );
         }
       }
 

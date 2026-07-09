@@ -8,7 +8,11 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
 import { CopyButton } from "@/common/components/copy-button";
@@ -48,11 +52,7 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
           </>
         ) : (
           <Button onClick={() => void reveal()} disabled={loading}>
-            {loading ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Eye />
-            )}
+            {loading ? <Loader2 className="animate-spin" /> : <Eye />}
             {t("databases.connReveal")}
           </Button>
         )}
@@ -112,14 +112,18 @@ function PasswordField({ value }: { value: string }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{t("databases.connPassword")}</span>
+        <span className="text-sm font-medium">
+          {t("databases.connPassword")}
+        </span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={() => setShown((s) => !s)}
             aria-label={
-              shown ? t("databases.connHidePassword") : t("databases.connShowPassword")
+              shown
+                ? t("databases.connHidePassword")
+                : t("databases.connShowPassword")
             }
           >
             {shown ? <EyeOff /> : <Eye />}

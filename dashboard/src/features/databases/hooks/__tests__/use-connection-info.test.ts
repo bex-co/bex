@@ -21,7 +21,8 @@ describe("useConnectionInfo", () => {
         databaseConnectionInfo: {
           __typename: "PostgresConnectionInfo",
           password: "s3cret",
-          internalConnectionString: "postgresql://u:s3cret@db-rw.default:5432/db",
+          internalConnectionString:
+            "postgresql://u:s3cret@db-rw.default:5432/db",
           externalConnectionString: "",
           psqlCommand: "PGPASSWORD=s3cret psql …",
         },

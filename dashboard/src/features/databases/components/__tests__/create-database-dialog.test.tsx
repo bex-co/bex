@@ -65,7 +65,7 @@ describe("CreateDatabaseDialog", () => {
     expect(submit).toBeEnabled();
   });
 
-  it("submits with the default plan and omits an unset version (default -> \"\")", async () => {
+  it('submits with the default plan and omits an unset version (default -> "")', async () => {
     const onCreated = vi.fn();
     const user = userEvent.setup();
     render(<CreateDatabaseDialog onCreated={onCreated} />);

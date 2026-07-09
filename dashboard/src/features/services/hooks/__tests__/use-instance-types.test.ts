@@ -10,8 +10,20 @@ vi.mock("@apollo/client/react", () => ({
 beforeEach(() => mockUseQuery.mockReset());
 
 const CATALOG = [
-  { __typename: "InstanceType" as const, id: "free", name: "Free", cpu: "100m", memory: "512Mi" },
-  { __typename: "InstanceType" as const, id: "standard", name: "Standard", cpu: "1", memory: "2Gi" },
+  {
+    __typename: "InstanceType" as const,
+    id: "free",
+    name: "Free",
+    cpu: "100m",
+    memory: "512Mi",
+  },
+  {
+    __typename: "InstanceType" as const,
+    id: "standard",
+    name: "Standard",
+    cpu: "1",
+    memory: "2Gi",
+  },
 ];
 
 describe("useInstanceTypes", () => {
@@ -31,7 +43,11 @@ describe("useInstanceTypes", () => {
   });
 
   it("returns an empty list (not a crash) while loading with no data yet", () => {
-    mockUseQuery.mockReturnValue({ data: undefined, loading: true, error: undefined });
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
     const { result } = renderHook(() => useInstanceTypes());
     expect(result.current.instanceTypes).toEqual([]);
     expect(result.current.loading).toBe(true);
@@ -53,7 +69,11 @@ describe("useInstanceTypes", () => {
 
   it("surfaces a query error (e.g. instanceTypes unshipped on the server)", () => {
     const err = new Error('Cannot query field "instanceTypes"');
-    mockUseQuery.mockReturnValue({ data: undefined, loading: false, error: err });
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: err,
+    });
     const { result } = renderHook(() => useInstanceTypes());
     expect(result.current.error).toBe(err);
     expect(result.current.instanceTypes).toEqual([]);

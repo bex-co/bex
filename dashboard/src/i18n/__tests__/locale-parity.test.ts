@@ -23,15 +23,21 @@ describe("locale key parity", () => {
     expect(zhKeys).toEqual(enKeys);
   });
 
-  it.each(NAMESPACES)("$name: every key is namespace-prefixed", ({ name, en }) => {
-    for (const key of Object.keys(en)) {
-      expect(key.startsWith(`${name}.`)).toBe(true);
-    }
-  });
+  it.each(NAMESPACES)(
+    "$name: every key is namespace-prefixed",
+    ({ name, en }) => {
+      for (const key of Object.keys(en)) {
+        expect(key.startsWith(`${name}.`)).toBe(true);
+      }
+    },
+  );
 
-  it.each(NAMESPACES)("$name: every entry has a non-empty message", ({ en, zh }) => {
-    for (const entry of [...Object.values(en), ...Object.values(zh)]) {
-      expect(entry.message.length).toBeGreaterThan(0);
-    }
-  });
+  it.each(NAMESPACES)(
+    "$name: every entry has a non-empty message",
+    ({ en, zh }) => {
+      for (const entry of [...Object.values(en), ...Object.values(zh)]) {
+        expect(entry.message.length).toBeGreaterThan(0);
+      }
+    },
+  );
 });

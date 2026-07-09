@@ -94,7 +94,11 @@ export function ApplicationMetricsCard({
           title={t("metrics.totalInstances")}
           result={instances}
           headerExtra={
-            <LatestValue result={instances} unit="count" value={latestValue(instances.series)} />
+            <LatestValue
+              result={instances}
+              unit="count"
+              value={latestValue(instances.series)}
+            />
           }
         >
           <SvgLineChart unit="count" series={instancesSeries} />
@@ -130,7 +134,9 @@ function ResourceSection({
 
   const hasLimit = limit != null && limit !== 0;
   const noLimit = percentage && !hasLimit;
-  const unit = percentage ? "percentage" : (result.series[0]?.unit ?? limitUnit);
+  const unit = percentage
+    ? "percentage"
+    : (result.series[0]?.unit ?? limitUnit);
 
   const series = useMemo<LineSeriesInput[]>(
     () =>

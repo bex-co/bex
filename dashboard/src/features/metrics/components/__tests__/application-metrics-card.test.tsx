@@ -124,9 +124,9 @@ describe("ApplicationMetricsCard", () => {
 
     renderCard(true);
 
-    expect(
-      screen.getAllByText(/No limit configured/).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/No limit configured/).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("draws one line per instance and a legend naming each", () => {

@@ -17,7 +17,11 @@ import zhWorkspaces from "@/features/workspaces/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
-export { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, DEFAULT_LANGUAGE } from "./config";
+export {
+  SUPPORTED_LANGUAGES,
+  LANGUAGE_NAMES,
+  DEFAULT_LANGUAGE,
+} from "./config";
 export { persistLanguage } from "./utils";
 export { detectLanguage } from "./detect-language";
 

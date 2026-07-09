@@ -51,9 +51,7 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
 }
 
 // toLogLines maps a full GraphQL `logs` result, dropping the nullable holes.
-export function toLogLines(
-  entries: LogsQuery["logs"] | undefined,
-): LogLine[] {
+export function toLogLines(entries: LogsQuery["logs"] | undefined): LogLine[] {
   return (entries ?? [])
     .filter((e): e is GraphQLLogEntry => e != null)
     .map(toLogLine);

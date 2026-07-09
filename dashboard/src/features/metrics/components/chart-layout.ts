@@ -64,7 +64,10 @@ export function groupPointsByTime(seriesList: SeriesInput[]): ChartFrame[] {
 }
 
 /** A frame's rows as tooltip rows, values formatted for the chart's unit. */
-export function frameTooltipRows(frame: ChartFrame, unit: string): TooltipRow[] {
+export function frameTooltipRows(
+  frame: ChartFrame,
+  unit: string,
+): TooltipRow[] {
   return frame.rows.map((r) => ({
     color: r.color,
     value: formatMetricShort(unit, r.value),

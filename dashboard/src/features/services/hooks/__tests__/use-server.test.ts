@@ -73,7 +73,13 @@ describe("useServer", () => {
 
   it("refetch resolves the fresh view as a one-element list (poll-to-converge shape)", async () => {
     const refetch = vi.fn().mockResolvedValue({
-      data: { server: { ...wireService, suspended: "not_suspended", phase: "Running" } },
+      data: {
+        server: {
+          ...wireService,
+          suspended: "not_suspended",
+          phase: "Running",
+        },
+      },
     });
     mockUseQuery.mockReturnValue({
       data: { server: wireService },
@@ -86,7 +92,11 @@ describe("useServer", () => {
     const list = await result.current.refetch();
 
     expect(list).toHaveLength(1);
-    expect(list[0]).toMatchObject({ id: "app", suspended: false, phase: "Running" });
+    expect(list[0]).toMatchObject({
+      id: "app",
+      suspended: false,
+      phase: "Running",
+    });
   });
 
   it("refetch resolves an empty list when the App is gone", async () => {

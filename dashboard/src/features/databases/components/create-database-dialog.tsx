@@ -117,7 +117,9 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("databases.createTitle")}</DialogTitle>
-          <DialogDescription>{t("databases.createDescription")}</DialogDescription>
+          <DialogDescription>
+            {t("databases.createDescription")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -142,7 +144,9 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
             <Label htmlFor="db-plan">{t("databases.fieldPlan")}</Label>
             <Select value={plan} onValueChange={setPlanOverride}>
               <SelectTrigger id="db-plan" className="w-full">
-                <SelectValue placeholder={t("databases.fieldPlanPlaceholder")} />
+                <SelectValue
+                  placeholder={t("databases.fieldPlanPlaceholder")}
+                />
               </SelectTrigger>
               <SelectContent>
                 {instanceTypes.map((it) => (

@@ -1,7 +1,4 @@
-import type {
-  DatabasesQuery,
-  DatabaseQuery,
-} from "@/graphql/definitions";
+import type { DatabasesQuery, DatabaseQuery } from "@/graphql/definitions";
 import type {
   DatabaseView,
   DatabaseDetailView,
@@ -18,7 +15,9 @@ export const CREATING = "creating";
 export const UNAVAILABLE = "unavailable";
 
 /** A single item as it comes off the `databases` query (fields nullable). */
-type DatabaseNode = NonNullable<NonNullable<DatabasesQuery["databases"]>[number]>;
+type DatabaseNode = NonNullable<
+  NonNullable<DatabasesQuery["databases"]>[number]
+>;
 type DatabaseDetailNode = NonNullable<DatabaseQuery["database"]>;
 
 /** Map a wire `Database` list node onto the normalized DatabaseView. */
@@ -71,9 +70,7 @@ const STATUS_MAP: Record<string, DatabaseStatus> = {
 };
 
 /** Resolve a database's display status from Render's status enum. */
-export function deriveStatus(d: {
-  status: string;
-}): DatabaseStatus {
+export function deriveStatus(d: { status: string }): DatabaseStatus {
   const status = STATUS_MAP[d.status.toLowerCase()];
   if (status) return status;
   return { key: "unknown", variant: "outline" };
@@ -90,6 +87,7 @@ export function computeStats(databases: DatabaseView[]): DatabaseStats {
     total: databases.length,
     available: databases.filter((d) => deriveStatus(d).key === "available")
       .length,
-    creating: databases.filter((d) => deriveStatus(d).key === "creating").length,
+    creating: databases.filter((d) => deriveStatus(d).key === "creating")
+      .length,
   };
 }

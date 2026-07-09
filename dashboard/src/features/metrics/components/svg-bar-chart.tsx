@@ -107,14 +107,19 @@ export function SvgBarChart({ unit, series }: SvgBarChartProps) {
               onBlur={() => setActiveIndex((cur) => (cur === i ? null : cur))}
             >
               {frame.rows.map((row, j) => {
-                const h =
-                  maxVal === 0 ? 0 : (row.value / maxVal) * innerHeight;
+                const h = maxVal === 0 ? 0 : (row.value / maxVal) * innerHeight;
                 yCursor -= h;
                 const isTop = yCursor - (baseline - stackH) < 0.5;
                 return (
                   <path
                     key={j}
-                    d={roundedTopBarPath(x, yCursor, barWidth, h, isTop ? 4 : 0)}
+                    d={roundedTopBarPath(
+                      x,
+                      yCursor,
+                      barWidth,
+                      h,
+                      isTop ? 4 : 0,
+                    )}
                     fill={row.color}
                     opacity={isActive ? 1 : 0.85}
                   />

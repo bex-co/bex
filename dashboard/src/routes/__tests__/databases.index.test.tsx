@@ -92,7 +92,12 @@ describe("DatabasesPage", () => {
   it("renders live databases with status badges, detail links, and row actions", async () => {
     databasesState.databases = [
       db({ id: "shop-db", name: "shop-db", status: "available" }),
-      db({ id: "prov-db", name: "prov-db", status: "creating", plan: "basic-1gb" }),
+      db({
+        id: "prov-db",
+        name: "prov-db",
+        status: "creating",
+        plan: "basic-1gb",
+      }),
     ];
     renderPage();
 

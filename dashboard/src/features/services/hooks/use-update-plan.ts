@@ -6,7 +6,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface UseUpdatePlanResult {
   /** Fires updateServicePlan; resolves true on success (toasted either way). */
-  updatePlan: (id: string, plan: string, displayName: string) => Promise<boolean>;
+  updatePlan: (
+    id: string,
+    plan: string,
+    displayName: string,
+  ) => Promise<boolean>;
   busy: boolean;
 }
 

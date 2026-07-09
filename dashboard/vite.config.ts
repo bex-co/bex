@@ -49,7 +49,14 @@ function kratosDevProxy(target = "https://auth.bex.co"): Plugin {
             // host/connection are per-hop; undici sets its own
             // content-length and negotiates (and decompresses) encoding.
             if (typeof v !== "string") continue;
-            if (["host", "connection", "content-length", "accept-encoding"].includes(k))
+            if (
+              [
+                "host",
+                "connection",
+                "content-length",
+                "accept-encoding",
+              ].includes(k)
+            )
               continue;
             headers[k] = v;
           }
@@ -65,7 +72,12 @@ function kratosDevProxy(target = "https://auth.bex.co"): Plugin {
           res.statusCode = upstream.status;
           upstream.headers.forEach((v, k) => {
             if (
-              ["content-encoding", "content-length", "transfer-encoding", "set-cookie"].includes(k)
+              [
+                "content-encoding",
+                "content-length",
+                "transfer-encoding",
+                "set-cookie",
+              ].includes(k)
             )
               return;
             res.setHeader(k, v);
@@ -114,7 +126,14 @@ function graphqlDevProxy(target = "https://api.bex.co/graphql"): Plugin {
           const headers: Record<string, string> = {};
           for (const [k, v] of Object.entries(req.headers)) {
             if (typeof v !== "string") continue;
-            if (["host", "connection", "content-length", "accept-encoding"].includes(k))
+            if (
+              [
+                "host",
+                "connection",
+                "content-length",
+                "accept-encoding",
+              ].includes(k)
+            )
               continue;
             headers[k] = v;
           }
@@ -128,7 +147,13 @@ function graphqlDevProxy(target = "https://api.bex.co/graphql"): Plugin {
           });
           res.statusCode = upstream.status;
           upstream.headers.forEach((v, k) => {
-            if (["content-encoding", "content-length", "transfer-encoding"].includes(k))
+            if (
+              [
+                "content-encoding",
+                "content-length",
+                "transfer-encoding",
+              ].includes(k)
+            )
               return;
             res.setHeader(k, v);
           });

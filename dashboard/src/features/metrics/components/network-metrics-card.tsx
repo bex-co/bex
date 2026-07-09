@@ -152,7 +152,10 @@ export function NetworkMetricsCard({
             series={latencySeries}
           />
         </MetricSection>
-        <MetricSection title={t("metrics.outboundBandwidth")} result={bandwidth}>
+        <MetricSection
+          title={t("metrics.outboundBandwidth")}
+          result={bandwidth}
+        >
           <SvgLineChart
             unit={bandwidth.series[0]?.unit ?? "bytes"}
             series={bandwidthSeries}

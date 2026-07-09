@@ -40,7 +40,8 @@ function trustedClients(): Set<string> {
  */
 export async function handleConsent(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const home = () => Response.redirect(new URL("/", url.origin).toString(), 302);
+  const home = () =>
+    Response.redirect(new URL("/", url.origin).toString(), 302);
 
   const consentChallenge = url.searchParams.get("consent_challenge");
   if (!consentChallenge) return home();

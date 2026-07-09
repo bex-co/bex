@@ -19,7 +19,8 @@ const enMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.responseTimes": {
     message: "Response Times ({quantile})",
-    description: "Network metrics chart section title, with the selected quantile",
+    description:
+      "Network metrics chart section title, with the selected quantile",
   },
   "metrics.outboundBandwidth": {
     message: "Outbound Bandwidth",
@@ -27,7 +28,8 @@ const enMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.monthToDateBandwidth": {
     message: "{amount} used this month",
-    description: "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
+    description:
+      "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
   "metrics.sourceNotConfigured": {
     message: "Metrics source not configured",

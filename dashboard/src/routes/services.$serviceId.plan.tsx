@@ -29,6 +29,9 @@ export function ServicePlanPage() {
   }
 
   return (
-    <InstanceTypePicker serviceId={serviceId} currentPlan={service?.plan ?? null} />
+    <InstanceTypePicker
+      serviceId={serviceId}
+      currentPlan={service?.plan ?? null}
+    />
   );
 }

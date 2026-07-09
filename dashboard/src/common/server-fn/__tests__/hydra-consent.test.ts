@@ -66,7 +66,9 @@ describe("handleConsent", () => {
     expect(accept?.url).toContain("/admin/oauth2/auth/requests/consent/accept");
     const body = JSON.parse(accept?.init?.body as string);
     expect(body.grant_scope).toEqual(["openid", "offline_access"]);
-    expect(body.grant_access_token_audience).toEqual(["https://api.bex.co/mcp"]);
+    expect(body.grant_access_token_audience).toEqual([
+      "https://api.bex.co/mcp",
+    ]);
   });
 
   it("auto-accepts a client Hydra marks skip_consent", async () => {

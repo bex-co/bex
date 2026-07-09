@@ -54,7 +54,11 @@ export function LogFilterBar({
         value={type}
         onValueChange={(v) => onTypeChange(v as LogTypeFilter)}
       >
-        <SelectTrigger size="sm" className="w-44" aria-label={t("logs.typeLabel")}>
+        <SelectTrigger
+          size="sm"
+          className="w-44"
+          aria-label={t("logs.typeLabel")}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

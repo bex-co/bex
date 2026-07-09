@@ -26,14 +26,24 @@ vi.mock("@/features/services/hooks/use-update-plan", () => ({
   useUpdatePlan: () => ({ updatePlan, busy: false }),
 }));
 
-const FREE: InstanceTypeView = { id: "free", name: "Free", cpu: "100m", memory: "512Mi" };
+const FREE: InstanceTypeView = {
+  id: "free",
+  name: "Free",
+  cpu: "100m",
+  memory: "512Mi",
+};
 const STANDARD: InstanceTypeView = {
   id: "standard",
   name: "Standard",
   cpu: "1",
   memory: "2Gi",
 };
-const PRO: InstanceTypeView = { id: "pro", name: "Pro", cpu: "2", memory: "4Gi" };
+const PRO: InstanceTypeView = {
+  id: "pro",
+  name: "Pro",
+  cpu: "2",
+  memory: "4Gi",
+};
 
 function renderPicker(currentPlan: string | null) {
   const rootRoute = createRootRoute();
@@ -97,7 +107,9 @@ describe("InstanceTypePicker", () => {
       within(dialog).getByText("Change instance type to Pro?"),
     ).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save Changes" }),
+    );
 
     expect(updatePlan).toHaveBeenCalledWith("app", "pro", "Pro");
     expect(await screen.findByText("settings page")).toBeInTheDocument();
@@ -111,7 +123,9 @@ describe("InstanceTypePicker", () => {
     await user.click(await screen.findByRole("radio", { name: /Pro\b/ }));
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save Changes" }),
+    );
 
     expect(updatePlan).toHaveBeenCalled();
     expect(screen.queryByText("settings page")).not.toBeInTheDocument();

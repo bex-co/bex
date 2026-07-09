@@ -44,9 +44,7 @@ describe("useOryFlow", () => {
   });
 
   it("adopts an inbound ?flow= id and scrubs it from the URL", () => {
-    const { result } = renderHook(() =>
-      useOryFlow("login", "inbound-flow-id"),
-    );
+    const { result } = renderHook(() => useOryFlow("login", "inbound-flow-id"));
 
     // The inbound id is persisted, the URL is replace-navigated clean, and
     // no fetch happens until the re-render without the param.
@@ -151,7 +149,9 @@ describe("useOryFlow", () => {
       writable: true,
     });
 
-    renderHook(() => useOryFlow("login", undefined, { loginChallenge: "challenge-123" }));
+    renderHook(() =>
+      useOryFlow("login", undefined, { loginChallenge: "challenge-123" }),
+    );
 
     await waitFor(() =>
       expect(window.location.href).toBe("https://oauth.bex.co/continue"),

@@ -22,7 +22,9 @@ describe("LanguageSwitcher", () => {
 
     await user.click(screen.getByRole("button", { name: "Change language" }));
 
-    expect(screen.getByRole("menuitem", { name: "English" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "English" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "中文" })).toBeInTheDocument();
   });
 
@@ -34,7 +36,9 @@ describe("LanguageSwitcher", () => {
 
     const activeItem = screen.getByRole("menuitem", { name: "English" });
     expect(activeItem.querySelector("svg")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "中文" }).querySelector("svg")).toBeNull();
+    expect(
+      screen.getByRole("menuitem", { name: "中文" }).querySelector("svg"),
+    ).toBeNull();
   });
 
   it("selecting a language changes i18next's language and persists it", async () => {

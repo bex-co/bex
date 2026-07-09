@@ -38,7 +38,9 @@ describe("useUpdatePlan", () => {
     expect(mutate).toHaveBeenCalledWith({
       variables: { id: "app", plan: "pro_plus" },
     });
-    expect(toastSuccess).toHaveBeenCalledWith("Instance type updated to Pro Plus");
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Instance type updated to Pro Plus",
+    );
     expect(toastError).not.toHaveBeenCalled();
   });
 

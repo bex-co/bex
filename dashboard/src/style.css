@@ -138,7 +138,11 @@
    (`.dark .ory-elements`, not `.dark`: it must out-cascade the light
    bridge's declaration directly on `.ory-elements` above.) */
 .dark .ory-elements {
-  --input-background-default: color-mix(in oklab, var(--input) 30%, transparent);
+  --input-background-default: color-mix(
+    in oklab,
+    var(--input) 30%,
+    transparent
+  );
   --input-background-hover: color-mix(in oklab, var(--input) 30%, transparent);
 }
 

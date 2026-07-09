@@ -64,7 +64,9 @@ describe("useTranslations", () => {
       result.current.t("common.doesNotExist");
 
       expect(warnSpy).toHaveBeenCalledOnce();
-      expect(warnSpy.mock.calls[0][0]).toMatch(/was not found in the en resources/);
+      expect(warnSpy.mock.calls[0][0]).toMatch(
+        /was not found in the en resources/,
+      );
     });
 
     it("does not warn for a valid, namespaced key", () => {

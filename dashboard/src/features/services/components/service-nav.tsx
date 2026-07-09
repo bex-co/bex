@@ -21,7 +21,11 @@ const ITEMS: ServiceNavItem[] = [
     to: "/services/$serviceId/env",
     exact: false,
   },
-  { labelKey: "services.navLogs", to: "/services/$serviceId/logs", exact: false },
+  {
+    labelKey: "services.navLogs",
+    to: "/services/$serviceId/logs",
+    exact: false,
+  },
   {
     labelKey: "services.navMetrics",
     to: "/services/$serviceId/metrics",

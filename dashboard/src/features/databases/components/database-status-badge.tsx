@@ -12,5 +12,7 @@ import { STATUS_LABEL } from "@/features/databases/lib/labels";
 export function DatabaseStatusBadge({ status }: { status: string }) {
   const { t } = useTranslations();
   const derived = deriveStatus({ status });
-  return <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>;
+  return (
+    <Badge variant={derived.variant}>{t(STATUS_LABEL[derived.key])}</Badge>
+  );
 }

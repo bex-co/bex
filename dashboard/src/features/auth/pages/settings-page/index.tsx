@@ -2,7 +2,10 @@ import { useSearch } from "@tanstack/react-router";
 import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { useOryConfig, oryHideSettingsPageHeader } from "@/common/lib/ory/config";
+import {
+  useOryConfig,
+  oryHideSettingsPageHeader,
+} from "@/common/lib/ory/config";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -28,7 +31,9 @@ export default function SettingsPage() {
             <h1 className="text-2xl font-bold text-foreground">
               {t("auth.settingsTitle")}
             </h1>
-            <p className="text-muted-foreground">{t("auth.settingsSubtitle")}</p>
+            <p className="text-muted-foreground">
+              {t("auth.settingsSubtitle")}
+            </p>
           </div>
           {flow ? (
             <SessionProvider>

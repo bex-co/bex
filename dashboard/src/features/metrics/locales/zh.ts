@@ -19,7 +19,8 @@ const zhMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.responseTimes": {
     message: "响应时间（{quantile}）",
-    description: "Network metrics chart section title, with the selected quantile",
+    description:
+      "Network metrics chart section title, with the selected quantile",
   },
   "metrics.outboundBandwidth": {
     message: "出站带宽",
@@ -27,7 +28,8 @@ const zhMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.monthToDateBandwidth": {
     message: "本月已使用 {amount}",
-    description: "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
+    description:
+      "Footer under the Outbound Bandwidth chart, showing month-to-date egress",
   },
   "metrics.sourceNotConfigured": {
     message: "未配置指标数据源",

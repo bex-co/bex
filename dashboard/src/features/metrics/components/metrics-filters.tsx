@@ -93,7 +93,9 @@ export function MetricsFilters({
         onValueChange={(v) => onPercentageChange(v === "percentage")}
       >
         <TabsList>
-          <TabsTrigger value="percentage">{t("metrics.filterPercentage")}</TabsTrigger>
+          <TabsTrigger value="percentage">
+            {t("metrics.filterPercentage")}
+          </TabsTrigger>
           <TabsTrigger value="total">{t("metrics.filterTotal")}</TabsTrigger>
         </TabsList>
       </Tabs>
@@ -120,7 +122,11 @@ export function MetricsFilters({
           onStatusCodeChange(v === STATUS_CODE_ALL ? "" : v)
         }
       >
-        <SelectTrigger size="sm" className="w-40" aria-label={t("metrics.statusCode")}>
+        <SelectTrigger
+          size="sm"
+          className="w-40"
+          aria-label={t("metrics.statusCode")}
+        >
           <span className="text-muted-foreground">
             {t("metrics.statusCode")}
           </span>

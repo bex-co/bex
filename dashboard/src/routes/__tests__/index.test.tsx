@@ -141,14 +141,18 @@ describe("HomePage", () => {
       screen.queryByRole("button", { name: "Open actions menu" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("No services yet")).not.toBeInTheDocument();
-    expect(screen.queryByText("Couldn't load services")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't load services"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an error card when the query fails with no data", async () => {
     servicesState.error = new Error("network down");
     renderHomePage();
 
-    expect(await screen.findByText("Couldn't load services")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't load services"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 

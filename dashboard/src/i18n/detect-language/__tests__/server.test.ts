@@ -36,7 +36,9 @@ describe("detectLanguageOnServer", () => {
   });
 
   it("prefers the ?lang= URL param over everything else", async () => {
-    mockGetSearchParamOnServer.mockImplementation((key) => (key === "lang" ? "zh" : null));
+    mockGetSearchParamOnServer.mockImplementation((key) =>
+      key === "lang" ? "zh" : null,
+    );
     mockGetCookie.mockReturnValue("en");
     mockGetRequestHeader.mockReturnValue("en");
 
@@ -45,14 +47,18 @@ describe("detectLanguageOnServer", () => {
   });
 
   it("accepts ?locale= as a fallback for ?lang=", async () => {
-    mockGetSearchParamOnServer.mockImplementation((key) => (key === "locale" ? "zh" : null));
+    mockGetSearchParamOnServer.mockImplementation((key) =>
+      key === "locale" ? "zh" : null,
+    );
 
     const detectLanguageOnServer = await importDetectLanguageOnServer();
     expect(detectLanguageOnServer()).toBe("zh");
   });
 
   it("ignores an unsupported URL language and falls through to the cookie", async () => {
-    mockGetSearchParamOnServer.mockImplementation((key) => (key === "lang" ? "fr" : null));
+    mockGetSearchParamOnServer.mockImplementation((key) =>
+      key === "lang" ? "fr" : null,
+    );
     mockGetCookie.mockReturnValue("zh");
 
     const detectLanguageOnServer = await importDetectLanguageOnServer();
