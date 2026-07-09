@@ -63,11 +63,6 @@ type Service struct {
 	promHTTP *http.Client
 }
 
-// ErrUsageUnavailable is returned by the verb when the store or Prometheus
-// isn't wired — the same pattern as secrets/postgres returning their own
-// ErrUnavailable sentinel so adapters can map it to 503.
-var ErrUsageUnavailable = core.Err("usage: store or Prometheus not configured")
-
 // NewService constructs a Service, normalising PromBase (strips trailing slash
 // so every Prometheus URL is canonical) and resolving a nil HTTP client to
 // http.DefaultClient. Callers in tests may pass their own *http.Client to
@@ -101,13 +96,16 @@ type ServiceUsage struct {
 	Rows      []store.UsageSummaryRow
 }
 
-// MonthToDate returns the calling workspace's month-to-date usage summary.
-func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
+// monthToDateAt is the implementation used by adapters. now controls both the
+// calendar month (monthStart is derived from it) and the inclusive upper bound
+// of the query. Adapters pass s.Now().UTC() for the live query or the start of
+// the next month for a full historical-month query.
+func (s *Service) monthToDateAt(ctx context.Context, now time.Time) (Summary, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return Summary{}, err
 	}
 	if s.Store == nil {
-		return Summary{}, ErrUsageUnavailable
+		return Summary{}, core.ErrUsageUnavailable
 	}
 	tenantID, ok := s.Base.Tenant(ctx)
 	if !ok {
@@ -116,11 +114,17 @@ func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
 		// store-off mode.
 		return Summary{}, nil
 	}
-	rows, err := s.Store.UsageMonthToDate(ctx, tenantID, time.Now().UTC())
+	rows, err := s.Store.UsageMonthToDate(ctx, tenantID, now)
 	if err != nil {
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
 	return summarise(tenantID, rows), nil
+}
+
+// MonthToDate returns the calling workspace's month-to-date usage summary
+// for the current calendar month.
+func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
+	return s.monthToDateAt(ctx, s.Now().UTC())
 }
 
 // summarise groups flat summary rows by service.

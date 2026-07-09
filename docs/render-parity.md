@@ -134,6 +134,7 @@ Three verbs where bex's AI-native posture exposes _more_ than Render does — tr
 - **API-key management over the API** — `POST/GET/DELETE /v1/api-keys` + GraphQL + MCP. Render mints keys in the dashboard only (account-scoped, non-expiring); bex makes them a first-class, workspace-scoped, revocable OAuth2-client resource an agent can rotate itself ([auth.md](auth.md)).
 - **Deploy-from-chat** — MCP `deploy {repo, bexYaml}` rides the same `Create` verb (no bespoke endpoint): one call takes a repo + `bex.yml` to a live URL ([deploy-from-chat.md](deploy-from-chat.md)).
 - **Inbound push-to-deploy webhook** — `POST /v1/webhooks/git` (HMAC-SHA256, outside the OAuth gate). Render's public `/webhooks` are _outbound_; bex additionally accepts the git host's push.
+- **Usage metering** — `GET /v1/usage` + GraphQL `usage` query + MCP `get_usage` tool return month-to-date instance-seconds (per tier), egress bytes, and build seconds for the caller's workspace. Render's billing surface is dashboard-only (no REST/GraphQL/MCP billing endpoints — verified against Render's OpenAPI spec 2026-07-09). See [docs/usage-metering.md](usage-metering.md).
 
 Read-only SQL over MCP (`query_render_postgres`) is parity, not a superset — Render is MCP-only there too.
 

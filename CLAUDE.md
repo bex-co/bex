@@ -74,6 +74,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/render-parity.md](docs/render-parity.md) — the parity ledger: one row per Render capability × REST/GraphQL/MCP/UI, each cell ✅/◐/✖/— with evidence; gaps mapped to owning milestones.
 - [docs/deploy-from-chat.md](docs/deploy-from-chat.md) — ADR: deploy-from-chat rides `Core.Create` (no bespoke endpoint) + the HMAC push-to-deploy webhook (pillar 4).
 - [docs/observability.md](docs/observability.md) — Logs (query + live-tail) and metrics over REST/GraphQL/MCP.
+- [docs/usage-metering.md](docs/usage-metering.md) — Hourly usage rollup (instance-seconds/egress/build-seconds) + REST/GraphQL/MCP surface (`GET /v1/usage`, `usage` query, `get_usage` tool); bex extension (Render has no usage API).
 - [docs/deployment.md](docs/deployment.md) — deploy flow, health gating, revisions.
 - [docs/custom-domain.md](docs/custom-domain.md) — `App.spec.hosts[]`, Traefik + cert-manager.
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.

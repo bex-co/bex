@@ -267,8 +267,8 @@ func TestStoreNilReturnsUnavailable(t *testing.T) {
 		Store: nil, // store off
 	}
 	_, err := svc.MonthToDate(context.Background())
-	if !errors.Is(err, ErrUsageUnavailable) {
-		t.Errorf("expected ErrUsageUnavailable, got %v", err)
+	if !errors.Is(err, core.ErrUsageUnavailable) {
+		t.Errorf("expected core.ErrUsageUnavailable, got %v", err)
 	}
 }
 

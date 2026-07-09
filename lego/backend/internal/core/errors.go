@@ -55,6 +55,9 @@ var (
 	// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
 	// consulted — requests fail closed (503), never pass through.
 	ErrAuthzUnavailable = errors.New("authorization service unavailable")
+	// ErrUsageUnavailable is returned by the usage verb when the store isn't
+	// wired (BEX_CP_DB_URI unset); adapters surface it as 503.
+	ErrUsageUnavailable = errors.New("usage unavailable")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,
