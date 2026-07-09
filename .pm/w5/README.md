@@ -12,6 +12,7 @@
 - [x] **m6** — Live logs page (Render-consistent: historical query + SSE live-tail) (6 tasks) ← from `/pm-brainstorm` 2026-07-06 — done 2026-07-08, moved to `done/m6/`
 - [x] **m7** — Service Settings + instance-type picker (Render parity) (6 tasks) ← from user request 2026-07-08, Render settings/plan pages captured live; UI half of w1/m8's plan API — done 2026-07-08, moved to `done/m7/`
 - [x] **m8** — Databases page (managed Postgres, Render-consistent) (8 tasks) ← promoted from `001` via `/pm-brainstorm` 2026-07-08 — done 2026-07-08 (kept at `m8/`, the active `/goal` target; move to `done/m8/` on the next `/pm` sweep)
+- [x] **m9** — MCP `query_render_postgres` — read-only SQL for agents (5 tasks) ← from `/pm-brainstorm for w2` 2026-07-08, reassigned to w5 (original `w2/m6` label collided with w5's done m6) — done 2026-07-08, moved to `done/m9/`
 
 ## Inbox
 

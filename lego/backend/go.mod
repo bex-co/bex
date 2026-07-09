@@ -4,6 +4,7 @@ go 1.25.7
 
 require (
 	github.com/graphql-go/graphql v0.8.1
+	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	golang.org/x/sync v0.20.0
 	k8s.io/api v0.35.0
@@ -13,7 +14,6 @@ require (
 )
 
 require (
-	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

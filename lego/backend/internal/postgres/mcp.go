@@ -24,12 +24,11 @@ import (
 
 // mcp.go is the MCP fragment for managed Postgres. Tool names track Render's
 // official MCP server (render-oss/render-mcp-server): list_postgres_instances /
-// get_postgres / create_postgres, keyed on Render's `postgresId`. Render's MCP
-// also ships query_render_postgres (run a read-only SQL query) — omitted here:
-// it needs live in-cluster connectivity to the tenant's Postgres from the API
-// layer, a deferred capability, so it's omitted rather than faked (the same rule
-// the REST/GraphQL fragments follow for HA/PITR/pooler). Every tool delegates to
-// the same Service method REST and GraphQL call, so the three surfaces can't drift.
+// get_postgres / create_postgres, keyed on Render's `postgresId`, plus Render's
+// query_render_postgres (run a read-only SQL query) — MCP-only, exactly like
+// Render, which exposes no REST/GraphQL equivalent (see query.go for the rails).
+// Every read/create tool delegates to the same Service method REST and GraphQL
+// call, so those three surfaces can't drift.
 
 // postgresArgs is the shared single-instance argument. Render's tools key on
 // `postgresId`; for bex that id is the Database name (opaque, round-tripped from
@@ -51,6 +50,14 @@ type createPostgresArgs struct {
 // listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
 type listPostgresResult struct {
 	Postgres []PostgresView `json:"postgres"`
+}
+
+// queryPostgresArgs mirrors Render's query_render_postgres arguments verbatim
+// (postgresId, sql) — a Render-trained agent calls the tool literally, so the
+// names can't drift.
+type queryPostgresArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	SQL        string `json:"sql" jsonschema:"the read-only SQL query to run (SELECT/SHOW/EXPLAIN); writes, DDL and multi-statement input are rejected"`
 }
 
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
@@ -92,5 +99,16 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, PostgresView{}, err
 		}
 		return nil, v, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "query_render_postgres",
+		Description: "Run a read-only SQL query against a managed Postgres database and return the resulting columns and rows. The statement runs inside a read-only transaction with a server-side timeout; writes, DDL and long-running queries are rejected, and large result sets are truncated.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (*mcp.CallToolResult, QueryResult, error) {
+		res, err := s.Query(ctx, in.PostgresID, in.SQL)
+		if err != nil {
+			return nil, QueryResult{}, err
+		}
+		return nil, res, nil
 	})
 }

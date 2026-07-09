@@ -131,6 +131,29 @@ func (s *Service) fetchDatabase(ctx context.Context, name string) (*appv1alpha1.
 	return &d, nil
 }
 
+// loadAppSecret resolves a Database and its CNPG-generated "<name>-app" Secret
+// (username/password/dbname/uri) — the credential path both connection-info and
+// the read-only query verb share. Returns core.ErrNotFound when the Database or
+// its Secret isn't provisioned yet.
+func (s *Service) loadAppSecret(ctx context.Context, name string) (*appv1alpha1.Database, *corev1.Secret, error) {
+	d, err := s.fetchDatabase(ctx, name)
+	if err != nil {
+		return nil, nil, err
+	}
+	secretName := d.Status.SecretName
+	if secretName == "" {
+		secretName = name + "-app"
+	}
+	var sec corev1.Secret
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil, core.ErrNotFound // not provisioned yet
+		}
+		return nil, nil, err
+	}
+	return d, &sec, nil
+}
+
 // ListPostgres returns every managed Postgres in the namespace.
 func (s *Service) ListPostgres(ctx context.Context) ([]PostgresView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -203,19 +226,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, sec, err := s.loadAppSecret(ctx, name)
 	if err != nil {
-		return PostgresConnectionInfo{}, err
-	}
-	secretName := d.Status.SecretName
-	if secretName == "" {
-		secretName = name + "-app"
-	}
-	var sec corev1.Secret
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
-		if apierrors.IsNotFound(err) {
-			return PostgresConnectionInfo{}, core.ErrNotFound // not provisioned yet
-		}
 		return PostgresConnectionInfo{}, err
 	}
 	user := string(sec.Data["username"])
