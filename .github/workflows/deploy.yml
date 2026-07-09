@@ -211,6 +211,7 @@ jobs:
       # needed if the client secret rotates. Fix: renew kubelet certs on the node.
       - name: seed bootstrap client
         continue-on-error: true
+        timeout-minutes: 5
         env:
           BEX_BOOTSTRAP_CLIENT_SECRET: ${{ secrets.BEX_BOOTSTRAP_CLIENT_SECRET }}
         run: |
@@ -230,6 +231,7 @@ jobs:
       # are rare and the last applied model stays in OpenFGA until next success.
       - name: apply authorization model
         continue-on-error: true
+        timeout-minutes: 12
         env:
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
         run: |
@@ -279,6 +281,7 @@ jobs:
       # If the pod restarted and this step fails, unseal manually via bao-init.sh.
       - name: unseal OpenBao + configure Kubernetes auth
         continue-on-error: true
+        timeout-minutes: 5
         env:
           BAO_UNSEAL_KEY_1: ${{ secrets.BAO_UNSEAL_KEY_1 }}
           BAO_UNSEAL_KEY_2: ${{ secrets.BAO_UNSEAL_KEY_2 }}
