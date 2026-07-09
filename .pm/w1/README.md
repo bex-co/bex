@@ -17,15 +17,16 @@
 - [x] **m10** — OpenBao prod wiring: env-vars live in prod (6 tasks) ← from `/pm-brainstorm for w1` 2026-07-08 (docs/secrets.md "Prod deploy path") — done 2026-07-08 (implementation shipped + locally validated), moved to `done/m10/`; prod activation (first init + live PUT) is the operator's runbook there
 - [x] **m11** — Render custom-domains API over `App.spec.hosts[]` (5 tasks) ← promoted from `003` 2026-07-08
 - [x] **m11.5** — Custom-domains dashboard section, UI half of m11 (8 tasks) ← promoted from `w5/003` 2026-07-09 — done 2026-07-09, moved to `done/m11.5/`
-- [ ] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08
+- [x] **m13** — Render parity audit: REST · GraphQL · MCP · UI matrix (6 tasks) ← user request 2026-07-08 — done 2026-07-08, moved to `done/m13/` (shipped `docs/render-parity.md`; 5 gap notes filed: `008`–`011`, `w3/002`)
 
 ## Suggested execution order (2026-07-08 refinement)
 
 1. **m9** — tenant onboarding + enforced OpenFGA (m2/t007 marked done; prod authz is still allow-all — the standing security gap).
-2. **m13** — parity audit (independent; orders the remaining parity queue with evidence).
-3. **m11** — custom-domains API; **m5** — build-from-git (t001/t002 are the last missing piece of the flow; the webhook half already shipped via w2).
-4. **m3** — elastic substrate (replica-semantics contract settled by w2/m12; scale-down pays off most now that m4's sleep empties nodes).
-5. **m4.5** — dashboard sleep UX (pairs with shipped m4; UI-half work).
+2. **m5** — build-from-git (t001/t002 are the last missing piece of the flow; the webhook half already shipped via w2).
+3. **m3** — elastic substrate (replica-semantics contract settled by w2/m12; scale-down pays off most now that m4's sleep empties nodes).
+4. **m4.5** — dashboard sleep UX (pairs with shipped m4; UI-half work).
+
+> **m13 (parity audit) done 2026-07-08** — its output, `docs/render-parity.md`, now orders the remaining parity queue with evidence; the gaps it surfaced are filed as `w1/008`–`011` + `w3/002` and cross-referenced to existing owners (w2/m4 delete, w2/m5 deploys, w4/m8 keys-UI, w4/m12 members, w5/004 scaling-UI, w5/006 DNS-UI).
 
 > **Board refinement (2026-07-08, from `/pm` + `/pm-brainstorm` conventions):** m3 and m5 retrofitted to the current canon — `## Source + Goal linkage` sections, the two standing closing tasks (Simplify, Test coverage), and pre-`lego/` paths fixed; m3/t001 (done) moved to `m3/done/`. m5/t003 reduced to verify-and-close (its webhook shipped in bex-api via w2's deploy-from-chat — where this refinement had independently concluded it belongs; operator stays mechanism-only). Planned m4/m7 retrofits and an m2/t007 rewrite were dropped — those milestones completed upstream first. No milestone was removed — all open ones map to a V0 roadmap item or Render parity and pass the DO_NOT_DO screen.
 

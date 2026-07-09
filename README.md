@@ -9,7 +9,7 @@ Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.on
 ## Why bex
 
 - **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
-- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/bex-api.md](docs/bex-api.md)).
+- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/bex-api.md](docs/bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/render-parity.md](docs/render-parity.md)).
 - **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/vision.md](docs/vision.md).
 
 ## Quickstart: local mock (machines = Docker containers)
@@ -101,9 +101,9 @@ dashboard/       the human-facing dashboard (TanStack Start + Apollo + shadcn), 
 infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
 deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} · opensandbox/ configs
 examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)
-docs/            vision · architecture · control-plane · bex-api · observability · deployment ·
-                 custom-domain · restart-suspend-and-resume · auth · secrets · postgresql-management ·
-                 sandboxes · etcd-backup-restore · go-and-gitops
+docs/            vision · architecture · control-plane · bex-api · render-parity · observability ·
+                 deployment · custom-domain · restart-suspend-and-resume · auth · secrets ·
+                 postgresql-management · sandboxes · etcd-backup-restore · go-and-gitops
 scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-sample.sh ·
                  auth-*.sh + authz-model.sh (Ory/OpenFGA bootstrap) · bao-*.sh + secrets-verify.sh (OpenBao) ·
                  gh-secrets.sh · gitops-validate.sh · up.sh + start-opensandbox*.sh (legacy single-host path)
