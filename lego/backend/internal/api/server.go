@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -61,6 +62,7 @@ type Server struct {
 	Metrics    *metrics.Service
 	APIKeys    *apikeys.Service
 	Postgres   *postgres.Service
+	KeyValue   *keyvalue.Service
 	Secrets    *secrets.Service
 	Workspaces *workspaces.Service
 	Usage      *usage.Service
@@ -153,6 +155,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		APIKeys:  &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		Postgres: &postgres.Service{Base: base, Selections: selections},
+		KeyValue: &keyvalue.Service{Base: base},
 		Secrets:  &secrets.Service{Base: base, Store: d.Secrets},
 		Workspaces: &workspaces.Service{
 			Base:       base,
@@ -197,6 +200,9 @@ func (s *Server) features() []any {
 	}
 	if s.Postgres != nil {
 		out = append(out, s.Postgres)
+	}
+	if s.KeyValue != nil {
+		out = append(out, s.KeyValue)
 	}
 	if s.Secrets != nil {
 		out = append(out, s.Secrets)

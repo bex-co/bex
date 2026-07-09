@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -79,7 +80,8 @@ var _ = Describe("KeyValue Controller", func() {
 	// k8sClient is only set in BeforeSuite — build the reconciler lazily, never
 	// in the container body. KvDomain is left empty so the reconcile takes the
 	// internal-only path: the Traefik CRD is not installed in envtest, so the
-	// public route is exercised via its pure-function test (TestKvIngressRouteTCPSpec).
+	// public-route branch is covered by ingressRouteTCPSpec's pure-function test
+	// (shared with the Database controller in database_test.go).
 	var r *KeyValueReconciler
 	BeforeEach(func() {
 		r = &KeyValueReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
@@ -151,6 +153,48 @@ var _ = Describe("KeyValue Controller", func() {
 		for _, obj := range []metav1.Object{sts, svc, sec} {
 			Expect(metav1.IsControlledBy(obj, kv)).To(BeTrue())
 		}
+	})
+
+	It("scales to zero when suspended and back on resume, preserving the Secret", func() {
+		By("creating a running KeyValue")
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		reconcileN()
+		sts := &appsv1.StatefulSet{}
+		Expect(k8sClient.Get(ctx, nn, sts)).To(Succeed())
+		Expect(*sts.Spec.Replicas).To(Equal(int32(1)), "running => one replica")
+		sec := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
+		pw := string(sec.Data["password"])
+
+		By("suspending: the StatefulSet scales to zero, the Secret is kept")
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		kv.Spec.Suspended = true
+		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+		reconcileN()
+		Expect(k8sClient.Get(ctx, nn, sts)).To(Succeed())
+		Expect(*sts.Spec.Replicas).To(Equal(int32(0)), "suspended => zero replicas")
+		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
+		Expect(string(sec.Data["password"])).To(Equal(pw), "password preserved across suspend")
+		// A suspended store settles Ready (it desires zero replicas) with a
+		// Suspended reason — distinct from the running Provisioned reason.
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		Expect(kv.Status.Phase).To(Equal(appv1alpha1.KVPhaseReady))
+		Expect(meta.IsStatusConditionTrue(kv.Status.Conditions, "Ready")).To(BeTrue())
+		Expect(meta.FindStatusCondition(kv.Status.Conditions, "Ready").Reason).To(Equal("Suspended"))
+
+		By("resuming: the StatefulSet scales back to one replica with the same password")
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		kv.Spec.Suspended = false
+		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+		reconcileN()
+		Expect(k8sClient.Get(ctx, nn, sts)).To(Succeed())
+		Expect(*sts.Spec.Replicas).To(Equal(int32(1)), "resumed => one replica")
+		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
+		Expect(string(sec.Data["password"])).To(Equal(pw), "password preserved across resume")
 	})
 
 	It("treats a reconciled-then-deleted KeyValue as a clean no-op", func() {

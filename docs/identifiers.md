@@ -47,7 +47,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
 ## Known deviations (deliberate, documented)
 
-- **Managed databases use the name as the id, not `dpg-<xid>`.** `internal/postgres` exposes a `Database`'s user-chosen name as its id (the CR is name-keyed). Render uses `dpg-…`. This is a conscious deviation — bex databases are named CRs with no separate opaque key — recorded here rather than silently diverging. Revisit if databases ever need rename-stable references.
+- **Managed datastores use the name as the id, not `dpg-<xid>`/`red-<xid>`.** `internal/postgres` exposes a `Database`'s user-chosen name as its id, and `internal/keyvalue` does the same for a `KeyValue` (both CRs are name-keyed). Render uses `dpg-…` / `red-…`. This is a conscious deviation — bex datastores are named CRs with no separate opaque key — recorded here rather than silently diverging, and applied uniformly so the two sibling datastore surfaces stay consistent (minting a `red-` id for key-value alone would split them). Revisit if datastores ever need rename-stable references.
 - **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([auth.md](auth.md)); their id format is Hydra's, outside this convention by design.
 
 ## Alternatives considered

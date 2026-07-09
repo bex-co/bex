@@ -78,6 +78,13 @@ spec:
                   grow, never shrink. 0 => plan default.
                 format: int32
                 type: integer
+              suspended:
+                description: |-
+                  Suspended scales the Valkey StatefulSet to zero replicas while preserving
+                  its PVC (data survives) — Render's Key Value suspend/resume. The credentials
+                  Secret and any external route are kept, so resume restores the same
+                  password and endpoint. Default: running.
+                type: boolean
               version:
                 description: Version is the major Valkey version (e.g. "8"). Empty
                   => operator default.

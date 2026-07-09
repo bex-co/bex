@@ -139,7 +139,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	plan, storageGB := resolveKVPlan(kv.Spec)
 	internalHost := fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace)
+	// Suspended => scale to zero (the PVC, Secret, Service and route are kept, so
+	// resume restores the same data, password and endpoint). Render's KV suspend.
 	replicas := plan.Instances
+	if kv.Spec.Suspended {
+		replicas = 0
+	}
 	labels := map[string]string{labelKeyValue: kv.Name}
 	// Build pod-template labels: selector labels plus the workspace label so
 	// same-workspace NetworkPolicy selectors can reach the Valkey instance.
@@ -270,18 +275,25 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	kv.Status.SecretName = kv.Name
 	kv.Status.ObservedGeneration = kv.Generation
 
-	// Ready when the StatefulSet reports its replica(s) available.
+	// Ready when the StatefulSet reports its desired replica count available. A
+	// suspended store desires zero replicas, so it settles Ready immediately (the
+	// separate spec.suspended is the client-facing suspend signal — the API
+	// surfaces it via the Render "suspended" enum, distinct from this health phase).
 	_ = r.Get(ctx, client.ObjectKeyFromObject(sts), sts)
 	if sts.Status.AvailableReplicas >= replicas {
+		reason, message := "Provisioned", "valkey ready"
+		if kv.Spec.Suspended {
+			reason, message = "Suspended", "valkey suspended (scaled to zero)"
+		}
 		kv.Status.Phase = appv1alpha1.KVPhaseReady
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Provisioned",
-			Message: "valkey ready", ObservedGeneration: kv.Generation,
+			Type: "Ready", Status: metav1.ConditionTrue, Reason: reason,
+			Message: message, ObservedGeneration: kv.Generation,
 		})
 		if err := r.Status().Update(ctx, &kv); err != nil {
 			return ctrl.Result{}, err
 		}
-		log.Info("keyvalue ready", "name", kv.Name, "host", kv.Status.Host)
+		log.Info("keyvalue reconciled", "name", kv.Name, "host", kv.Status.Host, "suspended", kv.Spec.Suspended)
 		return ctrl.Result{}, nil
 	}
 

@@ -49,6 +49,13 @@ type KeyValueSpec struct {
 	// in-cluster only. See docs/keyvalue-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
+
+	// Suspended scales the Valkey StatefulSet to zero replicas while preserving
+	// its PVC (data survives) — Render's Key Value suspend/resume. The credentials
+	// Secret and any external route are kept, so resume restores the same
+	// password and endpoint. Default: running.
+	// +optional
+	Suspended bool `json:"suspended,omitempty"`
 }
 
 // KeyValuePhase mirrors the provisioning lifecycle.
