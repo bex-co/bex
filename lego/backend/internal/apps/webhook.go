@@ -103,6 +103,11 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 	redeployed := []string{}
 	for i := range list.Items {
 		a := &list.Items[i]
+		// autoDeploy gates push-triggered redeploys (Render's autoDeploy: no):
+		// an App that opted out is never bumped by a push, only by an explicit deploy.
+		if !a.Spec.AutoDeploy {
+			continue
+		}
 		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) || !branchMatches(a.Spec.Branch, branch) {
 			continue
 		}

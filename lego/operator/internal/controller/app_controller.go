@@ -67,11 +67,12 @@ const (
 // and run it as a revision on the selected runtime, recording status.
 type AppReconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	Mode          string                  // ModeOpenSandbox | ModeKubernetes
-	Registry      string                  // e.g. 127.0.0.1:5050
-	CNBBuilder    string                  // e.g. paketobuildpacks/builder-jammy-base
-	Runtime       *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
+	Scheme           *runtime.Scheme
+	Mode             string                  // ModeOpenSandbox | ModeKubernetes
+	Registry         string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	CNBBuilder       string                  // e.g. paketobuildpacks/builder-jammy-base
+	BuildNamespace   string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Runtime          *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
 	BaseDomain       string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
 	ActivatorService string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
@@ -84,6 +85,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
@@ -144,9 +146,17 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			branch = "main"
 		}
 		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "Building", "Building image from "+app.Spec.Repo)
+		// Tag by generation: a spec/revision bump (including a webhook redeploy that
+		// stamps spec.restartedAt) yields a new tag, so the built image is fresh and
+		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
+		// docker daemon on the node.
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: branch, Name: app.Name,
 			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
+			Builder:   app.Spec.Builder,
+			Revision:  fmt.Sprintf("gen-%d", app.Generation),
+			Namespace: r.buildNamespace(app.Namespace),
+			Client:    r.Client,
 		})
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", err)
@@ -183,6 +193,16 @@ func resourcesForTier(tier string) corev1.ResourceRequirements {
 // Paid tiers are always-on and never auto-hibernate.
 func isFreeApp(app *appv1alpha1.App) bool {
 	return app.Spec.Tier == "" || app.Spec.Tier == "free"
+}
+
+// buildNamespace is where an App's in-cluster build Job runs: the configured
+// BuildNamespace, or the App's own namespace when unset (co-located; the
+// registry is reached over cluster DNS either way).
+func (r *AppReconciler) buildNamespace(appNS string) string {
+	if r.BuildNamespace != "" {
+		return r.BuildNamespace
+	}
+	return appNS
 }
 
 // lastActiveTime parses the annotLastActive annotation, returning zero if absent or invalid.

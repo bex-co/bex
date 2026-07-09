@@ -40,7 +40,8 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | Component | Variable | Meaning |
 | --- | --- | --- |
 | operator | `BEX_RUNTIME` | `kubernetes` (Deployments) or `opensandbox` (host sandboxes) |
-| operator | `BEX_REGISTRY`, `BEX_CNB_BUILDER` | image registry (zot) and CNB builder for build-from-git |
+| operator | `BEX_REGISTRY`, `BEX_CNB_BUILDER` | image registry (Zot, e.g. `zot.bex-registry.svc:5000`) and CNB builder for build-from-git |
+| operator | `BEX_BUILD_NAMESPACE` | namespace the in-cluster BuildKit build Jobs run in (docs/deployment.md); unset ⇒ the App's own namespace |
 | operator | `BEX_OPENSANDBOX_URL` | OpenSandbox endpoint (opensandbox runtime) |
 | operator | `BEX_BASE_DOMAIN`, `BEX_CLUSTER_ISSUER` | `*.onbex.co` app URLs, cert-manager issuer |
 | operator | `BEX_DB_DOMAIN` | public managed-Postgres hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/postgresql-management.md); unset ⇒ internal-only |

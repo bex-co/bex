@@ -1,6 +1,6 @@
 # w2 · m2 — Deploy-from-chat + HMAC git webhook
 
-**Worker:** worker2 **Goal:** Make "deploy this" one agent action — a single call takes a repo + `bex.yml` to a live https URL, and a signed git push redeploys. Delivers pillar 4. **Status:** in progress (t001–t003 DONE; t004 live acceptance blocked on w1/m5 in-cluster builds)
+**Worker:** worker2 **Goal:** Make "deploy this" one agent action — a single call takes a repo + `bex.yml` to a live https URL, and a signed git push redeploys. Delivers pillar 4. **Status:** in progress (t001–t003 DONE; t004 live acceptance unblocked 2026-07-08 — w1/m5 in-cluster builds landed — and now runnable)
 
 ## Tasks (in order)
 

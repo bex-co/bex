@@ -62,6 +62,7 @@ type bexApp struct {
 	Type            string      `json:"type"` // "web" (default, public) | "private"
 	Domains         []string    `json:"domains"`
 	EnvVars         []bexEnvVar `json:"envVars"`
+	AutoDeploy      *bool       `json:"autoDeploy"` // nil => default (on for repo-backed)
 }
 
 type bexEnvVar struct {
@@ -132,5 +133,6 @@ func createFromManifest(req DeployRequest) (CreateRequest, error) {
 		Env:             env,
 		Hosts:           a.Domains,
 		Private:         private,
+		AutoDeploy:      a.AutoDeploy,
 	}, nil
 }

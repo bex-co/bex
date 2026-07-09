@@ -198,6 +198,11 @@ type CreateRequest struct {
 	Env             []appv1alpha1.EnvVar
 	Hosts           []string
 	Private         bool
+	// AutoDeploy controls whether a signed git push to Branch redeploys this App
+	// (the webhook honors spec.autoDeploy). nil => the default: on for a
+	// repo-backed service (Render's default too), off for an image-backed one
+	// (nothing to rebuild on push).
+	AutoDeploy *bool
 }
 
 // Create writes the App CR for a new service, or updates it in place when one
@@ -288,6 +293,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if branch == "" && req.Repo != "" {
 		branch = "main"
 	}
+	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
+	// Render's default), off for an image-backed one (no repo to rebuild from).
+	// An explicit request value wins.
+	autoDeploy := req.Repo != ""
+	if req.AutoDeploy != nil {
+		autoDeploy = *req.AutoDeploy
+	}
 	spec := appv1alpha1.AppSpec{
 		Repo:            req.Repo,
 		Image:           req.Image,
@@ -298,6 +310,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Tier:            tier,
 		HealthCheckPath: req.HealthCheckPath,
 		Env:             req.Env,
+		AutoDeploy:      autoDeploy,
 		// A web service is public: expose it at <name>.<BEX_BASE_DOMAIN> so the
 		// caller gets a live URL with no custom domain. type:private opts out.
 		Expose: !req.Private,
@@ -311,8 +324,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 
 // applyCreateToSpec copies the create-owned fields of want onto an existing
 // spec, leaving fields owned by the operator or other features (EnvFromSecret,
-// Suspended, IdleTTLSeconds, AutoDeploy, RestartedAt) untouched — the same
-// discipline the store projector's applyOwnedSpec follows.
+// Suspended, IdleTTLSeconds, RestartedAt) untouched — the same discipline the
+// store projector's applyOwnedSpec follows.
 func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Repo = want.Repo
 	dst.Image = want.Image
@@ -323,6 +336,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Tier = want.Tier
 	dst.HealthCheckPath = want.HealthCheckPath
 	dst.Env = want.Env
+	dst.AutoDeploy = want.AutoDeploy
 	dst.Expose = want.Expose
 	dst.Host = want.Host
 	dst.Hosts = want.Hosts

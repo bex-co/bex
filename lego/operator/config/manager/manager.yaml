@@ -72,6 +72,14 @@ spec:
         env:
           - name: BEX_RUNTIME
             value: kubernetes
+          # In-cluster OCI registry (Zot). Build-from-git Jobs push here and app
+          # nodes pull from here — no host docker daemon (w1/m5). Zot runs in the
+          # bex-registry namespace on http:5000 (local/dev); front with TLS on prod.
+          - name: BEX_REGISTRY
+            value: zot.bex-registry.svc:5000
+          # Namespace the build Jobs run in; empty => the App's own namespace.
+          - name: BEX_BUILD_NAMESPACE
+            value: bex-system
           # cert-manager ClusterIssuer for App Ingresses. Start on staging; flip to
           # letsencrypt-prod once the chain verifies (changing this re-rolls the pod
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).

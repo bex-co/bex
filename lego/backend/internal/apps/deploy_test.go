@@ -123,6 +123,53 @@ func TestCreateValidation(t *testing.T) {
 	}
 }
 
+func TestCreateAutoDeployDefaults(t *testing.T) {
+	svc, cl := newService(nil)
+	// repo-backed => autoDeploy on by default (push-to-deploy works out of the box).
+	if _, err := svc.Create(context.Background(), CreateRequest{Name: "repoapp", Repo: "https://github.com/x/y"}); err != nil {
+		t.Fatalf("Create repo: %v", err)
+	}
+	if !getApp(t, cl, "repoapp").Spec.AutoDeploy {
+		t.Error("a repo-backed create should default autoDeploy on")
+	}
+	// image-backed => off (nothing to rebuild on push).
+	if _, err := svc.Create(context.Background(), CreateRequest{Name: "imgapp", Image: "nginx:1"}); err != nil {
+		t.Fatalf("Create image: %v", err)
+	}
+	if getApp(t, cl, "imgapp").Spec.AutoDeploy {
+		t.Error("an image-backed create should default autoDeploy off")
+	}
+	// explicit opt-out wins.
+	off := false
+	if _, err := svc.Create(context.Background(), CreateRequest{Name: "manualapp", Repo: "https://github.com/x/y", AutoDeploy: &off}); err != nil {
+		t.Fatalf("Create manual: %v", err)
+	}
+	if getApp(t, cl, "manualapp").Spec.AutoDeploy {
+		t.Error("explicit autoDeploy:false must win over the repo default")
+	}
+}
+
+func TestWebhookSkipsAutoDeployOff(t *testing.T) {
+	const secret = "s3cr3t"
+	off := repoApp("off", "https://github.com/bex/hello", "main")
+	off.Spec.AutoDeploy = false // opted out of push-to-deploy
+	svc, cl := newService(nil, off)
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	body := pushBody(t, "https://github.com/bex/hello", "refs/heads/main")
+	req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+	req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("=> 200, got %d", rec.Code)
+	}
+	if getApp(t, cl, "off").Spec.RestartedAt != "" {
+		t.Error("an autoDeploy:false App must not redeploy on push")
+	}
+}
+
 func TestCreateAcceptsRenderPlanSpelling(t *testing.T) {
 	svc, cl := newService(nil)
 	if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "x", Plan: "pro_plus"}); err != nil {
@@ -267,6 +314,7 @@ func repoApp(name, repo, branch string) *appv1alpha1.App {
 	a.Spec.Image = ""
 	a.Spec.Repo = repo
 	a.Spec.Branch = branch
+	a.Spec.AutoDeploy = true // push-to-deploy enabled (the webhook gates on this)
 	return a
 }
 

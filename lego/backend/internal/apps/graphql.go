@@ -115,6 +115,15 @@ func gqlInt(args map[string]any, key string) int {
 	return 0
 }
 
+// gqlBoolPtr reads an optional Boolean arg as a tri-state *bool (absent => nil,
+// so the platform default applies).
+func gqlBoolPtr(args map[string]any, key string) *bool {
+	if v, ok := args[key].(bool); ok {
+		return &v
+	}
+	return nil
+}
+
 // customDomainGQLType renders a DomainView as Render's CustomDomain shape.
 // Field names match Render's dashboard operations for custom domains.
 var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -216,23 +225,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createService": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"repo":     &graphql.ArgumentConfig{Type: graphql.String},
-				"image":    &graphql.ArgumentConfig{Type: graphql.String},
-				"branch":   &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":     &graphql.ArgumentConfig{Type: graphql.String},
-				"port":     &graphql.ArgumentConfig{Type: graphql.Int},
-				"replicas": &graphql.ArgumentConfig{Type: graphql.Int},
+				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"repo":       &graphql.ArgumentConfig{Type: graphql.String},
+				"image":      &graphql.ArgumentConfig{Type: graphql.String},
+				"branch":     &graphql.ArgumentConfig{Type: graphql.String},
+				"plan":       &graphql.ArgumentConfig{Type: graphql.String},
+				"autoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"port":       &graphql.ArgumentConfig{Type: graphql.Int},
+				"replicas":   &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
-					Name:     p.Args["name"].(string),
-					Repo:     gqlStr(p.Args, "repo"),
-					Image:    gqlStr(p.Args, "image"),
-					Branch:   gqlStr(p.Args, "branch"),
-					Plan:     gqlStr(p.Args, "plan"),
-					Port:     int32(gqlInt(p.Args, "port")),
-					Replicas: int32(gqlInt(p.Args, "replicas")),
+					Name:       p.Args["name"].(string),
+					Repo:       gqlStr(p.Args, "repo"),
+					Image:      gqlStr(p.Args, "image"),
+					Branch:     gqlStr(p.Args, "branch"),
+					Plan:       gqlStr(p.Args, "plan"),
+					AutoDeploy: gqlBoolPtr(p.Args, "autoDeploy"),
+					Port:       int32(gqlInt(p.Args, "port")),
+					Replicas:   int32(gqlInt(p.Args, "replicas")),
 				})
 			},
 		},

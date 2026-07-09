@@ -57,6 +57,7 @@ type createServiceRequest struct {
 	Repo           string             `json:"repo"`
 	Image          *imageRef          `json:"image"` // prebuilt image: Render nests the path in an object
 	Branch         string             `json:"branch"`
+	AutoDeploy     string             `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
 	EnvVars        []keyValue         `json:"envVars"`
 	ServiceDetails *serviceDetailsReq `json:"serviceDetails"`
 	// bex extensions (no Render create-body equivalent): the build strategy, the
@@ -123,6 +124,22 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Env:             env,
 		Hosts:           r.Domains,
 		Private:         r.Type == "private_service",
+		AutoDeploy:      parseYesNo(r.AutoDeploy),
+	}
+}
+
+// parseYesNo maps Render's autoDeploy enum ("yes"/"no", or the bool-ish
+// "true"/"false") to a tri-state *bool; "" => nil (use the platform default).
+func parseYesNo(s string) *bool {
+	switch s {
+	case "yes", "true":
+		t := true
+		return &t
+	case "no", "false":
+		f := false
+		return &f
+	default:
+		return nil
 	}
 }
 

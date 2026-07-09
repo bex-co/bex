@@ -45,7 +45,7 @@ func TestIsFreeApp(t *testing.T) {
 		tier string
 		want bool
 	}{
-		{"", true},        // empty = defaults to free
+		{"", true}, // empty = defaults to free
 		{"free", true},
 		{"starter", false},
 		{"standard", false},

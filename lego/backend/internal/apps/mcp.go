@@ -62,14 +62,15 @@ type scaleArgs struct {
 // repo/image is required. Render's runtime/buildCommand/startCommand/region are
 // omitted — bex builds via Dockerfile/CNB auto-detection, one region.
 type createWebServiceArgs struct {
-	Name     string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Repo     string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image    string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch   string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	Plan     string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars  []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	Port     int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000)"`
-	Replicas int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	Name       string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	Port       int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000)"`
+	Replicas   int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -84,14 +85,15 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
 	return CreateRequest{
-		Name:     a.Name,
-		Repo:     a.Repo,
-		Image:    a.Image,
-		Branch:   a.Branch,
-		Plan:     a.Plan,
-		Env:      env,
-		Port:     a.Port,
-		Replicas: a.Replicas,
+		Name:       a.Name,
+		Repo:       a.Repo,
+		Image:      a.Image,
+		Branch:     a.Branch,
+		Plan:       a.Plan,
+		Env:        env,
+		AutoDeploy: parseYesNo(a.AutoDeploy),
+		Port:       a.Port,
+		Replicas:   a.Replicas,
 	}
 }
 
