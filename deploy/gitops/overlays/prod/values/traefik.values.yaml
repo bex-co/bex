@@ -1,12 +1,16 @@
-# Prod (Hetzner CAPH) Traefik overrides (w1/m7 t005): swap the base single-node
-# hostNetwork edge for a real Hetzner Cloud LoadBalancer with a STABLE IP that
-# survives node replacement. The Hetzner CCM (app-cluster.yml networking.enabled=true)
-# provisions the LB from the Service annotations and targets nodes over the private
-# network (use-private-ip). Layered over base/values/traefik.values.yaml by the prod
-# overlay kustomization — Argo deep-merges valueFiles in order, later wins.
+# Prod (Hetzner CAPH) Traefik overrides (w1/m7 t005, re-done as a live smoke test
+# 2026-07-08): swap the base single-node hostNetwork edge for a real Hetzner Cloud
+# LoadBalancer with a STABLE IP that survives node replacement. The Hetzner CCM
+# provisions the LB from the Service annotations below. Layered over
+# base/values/traefik.values.yaml by the prod overlay kustomization — Argo
+# deep-merges valueFiles in order, later wins.
 #
-# ⚠ Untested against a live Hetzner account: structurally correct against the Traefik
-#   v3 chart (41.0.0), but LB annotations / port mappings may need tuning on first run.
+# LB targets nodes over their PUBLIC IPs (no use-private-ip). The first LB attempt
+# bundled use-private-ip + the CAPH private network and took prod down; verified on
+# the live cluster that the single control-plane node registers no k8s InternalIP
+# (10.x) — so private-ip targeting has no address to use. Public-IP targeting needs
+# no private network and is the safe first step; revisit use-private-ip once nodes
+# expose an InternalIP and multi-node lands.
 hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
@@ -38,7 +42,7 @@ service:
   annotations:
     load-balancer.hetzner.cloud/name: bex-traefik
     load-balancer.hetzner.cloud/location: fsn1
-    load-balancer.hetzner.cloud/use-private-ip: "true" # target nodes over the private net
+    # No use-private-ip: target nodes over public IPs (node has no k8s InternalIP).
     load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
   spec:
     type: LoadBalancer # CCM provisions the Hetzner LB (stable IP)
