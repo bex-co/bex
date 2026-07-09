@@ -69,10 +69,7 @@ func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
 	if !ok {
 		plan = tiers.Postgres.Default()
 	}
-	storageGB := spec.StorageGB
-	if storageGB < plan.StorageGB {
-		storageGB = plan.StorageGB
-	}
+	storageGB := max(spec.StorageGB, plan.StorageGB)
 	return plan, storageGB
 }
 

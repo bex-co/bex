@@ -45,6 +45,11 @@ linters:
           - dupl
           - lll
         path: internal/*
+      # Repeated string literals in tests (fixtures / expected values like
+      # "256Mi") are intentional and read better inline than behind a const.
+      - linters:
+          - goconst
+        path: _test\.go
     paths:
       - third_party$
       - builtin$

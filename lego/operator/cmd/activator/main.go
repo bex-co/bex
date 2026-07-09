@@ -119,11 +119,11 @@ func main() {
 		if strings.Contains(r.Header.Get("Accept"), "text/html") {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprint(w, loadingPage)
+			_, _ = fmt.Fprint(w, loadingPage)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, `{"error":"service hibernated","retryAfter":5}`)
+			_, _ = fmt.Fprint(w, `{"error":"service hibernated","retryAfter":5}`)
 		}
 	})
 

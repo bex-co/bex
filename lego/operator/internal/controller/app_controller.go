@@ -254,6 +254,8 @@ func idleRequeueAfter(app *appv1alpha1.App, now time.Time) time.Duration {
 
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
+//
+//nolint:gocyclo // one cohesive linear reconcile pass (Deployment → Service → Ingress → status); each step is a guarded CreateOrUpdate, and splitting it solely to satisfy the counter would fragment a coherent unit without aiding readability.
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 
@@ -271,15 +273,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		dep.Spec.Replicas = &replicas
 		dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
-		dep.Spec.Template.ObjectMeta.Labels = labels
+		dep.Spec.Template.Labels = labels
 		// restart = roll the template (same mechanism as kubectl rollout restart,
 		// recorded in the contract). Never removed once set — removal would
 		// itself roll the pods again.
 		if app.Spec.RestartedAt != "" {
-			if dep.Spec.Template.ObjectMeta.Annotations == nil {
-				dep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
+			if dep.Spec.Template.Annotations == nil {
+				dep.Spec.Template.Annotations = map[string]string{}
 			}
-			dep.Spec.Template.ObjectMeta.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
+			dep.Spec.Template.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
 		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:      "app",
@@ -568,6 +570,10 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	return hosts
 }
 
+// portEnvName is the operator-owned environment variable carrying the injected
+// port — the one env invariant the CRD contract promises (see appEnv).
+const portEnvName = "PORT"
+
 // appEnv builds the container's environment: the user's spec.env (literal
 // config) first, then the operator-owned PORT last. PORT is appended last and a
 // user entry named PORT is dropped, so a user variable can never shadow the
@@ -577,12 +583,12 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
 	for _, e := range app.Spec.Env {
-		if e.Name == "PORT" {
+		if e.Name == portEnvName {
 			continue // operator-owned; never let a user shadow it
 		}
 		env = append(env, corev1.EnvVar{Name: e.Name, Value: e.Value})
 	}
-	env = append(env, corev1.EnvVar{Name: "PORT", Value: strconv.Itoa(port)})
+	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
 	return env
 }
 

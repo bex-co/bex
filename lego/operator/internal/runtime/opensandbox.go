@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -78,7 +79,7 @@ func (o *OpenSandbox) do(ctx context.Context, method, path string, body any) ([]
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode, nil
 }
@@ -97,7 +98,9 @@ func imageEntrypoint(ctx context.Context, image string) ([]string, error) {
 	if len(parts) == 2 {
 		_ = json.Unmarshal([]byte(parts[1]), &cmd)
 	}
-	entry := append(ep, cmd...)
+	entry := make([]string, 0, len(ep)+len(cmd))
+	entry = append(entry, ep...)
+	entry = append(entry, cmd...)
 	if len(entry) == 0 {
 		return nil, fmt.Errorf("image %s declares no entrypoint/cmd", image)
 	}
@@ -213,10 +216,5 @@ func (o *OpenSandbox) Delete(ctx context.Context, id string) error {
 }
 
 func contains(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, v)
 }

@@ -30,14 +30,14 @@ func TestAppEnv(t *testing.T) {
 	}
 	// last() is what k8s uses: within a container's env, a duplicate name is
 	// resolved to the last entry — so PORT being appended last is what makes it win.
-	find := func(env []corev1.EnvVar, name string) (string, bool) {
-		val, ok := "", false
+	find := func(env []corev1.EnvVar, name string) string {
+		val := ""
 		for _, e := range env {
 			if e.Name == name {
-				val, ok = e.Value, true // keep scanning: last wins, mirroring kubelet
+				val = e.Value // keep scanning: last wins, mirroring kubelet
 			}
 		}
-		return val, ok
+		return val
 	}
 
 	t.Run("empty env still injects PORT", func(t *testing.T) {
@@ -55,14 +55,14 @@ func TestAppEnv(t *testing.T) {
 		if got := []string{env[0].Name, env[1].Name, env[2].Name}; got[0] != "FOO" || got[1] != "BAR" || got[2] != "PORT" {
 			t.Fatalf("order = %v, want [FOO BAR PORT]", got)
 		}
-		if v, _ := find(env, "BAR"); v != "" {
+		if v := find(env, "BAR"); v != "" {
 			t.Fatalf("empty value should be preserved, got %q", v)
 		}
 	})
 
 	t.Run("PORT cannot be shadowed", func(t *testing.T) {
 		env := appEnv(mk(appv1alpha1.EnvVar{Name: "PORT", Value: "1"}), 3000)
-		if v, _ := find(env, "PORT"); v != "3000" {
+		if v := find(env, "PORT"); v != "3000" {
 			t.Fatalf("PORT = %q, want 3000 (user shadow dropped)", v)
 		}
 		// The dropped entry must not linger earlier in the slice (kubelet's
