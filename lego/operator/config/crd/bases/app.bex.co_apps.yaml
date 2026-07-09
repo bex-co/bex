@@ -167,6 +167,18 @@ spec:
                   Empty = never requested; re-setting the same value is a no-op.
                   See docs/restart-suspend-and-resume.md.
                 type: string
+              runAt:
+                description: |-
+                  RunAt requests a one-off run of a cron_job now (verb-as-timestamp, like
+                  RestartedAt): when it changes, the operator creates a single Job from the
+                  cron's template. Empty = never requested; re-setting the same value is a
+                  no-op. Ignored for non-cron types. See docs/bex-api.md (cron run trigger).
+                type: string
+              schedule:
+                description: |-
+                  Schedule is the cron expression (standard 5-field crontab) a cron_job runs
+                  on. Required when Type is cron_job; ignored for every other type.
+                type: string
               suspended:
                 description: |-
                   Suspended parks the App without losing anything: the kubernetes runtime
@@ -187,6 +199,19 @@ spec:
                 - pro-plus
                 - pro-max
                 - pro-ultra
+                type: string
+              type:
+                description: |-
+                  Type is the service kind, tracking Render's serviceType vocabulary:
+                  web_service (default), private_service, background_worker, cron_job. Empty is
+                  treated as web_service so existing Apps are unchanged. A background_worker
+                  runs the image with no HTTP port/Service/Ingress; a cron_job runs the image's
+                  command on Schedule as a Kubernetes CronJob (no Deployment/Service/Ingress).
+                enum:
+                - web_service
+                - private_service
+                - background_worker
+                - cron_job
                 type: string
             type: object
           status:
@@ -277,6 +302,37 @@ spec:
                 - Hibernated
                 - Failed
                 type: string
+              runs:
+                description: |-
+                  Runs is the recent run history of a cron_job (newest first), populated from
+                  the Jobs the CronJob schedule and one-off RunAt triggers create. Empty for
+                  every other service type.
+                items:
+                  description: |-
+                    CronRun is one execution of a cron_job — a Kubernetes Job spawned either by the
+                    CronJob's schedule or by a one-off RunAt trigger. Recorded in AppStatus.Runs so
+                    the run history is visible over the API without listing Jobs.
+                  properties:
+                    finishedAt:
+                      description: FinishedAt is when the run completed or failed
+                        (RFC3339); empty while running.
+                      type: string
+                    name:
+                      description: Name is the Kubernetes Job name backing this run.
+                      type: string
+                    startedAt:
+                      description: StartedAt is when the run began (RFC3339); empty
+                        if it has not started yet.
+                      type: string
+                    status:
+                      description: 'Status is the run outcome: Running, Succeeded,
+                        or Failed.'
+                      type: string
+                  required:
+                  - name
+                  - status
+                  type: object
+                type: array
               sandboxID:
                 description: SandboxID is the runtime handle of the active revision
                   (OpenSandbox sandbox id).

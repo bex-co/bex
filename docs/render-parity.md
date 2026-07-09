@@ -6,7 +6,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 **Legend.** ✅ parity (evidence pointer) · ◐ partial (divergence documented) · ✖ missing (gap — see backlog) · — deliberate non-goal (rationale inline). "Render capability" = a noun/verb Render exposes on _any_ of its surfaces; a `—` on the REST column can still be a `✅` elsewhere (Render itself splits work across surfaces — e.g. read-only SQL is MCP-only on both sides).
 
-> **Headline.** bex has real parity on the **service lifecycle, env vars, custom domains, managed Postgres, logs, and metrics** core across all four surfaces, and is _ahead_ of Render on three AI-native verbs (API-key management over the API, deploy-from-chat, an inbound push webhook — [§ bex ahead of Render](#bex-ahead-of-render)). The open frontier is **deploys as first-class objects, config surfaces beyond plain env vars (env groups, secret files), autoscaling config, additional resource types (Key Value, more service types), and advanced Postgres data-protection** — all mapped to owning milestones/notes in the [§ Gap backlog](#gap-backlog).
+> **Headline.** bex has real parity on the **service lifecycle, env vars, custom domains, managed Postgres, logs, and metrics** core across all four surfaces, and is _ahead_ of Render on three AI-native verbs (API-key management over the API, deploy-from-chat, an inbound push webhook — [§ bex ahead of Render](#bex-ahead-of-render)). The open frontier is **deploys as first-class objects, config surfaces beyond plain env vars (env groups, secret files), autoscaling config, additional resource types (Key Value, static sites), and advanced Postgres data-protection** — all mapped to owning milestones/notes in the [§ Gap backlog](#gap-backlog). (Background-worker and cron-job service types shipped in w1/m15.)
 
 ---
 
@@ -26,7 +26,9 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Delete service | ✖ | ✖ | ✖ | ✖ | Render `DELETE /services/{id}`. Not built (scope note in [bex-api.md](bex-api.md)). → **w2/m4**. |
 | Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. bex has no event objects. → **w2/m5** (deploy objects) + **w4/m10** (audit log). |
 | Cache purge | — | — | — | — | Render `POST …/cache/purge` (static-site CDN). bex has no build CDN cache — non-goal. |
-| Static site · background worker · cron job | ✖ | ✖ | ✖ | ✖ | Render service `type`s bex lacks (bex = web + private only; MCP `create_static_site`/`create_cron_job` unmirrored). → **w1/m15** (background worker + cron); static site → **w1/012**. |
+| Background worker (no HTTP port) | ✅ | ✅ | ✅ | ✅ | `spec.type=background_worker` → Deployment only, no Service/Ingress/URL (`app_controller.go`); create over `POST /v1/services`, GraphQL `createService(type:)`, MCP `create_web_service(type:)`; dashboard type badge + no-URL. (w1/m15) |
+| Cron job (schedule + run history) | ✅ | ✅ | ✅ | ✅ | `spec.type=cron_job` + `spec.schedule` → k8s CronJob, `status.runs` (`app_controller.go`); run trigger `POST /v1/cron-jobs/{id}/runs` / GraphQL `runCronJob` / MCP `run_cron_job`; create MCP `create_cron_job` (tracks Render's tool); dashboard shows schedule + recent runs. (w1/m15) |
+| Static site | ✖ | ✖ | ✖ | ✖ | Render `static_site` type (build → CDN with redirects/rewrites/headers). A larger build→CDN effort than the compute types. → **w1/012**. |
 | One-off jobs (run a command) | — | — | — | — | Render `/services/{id}/jobs` runs an arbitrary command in the service context — an execution surface, off-roadmap (`DO_NOT_DO` §pillar 5), the same call as Shell/SSH below. (Scheduled cron jobs are a service type, tracked separately → w1/m15.) |
 | Shell / SSH into a running instance | — | — | — | — | Render Shell tab / `render ssh`. No exec surface — hosted execution is off-roadmap (DO_NOT_DO §pillar 5). Non-goal for now. |
 | PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/preview` + Previews tab. Ties to git integration + deploys; low priority, untracked. |
@@ -152,7 +154,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Env groups + secret files | `w1/m16` | todo |
 | Per-service autoscaling config | **`w1/008`** (new) | todo |
 | Postgres advanced lifecycle & data protection | `w1/m17` (HA → `w1/013`) | todo |
-| Additional service types (worker / cron; static → `w1/012`) | `w1/m15` | todo |
+| Additional service types: background worker + cron job | `w1/m15` | done 2026-07-09 (static site split → `w1/012`) |
 | Request/HTTP logs + structured filters | **`w3/002`** (new) | todo |
 | Projects & environments; registry creds; notifications; outbound webhooks; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |
 

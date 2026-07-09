@@ -37,7 +37,70 @@ const SERVICE = {
   replicas: 2,
   revision: "a1b2c3d",
   plan: "starter",
+  schedule: null,
+  runs: [],
 };
+
+// Two more service types (w1/m15): a background_worker (no HTTP port/URL) and a
+// cron_job (schedule + run history). Seeds so the type badge, the worker's
+// no-URL detail, and the cron's schedule + recent-runs section all render.
+const WORKER = {
+  __typename: "Service",
+  id: "email-worker",
+  name: "email-worker",
+  type: "background_worker",
+  suspended: null,
+  dashboardUrl: "http://localhost:5173/services/email-worker",
+  url: null,
+  createdAt: "2026-06-05T11:30:00Z",
+  phase: "Running",
+  replicas: 1,
+  revision: "9f8e7d6",
+  plan: "starter",
+  schedule: null,
+  runs: [],
+};
+
+const CRON = {
+  __typename: "Service",
+  id: "nightly-report",
+  name: "nightly-report",
+  type: "cron_job",
+  suspended: null,
+  dashboardUrl: "http://localhost:5173/services/nightly-report",
+  url: null,
+  createdAt: "2026-06-10T08:00:00Z",
+  phase: "Running",
+  replicas: null,
+  revision: "3c2b1a0",
+  plan: "free",
+  schedule: "*/15 * * * *",
+  runs: [
+    {
+      __typename: "CronRun",
+      name: "nightly-report-run-8f21",
+      startedAt: "2026-07-09T10:00:00Z",
+      finishedAt: "2026-07-09T10:00:07Z",
+      status: "Succeeded",
+    },
+    {
+      __typename: "CronRun",
+      name: "nightly-report-run-6d40",
+      startedAt: "2026-07-09T09:45:00Z",
+      finishedAt: "2026-07-09T09:45:31Z",
+      status: "Failed",
+    },
+    {
+      __typename: "CronRun",
+      name: "nightly-report-run-4b19",
+      startedAt: "2026-07-09T09:30:00Z",
+      finishedAt: null,
+      status: "Running",
+    },
+  ],
+};
+
+const SERVICES = [SERVICE, WORKER, CRON];
 
 const INSTANCES = ["eden-cms-v2-7d9f8-abcde", "eden-cms-v2-7d9f8-fghij"];
 
@@ -189,9 +252,11 @@ function json(res, code, body) {
 function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
     case "Services":
-      return { services: [SERVICE] };
-    case "Server":
-      return { server: { ...SERVICE, id: variables.id ?? SERVICE.id } };
+      return { services: SERVICES };
+    case "Server": {
+      const match = SERVICES.find((s) => s.id === variables.id);
+      return { server: match ?? { ...SERVICE, id: variables.id ?? SERVICE.id } };
+    }
     case "Logs": {
       // Honor the same filters bex-api honors: type (app-only) + text substring.
       const type = variables.type;

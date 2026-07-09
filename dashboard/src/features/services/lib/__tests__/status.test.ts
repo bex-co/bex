@@ -6,10 +6,11 @@ import {
   isSuspended,
   isSleeping,
 } from "@/features/services/lib/status";
-import type { ServicesQuery } from "@/graphql/definitions";
+import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type { ServiceView } from "@/features/services/types";
 
 type ServiceNode = NonNullable<NonNullable<ServicesQuery["services"]>[number]>;
+type ServerNode = NonNullable<ServerQuery["server"]>;
 
 function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
   return {
@@ -34,6 +35,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
     name: "app",
+    type: "web_service",
     suspended: false,
     phase: "Running",
     url: "https://app.onbex.co",
@@ -42,6 +44,8 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     revision: "abc123",
     plan: null,
     idleTTLSeconds: null,
+    schedule: null,
+    runs: [],
     ...overrides,
   };
 }
@@ -63,6 +67,7 @@ describe("toServiceView", () => {
     ).toEqual({
       id: "app",
       name: "app",
+      type: "web_service",
       suspended: true,
       phase: "Hibernated",
       url: "https://app.onbex.co",
@@ -71,6 +76,8 @@ describe("toServiceView", () => {
       revision: "abc123",
       plan: null,
       idleTTLSeconds: 0,
+      schedule: null,
+      runs: [],
     });
   });
 
@@ -82,6 +89,51 @@ describe("toServiceView", () => {
     const v = toServiceView(node({ name: null, url: null, id: "svc-1" }));
     expect(v.name).toBe("svc-1");
     expect(v.url).toBeNull();
+  });
+
+  it("leaves schedule null / runs empty for a list node (no cron fields selected)", () => {
+    const v = toServiceView(node({ type: "web_service" }));
+    expect(v.type).toBe("web_service");
+    expect(v.schedule).toBeNull();
+    expect(v.runs).toEqual([]);
+  });
+
+  it("maps a cron server node's schedule and run history", () => {
+    const serverNode: ServerNode = {
+      __typename: "Service",
+      id: "nightly",
+      name: "nightly",
+      type: "cron_job",
+      suspended: "not_suspended",
+      dashboardUrl: null,
+      url: null,
+      createdAt: null,
+      phase: "Running",
+      replicas: null,
+      revision: null,
+      plan: null,
+      idleTTLSeconds: 0,
+      schedule: "*/5 * * * *",
+      runs: [
+        {
+          __typename: "CronRun",
+          name: "nightly-run-1",
+          startedAt: "2026-07-09T10:00:00Z",
+          finishedAt: "2026-07-09T10:00:05Z",
+          status: "Succeeded",
+        },
+      ],
+    };
+    const v = toServiceView(serverNode);
+    expect(v.type).toBe("cron_job");
+    expect(v.schedule).toBe("*/5 * * * *");
+    expect(v.runs).toHaveLength(1);
+    expect(v.runs[0]).toEqual({
+      name: "nightly-run-1",
+      startedAt: "2026-07-09T10:00:00Z",
+      finishedAt: "2026-07-09T10:00:05Z",
+      status: "Succeeded",
+    });
   });
 });
 

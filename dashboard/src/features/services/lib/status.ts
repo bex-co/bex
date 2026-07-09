@@ -1,8 +1,9 @@
-import type { ServicesQuery } from "@/graphql/definitions";
+import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type {
   ServiceView,
   ServiceStatus,
   ServiceStats,
+  CronRunView,
 } from "@/features/services/types";
 
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
@@ -12,17 +13,24 @@ export const NOT_SUSPENDED = "not_suspended";
 
 /** A single service item as it comes off the `services` query (fields nullable). */
 type ServiceNode = NonNullable<NonNullable<ServicesQuery["services"]>[number]>;
+/** The single-service node from the detail `server` query — carries schedule/runs. */
+type ServerNode = NonNullable<ServerQuery["server"]>;
 
 /** True when Render's string enum marks the App as suspended. */
 export function isSuspended(suspended: string | null): boolean {
   return suspended === SUSPENDED;
 }
 
-/** Map a wire `Service` onto the normalized ServiceView the UI renders. */
-export function toServiceView(s: ServiceNode): ServiceView {
+/**
+ * Map a wire `Service` onto the normalized ServiceView the UI renders. Accepts
+ * either the list node or the detail (`server`) node — only the latter selects
+ * `schedule`/`runs`, so those are read defensively (list rows leave them empty).
+ */
+export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
   return {
     id: s.id ?? "",
     name: s.name ?? s.id ?? "",
+    type: s.type ?? "web_service",
     suspended: isSuspended(s.suspended),
     phase: s.phase ?? "",
     url: s.url ?? null,
@@ -31,7 +39,21 @@ export function toServiceView(s: ServiceNode): ServiceView {
     revision: s.revision ?? null,
     plan: s.plan ?? null,
     idleTTLSeconds: s.idleTTLSeconds ?? null,
+    schedule: "schedule" in s ? (s.schedule ?? null) : null,
+    runs: "runs" in s ? toCronRuns(s.runs) : [],
   };
+}
+
+/** Project the detail query's nullable `runs` array onto CronRunView[]. */
+function toCronRuns(runs: ServerNode["runs"]): CronRunView[] {
+  return (runs ?? [])
+    .filter((r): r is NonNullable<typeof r> => r != null)
+    .map((r) => ({
+      name: r.name ?? "",
+      startedAt: r.startedAt ?? null,
+      finishedAt: r.finishedAt ?? null,
+      status: r.status ?? "",
+    }));
 }
 
 /**

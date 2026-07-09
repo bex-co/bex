@@ -572,6 +572,67 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The platform URL is assigned once the service is running.",
     description: "Platform-subdomain state when the service has no URL yet",
   },
+  "services.colType": {
+    message: "Type",
+    description: "Services table column header (service type)",
+  },
+  "services.typeWeb": {
+    message: "Web Service",
+    description: "Service-type badge: an HTTP service exposed at a URL",
+  },
+  "services.typePrivate": {
+    message: "Private Service",
+    description:
+      "Service-type badge: an HTTP service reachable only in-cluster",
+  },
+  "services.typeWorker": {
+    message: "Background Worker",
+    description: "Service-type badge: runs with no HTTP port/URL",
+  },
+  "services.typeCron": {
+    message: "Cron Job",
+    description: "Service-type badge: runs a command on a schedule",
+  },
+  "services.typeUnknown": {
+    message: "Service",
+    description: "Service-type badge fallback for an unrecognized type",
+  },
+  "services.overviewType": {
+    message: "Type",
+    description: "Overview tab row label for the service type",
+  },
+  "services.overviewSchedule": {
+    message: "Schedule",
+    description: "Overview tab row label for a cron job's schedule",
+  },
+  "services.cronRunsTitle": {
+    message: "Recent Runs",
+    description: "Cron job overview: recent-runs section title",
+  },
+  "services.cronRunsEmpty": {
+    message: "No runs yet.",
+    description: "Cron job overview: shown when a cron has no run history",
+  },
+  "services.cronRunColStarted": {
+    message: "Started",
+    description: "Cron runs table column header (run start time)",
+  },
+  "services.cronRunColStatus": {
+    message: "Status",
+    description: "Cron runs table column header (run outcome)",
+  },
+  "services.cronRunStatusRunning": {
+    message: "Running",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusSucceeded": {
+    message: "Succeeded",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusFailed": {
+    message: "Failed",
+    description: "Cron run status badge",
+  },
 };
 
 export default enServices;

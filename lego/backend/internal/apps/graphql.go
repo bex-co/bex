@@ -34,10 +34,10 @@ import (
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
-		// Render-shaped fields (id is the App name; type is always web_service).
+		// Render-shaped fields (id is the App name; type is the serviceType enum).
 		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
-		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return renderWebService })},
+		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
 		"suspended":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},
 		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
 		"url":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
@@ -71,6 +71,24 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// it follows the existing suspendService/resumeService/restartServer
 		// convention rather than inventing a different shape.
 		"plan": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Plan })},
+		// schedule + runs describe a cron_job (empty/null for other types): the
+		// cron's schedule and its recent run history (status.runs, newest first).
+		"schedule": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Schedule })},
+		"runs": &graphql.Field{
+			Type:    graphql.NewList(cronRunGQLType),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
+		},
+	},
+})
+
+// cronRunGQLType renders one CronRunView — a cron_job's execution history entry.
+var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "CronRun",
+	Fields: graphql.Fields{
+		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.Name })},
+		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.StartedAt })},
+		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.FinishedAt })},
+		"status":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.Status })},
 	},
 })
 
@@ -229,6 +247,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
 				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"type":       &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
+				"schedule":   &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
 				"repo":       &graphql.ArgumentConfig{Type: graphql.String},
 				"image":      &graphql.ArgumentConfig{Type: graphql.String},
 				"branch":     &graphql.ArgumentConfig{Type: graphql.String},
@@ -240,6 +260,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
 					Name:       p.Args["name"].(string),
+					Type:       gqlStr(p.Args, "type"),
+					Schedule:   gqlStr(p.Args, "schedule"),
 					Repo:       gqlStr(p.Args, "repo"),
 					Image:      gqlStr(p.Args, "image"),
 					Branch:     gqlStr(p.Args, "branch"),
@@ -250,6 +272,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
+		// runCronJob: trigger a one-off run of a cron_job (Render's cron run verb);
+		// the run shows in status.runs once the operator reconciles.
+		"runCronJob":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Suspend)},
 		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		"restartServer":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Restart)},

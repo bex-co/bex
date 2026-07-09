@@ -20,5 +20,13 @@ query Server($id: String!) {
     revision
     plan
     idleTTLSeconds
+    # cron_job fields (null/empty for other service types)
+    schedule
+    runs {
+      name
+      startedAt
+      finishedAt
+      status
+    }
   }
 }

@@ -18,7 +18,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table.tsx";
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert.tsx";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert.tsx";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
@@ -26,6 +30,7 @@ import { computeStats } from "@/features/services/lib/status";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
+import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 
 export const Route = createFileRoute("/")({
@@ -78,9 +83,7 @@ export function HomePage() {
               {showError ? (
                 <Alert variant="destructive">
                   <AlertTitle>{t("services.errorTitle")}</AlertTitle>
-                  <AlertDescription>
-                    {t("services.errorBody")}
-                  </AlertDescription>
+                  <AlertDescription>{t("services.errorBody")}</AlertDescription>
                 </Alert>
               ) : showEmpty ? (
                 <div className="py-10 text-center">
@@ -94,6 +97,7 @@ export function HomePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("services.colName")}</TableHead>
+                      <TableHead>{t("services.colType")}</TableHead>
                       <TableHead>{t("services.colStatus")}</TableHead>
                       <TableHead className="text-right tabular-nums">
                         {t("services.colInstances")}
@@ -118,9 +122,7 @@ export function HomePage() {
                             key={service.id}
                             service={service}
                             pending={
-                              pending?.id === service.id
-                                ? pending.action
-                                : null
+                              pending?.id === service.id ? pending.action : null
                             }
                             onRun={run}
                           />
@@ -157,6 +159,9 @@ function ServiceRow({
         </Link>
       </TableCell>
       <TableCell>
+        <ServiceTypeBadge service={service} />
+      </TableCell>
+      <TableCell>
         <ServiceStatusBadge service={service} />
       </TableCell>
       <TableCell className="text-right tabular-nums">
@@ -172,11 +177,7 @@ function ServiceRow({
         {service.url ?? "—"}
       </TableCell>
       <TableCell className="text-right">
-        <ServiceRowActions
-          service={service}
-          pending={pending}
-          onRun={onRun}
-        />
+        <ServiceRowActions service={service} pending={pending} onRun={onRun} />
       </TableCell>
     </TableRow>
   );
@@ -187,6 +188,9 @@ function ServiceSkeletonRow() {
     <TableRow>
       <TableCell>
         <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-20 rounded-md" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-5 w-16 rounded-md" />

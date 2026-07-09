@@ -20,11 +20,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -86,6 +88,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
@@ -257,11 +260,20 @@ func idleRequeueAfter(app *appv1alpha1.App, now time.Time) time.Duration {
 //
 //nolint:gocyclo // one cohesive linear reconcile pass (Deployment → Service → Ingress → status); each step is a guarded CreateOrUpdate, and splitting it solely to satisfy the counter would fragment a coherent unit without aiding readability.
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
+	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
+	if app.Spec.Type == appv1alpha1.TypeCronJob {
+		return r.reconcileCronJob(ctx, app, image, port)
+	}
+	// A background_worker runs the image with no HTTP port: a bare Deployment, no
+	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
+	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
+
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 
 	// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
-	// touching spec.suspended, so manual-suspend semantics are preserved.
-	autoHibernating := r.ActivatorService != "" && shouldAutoHibernate(app)
+	// touching spec.suspended, so manual-suspend semantics are preserved. A worker
+	// never auto-hibernates — it has no Ingress, so a request could never wake it.
+	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
 
 	replicas := effectiveReplicas(app)
 	if autoHibernating {
@@ -283,17 +295,28 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			}
 			dep.Spec.Template.Annotations["app.bex.co/restarted-at"] = app.Spec.RestartedAt
 		}
+		// A worker has no HTTP port, so it declares no container port.
+		var ports []corev1.ContainerPort
+		if !worker {
+			ports = []corev1.ContainerPort{{ContainerPort: int32(port)}}
+		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:      "app",
 			Image:     image,
 			Env:       appEnv(app, port),
 			EnvFrom:   envFromSources(app),
-			Ports:     []corev1.ContainerPort{{ContainerPort: int32(port)}},
+			Ports:     ports,
 			Resources: resourcesForTier(app.Spec.Tier),
 		}}
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
+	}
+
+	// A worker skips the Service, the Ingress, and the URL entirely; any left over
+	// from a type change are cleaned up so nothing dangles.
+	if worker {
+		return r.reconcileWorkerStatus(ctx, app, image, dep, replicas)
 	}
 
 	// the k8s core Service (ClusterIP) that fronts the App's pods
@@ -465,6 +488,238 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{RequeueAfter: idleRequeueAfter(app, now)}, nil
 	}
 	return ctrl.Result{}, nil
+}
+
+// reconcileWorkerStatus finishes the background_worker reconcile: a worker's
+// Deployment is already applied by reconcileKubernetes, so here we tear down any
+// Service/Ingress left from a prior type, then report status with no URL (a
+// worker has no HTTP endpoint). It shares the Deployment/readiness shape with the
+// web path but skips exposure and the auto-sleep machinery entirely.
+func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alpha1.App, image string, dep *appsv1.Deployment, replicas int32) (ctrl.Result, error) {
+	for _, obj := range []client.Object{
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
+		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
+	} {
+		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
+			return r.fail(ctx, app, "WorkerCleanupFailed", err)
+		}
+	}
+
+	app.Status.Image = image
+	app.Status.URL = "" // a worker has no HTTP endpoint
+	app.Status.URLs = nil
+	app.Status.ObservedGeneration = app.Generation
+
+	if app.Spec.Suspended {
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Message: "worker suspended (scaled to 0)", ObservedGeneration: app.Generation,
+		})
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
+	if dep.Status.ReadyReplicas < replicas {
+		app.Status.Phase = appv1alpha1.PhaseDeploying
+		_ = r.Status().Update(ctx, app)
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
+		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
+		ObservedGeneration: app.Generation,
+	})
+	if err := r.Status().Update(ctx, app); err != nil {
+		return ctrl.Result{}, err
+	}
+	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
+	return ctrl.Result{}, nil
+}
+
+// maxCronRuns caps how many recent runs the status carries — enough to show a
+// history without unbounded status growth.
+const maxCronRuns = 10
+
+// reconcileCronJob materializes a cron_job as a batch/v1 CronJob (no
+// Deployment/Service/Ingress), triggers a one-off run when spec.runAt asks for
+// one, and records recent runs in status. Because the shared
+// GenerationChangedPredicate filters owned Job/CronJob status events, it polls
+// (RequeueAfter) to keep the run history fresh rather than watching Jobs.
+func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
+	if app.Spec.Schedule == "" {
+		return r.fail(ctx, app, "BadSpec", fmt.Errorf("spec.schedule is required for a cron_job"))
+	}
+	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
+	labels := map[string]string{labelApp: app.Name}
+	suspended := app.Spec.Suspended
+
+	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
+		cj.Spec.Schedule = app.Spec.Schedule
+		// Suspend pauses scheduling without losing history — resume just clears it.
+		cj.Spec.Suspend = &suspended
+		cj.Spec.JobTemplate.Labels = labels // so the Jobs it creates carry labelApp
+		cj.Spec.JobTemplate.Spec.Template = cronPodSpec(app, image, port, labels)
+		return controllerutil.SetControllerReference(app, cj, r.Scheme)
+	}); err != nil {
+		return r.fail(ctx, app, "CronJobFailed", err)
+	}
+
+	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
+	// single Job from the same template, named deterministically from runAt so a
+	// re-reconcile of the same value is a no-op. Skipped while suspended.
+	if app.Spec.RunAt != "" && !suspended {
+		if err := r.ensureManualRun(ctx, app, image, port, labels); err != nil {
+			return r.fail(ctx, app, "CronRunFailed", err)
+		}
+	}
+
+	runs, err := r.cronRuns(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "CronRunFailed", err)
+	}
+
+	app.Status.Image = image
+	app.Status.URL = "" // a cron_job has no serving URL
+	app.Status.URLs = nil
+	app.Status.Runs = runs
+	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", app.Generation)
+	app.Status.ObservedGeneration = app.Generation
+	if suspended {
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Message: "cron schedule suspended", ObservedGeneration: app.Generation,
+		})
+	} else {
+		app.Status.Phase = appv1alpha1.PhaseRunning
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Scheduled",
+			Message: "cron scheduled: " + app.Spec.Schedule, ObservedGeneration: app.Generation,
+		})
+	}
+	if err := r.Status().Update(ctx, app); err != nil {
+		return ctrl.Result{}, err
+	}
+	logf.FromContext(ctx).Info("cron reconciled (kubernetes)", "name", app.Name, "schedule", app.Spec.Schedule, "runs", len(runs))
+	if suspended {
+		return ctrl.Result{}, nil
+	}
+	return ctrl.Result{RequeueAfter: time.Minute}, nil
+}
+
+// ensureManualRun creates the one-off Job for the current spec.runAt if it does
+// not already exist. The Job carries labelApp (so it shows up in run history) and
+// is owned by the App (so it is garbage-collected with it).
+func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, image string, port int, labels map[string]string) error {
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
+	}}
+	err := r.Get(ctx, client.ObjectKeyFromObject(job), job)
+	if err == nil {
+		return nil // already materialized this run
+	}
+	if !apierrors.IsNotFound(err) {
+		return err
+	}
+	job.Labels = labels
+	job.Spec.Template = cronPodSpec(app, image, port, labels)
+	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
+		return err
+	}
+	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+// cronRuns lists the Jobs backing an App's cron (by labelApp — both the CronJob's
+// scheduled Jobs and one-off RunAt Jobs), newest first, capped at maxCronRuns.
+func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]appv1alpha1.CronRun, error) {
+	var jobs batchv1.JobList
+	if err := r.List(ctx, &jobs, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+		return nil, err
+	}
+	items := jobs.Items
+	sort.Slice(items, func(i, j int) bool { return jobStartKey(&items[i]).After(jobStartKey(&items[j])) })
+	if len(items) == 0 {
+		return nil, nil
+	}
+	runs := make([]appv1alpha1.CronRun, 0, maxCronRuns)
+	for i := range items {
+		if len(runs) >= maxCronRuns {
+			break
+		}
+		runs = append(runs, toCronRun(&items[i]))
+	}
+	return runs, nil
+}
+
+// jobStartKey orders runs by when they started, falling back to creation time for
+// a Job the scheduler has not started yet.
+func jobStartKey(job *batchv1.Job) time.Time {
+	if job.Status.StartTime != nil {
+		return job.Status.StartTime.Time
+	}
+	return job.CreationTimestamp.Time
+}
+
+// toCronRun projects a Job's status onto the CR's run-history shape.
+func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
+	run := appv1alpha1.CronRun{Name: job.Name, Status: "Running"}
+	if job.Status.StartTime != nil {
+		run.StartedAt = job.Status.StartTime.UTC().Format(time.RFC3339)
+	}
+	for _, c := range job.Status.Conditions {
+		if c.Status != corev1.ConditionTrue {
+			continue
+		}
+		switch c.Type {
+		case batchv1.JobComplete:
+			run.Status = "Succeeded"
+			run.FinishedAt = c.LastTransitionTime.UTC().Format(time.RFC3339)
+		case batchv1.JobFailed:
+			run.Status = "Failed"
+			run.FinishedAt = c.LastTransitionTime.UTC().Format(time.RFC3339)
+		}
+	}
+	if run.FinishedAt == "" && job.Status.CompletionTime != nil {
+		run.FinishedAt = job.Status.CompletionTime.UTC().Format(time.RFC3339)
+	}
+	return run
+}
+
+// cronPodSpec is the pod template shared by the CronJob's jobTemplate and any
+// one-off RunAt Job: the built image run to completion (RestartPolicyNever), with
+// the App's env. A cron container declares no port — it is not an HTTP server.
+func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{Labels: labels},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{{
+				Name:      "app",
+				Image:     image,
+				Env:       appEnv(app, port),
+				EnvFrom:   envFromSources(app),
+				Resources: resourcesForTier(app.Spec.Tier),
+			}},
+		},
+	}
+}
+
+// manualRunJobName derives a deterministic Job name from the App name + runAt, so
+// reconciling the same runAt twice never spawns a duplicate run.
+func manualRunJobName(appName, runAt string) string {
+	sum := sha256.Sum256([]byte(runAt))
+	return fmt.Sprintf("%s-run-%x", appName, sum[:4])
 }
 
 // reconcileOpenSandbox runs the revision as an OpenSandbox sandbox (host runtime).
@@ -680,6 +935,7 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&appv1alpha1.App{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&networkingv1.Ingress{}).
+		Owns(&batchv1.CronJob{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named("app").
 		Complete(r)

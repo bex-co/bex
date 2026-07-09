@@ -1,19 +1,19 @@
 # w1 · m15 — Additional service types: background worker + cron job
 
-**Worker:** worker1 **Goal:** Add two of Render's service `type`s bex lacks — `background_worker` (runs with no HTTP port/ingress) and `cron_job` (runs a command on a schedule, with run history) — mechanism (operator + `lego/types`) then the create-surface `type` plumbing and dashboard type-awareness, tracking Render's names. **Status:** todo
+**Worker:** worker1 **Goal:** Add two of Render's service `type`s bex lacks — `background_worker` (runs with no HTTP port/ingress) and `cron_job` (runs a command on a schedule, with run history) — mechanism (operator + `lego/types`) then the create-surface `type` plumbing and dashboard type-awareness, tracking Render's names. **Status:** DONE 2026-07-09 — worker + cron shippable across REST/GraphQL/MCP/UI; `create_cron_job` + cron run trigger; parity ledger updated; `make test` + dashboard tests green.
 
 ## Tasks (in order)
 
 | id   | title                                                                                | est | depends_on        |
 | ---- | ------------------------------------------------------------------------------------ | --- | ----------------- |
-| t001 | `background_worker` type — no-port / no-ingress reconcile path                         | 40m | —                 |
-| t002 | `cron_job` type — `schedule` field + CronJob reconcile + run-history status            | 45m | —                 |
-| t003 | Surface plumbing — create accepts `type`; MCP `create_cron_job`; cron run trigger       | 40m | t001, t002        |
-| t004 | Dashboard — service-type awareness (badge; worker has no URL; cron shows schedule/runs) | 40m | t003              |
-| t005 | Render parity — worker/cron across REST/GraphQL/MCP/UI vs render.com                    | 20m | t004              |
-| t006 | Simplify — `/simplify` over what this milestone changed                                 | 20m | t005              |
-| t007 | Test coverage — reconcile + surface + UI tests for the new types                        | 30m | t005              |
-| t008 | Closeout                                                                                | 10m | t007              |
+| t001 | `background_worker` type — no-port / no-ingress reconcile path                         | 40m | — — **DONE**      |
+| t002 | `cron_job` type — `schedule` field + CronJob reconcile + run-history status            | 45m | — — **DONE**      |
+| t003 | Surface plumbing — create accepts `type`; MCP `create_cron_job`; cron run trigger       | 40m | t001, t002 — **DONE** |
+| t004 | Dashboard — service-type awareness (badge; worker has no URL; cron shows schedule/runs) | 40m | t003 — **DONE**   |
+| t005 | Render parity — worker/cron across REST/GraphQL/MCP/UI vs render.com                    | 20m | t004 — **DONE**   |
+| t006 | Simplify — `/simplify` over what this milestone changed                                 | 20m | t005 — **DONE**   |
+| t007 | Test coverage — reconcile + surface + UI tests for the new types                        | 30m | t005 — **DONE**   |
+| t008 | Closeout                                                                                | 10m | t007 — **DONE**   |
 
 ## Definition of done
 

@@ -23,8 +23,8 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 // Render sees the field names/enums/envelopes it expects; bex-only facts (phase,
 // revision) are extra fields Render clients ignore — a superset, never a break.
 
-// renderWebService is Render's serviceType for an HTTP service. Every bex App
-// serves HTTP, so it's the only type bex reports.
+// renderWebService is Render's default serviceType — reported for an App with no
+// explicit spec.type set (view() already defaults empty => web_service).
 const renderWebService = "web_service"
 
 // renderService mirrors components.schemas.service (the fields bex has a real
@@ -32,18 +32,22 @@ const renderWebService = "web_service"
 type renderService struct {
 	ID             string         `json:"id"` // Render ids are opaque; bex uses the App name
 	Name           string         `json:"name"`
-	Type           string         `json:"type"` // serviceType enum; bex Apps serve HTTP => web_service
+	Type           string         `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
 	Suspended      string         `json:"suspended"`
 	DashboardURL   string         `json:"dashboardUrl,omitempty"`
 	CreatedAt      string         `json:"createdAt,omitempty"`
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
 
 	// bex-native superset (ignored by Render clients).
-	Phase          string   `json:"phase,omitempty"`
-	Replicas       int32    `json:"replicas"`
-	Revision       string   `json:"revision,omitempty"`
-	URLs           []string `json:"urls,omitempty"`
-	IdleTTLSeconds int32    `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
+	Phase    string   `json:"phase,omitempty"`
+	Replicas int32    `json:"replicas"`
+	Revision string   `json:"revision,omitempty"`
+	URLs     []string `json:"urls,omitempty"`
+	// Schedule/Runs describe a cron_job (Render nests schedule under
+	// cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty otherwise.
+	Schedule       string        `json:"schedule,omitempty"`
+	Runs           []CronRunView `json:"runs,omitempty"`
+	IdleTTLSeconds int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item
@@ -54,20 +58,30 @@ type serviceWithCursor struct {
 }
 
 func toRenderService(a AppView) renderService {
-	var details map[string]any
-	if a.URL != "" {
-		details = map[string]any{"url": a.URL} // Render web_service exposes the live URL here
+	svcType := a.Type
+	if svcType == "" {
+		svcType = renderWebService // defensive; view() already defaults this
 	}
-	if a.Plan != "" {
+	var details map[string]any
+	set := func(k string, v any) {
 		if details == nil {
 			details = map[string]any{}
 		}
-		details["plan"] = a.Plan // webServiceDetails.plan (render-public-api-1.json)
+		details[k] = v
+	}
+	if a.URL != "" {
+		set("url", a.URL) // Render web_service exposes the live URL here
+	}
+	if a.Plan != "" {
+		set("plan", a.Plan) // webServiceDetails.plan (render-public-api-1.json)
+	}
+	if a.Schedule != "" {
+		set("schedule", a.Schedule) // cronJobDetails.schedule (render-public-api-1.json)
 	}
 	return renderService{
 		ID:             a.Name,
 		Name:           a.Name,
-		Type:           renderWebService,
+		Type:           svcType,
 		Suspended:      core.SuspendedEnum(a.Suspended),
 		DashboardURL:   a.URL,
 		CreatedAt:      a.CreatedAt,
@@ -76,6 +90,8 @@ func toRenderService(a AppView) renderService {
 		Replicas:       a.Replicas,
 		Revision:       a.Revision,
 		URLs:           a.URLs,
+		Schedule:       a.Schedule,
+		Runs:           a.Runs,
 		IdleTTLSeconds: a.IdleTTLSeconds,
 	}
 }

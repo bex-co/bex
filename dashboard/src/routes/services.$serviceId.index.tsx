@@ -15,7 +15,10 @@ import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { EmptyState } from "@/common/components/empty-state";
 import { useServer } from "@/features/services/hooks/use-server";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
+import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
+import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { isCron } from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
 
 export const Route = createFileRoute("/services/$serviceId/")({
@@ -55,13 +58,24 @@ export function ServiceOverviewPage({ serviceId }: { serviceId: string }) {
     );
   }
 
-  return <OverviewPanel service={service} />;
+  // A cron_job additionally shows its schedule + recent runs below the details.
+  return (
+    <div className="space-y-6">
+      <OverviewPanel service={service} />
+      {isCron(service) ? <CronRunsSection service={service} /> : null}
+    </div>
+  );
 }
 
 function OverviewPanel({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
+  const cron = isCron(service);
 
   const rows: { label: string; value: React.ReactNode }[] = [
+    {
+      label: t("services.overviewType"),
+      value: <ServiceTypeBadge service={service} />,
+    },
     {
       label: t("services.colStatus"),
       value: <ServiceStatusBadge service={service} />,
@@ -70,33 +84,45 @@ function OverviewPanel({ service }: { service: ServiceView }) {
       label: t("services.overviewPhase"),
       value: service.phase || "—",
     },
-    {
-      label: t("services.colUrl"),
-      value: service.url ? (
-        <a
-          href={service.url}
-          target="_blank"
-          rel="noreferrer"
-          className="text-primary hover:underline"
-        >
-          {service.url}
-        </a>
-      ) : (
-        "—"
-      ),
-    },
+    // A cron_job has no serving URL — show its schedule instead of the URL row.
+    cron
+      ? {
+          label: t("services.overviewSchedule"),
+          value: (
+            <span className="font-mono text-xs">{service.schedule || "—"}</span>
+          ),
+        }
+      : {
+          label: t("services.colUrl"),
+          value: service.url ? (
+            <a
+              href={service.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline"
+            >
+              {service.url}
+            </a>
+          ) : (
+            "—"
+          ),
+        },
     {
       label: t("services.colInstances"),
       value: <span className="tabular-nums">{service.replicas ?? "—"}</span>,
     },
     {
       label: t("services.colRevision"),
-      value: <span className="font-mono text-xs">{service.revision || "—"}</span>,
+      value: (
+        <span className="font-mono text-xs">{service.revision || "—"}</span>
+      ),
     },
     {
       label: t("services.colCreated"),
       value: (
-        <span className="tabular-nums">{formatRelativeAge(service.createdAt)}</span>
+        <span className="tabular-nums">
+          {formatRelativeAge(service.createdAt)}
+        </span>
       ),
     },
     {

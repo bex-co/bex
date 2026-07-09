@@ -566,6 +566,67 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务运行后将分配平台 URL。",
     description: "Platform-subdomain state when the service has no URL yet",
   },
+  "services.colType": {
+    message: "类型",
+    description: "Services table column header (service type)",
+  },
+  "services.typeWeb": {
+    message: "Web 服务",
+    description: "Service-type badge: an HTTP service exposed at a URL",
+  },
+  "services.typePrivate": {
+    message: "私有服务",
+    description:
+      "Service-type badge: an HTTP service reachable only in-cluster",
+  },
+  "services.typeWorker": {
+    message: "后台工作进程",
+    description: "Service-type badge: runs with no HTTP port/URL",
+  },
+  "services.typeCron": {
+    message: "定时任务",
+    description: "Service-type badge: runs a command on a schedule",
+  },
+  "services.typeUnknown": {
+    message: "服务",
+    description: "Service-type badge fallback for an unrecognized type",
+  },
+  "services.overviewType": {
+    message: "类型",
+    description: "Overview tab row label for the service type",
+  },
+  "services.overviewSchedule": {
+    message: "计划",
+    description: "Overview tab row label for a cron job's schedule",
+  },
+  "services.cronRunsTitle": {
+    message: "最近运行",
+    description: "Cron job overview: recent-runs section title",
+  },
+  "services.cronRunsEmpty": {
+    message: "暂无运行记录。",
+    description: "Cron job overview: shown when a cron has no run history",
+  },
+  "services.cronRunColStarted": {
+    message: "开始时间",
+    description: "Cron runs table column header (run start time)",
+  },
+  "services.cronRunColStatus": {
+    message: "状态",
+    description: "Cron runs table column header (run outcome)",
+  },
+  "services.cronRunStatusRunning": {
+    message: "运行中",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusSucceeded": {
+    message: "成功",
+    description: "Cron run status badge",
+  },
+  "services.cronRunStatusFailed": {
+    message: "失败",
+    description: "Cron run status badge",
+  },
 };
 
 export default zhServices;

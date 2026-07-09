@@ -56,7 +56,8 @@ type scaleRequest struct {
 // a safe superset. One of repo/image is required.
 type createServiceRequest struct {
 	// Render fields.
-	Type           string             `json:"type"` // web_service (default) | private_service
+	Type           string             `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
+	Schedule       string             `json:"schedule"` // cron expression, required when type is cron_job
 	Name           string             `json:"name"`
 	Repo           string             `json:"repo"`
 	Image          *imageRef          `json:"image"` // prebuilt image: Render nests the path in an object
@@ -86,11 +87,13 @@ type imageRef struct {
 }
 
 // serviceDetailsReq is where Render nests plan, numInstances and healthCheckPath
-// on create — the same location PATCH and GET report them.
+// on create — the same location PATCH and GET report them. schedule is Render's
+// cronJobDetails.schedule (accepted here or at the top level, top level wins).
 type serviceDetailsReq struct {
 	Plan            string `json:"plan"`
 	NumInstances    int32  `json:"numInstances"`
 	HealthCheckPath string `json:"healthCheckPath"`
+	Schedule        string `json:"schedule"`
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -98,7 +101,7 @@ type serviceDetailsReq struct {
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
 func (r createServiceRequest) toCreateRequest() CreateRequest {
-	plan, health := r.Plan, ""
+	plan, health, schedule := r.Plan, "", r.Schedule
 	var replicas int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
@@ -106,6 +109,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		}
 		health = r.ServiceDetails.HealthCheckPath
 		replicas = r.ServiceDetails.NumInstances
+		if schedule == "" {
+			schedule = r.ServiceDetails.Schedule // top-level schedule wins over the nested one
+		}
 	}
 	image := ""
 	if r.Image != nil {
@@ -117,6 +123,8 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	}
 	return CreateRequest{
 		Name:            r.Name,
+		Type:            r.Type,
+		Schedule:        schedule,
 		Repo:            r.Repo,
 		Image:           image,
 		Branch:          r.Branch,
@@ -127,7 +135,6 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		HealthCheckPath: health,
 		Env:             env,
 		Hosts:           r.Domains,
-		Private:         r.Type == "private_service",
 		AutoDeploy:      parseYesNo(r.AutoDeploy),
 	}
 }
@@ -244,6 +251,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, toRenderService(app)) // Render: create => 201
 	}
 
+	// runCron handles the cron run trigger (Render's POST /cron-jobs/{id}/runs):
+	// bump spec.runAt so the operator materializes a one-off Job. Render returns a
+	// cronJobRun; bex returns the updated service (its status.runs gains the run
+	// once the operator reconciles). 201 Created, matching create-style verbs.
+	runCron := func(w http.ResponseWriter, r *http.Request) {
+		app, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, toRenderService(app))
+	}
+	// Render's canonical path is /cron-jobs/{id}/runs; bex also accepts it under the
+	// /v1/services and /v1/apps nouns (registered in the base loop below).
+	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs", runCron)
+
 	// Custom-domains sub-resource (Render-compatible).
 	listDomains := func(w http.ResponseWriter, r *http.Request) {
 		domains, err := s.ListDomains(r.Context(), r.PathValue("id"))
@@ -294,6 +317,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
 		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
+		mux.HandleFunc("POST "+base+"/{id}/runs", runCron)                           // cron run trigger (bex noun)
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
 		mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)

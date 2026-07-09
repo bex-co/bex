@@ -1,0 +1,30 @@
+import type { en } from "@/i18n";
+import type { ServiceView, ServiceTypeKey } from "@/features/services/types";
+
+// Render's serviceType wire values → the UI's short type key. Kept next to the
+// label map so a new type is added in one place (mirrors labels.ts for status).
+const TYPE_KEY: Record<string, ServiceTypeKey> = {
+  web_service: "web",
+  private_service: "private",
+  background_worker: "worker",
+  cron_job: "cron",
+};
+
+/** Resolve a wire serviceType onto its type key; unknown/legacy types map to "unknown". */
+export function deriveServiceType(type: string): ServiceTypeKey {
+  return TYPE_KEY[type] ?? "unknown";
+}
+
+/** Maps a resolved type key to its i18n badge label (mirrors STATUS_LABEL). */
+export const SERVICE_TYPE_LABEL: Record<ServiceTypeKey, keyof typeof en> = {
+  web: "services.typeWeb",
+  private: "services.typePrivate",
+  worker: "services.typeWorker",
+  cron: "services.typeCron",
+  unknown: "services.typeUnknown",
+};
+
+/** True for a cron_job — the type whose detail shows a schedule + run history. */
+export function isCron(s: ServiceView): boolean {
+  return s.type === "cron_job";
+}

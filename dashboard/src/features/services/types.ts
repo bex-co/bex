@@ -8,6 +8,11 @@ export interface ServiceView {
   /** App name — Render's opaque service id; also the metrics deep-link param. */
   id: string;
   name: string;
+  /**
+   * Render serviceType — web_service | private_service | background_worker |
+   * cron_job. Empty spec.type reads back as web_service from bex-api.
+   */
+  type: string;
   /** Derived from Render's string `suspended` enum, not a raw boolean field. */
   suspended: boolean;
   /** Operator phase, verbatim (Pending/Building/Deploying/Running/Hibernated/Failed). */
@@ -26,10 +31,35 @@ export interface ServiceView {
    * Settings tab).
    */
   idleTTLSeconds: number | null;
+  /**
+   * Cron schedule (5-field crontab), only set for a `cron_job`; null otherwise.
+   * Only the detail `server` query selects it.
+   */
+  schedule: string | null;
+  /**
+   * A `cron_job`'s recent run history (newest first), only selected by the detail
+   * `server` query. Empty for other types / when not selected.
+   */
+  runs: CronRunView[];
+}
+
+/** One execution of a `cron_job` — the Render cron-run shape bex-api projects. */
+export interface CronRunView {
+  /** Kubernetes Job name backing the run — its stable id in the list. */
+  name: string;
+  /** RFC3339 start time, or null if it hasn't started. */
+  startedAt: string | null;
+  /** RFC3339 completion/failure time, or null while running. */
+  finishedAt: string | null;
+  /** Run outcome — Running | Succeeded | Failed. */
+  status: string;
 }
 
 /** The lifecycle verbs the row exposes, named after bex-api's Render mutations. */
 export type LifecycleAction = "suspend" | "resume" | "restart";
+
+/** A resolved service-type key (i18n label) + the badge variant it renders as. */
+export type ServiceTypeKey = "web" | "private" | "worker" | "cron" | "unknown";
 
 /**
  * One env-var key on the Environment tab (Render dashboard shape: the list is

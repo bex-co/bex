@@ -23,9 +23,47 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// Service types, tracking Render's serviceType vocabulary. An empty spec.type is
+// treated as TypeWebService, so pre-existing Apps keep their behavior.
+const (
+	// TypeWebService is an HTTP service exposed at a URL (Deployment + Service +
+	// optional Ingress). The default.
+	TypeWebService = "web_service"
+	// TypePrivateService is an HTTP service reachable only in-cluster (Deployment +
+	// ClusterIP Service, no platform Ingress).
+	TypePrivateService = "private_service"
+	// TypeBackgroundWorker runs the built image with no HTTP port: a bare
+	// Deployment, no Service, no Ingress, no URL.
+	TypeBackgroundWorker = "background_worker"
+	// TypeCronJob runs the built image's command on Spec.Schedule as a Kubernetes
+	// CronJob — no Deployment/Service/Ingress; run history lands in Status.Runs.
+	TypeCronJob = "cron_job"
+)
+
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
 type AppSpec struct {
+	// Type is the service kind, tracking Render's serviceType vocabulary:
+	// web_service (default), private_service, background_worker, cron_job. Empty is
+	// treated as web_service so existing Apps are unchanged. A background_worker
+	// runs the image with no HTTP port/Service/Ingress; a cron_job runs the image's
+	// command on Schedule as a Kubernetes CronJob (no Deployment/Service/Ingress).
+	// +optional
+	// +kubebuilder:validation:Enum=web_service;private_service;background_worker;cron_job
+	Type string `json:"type,omitempty"`
+
+	// Schedule is the cron expression (standard 5-field crontab) a cron_job runs
+	// on. Required when Type is cron_job; ignored for every other type.
+	// +optional
+	Schedule string `json:"schedule,omitempty"`
+
+	// RunAt requests a one-off run of a cron_job now (verb-as-timestamp, like
+	// RestartedAt): when it changes, the operator creates a single Job from the
+	// cron's template. Empty = never requested; re-setting the same value is a
+	// no-op. Ignored for non-cron types. See docs/bex-api.md (cron run trigger).
+	// +optional
+	RunAt string `json:"runAt,omitempty"`
+
 	// Repo is the git repository URL (or local path) to deploy from. Either Repo
 	// (build-from-git) or Image (prebuilt) must be set.
 	// +optional
@@ -160,11 +198,38 @@ const (
 	PhaseFailed     AppPhase = "Failed"
 )
 
+// CronRun is one execution of a cron_job — a Kubernetes Job spawned either by the
+// CronJob's schedule or by a one-off RunAt trigger. Recorded in AppStatus.Runs so
+// the run history is visible over the API without listing Jobs.
+type CronRun struct {
+	// Name is the Kubernetes Job name backing this run.
+	// +required
+	Name string `json:"name"`
+
+	// StartedAt is when the run began (RFC3339); empty if it has not started yet.
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
+
+	// FinishedAt is when the run completed or failed (RFC3339); empty while running.
+	// +optional
+	FinishedAt string `json:"finishedAt,omitempty"`
+
+	// Status is the run outcome: Running, Succeeded, or Failed.
+	// +required
+	Status string `json:"status"`
+}
+
 // AppStatus is the observed state of a App.
 type AppStatus struct {
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase AppPhase `json:"phase,omitempty"`
+
+	// Runs is the recent run history of a cron_job (newest first), populated from
+	// the Jobs the CronJob schedule and one-off RunAt triggers create. Empty for
+	// every other service type.
+	// +optional
+	Runs []CronRun `json:"runs,omitempty"`
 
 	// URL is the canonical serving URL (first effective host).
 	// +optional

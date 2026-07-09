@@ -59,7 +59,8 @@ type bexApp struct {
 	Replicas        int32       `json:"replicas"`
 	Tier            string      `json:"tier"`
 	HealthCheckPath string      `json:"healthCheckPath"`
-	Type            string      `json:"type"` // "web" (default, public) | "private"
+	Type            string      `json:"type"`     // render.yaml short type: web (default) | private/pserv | worker | cron
+	Schedule        string      `json:"schedule"` // cron expression, required when type is cron
 	Domains         []string    `json:"domains"`
 	EnvVars         []bexEnvVar `json:"envVars"`
 	AutoDeploy      *bool       `json:"autoDeploy"` // nil => default (on for repo-backed)
@@ -105,11 +106,18 @@ func createFromManifest(req DeployRequest) (CreateRequest, error) {
 		branch = req.Branch
 	}
 
-	// type decides exposure, render.yaml-style: web (default) is public;
-	// private is in-cluster only and cannot carry domains (no ingress).
-	private := a.Type == "private"
-	if private && len(a.Domains) > 0 {
-		return CreateRequest{}, fmt.Errorf("%w: a private service has no ingress and cannot list domains", core.ErrBadRequest)
+	// type decides the service kind, render.yaml-style. Only a web service is
+	// exposed; the rest (private/worker/cron) have no platform ingress — the
+	// create surface enforces the domain/schedule rules from here.
+	svcType, err := manifestType(a.Type)
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	// Only a web service is exposed; private/worker/cron have no ingress, so a
+	// manifest that lists domains for one is a mistake (worth catching here with a
+	// manifest-shaped message, not just at the generic create layer).
+	if svcType != appv1alpha1.TypeWebService && len(a.Domains) > 0 {
+		return CreateRequest{}, fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
 	}
 
 	env := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
@@ -122,6 +130,8 @@ func createFromManifest(req DeployRequest) (CreateRequest, error) {
 
 	return CreateRequest{
 		Name:            a.Name,
+		Type:            svcType,
+		Schedule:        a.Schedule,
 		Repo:            repo,
 		Image:           a.Image,
 		Branch:          branch,
@@ -132,7 +142,25 @@ func createFromManifest(req DeployRequest) (CreateRequest, error) {
 		HealthCheckPath: a.HealthCheckPath,
 		Env:             env,
 		Hosts:           a.Domains,
-		Private:         private,
 		AutoDeploy:      a.AutoDeploy,
 	}, nil
+}
+
+// manifestType maps a render.yaml-style short service type to the App
+// serviceType. Empty/web => web_service; private and Render's "pserv" =>
+// private_service; worker => background_worker; cron => cron_job. An unknown type
+// (including "static", deferred to w1/012) is rejected with a clear message.
+func manifestType(t string) (string, error) {
+	switch t {
+	case "", "web", "web_service":
+		return appv1alpha1.TypeWebService, nil
+	case "private", "pserv", "private_service":
+		return appv1alpha1.TypePrivateService, nil
+	case "worker", "background_worker":
+		return appv1alpha1.TypeBackgroundWorker, nil
+	case "cron", "cron_job":
+		return appv1alpha1.TypeCronJob, nil
+	default:
+		return "", fmt.Errorf("%w: unknown service type %q (want web, private, worker, or cron)", core.ErrBadRequest, t)
+	}
 }

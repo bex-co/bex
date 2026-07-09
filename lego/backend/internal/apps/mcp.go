@@ -70,13 +70,14 @@ type idleTimeoutArgs struct {
 // omitted — bex builds via Dockerfile/CNB auto-detection, one region.
 type createWebServiceArgs struct {
 	Name       string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type       string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	Port       int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000)"`
+	Port       int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
 	Replicas   int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 }
 
@@ -87,21 +88,56 @@ type envVarArg struct {
 }
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
-	var env []appv1alpha1.EnvVar
-	for _, e := range a.EnvVars {
-		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
-	}
 	return CreateRequest{
 		Name:       a.Name,
+		Type:       a.Type,
 		Repo:       a.Repo,
 		Image:      a.Image,
 		Branch:     a.Branch,
 		Plan:       a.Plan,
-		Env:        env,
+		Env:        toEnvVars(a.EnvVars),
 		AutoDeploy: parseYesNo(a.AutoDeploy),
 		Port:       a.Port,
 		Replicas:   a.Replicas,
 	}
+}
+
+// createCronJobArgs is create_cron_job's input — Render's MCP tool name. It
+// tracks create_web_service but requires a schedule and has no port/replicas
+// (a cron runs its command to completion on the schedule, not as a server).
+type createCronJobArgs struct {
+	Name       string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
+	Schedule   string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
+	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+}
+
+func (a createCronJobArgs) toCreateRequest() CreateRequest {
+	return CreateRequest{
+		Name:       a.Name,
+		Type:       appv1alpha1.TypeCronJob,
+		Schedule:   a.Schedule,
+		Repo:       a.Repo,
+		Image:      a.Image,
+		Branch:     a.Branch,
+		Plan:       a.Plan,
+		Env:        toEnvVars(a.EnvVars),
+		AutoDeploy: parseYesNo(a.AutoDeploy),
+	}
+}
+
+// toEnvVars maps the Render {key,value} env-var shape onto the CR EnvVar type,
+// shared by the create tools.
+func toEnvVars(in []envVarArg) []appv1alpha1.EnvVar {
+	var env []appv1alpha1.EnvVar
+	for _, e := range in {
+		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+	}
+	return env
 }
 
 // deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
@@ -156,6 +192,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, toRenderService(app), nil
 	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_cron_job",
+		Description: "Create (or update) a cron job that runs a repo/image's command on a schedule, and get back the service. Calling it again for the same name redeploys it. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Create(ctx, in.toCreateRequest())
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "run_cron_job",
+		Description: "Trigger a one-off run of a cron job now (Render's cron run trigger). The run appears in the service's run history once it starts. bex extension over Render's MCP.",
+	}, s.serviceTool(s.TriggerCronRun))
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",

@@ -67,17 +67,34 @@ type IntentStore interface {
 	RemoveDomain(ctx context.Context, appID, host string) error
 }
 
+// CronRunView is one execution of a cron_job — the neutral projection of the
+// App's status run history the adapters render (Render exposes cron runs at
+// /cron-jobs/{id}/runs). Newest first.
+type CronRunView struct {
+	Name       string `json:"name"`
+	StartedAt  string `json:"startedAt,omitempty"`
+	FinishedAt string `json:"finishedAt,omitempty"`
+	Status     string `json:"status"` // Running | Succeeded | Failed
+}
+
 // AppView is the neutral, bex-native projection of an App — spec intent +
 // observed status. Service returns this; each adapter maps it to its own wire
 // format (the REST/GraphQL adapters render it in Render's Service shape).
 type AppView struct {
-	Name      string   `json:"name"`
+	Name string `json:"name"`
+	// Type is the Render serviceType (web_service | private_service |
+	// background_worker | cron_job); empty spec.type projects as web_service.
+	Type      string   `json:"type"`
 	Phase     string   `json:"phase"`
 	URL       string   `json:"url"`
 	URLs      []string `json:"urls"`
 	Image     string   `json:"image"`
 	Replicas  int32    `json:"replicas"`
 	Suspended bool     `json:"suspended"`
+	// Schedule is the cron expression for a cron_job (spec.schedule), empty otherwise.
+	Schedule string `json:"schedule,omitempty"`
+	// Runs is a cron_job's recent run history (status.runs), newest first.
+	Runs []CronRunView `json:"runs,omitempty"`
 	// Plan is Render's public spelling of the App's tier (e.g. "pro_plus" for
 	// spec.tier "pro-plus"), sourced from lego/types/tiers. Omitted — not
 	// faked as "" — when spec.tier is empty or not a recognized tier, so a
@@ -101,19 +118,38 @@ func view(a *appv1alpha1.App) AppView {
 	if t, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
 		plan = t.RenderPlan
 	}
+	svcType := a.Spec.Type
+	if svcType == "" {
+		svcType = appv1alpha1.TypeWebService // empty spec.type == web_service
+	}
 	return AppView{
 		Name:           a.Name,
+		Type:           svcType,
 		Phase:          string(a.Status.Phase),
 		URL:            a.Status.URL,
 		URLs:           a.Status.URLs,
 		Image:          a.Status.Image,
 		Replicas:       a.Spec.Replicas,
 		Suspended:      a.Spec.Suspended,
+		Schedule:       a.Spec.Schedule,
+		Runs:           cronRunViews(a.Status.Runs),
 		Plan:           plan,
 		Revision:       a.Status.ActiveRevision,
 		CreatedAt:      created,
 		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
 	}
+}
+
+// cronRunViews projects the CR's status run history onto the neutral view shape.
+func cronRunViews(runs []appv1alpha1.CronRun) []CronRunView {
+	if len(runs) == 0 {
+		return nil
+	}
+	out := make([]CronRunView, len(runs))
+	for i, r := range runs {
+		out[i] = CronRunView{Name: r.Name, StartedAt: r.StartedAt, FinishedAt: r.FinishedAt, Status: r.Status}
+	}
+	return out
 }
 
 // List returns every App in the namespace.
@@ -193,10 +229,15 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 // platform defaults the operator would apply (branch main, port 3000, one
 // replica, the catalog's default tier). Plan accepts either Render's spelling
 // ("pro_plus") or a bex tier id ("pro-plus"). Hosts are external FQDNs, the
-// first canonical (spec.host); a web service (Private false) is additionally
-// exposed at the platform hostname <name>.<BEX_BASE_DOMAIN>.
+// first canonical (spec.host); only a web_service is additionally exposed at the
+// platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
-	Name            string
+	Name string
+	// Type is the Render serviceType: web_service (default), private_service,
+	// background_worker, cron_job. Empty defaults to web_service.
+	Type string
+	// Schedule is the cron expression, required when Type is cron_job.
+	Schedule        string
 	Repo            string
 	Image           string
 	Branch          string
@@ -207,7 +248,6 @@ type CreateRequest struct {
 	HealthCheckPath string
 	Env             []appv1alpha1.EnvVar
 	Hosts           []string
-	Private         bool
 	// AutoDeploy controls whether a signed git push to Branch redeploys this App
 	// (the webhook honors spec.autoDeploy). nil => the default: on for a
 	// repo-backed service (Render's default too), off for an image-backed one
@@ -281,6 +321,18 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.Repo == "" && req.Image == "" {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
+	svcType, err := normalizeType(req.Type)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
+	// A cron_job needs a schedule; a worker/cron has no ingress, so it can't carry
+	// custom domains (same rule the deploy manifest enforces for private services).
+	if svcType == appv1alpha1.TypeCronJob && strings.TrimSpace(req.Schedule) == "" {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
+	}
+	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
+	}
 	tier, err := normalizeTierOrPlan(req.Plan)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -311,6 +363,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		autoDeploy = *req.AutoDeploy
 	}
 	spec := appv1alpha1.AppSpec{
+		Type:            svcType,
 		Repo:            req.Repo,
 		Image:           req.Image,
 		Branch:          branch,
@@ -321,9 +374,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		HealthCheckPath: req.HealthCheckPath,
 		Env:             req.Env,
 		AutoDeploy:      autoDeploy,
-		// A web service is public: expose it at <name>.<BEX_BASE_DOMAIN> so the
-		// caller gets a live URL with no custom domain. type:private opts out.
-		Expose: !req.Private,
+		// Only a web service is public: expose it at <name>.<BEX_BASE_DOMAIN> so the
+		// caller gets a live URL with no custom domain. Every other type opts out
+		// (private has no platform host; worker/cron have no HTTP endpoint at all).
+		Expose: svcType == appv1alpha1.TypeWebService,
+	}
+	if svcType == appv1alpha1.TypeCronJob {
+		spec.Schedule = strings.TrimSpace(req.Schedule)
 	}
 	if len(req.Hosts) > 0 {
 		spec.Host = req.Hosts[0]
@@ -332,11 +389,28 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	return spec, nil
 }
 
+// normalizeType resolves the requested service type, tracking Render's
+// serviceType vocabulary. Empty defaults to web_service; an unrecognized type is
+// rejected.
+func normalizeType(t string) (string, error) {
+	switch t {
+	case "":
+		return appv1alpha1.TypeWebService, nil
+	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService,
+		appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob:
+		return t, nil
+	default:
+		return "", fmt.Errorf("%w: type must be one of web_service|private_service|background_worker|cron_job", core.ErrBadRequest)
+	}
+}
+
 // applyCreateToSpec copies the create-owned fields of want onto an existing
 // spec, leaving fields owned by the operator or other features (EnvFromSecret,
 // Suspended, IdleTTLSeconds, RestartedAt) untouched — the same discipline the
 // store projector's applyOwnedSpec follows.
 func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+	dst.Type = want.Type
+	dst.Schedule = want.Schedule
 	dst.Repo = want.Repo
 	dst.Image = want.Image
 	dst.Branch = want.Branch
@@ -387,6 +461,27 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 	}
 	return s.patch(ctx, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// TriggerCronRun requests a one-off run of a cron_job now (Render's
+// POST /cron-jobs/{id}/runs): it bumps spec.runAt (verb-as-timestamp, like
+// Restart), and the operator materializes a single Job the run history then
+// shows. Rejected for a non-cron service. Intent only — the run appears in
+// status.runs once the operator reconciles, not synchronously.
+func (s *Service) TriggerCronRun(ctx context.Context, name string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return AppView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
+	}
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+		a.Spec.RunAt = s.Now().UTC().Format(time.RFC3339Nano)
 	})
 }
 

@@ -2,6 +2,7 @@ import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
+import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
 import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 
@@ -29,6 +30,7 @@ export function ServiceDetailHeader({
       <div className="min-w-0 space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="truncate text-xl font-semibold">{service.name}</h1>
+          <ServiceTypeBadge service={service} />
           <ServiceStatusBadge service={service} />
         </div>
         {service.url ? (
