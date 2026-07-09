@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
-- [ ] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks) ← from `005` (t001–t006 done, committed `aebbd43`; open: t007 live acceptance — prod `BEX_CP_DB_URI` still off)
+- [x] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks; DONE 2026-07-09 — committed `aebbd43`, prod `BEX_CP_DB_URI` on since m9, live acceptance via `scripts/auth-tenant-e2e.sh` in m9/t004) ← from `005`, moved to `done/m2/`
 - [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
 - [ ] **m3** — Elastic substrate: bin-pack + autoscale (7 tasks) ← from `002`, `004` (t001 done; retrofitted to current `/pm` canon 2026-07-08)
 - [x] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003` — done 2026-07-08, moved to `done/m4/`
