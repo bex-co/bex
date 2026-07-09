@@ -1,0 +1,43 @@
+name: scripts (test)
+
+# Pure-bash unit tests for the prod-wiring scripts — no cluster, no kubectl, no
+# curl. Currently: scripts/bao-init.test.sh (bao-init.sh's .env editor + the
+# env-template / gh-secrets.sh wiring, docs/secrets.md). Add script tests here
+# as they appear.
+on:
+  pull_request:
+    paths:
+      - "scripts/bao-init.sh"
+      - "scripts/bao-init.test.sh"
+      - "scripts/bao-endpoints.sh"
+      - "scripts/bao-k8s-auth.sh"
+      - "scripts/gh-secrets.sh"
+      - ".env.example"
+      - ".env.template"
+      - ".github/workflows/scripts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/bao-init.sh"
+      - "scripts/bao-init.test.sh"
+      - "scripts/bao-endpoints.sh"
+      - "scripts/bao-k8s-auth.sh"
+      - "scripts/gh-secrets.sh"
+      - ".env.example"
+      - ".env.template"
+      - ".github/workflows/scripts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scripts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bao-init unit tests
+        run: bash scripts/bao-init.test.sh

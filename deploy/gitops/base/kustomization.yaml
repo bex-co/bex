@@ -21,3 +21,4 @@ resources:
   - kratos.yaml                  # Ory Kratos — platform identity (docs/auth.md)
   - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/auth.md)
   - openfga.yaml                 # OpenFGA — platform authorization (ReBAC, docs/auth.md)
+  - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/secrets.md)

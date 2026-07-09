@@ -5,3 +5,17 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+patches:
+  # OpenBao: layer the prod values file (server.ha.replicas: 3 for quorum, no
+  # local-path storageClass — falls back to the cluster's default provisioner)
+  # over the base values. Argo merges valueFiles in order, later wins — the
+  # same patch shape the local overlay uses for its openbao values.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: openbao
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml

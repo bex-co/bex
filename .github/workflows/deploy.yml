@@ -216,6 +216,33 @@ jobs:
           }
           bash scripts/authz-model.sh
 
+      # --- 4e. OpenBao init/unseal + Kubernetes auth (docs/secrets.md) --------
+      # OpenBao ships sealed by design (no auto-unseal, docs/secrets.md §3):
+      # without this step the env-vars verbs 503 in prod even though bex-api
+      # already points at the store (BEX_OPENBAO_URL in the api Deployment).
+      # Idempotent — safe on every deploy: a re-run detects "already
+      # initialized" and just unseals each pod. The unseal keys + root token
+      # come from GitHub Actions secrets (seeded by the one-time manual
+      # bao-init.sh run against prod, pushed via scripts/gh-secrets.sh). In HA
+      # (prod replicas: 3) bao-init reaches each pod directly — the readiness
+      # probe (`bao status`) fails while sealed, so wait for Running, not Ready
+      # (same approach as scripts/bao-verify.sh's wait_pod_running).
+      - name: unseal OpenBao + configure Kubernetes auth
+        env:
+          BAO_UNSEAL_KEY_1: ${{ secrets.BAO_UNSEAL_KEY_1 }}
+          BAO_UNSEAL_KEY_2: ${{ secrets.BAO_UNSEAL_KEY_2 }}
+          BAO_UNSEAL_KEY_3: ${{ secrets.BAO_UNSEAL_KEY_3 }}
+          BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+        run: |
+          timeout 600 bash -c 'until kubectl -n secrets get sts openbao >/dev/null 2>&1; do sleep 5; done' \
+            || { echo "openbao StatefulSet never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          timeout 600 bash -c 'until kubectl -n secrets get pods -l app.kubernetes.io/name=openbao --no-headers 2>/dev/null | grep -q .; do sleep 5; done' \
+            || { echo "openbao pods never appeared — Argo status:"; kubectl -n argocd get applications; exit 1; }
+          kubectl -n secrets wait --for=jsonpath='{.status.phase}'=Running pod -l app.kubernetes.io/name=openbao --timeout=600s \
+            || { echo "openbao pods never reached Running:"; kubectl -n secrets get pods; exit 1; }
+          bash scripts/bao-init.sh
+          bash scripts/bao-k8s-auth.sh
+
       - name: wait for the bex operator
         run: |
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=600s \

@@ -1,6 +1,6 @@
 # ADR: platform secrets — OpenBao for tenant credentials
 
-**Status:** accepted; substrate deployed on the local mock cluster (w4/m5), and wired into the product in w4/m6 — bex-api's env-vars API now reads/writes tenant credentials through it (see [Product usage](#product-usage-w4m6-the-env-vars-api) below).
+**Status:** accepted; substrate deployed on the local mock cluster (w4/m5), wired into the product in w4/m6 (bex-api's env-vars API reads/writes tenant credentials through it — see [Product usage](#product-usage-w4m6-the-env-vars-api)), and wired into prod in w1/m10 (init/unseal + Kubernetes auth run from `deploy.yml`, `replicas: 3` overlay — see [Prod deploy path](#prod-deploy-path)).
 
 ## Context
 
@@ -88,12 +88,14 @@ Verified end-to-end on the mock cluster by [scripts/secrets-verify.sh](../script
 
 ## Prod deploy path
 
-Partially wired: the app side is live — the prod bex-api Deployment sets `BEX_OPENBAO_URL=http://openbao.secrets.svc:8200` (`lego/operator/config/api/deployment.yaml`), so a deployed bex-api serves the env-vars verbs against OpenBao. The CI/unseal side is **not** wired into `deploy.yml` yet — that remaining path:
+Wired end-to-end (w1/m10). The app side is live — the prod bex-api Deployment sets `BEX_OPENBAO_URL=http://openbao.secrets.svc:8200` (`lego/operator/config/api/deployment.yaml`) — and the CI/unseal side runs on every deploy:
 
-1. First deploy against a real cluster: run `scripts/bao-init.sh` once, by hand, against the prod kubeconfig. It generates the unseal keys + root token and writes them into the operator's local `.env`.
-2. `scripts/gh-secrets.sh` pushes `BAO_UNSEAL_KEY_1`/`BAO_UNSEAL_KEY_2`/`BAO_UNSEAL_KEY_3`/`BAO_ROOT_TOKEN` into this repo's GitHub Actions secrets (add them to that script's key list alongside the `KRATOS_*`/`HYDRA_*`/`OPENFGA_*` keys).
-3. `deploy.yml` runs `bao-init.sh` (idempotent — detects "already initialized," just unseals) and `bao-k8s-auth.sh` after the OpenBao rollout on every subsequent deploy, the same shape as the existing `auth-secrets.sh`/`authz-model.sh` steps.
-4. Production sizing: patch `server.ha.replicas: 3` and drop the local overlay's `storageClass: local-path` override (falls back to the cluster's default, e.g. `hcloud-volumes`) in a `overlays/prod` values layer, mirroring how `auth-dbs`'s local patch shrinks storage only for CAPD.
+1. **One-time** (operator, by hand, against the prod kubeconfig): `BAO_ALLOW_INIT=1 scripts/bao-init.sh` initializes OpenBao (5 Shamir shares / 3 threshold), writing the unseal keys + root token into the operator's local `.env`. The `BAO_ALLOW_INIT=1` opt-in is mandatory for a first init and is set **only** here — `deploy.yml` never sets it, so CI can never mint-and-discard the keys against an ephemeral runner. Do **not** `cp .env.template .env` around this step: `bao-init.sh` writes the keys straight into `.env`, and a `cp` would overwrite the only copy. Prod runs `server.ha.replicas: 3`, so `bao-init.sh` initializes the ordinal-first pod (the raft leader) and then unseals **every** pod directly — Shamir seal state is per-node, and the `openbao` Service round-robins across sealed+unsealed members, so a Service-targeted unseal is unreliable in HA. (Single-node and the `BAO_ADDR` off-cluster paths operate on the one reachable endpoint and are unaffected.)
+2. `scripts/gh-secrets.sh` pushes `BAO_UNSEAL_KEY_1`/`BAO_UNSEAL_KEY_2`/`BAO_UNSEAL_KEY_3`/`BAO_ROOT_TOKEN` (now present in `.env` from step 1) into this repo's GitHub Actions secrets — they're in the script's key list alongside the `KRATOS_*`/`HYDRA_*`/`OPENFGA_*` keys.
+3. `.github/workflows/deploy.yml` waits for the OpenBao StatefulSet's pods to reach `Running`, then runs `bao-init.sh` (idempotent — detects "already initialized," just unseals each pod; refuses to init without `BAO_ALLOW_INIT`) and `bao-k8s-auth.sh` after the rollout on every deploy, the same shape as the `auth-secrets.sh`/`authz-model.sh` steps.
+4. Production sizing: [overlays/prod/values/openbao.values.yaml](../deploy/gitops/overlays/prod/values/openbao.values.yaml) sets `server.ha.replicas: 3`, `server.podManagementPolicy: Parallel` (so the sealed pods don't block each other's creation), and a raft config with `retry_join` for the three pods (so followers auto-join openbao-0's cluster over the headless `openbao-internal` Service); it carries no `storageClass` override (falls back to the cluster's default, e.g. `hcloud-volumes`). The layer is applied onto the openbao Application by the prod overlay's kustomization patch — mirroring how `auth-dbs`'s local patch shrinks storage only for CAPD. The openbao Application itself is deployed in every environment via `deploy/gitops/base/kustomization.yaml`.
+
+Live acceptance — `PUT /v1/services/{id}/env-vars` against prod returns 200 (not 503), the value lands in OpenBao under `tenants/default/services/<svc>/env` and survives a bex-api pod restart — is the operator's first-run verification; thereafter every `deploy.yml` run re-unseals idempotently (no re-init).
 
 ## Alternatives considered
 
@@ -107,4 +109,4 @@ Partially wired: the app side is live — the prod bex-api Deployment sets `BEX_
 - Once w4/m6 wires product usage, bex-api becomes hard-dependent on OpenBao for any credential-touching verb — an outage or sealed state should 503 that verb, mirroring the Hydra fail-closed precedent in [auth.md](auth.md).
 - Single-node raft locally, `replicas: 1` — no quorum, no automated snapshot backup yet. **OpenBao must join the w1/m7 backup/HA work** before real tenant credentials live in it; losing the single node loses everything (same caveat `kratos-db`/`hydra-db` carry today).
 - Root token + unseal keys are a manual, high-trust bootstrap step; rotating the root token or re-keying the Shamir shares is a manual runbook not yet built.
-- CI wiring (init/unseal in `deploy.yml`, unseal keys in GitHub secrets) is deliberately deferred — the store is verified locally and prod bex-api already points at it (`BEX_OPENBAO_URL` in the api Deployment), but until `bao-init.sh`/`bao-k8s-auth.sh` run against prod, the prod instance stays uninitialized and the env-vars verbs 503 there.
+- CI wiring (init/unseal in `.github/workflows/deploy.yml`, unseal keys in GitHub secrets via `scripts/gh-secrets.sh`) is in place: every deploy waits for the OpenBao rollout, then re-unseals each pod idempotently and reapplies the Kubernetes auth binding. The one-time first init against prod is a manual operator step — see [Prod deploy path](#prod-deploy-path).

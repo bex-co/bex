@@ -31,8 +31,9 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
   1. **Render parity** — _only when the milestone is feature development or a fix that touches a user/tenant-facing surface._ Check that the change is consistent across every surface it exposes: REST, GraphQL, and MCP in `lego/backend/` (same fields, semantics, error shapes — bex-api is meant to be Render-compatible, see `docs/bex-api.md`) and the `dashboard/` UI (`dashboard/CLAUDE.md`). Compare against the equivalent render.com behavior/API and flag any drift as follow-up work rather than silently diverging. Omit this task only for milestones with no REST/GraphQL/MCP/UI surface change (pure infra, operator-internal mechanism, docs, etc.) — note why it was omitted in the milestone's `## Source + Goal linkage`.
   2. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
   3. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
+  4. **Closeout** — the final task, added last. When the milestone's other tasks are all complete **and its definition of done is actually met**, close the milestone: set every remaining task's `status: done`, move each `tNNN.md` to `wN/mN/done/`, mark every row `— **DONE**` and set `**Status:** done` in the milestone `README.md`, move the whole `wN/mN/` directory to `wN/done/mN/`, and check `- [x]` in the workstream `README.md`. Completing this task _is_ the move — running `/pm done <wN/mN/tNNN>` on it last triggers the milestone move (the `done` subcommand's step 4). Do **not** run it until the DoD holds: a milestone lands in `done/` when its observable end state is real, not merely when the code is written.
 
-  Each `depends_on` the last implementation task(s) (Simplify and Test coverage also depend on Render parity when it's present) and all count toward the `(N tasks)` total. `add-task` inserts new work **before** these and updates their `depends_on`.
+  Each `depends_on` the last implementation task(s) (Simplify and Test coverage depend on Render parity when it's present; Closeout depends on Test coverage) and all count toward the `(N tasks)` total. `add-task` inserts new work **before** these (before Closeout) and updates their `depends_on`.
 
 - After editing any `.md`, run `npx prettier@3.4.2 --write "**/*.md"` (repo rule).
 
@@ -60,7 +61,7 @@ Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdow
 
 Apply the **sizing rule first.**
 
-- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why Render parity was included or omitted).
+- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage, then Closeout)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why Render parity was included or omitted).
 - If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`

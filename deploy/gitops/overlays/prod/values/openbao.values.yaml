@@ -1,0 +1,49 @@
+# Prod override for OpenBao: real-cluster sizing. Layered over
+# base/values/openbao.values.yaml by the Application patch in ../kustomization.yaml
+# (Argo merges valueFiles in order, later wins — the same shape as the local
+# overlay's openbao patch).
+#
+# Quorum, not single-node: base runs server.ha.replicas: 1 (single-node raft,
+# fine for the disposable CAPD mock cluster). Prod bumps to 3 so the cluster
+# keeps quorum through one node going down (docs/secrets.md §2 consequences).
+# No storageClass override here, deliberately: prod uses the cluster's default
+# provisioner (hcloud-volumes under CAPH), unlike the local overlay's local-path
+# pin — overriding it here would point prod at a StorageClass it doesn't have.
+server:
+  # Start all 3 pods at once, not one-Ready-at-a-time. OpenBao's readiness probe
+  # (`bao status`) fails while a pod is sealed, and every pod starts sealed by
+  # design — with the chart default (OrderedReady) the StatefulSet would wait
+  # forever for openbao-0 to go Ready and never create openbao-1/2, so quorum
+  # could never form. Parallel brings all three up sealed so bao-init.sh can
+  # unseal them (docs/secrets.md).
+  podManagementPolicy: Parallel
+  ha:
+    replicas: 3
+    raft:
+      # Full raft config = base/values/openbao.values.yaml's config PLUS
+      # retry_join for the 3 pods. Helm REPLACES this string wholesale (it does
+      # not merge into the HCL), so the non-retry_join lines are duplicated from
+      # base and must be kept in sync if base changes. retry_join lets followers
+      # auto-join openbao-0's cluster over the headless `openbao-internal`
+      # Service — without it service_registration alone never peers them and
+      # they stay uninitialized forever.
+      config: |
+        ui = true
+        listener "tcp" {
+          tls_disable = 1
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+        storage "raft" {
+          path = "/openbao/data"
+          retry_join {
+            leader_api_addr = "http://openbao-0.openbao-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://openbao-1.openbao-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://openbao-2.openbao-internal:8200"
+          }
+        }
+        service_registration "kubernetes" {}

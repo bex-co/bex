@@ -11,22 +11,31 @@
 #   3. write the `bex-api` role, binding ServiceAccount bex-api (ns
 #      bex-system) to that policy.
 #
+# These are cluster-wide raft-replicated writes, so they need only one
+# unsealed endpoint — the leader, resolved by bao-endpoints.sh (shared with
+# bao-init.sh). Reaching the leader directly (not the round-robin `openbao`
+# Service) keeps this reliable in HA, and means a standalone run doesn't depend
+# on bao-init.sh having run first in the same shell.
+#
 # Requires BAO_ROOT_TOKEN (from .env, written by scripts/bao-init.sh) — never
 # printed.
 #
-# Usage: scripts/bao-k8s-auth.sh          # port-forwards secrets/openbao
-#        BAO_ADDR=http://... ...         # use an already-reachable OpenBao
+# Usage: scripts/bao-k8s-auth.sh          # port-forwards each OpenBao pod, uses the leader
+#        BAO_ADDR=http://... ...         # use an already-reachable OpenBao endpoint
 #        DRY_RUN=1 ...                   # print intent, change nothing
 # Requires: curl, yq v4; kubectl unless BAO_ADDR is set.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+# Resolve the script dir to an absolute path BEFORE cd so the source works from
+# any cwd (a relative dirname would be stale after the cd).
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$here/.."
+# shellcheck disable=SC1091 — defines bao_resolve_endpoints / bao_cleanup_forwards
+source "$here/bao-endpoints.sh"
 
-NS=secrets
 SA_NAME=bex-api
 SA_NAMESPACE=bex-system
 POLICY_NAME=tenants-rw
 ROLE_NAME=bex-api
-PF_PID=""
 
 if [ -z "${BAO_ROOT_TOKEN:-}" ] && [ -f .env ]; then
   set -a
@@ -37,36 +46,33 @@ fi
 token="${BAO_ROOT_TOKEN:-}"
 [ -n "$token" ] || { echo "error: BAO_ROOT_TOKEN is missing or empty (.env or environment) — run scripts/bao-init.sh first" >&2; exit 1; }
 
-cleanup() {
-  if [ -n "$PF_PID" ]; then
-    kill "$PF_PID" 2>/dev/null || true
-    wait "$PF_PID" 2>/dev/null || true
-  fi
-}
-trap cleanup EXIT
-
-url="${BAO_ADDR:-}"
-if [ -z "$url" ]; then
-  kubectl -n "$NS" port-forward service/openbao 38200:8200 >/dev/null 2>&1 &
-  PF_PID=$!
-  url=http://127.0.0.1:38200
-  for _ in $(seq 1 30); do
-    code="$(curl -s -o /dev/null -w '%{http_code}' "$url/v1/sys/seal-status" || true)"
-    [ "$code" != "000" ] && break
-    sleep 2
-  done
-fi
-
-bao() { # METHOD PATH [JSON_BODY]
-  local args=(-s -X "$1" "$url/v1/$2" -H "X-Vault-Token: $token")
-  [ "${3:-}" != "" ] && args+=(-d "$3")
-  curl "${args[@]}"
-}
-
 if [ "${DRY_RUN:-}" = "1" ]; then
   echo "would ensure kubernetes auth method, policy $POLICY_NAME, role $ROLE_NAME ($SA_NAME.$SA_NAMESPACE)"
   exit 0
 fi
+
+# Install the cleanup trap BEFORE resolving so a partway failure in
+# bao_resolve_endpoints (which has already launched port-forwards) can't orphan
+# them.
+trap bao_cleanup_forwards EXIT
+bao_resolve_endpoints secrets
+url="$bao_leader"
+
+# Refuse to run against a sealed (or unreachable) leader: every write below
+# would 503, and because bao() uses `curl -s` (no -f) the 503 bodies would flow
+# into the has()/write calls and the script would print success while
+# configuring nothing. Fail loudly instead of silently mis-reporting.
+if [ "$(curl -sf "$url/v1/sys/seal-status" | yq '.sealed' -)" != "false" ]; then
+  echo "error: OpenBao at $url is sealed or unreachable — run scripts/bao-init.sh first" >&2
+  exit 1
+fi
+
+bao() { # METHOD PATH [JSON_BODY]
+  # Root token via a curl --config file on stdin, never argv (ps/proc leak).
+  local args=(-s -X "$1" "$url/v1/$2")
+  [ "${3:-}" != "" ] && args+=(-d "$3")
+  printf 'header = "X-Vault-Token: %s"' "$token" | curl "${args[@]}" --config -
+}
 
 # --- 1. kubernetes auth method --------------------------------------------------
 if [ "$(bao GET sys/auth | yq 'has("kubernetes/")' -)" = "true" ]; then
