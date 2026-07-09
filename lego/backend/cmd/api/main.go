@@ -53,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -101,11 +102,13 @@ func main() {
 	// they 503) and resource-metrics history (cpu/memory/instance_count via
 	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
 	// unreachable surfaces the query error, it does not silently fall back).
-	if prom := os.Getenv("BEX_PROM_URL"); prom != "" {
-		deps.RequestMetrics = metrics.NewPrometheusRequestSource(prom, nil)
-		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(prom, nil)
-		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(prom, nil)
-		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(prom, nil)
+	// promURL is also used by the usage metering block below.
+	promURL := os.Getenv("BEX_PROM_URL")
+	if promURL != "" {
+		deps.RequestMetrics = metrics.NewPrometheusRequestSource(promURL, nil)
+		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
+		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
+		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
 	}
 	// Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key
@@ -193,6 +196,16 @@ func main() {
 		base.Workspace = tenantSvc
 		deps.Onboard = tenantSvc
 		deps.KeyBinder = tenantSvc
+
+		// Usage metering (w8/m1): start the hourly rollup loop when both the
+		// store and Prometheus are configured — it writes usage_hourly rows that
+		// the usage API (m2) reads. Without Prometheus the service is still wired
+		// (MonthToDate reads from DB) but the loop doesn't start.
+		usageSvc := usage.NewService(base, st, promURL, nil)
+		deps.Usage = usageSvc
+		if promURL != "" {
+			go usageSvc.Run(ctx)
+		}
 
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN"), Grant: granter}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")

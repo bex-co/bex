@@ -1,0 +1,436 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package usage is the metering feature (w8/m1–m2): an hourly pipeline that
+// rolls Prometheus cAdvisor/Traefik data and build-Job durations into durable
+// usage_hourly rows (internal/store), keyed per workspace. The Service exposes
+// month-to-date aggregates as REST/GraphQL/MCP adapters (m2). The loop starts
+// only when both BEX_CP_DB_URI (store) and BEX_PROM_URL (Prometheus) are set;
+// with either absent the package is a no-op and the rest of bex-api is
+// byte-for-byte unchanged.
+package usage
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	batchv1 "k8s.io/api/batch/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+)
+
+// UsageStore is the slice of internal/store the usage feature needs: three
+// write/read methods over the usage_hourly table, plus a read for the store's
+// apps list (workspace attribution) and tenant lookup.
+type UsageStore interface {
+	ListApps(ctx context.Context) ([]store.App, error)
+	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
+	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
+	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
+}
+
+// Service is the usage feature. Base carries the Kubernetes client, namespace,
+// and the authz gate every verb calls first. Store is the control-plane
+// backing; nil means the store isn't wired and usage verbs report unavailable.
+type Service struct {
+	*core.Base
+	Store    UsageStore
+	PromBase string     // BEX_PROM_URL, empty means no Prometheus
+	promHTTP *http.Client
+}
+
+// ErrUsageUnavailable is returned by the verb when the store or Prometheus
+// isn't wired — the same pattern as secrets/postgres returning their own
+// ErrUnavailable sentinel so adapters can map it to 503.
+var ErrUsageUnavailable = core.Err("usage: store or Prometheus not configured")
+
+// NewService constructs a Service, normalising PromBase (strips trailing slash
+// so every Prometheus URL is canonical) and resolving a nil HTTP client to
+// http.DefaultClient. Callers in tests may pass their own *http.Client to
+// target an httptest.Server.
+func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client) *Service {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	return &Service{
+		Base:     base,
+		Store:    st,
+		PromBase: strings.TrimRight(promBase, "/"),
+		promHTTP: hc,
+	}
+}
+
+// --- Month-to-date verb (m2) ---
+
+// Summary is the month-to-date usage for one workspace — the core result the
+// three adapters present. Total values are in the natural unit of each kind
+// (seconds/bytes/seconds).
+type Summary struct {
+	WorkspaceID string
+	Services    []ServiceUsage
+}
+
+// ServiceUsage is one service's contribution to the workspace's month-to-date
+// totals, broken out by kind (and tier for instance_seconds).
+type ServiceUsage struct {
+	ServiceID string
+	Rows      []store.UsageSummaryRow
+}
+
+// MonthToDate returns the calling workspace's month-to-date usage summary.
+func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return Summary{}, err
+	}
+	if s.Store == nil {
+		return Summary{}, ErrUsageUnavailable
+	}
+	tenantID, ok := s.Base.Tenant(ctx)
+	if !ok {
+		// Store is off or caller has no tenant: return an empty summary rather
+		// than an error — the same pattern as apps.List returning all apps in the
+		// store-off mode.
+		return Summary{}, nil
+	}
+	rows, err := s.Store.UsageMonthToDate(ctx, tenantID, time.Now().UTC())
+	if err != nil {
+		return Summary{}, fmt.Errorf("usage: %w", err)
+	}
+	return summarise(tenantID, rows), nil
+}
+
+// summarise groups flat summary rows by service.
+func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
+	var order []string
+	byID := map[string][]store.UsageSummaryRow{}
+	for _, r := range rows {
+		if _, seen := byID[r.ServiceID]; !seen {
+			order = append(order, r.ServiceID)
+		}
+		byID[r.ServiceID] = append(byID[r.ServiceID], r)
+	}
+	svcs := make([]ServiceUsage, 0, len(order))
+	for _, id := range order {
+		svcs = append(svcs, ServiceUsage{ServiceID: id, Rows: byID[id]})
+	}
+	return Summary{WorkspaceID: workspaceID, Services: svcs}
+}
+
+// --- Metering loop ---
+
+// Interval is the default rollup cadence.
+const Interval = time.Hour
+
+// catchupLimit caps how far back a restart can catch up (48 h covers
+// Prometheus's typical retention + a weekend outage).
+const catchupLimit = 48 * time.Hour
+
+// Run is the metering loop: catches up missed windows on startup then ticks
+// every Interval until ctx is cancelled. Only call when Store and PromBase are
+// both set.
+func (s *Service) Run(ctx context.Context) {
+	s.RunWithInterval(ctx, Interval)
+}
+
+// RunWithInterval is like Run but uses the given interval — for tests.
+func (s *Service) RunWithInterval(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	s.catchUp(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case t := <-ticker.C:
+			s.rollup(ctx, t)
+		}
+	}
+}
+
+// catchUp finds the latest recorded window per service and fills any gap since
+// then (bounded to catchupLimit so a long-dead service doesn't sweep months).
+func (s *Service) catchUp(ctx context.Context) {
+	apps, err := s.Store.ListApps(ctx)
+	if err != nil {
+		log.Printf("usage: catch-up: list apps: %v", err)
+		return
+	}
+	now := time.Now().UTC()
+	floor := now.Add(-catchupLimit).Truncate(time.Hour)
+	for _, app := range apps {
+		latest, err := s.Store.LatestUsageWindow(ctx, app.ID)
+		if err != nil {
+			log.Printf("usage: catch-up: latest window for %s: %v", app.ID, err)
+			continue
+		}
+		start := latest.UTC().Truncate(time.Hour)
+		if start.IsZero() || start.Before(floor) {
+			start = floor
+		} else {
+			start = start.Add(time.Hour) // next unprocessed window
+		}
+		for w := start; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
+			s.processWindow(ctx, app, w)
+		}
+	}
+}
+
+// rollup processes the window that just closed (the hour ending at t).
+func (s *Service) rollup(ctx context.Context, t time.Time) {
+	window := t.UTC().Truncate(time.Hour).Add(-time.Hour)
+	apps, err := s.Store.ListApps(ctx)
+	if err != nil {
+		log.Printf("usage: rollup: list apps: %v", err)
+		return
+	}
+	for _, app := range apps {
+		s.processWindow(ctx, app, window)
+	}
+	log.Printf("usage: rolled up window %s for %d services", window.Format(time.RFC3339), len(apps))
+}
+
+// processWindow measures one (app, window) triplet and upserts all three kinds.
+// The three Prometheus/k8s queries are independent and run concurrently.
+func (s *Service) processWindow(ctx context.Context, app store.App, window time.Time) {
+	end := window.Add(time.Hour)
+
+	var (
+		instanceSecs, egressBytes, buildSecs int64
+		wg                                   sync.WaitGroup
+	)
+	wg.Add(3)
+	go func() { defer wg.Done(); instanceSecs = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end) }()
+	go func() { defer wg.Done(); egressBytes = s.queryEgressBytes(ctx, app.Name, window, end) }()
+	go func() { defer wg.Done(); buildSecs = s.queryBuildSeconds(ctx, app.Name, window, end) }()
+	wg.Wait()
+
+	// instance_seconds: upsert even on zero when the app has a billing tier so
+	// the month-to-date query has an anchor for tiered apps that were suspended
+	// (and thus produced no Prometheus signal) for the entire window.
+	if instanceSecs > 0 || app.Tier != "" {
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID: app.TenantID,
+			ServiceID:   app.ID,
+			Kind:        store.UsageKindInstanceSeconds,
+			Tier:        app.Tier,
+			WindowStart: window,
+			Quantity:    instanceSecs,
+		}); err != nil {
+			log.Printf("usage: upsert instance_seconds %s: %v", app.ID, err)
+		}
+	}
+
+	if egressBytes > 0 {
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID: app.TenantID,
+			ServiceID:   app.ID,
+			Kind:        store.UsageKindEgressBytes,
+			Tier:        "",
+			WindowStart: window,
+			Quantity:    egressBytes,
+		}); err != nil {
+			log.Printf("usage: upsert egress_bytes %s: %v", app.ID, err)
+		}
+	}
+
+	if buildSecs > 0 {
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID: app.TenantID,
+			ServiceID:   app.ID,
+			Kind:        store.UsageKindBuildSeconds,
+			Tier:        "",
+			WindowStart: window,
+			Quantity:    buildSecs,
+		}); err != nil {
+			log.Printf("usage: upsert build_seconds %s: %v", app.ID, err)
+		}
+	}
+}
+
+// --- t002: Prometheus rollup queries ---
+
+// queryInstanceSeconds returns how many seconds at least one container for the
+// app was running in [start, end), using cAdvisor's
+// container_memory_working_set_bytes as a presence signal (same matcher as the
+// metrics feature's instance-count query). The result is count-of-present-pods
+// × window-seconds, truncated to an integer.
+func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) int64 {
+	if s.PromBase == "" {
+		return 0
+	}
+	// Count the average number of running pods over the window, then multiply
+	// by 3600 to get instance-seconds. Using avg_over_time with a range
+	// covering the whole window gives a pod-count average.
+	windowSecs := int64(end.Sub(start) / time.Second)
+	matchers := fmt.Sprintf(
+		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
+		namespace, promEscape(appName))
+	q := fmt.Sprintf(
+		`count(avg_over_time(container_memory_working_set_bytes{%s}[%ds]))`,
+		matchers, windowSecs)
+	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
+	if err != nil {
+		log.Printf("usage: instance_seconds for %s: %v", appName, err)
+		return 0
+	}
+	return int64(math.Round(v * float64(windowSecs)))
+}
+
+// queryEgressBytes returns total outbound bytes for the app in [start, end)
+// via Traefik's increase() instant query at the window end, mirroring the
+// monthToDateBandwidth source in internal/metrics but window-bounded and
+// returning bytes (not MB).
+func (s *Service) queryEgressBytes(ctx context.Context, appName string, start, end time.Time) int64 {
+	if s.PromBase == "" {
+		return 0
+	}
+	elapsed := end.Sub(start)
+	q := fmt.Sprintf(
+		`sum(increase(traefik_service_responses_bytes_total{service=~".*%s.*"}[%ds]))`,
+		promEscape(appName), int64(elapsed/time.Second))
+	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
+	if err != nil {
+		log.Printf("usage: egress_bytes for %s: %v", appName, err)
+		return 0
+	}
+	return int64(math.Round(v))
+}
+
+// --- t004: build-Job duration metering ---
+
+// labelBuild is the label key on BuildKit Jobs (operator/internal/build/build.go).
+const labelBuild = "app.bex.co/build"
+
+// queryBuildSeconds sums the durations of completed build Jobs whose
+// completionTime falls in [window, end). It lists Jobs in the service
+// namespace by the app-name label. The Kubernetes client comes from core.Base.
+func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window, end time.Time) int64 {
+	if s.Client == nil {
+		return 0
+	}
+	var jobs batchv1.JobList
+	if err := s.Client.List(ctx, &jobs,
+		client.InNamespace(s.Namespace),
+		client.MatchingLabels{labelBuild: appName},
+	); err != nil {
+		log.Printf("usage: build_seconds list jobs for %s: %v", appName, err)
+		return 0
+	}
+	var total int64
+	for _, job := range jobs.Items {
+		ct := job.Status.CompletionTime
+		if ct == nil {
+			continue // still running
+		}
+		t := ct.UTC()
+		if t.Before(window) || !t.Before(end) {
+			continue // not in this window
+		}
+		if job.Status.StartTime == nil {
+			continue
+		}
+		dur := ct.Sub(job.Status.StartTime.Time)
+		if dur > 0 {
+			total += int64(dur / time.Second)
+		}
+	}
+	return total
+}
+
+// --- Prometheus instant query helper (shared by t002 queries) ---
+
+// promInstantScalar evaluates a PromQL expression as an instant query at the
+// given time and returns the scalar sum of all returned vector elements.
+// Returns (0, nil) for empty results (no running containers = 0 instance-seconds).
+func promInstantScalar(ctx context.Context, hc *http.Client, base, query string, at time.Time) (float64, error) {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	u := fmt.Sprintf("%s/api/v1/query?%s", base, url.Values{
+		"query": {query},
+		"time":  {strconv.FormatInt(at.Unix(), 10)},
+	}.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+	}
+	var pr promInstantResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		return 0, fmt.Errorf("decode prometheus: %w", err)
+	}
+	if pr.Status != "" && pr.Status != "success" {
+		return 0, fmt.Errorf("prometheus status %q", pr.Status)
+	}
+	var total float64
+	for _, res := range pr.Data.Result {
+		if len(res.Value) != 2 {
+			continue
+		}
+		s, ok := res.Value[1].(string)
+		if !ok {
+			continue
+		}
+		v, err := strconv.ParseFloat(s, 64)
+		if err != nil || math.IsNaN(v) {
+			continue
+		}
+		total += v
+	}
+	return total, nil
+}
+
+// promInstantResponse is the Prometheus /api/v1/query result subset we parse.
+type promInstantResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Value []any `json:"value"` // [unixSeconds(float), "value"(string)]
+		} `json:"result"`
+	} `json:"data"`
+}
+
+// promEscape escapes PromQL regex metacharacters in an app name — identical to
+// the helper in internal/metrics/source.go; duplicated rather than exported
+// from that package to keep feature packages independent.
+func promEscape(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if strings.ContainsRune(`.+*?()|[]{}^$\`, r) {
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}

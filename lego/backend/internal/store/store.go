@@ -156,6 +156,19 @@ type Store interface {
 	// idle-timeout verb on store-managed Apps (the projector owns
 	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+
+	// UpsertUsageHourly writes one window row idempotently (ON CONFLICT DO
+	// UPDATE) — the write path for the metering loop (w8/m1). Re-processing
+	// the same window is safe.
+	UpsertUsageHourly(ctx context.Context, row HourlyRow) error
+	// LatestUsageWindow returns the most-recent window_start for a service so
+	// the metering loop can catch up from where it left off after a restart.
+	// Returns zero time when no rows exist yet.
+	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
+	// UsageMonthToDate returns month-to-date aggregates (grouped by service /
+	// kind / tier) for a workspace, bounded by the caller-supplied now so tests
+	// don't depend on wall time.
+	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error)
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business

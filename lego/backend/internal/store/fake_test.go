@@ -41,6 +41,7 @@ type memStore struct {
 	// identity to the tenant it auto-minted (the race-safety gate).
 	members map[memberKey]string // (tenant, subject) -> role
 	ownerOf map[string]string    // identityID -> tenantID
+	usage   map[usageKey]HourlyRow
 }
 
 // memberKey is the composite key of a tenant_members row.
@@ -53,6 +54,7 @@ func newMemStore() *memStore {
 		domains: map[string]Domain{},
 		members: map[memberKey]string{},
 		ownerOf: map[string]string{},
+		usage:   map[usageKey]HourlyRow{},
 	}
 }
 
@@ -324,4 +326,55 @@ func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) er
 	a.IdleTTLSeconds = seconds
 	m.apps[id] = a
 	return nil
+}
+
+// usageKey is the composite primary key of usage_hourly.
+type usageKey struct {
+	serviceID   string
+	kind        string
+	tier        string
+	windowStart time.Time
+}
+
+func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := usageKey{row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
+	m.usage[k] = row
+	return nil
+}
+
+func (m *memStore) LatestUsageWindow(_ context.Context, serviceID string) (time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var latest time.Time
+	for k := range m.usage {
+		if k.serviceID == serviceID && k.windowStart.After(latest) {
+			latest = k.windowStart
+		}
+	}
+	return latest, nil
+}
+
+func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	totals := map[struct{ svc, kind, tier string }]int64{}
+	for k, row := range m.usage {
+		if row.WorkspaceID != workspaceID {
+			continue
+		}
+		ws := k.windowStart.UTC()
+		if ws.Before(monthStart) || !ws.Before(now) {
+			continue
+		}
+		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		totals[key] += row.Quantity
+	}
+	out := make([]UsageSummaryRow, 0, len(totals))
+	for key, total := range totals {
+		out = append(out, UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
+	}
+	return out, nil
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
 
@@ -62,6 +63,7 @@ type Server struct {
 	Postgres   *postgres.Service
 	Secrets    *secrets.Service
 	Workspaces *workspaces.Service
+	Usage      *usage.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -122,6 +124,9 @@ type Deps struct {
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
 	Onboard Onboarding
+	// Usage, when set (store + Prom wired), provides the month-to-date usage
+	// verb (w8/m2). nil => the verb reports ErrUsageUnavailable (503).
+	Usage *usage.Service
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -150,6 +155,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Purgers: d.WorkspacePurgers,
 		},
 		Onboard: d.Onboard,
+		Usage:   d.Usage,
 	}
 }
 
@@ -187,6 +193,9 @@ func (s *Server) features() []any {
 	}
 	if s.Workspaces != nil {
 		out = append(out, s.Workspaces)
+	}
+	if s.Usage != nil {
+		out = append(out, s.Usage)
 	}
 	return out
 }
