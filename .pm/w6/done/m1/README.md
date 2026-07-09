@@ -1,21 +1,21 @@
 # w6 · m1 — Workspace model & lifecycle verbs (create · rename · delete · plan limits)
 
-**Worker:** worker6 **Goal:** Workspaces stop being an invisible auto-minted row: a user can create additional workspaces (name + plan), rename them, and delete them with full resource teardown — over the existing control-plane `tenants`/`tenant_members` tables and OpenFGA `workspace:tea-<id>` tuples, with Render's plan limits (5 Hobby workspaces/user, 25 services, 1 member on Hobby) enforced in Core. **Status:** todo (gated on w1/m9)
+**Worker:** worker6 **Goal:** Workspaces stop being an invisible auto-minted row: a user can create additional workspaces (name + plan), rename them, and delete them with full resource teardown — over the existing control-plane `tenants`/`tenant_members` tables and OpenFGA `workspace:tea-<id>` tuples, with Render's plan limits (5 Hobby workspaces/user, 25 services, 1 member on Hobby) enforced in Core. **Status:** done — backend workspace lifecycle shipped (commit `b06e301`) and verified end-to-end against real Postgres + real OpenFGA (`workspaces_e2e_test`: create/rename/delete, plan-limit refusals, FGA grant/revoke, App-CR teardown, non-admin 403). Deferred to follow-ups: OpenBao/Database purger concrete impls (secrets pkg + m9 tenant labels) and the t001 live Render-dashboard capture.
 
 ## Tasks (in order)
 
 | id   | title                                                                                             | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Capture live Render workspace settings/rename/delete semantics → `docs/render-artifacts/`         | 30m | —            |
-| t002 | Store schema: `plan` on tenants + lifecycle columns; migration + plan-limits constants            | 30m | w1/m9        |
-| t003 | Core verbs: CreateWorkspace + RenameWorkspace (tenant row + FGA admin tuple; 5-Hobby cap)          | 35m | t002         |
-| t004 | Core verb: DeleteWorkspace — guarded teardown of Apps, Databases, env-vars, FGA tuples            | 35m | t001, t003   |
-| t005 | Enforce plan limits in Core: 25-service Hobby cap on create; Hobby single-member guard            | 25m | t003         |
-| t006 | GraphQL surface: `workspaces` query + create/rename/delete mutations (dashboard-shaped)           | 25m | t004, t005   |
-| t007 | Render parity — REST stays mutation-free on owners; GraphQL/MCP/UI semantics match captured Render | 20m | t006         |
-| t008 | Simplify — `/simplify` over the code this milestone changed                                        | 20m | t007         |
-| t009 | Test coverage — meaningful tests for the behavior this milestone shipped                           | 30m | t007         |
-| t010 | Closeout — move milestone to done when DoD holds                                                   | 10m | t009         |
+| t001 | Capture live Render workspace settings/rename/delete semantics → `docs/render-artifacts/`         | 30m | — | — **DONE** |
+| t002 | Store schema: `plan` on tenants + lifecycle columns; migration + plan-limits constants            | 30m | w1/m9 | — **DONE** |
+| t003 | Core verbs: CreateWorkspace + RenameWorkspace (tenant row + FGA admin tuple; 5-Hobby cap)          | 35m | t002 | — **DONE** |
+| t004 | Core verb: DeleteWorkspace — guarded teardown of Apps, Databases, env-vars, FGA tuples            | 35m | t001, t003 | — **DONE** |
+| t005 | Enforce plan limits in Core: 25-service Hobby cap on create; Hobby single-member guard            | 25m | t003 | — **DONE** |
+| t006 | GraphQL surface: `workspaces` query + create/rename/delete mutations (dashboard-shaped)           | 25m | t004, t005 | — **DONE** |
+| t007 | Render parity — REST stays mutation-free on owners; GraphQL/MCP/UI semantics match captured Render | 20m | t006 | — **DONE** |
+| t008 | Simplify — `/simplify` over the code this milestone changed                                        | 20m | t007 | — **DONE** |
+| t009 | Test coverage — meaningful tests for the behavior this milestone shipped                           | 30m | t007 | — **DONE** |
+| t010 | Closeout — move milestone to done when DoD holds                                                   | 10m | t009 | — **DONE** |
 
 ## Definition of done
 

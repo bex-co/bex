@@ -4,7 +4,7 @@
 
 ## Milestones
 
-- [ ] **m1** — Workspace model & lifecycle verbs: create · rename · delete · plan limits (10 tasks) ← from RESEARCH-workspaces.md, needs w1/m9
+- [x] **m1** — Workspace model & lifecycle verbs: create · rename · delete · plan limits (10 tasks) ← from RESEARCH-workspaces.md — done 2026-07-09 (backend shipped `b06e301`, verified vs real Postgres + OpenFGA), moved to `done/m1/`
 - [ ] **m2** — Render `owners` read API + MCP workspace tools (9 tasks) ← from RESEARCH-workspaces.md, needs m1; supersedes w2/002
 - [ ] **m3** — Dashboard workspace UX: `/new/workspace` flow · switcher · settings (9 tasks) ← from RESEARCH-workspaces.md, needs m1
 
