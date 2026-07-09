@@ -23,7 +23,40 @@ import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT) || 8099;
 
+// Two workspaces (w6/m1 "Workspace" shape), so the dashboard's switcher (w6/m3)
+// has something to switch between and per-workspace scoping (ownerId filters,
+// w6/m2/t004) is visibly exercised: the second workspace seeds NO
+// services/databases, so switching to it should show empty lists, not a
+// borrowed copy of the first workspace's resources.
+const WORKSPACE_DEFAULT = "tea-localdefault00000001";
+const WORKSPACE_SECOND = "tea-localsecond000000002";
+const WORKSPACES = [
+  {
+    __typename: "Workspace",
+    id: WORKSPACE_DEFAULT,
+    name: "acme-hq",
+    plan: "hobby",
+    role: "admin",
+    createdAt: "2026-06-01T09:00:00Z",
+  },
+  {
+    __typename: "Workspace",
+    id: WORKSPACE_SECOND,
+    name: "acme-staging",
+    plan: "pro",
+    role: "admin",
+    createdAt: "2026-06-15T09:00:00Z",
+  },
+];
+
+// Render allows five free Hobby workspaces per user (w6/RESEARCH-workspaces.md
+// finding 3) — mirrored here so the create flow's inline limit error
+// (w6/m3 DoD) is reachable offline without a real control-plane store.
+const HOBBY_WORKSPACE_CAP = 5;
+
 // One sample App, Render-shaped (matches the dashboard's Service selection set).
+// ownerId scopes it to the default workspace — a stub-only field, harmless if
+// it leaks into a response the dashboard didn't select it in.
 const SERVICE = {
   __typename: "Service",
   id: "eden-cms-v2",
@@ -40,6 +73,7 @@ const SERVICE = {
   schedule: null,
   command: null,
   runs: [],
+  ownerId: WORKSPACE_DEFAULT,
 };
 
 // Two more service types (w1/m15): a background_worker (no HTTP port/URL) and a
@@ -61,6 +95,7 @@ const WORKER = {
   schedule: null,
   command: null,
   runs: [],
+  ownerId: WORKSPACE_DEFAULT,
 };
 
 const CRON = {
@@ -101,6 +136,7 @@ const CRON = {
       status: "Running",
     },
   ],
+  ownerId: WORKSPACE_DEFAULT,
 };
 
 const SERVICES = [SERVICE, WORKER, CRON];
@@ -232,6 +268,7 @@ function makeDatabase(over = {}) {
     createdAt: "2026-06-20T10:00:00Z",
     externalHost: "orders-db.db.bex.co",
     public: true,
+    ownerId: WORKSPACE_DEFAULT,
     ...over,
   };
 }
@@ -304,12 +341,19 @@ function json(res, code, body) {
   res.end(JSON.stringify(body));
 }
 
+// ownerId scopes a list to one workspace (w6/m2/t004); the dashboard's
+// switcher (w6/m3) always passes the selected workspace's id once it
+// resolves, so an unseeded workspace correctly shows an empty list.
+function byOwner(list, ownerId) {
+  return list.filter((x) => x.ownerId === (ownerId || WORKSPACE_DEFAULT));
+}
+
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard
 // actually fires need real shapes; everything else returns a safe empty.
 function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
     case "Services":
-      return { services: SERVICES };
+      return { services: byOwner(SERVICES, variables.ownerId) };
     case "Server":
       // null for an unknown id — never borrow another service's object.
       return { server: serviceById(variables.id) };
@@ -340,9 +384,53 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return {
         service: { __typename: "Service", id: variables.id, envVarKeys: [] },
       };
+    // Workspace lifecycle (w6/m1 verbs, w6/m3 dashboard UX) — an interactive
+    // in-memory store so the switcher/create/rename/delete flow is exercisable
+    // offline, including the Hobby-plan-cap inline error.
+    case "Workspaces":
+      return { workspaces: WORKSPACES };
+    case "CreateWorkspace": {
+      const plan = variables.plan || "hobby";
+      if (plan === "hobby") {
+        const hobbyCount = WORKSPACES.filter((w) => w.plan === "hobby").length;
+        if (hobbyCount >= HOBBY_WORKSPACE_CAP) {
+          throw new Error(
+            `bad request: at most ${HOBBY_WORKSPACE_CAP} hobby workspaces per user`,
+          );
+        }
+      }
+      const created = {
+        __typename: "Workspace",
+        id: `tea-local${WORKSPACES.length}${Date.now().toString(36)}`,
+        name: variables.name,
+        plan,
+        role: "admin",
+        createdAt: new Date().toISOString(),
+      };
+      WORKSPACES.push(created);
+      return { createWorkspace: created };
+    }
+    case "RenameWorkspace": {
+      const w = WORKSPACES.find((ws) => ws.id === variables.id);
+      if (!w) throw new Error("not found");
+      w.name = variables.name;
+      return { renameWorkspace: w };
+    }
+    case "DeleteWorkspace": {
+      const w = WORKSPACES.find((ws) => ws.id === variables.id);
+      if (!w) throw new Error("not found");
+      if (variables.confirmation !== w.name) {
+        throw new Error(
+          `bad request: confirmation must equal the workspace name "${w.name}"`,
+        );
+      }
+      WORKSPACES.splice(WORKSPACES.indexOf(w), 1);
+      return { deleteWorkspace: w.id };
+    }
+
     // Managed Postgres (w5/m8) — an interactive in-memory store.
     case "Databases":
-      return { databases: DATABASES };
+      return { databases: byOwner(DATABASES, variables.ownerId) };
     case "Database":
       return { database: DATABASES.find((d) => d.id === variables.id) ?? null };
     case "DatabaseInstanceTypes":
@@ -451,7 +539,16 @@ const server = createServer((req, res) => {
         return json(res, 400, { errors: [{ message: "bad JSON" }] });
       }
       const ops = Array.isArray(payload) ? payload : [payload];
-      const results = ops.map((op) => ({ data: resolveGraphQL(op) }));
+      // A resolver throws (e.g. the Hobby-plan-cap refusal, a bad delete
+      // confirmation) to simulate bex-api's GraphQL error responses, so the
+      // dashboard's inline-error paths are exercisable offline too.
+      const results = ops.map((op) => {
+        try {
+          return { data: resolveGraphQL(op) };
+        } catch (err) {
+          return { errors: [{ message: err.message }] };
+        }
+      });
       return json(res, 200, Array.isArray(payload) ? results : results[0]);
     });
     return;

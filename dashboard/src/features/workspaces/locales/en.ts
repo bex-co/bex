@@ -1,0 +1,184 @@
+import type { TranslationEntry } from "@/i18n";
+
+const enWorkspaces: Record<string, TranslationEntry> = {
+  "workspaces.switcherEmpty": {
+    message: "Select a workspace",
+    description: "Switcher trigger label before any workspace is selected",
+  },
+  "workspaces.switcherLabel": {
+    message: "Workspaces",
+    description: "Switcher dropdown label above the workspace list",
+  },
+  "workspaces.switcherSettings": {
+    message: "Workspace Settings",
+    description: "Switcher menu item linking to /workspace/settings",
+  },
+  "workspaces.switcherNew": {
+    message: "+ New Workspace",
+    description: "Switcher menu item linking to /new/workspace",
+  },
+  "workspaces.planPickerLabel": {
+    message: "Plan",
+    description: "Accessible label for the plan-card radiogroup",
+  },
+  "workspaces.planHobbyName": {
+    message: "Hobby",
+    description: "Workspace plan card name",
+  },
+  "workspaces.planHobbyPrice": {
+    message: "Free",
+    description: "Workspace plan card price",
+  },
+  "workspaces.planHobbyDescription": {
+    message: "1 member, up to 25 services, 5 Hobby workspaces per user.",
+    description: "Workspace plan card description",
+  },
+  "workspaces.planProName": {
+    message: "Pro",
+    description: "Workspace plan card name",
+  },
+  "workspaces.planProPrice": {
+    message: "$25/mo",
+    description: "Workspace plan card price",
+  },
+  "workspaces.planProDescription": {
+    message: "Unlimited members and services.",
+    description: "Workspace plan card description",
+  },
+  "workspaces.planScaleName": {
+    message: "Scale",
+    description: "Workspace plan card name",
+  },
+  "workspaces.planScalePrice": {
+    message: "$499/mo",
+    description: "Workspace plan card price",
+  },
+  "workspaces.planScaleDescription": {
+    message: "Unlimited members and services, extra roles.",
+    description: "Workspace plan card description",
+  },
+  "workspaces.planEnterpriseName": {
+    message: "Enterprise",
+    description: "Workspace plan card name",
+  },
+  "workspaces.planEnterprisePrice": {
+    message: "Custom",
+    description: "Workspace plan card price",
+  },
+  "workspaces.planEnterpriseDescription": {
+    message: "Custom limits and support.",
+    description: "Workspace plan card description",
+  },
+  "workspaces.createTitle": {
+    message: "Create a workspace",
+    description: "/new/workspace card title",
+  },
+  "workspaces.createDescription": {
+    message: "Give it a name and pick a plan.",
+    description: "/new/workspace card description",
+  },
+  "workspaces.fieldName": {
+    message: "Name",
+    description: "Workspace name field label (shared by create + settings)",
+  },
+  "workspaces.fieldNamePlaceholder": {
+    message: "e.g. acme-staging",
+    description: "Workspace name field placeholder",
+  },
+  "workspaces.fieldNameError": {
+    message:
+      "Lowercase letters, numbers, and hyphens only, 1-30 characters, no leading/trailing hyphen.",
+    description: "Workspace name validation error",
+  },
+  "workspaces.fieldPlan": {
+    message: "Plan",
+    description: "Workspace plan field label (create picker + settings badge)",
+  },
+  "workspaces.createErrorTitle": {
+    message: "Couldn't create workspace",
+    description: "/new/workspace inline error alert title",
+  },
+  "workspaces.createCancel": {
+    message: "Cancel",
+    description: "/new/workspace cancel button",
+  },
+  "workspaces.createSubmit": {
+    message: "Create Workspace",
+    description: "/new/workspace submit button",
+  },
+  "workspaces.createSuccess": {
+    message: "Created {name}",
+    description: "Toast on a successful workspace create",
+  },
+  "workspaces.createError": {
+    message: "Couldn't create the workspace",
+    description: "Fallback toast/inline message on a failed create",
+  },
+  "workspaces.settingsTitle": {
+    message: "Workspace",
+    description: "Workspace settings card title",
+  },
+  "workspaces.settingsDescription": {
+    message: "Rename this workspace or review its plan and metadata.",
+    description: "Workspace settings card description",
+  },
+  "workspaces.settingsEmpty": {
+    message: "No workspace selected.",
+    description: "Workspace settings page empty state",
+  },
+  "workspaces.renameSubmit": {
+    message: "Save",
+    description: "Workspace rename form submit button",
+  },
+  "workspaces.renameErrorTitle": {
+    message: "Couldn't rename workspace",
+    description: "Workspace rename inline error alert title",
+  },
+  "workspaces.renameSuccess": {
+    message: "Renamed to {name}",
+    description: "Toast on a successful rename",
+  },
+  "workspaces.renameError": {
+    message: "Couldn't rename the workspace",
+    description: "Fallback toast/inline message on a failed rename",
+  },
+  "workspaces.fieldId": {
+    message: "Workspace ID",
+    description: "Workspace settings metadata field label",
+  },
+  "workspaces.fieldCreatedAt": {
+    message: "Created",
+    description: "Workspace settings metadata field label",
+  },
+  "workspaces.dangerZoneTitle": {
+    message: "Danger Zone",
+    description: "Workspace settings delete section title",
+  },
+  "workspaces.dangerZoneDescription": {
+    message:
+      "Deleting a workspace permanently removes its services, databases, and env vars. This can't be undone.",
+    description: "Workspace settings delete section description",
+  },
+  "workspaces.deleteConfirmLabel": {
+    message: "Type {name} to confirm",
+    description: "Delete-guard input label naming the exact workspace name",
+  },
+  "workspaces.deleteErrorTitle": {
+    message: "Couldn't delete workspace",
+    description: "Delete danger-zone inline error alert title",
+  },
+  "workspaces.deleteSubmit": {
+    message: "Delete Workspace",
+    description: "Delete danger-zone submit button",
+  },
+  "workspaces.deleteSuccess": {
+    message: "Deleted {name}",
+    description: "Toast on a successful delete",
+  },
+  "workspaces.deleteError": {
+    message: "Couldn't delete the workspace",
+    description: "Fallback toast/inline message on a failed delete",
+  },
+};
+
+export default enWorkspaces;

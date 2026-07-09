@@ -7,8 +7,11 @@
 # databaseInstanceTypes id). `databaseName`/`databaseUser` are the normalized
 # unquoted-identifier db + owner role (list omits them; the detail query reads them).
 
-query Databases {
-  databases {
+# ownerId scopes the list to one workspace (w6/m2/t004's REST/GraphQL filter) —
+# the dashboard's workspace switcher (w6/m3) passes the selected workspace's id;
+# omitted, bex-api falls back to the caller's default workspace.
+query Databases($ownerId: String) {
+  databases(ownerId: $ownerId) {
     id
     name
     plan

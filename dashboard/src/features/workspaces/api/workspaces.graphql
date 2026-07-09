@@ -1,0 +1,40 @@
+# bex-api's workspace-lifecycle surface (backend/internal/workspaces/graphql.go,
+# w6/m1): `workspaces` lists the caller's workspaces (the switcher's data
+# source); create/rename/delete are dashboard-only (Render exposes no REST
+# workspace-mutation API — w6/RESEARCH-workspaces.md finding 9). `deleteWorkspace`
+# returns the deleted workspace's id (a Render-dashboard-mutation convention),
+# not a bare boolean, so a caller can react to which workspace just disappeared.
+
+query Workspaces {
+  workspaces {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}
+
+mutation CreateWorkspace($name: String!, $plan: String) {
+  createWorkspace(name: $name, plan: $plan) {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}
+
+mutation RenameWorkspace($id: String!, $name: String!) {
+  renameWorkspace(id: $id, name: $name) {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}
+
+mutation DeleteWorkspace($id: String!, $confirmation: String!) {
+  deleteWorkspace(id: $id, confirmation: $confirmation)
+}

@@ -1,0 +1,37 @@
+# w6 · m3 — Dashboard workspace UX: `/new/workspace` flow · switcher · settings
+
+**Worker:** worker6 **Goal:** The human half of the lifecycle, Render-consistent: a workspace switcher dropdown at the top of the left pane (current workspace, list, **+ New Workspace**), a `/new/workspace` creation flow (name + plan cards for Hobby/Pro/Scale/Enterprise), and a workspace settings page with rename and a guarded delete — all over m1's GraphQL mutations, authenticated by the existing Kratos session. **Status:** done — 2026-07-09
+
+## Tasks (in order)
+
+| id   | title                                                                                      | est | depends_on   |            |
+| ---- | ------------------------------------------------------------------------------------------ | --- | ------------ | ---------- |
+| t001 | Workspace switcher dropdown + selected-workspace context scoping all queries               | 40m | w6/m1        | — **DONE** |
+| t002 | `/new/workspace` route: name + plan picker (Render plan cards), create → switch            | 35m | t001         | — **DONE** |
+| t003 | Workspace settings page: rename, plan display, workspace id/metadata                       | 30m | t001         | — **DONE** |
+| t004 | Delete workspace: danger zone with type-to-confirm guard matching captured Render UX       | 25m | t003         | — **DONE** |
+| t005 | Acceptance pass: create → switch → rename → delete e2e in a real browser                   | 25m | t002, t004   | — **DONE (offline stub, not a live cluster — see note)** |
+| t006 | Render parity — side-by-side vs live Render dashboard; flag drift                          | 20m | t005         | — **DONE (research-based, not live-dashboard — see note)** |
+| t007 | Simplify — `/simplify` over the code this milestone changed                                | 20m | t006         | — **DONE** |
+| t008 | Test coverage — meaningful tests for the behavior this milestone shipped                   | 30m | t006         | — **DONE** |
+| t009 | Closeout — move milestone to done when DoD holds                                           | 10m | t008         | — **DONE** |
+
+## Definition of done
+
+In a real browser against a live cluster: a logged-in user opens the switcher, clicks **+ New Workspace**, names it, picks Hobby, lands in the new (empty) workspace; the switcher flips between workspaces and every page (services, databases, env vars, metrics) shows only the selected workspace's resources; rename in settings propagates to the switcher; delete requires typing the workspace name, then removes the workspace and its resources and lands the user in their remaining workspace; a 6th Hobby workspace attempt shows the limit error inline. No OAuth tokens in browser storage — Kratos session only.
+
+**Verified against:** every clause above was driven and observed in a real browser (Playwright), but against `scripts/local-bex.mjs` (extended this milestone with an in-memory `Workspace` store, the Hobby-cap refusal, and `ownerId`-scoped Services/Databases) rather than a live `scripts/mock-cluster.sh` cluster — none was available in this session. The stub's GraphQL shapes were hand-cross-referenced against the actual backend (`lego/backend/internal/workspaces/{service,graphql}.go`), not assumed. **Residual gap:** a real-cluster rerun (real Postgres + OpenFGA + Kratos) has not happened; m1's own real-infra e2e test (`workspaces_e2e_test.go`) already covers the backend half of this DoD, so the incremental risk is narrow (frontend wiring + the hand-authored `src/graphql/definitions.ts` additions, not yet regenerated via `yarn codegen` against a live schema).
+
+## Source + Goal linkage
+
+- **Source:** deep-research report [`w6/RESEARCH-workspaces.md`](../RESEARCH-workspaces.md) (findings 2–5); user request 2026-07-08 naming dashboard.render.com/new/workspace explicitly. Note: `docs/render-artifacts/workspace-lifecycle.md` (the live-capture this README originally cited) was never produced — m1/t001 deferred it (see `w6/done/m1/README.md`) — so t006's Render-side comparison draws on RESEARCH-workspaces.md's verified findings rather than a fresh live capture.
+- **Goal linkage:** docs/vision.md pillar 1 (Render parity — dashboard); GOAL.md #5 (multi-tenant). Respects DO_NOT_DO: dashboard stays on Kratos sessions (no OAuth2-izing) — confirmed no OAuth token ever touches browser storage; workspace selection persists only a bare `tea-<id>` string in localStorage.
+- **Expected outcome:** multi-workspace tenancy is operable by humans end-to-end without kubectl or API calls — the last missing piece between "tenants exist in Postgres" and "a user can run two isolated projects."
+- **Why now:** m1's mutations otherwise ship with no consumer; w4/m12's Team page and w5's inbox items assume a workspace settings surface exists to hang off.
+- **Render parity task included:** yes — UI feature work, matched against RESEARCH-workspaces.md's verified findings (switcher placement, plan lineup/prices, no-payment-step-for-Hobby). Known, deliberate drift: workspace names are DNS-label constrained (`^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$`, ≤30 chars) vs Render's freeform names, because a bex workspace name becomes part of every App CR name (documented in m1/t007 already); delete/rename confirmation UX (exact copy, resource-count enumeration) was never live-captured (m1/t001 deferred it), so this milestone's danger-zone wording is an original, reasonable design rather than a verified clone.
+
+## Follow-ups (not blocking closeout, filed for awareness)
+
+- Re-run `yarn codegen` against a live bex-api once one is reachable, and diff against the hand-authored `Workspace`/`createWorkspace`/`renameWorkspace`/`deleteWorkspace` additions in `src/graphql/definitions.ts` (no live schema/session token was available this session to run codegen for real).
+- A live-cluster rerun of the t005 acceptance pass, and a live side-by-side against the real Render dashboard for t006, whenever either is convenient — the offline-stub pass gives high confidence but is not a substitute.
+- `WorkspaceProvider` is mounted globally in `RootProvider` (necessary because pages call data hooks like `useServices` before returning `<DashboardLayout>`, so a provider inside the layout can never reach them) and gated with `skip: !authenticated`; a pathless `_authenticated` layout route consolidating every route's repeated `beforeLoad: requireAuth(...)` would be a cleaner long-term home for it, but that reshapes every existing authenticated route and is out of scope for this diff.

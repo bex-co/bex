@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/common/components/ui/sidebar.tsx";
+import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
 
 // The dashboard's two live resources (Services + Databases) plus account
 // settings. Each is a client of bex-api's GraphQL (see docs/bex-api.md).
@@ -28,9 +29,7 @@ export function DashboardSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <span className="font-semibold">{t("common.appName")}</span>
-        </div>
+        <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
