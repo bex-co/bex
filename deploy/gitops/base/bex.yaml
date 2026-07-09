@@ -2,11 +2,13 @@
 # Argo deploys it straight from lego/operator/config/default (kustomize) into bex-system,
 # overriding the placeholder `controller` image with the one CI pushes to GHCR.
 #
-# NOTE: the tag is mutable (:latest). Argo syncs git, not image digests, so a new
-# :latest push doesn't change the Deployment spec and won't auto-roll. The deploy
-# workflow handles this by rollout-restarting the operator + api after each push
-# (both declare imagePullPolicy: Always). A stricter fix would be Argo Image Updater
-# or having CI commit an immutable :<sha> tag here.
+# IMAGE PINNING (w1/m7 t002): the checked-in override below is the mutable :latest
+# BOOTSTRAP value (the only tag guaranteed to exist before the first deploy). On every
+# deploy the workflow (.github/workflows/deploy.yml, "pin image digests in GitOps")
+# rewrites it to the exact immutable `@sha256:<digest>` docker just pushed and commits
+# it back to main [skip ci] — so the RUNNING Deployment is content-addressed, never a
+# mutable tag. Argo then rolls pods automatically when the digest changes; the deploy
+# workflow's rollout-restart is now just a fast-path belt-and-suspenders.
 # NOTE: if the GHCR package is private, add an imagePullSecret in bex-system (or make
 # the package public) so app-cluster nodes can pull it.
 apiVersion: argoproj.io/v1alpha1

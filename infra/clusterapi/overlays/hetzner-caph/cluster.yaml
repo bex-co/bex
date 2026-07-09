@@ -538,8 +538,19 @@ spec:
     region: fsn1
   controlPlaneRegions:
   - fsn1
+  # Private network for the app cluster (w1/m7 t005). CAPH creates + manages a
+  # Hetzner private network named after the cluster (`bex`) and attaches every
+  # node to it; the Hetzner CCM (app-cluster.yml, networking.enabled=true) then
+  # routes pod/node traffic and LoadBalancer targets over the private IPs. This
+  # is what makes the Traefik LB stable (use-private-ip) and keeps node-to-node
+  # traffic off the public interface — a prerequisite for the restrictive
+  # public firewall (infra/terraform t001). Distinct from the infra cluster's
+  # `bex-infra` network (Terraform); the two clusters share no L3.
   hcloudNetwork:
-    enabled: false
+    enabled: true
+    cidrBlock: "10.0.0.0/16"
+    subnetCidrBlock: "10.0.0.0/24"
+    networkZone: eu-central
   hcloudPlacementGroups:
   - name: control-plane
     type: spread

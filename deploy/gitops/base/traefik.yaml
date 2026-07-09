@@ -14,10 +14,15 @@
 #
 # NOTE: a Hetzner LB *does* work over public IPs (no private network needed) once the
 # node isn't excluded from LBs (drop the node.kubernetes.io/exclude-from-external-load-
-# balancers label that kubeadm puts on control-plane nodes). UPGRADE PATH (multi-node /
-# stable IP across node replacement): set service.spec.type=LoadBalancer + the
-# load-balancer.hetzner.cloud/{location,use-private-ip,name} annotations; the CCM
-# provisions a real LB (~EUR5/mo).
+# balancers label that kubeadm puts on control-plane nodes). STABLE-IP UPGRADE (multi-node
+# / IP survives node replacement) is now wired for prod (w1/m7 t005): the prod overlay
+# layers overlays/prod/values/traefik.values.yaml, which flips service.spec.type to
+# LoadBalancer + the load-balancer.hetzner.cloud/{name,location,use-private-ip}
+# annotations; the CCM (networking.enabled=true) provisions a real LB (~EUR5/mo) targeting
+# nodes over the private network. Base stays hostNetwork for local + single-node.
+#
+# Multi-source (like openbao.yaml): the Helm repo provides the chart, the git source
+# (ref: values) provides base/values/traefik.values.yaml; overlays append their own.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -27,68 +32,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
-  source:
-    repoURL: https://traefik.github.io/charts
-    chart: traefik
-    targetRevision: "41.0.0"           # Traefik v3; pin exact for reproducibility
-    helm:
-      values: |
-        deployment:
-          replicas: 1                  # single app node today
-          dnsPolicy: ClusterFirstWithHostNet   # reach in-cluster API/DNS under hostNetwork
-        hostNetwork: true              # bind the node's public IP directly (no Hetzner LB)
-        # Bind :80/:443 directly. The traefik binary has no file caps, so a non-root
-        # uid drops NET_BIND_SERVICE on exec -> "permission denied"; run as root with
-        # only NET_BIND_SERVICE (standard for an edge proxy on privileged ports).
-        podSecurityContext:
-          runAsNonRoot: false
-          runAsUser: 0
-          runAsGroup: 0
-        securityContext:
-          capabilities:
-            add: [NET_BIND_SERVICE]
-            drop: [ALL]
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-        ports:
-          web:
-            port: 80                   # host :80 (HTTP + ACME HTTP-01 challenge)
-          websecure:
-            port: 443                  # host :443 (HTTPS)
-          postgres:
-            port: 5432                 # host :5432 — TCP/SNI entrypoint for managed Postgres
-            expose:
-              default: true            # bind on hostNetwork (external Database URLs)
-            protocol: TCP
-          metrics:
-            port: 9100                 # Prometheus scrape target (in-cluster only)
-            expose:
-              default: false           # not on the public hostNetwork edge
-        service:
-          spec:
-            type: ClusterIP            # no Hetzner LB (single-node uses hostNetwork node IP); LoadBalancer for multi-node
-        ingressClass:
-          enabled: true
-          isDefaultClass: true
-          name: traefik
-        providers:
-          kubernetesIngress:
-            enabled: true              # watch standard networking.k8s.io/Ingress
-        # Prometheus request metrics — the backend for bex-api's request metrics
-        # (GET /v1/metrics/{http-requests,http-latency,bandwidth}). addServicesLabels
-        # exposes the per-service counters (traefik_service_requests_total,
-        # _request_duration_seconds_bucket, _responses_bytes_total) that
-        # NewPrometheusRequestSource queries via `service=~".*<app>.*"`. A Prometheus
-        # deployment must scrape the metrics entrypoint and bex-api must point at it
-        # with BEX_PROM_URL; until then request metrics return 503.
-        metrics:
-          prometheus:
-            entryPoint: metrics
-            addEntryPointsLabels: true
-            addServicesLabels: true    # per-service labels (service=…) for App attribution
-            addRoutersLabels: true     # per-router labels (host/path attribution, future use)
-        # entrypoints web(:80) + websecure(:443) with NO forced web->websecure redirect,
-        # so cert-manager HTTP-01 challenges on :80 succeed.
+  sources:
+    - repoURL: https://traefik.github.io/charts
+      chart: traefik
+      targetRevision: "41.0.0" # Traefik v3; pin exact for reproducibility
+      helm:
+        valueFiles:
+          - $values/deploy/gitops/base/values/traefik.values.yaml
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik

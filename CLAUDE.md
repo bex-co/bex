@@ -71,8 +71,10 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/restart-suspend-and-resume.md](docs/restart-suspend-and-resume.md) — lifecycle verbs.
 - [docs/sandboxes.md](docs/sandboxes.md) — ADR: E2B-compatible, idle-hibernated sandboxes over opensandbox (pillar 5).
 - [docs/etcd-backup-restore.md](docs/etcd-backup-restore.md) — nightly etcd snapshot → object storage; restore runbook.
+- [docs/openbao-backup-restore.md](docs/openbao-backup-restore.md) — nightly OpenBao Raft snapshot → object storage; restore runbook.
 - [docs/auth.md](docs/auth.md) — ADR: Ory Kratos (identity) + Hydra (OAuth2) on CNPG; secrets out-of-band.
 - [docs/secrets.md](docs/secrets.md) — ADR: OpenBao for tenant credentials; integrated Raft storage, Shamir unseal via `.env`, Kubernetes auth scoped to `tenants/*`.
+- [docs/sealed-secrets.md](docs/sealed-secrets.md) — infra creds encrypted at rest in git (SealedSecrets), controller + `kubeseal` workflow.
 - [docs/postgresql-management.md](docs/postgresql-management.md) — managed tenant Postgres: `Database` CR → CNPG Cluster, plans, internal/external URLs.
 - [docs/go-and-gitops.md](docs/go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 

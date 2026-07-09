@@ -107,6 +107,6 @@ Live acceptance — `PUT /v1/services/{id}/env-vars` against prod returns 200 (n
 ## Consequences
 
 - Once w4/m6 wires product usage, bex-api becomes hard-dependent on OpenBao for any credential-touching verb — an outage or sealed state should 503 that verb, mirroring the Hydra fail-closed precedent in [auth.md](auth.md).
-- Single-node raft locally, `replicas: 1` — no quorum, no automated snapshot backup yet. **OpenBao must join the w1/m7 backup/HA work** before real tenant credentials live in it; losing the single node loses everything (same caveat `kratos-db`/`hydra-db` carry today).
+- Single-node raft locally, `replicas: 1` — no quorum. Automated snapshot backup is now shipped (w1/m7 t006): a nightly Raft snapshot → object storage, mirroring etcd-backup — see [openbao-backup-restore.md](openbao-backup-restore.md). HA (`replicas: 3` for quorum) is still the remaining half; until then, losing the single node means restoring from the latest snapshot (same recovery posture `kratos-db`/`hydra-db` carry today).
 - Root token + unseal keys are a manual, high-trust bootstrap step; rotating the root token or re-keying the Shamir shares is a manual runbook not yet built.
 - CI wiring (init/unseal in `.github/workflows/deploy.yml`, unseal keys in GitHub secrets via `scripts/gh-secrets.sh`) is in place: every deploy waits for the OpenBao rollout, then re-unseals each pod idempotently and reapplies the Kubernetes auth binding. The one-time first init against prod is a manual operator step — see [Prod deploy path](#prod-deploy-path).

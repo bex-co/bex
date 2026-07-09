@@ -146,30 +146,44 @@ jobs:
           helm repo add cilium https://helm.cilium.io
           helm repo update
 
-      # hcloud token secret the CCM + CSI both read.
+      # hcloud token secret the CCM + CSI both read. `network` is the CAPH-managed
+      # private network name (= the cluster name, w1/m7 t005); the CCM reads it as
+      # HCLOUD_NETWORK when networking.enabled=true to program pod-CIDR routes and
+      # private-IP LoadBalancer targets.
       - name: hcloud secret (app cluster, ns kube-system)
         run: |
           kubectl -n kube-system create secret generic hcloud \
             --from-literal=token="$HCLOUD_TOKEN" \
+            --from-literal=network="$CLUSTER_NAME" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       # Hetzner CCM: initializes nodes (clears the cloud-provider taint) + LoadBalancers.
-      # networking stays OFF because the overlay sets hcloudNetwork.enabled=false
-      # (nodes talk over public IPs). NOTE: enabling the private network + CCM routes
-      # is a perf/security upgrade — flip the overlay and set networking.enabled=true.
+      # networking is ON (w1/m7 t005): the CAPH overlay sets hcloudNetwork.enabled=true,
+      # so the CCM programs pod-CIDR routes over the private network and LoadBalancer
+      # targets use the nodes' private IPs (load-balancer.hetzner.cloud/use-private-ip).
+      # The cluster CIDR must match the overlay's clusterNetwork.pods.cidrBlocks.
       - name: install Hetzner CCM
         run: |
           helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
-            -n kube-system
+            -n kube-system \
+            --set networking.enabled=true \
+            --set networking.clusterCIDR="${POD_CIDR}"
 
       # CNI: Cilium in tunnel mode (works without a private network / native routing).
-      # NOTE: nodes communicate over public IPs here — enable WireGuard
-      # (encryption.enabled=true, encryption.type=wireguard) before real traffic.
+      # WireGuard node-to-node encryption is ON (w1/m7 t004): Cilium establishes a
+      # WireGuard tunnel between every pair of nodes and routes all pod-to-pod (and,
+      # with nodeEncryption, host-to-host) traffic through it. Essential while nodes
+      # gossip etcd/kubelet/pod traffic over the network — transparently encrypted
+      # even before the private network (t005) lands. The KubeadmConfigTemplate
+      # already ships the `net.ipv4.conf.lxc*.rp_filter=0` sysctl WireGuard needs.
       - name: install Cilium (CNI)
         run: |
           helm upgrade --install cilium cilium/cilium -n kube-system \
             --set ipam.mode=cluster-pool \
-            --set ipam.operator.clusterPoolIPv4PodCIDRList="{${POD_CIDR}}"
+            --set ipam.operator.clusterPoolIPv4PodCIDRList="{${POD_CIDR}}" \
+            --set encryption.enabled=true \
+            --set encryption.type=wireguard \
+            --set encryption.nodeEncryption=true
 
       # hcloud-csi: PersistentVolumes (registry volume, stateful apps like a Postgres).
       - name: install hcloud CSI

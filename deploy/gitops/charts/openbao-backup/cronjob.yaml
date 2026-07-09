@@ -1,0 +1,87 @@
+# Nightly OpenBao Raft snapshot → S3-compatible object storage (w1/m7 t006).
+#
+# Why: OpenBao holds every tenant credential (docs/secrets.md) in integrated Raft
+# storage on its PVC. Raft gives point-in-time consistent snapshots
+# (`bao operator raft snapshot save`) — the only way to capture a coherent copy
+# of the encrypted store while it is serving. Locally OpenBao is single-node
+# (replicas: 1), so a lost PVC = lost tenant secrets with no quorum peer to heal
+# from; this ships a daily snapshot off-cluster. Restore: docs/openbao-backup-restore.md.
+#
+# Wiring (mirrors the etcd-backup CronJob):
+#  - Runs in ns `secrets` (where OpenBao lives), as ServiceAccount bao-snapshot.
+#  - Authenticates to OpenBao via the Kubernetes auth method (role `bao-snapshot`,
+#    policy = read on sys/storage/raft/snapshot only) — set up idempotently by
+#    scripts/bao-k8s-auth.sh. No root token, no static secret.
+#  - Snapshot is ALREADY encrypted (OpenBao encrypts at rest); the S3 copy needs
+#    no extra crypto, but the bucket should still be private.
+#  - Credentials come from the `openbao-backup-s3` Secret (NOT in git), created
+#    once per cluster from .env — exact command in the runbook.
+#  - aws-cli pinned < 2.23: newer CLIs send CRC64 checksums many S3-compatibles
+#    reject (same quirk as etcd-backup + skip_s3_checksum in versions.tf).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: openbao-backup
+  namespace: secrets
+spec:
+  schedule: "45 3 * * *" # staggered after etcd-backup (03:15)
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: bao-snapshot
+          initContainers:
+            - name: snapshot
+              image: openbao/openbao:2.5.5 # matches the chart appVersion (openbao.yaml)
+              command: ["/bin/sh", "-ceu"]
+              args:
+                - |
+                  jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+                  # exchange the pod's SA token for a short-lived OpenBao token (k8s auth)
+                  BAO_TOKEN="$(bao write -field=token auth/kubernetes/login role=bao-snapshot jwt="$jwt")"
+                  export BAO_TOKEN
+                  bao operator raft snapshot save /backup/openbao-snapshot.snap
+              env:
+                - name: BAO_ADDR
+                  value: http://openbao.secrets.svc:8200
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+            - name: compress # separate step: the aws-cli image ships no gzip
+              image: busybox:1.37
+              command: ["gzip", "-9", "/backup/openbao-snapshot.snap"]
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: amazon/aws-cli:2.22.35
+              command: ["/bin/bash", "-ceu"]
+              args:
+                - |
+                  retain=7 # rolling window: keep the newest N snapshots
+                  aws configure set default.s3.addressing_style path
+                  ts="$(date -u +%Y%m%d-%H%M%S)"
+                  aws --endpoint-url "$S3_ENDPOINT" s3 cp \
+                    /backup/openbao-snapshot.snap.gz \
+                    "s3://$S3_BUCKET/openbao-snapshots/openbao-$ts.snap.gz"
+                  aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://$S3_BUCKET/openbao-snapshots/" \
+                    | awk '{print $NF}' | grep '^openbao-.*\.snap\.gz$' | sort | head -n "-$retain" \
+                    | while read -r old; do
+                        aws --endpoint-url "$S3_ENDPOINT" s3 rm "s3://$S3_BUCKET/openbao-snapshots/$old"
+                      done
+              envFrom:
+                - secretRef:
+                    name: openbao-backup-s3
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              emptyDir: {}

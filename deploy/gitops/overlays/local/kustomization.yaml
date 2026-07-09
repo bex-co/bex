@@ -15,6 +15,14 @@ patches:
         name: etcd-backup
         namespace: argocd
       $patch: delete
+  # Likewise no OpenBao Raft snapshots locally (disposable cluster, no S3 creds).
+  - patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: openbao-backup
+        namespace: argocd
+      $patch: delete
   # Auth DBs: shrink to CAPD scale — 1Gi on local-path (no hcloud-volumes here;
   # the CAPD cluster needs the local-path provisioner installed, see docs/auth.md).
   - patch: |-

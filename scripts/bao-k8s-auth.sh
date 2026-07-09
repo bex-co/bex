@@ -9,7 +9,11 @@
 #   2. write the `tenants-rw` policy: create/read/update/delete/list on
 #      tenants/*, nothing else — no sys/*, no other mount,
 #   3. write the `bex-api` role, binding ServiceAccount bex-api (ns
-#      bex-system) to that policy.
+#      bex-system) to that policy,
+#   4. write the `snapshot` policy (read on sys/storage/raft/snapshot only) and
+#      the `bao-snapshot` role, binding ServiceAccount bao-snapshot (ns secrets)
+#      — the identity the nightly openbao-backup CronJob uses (w1/m7 t006,
+#      docs/openbao-backup-restore.md).
 #
 # These are cluster-wide raft-replicated writes, so they need only one
 # unsealed endpoint — the leader, resolved by bao-endpoints.sh (shared with
@@ -94,3 +98,14 @@ bao POST "auth/kubernetes/role/$ROLE_NAME" \
   "$(printf '{"bound_service_account_names":"%s","bound_service_account_namespaces":"%s","token_policies":"%s","token_ttl":"1h"}' \
     "$SA_NAME" "$SA_NAMESPACE" "$POLICY_NAME")" >/dev/null
 echo "wrote role $ROLE_NAME ($SA_NAME.$SA_NAMESPACE -> $POLICY_NAME)"
+
+# --- 4. snapshot policy + role: the nightly openbao-backup CronJob (w1/m7 t006) --
+# Least privilege: read on sys/storage/raft/snapshot only — enough to pull a Raft
+# snapshot, nothing else (no tenants/*, no sys/* writes).
+bao PUT "sys/policies/acl/snapshot" \
+  '{"policy":"path \"sys/storage/raft/snapshot\" { capabilities = [\"read\"] }"}' >/dev/null
+echo "wrote policy snapshot"
+
+bao POST "auth/kubernetes/role/bao-snapshot" \
+  '{"bound_service_account_names":"bao-snapshot","bound_service_account_namespaces":"secrets","token_policies":"snapshot","token_ttl":"15m"}' >/dev/null
+echo "wrote role bao-snapshot (bao-snapshot.secrets -> snapshot)"

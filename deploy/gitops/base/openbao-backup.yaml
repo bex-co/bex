@@ -1,0 +1,27 @@
+# Nightly OpenBao Raft snapshot → S3-compatible object storage (w1/m7 t006).
+# Same shape as etcd-backup: every non-disposable cluster gets it — OpenBao holds
+# tenant credentials in single-node Raft with no quorum peer, so a lost PVC loses
+# them (the local overlay excludes this: disposable cluster, no object-storage
+# creds). The CronJob's S3 Secret is created out-of-band from .env, and the
+# `bao-snapshot` OpenBao role it uses is set up by scripts/bao-k8s-auth.sh — see
+# docs/openbao-backup-restore.md.
+# sync-wave "2": after OpenBao (wave 1) is up, so k8s-auth login can succeed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openbao-backup
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/openbao-backup
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: secrets
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

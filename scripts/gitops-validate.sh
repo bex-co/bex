@@ -22,13 +22,14 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 # For each multi-source base Application with vendored values (kratos, hydra,
-# openfga, openbao, ...): pull the pinned chart once from ITS repo, then render
-# it with the base values alone and with each overlay's values layered on top
-# (the same order Argo's valueFiles use — later wins). Globs every overlay dir,
-# so a prod-only layer (e.g. openbao's server.ha.replicas: 3) is rendered here,
-# not first in prod. Namespace comes from the Application itself so this
-# generalizes across components in different namespaces (auth vs secrets).
-for chart in kratos hydra openfga openbao; do
+# openfga, openbao, traefik, ...): pull the pinned chart once from ITS repo, then
+# render it with the base values alone and with each overlay's values layered on
+# top (the same order Argo's valueFiles use — later wins). Globs every overlay
+# dir, so a prod-only layer (e.g. openbao's server.ha.replicas: 3 or traefik's
+# LoadBalancer) is rendered here, not first in prod. Namespace comes from the
+# Application itself so this generalizes across components in different namespaces
+# (auth vs secrets vs traefik).
+for chart in kratos hydra openfga openbao traefik; do
   app="deploy/gitops/base/$chart.yaml"
   version="$(yq '.spec.sources[0].targetRevision' "$app")"
   repo="$(yq '.spec.sources[0].repoURL' "$app")"

@@ -1,0 +1,44 @@
+# Prod (Hetzner CAPH) Traefik overrides (w1/m7 t005): swap the base single-node
+# hostNetwork edge for a real Hetzner Cloud LoadBalancer with a STABLE IP that
+# survives node replacement. The Hetzner CCM (app-cluster.yml networking.enabled=true)
+# provisions the LB from the Service annotations and targets nodes over the private
+# network (use-private-ip). Layered over base/values/traefik.values.yaml by the prod
+# overlay kustomization — Argo deep-merges valueFiles in order, later wins.
+#
+# ⚠ Untested against a live Hetzner account: structurally correct against the Traefik
+#   v3 chart (41.0.0), but LB annotations / port mappings may need tuning on first run.
+hostNetwork: false # LB -> NodePort -> pod; no host-port binding
+deployment:
+  dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
+# Bind non-privileged container ports (the LB does the public :80/:443 exposure),
+# so drop the root + NET_BIND_SERVICE edge-proxy exception the hostNetwork path
+# needed. `add: []` clears the base's NET_BIND_SERVICE (maps deep-merge).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+securityContext:
+  capabilities:
+    add: []
+    drop: [ALL]
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+ports:
+  web:
+    port: 8000 # exposedPort defaults to 80 -> LB listens :80, forwards to :8000
+  websecure:
+    port: 8443 # exposedPort defaults to 443 -> LB listens :443
+  postgres:
+    port: 5432
+    exposedPort: 5432 # managed-Postgres TCP/SNI still fronted by the LB
+    expose:
+      default: true
+    protocol: TCP
+service:
+  annotations:
+    load-balancer.hetzner.cloud/name: bex-traefik
+    load-balancer.hetzner.cloud/location: fsn1
+    load-balancer.hetzner.cloud/use-private-ip: "true" # target nodes over the private net
+    load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
+  spec:
+    type: LoadBalancer # CCM provisions the Hetzner LB (stable IP)

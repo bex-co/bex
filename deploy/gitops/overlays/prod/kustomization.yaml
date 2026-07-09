@@ -19,3 +19,15 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
+  # Traefik: layer the prod values file (Hetzner LoadBalancer + stable IP, w1/m7
+  # t005) over the base hostNetwork values — same mechanism the local overlay uses
+  # for kratos/hydra/openbao. Argo merges valueFiles in order, later wins.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: traefik
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/traefik.values.yaml

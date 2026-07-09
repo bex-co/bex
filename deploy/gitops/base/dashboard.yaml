@@ -1,8 +1,9 @@
 # The bex dashboard: Render-style human-facing UI (docs/architecture.md),
 # deployed straight from dashboard/deploy (kustomize) into its own namespace.
-# Same mutable-tag caveat as bex.yaml: Argo syncs git, not image digests, so
-# a new :latest push doesn't change the Deployment spec — the deploy workflow
-# rollout-restarts it after each push (imagePullPolicy: Always).
+# Image pinning: same digest write-back as bex.yaml (w1/m7 t002). The :latest below
+# is the bootstrap value; the deploy workflow rewrites it to the immutable
+# `@sha256:<digest>` it just pushed and commits it back, so Argo deploys a
+# content-addressed reference and rolls on digest change.
 # NOTE: if the GHCR package is private, add an imagePullSecret in the
 # dashboard namespace (or make the package public) so app-cluster nodes can pull it.
 apiVersion: argoproj.io/v1alpha1
