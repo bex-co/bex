@@ -73,7 +73,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` (full CRUD + `connection-info` + `suspend`/`resume`, 8 endpoints) + MCP `list/get/create_key_value` + dashboard type ("Key Value", Valkey 8). Mechanism shipped (w1/m14): a `KeyValue` CR → single-instance Valkey + internal Service DNS + credentials Secret, optional public Traefik TCP/SNI route. The four surfaces (REST/GraphQL/MCP/UI) are still unbuilt → **w2/w5**. Surface contract to mirror: plans `free`/`starter`/`standard`/… (the web-service vocabulary, **not** Postgres `basic-*`); connection-info 3 keys — `internalConnectionString` (`redis://`), `externalConnectionString` (`rediss://` TLS, opt-in), `cliCommand`; create/update fields Render has that the CR lacks today — `maxmemoryPolicy`, `persistenceMode`, `ipAllowList` (CIDR). Internal URL is unauthenticated by default in Render; bex's mechanism always mints a password. |
+| Key Value (Valkey / Redis) | ✖ | ✖ | ✖ | ✖ | Render `/key-value` (full CRUD + `connection-info` + `suspend`/`resume`, 8 endpoints) + MCP `list/get/create_key_value` + dashboard type ("Key Value", Valkey 8). Mechanism shipped (w1/m14): a `KeyValue` CR → single-instance Valkey + internal Service DNS + credentials Secret, optional public Traefik TCP/SNI route. The four surfaces (REST/GraphQL/MCP/UI) are still unbuilt → **w2/m7** (REST/GraphQL/MCP) + **w5/m12** (dashboard). Surface contract to mirror: plans `free`/`starter`/`standard`/… (the web-service vocabulary, **not** Postgres `basic-*`); connection-info 3 keys — `internalConnectionString` (`redis://`), `externalConnectionString` (`rediss://` TLS, opt-in), `cliCommand`; create/update fields Render has that the CR lacks today — `maxmemoryPolicy`, `persistenceMode`, `ipAllowList` (CIDR). Internal URL is unauthenticated by default in Render; bex's mechanism always mints a password. |
 | Persistent disks | — | — | — | — | Render `/disks` + Disks tab. Deliberate: bex is **stateless-first** (managed Postgres for state); disks disable multi-instance + zero-downtime deploys, which fights bex's dense bin-pack + free-tier-sleep economics. Non-goal. |
 
 ## Deployment sources & IaC
@@ -147,7 +147,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | todo |
-| Key Value (Valkey/Redis) store | `w1/m14` | mechanism done (CR + reconciler); surface → w2/w5 |
+| Key Value (Valkey/Redis) store | `w1/m14` | mechanism done (CR + reconciler, live in prod 2026-07-09); surface → `w2/m7` (API) + `w5/m12` (dashboard) |
 | API keys in the dashboard | `w4/m8` | done 2026-07-08 (key metadata follow-up → `w4/m13`) |
 | Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
 | Audit logs | `w4/m10` | todo |
