@@ -1,0 +1,256 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package store
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
+)
+
+// members.go is the write side of workspace membership the w4/m12 team surface
+// drives: role changes and removals on existing tenant_members rows, and the
+// tenant_invites lifecycle (an email is invited, then redeemed into a
+// tenant_members row on the recipient's first login). Reads
+// (ListTenantMembers/CountTenantMembers) live in workspaces.go; this file is
+// the mutating half plus invites.
+
+// Invite is a row of `tenant_invites` — a pending workspace membership addressed
+// to an email that has no OpenFGA subject yet. Redeemed on the recipient's first
+// authenticated login (AcceptInvitesForEmail) into a tenant_members row + the
+// matching workspace:<id> tuple.
+type Invite struct {
+	ID         string     `json:"id"`
+	TenantID   string     `json:"tenantId"`
+	Email      string     `json:"email"`
+	Role       string     `json:"role"`
+	Token      string     `json:"token"`
+	InvitedBy  string     `json:"invitedBy,omitempty"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	ExpiresAt  time.Time  `json:"expiresAt"`
+	AcceptedAt *time.Time `json:"acceptedAt,omitempty"`
+}
+
+// GetTenantMember reads one membership row (ErrNotFound when the subject is not
+// a member) — the read the role/remove verbs consult to learn the current role
+// (the last-admin guard) before mutating.
+func (s *PGStore) GetTenantMember(ctx context.Context, tenantID, subject string) (TenantMember, error) {
+	var m TenantMember
+	err := s.Pool.QueryRow(ctx,
+		`SELECT tenant_id, subject, role, created_at FROM tenant_members
+		 WHERE tenant_id = $1 AND subject = $2`, tenantID, subject,
+	).Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt)
+	if err != nil {
+		return TenantMember{}, classify("tenant_member", err)
+	}
+	return m, nil
+}
+
+// CountTenantAdmins counts a workspace's admin members — the guard the
+// role-change/remove verbs consult so the last admin can't demote or remove
+// itself, leaving a workspace nobody can administer.
+func (s *PGStore) CountTenantAdmins(ctx context.Context, tenantID string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+		tenantID).Scan(&n)
+	return n, err
+}
+
+// UpdateMemberRole changes an existing member's role (ErrNotFound when the
+// subject is not a member of the workspace). The role CHECK is enforced by the
+// API layer's validation, not the column, so an unknown role is a caller error
+// mapped upstream, not a constraint violation here.
+func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE tenant_members SET role = $3 WHERE tenant_id = $1 AND subject = $2`,
+		tenantID, subject, role)
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("tenant_member %s: %w", subject, ErrNotFound)
+	}
+	return nil
+}
+
+// RemoveMember deletes a membership row (ErrNotFound when absent). The FGA tuple
+// removal is the caller's separate, best-effort step (members.Service.Remove).
+func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = $2`,
+		tenantID, subject)
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("tenant_member %s: %w", subject, ErrNotFound)
+	}
+	return nil
+}
+
+// CountInvites counts a workspace's OUTSTANDING invites (unaccepted, unexpired)
+// — the count the seat-cap check consults, so the Invite verb doesn't SELECT
+// full rows just to length them. Mirrors CountTenantMembers.
+func (s *PGStore) CountInvites(ctx context.Context, tenantID string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM tenant_invites
+		 WHERE tenant_id = $1 AND accepted_at IS NULL AND expires_at > now()`,
+		tenantID).Scan(&n)
+	return n, err
+}
+
+// CreateInvite records a pending invite (ErrConflict when an outstanding invite
+// already targets the same (tenant, email) — the partial unique index). The id
+// and token are minted here; expiresAt is computed by the caller so the TTL is
+// one policy in the service layer.
+func (s *PGStore) CreateInvite(ctx context.Context, tenantID, email, role, token, invitedBy string, expiresAt time.Time) (Invite, error) {
+	inv := Invite{
+		ID: ids.New(ids.Invite), TenantID: tenantID, Email: email, Role: role,
+		Token: token, InvitedBy: invitedBy, ExpiresAt: expiresAt,
+	}
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO tenant_invites (id, tenant_id, email, role, token, invited_by, expires_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at`,
+		inv.ID, tenantID, email, role, token, invitedBy, expiresAt,
+	).Scan(&inv.CreatedAt)
+	if err != nil {
+		return Invite{}, classify("invite", err)
+	}
+	return inv, nil
+}
+
+const inviteColumns = `id, tenant_id, email, role, token, invited_by, created_at, expires_at, accepted_at`
+
+func scanInvite(row pgx.Row) (Invite, error) {
+	var inv Invite
+	err := row.Scan(&inv.ID, &inv.TenantID, &inv.Email, &inv.Role, &inv.Token,
+		&inv.InvitedBy, &inv.CreatedAt, &inv.ExpiresAt, &inv.AcceptedAt)
+	return inv, err
+}
+
+// ListInvites returns a workspace's OUTSTANDING invites — not yet accepted and
+// not expired — oldest first. Accepted/expired rows are audit history, not
+// pending work, so the Team page's pending list excludes them.
+func (s *PGStore) ListInvites(ctx context.Context, tenantID string) ([]Invite, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+inviteColumns+` FROM tenant_invites
+		 WHERE tenant_id = $1 AND accepted_at IS NULL AND expires_at > now()
+		 ORDER BY created_at`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Invite
+	for rows.Next() {
+		inv, err := scanInvite(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, inv)
+	}
+	return out, rows.Err()
+}
+
+// GetInvite reads one invite scoped to its workspace (ErrNotFound otherwise) —
+// the revoke verb's existence check so it can't delete another workspace's row.
+func (s *PGStore) GetInvite(ctx context.Context, tenantID, id string) (Invite, error) {
+	inv, err := scanInvite(s.Pool.QueryRow(ctx,
+		`SELECT `+inviteColumns+` FROM tenant_invites WHERE tenant_id = $1 AND id = $2`,
+		tenantID, id))
+	if err != nil {
+		return Invite{}, classify("invite", err)
+	}
+	return inv, nil
+}
+
+// DeleteInvite revokes a pending invite (ErrNotFound when absent / another
+// workspace's). Idempotency is the caller's concern; a missing row is a 404.
+func (s *PGStore) DeleteInvite(ctx context.Context, tenantID, id string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM tenant_invites WHERE tenant_id = $1 AND id = $2`, tenantID, id)
+	if err != nil {
+		return classify("invite", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("invite %s: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
+// AcceptInvitesForEmail redeems every outstanding invite addressed to email into
+// a tenant_members row for subject, marking each invite accepted — the whole set
+// in ONE transaction so a signup either joins all its invited workspaces or none
+// (a partial join with dangling invites would be confusing to re-drive). It
+// returns the accepted invites so the caller can write the matching OpenFGA
+// tuples (Postgres and OpenFGA aren't one transaction; the row is the source of
+// truth, the tuple a best-effort follow-up the resolver re-drives). Idempotent:
+// a second login finds no outstanding invites and returns an empty slice. The
+// membership upsert is ON CONFLICT DO UPDATE so an invite can also UPGRADE an
+// existing membership's role (invited again at a higher role after joining).
+func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject string) ([]Invite, error) {
+	// Read the pending set outside any transaction — the overwhelmingly common
+	// case (a login with no pending invite) then costs one SELECT, not a
+	// BEGIN/COMMIT round trip on the auth hot path.
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+inviteColumns+` FROM tenant_invites
+		 WHERE email = $1 AND accepted_at IS NULL AND expires_at > now()`, email)
+	if err != nil {
+		return nil, classify("invite", err)
+	}
+	defer rows.Close()
+	var pending []Invite
+	for rows.Next() {
+		inv, err := scanInvite(rows)
+		if err != nil {
+			return nil, classify("invite", err)
+		}
+		pending = append(pending, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, classify("invite", err)
+	}
+	if len(pending) == 0 {
+		return nil, nil
+	}
+	// Redeem the whole set in one transaction so a signup joins all its invited
+	// workspaces or none.
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		for _, inv := range pending {
+			if _, err := tx.Exec(ctx,
+				`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
+				 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`,
+				inv.TenantID, subject, inv.Role); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx,
+				`UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, classify("invite", err)
+	}
+	return pending, nil
+}

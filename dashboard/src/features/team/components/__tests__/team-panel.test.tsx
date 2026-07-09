@@ -1,0 +1,125 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { TeamPanel } from "@/features/team/components/team-panel";
+import type { MemberView, InviteView } from "@/features/team/types";
+
+const teamState: {
+  members: MemberView[];
+  invites: InviteView[];
+  loading: boolean;
+  error: Error | undefined;
+  canManage: boolean;
+} = { members: [], invites: [], loading: false, error: undefined, canManage: true };
+const refetch = vi.fn();
+
+vi.mock("@/features/team/hooks/use-current-workspace", () => ({
+  useCurrentWorkspace: () => ({
+    workspace: { id: "tea-1", name: "acme", plan: "pro", role: "ADMIN" },
+    loading: false,
+    error: undefined,
+  }),
+}));
+vi.mock("@/features/team/hooks/use-team", () => ({
+  useTeam: () => ({ ...teamState, refetch }),
+}));
+
+const changeRole = vi.fn();
+vi.mock("@/features/team/hooks/use-change-role", () => ({
+  useChangeRole: () => ({ changeRole, changing: null }),
+}));
+
+const removeMember = vi.fn();
+const revokeInvite = vi.fn();
+vi.mock("@/features/team/hooks/use-remove-member", () => ({
+  useRemoveMember: () => ({ removeMember, revokeInvite, removing: null }),
+}));
+
+vi.mock("@/features/team/components/invite-member-dialog", () => ({
+  InviteMemberDialog: () => <div data-testid="invite-dialog" />,
+}));
+
+beforeEach(() => {
+  teamState.members = [];
+  teamState.invites = [];
+  teamState.loading = false;
+  teamState.error = undefined;
+  teamState.canManage = true;
+  refetch.mockReset();
+  changeRole.mockReset();
+  removeMember.mockReset();
+  revokeInvite.mockReset();
+});
+
+describe("TeamPanel", () => {
+  it("lists members with their roles (w4/m12/t004)", () => {
+    teamState.members = [
+      { subject: "id-admin", role: "ADMIN", createdAt: null },
+      { subject: "id-bob", role: "VIEWER", createdAt: null },
+    ];
+    render(<TeamPanel />);
+    expect(screen.getByText("id-admin")).toBeInTheDocument();
+    expect(screen.getByText("id-bob")).toBeInTheDocument();
+  });
+
+  it("an admin sees the invite dialog and per-member controls", () => {
+    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+    render(<TeamPanel />);
+    expect(screen.getByTestId("invite-dialog")).toBeInTheDocument();
+    // The role dropdown (a combobox) and a remove button are present.
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  it("a read-only (non-admin) caller sees no invite/role/remove controls", () => {
+    teamState.canManage = false;
+    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+    render(<TeamPanel />);
+    expect(screen.queryByTestId("invite-dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+    // ...but the role is still shown as text.
+    expect(screen.getByText("Viewer")).toBeInTheDocument();
+  });
+
+  it("shows pending invites to an admin", () => {
+    teamState.invites = [
+      { id: "inv-1", email: "carol@example.com", role: "DEVELOPER", expiresAt: null },
+    ];
+    render(<TeamPanel />);
+    expect(screen.getByText("Pending invites")).toBeInTheDocument();
+    expect(screen.getByText("carol@example.com")).toBeInTheDocument();
+  });
+
+  it("a confirmed remove calls removeMember and refetches on success", async () => {
+    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+    removeMember.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<TeamPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+
+    expect(removeMember).toHaveBeenCalledWith("id-bob");
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("revoking a pending invite calls revokeInvite", async () => {
+    teamState.invites = [
+      { id: "inv-1", email: "carol@example.com", role: "DEVELOPER", expiresAt: null },
+    ];
+    revokeInvite.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<TeamPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    expect(revokeInvite).toHaveBeenCalledWith("inv-1");
+  });
+
+  it("surfaces a load error", () => {
+    teamState.error = new Error("boom");
+    render(<TeamPanel />);
+    expect(screen.getByText("Couldn't load the team")).toBeInTheDocument();
+  });
+});

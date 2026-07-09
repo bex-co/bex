@@ -58,6 +58,10 @@ type MembershipGranter interface {
 	// GrantWorkspaceMember makes subject a developer of workspace:<tenantID> —
 	// the role a minted API key gets (least privilege over every resource verb).
 	GrantWorkspaceMember(ctx context.Context, tenantID, subject string) error
+	// GrantWorkspaceRole grants subject an arbitrary role relation on
+	// workspace:<tenantID> — how a redeemed invite (internal/api/tenancy.go)
+	// seats the accepted member at its invited role (viewer/contributor/…/admin).
+	GrantWorkspaceRole(ctx context.Context, tenantID, subject, relation string) error
 	// RevokeWorkspaceMember removes subject's membership tuple for relation
 	// (e.g. "developer" for a revoked API key) — on revoke.
 	RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error

@@ -14,7 +14,10 @@ import {
   TableRow,
   TableHead,
 } from "@/common/components/ui/table";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  PanelCenteredState,
+  PanelTableSkeleton,
+} from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
 import { useRevokeApiKey } from "@/features/api-keys/hooks/use-revoke-api-key";
@@ -64,7 +67,7 @@ export function ApiKeysPanel() {
         {errorKind ? (
           <StatePanel kind={errorKind} />
         ) : initialLoading ? (
-          <TableSkeleton />
+          <PanelTableSkeleton />
         ) : keys.length === 0 ? (
           <EmptyState />
         ) : (
@@ -95,23 +98,10 @@ export function ApiKeysPanel() {
   );
 }
 
-function TableSkeleton() {
-  return (
-    <div className="space-y-2">
-      {[0, 1].map((i) => (
-        <div key={i} className="flex items-center gap-4">
-          <Skeleton className="h-6 w-1/3" />
-          <Skeleton className="h-6 flex-1" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function EmptyState() {
   const { t } = useTranslations();
   return (
-    <CenteredState
+    <PanelCenteredState
       icon={<KeyRound />}
       title={t("apiKeys.emptyTitle")}
       body={t("apiKeys.emptyBody")}
@@ -133,23 +123,7 @@ function StatePanel({ kind }: { kind: ErrorKind }) {
       body: t("apiKeys.errorBody"),
     },
   }[kind];
-  return <CenteredState icon={copy.icon} title={copy.title} body={copy.body} />;
-}
-
-function CenteredState({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="text-muted-foreground/50 mb-3 [&_svg]:size-8">{icon}</div>
-      <p className="mb-1 font-medium">{title}</p>
-      <p className="text-muted-foreground text-sm">{body}</p>
-    </div>
+    <PanelCenteredState icon={copy.icon} title={copy.title} body={copy.body} />
   );
 }

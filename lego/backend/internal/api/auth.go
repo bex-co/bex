@@ -127,7 +127,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// here. A broken store fails closed (503), like a broken Ory: a
 			// request that can't be tenanted must not be served un-tenanted.
 			if a.onboard != nil && id.Method == "session" {
-				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject); err != nil {
+				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email); err != nil {
 					http.Error(w, `{"error":"tenant onboarding unavailable"}`, http.StatusServiceUnavailable)
 					return
 				}
@@ -248,7 +248,10 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	}
 	var out struct {
 		Identity struct {
-			ID string `json:"id"`
+			ID     string `json:"id"`
+			Traits struct {
+				Email string `json:"email"`
+			} `json:"traits"`
 		} `json:"identity"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -257,7 +260,13 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	if out.Identity.ID == "" {
 		return core.Identity{}, nil
 	}
-	return core.Identity{Subject: out.Identity.ID, Method: "session"}, nil
+	// traits.email is the standard Kratos identity schema's email field — the key
+	// a pending workspace invite is redeemed against on this caller's first login.
+	return core.Identity{
+		Subject: out.Identity.ID,
+		Method:  "session",
+		Email:   strings.ToLower(out.Identity.Traits.Email),
+	}, nil
 }
 
 // unauthorized answers 401 with the precomputed WWW-Authenticate challenge

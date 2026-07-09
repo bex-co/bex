@@ -24,6 +24,12 @@ import "context"
 type Identity struct {
 	Subject string
 	Method  string // "oauth2" | "session"
+	// Email is the caller's verified email, populated for session (human)
+	// callers from their Kratos identity traits; empty for machine (API-key)
+	// callers, which have no email. It is the key a pending workspace invite is
+	// redeemed against on first login (internal/api/tenancy.go), not an
+	// authorization input — the subject remains the tenant-scoping hook.
+	Email string
 }
 
 type identityCtxKey struct{}

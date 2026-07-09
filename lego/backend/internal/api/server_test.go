@@ -43,6 +43,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -507,6 +508,7 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&secrets.Service{Base: base},
 		&envgroups.Service{Base: base},
 		&workspaces.Service{Base: base},
+		&members.Service{Base: base},
 		&deploys.Service{Base: base},
 	}
 	swept := 0
@@ -578,13 +580,13 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "deploys"} {
+	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "deploys", "workspaceMembers", "workspaceInvites"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
 	}
 	mFields := schema.MutationType().Fields()
-	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile"} {
+	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile", "inviteWorkspaceMember", "changeWorkspaceMemberRole", "removeWorkspaceMember", "revokeWorkspaceInvite"} {
 		if mFields[f] == nil {
 			t.Errorf("Mutation.%s not wired into the single schema", f)
 		}
@@ -597,7 +599,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy"} {
+	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

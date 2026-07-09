@@ -50,6 +50,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/mailer"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -187,6 +189,19 @@ func main() {
 			deps.WorkspaceRevoker = rv
 		}
 
+		// Workspace members & roles (w4/m12): the team surface writes through the
+		// same store (tenant_members + tenant_invites) and keeps OpenFGA role
+		// tuples in step. Granter/Revoker are the OpenFGA checker when authz is
+		// wired; a nil pair means the store records roles while authz isn't yet
+		// enforcing them (store on, BEX_OPENFGA_URL off).
+		deps.MembersStore = st
+		if g, ok := authzChecker.(members.RoleGranter); ok {
+			deps.MembersGranter = g
+		}
+		if rv, ok := authzChecker.(members.RoleRevoker); ok {
+			deps.MembersRevoker = rv
+		}
+
 		// Tenant onboarding + workspace scoping (w1/m9): one tenantService is the
 		// store-backed resolver (core.Base.Workspace, every verb's Authorize
 		// targets workspace:tea-<id>), the onboarding seam (mints a personal
@@ -230,6 +245,16 @@ func main() {
 			}
 		}()
 	}
+
+	// Invite delivery (w4/m12): the members feature emails invites over the same
+	// SMTP relay Kratos's courier uses (SendGrid in prod, Mailpit locally). Unset
+	// BEX_SMTP_ADDR/BEX_SMTP_FROM => mailer nil, invites recorded but not emailed.
+	// BEX_DASHBOARD_URL is the origin the invite link points at.
+	if m := mailer.New(os.Getenv("BEX_SMTP_ADDR"), os.Getenv("BEX_SMTP_FROM"),
+		os.Getenv("BEX_SMTP_USERNAME"), os.Getenv("BEX_SMTP_PASSWORD")); m != nil {
+		deps.Mailer = m
+	}
+	deps.InviteBaseURL = os.Getenv("BEX_DASHBOARD_URL")
 
 	srv := api.NewServer(base, deps)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")

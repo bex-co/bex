@@ -22,6 +22,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -420,5 +421,100 @@ func assertDeleteCascades(ctx context.Context, t *testing.T, s *PGStore, pool *p
 	}
 	if n != 0 {
 		t.Errorf("deploys after app delete = %d, want 0 (cascade)", n)
+	}
+}
+
+// TestMembersAndInvites exercises w4/m12's write side against a real database:
+// role changes, removal, the last-admin counter, and the invite lifecycle
+// (create → list pending → redeem, with the cascade and the accepted/expired
+// exclusions).
+func TestMembersAndInvites(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	ten, err := s.CreateWorkspace(ctx, "acme", PlanPro, "admin-1")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+
+	// Role change + last-admin counter.
+	if n, err := s.CountTenantAdmins(ctx, ten.ID); err != nil || n != 1 {
+		t.Fatalf("admins = %d (%v), want 1", n, err)
+	}
+	if err := s.AddMember(ctx, "bob", ten.ID, "viewer"); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+	if err := s.UpdateMemberRole(ctx, ten.ID, "bob", "developer"); err != nil {
+		t.Fatalf("update role: %v", err)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "bob"); err != nil || m.Role != "developer" {
+		t.Fatalf("member role = %q (%v), want developer", m.Role, err)
+	}
+	if err := s.UpdateMemberRole(ctx, ten.ID, "ghost", "developer"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("update absent member: want ErrNotFound, got %v", err)
+	}
+	if err := s.RemoveMember(ctx, ten.ID, "bob"); err != nil {
+		t.Fatalf("remove member: %v", err)
+	}
+	if err := s.RemoveMember(ctx, ten.ID, "bob"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("re-remove: want ErrNotFound, got %v", err)
+	}
+
+	// Invite lifecycle.
+	exp := time.Now().Add(24 * time.Hour)
+	inv, err := s.CreateInvite(ctx, ten.ID, "carol@example.com", "contributor", "tok", "admin-1", exp)
+	if err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, ten.ID, "carol@example.com", "viewer", "tok2", "admin-1", exp); !errors.Is(err, ErrConflict) {
+		t.Errorf("duplicate outstanding invite: want ErrConflict, got %v", err)
+	}
+	pending, err := s.ListInvites(ctx, ten.ID)
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending invites = %d (%v), want 1", len(pending), err)
+	}
+
+	// Redeem: carol's login turns the invite into a membership at its role and
+	// marks the invite accepted (so it drops off the pending list).
+	accepted, err := s.AcceptInvitesForEmail(ctx, "carol@example.com", "identity-carol")
+	if err != nil || len(accepted) != 1 || accepted[0].ID != inv.ID {
+		t.Fatalf("accept: %v %+v", err, accepted)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-carol"); err != nil || m.Role != "contributor" {
+		t.Fatalf("redeemed member role = %q (%v), want contributor", m.Role, err)
+	}
+	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 0 {
+		t.Errorf("pending after accept = %d, want 0", len(pending))
+	}
+	// A second login redeems nothing (idempotent).
+	if again, err := s.AcceptInvitesForEmail(ctx, "carol@example.com", "identity-carol"); err != nil || len(again) != 0 {
+		t.Errorf("second accept: %v %+v, want none", err, again)
+	}
+
+	// Deleting the workspace cascades its invites.
+	if err := s.DeleteTenant(ctx, ten.ID); err != nil {
+		t.Fatalf("delete tenant: %v", err)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tenant_invites`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("invites after tenant delete = %d, want 0 (cascade)", n)
 	}
 }

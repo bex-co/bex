@@ -61,6 +61,21 @@ func (s *PGStore) CreateWorkspace(ctx context.Context, name, plan, ownerSubject 
 	return t, nil
 }
 
+// TenantForOwner returns the personal tenant an identity OWNS (by
+// owner_identity_id), or ErrNotFound — the cheap read the onboarding path tries
+// before the upsert, so a returning caller's login is a single SELECT, not a
+// write transaction. Unlike TenantForIdentity (a membership JOIN that can now
+// return a workspace the caller was merely invited to), this returns only the
+// workspace the caller actually owns (w4/m12).
+func (s *PGStore) TenantForOwner(ctx context.Context, identityID string) (Tenant, error) {
+	t, err := scanTenant(s.Pool.QueryRow(ctx,
+		`SELECT id, name, plan, created_at FROM tenants WHERE owner_identity_id = $1`, identityID))
+	if err != nil {
+		return Tenant{}, classify("tenant", err)
+	}
+	return t, nil
+}
+
 // GetTenant reads one tenant by id (ErrNotFound when absent).
 func (s *PGStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
 	var t Tenant

@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -68,6 +69,7 @@ type Server struct {
 	Secrets    *secrets.Service
 	EnvGroups  *envgroups.Service
 	Workspaces *workspaces.Service
+	Members    *members.Service
 	Usage      *usage.Service
 	Deploys    *deploys.Service
 
@@ -131,6 +133,16 @@ type Deps struct {
 	WorkspaceRevoker workspaces.WorkspaceRevoker
 	WorkspaceKick    func()
 	WorkspacePurgers []workspaces.WorkspacePurger
+	// Workspace members & roles (w4/m12): the same control-plane store + OpenFGA
+	// role grant/revoke sides, plus the invite Mailer and the dashboard origin the
+	// invite email links to. Store nil (BEX_CP_DB_URI unset) => the member verbs
+	// answer ErrMembersUnavailable; Mailer nil (no SMTP) => invites are recorded
+	// but not emailed.
+	MembersStore   members.MembersStore
+	MembersGranter members.RoleGranter
+	MembersRevoker members.RoleRevoker
+	Mailer         members.Mailer
+	InviteBaseURL  string
 	// KeyBinder, when set (the control-plane store is wired), ties each minted
 	// API key to the caller's tenant (w1/m9). nil => keys mint unbound (store off).
 	KeyBinder apikeys.KeyBinder
@@ -180,6 +192,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Identities: d.Identities,
 			Selections: selections,
 		},
+		Members: &members.Service{
+			Base:          base,
+			Store:         d.MembersStore,
+			Granter:       d.MembersGranter,
+			Revoker:       d.MembersRevoker,
+			Mailer:        d.Mailer,
+			InviteBaseURL: d.InviteBaseURL,
+		},
 		Onboard: d.Onboard,
 		Usage:   d.Usage,
 	}
@@ -225,6 +245,9 @@ func (s *Server) features() []any {
 	}
 	if s.Workspaces != nil {
 		out = append(out, s.Workspaces)
+	}
+	if s.Members != nil {
+		out = append(out, s.Members)
 	}
 	if s.Usage != nil {
 		out = append(out, s.Usage)

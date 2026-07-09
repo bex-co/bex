@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -42,16 +43,22 @@ import (
 // separate machine-caller lookup.
 type TenantStore interface {
 	TenantForIdentity(ctx context.Context, subject string) (store.Tenant, error)
+	TenantForOwner(ctx context.Context, identityID string) (store.Tenant, error)
 	CreateTenantWithMember(ctx context.Context, identityID, plan string) (store.Tenant, error)
 	BindClient(ctx context.Context, clientID, tenantID string) error
 	UnbindClient(ctx context.Context, clientID string) error
+	// AcceptInvitesForEmail redeems every outstanding invite addressed to email
+	// into a tenant_members row for subject and returns them, so the caller can
+	// write the matching OpenFGA role tuples (w4/m12).
+	AcceptInvitesForEmail(ctx context.Context, email, subject string) ([]store.Invite, error)
 }
 
-// Onboarding mints a personal tenant for a human identity on first login. The
-// auth gate calls it for session callers only — machine (API-key) callers never
-// mint (they resolve via their key's tenant binding instead).
+// Onboarding mints a personal tenant for a human identity on first login and
+// redeems any workspace invites addressed to its email. The auth gate calls it
+// for session callers only — machine (API-key) callers never mint (they resolve
+// via their key's tenant binding instead) and carry no email to redeem against.
 type Onboarding interface {
-	EnsureTenant(ctx context.Context, identityID string) (tenantID string, err error)
+	EnsureTenant(ctx context.Context, identityID, email string) (tenantID string, err error)
 }
 
 // tenantService implements both core.WorkspaceResolver (the read path
@@ -80,28 +87,42 @@ func NewTenantService(s TenantStore, granter store.MembershipGranter) *tenantSer
 // and a Hydra client_id can never shadow each other.
 func cacheKey(method, subject string) string { return method + ":" + subject }
 
-// EnsureTenant mints a personal tenant for a human identity on first login and
-// returns its id. Idempotent: a returning caller finds its tenant and mints
-// nothing; concurrent first logins yield one tenant (the store's unique
-// owner_identity_id gate). The owner is granted admin on workspace:tea-<id> so
-// it can authorize its own resources — verified, not just attempted, on every
-// cache-miss call (ensureGranted), not only a fresh mint: OpenFGA's /write
-// errors on a tuple that already exists, so a naive "grant only on fresh mint"
-// would permanently skip the grant if the very first attempt failed after the
-// tenant row had already committed — the caller's every retry would then find
-// "already onboarded" and never regrant, a silent lockout from its own
-// workspace. ensureGranted checks first, so both a returning caller (grant
-// already succeeded) and a genuine retry (grant still missing) are handled by
-// the same path.
-func (t *tenantService) EnsureTenant(ctx context.Context, identityID string) (string, error) {
+// EnsureTenant resolves a human identity's PERSONAL tenant on login (minting it
+// on first login) and redeems any workspace invites addressed to its email.
+// Returns the personal tenant's id. Idempotent: concurrent first logins yield
+// one tenant (the store's unique owner_identity_id gate). The owner is granted
+// admin on workspace:tea-<id> so it can authorize its own resources — verified,
+// not just attempted, on every cache-miss call (ensureGranted), not only a fresh
+// mint: OpenFGA's /write errors on a tuple that already exists, so a naive "grant
+// only on fresh mint" would permanently skip the grant if the very first attempt
+// failed after the tenant row had already committed — the caller's every retry
+// would then find "already onboarded" and never regrant, a silent lockout from
+// its own workspace. ensureGranted checks first, so both a returning caller
+// (grant already succeeded) and a genuine retry (grant still missing) are handled
+// by the same path.
+//
+// The personal tenant is resolved by OWNER identity (owner_identity_id), NOT by
+// membership: once a caller can be a member of workspaces it does not own (w4/m12
+// invites), a membership lookup could return an INVITED workspace and
+// ensureGranted would wrongly grant the caller admin there. Owner-keyed
+// resolution keeps the admin grant pinned to the workspace the caller actually
+// owns. A returning caller costs one owner-keyed SELECT (TenantForOwner); only a
+// first login falls to the idempotent CreateTenantWithMember upsert.
+func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string) (string, error) {
 	key := cacheKey("session", identityID)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, nil
 	}
-	tenant, err := t.store.TenantForIdentity(ctx, identityID)
+	// Redeem pending invites on the cache-miss path (a fresh signup is always a
+	// miss, so a new teammate lands in the workspace immediately; a returning
+	// caller redeems within the cache TTL). Done before the personal-tenant
+	// resolution so the two are independent; acceptInvites no-ops without an email.
+	t.acceptInvites(ctx, identityID, email)
+
+	tenant, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
 	case err == nil:
-		// returning caller — tenant already exists
+		// returning caller — personal tenant already minted
 	case errors.Is(err, store.ErrNotFound):
 		tenant, err = t.store.CreateTenantWithMember(ctx, identityID, store.PlanHobby)
 		if err != nil {
@@ -115,6 +136,40 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID string) (st
 	}
 	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
 	return tenant.ID, nil
+}
+
+// acceptInvites redeems every pending invite addressed to the caller's email
+// into a membership + its OpenFGA role tuple — how an invited teammate lands in
+// the workspace on first login (w4/m12). The membership row is the source of
+// truth and is written transactionally; the FGA tuple is a best-effort follow-up
+// (Postgres and OpenFGA aren't one transaction), logged on failure rather than
+// surfaced so a flaky OpenFGA never blocks a login. A redeemed invite is
+// terminal (accepted_at set), so a failed tuple write is a rare, narrow window
+// consistent with the rest of the system's row-is-truth/tuple-best-effort model.
+// No email (a machine caller, or an identity without the trait) means nothing to
+// redeem.
+func (t *tenantService) acceptInvites(ctx context.Context, identityID, email string) {
+	if email == "" {
+		return
+	}
+	accepted, err := t.store.AcceptInvitesForEmail(ctx, email, identityID)
+	if err != nil {
+		log.Printf("tenancy: redeeming invites for %s: %v", identityID, err)
+		return
+	}
+	if t.granter == nil {
+		return
+	}
+	for _, inv := range accepted {
+		if err := t.granter.GrantWorkspaceRole(ctx, inv.TenantID, "user:"+identityID, inv.Role); err != nil {
+			log.Printf("tenancy: granting %s on workspace %s to %s: %v", inv.Role, inv.TenantID, identityID, err)
+		}
+	}
+	// The caller's cached resolution (their personal workspace) stays valid — a
+	// new membership elsewhere doesn't unseat it, and the switcher's workspace
+	// list (ListTenantsForSubject) is uncached, so the invited workspace shows
+	// immediately. Which of several workspaces is "active" is a w1/m9 concern
+	// (single-tenant resolution), not this feature's.
 }
 
 // ensureGranted makes identityID admin of workspace:tenantID unless it already

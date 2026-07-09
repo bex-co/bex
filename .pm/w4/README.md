@@ -16,7 +16,7 @@
 - [x] **m9** — OAuth 2.1 provider for agents: one dashboard login, first-party sessions + third-party clients (7 tasks) ← promoted from w4/001 (user request 2026-07-07), needs m1 + m2 — done 2026-07-08 (e2e-verified incl. real-browser login pass), moved to `done/m9/`
 - [ ] **m10** — Audit log: every Core write recorded with caller identity (8 tasks) ← from `/pm-brainstorm tasks for w4` 2026-07-08 (closing tasks retrofitted 2026-07-09)
 - [ ] **m11** — MFA: TOTP + passkeys via Kratos (8 tasks) ← promoted from `002` 2026-07-08 (its w1/m2 revisit condition met; closing tasks retrofitted 2026-07-09)
-- [ ] **m12** — Workspace members & roles (Render team surface) (9 tasks) ← from `/pm-brainstorm tasks for w4` 2026-07-08, needs w1/m9 + w4/m7 (closing tasks retrofitted 2026-07-09)
+- [x] **m12** — Workspace members & roles (Render team surface) (9 tasks) ← from `/pm-brainstorm tasks for w4` 2026-07-08, needs w1/m9 + w4/m7 (closing tasks retrofitted 2026-07-09)
 - [x] **m13** — API-key hygiene: token TTL + key metadata (7 tasks) ← promoted from `004` 2026-07-09 (its m8 pairing plan didn't happen); done 2026-07-09
 
 ## Suggested execution order (2026-07-09 brainstorm)

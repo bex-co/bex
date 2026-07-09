@@ -38,6 +38,7 @@ type fakeTenantStore struct {
 	tenants map[string]store.Tenant
 	members map[string]string // subject (identity or client id) -> tenantID
 	ownerOf map[string]string // identityID -> tenantID (mint gate)
+	invites []store.Invite    // outstanding invites (seeded via invite())
 	n       int
 }
 
@@ -53,6 +54,16 @@ func (f *fakeTenantStore) TenantForIdentity(_ context.Context, subject string) (
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	tid, ok := f.members[subject]
+	if !ok {
+		return store.Tenant{}, store.ErrNotFound
+	}
+	return f.tenants[tid], nil
+}
+
+func (f *fakeTenantStore) TenantForOwner(_ context.Context, identityID string) (store.Tenant, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	tid, ok := f.ownerOf[identityID]
 	if !ok {
 		return store.Tenant{}, store.ErrNotFound
 	}
@@ -87,6 +98,31 @@ func (f *fakeTenantStore) UnbindClient(_ context.Context, clientID string) error
 	defer f.mu.Unlock()
 	delete(f.members, clientID)
 	return nil
+}
+
+// invite seeds a pending invite the fake redeems on login (test helper).
+func (f *fakeTenantStore) invite(email, tenantID, role string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.invites = append(f.invites, store.Invite{
+		ID: fmt.Sprintf("inv-%d", len(f.invites)+1), TenantID: tenantID, Email: email, Role: role,
+	})
+}
+
+func (f *fakeTenantStore) AcceptInvitesForEmail(_ context.Context, email, subject string) ([]store.Invite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var accepted, remaining []store.Invite
+	for _, inv := range f.invites {
+		if inv.Email == email {
+			f.members[subject] = inv.TenantID
+			accepted = append(accepted, inv)
+		} else {
+			remaining = append(remaining, inv)
+		}
+	}
+	f.invites = remaining
+	return accepted, nil
 }
 
 // fakeGranter is a MembershipGranter that records every call and can be told
@@ -131,6 +167,9 @@ func (g *fakeGranter) GrantWorkspaceAdmin(_ context.Context, tenantID, subject s
 func (g *fakeGranter) GrantWorkspaceMember(_ context.Context, tenantID, subject string) error {
 	return g.grant(tenantID, subject, "developer")
 }
+func (g *fakeGranter) GrantWorkspaceRole(_ context.Context, tenantID, subject, relation string) error {
+	return g.grant(tenantID, subject, relation)
+}
 func (g *fakeGranter) RevokeWorkspaceMember(_ context.Context, tenantID, subject, relation string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -157,14 +196,14 @@ func TestEnsureTenantMintsOnceAndCaches(t *testing.T) {
 	ts := NewTenantService(st, nil)
 	ctx := context.Background()
 
-	first, err := ts.EnsureTenant(ctx, "identity-a")
+	first, err := ts.EnsureTenant(ctx, "identity-a", "")
 	if err != nil || first == "" {
 		t.Fatalf("first mint: %v %q", err, first)
 	}
 	if len(st.tenants) != 1 {
 		t.Fatalf("tenants after first mint = %d, want 1", len(st.tenants))
 	}
-	second, err := ts.EnsureTenant(ctx, "identity-a")
+	second, err := ts.EnsureTenant(ctx, "identity-a", "")
 	if err != nil || second != first {
 		t.Fatalf("second call: %v %q, want %q", err, second, first)
 	}
@@ -185,7 +224,7 @@ func TestEnsureTenantConcurrentFirstLoginsConverge(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			tid, err := ts.EnsureTenant(ctx, "identity-racer")
+			tid, err := ts.EnsureTenant(ctx, "identity-racer", "")
 			if err != nil {
 				t.Errorf("concurrent EnsureTenant %d: %v", i, err)
 				return
@@ -210,7 +249,7 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	ts := NewTenantService(st, granter)
 	ctx := context.Background()
 
-	tid, err := ts.EnsureTenant(ctx, "identity-a")
+	tid, err := ts.EnsureTenant(ctx, "identity-a", "")
 	if err != nil {
 		t.Fatalf("mint: %v", err)
 	}
@@ -218,7 +257,7 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	if len(granter.granted) != 1 || granter.granted[0] != want[0] {
 		t.Fatalf("granted = %v, want %v", granter.granted, want)
 	}
-	if _, err := ts.EnsureTenant(ctx, "identity-a"); err != nil {
+	if _, err := ts.EnsureTenant(ctx, "identity-a", ""); err != nil {
 		t.Fatalf("second call: %v", err)
 	}
 	if len(granter.granted) != 1 {
@@ -232,17 +271,50 @@ func TestEnsureTenantGrantFailureFailsClosedNotHalfMinted(t *testing.T) {
 	ts := NewTenantService(st, granter)
 	ctx := context.Background()
 
-	if _, err := ts.EnsureTenant(ctx, "identity-a"); err == nil {
+	if _, err := ts.EnsureTenant(ctx, "identity-a", ""); err == nil {
 		t.Fatal("grant failure must surface as an error, not silently succeed")
 	}
 	// The mint itself is idempotent (ON CONFLICT), so retrying must succeed and
 	// grant exactly once — no leftover half-onboarded state blocks the retry.
-	tid, err := ts.EnsureTenant(ctx, "identity-a")
+	tid, err := ts.EnsureTenant(ctx, "identity-a", "")
 	if err != nil || tid == "" {
 		t.Fatalf("retry after grant failure: %v %q", err, tid)
 	}
 	if len(granter.granted) != 1 {
 		t.Errorf("granted after retry = %v, want exactly one admin grant", granter.granted)
+	}
+}
+
+// TestEnsureTenantRedeemsInvitesAndGrantsCorrectWorkspace verifies the w4/m12
+// invite-acceptance path: a signup with a pending invite joins the invited
+// workspace at the invited role, AND still gets admin on its OWN personal
+// tenant — never admin on the invited workspace (the owner-keyed personal
+// resolution keeps the admin grant off a workspace the caller was merely invited
+// to as a viewer).
+func TestEnsureTenantRedeemsInvitesAndGrantsCorrectWorkspace(t *testing.T) {
+	st := newFakeTenantStore()
+	granter := newFakeGranter()
+	ts := NewTenantService(st, granter)
+	ctx := context.Background()
+	st.invite("bob@example.com", "tea-invited", "viewer")
+
+	personal, err := ts.EnsureTenant(ctx, "identity-bob", "bob@example.com")
+	if err != nil || personal == "" {
+		t.Fatalf("ensure: %v %q", err, personal)
+	}
+	if personal == "tea-invited" {
+		t.Fatal("personal tenant must not be the invited workspace")
+	}
+	// The invited role tuple lands on the invited workspace...
+	if !granter.tuples["viewer:tea-invited:user:identity-bob"] {
+		t.Errorf("invited viewer tuple missing; granted=%v", granter.granted)
+	}
+	// ...admin lands only on the personal tenant, never on the invited workspace.
+	if !granter.tuples["admin:"+personal+":user:identity-bob"] {
+		t.Errorf("personal admin tuple missing; granted=%v", granter.granted)
+	}
+	if granter.tuples["admin:tea-invited:user:identity-bob"] {
+		t.Error("invited viewer was wrongly granted admin on the invited workspace")
 	}
 }
 

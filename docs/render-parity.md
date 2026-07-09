@@ -110,7 +110,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Login · sessions · account settings | — | — | — | ✅ | bex uses Ory Kratos (not a bex-api resource): auth pages + `/settings`. [auth.md](auth.md). |
 | Email recovery / verification | — | — | — | ◐ | Dashboard forgot/reset pages shipped; live SMTP courier → **w4/m7**. |
 | MFA (TOTP / passkeys) | — | — | — | ✖ | Kratos-native → **w4/m11**. |
-| Workspace members & roles | ✖ | ✖ | ✖ | ✖ | Render `/owners/{id}/members` + Team page. Roles already modelled in OpenFGA (`model.fga`); captured contract in [render-artifacts/team-members.graphql](render-artifacts/team-members.graphql). → **w4/m12** (gated on w1/m9). |
+| Workspace members & roles (list · invite · change role · remove) | ✅ | ✅ | ✅ | ✅ | `members/rest.go` `/v1/workspaces/{id}/members` + `/invites`; GraphQL `workspaceMembers`/`workspaceInvites` + `inviteWorkspaceMember`/`changeWorkspaceMemberRole`/`removeWorkspaceMember`/`revokeWorkspaceInvite`; MCP 6 tools; dashboard Settings → Team (**w4/m12**). Writes `tenant_members` + OpenFGA role tuples together; the docs/auth.md role matrix is enforced (invited viewer reads but can't mutate); last admin can't self-demote/remove. Roles are Render's UPPERCASE enum (`render-artifacts/team-members.graphql`). **Divergence (◐ shape):** members are keyed by identity subject, not `user{email,name}` (no per-member profile store yet); bex flattens Render's `owner.team.members` nesting into workspace-scoped queries (bex has no polymorphic `owner`). See [members.md](members.md). |
 | Audit logs | ✖ | ✖ | ✖ | ✖ | Render `/owners/{id}/audit-logs` (workspace) **and** `/organizations/{id}/audit-logs` (org). → **w4/m10**. |
 | SSO / SAML · SCIM | — | — | — | — | Enterprise; Ory can add later. Non-goal for now. |
 | SSH keys | — | — | — | — | User SSH keys serve the Shell/SSH surface, which is off-roadmap. Non-goal. |
@@ -150,7 +150,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | done (w5/m10) |
 | Key Value (Valkey/Redis) store | `w1/m14` · `w2/m7` | mechanism done (CR + reconciler, live in prod 2026-07-09); REST/GraphQL/MCP done (w2/m7); dashboard → `w5/m12` |
 | API keys in the dashboard | `w4/m8` | done 2026-07-08; key metadata (created-by/last-used) + token TTL → `w4/m13` done 2026-07-09 |
-| Workspace members & roles | `w4/m12` | todo (gated on w1/m9) |
+| Workspace members & roles | `w4/m12` | done 2026-07-09 — invite/list/change-role/remove across all four surfaces + invite-accept-on-login ([members.md](members.md)) |
 | Audit logs | `w4/m10` | todo |
 | Health-check path → readiness probe | `w1/005` | todo |
 | Env groups + secret files | `w1/m16` | todo |

@@ -60,6 +60,9 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_CP_DB_URI` | Postgres URI for the control-plane store (docs/control-plane.md); set ⇒ runs migrations + the apps-rows→App-CR projector + the internal tenant API; unset ⇒ bex-api alone |
 | bex-api | `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` (:8091), `BEX_CP_RESYNC`, `BEX_CP_TOKEN` | control-plane knobs: projection target ns, internal API addr, resync interval, internal API bearer |
 | bex-api | `BEX_WEBHOOK_SECRET` | shared HMAC-SHA256 key for the git push webhook (`POST /v1/webhooks/git`); unset ⇒ webhook 503 (docs/bex-api.md) |
+| bex-api | `BEX_SMTP_ADDR`, `BEX_SMTP_FROM` | SMTP relay (`host:port`) + envelope `From` for workspace-invite email (w4/m12, docs/members.md); same relay as the Kratos courier (SendGrid prod, Mailpit local). Either unset ⇒ invites recorded but not emailed |
+| bex-api | `BEX_SMTP_USERNAME`, `BEX_SMTP_PASSWORD` | optional SMTP PLAIN-auth credentials (secret, out-of-band); unset ⇒ unauthenticated relay (Mailpit) |
+| bex-api | `BEX_DASHBOARD_URL` | dashboard origin the invite email links to (e.g. `https://dashboard.bex.co`); unset ⇒ the invite email carries instructions without a deep link |
 | bex-api | `BEX_MCP_STDIO` | `1` ⇒ serve only the MCP tools over stdio (same as `api mcp-stdio`) |
 | bex-api | `BEX_OAUTH_ISSUER`, `BEX_OAUTH_RESOURCE` | OAuth 2.1 discovery for MCP/agent clients (docs/auth.md §7): Hydra public issuer + this API's canonical resource URI — drives RFC 9728 metadata, 401 `resource_metadata` hints, and the token-audience check; both unset ⇒ prior behavior |
 | dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | headless OAuth2 consent acceptor at `/auth/consent` (docs/auth.md §7); server-only (not `VITE_`), unset ⇒ consent 503 |
@@ -82,6 +85,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/etcd-backup-restore.md](docs/etcd-backup-restore.md) — nightly etcd snapshot → object storage; restore runbook.
 - [docs/openbao-backup-restore.md](docs/openbao-backup-restore.md) — nightly OpenBao Raft snapshot → object storage; restore runbook.
 - [docs/auth.md](docs/auth.md) — ADR: Ory Kratos (identity) + Hydra (OAuth2) on CNPG; secrets out-of-band.
+- [docs/members.md](docs/members.md) — workspace members & roles: invite by email, Render's five roles, `tenant_members` + OpenFGA tuples, invite-accept-on-login.
 - [docs/infra-credentials.md](docs/infra-credentials.md) — ADR: bootstrap credential inventory + trust chain (`bex` SSH key → mgmt cluster CAPI PKI → app admin cert) and `.env` custody.
 - [docs/secrets.md](docs/secrets.md) — ADR: OpenBao for tenant credentials; integrated Raft storage, Shamir unseal via `.env`, Kubernetes auth scoped to `tenants/*`.
 - [docs/sealed-secrets.md](docs/sealed-secrets.md) — infra creds encrypted at rest in git (SealedSecrets), controller + `kubeseal` workflow.

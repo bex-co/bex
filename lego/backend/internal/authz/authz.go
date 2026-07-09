@@ -144,7 +144,7 @@ func (o *openfgaChecker) writeTuple(ctx context.Context, del bool, tk tupleKey) 
 // satisfies store.MembershipGranter (and workspaces.WorkspaceGranter)
 // structurally, so those packages keep no dependency on this one.
 func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subject string) error {
-	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "admin", Object: "workspace:" + tenantID})
+	return o.GrantWorkspaceRole(ctx, tenantID, subject, "admin")
 }
 
 // GrantWorkspaceMember writes `<subject> developer workspace:<tenantID>` — the
@@ -154,7 +154,18 @@ func (o *openfgaChecker) GrantWorkspaceAdmin(ctx context.Context, tenantID, subj
 // credential manages resources, not org settings (members/billing), which
 // admin would unlock.
 func (o *openfgaChecker) GrantWorkspaceMember(ctx context.Context, tenantID, subject string) error {
-	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: "developer", Object: "workspace:" + tenantID})
+	return o.GrantWorkspaceRole(ctx, tenantID, subject, "developer")
+}
+
+// GrantWorkspaceRole writes an arbitrary role tuple `<subject> <relation>
+// workspace:<tenantID>` — the general membership write the w4/m12 team surface
+// uses to seat any of Render's five roles (viewer/contributor/developer/admin/
+// billing), where GrantWorkspaceAdmin/GrantWorkspaceMember cover only the two
+// fixed cases (owner, bound key). A role change is a Revoke of the old relation
+// then a Grant of the new; a redeemed invite is a Grant of its role. relation is
+// the FGA relation name, which equals the tenant_members.role string.
+func (o *openfgaChecker) GrantWorkspaceRole(ctx context.Context, tenantID, subject, relation string) error {
+	return o.writeTuple(ctx, false, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
 }
 
 // RevokeWorkspaceMember removes a subject's membership tuple from a workspace —
