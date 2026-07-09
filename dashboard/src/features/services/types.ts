@@ -37,6 +37,12 @@ export interface ServiceView {
    */
   schedule: string | null;
   /**
+   * Overrides a `cron_job`'s default entrypoint (Render's cron "Command" field);
+   * null for other types, or when the image's own command runs unmodified. Only
+   * the detail `server` query selects it.
+   */
+  command: string | null;
+  /**
    * A `cron_job`'s recent run history (newest first), only selected by the detail
    * `server` query. Empty for other types / when not selected.
    */

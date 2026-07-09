@@ -38,6 +38,7 @@ const SERVICE = {
   revision: "a1b2c3d",
   plan: "starter",
   schedule: null,
+  command: null,
   runs: [],
 };
 
@@ -58,6 +59,7 @@ const WORKER = {
   revision: "9f8e7d6",
   plan: "starter",
   schedule: null,
+  command: null,
   runs: [],
 };
 
@@ -75,6 +77,7 @@ const CRON = {
   revision: "3c2b1a0",
   plan: "free",
   schedule: "*/15 * * * *",
+  command: "npm run send-nightly-report",
   runs: [
     {
       __typename: "CronRun",

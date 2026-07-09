@@ -108,6 +108,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 				Spec: appv1alpha1.AppSpec{
 					Type:     appv1alpha1.TypeCronJob,
 					Schedule: "*/5 * * * *",
+					Command:  "npm run report",
 					Image:    "busybox:latest", Port: 3000,
 				},
 			}
@@ -119,6 +120,9 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
 			Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image).To(Equal("busybox:latest"))
+			By("spec.command overrides the image's entrypoint via a shell")
+			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command).
+				To(Equal([]string{"/bin/sh", "-c", "npm run report"}))
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &appsv1.Deployment{}))).To(BeTrue())
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &corev1.Service{}))).To(BeTrue())
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &networkingv1.Ingress{}))).To(BeTrue())

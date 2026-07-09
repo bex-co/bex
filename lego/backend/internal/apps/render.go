@@ -47,9 +47,11 @@ type renderService struct {
 	Replicas int32    `json:"replicas"`
 	Revision string   `json:"revision,omitempty"`
 	URLs     []string `json:"urls,omitempty"`
-	// Schedule/Runs describe a cron_job (Render nests schedule under
-	// cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty otherwise.
+	// Schedule/Command/Runs describe a cron_job (Render nests schedule/command
+	// under cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty
+	// otherwise.
 	Schedule       string        `json:"schedule,omitempty"`
+	Command        string        `json:"command,omitempty"`
 	Runs           []CronRunView `json:"runs,omitempty"`
 	IdleTTLSeconds int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
 }
@@ -82,6 +84,9 @@ func toRenderService(a AppView) renderService {
 	if a.Schedule != "" {
 		set("schedule", a.Schedule) // cronJobDetails.schedule (render-public-api-1.json)
 	}
+	if a.Command != "" {
+		set("command", a.Command) // cronJobDetails.command (render-public-api-1.json)
+	}
 	return renderService{
 		ID:             a.Name,
 		Name:           a.Name,
@@ -96,6 +101,7 @@ func toRenderService(a AppView) renderService {
 		Revision:       a.Revision,
 		URLs:           a.URLs,
 		Schedule:       a.Schedule,
+		Command:        a.Command,
 		Runs:           a.Runs,
 		IdleTTLSeconds: a.IdleTTLSeconds,
 	}

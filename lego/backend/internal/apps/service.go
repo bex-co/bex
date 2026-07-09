@@ -104,6 +104,9 @@ type AppView struct {
 	Suspended bool     `json:"suspended"`
 	// Schedule is the cron expression for a cron_job (spec.schedule), empty otherwise.
 	Schedule string `json:"schedule,omitempty"`
+	// Command overrides a cron_job's default entrypoint (spec.command), empty
+	// otherwise (the image's own command runs unmodified).
+	Command string `json:"command,omitempty"`
 	// Runs is a cron_job's recent run history (status.runs), newest first.
 	Runs []CronRunView `json:"runs,omitempty"`
 	// Plan is Render's public spelling of the App's tier (e.g. "pro_plus" for
@@ -149,6 +152,7 @@ func view(a *appv1alpha1.App) AppView {
 		Replicas:       a.Spec.Replicas,
 		Suspended:      a.Spec.Suspended,
 		Schedule:       a.Spec.Schedule,
+		Command:        a.Spec.Command,
 		Runs:           cronRunViews(a.Status.Runs),
 		Plan:           plan,
 		Revision:       a.Status.ActiveRevision,
@@ -281,7 +285,10 @@ type CreateRequest struct {
 	// background_worker, cron_job. Empty defaults to web_service.
 	Type string
 	// Schedule is the cron expression, required when Type is cron_job.
-	Schedule        string
+	Schedule string
+	// Command overrides a cron_job's default entrypoint (spec.command); empty
+	// runs the image's own command. Ignored for every other type.
+	Command         string
 	Repo            string
 	Image           string
 	Branch          string
@@ -433,6 +440,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		spec.Schedule = strings.TrimSpace(req.Schedule)
+		spec.Command = strings.TrimSpace(req.Command)
 	}
 	if len(req.Hosts) > 0 {
 		spec.Host = req.Hosts[0]
@@ -463,6 +471,7 @@ func normalizeType(t string) (string, error) {
 func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Type = want.Type
 	dst.Schedule = want.Schedule
+	dst.Command = want.Command
 	dst.Repo = want.Repo
 	dst.Image = want.Image
 	dst.Branch = want.Branch

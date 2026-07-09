@@ -13,6 +13,8 @@ import { InstanceTypeRow } from "@/features/services/components/instance-type-ro
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
+import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
+import { isCron } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -30,6 +32,7 @@ export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
   const { service, loading } = useServer(serviceId);
   const { t } = useTranslations();
+  const cron = service ? isCron(service) : false;
 
   return (
     <div className="space-y-6">
@@ -47,19 +50,31 @@ export function ServiceSettingsPage() {
                 serviceId={serviceId}
                 plan={service?.plan ?? null}
               />
-              <IdleTimeoutRow
-                serviceId={serviceId}
-                plan={service?.plan ?? null}
-                idleTTLSeconds={service?.idleTTLSeconds ?? 0}
-              />
+              {/* Idle timeout only applies to an HTTP-served service — a cron_job
+                  has no idle traffic to sleep on (Render parity, w5/m11). */}
+              {!cron && (
+                <IdleTimeoutRow
+                  serviceId={serviceId}
+                  plan={service?.plan ?? null}
+                  idleTTLSeconds={service?.idleTTLSeconds ?? 0}
+                />
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      <CustomDomainsSection serviceId={serviceId} />
-
-      <PlatformSubdomainSection url={service?.url ?? null} />
+      {cron ? (
+        <CronDeploySection
+          schedule={service?.schedule ?? null}
+          command={service?.command ?? null}
+        />
+      ) : (
+        <>
+          <CustomDomainsSection serviceId={serviceId} />
+          <PlatformSubdomainSection url={service?.url ?? null} />
+        </>
+      )}
     </div>
   );
 }

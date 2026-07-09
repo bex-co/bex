@@ -114,6 +114,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 type createCronJobArgs struct {
 	Name       string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule   string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Command    string      `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
 	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
@@ -127,6 +128,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Name:       a.Name,
 		Type:       appv1alpha1.TypeCronJob,
 		Schedule:   a.Schedule,
+		Command:    a.Command,
 		Repo:       a.Repo,
 		Image:      a.Image,
 		Branch:     a.Branch,

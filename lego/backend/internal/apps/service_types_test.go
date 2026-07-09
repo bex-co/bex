@@ -56,16 +56,17 @@ func TestCreateBackgroundWorker(t *testing.T) {
 func TestCreateCronJob(t *testing.T) {
 	svc, cl := newService(nil)
 	v, err := svc.Create(context.Background(), CreateRequest{
-		Name: "nightly", Type: appv1alpha1.TypeCronJob, Image: "job:v1", Schedule: "0 2 * * *",
+		Name: "nightly", Type: appv1alpha1.TypeCronJob, Image: "job:v1",
+		Schedule: "0 2 * * *", Command: "npm run report",
 	})
 	if err != nil {
 		t.Fatalf("Create cron: %v", err)
 	}
-	if v.Type != appv1alpha1.TypeCronJob || v.Schedule != "0 2 * * *" {
-		t.Errorf("view = %+v, want type=cron_job schedule=0 2 * * *", v)
+	if v.Type != appv1alpha1.TypeCronJob || v.Schedule != "0 2 * * *" || v.Command != "npm run report" {
+		t.Errorf("view = %+v, want type=cron_job schedule=0 2 * * * command=npm run report", v)
 	}
 	a := getApp(t, cl, "nightly")
-	if a.Spec.Type != appv1alpha1.TypeCronJob || a.Spec.Schedule != "0 2 * * *" {
+	if a.Spec.Type != appv1alpha1.TypeCronJob || a.Spec.Schedule != "0 2 * * *" || a.Spec.Command != "npm run report" {
 		t.Errorf("spec = %+v", a.Spec)
 	}
 	if a.Spec.Expose {
@@ -110,7 +111,7 @@ func cronApp(name string) *appv1alpha1.App {
 	return &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 		Spec: appv1alpha1.AppSpec{
-			Type: appv1alpha1.TypeCronJob, Image: name + ":v1", Schedule: "*/5 * * * *",
+			Type: appv1alpha1.TypeCronJob, Image: name + ":v1", Schedule: "*/5 * * * *", Command: "npm run report",
 		},
 		Status: appv1alpha1.AppStatus{
 			Phase: appv1alpha1.PhaseRunning,
@@ -154,11 +155,17 @@ func TestRenderServiceCarriesTypeScheduleRuns(t *testing.T) {
 	if rs.Schedule != "*/5 * * * *" {
 		t.Errorf("render schedule = %q", rs.Schedule)
 	}
+	if rs.Command != "npm run report" {
+		t.Errorf("render command = %q", rs.Command)
+	}
 	if len(rs.Runs) != 1 || rs.Runs[0].Status != "Succeeded" {
 		t.Errorf("render runs = %+v", rs.Runs)
 	}
 	if got, _ := rs.ServiceDetails["schedule"].(string); got != "*/5 * * * *" {
 		t.Errorf("serviceDetails.schedule = %q (cronJobDetails.schedule)", got)
+	}
+	if got, _ := rs.ServiceDetails["command"].(string); got != "npm run report" {
+		t.Errorf("serviceDetails.command = %q (cronJobDetails.command)", got)
 	}
 }
 
@@ -177,14 +184,14 @@ func TestRESTCreateCronJob(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"name":"nightly","type":"cron_job","schedule":"0 * * * *","image":{"imagePath":"job:v1"}}`
+	body := `{"name":"nightly","type":"cron_job","schedule":"0 * * * *","command":"npm run report","image":{"imagePath":"job:v1"}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create cron => 201, got %d: %s", rec.Code, rec.Body)
 	}
 	a := getApp(t, cl, "nightly")
-	if a.Spec.Type != appv1alpha1.TypeCronJob || a.Spec.Schedule != "0 * * * *" {
+	if a.Spec.Type != appv1alpha1.TypeCronJob || a.Spec.Schedule != "0 * * * *" || a.Spec.Command != "npm run report" {
 		t.Errorf("spec = %+v", a.Spec)
 	}
 }
@@ -211,8 +218,8 @@ func TestRESTCronRunTrigger(t *testing.T) {
 }
 
 func TestMCPCreateCronJobArgsMap(t *testing.T) {
-	req := createCronJobArgs{Name: "nightly", Schedule: "0 0 * * *", Image: "job:v1"}.toCreateRequest()
-	if req.Type != appv1alpha1.TypeCronJob || req.Schedule != "0 0 * * *" {
+	req := createCronJobArgs{Name: "nightly", Schedule: "0 0 * * *", Command: "npm run report", Image: "job:v1"}.toCreateRequest()
+	if req.Type != appv1alpha1.TypeCronJob || req.Schedule != "0 0 * * *" || req.Command != "npm run report" {
 		t.Errorf("create_cron_job maps to %+v", req)
 	}
 }
@@ -258,14 +265,14 @@ func TestGraphQLCreateServiceTypeAndCronFields(t *testing.T) {
 		t.Error("createService did not thread type onto the spec")
 	}
 
-	// The Service type exposes schedule + runs for a cron.
+	// The Service type exposes schedule + command + runs for a cron.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ server(id: "nightly") { type schedule runs { name status } } }`})
+		RequestString: `{ server(id: "nightly") { type schedule command runs { name status } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("server query: %v", res.Errors)
 	}
 	srv := res.Data.(map[string]any)["server"].(map[string]any)
-	if srv["type"] != appv1alpha1.TypeCronJob || srv["schedule"] != "*/5 * * * *" {
+	if srv["type"] != appv1alpha1.TypeCronJob || srv["schedule"] != "*/5 * * * *" || srv["command"] != "npm run report" {
 		t.Errorf("server = %+v", srv)
 	}
 	runs := srv["runs"].([]any)

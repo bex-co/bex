@@ -58,6 +58,7 @@ type createServiceRequest struct {
 	// Render fields.
 	Type           string             `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
 	Schedule       string             `json:"schedule"` // cron expression, required when type is cron_job
+	Command        string             `json:"command"`  // overrides the image's entrypoint for a cron_job; empty runs its own command
 	Name           string             `json:"name"`
 	Repo           string             `json:"repo"`
 	Image          *imageRef          `json:"image"` // prebuilt image: Render nests the path in an object
@@ -94,6 +95,7 @@ type serviceDetailsReq struct {
 	NumInstances    int32  `json:"numInstances"`
 	HealthCheckPath string `json:"healthCheckPath"`
 	Schedule        string `json:"schedule"`
+	Command         string `json:"command"`
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -101,7 +103,7 @@ type serviceDetailsReq struct {
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
 func (r createServiceRequest) toCreateRequest() CreateRequest {
-	plan, health, schedule := r.Plan, "", r.Schedule
+	plan, health, schedule, command := r.Plan, "", r.Schedule, r.Command
 	var replicas int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
@@ -111,6 +113,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		replicas = r.ServiceDetails.NumInstances
 		if schedule == "" {
 			schedule = r.ServiceDetails.Schedule // top-level schedule wins over the nested one
+		}
+		if command == "" {
+			command = r.ServiceDetails.Command // top-level command wins over the nested one
 		}
 	}
 	image := ""
@@ -125,6 +130,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Name:            r.Name,
 		Type:            r.Type,
 		Schedule:        schedule,
+		Command:         command,
 		Repo:            r.Repo,
 		Image:           image,
 		Branch:          r.Branch,

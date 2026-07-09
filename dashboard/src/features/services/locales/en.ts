@@ -646,6 +646,31 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The platform URL is assigned once the service is running.",
     description: "Platform-subdomain state when the service has no URL yet",
   },
+  "services.deployTitle": {
+    message: "Deploy",
+    description: "Cron job Settings tab: Deploy section title (Render parity)",
+  },
+  "services.deployDescription": {
+    message: "How this cron job runs — read-only for now.",
+    description: "Cron job Settings tab: Deploy section description",
+  },
+  "services.deployScheduleLabel": {
+    message: "Schedule",
+    description: "Cron job Settings tab: Deploy section schedule field label",
+  },
+  "services.deployScheduleHint": {
+    message: "Runs this command on this schedule (5-field crontab).",
+    description: "Cron job Settings tab: Deploy section schedule help text",
+  },
+  "services.deployCommandLabel": {
+    message: "Command",
+    description: "Cron job Settings tab: Deploy section command field label",
+  },
+  "services.deployCommandEmpty": {
+    message: "Uses the image's own default command.",
+    description:
+      "Cron job Settings tab: shown when spec.command is unset (no override)",
+  },
   "services.colType": {
     message: "Type",
     description: "Services table column header (service type)",

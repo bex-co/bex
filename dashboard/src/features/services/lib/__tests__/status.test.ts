@@ -45,6 +45,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     plan: null,
     idleTTLSeconds: null,
     schedule: null,
+    command: null,
     runs: [],
     ...overrides,
   };
@@ -77,6 +78,7 @@ describe("toServiceView", () => {
       plan: null,
       idleTTLSeconds: 0,
       schedule: null,
+      command: null,
       runs: [],
     });
   });
@@ -91,10 +93,11 @@ describe("toServiceView", () => {
     expect(v.url).toBeNull();
   });
 
-  it("leaves schedule null / runs empty for a list node (no cron fields selected)", () => {
+  it("leaves schedule/command null / runs empty for a list node (no cron fields selected)", () => {
     const v = toServiceView(node({ type: "web_service" }));
     expect(v.type).toBe("web_service");
     expect(v.schedule).toBeNull();
+    expect(v.command).toBeNull();
     expect(v.runs).toEqual([]);
   });
 
@@ -114,6 +117,7 @@ describe("toServiceView", () => {
       plan: null,
       idleTTLSeconds: 0,
       schedule: "*/5 * * * *",
+      command: "npm run report",
       runs: [
         {
           __typename: "CronRun",
@@ -127,6 +131,7 @@ describe("toServiceView", () => {
     const v = toServiceView(serverNode);
     expect(v.type).toBe("cron_job");
     expect(v.schedule).toBe("*/5 * * * *");
+    expect(v.command).toBe("npm run report");
     expect(v.runs).toHaveLength(1);
     expect(v.runs[0]).toEqual({
       name: "nightly-run-1",

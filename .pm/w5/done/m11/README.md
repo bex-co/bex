@@ -1,17 +1,17 @@
 # w5 · m11 — Type-aware service settings (cron jobs: hide Custom Domains + Idle timeout; show Schedule + Command)
 
-**Worker:** worker5 **Goal:** Make the Settings page service-type-aware so a Cron Job never shows the Custom Domains section or the Idle timeout control (neither applies to a non-HTTP service), and instead shows a Deploy section with the cron's Schedule expression and Command — matching Render's cron settings page. **Status:** todo
+**Worker:** worker5 **Goal:** Make the Settings page service-type-aware so a Cron Job never shows the Custom Domains section or the Idle timeout control (neither applies to a non-HTTP service), and instead shows a Deploy section with the cron's Schedule expression and Command — matching Render's cron settings page. **Status:** DONE
 
 ## Tasks (in order)
 
 | id   | title                                                                                              | est | depends_on   |
 | ---- | -------------------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Gate Custom Domains + Idle timeout on `serviceType === 'web_service'` in the Settings page        | 30m | —            |
-| t002 | Add cron-specific Deploy section: Schedule (cron expression, read-only) + Command display          | 45m | t001         |
-| t003 | Render parity — verify cron settings against render.com/cron live page (REST/GraphQL/MCP/UI)      | 30m | t002         |
-| t004 | Simplify — `/simplify` over the m11 diff                                                          | 20m | t003         |
-| t005 | Test coverage — Settings renders correct sections by service type                                  | 30m | t003         |
-| t006 | Closeout                                                                                           | 10m | t005         |
+| t001 | Gate Custom Domains + Idle timeout on `serviceType === 'web_service'` in the Settings page        | 30m | — — **DONE**            |
+| t002 | Add cron-specific Deploy section: Schedule (cron expression, read-only) + Command display          | 45m | t001 — **DONE**         |
+| t003 | Render parity — verify cron settings against render.com/cron live page (REST/GraphQL/MCP/UI)      | 30m | t002 — **DONE**         |
+| t004 | Simplify — `/simplify` over the m11 diff                                                          | 20m | t003 — **DONE**         |
+| t005 | Test coverage — Settings renders correct sections by service type                                  | 30m | t003 — **DONE**         |
+| t006 | Closeout                                                                                           | 10m | t005 — **DONE**         |
 
 ## Definition of done
 

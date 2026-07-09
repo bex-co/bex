@@ -70,6 +70,12 @@ spec:
                 - buildpack
                 - dockerfile
                 type: string
+              command:
+                description: |-
+                  Command overrides the built image's default entrypoint/cmd for a cron_job's
+                  run (Render's cron "Command" field, e.g. "npm run report"); empty runs the
+                  image's own command unmodified. Ignored for every other type.
+                type: string
               env:
                 description: |-
                   Env are plain (literal) environment variables set on the App's container,

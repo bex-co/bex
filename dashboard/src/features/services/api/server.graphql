@@ -22,6 +22,7 @@ query Server($id: String!) {
     idleTTLSeconds
     # cron_job fields (null/empty for other service types)
     schedule
+    command
     runs {
       name
       startedAt

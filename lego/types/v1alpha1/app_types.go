@@ -57,6 +57,12 @@ type AppSpec struct {
 	// +optional
 	Schedule string `json:"schedule,omitempty"`
 
+	// Command overrides the built image's default entrypoint/cmd for a cron_job's
+	// run (Render's cron "Command" field, e.g. "npm run report"); empty runs the
+	// image's own command unmodified. Ignored for every other type.
+	// +optional
+	Command string `json:"command,omitempty"`
+
 	// RunAt requests a one-off run of a cron_job now (verb-as-timestamp, like
 	// RestartedAt): when it changes, the operator creates a single Job from the
 	// cron's template. Empty = never requested; re-setting the same value is a

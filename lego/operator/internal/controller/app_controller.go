@@ -728,18 +728,24 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // cronPodSpec is the pod template shared by the CronJob's jobTemplate and any
 // one-off RunAt Job: the built image run to completion (RestartPolicyNever), with
 // the App's env. A cron container declares no port — it is not an HTTP server.
+// spec.command, when set, overrides the image's default entrypoint/cmd via a
+// shell (Render's cron "Command" field); empty leaves the image's own command.
 func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
+	container := corev1.Container{
+		Name:      "app",
+		Image:     image,
+		Env:       appEnv(app, port),
+		EnvFrom:   envFromSources(app),
+		Resources: resourcesForTier(app.Spec.Tier),
+	}
+	if app.Spec.Command != "" {
+		container.Command = []string{"/bin/sh", "-c", app.Spec.Command}
+	}
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Labels: labels},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			Containers: []corev1.Container{{
-				Name:      "app",
-				Image:     image,
-				Env:       appEnv(app, port),
-				EnvFrom:   envFromSources(app),
-				Resources: resourcesForTier(app.Spec.Tier),
-			}},
+			Containers:    []corev1.Container{container},
 		},
 	}
 }

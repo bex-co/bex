@@ -71,9 +71,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// it follows the existing suspendService/resumeService/restartServer
 		// convention rather than inventing a different shape.
 		"plan": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Plan })},
-		// schedule + runs describe a cron_job (empty/null for other types): the
-		// cron's schedule and its recent run history (status.runs, newest first).
+		// schedule + command + runs describe a cron_job (empty/null for other
+		// types): the cron's schedule, its entrypoint override, and its recent
+		// run history (status.runs, newest first).
 		"schedule": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Schedule })},
+		"command":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Command })},
 		"runs": &graphql.Field{
 			Type:    graphql.NewList(cronRunGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
@@ -269,6 +271,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"type":       &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
 				"schedule":   &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
+				"command":    &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
 				"repo":       &graphql.ArgumentConfig{Type: graphql.String},
 				"image":      &graphql.ArgumentConfig{Type: graphql.String},
 				"branch":     &graphql.ArgumentConfig{Type: graphql.String},
@@ -282,6 +285,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Name:       p.Args["name"].(string),
 					Type:       gqlStr(p.Args, "type"),
 					Schedule:   gqlStr(p.Args, "schedule"),
+					Command:    gqlStr(p.Args, "command"),
 					Repo:       gqlStr(p.Args, "repo"),
 					Image:      gqlStr(p.Args, "image"),
 					Branch:     gqlStr(p.Args, "branch"),

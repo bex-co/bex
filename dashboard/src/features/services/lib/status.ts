@@ -40,6 +40,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     plan: s.plan ?? null,
     idleTTLSeconds: s.idleTTLSeconds ?? null,
     schedule: "schedule" in s ? (s.schedule ?? null) : null,
+    command: "command" in s ? (s.command ?? null) : null,
     runs: "runs" in s ? toCronRuns(s.runs) : [],
   };
 }

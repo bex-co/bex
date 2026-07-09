@@ -640,6 +640,31 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务运行后将分配平台 URL。",
     description: "Platform-subdomain state when the service has no URL yet",
   },
+  "services.deployTitle": {
+    message: "部署",
+    description: "Cron job Settings tab: Deploy section title (Render parity)",
+  },
+  "services.deployDescription": {
+    message: "此定时任务的运行方式——目前为只读。",
+    description: "Cron job Settings tab: Deploy section description",
+  },
+  "services.deployScheduleLabel": {
+    message: "计划",
+    description: "Cron job Settings tab: Deploy section schedule field label",
+  },
+  "services.deployScheduleHint": {
+    message: "按此计划（5 段 crontab 表达式）运行该命令。",
+    description: "Cron job Settings tab: Deploy section schedule help text",
+  },
+  "services.deployCommandLabel": {
+    message: "命令",
+    description: "Cron job Settings tab: Deploy section command field label",
+  },
+  "services.deployCommandEmpty": {
+    message: "使用镜像自身的默认命令。",
+    description:
+      "Cron job Settings tab: shown when spec.command is unset (no override)",
+  },
   "services.colType": {
     message: "类型",
     description: "Services table column header (service type)",
