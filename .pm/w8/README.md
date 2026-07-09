@@ -1,0 +1,13 @@
+# w8 — Usage metering (worker8)
+
+**Worker:** worker8 Created 2026-07-09 from `/pm-brainstorm w8` — owns `GOAL.md` #5's unowned half ("usage metering"; the multi-tenant half is w1/m9 + w6 + w4/m12). Meters **quantities** — instance-seconds by tier, egress bytes, build minutes: exactly Render's three meters (verified live 2026-07-09 vs render.com/pricing + docs) — **not dollars**: payments/pricing stay out per w6's "no billing system" boundary (pricing parked in `.pm/FUTURE-MAYBE.md`). Numbered **w8, not w7** — w7 was consumed as the old staging path for w1/m15; never reuse a number. Ordered by dependency: pipeline → API surface → dashboard.
+
+## Milestones
+
+- [ ] **m1** — Metering pipeline: hourly usage rollups into the control-plane store (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09
+- [ ] **m2** — Usage API: month-to-date usage over REST · GraphQL · MCP (9 tasks) ← from `/pm-brainstorm w8` 2026-07-09, needs m1
+- [ ] **m3** — Dashboard Usage page (workspace-scoped, Render-consistent) (8 tasks) ← from `/pm-brainstorm w8` 2026-07-09, needs m2
+
+## Inbox
+
+- `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gated on m1 producing ~a month of real data
