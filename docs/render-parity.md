@@ -16,14 +16,14 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | --- | :-: | :-: | :-: | :-: | --- |
 | List services | ✅ | ✅ | ✅ | ✅ | `apps/rest.go` `GET /v1/services`; GraphQL `services`; MCP `list_services`; dashboard `routes/index.tsx`. Omits Render `includePreviews` (no preview services). |
 | Get service | ✅ | ✅ | ✅ | ✅ | `GET /v1/services/{id}`; GraphQL `server`/`service`; MCP `get_service`; Overview tab. bex extras `phase`/`replicas`/`revision` (superset Render clients ignore). |
-| Create service (web / private) | ◐ | ◐ | ◐ | ✖ | `POST /v1/services` upsert; GraphQL `createService`; MCP `create_web_service` + `deploy`. Omits Render `region`/`runtime`/`buildCommand`/`startCommand` (Dockerfile/CNB auto-detect); no dashboard create wizard (API-first; deploy-from-chat is the path — w2/m2). |
+| Create service (web / private) | ◐ | ◐ | ◐ | ✖ | `POST /v1/services` upsert; GraphQL `createService`; MCP `create_web_service` + `deploy`. Verified field-by-field vs Render's OpenAPI (w2/m4/t001): `type`/`name`/`repo`/`branch`/`image{imagePath}`/`autoDeploy`/`envVars`/`serviceDetails.{plan,numInstances,healthCheckPath}` honored; `autoDeploy` sets `spec.autoDeploy` (gates the push-to-deploy webhook). Omits Render `region`/`runtime`/`buildCommand`/`startCommand` (Dockerfile/CNB auto-detect) + `ownerId` (single workspace). **Divergence:** returns the bare service object, not Render's create-only `{service, deployId}` envelope (deploy history is its own endpoint; no faked `deployId`) — [bex-api.md](bex-api.md). No dashboard create wizard (API-first; deploy-from-chat is the path — w2/m2). |
 | Health checks (path → readiness gating) | ◐ | ✖ | ✖ | ✖ | `serviceDetails.healthCheckPath` is accepted into `spec.healthCheckPath` (`apps/deploy.go`, `apps/rest.go`) but the operator never wires it to a ReadinessProbe — Running gates on replica-readiness only. Not on GraphQL/MCP create or the dashboard. → **w1/005**. |
 | Change instance plan / type | ✅ | ✅ | ✅ | ✅ | `PATCH /v1/services/{id}` (plan); GraphQL `updateServicePlan`; MCP `update_service_plan`; Plan-picker page. Broader `PATCH` fields (name, autoDeploy, rootDir, buildFilter) not editable — ◐, low. |
 | Suspend / Resume | ✅ | ✅ | ✅ | ✅ | `POST …/suspend` (202) · `…/resume` (202); GraphQL `suspendService`/`resumeService`; MCP `suspend_service`/`resume_service`; row + header actions. Render parity verified in [bex-api.md](bex-api.md). |
 | Restart | ✅ | ✅ | ✅ | ✅ | `POST …/restart` (200); GraphQL `restartServer`; MCP `restart_service`; header action. Render's official MCP omits these — bex adds them (named after Render's REST verbs). |
 | Manual scale (instance count) | ✅ | ✅ | ✅ | ✖ | `POST …/scale`; GraphQL `scaleService`; MCP `scale_service` (backend shipped w2/m12). Dashboard stepper → **w5/004**. |
 | Autoscaling config (min/max + CPU/mem target) | ✖ | ✖ | ✖ | ✖ | Render `PUT`/`DELETE /services/{id}/autoscaling`. bex has no per-service autoscaler. → **w1/008** (mechanism leans on w1/m3 bin-pack/autoscale). |
-| Delete service | ✖ | ✖ | ✖ | ✖ | Render `DELETE /services/{id}`. Not built (scope note in [bex-api.md](bex-api.md)). → **w2/m4**. |
+| Delete service | ✅ | ✅ | ✅ | ✖ | `DELETE /v1/services/{id}` (204, empty body); GraphQL `deleteService` (success boolean, like `deleteCustomDomain`); MCP `delete_service` (`{deleted:true}`, bex extension — Render's official MCP ships no delete tool). One `Service.Delete` verb (`can_create` scope): store-managed → delete the apps row first (projector removes the CR, resync-safe) then the CR directly for immediate convergence; store-less → delete the CR directly. Operator ownerRefs cascade Deployment/Service/Ingress/CronJob/NetworkPolicy; the cert-manager TLS `Secret` is the one documented orphan (w2/m4). Dashboard delete UI → **w5**. |
 | Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. bex has no event objects. → **w2/m5** (deploy objects) + **w4/m10** (audit log). |
 | Cache purge | — | — | — | — | Render `POST …/cache/purge` (static-site CDN). bex has no build CDN cache — non-goal. |
 | Background worker (no HTTP port) | ✅ | ✅ | ✅ | ✅ | `spec.type=background_worker` → Deployment only, no Service/Ingress/URL (`app_controller.go`); create over `POST /v1/services`, GraphQL `createService(type:)`, MCP `create_web_service(type:)`; dashboard type badge + no-URL. (w1/m15) |
@@ -144,7 +144,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 
 | Gap | Owner | Status |
 | --- | --- | --- |
-| Delete service | `w2/m4` | todo |
+| Delete service | `w2/m4` | done 2026-07-09 (REST/GraphQL/MCP; dashboard UI → w5) |
 | Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | done (w5/m10) |

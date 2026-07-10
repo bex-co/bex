@@ -31,6 +31,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -279,7 +280,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"list_services", "get_service", "create_web_service", "deploy", "list_logs", "get_metrics",
-		"restart_service", "suspend_service", "resume_service", "scale_service",
+		"restart_service", "suspend_service", "resume_service", "scale_service", "delete_service",
 		"create_api_key", "list_api_keys", "revoke_api_key",
 		"list_postgres_instances", "get_postgres", "create_postgres",
 	} {
@@ -322,6 +323,50 @@ func TestMCP_ScaleDelegatesToCore(t *testing.T) {
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a)
 	if a.Spec.Replicas != 3 {
 		t.Errorf("scale_service must set spec.replicas to 3, got %d", a.Spec.Replicas)
+	}
+}
+
+// TestMCP_CreateThenDeleteRoundTrip proves the lifecycle loop over MCP: an agent
+// creates a service from a prebuilt image and gets it back, then delete_service
+// removes it through the same Core.Delete verb REST/GraphQL use (the CR is gone).
+func TestMCP_CreateThenDeleteRoundTrip(t *testing.T) {
+	cl := fakeClient() // empty cluster — create makes the App
+	srv := NewServer(&core.Base{Client: cl, Namespace: "default"}, Deps{})
+	cs := mcpSession(t, srv)
+	ctx := context.Background()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "create_web_service",
+		Arguments: map[string]any{"name": "web", "image": "nginx:1", "plan": "starter"},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("create_web_service: %v isErr=%v %+v", err, res.IsError, res)
+	}
+	var a appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &a); err != nil {
+		t.Fatalf("create must make the App CR: %v", err)
+	}
+	if a.Spec.Image != "nginx:1" {
+		t.Errorf("spec.image = %q, want nginx:1", a.Spec.Image)
+	}
+
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "delete_service", Arguments: map[string]any{"serviceId": "web"},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("delete_service: %v isErr=%v %+v", err, res.IsError, res)
+	}
+	err = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &a)
+	if !apierrors.IsNotFound(err) {
+		t.Fatalf("delete_service must remove the App CR, got err=%v", err)
+	}
+
+	// Deleting the now-unknown service surfaces the error to the agent.
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "delete_service", Arguments: map[string]any{"serviceId": "web"},
+	})
+	if err == nil && !res.IsError {
+		t.Errorf("delete of an unknown service must be an error result")
 	}
 }
 

@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -194,6 +195,28 @@ func TestCreateStampsCallerTenantLabel(t *testing.T) {
 	}
 }
 
+// A repo-backed create is accepted and validated (spec.repo set, branch
+// defaulted), but must not pretend to be live — its URL/phase come from
+// observed status, empty until w1/m5's builds converge it. The truthful
+// superset rule: accept the intent, never fake the outcome.
+func TestCreateRepoBackedIsAcceptedNotLive(t *testing.T) {
+	svc, cl := newService(nil)
+	v, err := svc.create(context.Background(), CreateRequest{Name: "from-git", Repo: "https://github.com/bex/hello"})
+	if err != nil {
+		t.Fatalf("repo-backed create: %v", err)
+	}
+	if v.URL != "" || v.Phase != "" {
+		t.Errorf("a just-created repo App must not report a live URL/phase, got url=%q phase=%q", v.URL, v.Phase)
+	}
+	a := getApp(t, cl, "from-git")
+	if a.Spec.Repo != "https://github.com/bex/hello" || a.Spec.Branch != "main" {
+		t.Errorf("repo/branch not persisted: repo=%q branch=%q", a.Spec.Repo, a.Spec.Branch)
+	}
+	if a.Spec.Image != "" {
+		t.Errorf("a repo-backed App must carry no image (build produces it), got %q", a.Spec.Image)
+	}
+}
+
 func TestStoreOffListAndGetIgnoreTenantLabelsUnchanged(t *testing.T) {
 	// Workspace nil (store off): byte-identical to before tenant onboarding —
 	// every App in the namespace is visible regardless of label.
@@ -228,9 +251,24 @@ type recordingStore struct {
 		id      string
 		seconds int32
 	}
-	domainAdds []struct{ id, host string }
-	domainRems []struct{ id, host string }
-	err        error
+	domainAdds  []struct{ id, host string }
+	domainRems  []struct{ id, host string }
+	deleteCalls []string
+	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
+	// can assert the verb still deletes the CR (idempotent end state).
+	notFoundOnDelete bool
+	err              error
+}
+
+func (r *recordingStore) DeleteApp(_ context.Context, id string) error {
+	if r.err != nil {
+		return r.err
+	}
+	if r.notFoundOnDelete {
+		return store.ErrNotFound
+	}
+	r.deleteCalls = append(r.deleteCalls, id)
+	return nil
 }
 
 func (r *recordingStore) SetAppSuspended(_ context.Context, id string, suspended bool) error {
@@ -584,6 +622,75 @@ func TestViewOmitsPlanForEmptyOrUnknownTier(t *testing.T) {
 	}
 }
 
+// --- Delete (store-managed row-first vs hand-applied CR delete) ---
+
+// gone asserts the App CR named name no longer exists.
+func gone(t *testing.T, cl client.Client, name string) {
+	t.Helper()
+	var a appv1alpha1.App
+	err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a)
+	if !apierrors.IsNotFound(err) {
+		t.Fatalf("App %s still exists (err=%v)", name, err)
+	}
+}
+
+func TestDeleteStoreLessRemovesCR(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	gone(t, cl, "web")
+}
+
+func TestDeleteManagedAppDeletesRowThenCR(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	// The row is the single writer of intent — it must be deleted (so a resync
+	// can't resurrect the CR) — and the CR is removed directly for immediacy.
+	if len(rec.deleteCalls) != 1 || rec.deleteCalls[0] != "srv-1" {
+		t.Fatalf("want row delete [srv-1], got %v", rec.deleteCalls)
+	}
+	gone(t, cl, "web")
+}
+
+func TestDeleteUnmanagedAppSkipsStore(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, sampleApp("hand")) // no app-id label
+	if err := svc.Delete(context.Background(), "hand"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if len(rec.deleteCalls) != 0 {
+		t.Fatalf("hand-applied App must not touch the store, got %v", rec.deleteCalls)
+	}
+	gone(t, cl, "hand")
+}
+
+func TestDeleteUnknownIsNotFound(t *testing.T) {
+	rec := &recordingStore{}
+	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	err := svc.Delete(context.Background(), "nope")
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("Delete unknown => ErrNotFound, got %v", err)
+	}
+	if len(rec.deleteCalls) != 0 {
+		t.Fatalf("an unknown id must not reach the store, got %v", rec.deleteCalls)
+	}
+}
+
+// A row already deleted (a resync raced us) is the intended end state, not an
+// error: Delete swallows store.ErrNotFound and still removes the orphaned CR.
+func TestDeleteManagedRowAlreadyGoneStillDeletesCR(t *testing.T) {
+	rec := &recordingStore{notFoundOnDelete: true}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("Delete with an already-gone row => nil, got %v", err)
+	}
+	gone(t, cl, "web")
+}
+
 // --- REST + GraphQL fragments (Render shape), without the auth gate ---
 
 func TestRESTFragmentRenderShape(t *testing.T) {
@@ -685,6 +792,61 @@ func TestRESTScaleService(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
 		t.Errorf("a rejected scale must leave spec.replicas at 3, got %d", got)
 	}
+}
+
+func TestRESTDeleteService(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	// delete => 204 empty body (Render's delete semantics), CR gone.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete => 204, got %d: %s", rec.Code, rec.Body)
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("delete body must be empty, got %q", rec.Body)
+	}
+	gone(t, cl, "web")
+
+	// A second delete of the now-unknown id => 404.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("delete unknown => 404, got %d", rec.Code)
+	}
+
+	// The /v1/apps alias serves delete too.
+	svc2, cl2 := newService(nil, sampleApp("api"))
+	mux2 := http.NewServeMux()
+	svc2.RegisterREST(mux2)
+	rec = httptest.NewRecorder()
+	mux2.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/apps/api", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("delete via /v1/apps alias => 204, got %d", rec.Code)
+	}
+	gone(t, cl2, "api")
+}
+
+func TestGraphQLDeleteService(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { deleteService(id: "web") }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	if ok, _ := res.Data.(map[string]any)["deleteService"].(bool); !ok {
+		t.Errorf("deleteService => true, got %v", res.Data)
+	}
+	gone(t, cl, "web")
 }
 
 func TestGraphQLScaleService(t *testing.T) {

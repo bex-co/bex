@@ -257,6 +257,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, toRenderService(app)) // Render: create => 201
 	}
 
+	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the
+	// operator's ownerRefs cascade its derived resources. Render returns 204 No
+	// Content with an empty body; unknown id => core.ErrNotFound => 404.
+	deleteSvc := func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent) // Render: delete => 204, empty body
+	}
+
 	// runCron handles the cron run trigger (Render's POST /cron-jobs/{id}/runs):
 	// bump spec.runAt so the operator materializes a one-off Job. Render returns a
 	// cronJobRun; bex returns the updated service (its status.runs gains the run
@@ -329,6 +340,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base, create) // Render: create => 201
 		mux.HandleFunc("GET "+base+"/{id}", get)
 		mux.HandleFunc("PATCH "+base+"/{id}", patch)
+		mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200

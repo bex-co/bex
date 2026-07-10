@@ -63,6 +63,11 @@ type Service struct {
 // to the methods the lifecycle verbs need, so the service can't grow into a
 // second store client and tests fake a single method. *store.PGStore satisfies it.
 type IntentStore interface {
+	// DeleteApp removes the apps row — the single writer of intent for a
+	// store-managed App's existence. The projector deletes the orphaned App CR
+	// on its next pass, so the row delete (not a bare CR delete) is what keeps
+	// the deletion from being resurrected on resync. ErrNotFound for unknown ids.
+	DeleteApp(ctx context.Context, id string) error
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
@@ -367,6 +372,42 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 		return view(existing), nil
 	}
+}
+
+// Delete removes a service — the single implementation the three adapters
+// delegate to. With the store on and the App store-managed (it carries the
+// store's app-id label), it deletes the apps row first: the row is the single
+// writer of that App's existence, so a resync can't resurrect the CR (a bare CR
+// delete would be). It then deletes the CR directly too, so the removal
+// converges immediately instead of waiting a resync period — the projector is
+// idempotent, a CR with no row is deleted again as a harmless no-op. Store-less
+// (or a hand-applied App with no row) deletes the CR directly, the same split
+// suspend/resume follow. The operator's ownerRefs cascade everything it derived
+// (Deployment/Service/Ingress/CronJob/NetworkPolicy); the one orphan left is the
+// cert-manager TLS Secret (documented in docs/bex-api.md). Unknown id =>
+// core.ErrNotFound; unauthorized => core.ErrForbidden.
+func (s *Service) Delete(ctx context.Context, name string) error {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return err
+	}
+	if s.Store != nil {
+		if id := a.Labels[store.LabelAppID]; id != "" {
+			// An already-gone row is the intended end state, not an error (a
+			// resync may have raced us) — treat it like RemoveDomain does and
+			// fall through to delete the orphaned CR.
+			if err := s.Store.DeleteApp(ctx, id); err != nil && !errors.Is(err, store.ErrNotFound) {
+				return fmt.Errorf("delete source of truth: %w", err)
+			}
+		}
+	}
+	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a
+	// store-managed App whose row delete triggered a Kick) — the end state is
+	// what matters.
+	return client.IgnoreNotFound(s.Client.Delete(ctx, a))
 }
 
 // specFromCreate validates a CreateRequest and projects it onto a fresh App

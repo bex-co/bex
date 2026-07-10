@@ -229,6 +229,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "delete_service",
+		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
+		err := s.Delete(ctx, in.ServiceID)
+		return nil, deletedResult{Deleted: err == nil}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "restart_service",
 		Description: "Restart a service (rolling restart, no downtime). bex extension over Render's MCP.",
 	}, s.serviceTool(s.Restart))

@@ -346,6 +346,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
+		// deleteService: delete a service (the delete half of the lifecycle).
+		// Returns a success boolean like deleteCustomDomain — there is no service
+		// object left to return. A bex extension (Render's dashboard delete
+		// mutation name wasn't captured), following the deleteCustomDomain shape.
+		"deleteService": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.Delete(p.Context, p.Args["id"].(string))
+				return err == nil, err
+			},
+		},
 		// runCronJob: trigger a one-off run of a cron_job (Render's cron run verb);
 		// the run shows in status.runs once the operator reconciles.
 		"runCronJob":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
