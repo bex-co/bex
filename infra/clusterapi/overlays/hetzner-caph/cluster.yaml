@@ -438,6 +438,14 @@ spec:
         path: /etc/systemd/system/containerd.service
         permissions: "0744"
     initConfiguration:
+      # Placeholder — patched to the machine's PRIVATE IP by the preKubeadmCommands
+      # sed below (w1/m19 t006). kubeadm otherwise advertises the default-route
+      # (public) interface, putting the kubernetes Service endpoint and etcd peer
+      # URLs on public IPs the t005 firewall closes: pods on non-CP nodes can't
+      # reach 10.96.0.1 (CNI never converges) and joining CPs can't sync etcd.
+      localAPIEndpoint:
+        advertiseAddress: 127.0.0.1
+        bindPort: 6443
       nodeRegistration:
         # control-plane NoSchedule taint stays ON (rearchitecture decision 2):
         # platform workloads live on the bex-platform pool, never on the CP.
@@ -454,6 +462,11 @@ spec:
           rotate-server-certificates: "true"
           tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
     joinConfiguration:
+      # Same placeholder-and-patch as initConfiguration (see comment there).
+      controlPlane:
+        localAPIEndpoint:
+          advertiseAddress: 127.0.0.1
+          bindPort: 6443
       nodeRegistration:
         kubeletExtraArgs:
           anonymous-auth: "false"
@@ -504,6 +517,15 @@ spec:
       - echo 'source <(kubectl completion bash)' >>/root/.bashrc
       - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
       - apt-get -y autoremove && apt-get -y clean all
+      # w1/m19 t006: patch the rendered kubeadm config to advertise the PRIVATE
+      # IP (see initConfiguration.localAPIEndpoint above). The CAPH-attached
+      # `bex` network interface carries 10.10.0.0/16; wait for it, then rewrite
+      # the placeholder. Fails the boot loudly if the interface never appears —
+      # a CP that would advertise its public IP must not join.
+      - 'PRIVATE_IP=""; for i in $(seq 1 60); do PRIVATE_IP=$(ip -4 -o addr show scope global | awk ''$4 ~ /^10\.10\./{split($4,a,"/"); print a[1]; exit}''); [ -n "$PRIVATE_IP" ] && break; sleep 2; done'
+      - test -n "$PRIVATE_IP"
+      - 'sed -i "s/advertiseAddress: .*/advertiseAddress: $PRIVATE_IP/" /run/kubeadm/kubeadm.yaml /run/kubeadm/kubeadm-join-config.yaml 2>/dev/null || true'
+      - 'grep -q "advertiseAddress: $PRIVATE_IP" /run/kubeadm/kubeadm.yaml /run/kubeadm/kubeadm-join-config.yaml 2>/dev/null'
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
