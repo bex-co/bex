@@ -128,6 +128,120 @@ func TestMemStoreLatestUsageWindow(t *testing.T) {
 	}
 }
 
+// TestMemStoreCompactUsage verifies the in-memory Store's compaction contract
+// (w8/m4): hourly rows older than the boundary fold into monthly aggregates,
+// the compacted hourly detail is purged, rows at or after the boundary are
+// untouched, month-to-date totals are identical before and after, and a
+// re-run is a no-op.
+func TestMemStoreCompactUsage(t *testing.T) {
+	st := newMemStore()
+	ctx := context.Background()
+
+	// Two April rows (same aggregate key), one May row, boundary May 1.
+	april1 := time.Date(2026, 4, 10, 8, 0, 0, 0, time.UTC)
+	april2 := time.Date(2026, 4, 20, 9, 0, 0, 0, time.UTC)
+	may := time.Date(2026, 5, 2, 8, 0, 0, 0, time.UTC)
+	for _, w := range []struct {
+		start time.Time
+		qty   int64
+	}{{april1, 3600}, {april2, 1800}, {may, 900}} {
+		_ = st.UpsertUsageHourly(ctx, HourlyRow{
+			WorkspaceID: "tea-004", ServiceID: "srv-004",
+			Kind: UsageKindInstanceSeconds, Tier: "starter",
+			WindowStart: w.start, Quantity: w.qty,
+		})
+	}
+
+	aprilEnd := time.Date(2026, 4, 30, 23, 59, 59, 0, time.UTC)
+	preApril, err := st.UsageMonthToDate(ctx, "tea-004", aprilEnd)
+	if err != nil {
+		t.Fatalf("pre-compaction April query: %v", err)
+	}
+
+	boundary := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	res, err := st.CompactUsage(ctx, boundary)
+	if err != nil {
+		t.Fatalf("CompactUsage: %v", err)
+	}
+	if res.HourlyRows != 2 || res.Months != 1 {
+		t.Errorf("compaction result: want 2 hourly rows / 1 month, got %+v", res)
+	}
+	if len(st.usage) != 1 {
+		t.Errorf("hourly rows after compaction: want 1 (May), got %d", len(st.usage))
+	}
+
+	// The April total must be identical, now served from the monthly table.
+	postApril, err := st.UsageMonthToDate(ctx, "tea-004", aprilEnd)
+	if err != nil {
+		t.Fatalf("post-compaction April query: %v", err)
+	}
+	if len(preApril) != 1 || len(postApril) != 1 || preApril[0] != postApril[0] {
+		t.Errorf("April totals changed across compaction: before %+v, after %+v", preApril, postApril)
+	}
+	if postApril[0].Total != 5400 {
+		t.Errorf("April total: want 5400, got %d", postApril[0].Total)
+	}
+
+	// The hot May row is untouched and still queryable.
+	mayRows, err := st.UsageMonthToDate(ctx, "tea-004", may.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("May query: %v", err)
+	}
+	if len(mayRows) != 1 || mayRows[0].Total != 900 {
+		t.Errorf("May query: want total 900, got %+v", mayRows)
+	}
+
+	// Idempotency: nothing left older than the boundary → 0/0, totals stable.
+	res, err = st.CompactUsage(ctx, boundary)
+	if err != nil {
+		t.Fatalf("CompactUsage re-run: %v", err)
+	}
+	if res.HourlyRows != 0 || res.Months != 0 {
+		t.Errorf("re-run: want 0/0, got %+v", res)
+	}
+	again, _ := st.UsageMonthToDate(ctx, "tea-004", aprilEnd)
+	if len(again) != 1 || again[0].Total != 5400 {
+		t.Errorf("re-run drifted April totals: %+v", again)
+	}
+}
+
+// TestMemStoreCompactUsageStraggler verifies the additive upsert: an hourly
+// row that lands in an already-compacted month (in principle impossible under
+// the 48 h clamp, but the contract is defensive) adds to the aggregate on the
+// next pass instead of overwriting it.
+func TestMemStoreCompactUsageStraggler(t *testing.T) {
+	st := newMemStore()
+	ctx := context.Background()
+
+	row := HourlyRow{
+		WorkspaceID: "tea-005", ServiceID: "srv-005",
+		Kind: UsageKindEgressBytes, Tier: "",
+		WindowStart: time.Date(2026, 4, 10, 8, 0, 0, 0, time.UTC), Quantity: 1000,
+	}
+	_ = st.UpsertUsageHourly(ctx, row)
+
+	boundary := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := st.CompactUsage(ctx, boundary); err != nil {
+		t.Fatalf("first compaction: %v", err)
+	}
+
+	// Straggler for the same, already-compacted month.
+	row.WindowStart = time.Date(2026, 4, 11, 8, 0, 0, 0, time.UTC)
+	row.Quantity = 24
+	_ = st.UpsertUsageHourly(ctx, row)
+	if _, err := st.CompactUsage(ctx, boundary); err != nil {
+		t.Fatalf("second compaction: %v", err)
+	}
+
+	rows, err := st.UsageMonthToDate(ctx, "tea-005", time.Date(2026, 4, 30, 23, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("April query: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Total != 1024 {
+		t.Errorf("straggler must add to the aggregate: want 1024, got %+v", rows)
+	}
+}
+
 // TestMemStoreWorkspaceIsolation verifies that month-to-date totals for one
 // workspace never include rows from another.
 func TestMemStoreWorkspaceIsolation(t *testing.T) {

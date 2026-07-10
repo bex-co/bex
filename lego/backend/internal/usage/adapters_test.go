@@ -38,10 +38,14 @@ type denyAll struct{}
 
 func (denyAll) Check(_ context.Context, _, _, _ string) (bool, error) { return false, nil }
 
-// fixedClock returns a stable time in the middle of July 2026.
-func fixedClock() func() time.Time {
-	t := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+// clockAt returns a Clock pinned to the given instant.
+func clockAt(t time.Time) func() time.Time {
 	return func() time.Time { return t }
+}
+
+// fixedClock returns a Clock pinned to the middle of July 2026.
+func fixedClock() func() time.Time {
+	return clockAt(time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC))
 }
 
 // seedStore creates a memUsageStore pre-populated with two usage rows for

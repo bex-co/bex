@@ -18,7 +18,9 @@ limitations under the License.
 
 // Local acceptance for w8/m1: proves the metering pipeline writes durable
 // usage_hourly rows for all three kinds against a real Postgres, and that
-// re-processing the same window is idempotent.
+// re-processing the same window is idempotent. w8/m4 adds the retention
+// acceptance: compaction folds old months into usage_monthly, purges the
+// hourly detail, and period queries return byte-identical totals.
 //
 // Run with:
 //
@@ -29,6 +31,8 @@ package usage
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -41,6 +45,50 @@ import (
 
 const defaultAccDB = "postgres://postgres:postgres@localhost:5774/usage_acceptance_test?sslmode=disable"
 
+// setupAcceptance connects to the acceptance Postgres (BEX_ACC_DB), runs all
+// migrations, seeds one tenant + one app, and registers cleanup of every row
+// the test writes. Shared by both acceptance tests.
+func setupAcceptance(t *testing.T, tenantID, serviceID, appName string) (*pgxpool.Pool, *store.PGStore) {
+	t.Helper()
+	dbURI := os.Getenv("BEX_ACC_DB")
+	if dbURI == "" {
+		dbURI = defaultAccDB
+	}
+	ctx := context.Background()
+
+	if err := store.Migrate(dbURI); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	t.Cleanup(func() {
+		// Tear down the test rows to keep the DB reusable between runs.
+		_, _ = pool.Exec(ctx, `DELETE FROM usage_monthly WHERE workspace_id = $1`, tenantID)
+		_, _ = pool.Exec(ctx, `DELETE FROM usage_hourly WHERE workspace_id = $1`, tenantID)
+		_, _ = pool.Exec(ctx, `DELETE FROM apps WHERE tenant_id = $1`, tenantID)
+		_, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenantID)
+		pool.Close()
+	})
+
+	// Seed a tenant + app row — the minimum the foreign-key constraints need.
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO tenants (id, name, plan) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+		tenantID, appName+"-workspace", "hobby",
+	); err != nil {
+		t.Fatalf("insert tenant: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO apps (id, tenant_id, name, image, tier)
+		 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
+		serviceID, tenantID, appName, "ghcr.io/bex-co/hello-go:latest", "starter",
+	); err != nil {
+		t.Fatalf("insert app: %v", err)
+	}
+	return pool, store.NewPGStore(pool)
+}
+
 // TestAcceptance_UsageHourlyAccrues is the w8/m1 local acceptance test. It
 // connects to a real Postgres, runs migrations, processes two simulated hourly
 // windows for a synthetic app, and verifies that:
@@ -51,48 +99,8 @@ const defaultAccDB = "postgres://postgres:postgres@localhost:5774/usage_acceptan
 //   - LatestUsageWindow advances as windows are written.
 //   - UsageMonthToDate aggregates match the sum of the raw window rows.
 func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
-	dbURI := os.Getenv("BEX_ACC_DB")
-	if dbURI == "" {
-		dbURI = defaultAccDB
-	}
-
 	ctx := context.Background()
-
-	// Apply all migrations to the target DB.
-	if err := store.Migrate(dbURI); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	pool, err := pgxpool.New(ctx, dbURI)
-	if err != nil {
-		t.Fatalf("pgxpool.New: %v", err)
-	}
-	t.Cleanup(func() {
-		// Tear down the test rows to keep the DB reusable between runs.
-		_, _ = pool.Exec(ctx, `DELETE FROM usage_hourly WHERE workspace_id = 'tea-acc-001'`)
-		_, _ = pool.Exec(ctx, `DELETE FROM apps WHERE tenant_id = 'tea-acc-001'`)
-		_, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = 'tea-acc-001'`)
-		pool.Close()
-	})
-
-	// Seed a tenant + app row — the minimum the foreign-key constraint needs.
-	_, err = pool.Exec(ctx,
-		`INSERT INTO tenants (id, name, plan) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
-		"tea-acc-001", "acceptance-workspace", "hobby",
-	)
-	if err != nil {
-		t.Fatalf("insert tenant: %v", err)
-	}
-	_, err = pool.Exec(ctx,
-		`INSERT INTO apps (id, tenant_id, name, image, tier)
-		 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-		"srv-acc-001", "tea-acc-001", "hello-go", "ghcr.io/bex-co/hello-go:latest", "starter",
-	)
-	if err != nil {
-		t.Fatalf("insert app: %v", err)
-	}
-
-	st := store.NewPGStore(pool)
+	pool, st := setupAcceptance(t, "tea-acc-001", "srv-acc-001", "hello-go")
 	app := store.App{
 		ID:       "srv-acc-001",
 		TenantID: "tea-acc-001",
@@ -246,4 +254,108 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	fmt.Printf("  build_seconds:    %d s (no k8s client — expected 0)\n", countByKind[buildKey])
 	fmt.Printf("  idempotency:      confirmed (re-process w1 unchanged)\n")
 	fmt.Printf("  catch-up no-op:   confirmed (no spurious rows)\n")
+}
+
+// TestAcceptance_UsageCompaction is the w8/m4 acceptance (t006): seed hourly
+// rows for a month outside the hot window against a real Postgres, run the
+// compaction pass, and verify usage_monthly is populated, the hourly detail is
+// purged, GET /v1/usage?period=<old-month> is byte-identical to its
+// pre-compaction response, and a re-run is a no-op.
+func TestAcceptance_UsageCompaction(t *testing.T) {
+	ctx := context.Background()
+	pool, st := setupAcceptance(t, "tea-acc-002", "srv-acc-002", "compact-me")
+
+	// Seed hourly rows in a month 4 calendar months back — outside the default
+	// 3-month hot window whatever today's date is. All three kinds, and two
+	// windows for instance_seconds so the SUM is exercised.
+	now := time.Now().UTC()
+	oldMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, -4, 0)
+	seed := []store.HourlyRow{
+		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", WindowStart: oldMonth.Add(10 * time.Hour), Quantity: 3600},
+		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", WindowStart: oldMonth.Add(11 * time.Hour), Quantity: 3600},
+		{Kind: store.UsageKindEgressBytes, WindowStart: oldMonth.Add(10 * time.Hour), Quantity: 2048},
+		{Kind: store.UsageKindBuildSeconds, WindowStart: oldMonth.Add(12 * time.Hour), Quantity: 120},
+	}
+	for _, row := range seed {
+		row.WorkspaceID, row.ServiceID = "tea-acc-002", "srv-acc-002"
+		if err := st.UpsertUsageHourly(ctx, row); err != nil {
+			t.Fatalf("seed %s: %v", row.Kind, err)
+		}
+	}
+
+	// The REST surface the totals are read through — the real adapter, with a
+	// static tenant resolver standing in for the control-plane lookup.
+	svc := &Service{
+		Base:  &core.Base{Workspace: staticTenant{"tea-acc-002"}},
+		Store: st,
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	period := oldMonth.Format("2006-01")
+	get := func() string {
+		req := httptest.NewRequest("GET", "/v1/usage?period="+period, nil)
+		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user:acc"}))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET /v1/usage?period=%s: status %d: %s", period, w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+
+	pre := get()
+	t.Logf("pre-compaction  %s: %s", period, pre)
+
+	// Run the loop's own compaction pass (default 3-month hot window).
+	svc.compact(ctx)
+
+	// usage_monthly must hold the aggregates, the hourly detail must be gone.
+	var monthlyRows, hourlyRows int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_monthly WHERE workspace_id = 'tea-acc-002' AND month = $1`,
+		oldMonth,
+	).Scan(&monthlyRows); err != nil {
+		t.Fatalf("count usage_monthly: %v", err)
+	}
+	if monthlyRows != 3 { // one per (kind, tier) aggregate
+		t.Errorf("usage_monthly rows for %s: want 3, got %d", period, monthlyRows)
+	}
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_hourly WHERE workspace_id = 'tea-acc-002'
+		 AND window_start >= $1 AND window_start < $2`,
+		oldMonth, oldMonth.AddDate(0, 1, 0),
+	).Scan(&hourlyRows); err != nil {
+		t.Fatalf("count usage_hourly: %v", err)
+	}
+	if hourlyRows != 0 {
+		t.Errorf("usage_hourly rows for %s after compaction: want 0, got %d", period, hourlyRows)
+	}
+
+	post := get()
+	t.Logf("post-compaction %s: %s", period, post)
+	if post != pre {
+		t.Errorf("period query changed across compaction:\n  pre:  %s\n  post: %s", pre, post)
+	}
+
+	// Idempotency: a second pass must not drift anything.
+	svc.compact(ctx)
+	var monthlyAgain int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_monthly WHERE workspace_id = 'tea-acc-002' AND month = $1`,
+		oldMonth,
+	).Scan(&monthlyAgain); err != nil {
+		t.Fatalf("count usage_monthly after re-run: %v", err)
+	}
+	if monthlyAgain != monthlyRows {
+		t.Errorf("re-run duplicated monthly rows: %d → %d", monthlyRows, monthlyAgain)
+	}
+	if again := get(); again != pre {
+		t.Errorf("re-run drifted the period query:\n  pre:   %s\n  again: %s", pre, again)
+	}
+
+	fmt.Printf("\n=== w8/m4 compaction acceptance PASS ===\n")
+	fmt.Printf("  %d hourly rows for %s compacted into %d monthly rows\n", len(seed), period, monthlyRows)
+	fmt.Printf("  hourly detail purged: %d rows remain in %s\n", hourlyRows, period)
+	fmt.Printf("  GET /v1/usage?period=%s byte-identical across compaction\n", period)
+	fmt.Printf("  re-run: no-op confirmed\n")
 }

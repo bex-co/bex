@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package usage is the metering feature (w8/m1–m2): an hourly pipeline that
-// rolls Prometheus cAdvisor/Traefik data and build-Job durations into durable
-// usage_hourly rows (internal/store), keyed per workspace. The Service exposes
-// month-to-date aggregates as REST/GraphQL/MCP adapters (m2). The loop starts
-// only when both BEX_CP_DB_URI (store) and BEX_PROM_URL (Prometheus) are set;
-// with either absent the package is a no-op and the rest of bex-api is
-// byte-for-byte unchanged.
+// Package usage is the metering feature (w8/m1–m2, retention m4): an hourly
+// pipeline that rolls Prometheus cAdvisor/Traefik data and build-Job durations
+// into durable usage_hourly rows (internal/store), keyed per workspace. The
+// Service exposes month-to-date aggregates as REST/GraphQL/MCP adapters (m2)
+// and bounds usage_hourly's growth by compacting months older than the hot
+// window into usage_monthly aggregates daily (m4, docs/usage-metering.md).
+// The loop needs BEX_CP_DB_URI (store); metering additionally needs
+// BEX_PROM_URL (Prometheus) — with the store absent the package is a no-op
+// and the rest of bex-api is byte-for-byte unchanged.
 package usage
 
 import (
@@ -43,14 +45,15 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// UsageStore is the slice of internal/store the usage feature needs: three
-// write/read methods over the usage_hourly table, plus a read for the store's
-// apps list (workspace attribution) and tenant lookup.
+// UsageStore is the slice of internal/store the usage feature needs: the
+// write/read methods over the usage_hourly + usage_monthly tables, plus a
+// read for the store's apps list (workspace attribution) and tenant lookup.
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
 	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
+	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 }
 
 // Service is the usage feature. Base carries the Kubernetes client, namespace,
@@ -59,8 +62,13 @@ type UsageStore interface {
 type Service struct {
 	*core.Base
 	Store    UsageStore
-	PromBase string     // BEX_PROM_URL, empty means no Prometheus
-	promHTTP *http.Client
+	PromBase string // BEX_PROM_URL, empty means no Prometheus
+	// RetentionMonths is the hot window: how many calendar months (current
+	// month included) stay at hourly granularity before compaction folds them
+	// into usage_monthly (BEX_USAGE_RETENTION_MONTHS). Values < 1 mean
+	// DefaultRetentionMonths.
+	RetentionMonths int
+	promHTTP        *http.Client
 }
 
 // NewService constructs a Service, normalising PromBase (strips trailing slash
@@ -144,34 +152,81 @@ func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
 	return Summary{WorkspaceID: workspaceID, Services: svcs}
 }
 
-// --- Metering loop ---
+// --- Metering + retention loop ---
 
 // Interval is the default rollup cadence.
 const Interval = time.Hour
+
+// CompactInterval is the default retention-compaction cadence (w8/m4). Daily
+// is plenty: eligibility only changes at month boundaries.
+const CompactInterval = 24 * time.Hour
+
+// DefaultRetentionMonths is the default hot window (t001): the current month
+// plus the prior two stay hourly — the common historical-comparison range.
+const DefaultRetentionMonths = 3
 
 // catchupLimit caps how far back a restart can catch up (48 h covers
 // Prometheus's typical retention + a weekend outage).
 const catchupLimit = 48 * time.Hour
 
-// Run is the metering loop: catches up missed windows on startup then ticks
-// every Interval until ctx is cancelled. Only call when Store and PromBase are
-// both set.
+// Run is the metering + retention loop: catches up missed windows on startup,
+// rolls up every Interval, and compacts spent months every CompactInterval,
+// until ctx is cancelled. Only call when Store is set; with PromBase empty the
+// metering side is skipped and only compaction runs.
 func (s *Service) Run(ctx context.Context) {
-	s.RunWithInterval(ctx, Interval)
+	s.RunWithIntervals(ctx, Interval, CompactInterval)
 }
 
-// RunWithInterval is like Run but uses the given interval — for tests.
-func (s *Service) RunWithInterval(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	s.catchUp(ctx)
+// RunWithIntervals is like Run but with explicit cadences — for tests.
+func (s *Service) RunWithIntervals(ctx context.Context, rollup, compact time.Duration) {
+	// Without Prometheus the metering side is structurally off: rollupC stays
+	// nil (a receive on a nil channel never fires) and only compaction ticks.
+	var rollupC <-chan time.Time
+	if s.PromBase != "" {
+		rollupTicker := time.NewTicker(rollup)
+		defer rollupTicker.Stop()
+		rollupC = rollupTicker.C
+		s.catchUp(ctx)
+	}
+	compactTicker := time.NewTicker(compact)
+	defer compactTicker.Stop()
+	s.compact(ctx) // once at startup so restarts don't defer compaction a day
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case t := <-ticker.C:
+		case t := <-rollupC:
 			s.rollup(ctx, t)
+		case <-compactTicker.C:
+			s.compact(ctx)
 		}
+	}
+}
+
+// compact folds hourly rows older than the hot window into usage_monthly and
+// purges them (w8/m4). The boundary is the start of the oldest hot month,
+// clamped to catchupLimit ago: the rollup's restart catch-up can rewrite any
+// window inside that limit, and re-metering an already-compacted window would
+// double-count against the additive monthly upsert. Rows the clamp defers are
+// compacted by a later pass once they age out of the catch-up range.
+func (s *Service) compact(ctx context.Context) {
+	months := s.RetentionMonths
+	if months < 1 {
+		months = DefaultRetentionMonths
+	}
+	now := s.Now().UTC()
+	before := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, 1-months, 0)
+	if clamp := now.Add(-catchupLimit); before.After(clamp) {
+		before = clamp
+	}
+	res, err := s.Store.CompactUsage(ctx, before)
+	if err != nil {
+		log.Printf("usage: compact before %s: %v", before.Format(time.RFC3339), err)
+		return
+	}
+	if res.HourlyRows > 0 {
+		log.Printf("usage: compacted %d months (%d hourly rows) into usage_monthly (boundary %s)",
+			res.Months, res.HourlyRows, before.Format(time.RFC3339))
 	}
 }
 

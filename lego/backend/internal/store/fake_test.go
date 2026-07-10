@@ -42,6 +42,7 @@ type memStore struct {
 	members map[memberKey]string // (tenant, subject) -> role
 	ownerOf map[string]string    // identityID -> tenantID
 	usage   map[usageKey]HourlyRow
+	monthly map[monthKey]monthlyRow
 	deploys map[string]Deploy
 }
 
@@ -56,6 +57,7 @@ func newMemStore() *memStore {
 		members: map[memberKey]string{},
 		ownerOf: map[string]string{},
 		usage:   map[usageKey]HourlyRow{},
+		monthly: map[monthKey]monthlyRow{},
 		deploys: map[string]Deploy{},
 	}
 }
@@ -345,6 +347,21 @@ type usageKey struct {
 	windowStart time.Time
 }
 
+// monthKey is the composite primary key of usage_monthly; month is the first
+// day of the calendar month (UTC).
+type monthKey struct {
+	serviceID string
+	kind      string
+	tier      string
+	month     time.Time
+}
+
+// monthlyRow is one usage_monthly aggregate value.
+type monthlyRow struct {
+	workspaceID string
+	quantity    int64
+}
+
 func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -365,6 +382,8 @@ func (m *memStore) LatestUsageWindow(_ context.Context, serviceID string) (time.
 	return latest, nil
 }
 
+// UsageMonthToDate mirrors PGStore's two-table read: hourly rows in
+// [monthStart, now) plus the month's usage_monthly aggregate, summed.
 func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -381,11 +400,44 @@ func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now t
 		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
 		totals[key] += row.Quantity
 	}
+	for k, row := range m.monthly {
+		if row.workspaceID != workspaceID || !k.month.Equal(monthStart) {
+			continue
+		}
+		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		totals[key] += row.quantity
+	}
 	out := make([]UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
 		out = append(out, UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
 	}
 	return out, nil
+}
+
+// CompactUsage mirrors PGStore's compaction: fold hourly rows older than
+// before into the monthly map additively, then delete them.
+func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompaction, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var res UsageCompaction
+	months := map[time.Time]bool{}
+	for k, row := range m.usage {
+		if !k.windowStart.Before(before) {
+			continue
+		}
+		ws := k.windowStart.UTC()
+		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
+		mk := monthKey{k.serviceID, k.kind, k.tier, month}
+		m.monthly[mk] = monthlyRow{
+			workspaceID: row.WorkspaceID,
+			quantity:    m.monthly[mk].quantity + row.Quantity,
+		}
+		delete(m.usage, k)
+		months[month] = true
+		res.HourlyRows++
+	}
+	res.Months = int64(len(months))
+	return res, nil
 }
 
 func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string) (Deploy, error) {

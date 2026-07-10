@@ -193,8 +193,13 @@ type Store interface {
 	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
 	// UsageMonthToDate returns month-to-date aggregates (grouped by service /
 	// kind / tier) for a workspace, bounded by the caller-supplied now so tests
-	// don't depend on wall time.
+	// don't depend on wall time. Sums usage_hourly and usage_monthly together,
+	// so the result is exact whether or not the month has been compacted.
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error)
+	// CompactUsage folds hourly rows older than before into usage_monthly and
+	// purges them — atomic and idempotent; the retention loop (w8/m4) calls it
+	// daily with the hot-window boundary.
+	CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error)
 
 	// CreateDeploy opens a new deploy row for appID (status
 	// DeployUpdateInProgress) — CreateApp calls this for an app's first deploy

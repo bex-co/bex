@@ -44,7 +44,9 @@ type memUsageStore struct {
 	mu       sync.Mutex
 	apps     []store.App
 	rows     map[usageKey]store.HourlyRow
+	monthly  map[monthKey]monthlyVal
 	latestBy map[string]time.Time // serviceID -> latest window_start
+	compacts []time.Time          // boundaries CompactUsage was called with
 }
 
 type usageKey struct {
@@ -52,10 +54,21 @@ type usageKey struct {
 	windowStart           time.Time
 }
 
+type monthKey struct {
+	serviceID, kind, tier string
+	month                 time.Time // first of the calendar month (UTC)
+}
+
+type monthlyVal struct {
+	workspaceID string
+	quantity    int64
+}
+
 func newMemUsageStore(apps ...store.App) *memUsageStore {
 	return &memUsageStore{
 		apps:     apps,
 		rows:     map[usageKey]store.HourlyRow{},
+		monthly:  map[monthKey]monthlyVal{},
 		latestBy: map[string]time.Time{},
 	}
 }
@@ -81,6 +94,8 @@ func (m *memUsageStore) LatestUsageWindow(_ context.Context, serviceID string) (
 	return m.latestBy[serviceID], nil
 }
 
+// UsageMonthToDate mirrors PGStore's two-table read: hourly rows in
+// [monthStart, now) plus the month's usage_monthly aggregate, summed.
 func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -97,11 +112,53 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
 		totals[key] += row.Quantity
 	}
+	for k, v := range m.monthly {
+		if v.workspaceID != workspaceID || !k.month.Equal(monthStart) {
+			continue
+		}
+		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		totals[key] += v.quantity
+	}
 	out := make([]store.UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
 		out = append(out, store.UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
 	}
 	return out, nil
+}
+
+// CompactUsage mirrors PGStore's compaction: fold hourly rows older than
+// before into the monthly map additively, then delete them. It also records
+// the boundary so tests can assert what the loop asked for.
+func (m *memUsageStore) CompactUsage(_ context.Context, before time.Time) (store.UsageCompaction, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.compacts = append(m.compacts, before)
+	var res store.UsageCompaction
+	months := map[time.Time]bool{}
+	for k, row := range m.rows {
+		if !k.windowStart.Before(before) {
+			continue
+		}
+		ws := k.windowStart.UTC()
+		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
+		mk := monthKey{k.serviceID, k.kind, k.tier, month}
+		m.monthly[mk] = monthlyVal{
+			workspaceID: row.WorkspaceID,
+			quantity:    m.monthly[mk].quantity + row.Quantity,
+		}
+		delete(m.rows, k)
+		months[month] = true
+		res.HourlyRows++
+	}
+	res.Months = int64(len(months))
+	return res, nil
+}
+
+// compactCalls returns the boundaries CompactUsage was invoked with.
+func (m *memUsageStore) compactCalls() []time.Time {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]time.Time(nil), m.compacts...)
 }
 
 // --- Prometheus fake ---
@@ -259,6 +316,174 @@ func TestCatchUpIsIdempotent(t *testing.T) {
 	if rowsAfterSecond != rowsAfterFirst {
 		t.Errorf("catch-up idempotent: row count changed %d→%d on second run", rowsAfterFirst, rowsAfterSecond)
 	}
+}
+
+func TestCompactBoundaryDefaultRetention(t *testing.T) {
+	// Clock mid-July, default hot window (3 months) → July, June, May stay
+	// hourly; the boundary is May 1 (well clear of the 48 h clamp).
+	st := newMemUsageStore()
+	svc := &Service{
+		Base:  &core.Base{Clock: fixedClock()},
+		Store: st,
+	}
+
+	svc.compact(context.Background())
+
+	calls := st.compactCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 CompactUsage call, got %d", len(calls))
+	}
+	want := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	if !calls[0].Equal(want) {
+		t.Errorf("boundary: want %v, got %v", want, calls[0])
+	}
+}
+
+func TestCompactBoundaryClampedToCatchupLimit(t *testing.T) {
+	// Retention 1 month with the clock just past a month boundary: the hot
+	// window alone would compact everything before July 1, but the rollup's
+	// catch-up can rewrite any window in the last 48 h — the boundary must be
+	// clamped to now-48h so re-metered windows are never double-counted.
+	now := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	st := newMemUsageStore()
+	svc := &Service{
+		Base:            &core.Base{Clock: clockAt(now)},
+		Store:           st,
+		RetentionMonths: 1,
+	}
+
+	svc.compact(context.Background())
+
+	calls := st.compactCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 CompactUsage call, got %d", len(calls))
+	}
+	want := now.Add(-catchupLimit) // 2026-06-29 12:00, not 2026-07-01 00:00
+	if !calls[0].Equal(want) {
+		t.Errorf("boundary: want clamp %v, got %v", want, calls[0])
+	}
+}
+
+func TestCompactFoldsOldMonthsAndPurges(t *testing.T) {
+	// Rows in April (2 rows, one kind), May, and July, clock mid-July with the
+	// default window (May–July hot): only April compacts; May and July hourly
+	// rows are untouched. Re-running is a no-op.
+	st := newMemUsageStore()
+	seed := func(ws time.Time, qty int64) {
+		_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: "tea-001", ServiceID: "srv-001",
+			Kind: store.UsageKindInstanceSeconds, Tier: "starter",
+			WindowStart: ws, Quantity: qty,
+		})
+	}
+	seed(time.Date(2026, 4, 10, 8, 0, 0, 0, time.UTC), 3600)
+	seed(time.Date(2026, 4, 20, 9, 0, 0, 0, time.UTC), 1800)
+	seed(time.Date(2026, 5, 2, 8, 0, 0, 0, time.UTC), 900)
+	seed(time.Date(2026, 7, 10, 8, 0, 0, 0, time.UTC), 450)
+
+	svc := &Service{
+		Base:  &core.Base{Clock: fixedClock()},
+		Store: st,
+	}
+	svc.compact(context.Background())
+
+	st.mu.Lock()
+	hourlyLeft, monthlyRows := len(st.rows), len(st.monthly)
+	april := st.monthly[monthKey{"srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
+	st.mu.Unlock()
+
+	if hourlyLeft != 2 {
+		t.Errorf("hourly rows left: want 2 (May + July), got %d", hourlyLeft)
+	}
+	if monthlyRows != 1 {
+		t.Errorf("monthly rows: want 1 (April), got %d", monthlyRows)
+	}
+	if april.quantity != 5400 {
+		t.Errorf("April aggregate: want 5400, got %d", april.quantity)
+	}
+
+	// Idempotency: a second pass finds nothing older than the boundary.
+	svc.compact(context.Background())
+	st.mu.Lock()
+	hourlyAfter, aprilAfter := len(st.rows), st.monthly[monthKey{"srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
+	st.mu.Unlock()
+	if hourlyAfter != hourlyLeft || aprilAfter.quantity != 5400 {
+		t.Errorf("re-run not a no-op: hourly %d→%d, April %d→%d", hourlyLeft, hourlyAfter, april.quantity, aprilAfter.quantity)
+	}
+}
+
+func TestPeriodQueryIdenticalAcrossCompaction(t *testing.T) {
+	// The boundary-crossing invariant (t005/t006): a period query for an old
+	// month returns the same totals before and after that month is compacted.
+	st := seedStore() // two July rows for tea-001
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-001", ServiceID: "srv-001",
+		Kind: store.UsageKindInstanceSeconds, Tier: "starter",
+		WindowStart: time.Date(2026, 3, 10, 8, 0, 0, 0, time.UTC), Quantity: 7200,
+	})
+	svc := svcWithTenant(st, "tea-001")
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+
+	marchEnd := time.Date(2026, 3, 31, 23, 59, 59, 0, time.UTC)
+	before, err := svc.monthToDateAt(ctx, marchEnd)
+	if err != nil {
+		t.Fatalf("pre-compaction query: %v", err)
+	}
+
+	svc.compact(ctx) // clock is July 15 → March is outside the hot window
+
+	after, err := svc.monthToDateAt(ctx, marchEnd)
+	if err != nil {
+		t.Fatalf("post-compaction query: %v", err)
+	}
+	if len(before.Services) != 1 || len(after.Services) != 1 {
+		t.Fatalf("services: want 1 before and after, got %d / %d", len(before.Services), len(after.Services))
+	}
+	br, ar := before.Services[0].Rows, after.Services[0].Rows
+	if len(br) != 1 || len(ar) != 1 || br[0] != ar[0] {
+		t.Errorf("totals changed across compaction: before %+v, after %+v", br, ar)
+	}
+	if ar[0].Total != 7200 {
+		t.Errorf("March total: want 7200, got %d", ar[0].Total)
+	}
+
+	// The March hourly detail must actually be gone.
+	st.mu.Lock()
+	for k := range st.rows {
+		if k.windowStart.Month() == time.March {
+			t.Errorf("March hourly row survived compaction: %+v", k)
+		}
+	}
+	st.mu.Unlock()
+}
+
+func TestRunTicksCompactionWithoutPrometheus(t *testing.T) {
+	// With PromBase empty the loop must still run the compaction side: once at
+	// startup, then on every compaction tick.
+	st := newMemUsageStore()
+	svc := &Service{
+		Base:  &core.Base{Clock: fixedClock()},
+		Store: st,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		svc.RunWithIntervals(ctx, time.Hour, 5*time.Millisecond)
+	}()
+
+	deadline := time.After(2 * time.Second)
+	for len(st.compactCalls()) < 3 {
+		select {
+		case <-deadline:
+			cancel()
+			t.Fatalf("expected ≥3 compaction passes (startup + ticks), got %d", len(st.compactCalls()))
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	cancel()
+	<-done
 }
 
 func TestStoreNilReturnsUnavailable(t *testing.T) {

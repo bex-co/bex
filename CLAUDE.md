@@ -56,6 +56,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN` | authorization via OpenFGA; unset ⇒ allow-all (docs/auth.md) |
 | bex-api | `BEX_BASE_DOMAIN` | platform wildcard domain (e.g. `onbex.co`) — names custom-domain DNS targets `<app>.<domain>` in the DNS-instructions surface (docs/custom-domain.md); unset ⇒ derived from the App's status URL |
 | bex-api | `BEX_PROM_URL` | Prometheus base URL for request metrics (Traefik) and resource-metrics history (cAdvisor); unset ⇒ request metrics 503, resource metrics fall back to the metrics-server snapshot |
+| bex-api | `BEX_USAGE_RETENTION_MONTHS` | usage hot window (docs/usage-metering.md): calendar months (current included) kept at hourly detail before daily compaction folds older months into `usage_monthly` and purges the hourly rows; default `3`, minimum 1 |
 | bex-api | `BEX_LOKI_URL` | Loki base URL for durable log history (docs/observability.md); set ⇒ `QueryLogs`/`Logs` read Loki (survives pod restarts), unset ⇒ live pod-log fallback, byte-identical. The SSE live tail always reads pod logs |
 | bex-api | `BEX_OPENBAO_URL` | OpenBao base URL for the tenant env-vars store (docs/secrets.md); unset ⇒ env-vars verbs 503 |
 | bex-api | `BEX_OPENBAO_JWT_PATH` | override the ServiceAccount token path for OpenBao k8s-auth login (off-cluster/dev; default is the pod's projected token) |

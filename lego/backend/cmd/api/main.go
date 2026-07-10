@@ -33,6 +33,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -226,15 +227,21 @@ func main() {
 		deps.Onboard = tenantSvc
 		deps.KeyBinder = tenantSvc
 
-		// Usage metering (w8/m1): start the hourly rollup loop when both the
-		// store and Prometheus are configured — it writes usage_hourly rows that
-		// the usage API (m2) reads. Without Prometheus the service is still wired
-		// (MonthToDate reads from DB) but the loop doesn't start.
+		// Usage metering (w8/m1) + retention (m4): the loop rolls usage_hourly
+		// rows up every hour (needs Prometheus; skipped without it) and compacts
+		// months older than the hot window into usage_monthly daily. The hot
+		// window is BEX_USAGE_RETENTION_MONTHS calendar months (current month
+		// included; default 3, minimum 1) — docs/usage-metering.md.
 		usageSvc := usage.NewService(base, st, promURL, nil)
-		deps.Usage = usageSvc
-		if promURL != "" {
-			go usageSvc.Run(ctx)
+		if v := os.Getenv("BEX_USAGE_RETENTION_MONTHS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+				usageSvc.RetentionMonths = n
+			} else {
+				log.Printf("BEX_USAGE_RETENTION_MONTHS=%q invalid (want integer ≥ 1); using default %d", v, usage.DefaultRetentionMonths)
+			}
 		}
+		deps.Usage = usageSvc
+		go usageSvc.Run(ctx)
 
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN"), Grant: granter}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")
