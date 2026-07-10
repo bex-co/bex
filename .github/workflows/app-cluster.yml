@@ -183,7 +183,7 @@ jobs:
       - name: install Hetzner CCM
         run: |
           helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
-            -n kube-system \
+            -n kube-system --version 1.33.0 \
             --set networking.enabled=true \
             --set networking.clusterCIDR="${POD_CIDR}" \
             --set-string env.HCLOUD_NETWORK_ROUTES_ENABLED.value=false \
@@ -202,12 +202,20 @@ jobs:
       # the CP taint — pin it to the CP like the CCM.
       - name: install Cilium (CNI)
         run: |
+          # devices/direct-routing-device pinned to the CAPH private interface
+          # (enp7s0, the first attached hcloud network): with two NICs and no
+          # node addresses yet (CCM waits on cilium's own agent-not-ready taint),
+          # cilium 1.19's auto-detection fails fatally — and east-west belongs on
+          # the private net anyway (w1/m19 t006).
           helm upgrade --install cilium cilium/cilium -n kube-system \
+            --version 1.19.5 \
             --set ipam.mode=cluster-pool \
             --set ipam.operator.clusterPoolIPv4PodCIDRList="{${POD_CIDR}}" \
             --set encryption.enabled=true \
             --set encryption.type=wireguard \
             --set encryption.nodeEncryption=true \
+            --set devices=enp7s0 \
+            --set extraConfig.direct-routing-device=enp7s0 \
             --set 'operator.nodeSelector.node-role\.kubernetes\.io/control-plane='
 
       # hcloud-csi: PersistentVolumes (registry volume, stateful apps like a Postgres).
@@ -217,6 +225,7 @@ jobs:
       - name: install hcloud CSI
         run: |
           helm upgrade --install hcloud-csi hcloud/hcloud-csi -n kube-system \
+            --version 2.22.0 \
             --set 'controller.nodeSelector.bex\.co/pool=platform' \
             --set 'controller.tolerations[0].key=bex.co/platform' \
             --set 'controller.tolerations[0].operator=Equal' \
