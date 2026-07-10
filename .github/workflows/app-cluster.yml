@@ -186,7 +186,7 @@ jobs:
             -n kube-system \
             --set networking.enabled=true \
             --set networking.clusterCIDR="${POD_CIDR}" \
-            --set env.HCLOUD_NETWORK_ROUTES_ENABLED.value="false" \
+            --set-string env.HCLOUD_NETWORK_ROUTES_ENABLED.value=false \
             --set 'nodeSelector.node-role\.kubernetes\.io/control-plane='
 
       # CNI: Cilium in tunnel mode (works without a private network / native routing).
