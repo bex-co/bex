@@ -39,6 +39,19 @@ patches:
                 patch: |-
                   - { op: replace, path: /spec/storage/size, value: 1Gi }
                   - { op: replace, path: /spec/storage/storageClass, value: local-path }
+  # Loki: shrink the durable-log PVC to CAPD scale (the disposable mock cluster
+  # doesn't need 7d of platform-scale history on local-path). Layered as a Helm
+  # parameter so it overrides the base values' singleBinary.persistence.size.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: loki
+    patch: |-
+      - op: add
+        path: /spec/source/helm/parameters
+        value:
+          - { name: singleBinary.persistence.size, value: 2Gi }
   # Kratos/Hydra: layer the local values files (hosts, plain HTTP, dev mode)
   # over the base values — Argo merges valueFiles in order, later wins.
   - target:

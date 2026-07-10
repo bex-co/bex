@@ -13,15 +13,37 @@ flowchart LR
   rest["REST GET /v1/logs<br/>GET /v1/logs/subscribe"] --> core
   gql["GraphQL logs(...)"] --> core
   mcp["MCP list_logs"] --> core
-  core["Core.Logs / QueryLogs / FollowLogs"] --> src["PodLogSource / PodLogStream"]
+  core["Core.Logs / QueryLogs / FollowLogs"] --> hist["LogHistorySource<br/>(BEX_LOKI_URL)"]
+  core -.fallback.-> src["PodLogSource"]
+  core --> stream["PodLogStream (tail)"]
+  hist --> loki["Loki ← log-shipper DaemonSet"]
   src --> pods["App pods (app.bex.co/app label)"]
+  stream --> pods
+  loki --> pods
 ```
 
 - **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; the unfiltered convenience read. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
 - **`Core.QueryLogs(LogQuery)`** — adds Render's filters (type/text/time) and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through.
 - **`Core.FollowLogs(LogQuery, emit)`** — live tail; the SSE stream.
 
-`PodLogSource` (and its follow sibling `PodLogStream`) is the one dependency Core reaches past the generic client for — the `pods/log` subresource controller-runtime's client can't serve. It's injected (`NewPodLogSource` / `NewPodLogStream` in `podlogs.go`), so the domain layer stays clientset-free and every read is faked in tests with no cluster.
+Two backends sit behind the read verbs, each an injected source so the domain stays clientset/HTTP-free (like `PodLogSource`, both are faked in tests with no cluster):
+
+- **`LogHistorySource`** (`NewLokiSource`, gated by `BEX_LOKI_URL`) — the **durable** backend `Core.QueryLogs`/`Logs` prefer when wired. It translates the resolved `LogQuery` (namespace/app label selector, text, time range, limit) into a LogQL `query_range` against Loki, which the log-shipper DaemonSet feeds from every App pod. This is what makes logs **survive a pod restart**: a crash-looping App's pre-restart lines are still in Loki when someone queries them, and the time-range filter is now a real bounded search rather than best-effort over a live stream.
+- **`PodLogSource`** (`NewPodLogSource`) — the **live fallback** for `QueryLogs`/`Logs` when `BEX_LOKI_URL` is unset: reads the kubelet's `pods/log` ring buffer directly (the one subresource controller-runtime's client can't serve). No history — a restart loses the buffer — but zero extra infrastructure. **With Loki unset the read path is byte-identical to the pre-Loki behavior** (same shapes, same limit semantics, same labels).
+
+`PodLogSource`/`PodLogStream` live in `podlogs.go`; `LogHistorySource` in `loki.go`. All three are injected in `cmd/api/main.go`.
+
+### The tail reads pod logs, not Loki
+
+`Core.FollowLogs` (the `GET /v1/logs/subscribe` SSE stream) **always reads `PodLogStream` (pod logs), never Loki — even when Loki is wired.** The tail is for new lines going forward, where following the kubelet stream directly is real-time with zero ingest lag, adds no moving parts, and — critically — **does not die when Loki is down**: history degrades to the live buffer, the tail is unaffected. Loki's own tail endpoint would give a single history+tail source at the cost of a small ingest lag and a new failure mode on the live path; the durability win is on the _historical query_ (`QueryLogs`), which Loki already owns, so the tail stays on pods. The one accepted consequence: a freshly-restarted pod's tail starts from that pod's new buffer — but the pre-restart lines are served by `QueryLogs` from Loki, so nothing is actually lost.
+
+### Durability & retention
+
+Loki keeps **7 days** of searchable history (`limits_config.retention_period: 168h`, compactor-enforced), sized to Render's **Hobby-tier** searchable window. Render's window is tiered by plan — Hobby 7 days, Pro 14, Scale/Enterprise 30 — so 7 days is the floor, not a ceiling; raising it is one knob (`retention_period` in `deploy/gitops/base/loki.yaml`, plus the PVC size). Loki runs **single-binary on a filesystem PVC** (no object store) — the same single-node reality as Prometheus's PV and the etcd/OpenBao Raft volumes: history survives a **pod restart** (the milestone's point) because it's on a real PV, but a **node loss** loses the volume it holds. That's the documented boundary, not a solved problem — cross-host log durability would mean an object-store backend, deferred like the others. The local overlay shrinks the PVC to CAPD scale (`2Gi`) since the mock cluster is disposable.
+
+### Cluster enablement
+
+`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that tails App pod logs into it — keeping only tenant App pods (label `app.bex.co/app`) and labelling each stream `namespace`/`app`/`pod`/`container`, the labels `NewLokiSource`'s LogQL selects on. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips `QueryLogs`/`Logs` from pod logs to durable history. Unset ⇒ the pod-log fallback, byte-identical to before. (Alloy, not Promtail: Promtail is end-of-life; Alloy is Grafana's supported successor, and its API-based `loki.source.kubernetes` is the simplest static config — no host-path/file-glob templating.)
 
 ### REST surface
 
@@ -54,7 +76,7 @@ Shapes verified against `render-public-api-1.json`: the `type`/`resource`/`text`
 
 ### RBAC
 
-The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`) — added with the logs verb in `lego/operator/config/api/rbac.yaml`. No clientset lives in Core; only `podlogs.go` (and its `main.go` wiring) touch it.
+The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`) — added with the logs verb in `lego/operator/config/api/rbac.yaml`. No clientset lives in Core; only `podlogs.go` (and its `main.go` wiring) touch it. The Loki-backed history reaches Loki over HTTP (`BEX_LOKI_URL`), not the kube API, so it needs **no extra bex-api RBAC** — the log-shipper DaemonSet's own ServiceAccount (its chart's ClusterRole) does the pod-log reads, exactly as the Prometheus scrape's ServiceAccount does for metrics.
 
 ## Metrics
 

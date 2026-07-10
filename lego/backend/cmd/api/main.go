@@ -93,11 +93,18 @@ func main() {
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain:    os.Getenv("BEX_BASE_DOMAIN"),
 		PodLogs:       logs.NewPodLogSource(cs),
-		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe
+		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe (always pod logs)
 		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback
 		// when Prometheus isn't wired below; instance count then needs no source.
 		// Left nil if metrics-server is absent => those metrics report 503.
 		ResourceMetrics: metrics.NewResourceMetricsSource(cs),
+	}
+	// Durable log history, wired only when BEX_LOKI_URL is set: QueryLogs/Logs
+	// then read Loki (history survives pod restarts) instead of live pod logs.
+	// Unset => the pod-log path runs byte-identical to before (docs/observability.md).
+	// The SSE live tail stays on pod logs either way.
+	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
+		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
 	}
 	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
 	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired

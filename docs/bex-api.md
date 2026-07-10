@@ -211,6 +211,8 @@ Query params (verified against `render-public-api-1.json`): `resource` (App id, 
 
 `GET /v1/logs/subscribe` streams over **SSE** where Render upgrades to a **WebSocket** (bex's choice: no dependency, curl-friendly, same "stream new lines live" contract).
 
+**Durable history (backend swap, shapes unchanged).** With `BEX_LOKI_URL` set, the historical query (`GET /v1/logs`, `logs(...)`, MCP `list_logs`) reads a Loki store fed by a log-shipper DaemonSet instead of the kubelet's pod-log ring buffer — so logs **survive a pod restart** and the time range is a real bounded search. This is purely a `QueryLogs` backend swap: the params, envelope, log object, labels, and limit semantics are all identical either way, and with `BEX_LOKI_URL` unset the response is byte-identical to the pod-log path. The live tail (`/subscribe`) always follows pod logs. Full design + retention window in [observability.md](observability.md).
+
 ```sh
 curl -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs?resource=eden-cms-v2&type=app"
 curl -N -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs/subscribe?resource=eden-cms-v2"

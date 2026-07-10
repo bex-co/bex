@@ -90,7 +90,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Application logs (query + live tail) | ✅ | ✅ | ✅ | ✅ | `GET /v1/logs` + `/v1/logs/subscribe`; GraphQL `logs`; MCP `list_logs`; Logs tab (w3/m1, w5/m6). **Divergence:** live tail is **SSE** where Render upgrades to WebSocket. [observability.md](observability.md). |
+| Application logs (query + live tail) | ✅ | ✅ | ✅ | ✅ | `GET /v1/logs` + `/v1/logs/subscribe`; GraphQL `logs`; MCP `list_logs`; Logs tab (w3/m1, w5/m6). **Durable history (w3/m5):** with `BEX_LOKI_URL` set the query reads a Loki store (log-shipper DaemonSet) so logs survive pod restarts and time-range is a real bounded search; 7-day retention = Render's Hobby window (Render tiers 7/14/30 by plan). Pure `QueryLogs` backend swap — shapes/limits identical, byte-identical fallback when unset. **Divergence:** live tail is **SSE** where Render upgrades to WebSocket (and always reads pod logs, not Loki). [observability.md](observability.md). |
 | Request / HTTP logs + structured filters | ✖ | ✖ | ✖ | ✖ | Render filters `level`/`statusCode`/`method`/`path`/`instance`/`host`/`direction` + MCP `list_log_label_values`. bex sources application logs only (accepted-but-empty for `type=request`/`build`). → **w3/002**. |
 | Log streams (external drains) | — | — | — | — | Render `owner-log-stream`/`resource-log-streams`. External log-drain integration — non-goal. |
 

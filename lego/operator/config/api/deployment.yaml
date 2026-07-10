@@ -58,6 +58,8 @@ spec:
               value: https://api.bex.co/mcp
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
+            - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history
+              value: http://loki.monitoring.svc:3100
             - name: BEX_API_CORS_ORIGIN # comma-separated origins for the dashboard's credentialed
               # cross-origin GraphQL calls; localhost:5173 lets a local dashboard
               # dev server (Vite) hit the deployed API — fine while dev-stage,

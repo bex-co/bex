@@ -62,6 +62,17 @@ type PodLogSource func(ctx context.Context, namespace, pod, container string, ta
 // stays clientset-free. nil => FollowLogs reports core.ErrLogsUnavailable.
 type PodLogStream func(ctx context.Context, namespace, pod, container string) (io.ReadCloser, error)
 
+// LogHistorySource reads durable log history for one App from a log store (Loki),
+// applying the resolved LogQuery filters (label selector, time range, text, limit)
+// server-side and returning entries oldest-first, capped at q.Limit — the same
+// shape parseLogLine yields, so the adapters render either backend identically.
+// It supersedes the live pod-log read for QueryLogs/Logs when wired (production
+// keeps PodLogsFollow on pod logs for the tail; see docs/observability.md). nil =>
+// those verbs read live pod logs (the byte-identical default). Injected from
+// BEX_LOKI_URL via NewLokiSource, like PodLogSource keeps the clientset out of the
+// domain.
+type LogHistorySource func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error)
+
 // LogEntry is one log line in Render's log shape: a timestamp, the message, and
 // a label set (service/instance/container). Adapters render it verbatim.
 type LogEntry struct {
@@ -73,11 +84,16 @@ type LogEntry struct {
 // Service reads an App's pod logs over the injected sources.
 type Service struct {
 	*core.Base
-	// PodLogs fetches pod logs for the read verbs; nil => ErrLogsUnavailable.
+	// PodLogs fetches pod logs for the read verbs; the live default when History
+	// is unset. nil AND History nil => ErrLogsUnavailable.
 	PodLogs PodLogSource
 	// PodLogsFollow streams live pod logs for FollowLogs (the SSE tail); nil =>
-	// FollowLogs reports ErrLogsUnavailable.
+	// FollowLogs reports ErrLogsUnavailable. The tail always reads pod logs, never
+	// History — real-time, zero ingest lag, and it survives Loki being down.
 	PodLogsFollow PodLogStream
+	// History, when wired (BEX_LOKI_URL), backs QueryLogs/Logs with durable
+	// history that survives pod restarts; nil => those verbs read live pod logs.
+	History LogHistorySource
 }
 
 // LogQuery is the resolved filter set for QueryLogs / FollowLogs.
@@ -143,7 +159,7 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
 		return nil, err
 	}
-	if s.PodLogs == nil {
+	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
 	if _, err := s.GetApp(ctx, name); err != nil {
@@ -151,6 +167,10 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	}
 	if tail <= 0 {
 		tail = defaultLogTail
+	}
+	if s.History != nil {
+		// Durable history: the unfiltered tail-N read is a limit-only query.
+		return s.History(ctx, s.Namespace, LogQuery{App: name, Limit: tail})
 	}
 	return s.collectPodLogs(ctx, name, tail)
 }
@@ -162,7 +182,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
 		return nil, err
 	}
-	if s.PodLogs == nil {
+	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
 	if _, err := s.GetApp(ctx, q.App); err != nil {
@@ -171,6 +191,11 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	q = q.normalized()
 	if !q.appliesToApplication() {
 		return []LogEntry{}, nil // request/build have no source in bex
+	}
+	if s.History != nil {
+		// Durable history (Loki) applies the type/text/time/limit filters in the
+		// store; it already returns oldest-first, capped at q.Limit.
+		return s.History(ctx, s.Namespace, q)
 	}
 	entries, err := s.collectPodLogs(ctx, q.App, q.Limit)
 	if err != nil {

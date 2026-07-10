@@ -1,0 +1,94 @@
+# Loki — the durable log-history backend. bex-api's logs query path
+# (GET /v1/logs, GraphQL logs(...), MCP list_logs, via NewLokiSource) reads
+# pre-restart history from Loki's query_range API instead of the kubelet ring
+# buffer, so a crash-looping App's logs survive the restart that prompted the
+# investigation. bex-api points at it with
+# BEX_LOKI_URL=http://loki.monitoring.svc:3100 (docs/observability.md). Without
+# this, QueryLogs falls back to live pod logs (no history) — byte-identical to
+# the pre-Loki behavior. The live SSE tail always reads pod logs, never Loki.
+#
+# Single-binary mode on a filesystem PVC — the same "buy, don't build, keep it
+# single-node" posture as prometheus.yaml: no object store (S3/minio), no
+# read/write/backend split, no caches. The log-shipper DaemonSet
+# (log-shipper.yaml) tails App pod logs into it, labelled namespace/app/pod/
+# container so bex-api can select on the App's namespace+name.
+#
+# Retention is 7 days (168h) — Render's Hobby-tier searchable window
+# (docs/observability.md); paid Render tiers reach 14/30 days, a knob to raise
+# here (limits_config.retention_period) alongside the PVC. Like prometheus.yaml's
+# PV and etcd/OpenBao's Raft volumes, this is a single-node volume: a node loss
+# loses the history it holds (noted, not solved — same caveat as those).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1" # before the shipper (log-shipper.yaml, wave 2)
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: "6.*" # pin minor; the SingleBinary deployment mode serves /loki/api/v1/query_range
+    helm:
+      releaseName: loki
+      values: |
+        fullnameOverride: loki  # => Service `loki` on :3100 (BEX_LOKI_URL host)
+        deploymentMode: SingleBinary
+        loki:
+          auth_enabled: false   # single-tenant platform; bex-api scopes by label, not X-Scope-OrgID
+          commonConfig:
+            replication_factor: 1
+          storage:
+            type: filesystem     # no object store — single-node filesystem, like Prometheus's PV
+          schemaConfig:
+            configs:
+              - from: "2024-04-01"
+                store: tsdb
+                object_store: filesystem
+                schema: v13
+                index: { prefix: index_, period: 24h }
+          # Retention: 7 days, enforced by the compactor. Render's Hobby window;
+          # raise (with the PVC) for the 14/30-day paid-tier equivalent.
+          limits_config:
+            retention_period: 168h
+          compactor:
+            retention_enabled: true
+            delete_request_store: filesystem
+          # Silence the chart's structured-metadata requirement for schema v13.
+          pattern_ingester: { enabled: false }
+        singleBinary:
+          replicas: 1
+          # The user-facing durable window on one node: sized for 7d of tenant
+          # App logs at platform scale. local overlay shrinks this to CAPD scale.
+          # local-path StorageClass on both the CAPD mock and prod (cluster
+          # default), so history survives a pod restart — the whole point.
+          persistence:
+            enabled: true
+            size: 20Gi
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+        # Single-binary minimal: no gateway, no caches, no canary/tests, no
+        # self-monitoring, no bundled minio — this exists solely to answer
+        # bex-api's query_range calls.
+        gateway: { enabled: false }
+        chunksCache: { enabled: false }
+        resultsCache: { enabled: false }
+        lokiCanary: { enabled: false }
+        test: { enabled: false }
+        minio: { enabled: false }
+        monitoring:
+          selfMonitoring: { enabled: false }
+          serviceMonitor: { enabled: false }
+        # Zero out the other deployment modes' components (SingleBinary only).
+        backend: { replicas: 0 }
+        read: { replicas: 0 }
+        write: { replicas: 0 }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

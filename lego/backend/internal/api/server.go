@@ -104,8 +104,12 @@ type Server struct {
 // keep the domain layer clientset/HTTP-free (nil leaves a verb reporting its
 // "…Unavailable" sentinel). NewServer wires them onto the services in one place.
 type Deps struct {
-	PodLogs              logs.PodLogSource
-	PodLogsFollow        logs.PodLogStream
+	PodLogs       logs.PodLogSource
+	PodLogsFollow logs.PodLogStream
+	// LogHistory, when set (BEX_LOKI_URL), backs QueryLogs/Logs with durable Loki
+	// history that survives pod restarts. nil => those reads use live pod logs
+	// (byte-identical to before). The SSE tail always stays on pod logs.
+	LogHistory           logs.LogHistorySource
 	ResourceMetrics      metrics.ResourceMetricsSource
 	ResourceMetricsRange metrics.ResourceMetricsRangeSource
 	RequestMetrics       metrics.RequestMetricsSource
@@ -167,7 +171,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	selections := core.NewWorkspaceSelections()
 	return &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, Selections: selections},
-		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow},
+		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory},
 		Metrics: &metrics.Service{
 			Base:                       base,
 			ResourceMetrics:            d.ResourceMetrics,

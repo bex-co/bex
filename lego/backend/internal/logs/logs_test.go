@@ -92,13 +92,21 @@ func staticLogStream(lines map[string][]string) PodLogStream {
 }
 
 func newService(logs map[string][]string, objs ...client.Object) *Service {
-	cl := fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
 	return &Service{
-		Base:          &core.Base{Client: cl, Namespace: "default"},
+		Base:          &core.Base{Client: fakeClientWith(objs...), Namespace: "default"},
 		PodLogs:       staticLogs(logs),
 		PodLogsFollow: staticLogStream(logs),
 	}
 }
+
+// fakeClientWith builds a fake controller-runtime client seeded with objs — the
+// shared seam under newService and the Loki-source tests.
+func fakeClientWith(objs ...client.Object) client.Client {
+	return fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
+}
+
+// decodeJSON is a thin json.Unmarshal over a string, for the Loki-response tests.
+func decodeJSON(s string, v any) error { return json.Unmarshal([]byte(s), v) }
 
 // --- Logs verb (MCP read path) ---
 

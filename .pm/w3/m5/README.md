@@ -1,20 +1,20 @@
 # w3 · m5 — Durable logs: Loki-backed history behind the same API
 
-**Worker:** worker3 **Goal:** Logs survive pod restarts. Today the logs feature reads live pod logs only (kubelet ring buffer) — a crash-looping app loses its history at the exact moment someone investigates. Deploy Loki (buy, not build — same pattern as Prometheus), ship pod logs into it, and make `QueryLogs` read Loki when `BEX_LOKI_URL` is set, with byte-identical fallback when unset. Surface shapes (REST/GraphQL/MCP/UI) do not change. **Status:** todo
+**Worker:** worker3 **Goal:** Logs survive pod restarts. Today the logs feature reads live pod logs only (kubelet ring buffer) — a crash-looping app loses its history at the exact moment someone investigates. Deploy Loki (buy, not build — same pattern as Prometheus), ship pod logs into it, and make `QueryLogs` read Loki when `BEX_LOKI_URL` is set, with byte-identical fallback when unset. Surface shapes (REST/GraphQL/MCP/UI) do not change. **Status:** implemented — code/gitops/docs/tests shipped and verified hermetically (fake-Loki restart-survival, fallback equivalence, real bounds, Loki-down); the live mock-cluster run of `scripts/logs-verify.sh` (t005) + the `done/` move (t009) await a Loki-synced cluster.
 
 ## Tasks (in order)
 
-| id   | title                                                                                             | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | GitOps: Loki (single-binary, filesystem PVC) + log-shipper DaemonSet (Alloy/Promtail), k8s labels  | 30m | —          |
-| t002 | bex-api: `BEX_LOKI_URL` client — `QueryLogs` via LogQL from the existing `LogQuery` filters        | 30m | t001       |
-| t003 | Live tail decision + wiring: SSE stays on pod logs vs Loki tail — pick, implement, document        | 25m | t002       |
-| t004 | Retention (match Render's window) + env-template name mirrors + docs/observability.md caveat swap  | 20m | t002       |
-| t005 | Acceptance: pod restart → pre-restart lines still served over REST and MCP `list_logs`             | 25m | t003, t004 |
-| t006 | Render parity — same log shapes/filters across REST/GraphQL/MCP/UI; compare Render's logs behavior | 20m | t005       |
-| t007 | Simplify — `/simplify` over the code this milestone changed                                        | 20m | t006       |
-| t008 | Test coverage — meaningful tests for the Loki path + fallback                                      | 30m | t006       |
-| t009 | Closeout — DoD met → move milestone to `done/`                                                     | 10m | t008       |
+| id   | title                                                                                             | est | depends_on | status |
+| ---- | -------------------------------------------------------------------------------------------------- | --- | ---------- | ------ |
+| t001 | GitOps: Loki (single-binary, filesystem PVC) + log-shipper DaemonSet (Alloy/Promtail), k8s labels  | 30m | —          | — **DONE** (`deploy/gitops/base/loki.yaml` + `log-shipper.yaml`, Alloy chosen; both overlays render) |
+| t002 | bex-api: `BEX_LOKI_URL` client — `QueryLogs` via LogQL from the existing `LogQuery` filters        | 30m | t001       | — **DONE** (`internal/logs/loki.go` + `LogHistorySource` seam; wired in `main.go`/`server.go`) |
+| t003 | Live tail decision + wiring: SSE stays on pod logs vs Loki tail — pick, implement, document        | 25m | t002       | — **DONE** (tail stays on pod logs; rationale in docs/observability.md) |
+| t004 | Retention (match Render's window) + env-template name mirrors + docs/observability.md caveat swap  | 20m | t002       | — **DONE** (7d = Render Hobby window, tiered note; no `.env` var — non-secret URL like `BEX_PROM_URL`) |
+| t005 | Acceptance: pod restart → pre-restart lines still served over REST and MCP `list_logs`             | 25m | t003, t004 | — **PARTIAL** (`scripts/logs-verify.sh` written + hermetic restart-survival/fallback tests pass; live cluster run pending a Loki-synced cluster) |
+| t006 | Render parity — same log shapes/filters across REST/GraphQL/MCP/UI; compare Render's logs behavior | 20m | t005       | — **DONE** (no drift — pure `QueryLogs` backend swap; parity ledger row refreshed) |
+| t007 | Simplify — `/simplify` over the code this milestone changed                                        | 20m | t006       | — **DONE** (diff reviewed; reuse via `lokiLimit`/`labelOr`; gofmt/lint clean) |
+| t008 | Test coverage — meaningful tests for the Loki path + fallback                                      | 30m | t006       | — **DONE** (`internal/logs/loki_test.go`: LogQL builder, injection escaping, parser, bounds, Loki-down, routing) |
+| t009 | Closeout — DoD met → move milestone to `done/`                                                     | 10m | t008       | — **PENDING** (blocked on t005 live run per its own gate) |
 
 ## Definition of done
 

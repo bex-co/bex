@@ -1,0 +1,95 @@
+# log-shipper — the DaemonSet that tails App pod logs into Loki (loki.yaml).
+# One replica per node discovers pods via the Kubernetes API, keeps only tenant
+# App pods (label app.bex.co/app), labels each stream namespace/app/pod/container
+# — exactly the labels bex-api's LogQL selects on
+# ({namespace=, app=, container="app"}, see NewLokiSource / docs/observability.md)
+# — and pushes to Loki's /loki/api/v1/push.
+#
+# Shipper choice — Grafana Alloy, not Promtail: Promtail reached end-of-life
+# (Grafana's supported successor is Alloy), so a new install ships on Alloy. And
+# within Alloy the API-based `loki.source.kubernetes` is the simplest *static*
+# config — it reads the pod-log API directly, with no host-path mounts or
+# /var/log/pods file-glob templating a file-based tailer needs. The trade is a
+# little more apiserver read load, acceptable at single-node platform scale.
+#
+# NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
+# name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app)
+# and the Loki push URL. If either differs on a cluster, tune the relabel rules /
+# endpoint below. Confirm the pinned alloy chart line against the repo before a
+# first real sync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: log-shipper
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2" # after loki (loki.yaml, wave 1) accepts pushes
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: alloy
+    targetRevision: "1.*" # pin minor; the DaemonSet ships pod logs to Loki
+    helm:
+      releaseName: log-shipper
+      values: |
+        fullnameOverride: log-shipper
+        controller:
+          type: daemonset
+        alloy:
+          # Static River config: discover pods -> keep App pods -> label -> push.
+          configMap:
+            content: |-
+              discovery.kubernetes "pods" {
+                role = "pod"
+              }
+
+              discovery.relabel "app_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                // Ship only tenant App pods (they carry app.bex.co/app); drop the
+                // rest so single-node Loki holds just what bex-api can serve.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
+                  regex         = ""
+                  action        = "drop"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
+                  target_label  = "app"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+              }
+
+              loki.source.kubernetes "app_pods" {
+                targets    = discovery.relabel.app_pods.output
+                forward_to = [loki.write.default.receiver]
+              }
+
+              loki.write "default" {
+                endpoint {
+                  url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+                }
+              }
+          resources:
+            requests: { cpu: 25m, memory: 128Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+        # No bundled ServiceMonitor / self-metrics scrape — keep the shipper thin.
+        serviceMonitor: { enabled: false }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
