@@ -20,6 +20,12 @@ query Server($id: String!) {
     revision
     plan
     idleTTLSeconds
+    # Build-from-git source (empty for an image-backed App); rootDir is
+    # Render's Root Directory setting (w1/m18) — the Settings tab's
+    # Build & Deploy section (w5/m13).
+    repo
+    branch
+    rootDir
     # cron_job fields (null/empty for other service types)
     schedule
     command

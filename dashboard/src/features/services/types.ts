@@ -47,6 +47,18 @@ export interface ServiceView {
    * `server` query. Empty for other types / when not selected.
    */
   runs: CronRunView[];
+  /**
+   * Build-from-git source (`spec.repo`/`spec.branch`); null for an image-backed
+   * App. Only the detail `server` query selects these (w1/m18, w5/m13).
+   */
+  repo: string | null;
+  branch: string | null;
+  /**
+   * Subdirectory of `repo` this App builds from (`spec.rootDir`, Render's Root
+   * Directory setting, w1/m18); null when unset (builds from the repo root).
+   * Only the detail `server` query selects it.
+   */
+  rootDir: string | null;
 }
 
 /** One execution of a `cron_job` — the Render cron-run shape bex-api projects. */

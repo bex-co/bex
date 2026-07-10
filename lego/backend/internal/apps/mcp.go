@@ -69,6 +69,13 @@ type idleTimeoutArgs struct {
 	IdleTTLSeconds int32  `json:"idleTTLSeconds" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
 }
 
+// rootDirArgs is set_root_directory's input — Render's Root Directory setting:
+// the subdirectory of a build-from-git service's repo to build from.
+type rootDirArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -282,6 +289,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Set a service's idle timeout: seconds a free-tier service may idle before it auto-sleeps (0 = controller default). bex extension over Render's MCP (Render's spin-down window is fixed).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idleTimeoutArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetIdleTTL(ctx, in.ServiceID, in.IdleTTLSeconds)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_root_directory",
+		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
 		if err != nil {
 			return nil, renderService{}, err
 		}

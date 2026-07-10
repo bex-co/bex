@@ -99,6 +99,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
+		// repo/branch are the build-from-git source, empty for an image-backed App.
+		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
+		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
 	},
 })
 
@@ -404,6 +407,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetIdleTTL(p.Context, p.Args["id"].(string), int32(p.Args["idleTTLSeconds"].(int)))
+			},
+		},
+		// setRootDir: the Settings → Build & Deploy save flow (w5/m13) writes
+		// Render's Root Directory setting (spec.rootDir) on an existing App
+		// (create-time rootDir is handled by createService above). Rejected for
+		// an image-backed App (core.ErrBadRequest — nothing to build).
+		"setRootDir": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"rootDir": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
 			},
 		},
 		// Custom domain mutations — Render-dashboard-shaped operation names.

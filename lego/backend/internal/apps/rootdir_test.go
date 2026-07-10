@@ -19,12 +19,15 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // rootdir_test.go covers App.spec.rootDir (monorepo Root Directory support,
@@ -112,6 +115,110 @@ func TestDeployManifestThreadsRootDir(t *testing.T) {
 	}
 	if got := getApp(t, cl, "hello").Spec.RootDir; got != "services/hello" {
 		t.Errorf("bex.yml rootDir not threaded: spec.rootDir = %q", got)
+	}
+}
+
+// --- SetRootDir (update-after-create, not covered by create-time threading above) ---
+
+func TestSetRootDirSetsAndBumpsRestartedAt(t *testing.T) {
+	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+
+	v, err := svc.SetRootDir(context.Background(), "web", "api")
+	if err != nil {
+		t.Fatalf("SetRootDir: %v", err)
+	}
+	if v.RootDir != "api" {
+		t.Errorf("view RootDir = %q, want %q", v.RootDir, "api")
+	}
+	a := getApp(t, cl, "web")
+	if a.Spec.RootDir != "api" {
+		t.Errorf("spec.rootDir = %q, want %q", a.Spec.RootDir, "api")
+	}
+	if a.Spec.RestartedAt == "" {
+		t.Error("SetRootDir must bump restartedAt so the new subdirectory actually gets built")
+	}
+
+	// Empty restores the repo root.
+	if _, err := svc.SetRootDir(context.Background(), "web", ""); err != nil {
+		t.Fatalf("SetRootDir(\"\"): %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.RootDir; got != "" {
+		t.Errorf("spec.rootDir = %q, want empty (repo root)", got)
+	}
+}
+
+func TestSetRootDirRejectsImageBackedApp(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("img")) // sampleApp is image-backed, no repo
+
+	if _, err := svc.SetRootDir(context.Background(), "img", "api"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("SetRootDir on an image-backed App should be core.ErrBadRequest, got %v", err)
+	}
+	if got := getApp(t, cl, "img").Spec.RootDir; got != "" {
+		t.Errorf("a rejected SetRootDir must not touch spec.rootDir, got %q", got)
+	}
+}
+
+func TestRESTPatchServiceRootDir(t *testing.T) {
+	svc, _ := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := strings.NewReader(`{"rootDir":"api"}`)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PATCH rootDir => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var out struct {
+		RootDir string `json:"rootDir"`
+		Repo    string `json:"repo"`
+		Branch  string `json:"branch"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.RootDir != "api" {
+		t.Errorf("response = %s, want rootDir api", rec.Body)
+	}
+	if out.Repo != "https://github.com/x/mono" || out.Branch != "main" {
+		t.Errorf("repo/branch not surfaced on read: %+v", out)
+	}
+}
+
+func TestGraphQLSetRootDir(t *testing.T) {
+	svc, _ := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setRootDir(id: "web", rootDir: "api") { rootDir repo branch } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["setRootDir"].(map[string]any)
+	if got["rootDir"] != "api" {
+		t.Errorf("rootDir = %v, want api", got["rootDir"])
+	}
+	if got["repo"] != "https://github.com/x/mono" || got["branch"] != "main" {
+		t.Errorf("repo/branch not surfaced: %+v", got)
+	}
+}
+
+func TestMCPSetRootDirectory(t *testing.T) {
+	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+
+	v, err := svc.SetRootDir(context.Background(), "web", "api")
+	if err != nil {
+		t.Fatalf("SetRootDir: %v", err)
+	}
+	out := toRenderService(v)
+	if out.RootDir != "api" {
+		t.Errorf("set_root_directory (via renderService projection) rootDir = %q, want api", out.RootDir)
+	}
+	if got := getApp(t, cl, "web").Spec.RootDir; got != "api" {
+		t.Errorf("spec.rootDir = %q, want api", got)
 	}
 }
 

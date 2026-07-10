@@ -39,6 +39,10 @@ type patchServiceRequest struct {
 		// distinct from an explicit 0 (restore the controller default).
 		IdleTTLSeconds *int32 `json:"idleTTLSeconds"`
 	} `json:"serviceDetails"`
+	// RootDir is a pointer so "absent" (leave unchanged) is distinct from an
+	// explicit "" (restore the repo root) — Render's Root Directory setting,
+	// the Settings → Build & Deploy save flow (w5/m13).
+	RootDir *string `json:"rootDir"`
 }
 
 // scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
@@ -197,8 +201,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, status, toRenderService(app))
 		}
 	}
-	// patch handles PATCH /v1/services/{id} — today, only a plan change
-	// (serviceDetails.plan); an unknown plan is core.ErrBadRequest => 400.
+	// patch handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
+	// an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
+	// directory change (rootDir); an unknown plan or a rootDir on an image-backed
+	// App is core.ErrBadRequest => 400.
 	patch := func(w http.ResponseWriter, r *http.Request) {
 		var req patchServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -206,7 +212,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		id := r.PathValue("id")
-		if req.ServiceDetails == nil || (req.ServiceDetails.Plan == "" && req.ServiceDetails.IdleTTLSeconds == nil) {
+		var plan string
+		var idleTTL *int32
+		if req.ServiceDetails != nil {
+			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
+		}
+		if plan == "" && idleTTL == nil && req.RootDir == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -214,14 +225,20 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// least one runs, so app is always set by the time we serialize.
 		var app AppView
 		var err error
-		if req.ServiceDetails.Plan != "" {
-			if app, err = s.SetPlan(r.Context(), id, req.ServiceDetails.Plan); err != nil {
+		if plan != "" {
+			if app, err = s.SetPlan(r.Context(), id, plan); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
 		}
-		if req.ServiceDetails.IdleTTLSeconds != nil {
-			if app, err = s.SetIdleTTL(r.Context(), id, *req.ServiceDetails.IdleTTLSeconds); err != nil {
+		if idleTTL != nil {
+			if app, err = s.SetIdleTTL(r.Context(), id, *idleTTL); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.RootDir != nil {
+			if app, err = s.SetRootDir(r.Context(), id, *req.RootDir); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

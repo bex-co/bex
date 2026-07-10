@@ -11,6 +11,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
+import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
@@ -24,9 +25,11 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
 });
 
 /**
- * The Settings tab (w5/m7, w1/m11.5): the Instance Type section Render's settings
- * page leads with, then Custom Domains + the platform subdomain (Render parity).
- * Other sections (name/region/build/deploy) are future milestones.
+ * The Settings tab (w5/m7, w1/m11.5, w5/m13): the Instance Type section
+ * Render's settings page leads with, then Build & Deploy (repo-backed Apps
+ * only — Source/Branch read-only, Root Directory editable), Custom Domains,
+ * and the platform subdomain (Render parity). Name/region are future
+ * milestones.
  */
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
@@ -71,6 +74,14 @@ export function ServiceSettingsPage() {
         />
       ) : (
         <>
+          {service?.repo && (
+            <BuildDeploySection
+              serviceId={serviceId}
+              repo={service.repo}
+              branch={service.branch}
+              rootDir={service.rootDir}
+            />
+          )}
           <CustomDomainsSection serviceId={serviceId} />
           <PlatformSubdomainSection url={service?.url ?? null} />
         </>

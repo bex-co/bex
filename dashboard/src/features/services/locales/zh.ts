@@ -195,7 +195,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.notFoundBackToList": {
     message: "返回服务列表",
-    description: "Link on the service-detail not-found state back to the services list",
+    description:
+      "Link on the service-detail not-found state back to the services list",
   },
   "services.navEnvironment": {
     message: "环境变量",
@@ -476,7 +477,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupLinked": {
     message: "已链接",
-    description: "Env-groups badge: this group is linked to the current service",
+    description:
+      "Env-groups badge: this group is linked to the current service",
   },
   "services.envGroupEmptyContents": {
     message: "暂无变量或文件。",
@@ -488,7 +490,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupUnlink": {
     message: "取消链接",
-    description: "Env-groups button: detach this group from the current service",
+    description:
+      "Env-groups button: detach this group from the current service",
   },
   "services.envGroupDelete": {
     message: "删除",
@@ -750,7 +753,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsToggle": {
     message: "显示 DNS 配置",
-    description: "aria-label for the per-domain DNS-instructions disclosure toggle",
+    description:
+      "aria-label for the per-domain DNS-instructions disclosure toggle",
   },
   "services.domainDnsTitle": {
     message: "DNS 配置",
@@ -874,6 +878,79 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "使用镜像自身的默认命令。",
     description:
       "Cron job Settings tab: shown when spec.command is unset (no override)",
+  },
+  "services.buildDeployTitle": {
+    message: "构建与部署",
+    description:
+      "Settings tab: Build & Deploy section title (w5/m13, Render parity)",
+  },
+  "services.buildDeployDescription": {
+    message: "此服务的构建与部署来源。",
+    description: "Settings tab: Build & Deploy section description",
+  },
+  "services.buildDeploySourceLabel": {
+    message: "源代码",
+    description: "Build & Deploy: repo field label (read-only)",
+  },
+  "services.buildDeployBranchLabel": {
+    message: "分支",
+    description: "Build & Deploy: branch field label (read-only)",
+  },
+  "services.buildDeployRootDirLabel": {
+    message: "根目录",
+    description: "Build & Deploy: root-directory field label",
+  },
+  "services.buildDeployRootDirOptional": {
+    message: "可选",
+    description:
+      "Build & Deploy: badge next to the Root Directory label (Render parity)",
+  },
+  "services.buildDeployRootDirHint": {
+    message:
+      "如果设置，构建将从此子目录而非仓库根目录运行。此目录之外的代码更改不会触发自动部署。常用于 monorepo。",
+    description: "Build & Deploy: root-directory field help text",
+  },
+  "services.buildDeployRootDirEmpty": {
+    message: "仓库根目录",
+    description: "Build & Deploy: shown when spec.rootDir is unset",
+  },
+  "services.buildDeployConfirmRoot": {
+    message: "仓库根目录",
+    description:
+      "Build & Deploy: mid-sentence phrase for the confirm dialog title when clearing rootDir to empty (a dedicated key, not a lowercased buildDeployRootDirEmpty, since that transform doesn't hold in every language)",
+  },
+  "services.buildDeployRootDirPlaceholder": {
+    message: "例如 backend",
+    description: "Build & Deploy: root-directory input placeholder",
+  },
+  "services.buildDeployEdit": {
+    message: "编辑根目录",
+    description: "Build & Deploy: accessible label for the edit-pencil button",
+  },
+  "services.buildDeploySave": {
+    message: "保存",
+    description: "Build & Deploy: root-directory inline-edit save button",
+  },
+  "services.buildDeployCancel": {
+    message: "取消",
+    description: "Build & Deploy: root-directory inline-edit cancel button",
+  },
+  "services.buildDeployConfirmTitle": {
+    message: "将根目录更改为 {value}？",
+    description: "Build & Deploy: root-directory change confirm dialog title",
+  },
+  "services.buildDeployConfirmBody": {
+    message:
+      "服务将重新构建并部署，范围限定为新目录——现有请求会先完成，旧实例才会被替换。",
+    description: "Build & Deploy: root-directory change confirm dialog body",
+  },
+  "services.buildDeploySuccess": {
+    message: "根目录已更新。",
+    description: "Toast after setRootDir succeeds",
+  },
+  "services.buildDeployError": {
+    message: "无法更新根目录，请重试。",
+    description: "Toast after setRootDir fails",
   },
   "services.colType": {
     message: "类型",

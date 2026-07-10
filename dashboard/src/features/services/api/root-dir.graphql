@@ -1,0 +1,13 @@
+# setRootDir is Render's Root Directory setting (w1/m18): the subdirectory of a
+# build-from-git App's repo to build from. Triggers a fresh build scoped to it —
+# backs the Settings tab's Build & Deploy section save flow (w5/m13,
+# backend/internal/apps/graphql.go).
+mutation SetRootDir($id: String!, $rootDir: String!) {
+  setRootDir(id: $id, rootDir: $rootDir) {
+    id
+    repo
+    branch
+    rootDir
+    phase
+  }
+}

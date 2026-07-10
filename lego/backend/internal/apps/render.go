@@ -57,6 +57,9 @@ type renderService struct {
 	// RootDir is the subdirectory of the repo this service builds from (Render's
 	// Root Directory setting, monorepo support). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`
+	// Repo/Branch are the build-from-git source, empty for an image-backed App.
+	Repo   string `json:"repo,omitempty"`
+	Branch string `json:"branch,omitempty"`
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item
@@ -108,6 +111,8 @@ func toRenderService(a AppView) renderService {
 		Runs:           a.Runs,
 		IdleTTLSeconds: a.IdleTTLSeconds,
 		RootDir:        a.RootDir,
+		Repo:           a.Repo,
+		Branch:         a.Branch,
 	}
 }
 

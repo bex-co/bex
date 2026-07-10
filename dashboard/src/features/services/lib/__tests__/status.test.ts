@@ -47,6 +47,9 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     schedule: null,
     command: null,
     runs: [],
+    repo: null,
+    branch: null,
+    rootDir: null,
     ...overrides,
   };
 }
@@ -80,6 +83,9 @@ describe("toServiceView", () => {
       schedule: null,
       command: null,
       runs: [],
+      repo: null,
+      branch: null,
+      rootDir: null,
     });
   });
 
@@ -101,6 +107,41 @@ describe("toServiceView", () => {
     expect(v.runs).toEqual([]);
   });
 
+  it("maps a build-from-git server node's repo/branch/rootDir", () => {
+    const serverNode: ServerNode = {
+      __typename: "Service",
+      id: "mono",
+      name: "mono",
+      type: "web_service",
+      suspended: "not_suspended",
+      dashboardUrl: null,
+      url: null,
+      createdAt: null,
+      phase: "Running",
+      replicas: 1,
+      revision: null,
+      plan: null,
+      idleTTLSeconds: 0,
+      repo: "https://github.com/x/mono",
+      branch: "main",
+      rootDir: "backend",
+      schedule: null,
+      command: null,
+      runs: [],
+    };
+    const v = toServiceView(serverNode);
+    expect(v.repo).toBe("https://github.com/x/mono");
+    expect(v.branch).toBe("main");
+    expect(v.rootDir).toBe("backend");
+  });
+
+  it("leaves repo/branch/rootDir null for a list node (no build fields selected)", () => {
+    const v = toServiceView(node());
+    expect(v.repo).toBeNull();
+    expect(v.branch).toBeNull();
+    expect(v.rootDir).toBeNull();
+  });
+
   it("maps a cron server node's schedule and run history", () => {
     const serverNode: ServerNode = {
       __typename: "Service",
@@ -116,6 +157,9 @@ describe("toServiceView", () => {
       revision: null,
       plan: null,
       idleTTLSeconds: 0,
+      repo: null,
+      branch: null,
+      rootDir: null,
       schedule: "*/5 * * * *",
       command: "npm run report",
       runs: [

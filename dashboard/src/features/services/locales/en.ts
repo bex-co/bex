@@ -196,7 +196,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.notFoundBackToList": {
     message: "Back to services",
-    description: "Link on the service-detail not-found state back to the services list",
+    description:
+      "Link on the service-detail not-found state back to the services list",
   },
   "services.navEnvironment": {
     message: "Environment",
@@ -476,11 +477,13 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupInvalidName": {
     message: "Use letters, digits, dot, dash and underscore.",
-    description: "Env-groups create-group validation message for an invalid name",
+    description:
+      "Env-groups create-group validation message for an invalid name",
   },
   "services.envGroupLinked": {
     message: "Linked",
-    description: "Env-groups badge: this group is linked to the current service",
+    description:
+      "Env-groups badge: this group is linked to the current service",
   },
   "services.envGroupEmptyContents": {
     message: "No variables or files yet.",
@@ -492,7 +495,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envGroupUnlink": {
     message: "Unlink",
-    description: "Env-groups button: detach this group from the current service",
+    description:
+      "Env-groups button: detach this group from the current service",
   },
   "services.envGroupDelete": {
     message: "Delete",
@@ -757,7 +761,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsToggle": {
     message: "Show DNS setup",
-    description: "aria-label for the per-domain DNS-instructions disclosure toggle",
+    description:
+      "aria-label for the per-domain DNS-instructions disclosure toggle",
   },
   "services.domainDnsTitle": {
     message: "DNS setup",
@@ -786,7 +791,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Label for the DNS record target/value field",
   },
   "services.domainDnsUnavailable": {
-    message: "The DNS target isn't available yet — re-check once the service is running.",
+    message:
+      "The DNS target isn't available yet — re-check once the service is running.",
     description: "Shown when the backend couldn't derive the DNS record target",
   },
   "services.domainRecheck": {
@@ -806,7 +812,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Title of the post-add DNS-record step in the add dialog",
   },
   "services.domainAddedDescription": {
-    message: "Create this record at your DNS provider to finish connecting your domain.",
+    message:
+      "Create this record at your DNS provider to finish connecting your domain.",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
   "services.domainDone": {
@@ -882,6 +889,79 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Uses the image's own default command.",
     description:
       "Cron job Settings tab: shown when spec.command is unset (no override)",
+  },
+  "services.buildDeployTitle": {
+    message: "Build & Deploy",
+    description:
+      "Settings tab: Build & Deploy section title (w5/m13, Render parity)",
+  },
+  "services.buildDeployDescription": {
+    message: "Where this service builds and deploys from.",
+    description: "Settings tab: Build & Deploy section description",
+  },
+  "services.buildDeploySourceLabel": {
+    message: "Source",
+    description: "Build & Deploy: repo field label (read-only)",
+  },
+  "services.buildDeployBranchLabel": {
+    message: "Branch",
+    description: "Build & Deploy: branch field label (read-only)",
+  },
+  "services.buildDeployRootDirLabel": {
+    message: "Root Directory",
+    description: "Build & Deploy: root-directory field label",
+  },
+  "services.buildDeployRootDirOptional": {
+    message: "Optional",
+    description:
+      "Build & Deploy: badge next to the Root Directory label (Render parity)",
+  },
+  "services.buildDeployRootDirHint": {
+    message:
+      "If set, builds run from this subdirectory instead of the repository root. Code changes outside of it don't trigger an auto-deploy. Most commonly used with a monorepo.",
+    description: "Build & Deploy: root-directory field help text",
+  },
+  "services.buildDeployRootDirEmpty": {
+    message: "Repository root",
+    description: "Build & Deploy: shown when spec.rootDir is unset",
+  },
+  "services.buildDeployConfirmRoot": {
+    message: "the repository root",
+    description:
+      "Build & Deploy: mid-sentence phrase for the confirm dialog title when clearing rootDir to empty (a dedicated key, not a lowercased buildDeployRootDirEmpty, since that transform doesn't hold in every language)",
+  },
+  "services.buildDeployRootDirPlaceholder": {
+    message: "e.g. backend",
+    description: "Build & Deploy: root-directory input placeholder",
+  },
+  "services.buildDeployEdit": {
+    message: "Edit Root Directory",
+    description: "Build & Deploy: accessible label for the edit-pencil button",
+  },
+  "services.buildDeploySave": {
+    message: "Save",
+    description: "Build & Deploy: root-directory inline-edit save button",
+  },
+  "services.buildDeployCancel": {
+    message: "Cancel",
+    description: "Build & Deploy: root-directory inline-edit cancel button",
+  },
+  "services.buildDeployConfirmTitle": {
+    message: "Change Root Directory to {value}?",
+    description: "Build & Deploy: root-directory change confirm dialog title",
+  },
+  "services.buildDeployConfirmBody": {
+    message:
+      "The service rebuilds and redeploys, scoped to the new directory — in-flight requests finish before old instances are replaced.",
+    description: "Build & Deploy: root-directory change confirm dialog body",
+  },
+  "services.buildDeploySuccess": {
+    message: "Root Directory updated.",
+    description: "Toast after setRootDir succeeds",
+  },
+  "services.buildDeployError": {
+    message: "Couldn't update the Root Directory. Please try again.",
+    description: "Toast after setRootDir fails",
   },
   "services.colType": {
     message: "Type",

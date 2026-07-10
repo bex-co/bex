@@ -135,6 +135,12 @@ type AppView struct {
 	// RootDir is the subdirectory of the repo this App builds from (Render's
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`
+	// Repo and Branch are the build-from-git source (spec.repo/spec.branch),
+	// empty for an image-backed App. The dashboard's Settings → Build & Deploy
+	// section reads all three; only RootDir is editable after create
+	// (SetRootDir) — Repo/Branch are fixed at create time.
+	Repo   string `json:"repo,omitempty"`
+	Branch string `json:"branch,omitempty"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -168,6 +174,8 @@ func view(a *appv1alpha1.App) AppView {
 		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
 		OwnerID:        a.Labels[core.LabelTenant],
 		RootDir:        a.Spec.RootDir,
+		Repo:           a.Spec.Repo,
+		Branch:         a.Spec.Branch,
 	}
 }
 
@@ -681,6 +689,30 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 	return s.writeThroughStore(ctx, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppIdleTTL(ctx, id, seconds) },
 		func(a *appv1alpha1.App) { a.Spec.IdleTTLSeconds = seconds })
+}
+
+// SetRootDir changes the subdirectory of Repo a build-from-git App builds
+// from (spec.rootDir, Render's Root Directory) and bumps spec.restartedAt so
+// the change takes effect as a fresh build scoped to the new subdirectory —
+// otherwise a rootDir-only change would sit unbuilt until the next unrelated
+// push. Not projection-owned (mirrors Builder): the control-plane row never
+// carries it, so this is a direct CR patch like Restart, not
+// writeThroughStore. Rejected for an image-backed App (nothing to build).
+func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Repo == "" {
+		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (root directory only applies to build-from-git)", core.ErrBadRequest, name)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.RootDir = rootDir
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.
