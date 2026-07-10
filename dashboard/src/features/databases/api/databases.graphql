@@ -39,6 +39,9 @@ query Database($id: String!) {
     createdAt
     externalHost
     public
+    poolerEnabled
+    backupsEnabled
+    ipAllowList
   }
 }
 
@@ -50,8 +53,114 @@ query DatabaseConnectionInfo($id: String!) {
     password
     internalConnectionString
     externalConnectionString
+    internalConnectionPoolString
+    externalConnectionPoolString
     psqlCommand
   }
+}
+
+# --- advanced managed-Postgres surface (w1/m17) ---
+
+query DatabaseRecoveryInfo($id: String!) {
+  databaseRecoveryInfo(id: $id) {
+    enabled
+    earliestRecoveryTime
+    latestRecoveryTime
+    backups {
+      id
+      status
+      createdAt
+    }
+  }
+}
+
+query DatabaseExports($id: String!) {
+  databaseExports(id: $id) {
+    id
+    status
+    createdAt
+  }
+}
+
+query DatabaseUsers($id: String!) {
+  databaseUsers(id: $id) {
+    name
+  }
+}
+
+query DatabaseIpAllowList($id: String!) {
+  databaseIpAllowList(id: $id)
+}
+
+mutation SuspendDatabase($id: String!) {
+  suspendDatabase(id: $id) {
+    id
+    suspended
+    status
+  }
+}
+
+mutation ResumeDatabase($id: String!) {
+  resumeDatabase(id: $id) {
+    id
+    suspended
+    status
+  }
+}
+
+mutation RestartDatabase($id: String!) {
+  restartDatabase(id: $id) {
+    id
+    suspended
+    status
+  }
+}
+
+mutation RecoverDatabase(
+  $id: String!
+  $name: String!
+  $targetTime: String
+  $plan: String
+  $version: String
+) {
+  recoverDatabase(
+    id: $id
+    name: $name
+    targetTime: $targetTime
+    plan: $plan
+    version: $version
+  ) {
+    id
+    name
+    plan
+    status
+  }
+}
+
+mutation CreateDatabaseExport($id: String!) {
+  createDatabaseExport(id: $id) {
+    id
+    status
+    createdAt
+  }
+}
+
+mutation SetDatabaseIpAllowList($id: String!, $cidrs: [String]) {
+  setDatabaseIpAllowList(id: $id, cidrs: $cidrs) {
+    id
+    ipAllowList
+  }
+}
+
+mutation CreateDatabaseUser($id: String!, $name: String!) {
+  createDatabaseUser(id: $id, name: $name) {
+    name
+    password
+  }
+}
+
+mutation DeleteDatabaseUser($id: String!, $name: String!) {
+  deleteDatabaseUser(id: $id, name: $name)
 }
 
 # The create dialog's plan-picker source (w5/m8): the shared lego/types/tiers

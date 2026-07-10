@@ -7,9 +7,12 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useDatabase } from "@/features/databases/hooks/use-database";
+import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
+import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
+import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 export const Route = createFileRoute("/databases/$databaseId")({
@@ -24,7 +27,8 @@ export function DatabaseDetailPage() {
   const { databaseId } = Route.useParams();
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { database, loading } = useDatabase(databaseId);
+  const { database, loading, refetch } = useDatabase(databaseId);
+  const lifecycle = useDatabaseLifecycle({ refetch });
 
   const showNotFound = !loading && !database;
 
@@ -46,6 +50,7 @@ export function DatabaseDetailPage() {
           <DatabaseRowActions
             database={database}
             onDeleted={() => void navigate({ to: "/databases" })}
+            lifecycle={lifecycle}
           />
         ) : null}
       </div>
@@ -63,6 +68,8 @@ export function DatabaseDetailPage() {
             <>
               <MetadataCard database={database} />
               <ConnectionInfoPanel id={database.id} />
+              <RecoveryPanel id={database.id} />
+              <AccessControlPanel id={database.id} />
             </>
           ) : (
             <Skeleton className="h-64 w-full" />

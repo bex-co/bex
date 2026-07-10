@@ -19,8 +19,16 @@ package controller
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+var testStore = BackupStore{
+	DestinationPath: "s3://bex-tfstate/postgres",
+	EndpointURL:     "https://s3.eu-central-2.wasabisys.com",
+	S3Secret:        "pg-backup-s3",
+}
 
 func TestNormalizeIdent(t *testing.T) {
 	cases := map[string]string{
@@ -56,7 +64,7 @@ func TestResolvePlan(t *testing.T) {
 
 func TestCnpgClusterSpec(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
-	spec := cnpgClusterSpec(plan, gb, "", "my_db", "my_db_user")
+	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "my_db", owner: "my_db_user"})
 
 	if spec["instances"] != int64(1) {
 		t.Errorf("free instances = %v, want 1", spec["instances"])
@@ -79,14 +87,14 @@ func TestCnpgClusterSpec(t *testing.T) {
 	}
 
 	// version pins the image
-	withVer := cnpgClusterSpec(plan, gb, "16", "d", "d_user")
+	withVer := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, version: "16", dbname: "d", owner: "d_user"})
 	if withVer["imageName"] != "ghcr.io/cloudnative-pg/postgresql:16" {
 		t.Errorf("version image = %v", withVer["imageName"])
 	}
 }
 
 func TestIngressRouteTCPSpec(t *testing.T) {
-	spec := ingressRouteTCPSpec(pgEntryPoint, "smoke-db.db.bex.co", "smoke-db-rw", 5432)
+	spec := ingressRouteTCPSpec(pgEntryPoint, "smoke-db.db.bex.co", "smoke-db-rw", 5432, nil)
 
 	if ep := spec["entryPoints"].([]any); len(ep) != 1 || ep[0] != pgEntryPoint {
 		t.Errorf("entryPoints = %v, want [%s]", ep, pgEntryPoint)
@@ -102,5 +110,128 @@ func TestIngressRouteTCPSpec(t *testing.T) {
 	svc := route["services"].([]any)[0].(map[string]any)
 	if svc["name"] != "smoke-db-rw" || svc["port"] != int64(5432) {
 		t.Errorf("service = %v, want smoke-db-rw:5432", svc)
+	}
+}
+
+func TestCnpgClusterSpecBackup(t *testing.T) {
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
+
+	// Backups off => no backup block.
+	off := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user"})
+	if _, has := off["backup"]; has {
+		t.Error("no store => no backup block")
+	}
+
+	// Backups on => barmanObjectStore + retention, credentials from the Secret.
+	on := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore})
+	backup := on["backup"].(map[string]any)
+	if backup["retentionPolicy"] != backupRetention {
+		t.Errorf("retentionPolicy = %v", backup["retentionPolicy"])
+	}
+	bos := backup["barmanObjectStore"].(map[string]any)
+	if bos["destinationPath"] != testStore.DestinationPath || bos["endpointURL"] != testStore.EndpointURL {
+		t.Errorf("barmanObjectStore target = %v", bos)
+	}
+	creds := bos["s3Credentials"].(map[string]any)["accessKeyId"].(map[string]any)
+	if creds["name"] != testStore.S3Secret || creds["key"] != "AWS_ACCESS_KEY_ID" {
+		t.Errorf("s3 credentials ref = %v", creds)
+	}
+	// A cluster's own backup uses the default serverName (its own cluster name).
+	if _, has := bos["serverName"]; has {
+		t.Error("own backup should not pin serverName (defaults to cluster name)")
+	}
+	// initdb bootstrap when not recovering.
+	if _, has := on["bootstrap"].(map[string]any)["initdb"]; !has {
+		t.Error("non-recovery cluster should bootstrap via initdb")
+	}
+}
+
+func TestCnpgClusterSpecRecovery(t *testing.T) {
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	rec := &appv1alpha1.DatabaseRecovery{SourceDatabase: "src", TargetTime: "2026-07-09T10:00:00Z"}
+	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore, recovery: rec})
+
+	boot := spec["bootstrap"].(map[string]any)
+	if _, has := boot["initdb"]; has {
+		t.Error("recovery cluster must not initdb")
+	}
+	recovery := boot["recovery"].(map[string]any)
+	if recovery["source"] != recoverySource {
+		t.Errorf("recovery.source = %v", recovery["source"])
+	}
+	if recovery["recoveryTarget"].(map[string]any)["targetTime"] != rec.TargetTime {
+		t.Errorf("recoveryTarget = %v", recovery["recoveryTarget"])
+	}
+	// externalClusters reads the SOURCE's serverName from the shared store.
+	ext := spec["externalClusters"].([]any)[0].(map[string]any)
+	if ext["name"] != recoverySource {
+		t.Errorf("externalCluster name = %v", ext["name"])
+	}
+	if ext["barmanObjectStore"].(map[string]any)["serverName"] != "src" {
+		t.Errorf("externalCluster serverName should be the source db, got %v", ext["barmanObjectStore"])
+	}
+}
+
+func TestCnpgClusterSpecManagedRoles(t *testing.T) {
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	users := []appv1alpha1.DatabaseUser{{Name: "reporting", SecretName: "d-user-reporting"}}
+	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", users: users})
+
+	roles := spec["managed"].(map[string]any)["roles"].([]any)
+	role := roles[0].(map[string]any)
+	if role["name"] != "reporting" || role["ensure"] != "present" || role["login"] != true {
+		t.Errorf("managed role = %v", role)
+	}
+	if role["passwordSecret"].(map[string]any)["name"] != "d-user-reporting" {
+		t.Errorf("passwordSecret = %v", role["passwordSecret"])
+	}
+	// No users => no managed block.
+	bare := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user"})
+	if _, has := bare["managed"]; has {
+		t.Error("no users => no managed block")
+	}
+}
+
+func TestScheduledBackupSpec(t *testing.T) {
+	sb := scheduledBackupSpec("mydb")
+	if sb["schedule"] != backupSchedule || sb["method"] != "barmanObjectStore" {
+		t.Errorf("scheduledBackup = %v", sb)
+	}
+	if sb["cluster"].(map[string]any)["name"] != "mydb" {
+		t.Errorf("scheduledBackup cluster = %v", sb["cluster"])
+	}
+}
+
+func TestPoolerSpec(t *testing.T) {
+	p := poolerSpec("mydb")
+	if p["cluster"].(map[string]any)["name"] != "mydb" || p["type"] != "rw" {
+		t.Errorf("pooler = %v", p)
+	}
+	if p["pgbouncer"].(map[string]any)["poolMode"] != "transaction" {
+		t.Errorf("poolMode = %v", p["pgbouncer"])
+	}
+}
+
+func TestIPAllowListMiddlewareSpec(t *testing.T) {
+	mw := ipAllowListMiddlewareSpec([]string{"203.0.113.0/24", "10.0.0.0/8"})
+	ranges := mw["ipAllowList"].(map[string]any)["sourceRange"].([]any)
+	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" {
+		t.Errorf("sourceRange = %v", ranges)
+	}
+}
+
+func TestSetLifecycleAnnotations(t *testing.T) {
+	// Suspend + restart set both annotations.
+	c := &unstructured.Unstructured{}
+	setLifecycleAnnotations(c, true, "2026-07-09T10:00:00Z")
+	anns := c.GetAnnotations()
+	if anns[hibernationAnnotation] != "on" || anns[restartAnnotation] != "2026-07-09T10:00:00Z" {
+		t.Errorf("annotations = %v", anns)
+	}
+	// Resume removes the hibernation annotation, keeps a prior restart stamp.
+	setLifecycleAnnotations(c, false, "2026-07-09T10:00:00Z")
+	anns = c.GetAnnotations()
+	if _, has := anns[hibernationAnnotation]; has {
+		t.Error("resume must remove the hibernation annotation")
 	}
 }

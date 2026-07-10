@@ -1,19 +1,19 @@
 # w1 · m17 — Managed Postgres advanced: data-protection + lifecycle + access
 
-**Worker:** worker1 **Goal:** Close the credibility gap in "managed" Postgres — backups + point-in-time recovery, the suspend/resume/restart lifecycle, and access/connection controls (IP allowlist, PgBouncer pooler, Postgres users) — over CNPG, across REST/GraphQL/MCP and the database detail page. **Status:** todo
+**Worker:** worker1 **Goal:** Close the credibility gap in "managed" Postgres — backups + point-in-time recovery, the suspend/resume/restart lifecycle, and access/connection controls (IP allowlist, PgBouncer pooler, Postgres users) — over CNPG, across REST/GraphQL/MCP and the database detail page. **Status:** done — 2026-07-09
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on             |
 | ---- | -------------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Backups + PITR/recovery — CNPG backups → object storage + recovery-info/recover/exports | 50m | —                      |
-| t002 | Lifecycle — suspend / resume / restart verbs (Core + REST/GraphQL/MCP)                   | 40m | —                      |
-| t003 | Access & connection — IP allowlist + PgBouncer pooler strings + Postgres users          | 45m | —                      |
-| t004 | Dashboard — Recovery tab + lifecycle actions + access-control on the database detail     | 45m | t001, t002, t003       |
-| t005 | Render parity — advanced Postgres across REST/GraphQL/MCP/UI vs render.com               | 20m | t004                   |
-| t006 | Simplify — `/simplify` over what this milestone changed                                  | 20m | t005                   |
-| t007 | Test coverage — meaningful tests for recovery + lifecycle + access                       | 30m | t005                   |
-| t008 | Closeout                                                                                 | 10m | t007                   |
+| t001 | Backups + PITR/recovery — CNPG backups → object storage + recovery-info/recover/exports | 50m | — — **DONE**           |
+| t002 | Lifecycle — suspend / resume / restart verbs (Core + REST/GraphQL/MCP)                   | 40m | — — **DONE**           |
+| t003 | Access & connection — IP allowlist + PgBouncer pooler strings + Postgres users          | 45m | — — **DONE**           |
+| t004 | Dashboard — Recovery tab + lifecycle actions + access-control on the database detail     | 45m | t001, t002, t003 — **DONE** |
+| t005 | Render parity — advanced Postgres across REST/GraphQL/MCP/UI vs render.com               | 20m | t004 — **DONE**        |
+| t006 | Simplify — `/simplify` over what this milestone changed                                  | 20m | t005 — **DONE**        |
+| t007 | Test coverage — meaningful tests for recovery + lifecycle + access                       | 30m | t005 — **DONE**        |
+| t008 | Closeout                                                                                 | 10m | t007 — **DONE**        |
 
 ## Definition of done
 

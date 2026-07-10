@@ -48,6 +48,77 @@ type DatabaseSpec struct {
 	// External connections use sslmode=require. See docs/postgresql-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
+
+	// Suspended hibernates the CNPG cluster (cnpg.io/hibernation=on): compute is
+	// stopped but the PVC is kept (data survives) — Render's Postgres suspend, the
+	// sibling of App/KeyValue suspend. Default: running. See
+	// docs/restart-suspend-and-resume.md.
+	// +optional
+	Suspended bool `json:"suspended,omitempty"`
+
+	// RestartedAt, when bumped to a fresh timestamp, triggers a CNPG rolling
+	// restart of the primary (the operator stamps the cluster's
+	// kubectl.kubernetes.io/restartedAt annotation). Verb-as-timestamp, mirroring
+	// App.spec.restartedAt.
+	// +optional
+	RestartedAt string `json:"restartedAt,omitempty"`
+
+	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
+	// Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
+	// route is open to all source IPs. The internal "-rw" path is never affected.
+	// Render's ipAllowList; only meaningful when Public.
+	// +optional
+	IPAllowList []string `json:"ipAllowList,omitempty"`
+
+	// Pooler, when true, provisions a PgBouncer connection pooler (a CNPG Pooler
+	// in transaction mode) for this database; the connection info then surfaces
+	// pooled connection strings. Render's connection pooling.
+	// +optional
+	Pooler bool `json:"pooler,omitempty"`
+
+	// Users are additional managed PostgreSQL login roles, projected to the CNPG
+	// cluster's spec.managed.roles. The owner role (<db>_user) is provisioned by
+	// CNPG's bootstrap and is not listed here. Each user's password lives in the
+	// referenced Secret's "password" key (created by bex-api, never in status).
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	Users []DatabaseUser `json:"users,omitempty"`
+
+	// Recovery, when set, provisions this Database by restoring another Database's
+	// object-store backups to a point in time (PITR) into a NEW instance, instead
+	// of initializing an empty database (CNPG bootstrap.recovery). Immutable after
+	// first provision. Recovery requires the controller's backup store to be
+	// configured. See docs/postgresql-management.md.
+	// +optional
+	Recovery *DatabaseRecovery `json:"recovery,omitempty"`
+}
+
+// DatabaseUser is an additional managed PostgreSQL login role on a Database.
+type DatabaseUser struct {
+	// Name is the role name (a valid unquoted PostgreSQL identifier).
+	// +required
+	Name string `json:"name"`
+
+	// SecretName references a Secret in the Database's namespace whose "password"
+	// key holds the role's password (a CNPG basic-auth Secret referenced by
+	// spec.managed.roles[].passwordSecret). bex-api creates it as
+	// "<db>-user-<name>" with a generated password on user creation.
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
+}
+
+// DatabaseRecovery restores a new Database from a source Database's backups.
+type DatabaseRecovery struct {
+	// SourceDatabase is the name of the Database whose object-store backups to
+	// restore from (its CNPG serverName in the shared destination path).
+	// +required
+	SourceDatabase string `json:"sourceDatabase"`
+
+	// TargetTime is the RFC3339 point in time to recover to (PITR). Empty =>
+	// recover to the latest available point (the end of the WAL stream).
+	// +optional
+	TargetTime string `json:"targetTime,omitempty"`
 }
 
 // DatabasePhase mirrors the provisioning lifecycle.
@@ -87,6 +158,23 @@ type DatabaseStatus struct {
 	// (credentials from SecretName). DNS for the host must point at the edge.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
+
+	// PoolerHost is the in-cluster PgBouncer service host ("<name>-pooler.<ns>.svc")
+	// when Pooler is enabled (empty otherwise). The pooled internal URL routes
+	// through it.
+	// +optional
+	PoolerHost string `json:"poolerHost,omitempty"`
+
+	// PoolerExternalHost is the public SNI hostname for the pooled endpoint when
+	// both Pooler and Public are set (empty otherwise).
+	// +optional
+	PoolerExternalHost string `json:"poolerExternalHost,omitempty"`
+
+	// BackupsEnabled is true when the controller projected a barmanObjectStore +
+	// ScheduledBackup for this database (the plan opts in and the backup store is
+	// configured) — the signal that recovery/PITR is available.
+	// +optional
+	BackupsEnabled bool `json:"backupsEnabled,omitempty"`
 
 	// ObservedGeneration is the .metadata.generation the controller last reconciled.
 	// +optional

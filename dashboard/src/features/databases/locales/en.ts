@@ -311,6 +311,268 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't copy to clipboard",
     description: "Toast when clipboard copy fails",
   },
+  "databases.loading": {
+    message: "Loading…",
+    description: "Generic loading placeholder in a detail panel",
+  },
+  // --- Lifecycle actions (suspend / resume / restart) ---
+  "databases.actionSuspend": {
+    message: "Suspend",
+    description: "Row action: hibernate the database (stop compute, keep data)",
+  },
+  "databases.actionResume": {
+    message: "Resume",
+    description: "Row action: wake a suspended database",
+  },
+  "databases.actionRestart": {
+    message: "Restart",
+    description: "Row action: rolling restart of the primary",
+  },
+  "databases.suspendConfirmTitle": {
+    message: "Suspend {name}?",
+    description: "Suspend-confirmation dialog title",
+  },
+  "databases.suspendConfirmBody": {
+    message:
+      "Compute stops and the database becomes unreachable, but its data is preserved. Resume it any time to bring it back.",
+    description: "Suspend-confirmation dialog body",
+  },
+  "databases.restartConfirmTitle": {
+    message: "Restart {name}?",
+    description: "Restart-confirmation dialog title",
+  },
+  "databases.restartConfirmBody": {
+    message:
+      "The primary is restarted. Connections drop briefly while it comes back.",
+    description: "Restart-confirmation dialog body",
+  },
+  "databases.toastSuspendSuccess": {
+    message: "Suspending {name}…",
+    description: "Toast after a suspend request is accepted",
+  },
+  "databases.toastResumeSuccess": {
+    message: "Resuming {name}…",
+    description: "Toast after a resume request is accepted",
+  },
+  "databases.toastRestartSuccess": {
+    message: "Restarting {name}…",
+    description: "Toast after a restart request is accepted",
+  },
+  "databases.toastLifecycleError": {
+    message: "Couldn't complete the action on {name}. Please try again.",
+    description: "Toast when a lifecycle verb fails",
+  },
+  // --- Recovery panel ---
+  "databases.recoveryTitle": {
+    message: "Recovery",
+    description: "Recovery panel card title",
+  },
+  "databases.recoveryDescription": {
+    message:
+      "Point-in-time recovery and backups. Restore always creates a new database — this one is never modified.",
+    description: "Recovery panel card description",
+  },
+  "databases.recoveryDisabled": {
+    message:
+      "Backups aren't enabled for this plan, so recovery isn't available. Upgrade to a plan with backups to enable point-in-time recovery.",
+    description: "Recovery panel state when the plan has no backups",
+  },
+  "databases.recoveryEarliest": {
+    message: "Earliest restore point",
+    description: "Recovery panel field (earliest recoverable time)",
+  },
+  "databases.recoveryLatest": {
+    message: "Latest restore point",
+    description: "Recovery panel field (latest recoverable time)",
+  },
+  "databases.recoveryNoBackupYet": {
+    message: "No backup yet",
+    description: "Recovery panel value when the first backup hasn't landed",
+  },
+  "databases.recoveryRestore": {
+    message: "Restore to new instance",
+    description: "Recovery panel button that opens the restore dialog",
+  },
+  "databases.recoveryCreateExport": {
+    message: "Create export",
+    description: "Recovery panel button that triggers an on-demand export",
+  },
+  "databases.recoveryBackups": {
+    message: "Backups",
+    description: "Recovery panel backup-list heading",
+  },
+  "databases.recoveryNoBackups": {
+    message: "No backups yet.",
+    description: "Recovery panel empty backup list",
+  },
+  "databases.recoveryExports": {
+    message: "Exports",
+    description: "Recovery panel export-list heading",
+  },
+  "databases.recoveryNoExports": {
+    message: "No exports yet.",
+    description: "Recovery panel empty export list",
+  },
+  "databases.recoveryRestoreTitle": {
+    message: "Restore to a new database",
+    description: "Restore dialog title",
+  },
+  "databases.recoveryRestoreBody": {
+    message:
+      "Provision a new database restored from this one's backups. The source is left untouched.",
+    description: "Restore dialog body",
+  },
+  "databases.recoveryRestoreName": {
+    message: "New database name",
+    description: "Restore dialog field label",
+  },
+  "databases.recoveryRestoreTime": {
+    message: "Point in time (optional)",
+    description: "Restore dialog target-time field label",
+  },
+  "databases.recoveryRestoreTimeHint": {
+    message: "Leave empty to restore the latest available point.",
+    description: "Restore dialog target-time helper text",
+  },
+  "databases.recoveryRestoreConfirm": {
+    message: "Restore",
+    description: "Restore dialog confirm button",
+  },
+  "databases.recoveryExportStarted": {
+    message: "Export started.",
+    description: "Toast after an export is triggered",
+  },
+  "databases.recoveryExportError": {
+    message: "Couldn't start the export. Please try again.",
+    description: "Toast when an export request fails",
+  },
+  "databases.recoveryRestoreStarted": {
+    message: "Restoring into {name}…",
+    description: "Toast after a restore request is accepted",
+  },
+  "databases.recoveryRestoreError": {
+    message: "Couldn't restore: {error}",
+    description: "Toast when a restore request fails",
+  },
+  // --- Access control panel ---
+  "databases.accessTitle": {
+    message: "Access control",
+    description: "Access-control panel card title",
+  },
+  "databases.accessDescription": {
+    message:
+      "Restrict the external endpoint, pool connections, and manage database users.",
+    description: "Access-control panel card description",
+  },
+  "databases.accessAllowList": {
+    message: "IP allowlist",
+    description:
+      "Access panel section heading (external-endpoint CIDR allowlist)",
+  },
+  "databases.accessAllowListHint": {
+    message:
+      "Only these CIDR ranges can reach the external endpoint. Empty means open to all source IPs. The internal endpoint is never affected.",
+    description: "Access panel IP allowlist helper text",
+  },
+  "databases.accessAllowListOpen": {
+    message: "Open to all source IPs.",
+    description: "Access panel shown when the allowlist is empty",
+  },
+  "databases.accessAllowListAdd": {
+    message: "Add",
+    description: "Access panel button to add a CIDR to the draft allowlist",
+  },
+  "databases.accessAllowListRemove": {
+    message: "Remove {cidr}",
+    description: "Accessible label to remove a CIDR chip",
+  },
+  "databases.accessAllowListSave": {
+    message: "Save allowlist",
+    description: "Access panel button to persist the allowlist",
+  },
+  "databases.accessAllowListSaved": {
+    message: "Allowlist updated.",
+    description: "Toast after saving the IP allowlist",
+  },
+  "databases.accessAllowListError": {
+    message: "Couldn't save the allowlist: {error}",
+    description: "Toast when saving the allowlist fails",
+  },
+  "databases.accessUsers": {
+    message: "Database users",
+    description: "Access panel section heading (Postgres login roles)",
+  },
+  "databases.accessUsersHint": {
+    message:
+      "Additional login roles beyond the owner. A new user's password is shown once — copy it now.",
+    description: "Access panel users helper text",
+  },
+  "databases.accessUsersEmpty": {
+    message: "No additional users.",
+    description: "Access panel empty users list",
+  },
+  "databases.accessUserAdd": {
+    message: "Add user",
+    description: "Access panel button to create a database user",
+  },
+  "databases.accessUserDelete": {
+    message: "Delete {name}",
+    description: "Accessible label to delete a database user",
+  },
+  "databases.accessUserPassword": {
+    message: "Password",
+    description: "Label for a newly-created user's password",
+  },
+  "databases.accessUserPasswordOnce": {
+    message: "Password for {name} — shown once:",
+    description: "Access panel one-time password reveal label",
+  },
+  "databases.accessUserCreated": {
+    message: "Created user {name}.",
+    description: "Toast after creating a database user",
+  },
+  "databases.accessUserError": {
+    message: "Couldn't create the user: {error}",
+    description: "Toast when creating a user fails",
+  },
+  "databases.accessUserDeleted": {
+    message: "Deleted user {name}.",
+    description: "Toast after deleting a database user",
+  },
+  "databases.accessUserDeleteError": {
+    message: "Couldn't delete {name}. Please try again.",
+    description: "Toast when deleting a user fails",
+  },
+  "databases.accessPooler": {
+    message: "Connection pooling",
+    description: "Access panel section heading (PgBouncer pooler strings)",
+  },
+  "databases.accessPoolerHint": {
+    message:
+      "Pooled connection strings routed through PgBouncer, for high-connection-count clients.",
+    description: "Access panel pooler helper text",
+  },
+  "databases.accessPoolerReveal": {
+    message: "Reveal pooled strings",
+    description: "Access panel button to fetch the pooled connection strings",
+  },
+  "databases.accessPoolerDisabled": {
+    message:
+      "Connection pooling isn't enabled for this database. Enable a pooler to get pooled connection strings.",
+    description: "Access panel shown when no pooler is provisioned",
+  },
+  "databases.accessPoolerInternal": {
+    message: "Internal pooled connection",
+    description: "Access panel pooled-string label (in-cluster)",
+  },
+  "databases.accessPoolerExternal": {
+    message: "External pooled connection",
+    description: "Access panel pooled-string label (public)",
+  },
+  "databases.accessPoolerError": {
+    message: "Couldn't load the pooled connection strings.",
+    description: "Toast when revealing pooled strings fails",
+  },
 };
 
 export default enDatabases;

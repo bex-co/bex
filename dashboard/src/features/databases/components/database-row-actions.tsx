@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { MoreHorizontal, Loader2 } from "lucide-react";
+import { MoreHorizontal, Loader2, Pause, Play, RotateCw } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import {
@@ -19,31 +20,44 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteDatabase } from "@/features/databases/hooks/use-delete-database";
+import { isSuspended } from "@/features/databases/lib/status";
+import type {
+  DatabaseLifecycleAction,
+  UseDatabaseLifecycleResult,
+} from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 
 export interface DatabaseRowActionsProps {
   database: DatabaseView;
   /** Called after a successful delete (refetch the list / leave the detail page). */
   onDeleted: (id: string) => void;
+  /** When present, the menu also offers suspend/resume/restart (detail page). */
+  lifecycle?: UseDatabaseLifecycleResult;
 }
 
 /**
- * The per-database actions menu. Delete is the only lifecycle verb bex serves
- * today (suspend/resume/failover/PITR are deferred — omitted, not faked). It's
- * destructive and irreversible (cascades the CNPG cluster + PVC), so it's gated
- * behind a typed-name confirmation, matching Render's own delete-DB modal.
+ * The per-database actions menu. Delete (a typed-name confirm, since it cascades
+ * the CNPG cluster + PVC) is always available; when `lifecycle` is wired (the
+ * detail page) the menu also offers suspend/resume/restart — resume runs
+ * immediately, the disruptive verbs (suspend/restart) go through a confirm.
  */
 export function DatabaseRowActions({
   database,
   onDeleted,
+  lifecycle,
 }: DatabaseRowActionsProps) {
   const { t } = useTranslations();
   const { remove, deleting } = useDeleteDatabase();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [typed, setTyped] = useState("");
+  // The disruptive lifecycle verb awaiting confirmation (suspend | restart).
+  const [confirmVerb, setConfirmVerb] =
+    useState<DatabaseLifecycleAction | null>(null);
 
-  const busy = deleting === database.id;
+  const lifecycleBusy = lifecycle?.pending?.id === database.id;
+  const busy = deleting === database.id || lifecycleBusy;
   const canDelete = typed === database.name && !busy;
+  const suspended = isSuspended(database);
 
   async function handleDelete() {
     const ok = await remove(database.id, database.name);
@@ -56,6 +70,10 @@ export function DatabaseRowActions({
   function handleOpenChange(next: boolean) {
     setConfirmOpen(next);
     if (!next) setTyped("");
+  }
+
+  async function runLifecycle(action: DatabaseLifecycleAction) {
+    await lifecycle?.run(action, database);
   }
 
   return (
@@ -72,6 +90,29 @@ export function DatabaseRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {lifecycle ? (
+            <>
+              {suspended ? (
+                <DropdownMenuItem onSelect={() => void runLifecycle("resume")}>
+                  <Play />
+                  {t("databases.actionResume")}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => setConfirmVerb("suspend")}>
+                  <Pause />
+                  {t("databases.actionSuspend")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onSelect={() => setConfirmVerb("restart")}
+                disabled={suspended}
+              >
+                <RotateCw />
+                {t("databases.actionRestart")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => setConfirmOpen(true)}
@@ -81,6 +122,7 @@ export function DatabaseRowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Delete: typed-name confirm (destructive, irreversible). */}
       <Dialog open={confirmOpen} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
@@ -118,6 +160,49 @@ export function DatabaseRowActions({
             >
               {busy ? <Loader2 className="animate-spin" /> : null}
               {t("databases.deleteConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend / restart: simple confirm (disruptive but reversible). */}
+      <Dialog
+        open={confirmVerb !== null}
+        onOpenChange={(next) => !next && setConfirmVerb(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmVerb === "suspend"
+                ? t("databases.suspendConfirmTitle", { name: database.name })
+                : t("databases.restartConfirmTitle", { name: database.name })}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmVerb === "suspend"
+                ? t("databases.suspendConfirmBody")
+                : t("databases.restartConfirmBody")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmVerb(null)}
+              disabled={lifecycleBusy}
+            >
+              {t("databases.deleteCancel")}
+            </Button>
+            <Button
+              onClick={() => {
+                const verb = confirmVerb;
+                setConfirmVerb(null);
+                if (verb) void runLifecycle(verb);
+              }}
+              disabled={lifecycleBusy}
+            >
+              {lifecycleBusy ? <Loader2 className="animate-spin" /> : null}
+              {confirmVerb === "suspend"
+                ? t("databases.actionSuspend")
+                : t("databases.actionRestart")}
             </Button>
           </DialogFooter>
         </DialogContent>

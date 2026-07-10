@@ -19,6 +19,8 @@ export interface DatabaseView {
   createdAt: string | null;
   /** Whether the external (public) endpoint is enabled. */
   public: boolean;
+  /** Render's string suspended enum ("suspended" / "not_suspended"). */
+  suspended: string;
 }
 
 /** The extra fields the detail query reads beyond the list projection. */

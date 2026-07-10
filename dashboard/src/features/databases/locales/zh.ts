@@ -308,6 +308,260 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法复制到剪贴板",
     description: "Toast when clipboard copy fails",
   },
+  "databases.loading": {
+    message: "加载中…",
+    description: "Generic loading placeholder in a detail panel",
+  },
+  // --- Lifecycle actions (suspend / resume / restart) ---
+  "databases.actionSuspend": {
+    message: "暂停",
+    description: "Row action: hibernate the database (stop compute, keep data)",
+  },
+  "databases.actionResume": {
+    message: "恢复",
+    description: "Row action: wake a suspended database",
+  },
+  "databases.actionRestart": {
+    message: "重启",
+    description: "Row action: rolling restart of the primary",
+  },
+  "databases.suspendConfirmTitle": {
+    message: "暂停 {name}？",
+    description: "Suspend-confirmation dialog title",
+  },
+  "databases.suspendConfirmBody": {
+    message: "计算将停止、数据库将不可访问，但数据会保留。可随时恢复。",
+    description: "Suspend-confirmation dialog body",
+  },
+  "databases.restartConfirmTitle": {
+    message: "重启 {name}？",
+    description: "Restart-confirmation dialog title",
+  },
+  "databases.restartConfirmBody": {
+    message: "主实例将重启，恢复期间连接会短暂中断。",
+    description: "Restart-confirmation dialog body",
+  },
+  "databases.toastSuspendSuccess": {
+    message: "正在暂停 {name}…",
+    description: "Toast after a suspend request is accepted",
+  },
+  "databases.toastResumeSuccess": {
+    message: "正在恢复 {name}…",
+    description: "Toast after a resume request is accepted",
+  },
+  "databases.toastRestartSuccess": {
+    message: "正在重启 {name}…",
+    description: "Toast after a restart request is accepted",
+  },
+  "databases.toastLifecycleError": {
+    message: "无法对 {name} 执行该操作，请重试。",
+    description: "Toast when a lifecycle verb fails",
+  },
+  // --- Recovery panel ---
+  "databases.recoveryTitle": {
+    message: "恢复",
+    description: "Recovery panel card title",
+  },
+  "databases.recoveryDescription": {
+    message: "时间点恢复与备份。恢复始终创建新数据库，本数据库不会被修改。",
+    description: "Recovery panel card description",
+  },
+  "databases.recoveryDisabled": {
+    message:
+      "当前套餐未启用备份，无法恢复。升级到含备份的套餐以启用时间点恢复。",
+    description: "Recovery panel state when the plan has no backups",
+  },
+  "databases.recoveryEarliest": {
+    message: "最早恢复点",
+    description: "Recovery panel field (earliest recoverable time)",
+  },
+  "databases.recoveryLatest": {
+    message: "最新恢复点",
+    description: "Recovery panel field (latest recoverable time)",
+  },
+  "databases.recoveryNoBackupYet": {
+    message: "尚无备份",
+    description: "Recovery panel value when the first backup hasn't landed",
+  },
+  "databases.recoveryRestore": {
+    message: "恢复到新实例",
+    description: "Recovery panel button that opens the restore dialog",
+  },
+  "databases.recoveryCreateExport": {
+    message: "创建导出",
+    description: "Recovery panel button that triggers an on-demand export",
+  },
+  "databases.recoveryBackups": {
+    message: "备份",
+    description: "Recovery panel backup-list heading",
+  },
+  "databases.recoveryNoBackups": {
+    message: "尚无备份。",
+    description: "Recovery panel empty backup list",
+  },
+  "databases.recoveryExports": {
+    message: "导出",
+    description: "Recovery panel export-list heading",
+  },
+  "databases.recoveryNoExports": {
+    message: "尚无导出。",
+    description: "Recovery panel empty export list",
+  },
+  "databases.recoveryRestoreTitle": {
+    message: "恢复到新数据库",
+    description: "Restore dialog title",
+  },
+  "databases.recoveryRestoreBody": {
+    message: "从本数据库的备份创建一个新数据库进行恢复，源数据库保持不变。",
+    description: "Restore dialog body",
+  },
+  "databases.recoveryRestoreName": {
+    message: "新数据库名称",
+    description: "Restore dialog field label",
+  },
+  "databases.recoveryRestoreTime": {
+    message: "时间点（可选）",
+    description: "Restore dialog target-time field label",
+  },
+  "databases.recoveryRestoreTimeHint": {
+    message: "留空则恢复到最新可用时间点。",
+    description: "Restore dialog target-time helper text",
+  },
+  "databases.recoveryRestoreConfirm": {
+    message: "恢复",
+    description: "Restore dialog confirm button",
+  },
+  "databases.recoveryExportStarted": {
+    message: "导出已开始。",
+    description: "Toast after an export is triggered",
+  },
+  "databases.recoveryExportError": {
+    message: "无法开始导出，请重试。",
+    description: "Toast when an export request fails",
+  },
+  "databases.recoveryRestoreStarted": {
+    message: "正在恢复到 {name}…",
+    description: "Toast after a restore request is accepted",
+  },
+  "databases.recoveryRestoreError": {
+    message: "无法恢复：{error}",
+    description: "Toast when a restore request fails",
+  },
+  // --- Access control panel ---
+  "databases.accessTitle": {
+    message: "访问控制",
+    description: "Access-control panel card title",
+  },
+  "databases.accessDescription": {
+    message: "限制外部访问、连接池，以及管理数据库用户。",
+    description: "Access-control panel card description",
+  },
+  "databases.accessAllowList": {
+    message: "IP 允许列表",
+    description:
+      "Access panel section heading (external-endpoint CIDR allowlist)",
+  },
+  "databases.accessAllowListHint": {
+    message:
+      "仅这些 CIDR 网段可访问外部端点。留空表示对所有来源 IP 开放。内部端点始终不受影响。",
+    description: "Access panel IP allowlist helper text",
+  },
+  "databases.accessAllowListOpen": {
+    message: "对所有来源 IP 开放。",
+    description: "Access panel shown when the allowlist is empty",
+  },
+  "databases.accessAllowListAdd": {
+    message: "添加",
+    description: "Access panel button to add a CIDR to the draft allowlist",
+  },
+  "databases.accessAllowListRemove": {
+    message: "移除 {cidr}",
+    description: "Accessible label to remove a CIDR chip",
+  },
+  "databases.accessAllowListSave": {
+    message: "保存允许列表",
+    description: "Access panel button to persist the allowlist",
+  },
+  "databases.accessAllowListSaved": {
+    message: "允许列表已更新。",
+    description: "Toast after saving the IP allowlist",
+  },
+  "databases.accessAllowListError": {
+    message: "无法保存允许列表：{error}",
+    description: "Toast when saving the allowlist fails",
+  },
+  "databases.accessUsers": {
+    message: "数据库用户",
+    description: "Access panel section heading (Postgres login roles)",
+  },
+  "databases.accessUsersHint": {
+    message: "所有者之外的额外登录角色。新用户的密码只显示一次，请立即复制。",
+    description: "Access panel users helper text",
+  },
+  "databases.accessUsersEmpty": {
+    message: "暂无额外用户。",
+    description: "Access panel empty users list",
+  },
+  "databases.accessUserAdd": {
+    message: "添加用户",
+    description: "Access panel button to create a database user",
+  },
+  "databases.accessUserDelete": {
+    message: "删除 {name}",
+    description: "Accessible label to delete a database user",
+  },
+  "databases.accessUserPassword": {
+    message: "密码",
+    description: "Label for a newly-created user's password",
+  },
+  "databases.accessUserPasswordOnce": {
+    message: "{name} 的密码（仅显示一次）：",
+    description: "Access panel one-time password reveal label",
+  },
+  "databases.accessUserCreated": {
+    message: "已创建用户 {name}。",
+    description: "Toast after creating a database user",
+  },
+  "databases.accessUserError": {
+    message: "无法创建用户：{error}",
+    description: "Toast when creating a user fails",
+  },
+  "databases.accessUserDeleted": {
+    message: "已删除用户 {name}。",
+    description: "Toast after deleting a database user",
+  },
+  "databases.accessUserDeleteError": {
+    message: "无法删除 {name}，请重试。",
+    description: "Toast when deleting a user fails",
+  },
+  "databases.accessPooler": {
+    message: "连接池",
+    description: "Access panel section heading (PgBouncer pooler strings)",
+  },
+  "databases.accessPoolerHint": {
+    message: "通过 PgBouncer 路由的连接池字符串，适用于高连接数客户端。",
+    description: "Access panel pooler helper text",
+  },
+  "databases.accessPoolerReveal": {
+    message: "显示连接池字符串",
+    description: "Access panel button to fetch the pooled connection strings",
+  },
+  "databases.accessPoolerDisabled": {
+    message: "该数据库未启用连接池。启用连接池以获取连接池字符串。",
+    description: "Access panel shown when no pooler is provisioned",
+  },
+  "databases.accessPoolerInternal": {
+    message: "内部连接池连接",
+    description: "Access panel pooled-string label (in-cluster)",
+  },
+  "databases.accessPoolerExternal": {
+    message: "外部连接池连接",
+    description: "Access panel pooled-string label (public)",
+  },
+  "databases.accessPoolerError": {
+    message: "无法加载连接池字符串。",
+    description: "Toast when revealing pooled strings fails",
+  },
 };
 
 export default zhDatabases;

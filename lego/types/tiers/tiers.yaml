@@ -67,16 +67,19 @@ postgres:
       memory: 256Mi
       storageGB: 1
       instances: 1
+      backup: false # Render's Free Postgres is ephemeral — no backups, expires
     - id: basic-256mb
       cpu: 100m
       memory: 256Mi
       storageGB: 1
       instances: 1
+      backup: true # daily base backup + WAL archiving => PITR
     - id: basic-1gb
       cpu: 500m
       memory: 1Gi
       storageGB: 5
       instances: 1
+      backup: true
 
 valkey:
   # Managed key-value (Valkey) instance types — the KeyValue CRD's spec.plan.

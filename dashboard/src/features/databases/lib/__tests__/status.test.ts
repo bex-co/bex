@@ -36,6 +36,7 @@ describe("toDatabaseViews", () => {
       diskSizeGB: 5,
       createdAt: "2026-07-01T00:00:00Z",
       public: true,
+      suspended: "not_suspended",
     });
   });
 

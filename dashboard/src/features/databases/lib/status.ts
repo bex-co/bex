@@ -31,7 +31,14 @@ export function toDatabaseView(d: DatabaseNode): DatabaseView {
     diskSizeGB: d.diskSizeGB ?? null,
     createdAt: d.createdAt ?? null,
     public: d.public ?? false,
+    suspended: d.suspended ?? "",
   };
+}
+
+/** True when a database is suspended (hibernated) — Render's string enum. */
+export const SUSPENDED = "suspended";
+export function isSuspended(d: { suspended: string }): boolean {
+  return d.suspended === SUSPENDED;
 }
 
 /**

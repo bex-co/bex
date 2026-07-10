@@ -63,10 +63,10 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | --- | :-: | :-: | :-: | :-: | --- |
 | Postgres CRUD + connection-info | ✅ | ✅ | ✅ | ✅ | `postgres/rest.go` `/v1/postgres` (+`/v1/databases` alias); GraphQL `databases`/`database`/`databaseConnectionInfo`/`createDatabase`/`deleteDatabase`; MCP `list_postgres_instances`/`get_postgres`/`create_postgres`; Databases pages (w5/m8). No `PATCH` update yet (◐, low). [postgresql-management.md](postgresql-management.md). |
 | Read-only SQL query | — | — | ✅ | ✖ | MCP `query_render_postgres` (read-only envelope) — MCP-only on **both** sides (Render exposes no REST/GraphQL equivalent). Dashboard SQL console: none (low). |
-| Lifecycle (suspend / resume / restart) | ✖ | ✖ | ✖ | ✖ | Render `POST /postgres/{id}/{suspend,resume,restart}`. Deferred in [bex-api.md](bex-api.md). → **w1/m17**. |
-| Backups · PITR / recovery | ✖ | ✖ | ✖ | ✖ | Render `recovery-info`/`recover`/`exports` + Recovery tab. Needs CNPG backup wiring. → **w1/m17**. |
+| Lifecycle (suspend / resume / restart) | ✅ | ✅ | ✅ | ✅ | `POST /v1/postgres/{id}/{suspend,resume,restart}` (202/202/200); GraphQL `suspendDatabase`/`resumeDatabase`/`restartDatabase`; MCP `suspend_postgres`/`resume_postgres`/`restart_postgres`; detail-page lifecycle actions. suspend ⇒ CNPG hibernation (compute stops, PVC kept), restart ⇒ rolling restart (w1/m17). [postgresql-management.md](postgresql-management.md). |
+| Backups · PITR / recovery | ✅ | ✅ | ✅ | ✅ | `recovery-info`/`recover`/`exports` over REST + GraphQL (`databaseRecoveryInfo`/`databaseExports`/`recoverDatabase`/`createDatabaseExport`) + MCP; Recovery section on the detail page. `recover` restores to a **new** Database via CNPG `bootstrap.recovery` (source untouched, matching Render). Divergence: bex `exports` are physical base-backup snapshots (CNPG on-demand `Backup`), not Render's logical `pg_dump` — documented, restorable. Backups gated on plan durability + `BEX_DB_BACKUP_*` (w1/m17). |
 | HA · failover · read replicas | ✖ | ✖ | ✖ | ✖ | Render `failover`/`promote`/`replication`. `highAvailabilityEnabled` is reported `false` today. → **w1/013** (deferred from m17). |
-| Access control (IP allowlist) · users · pooler | ✖ | ✖ | ✖ | ✖ | Render `ipAllowList`, `/users`, PgBouncer pooler strings. bex has a `public` toggle only. → **w1/m17**. |
+| Access control (IP allowlist) · users · pooler | ✅ | ✅ | ✅ | ✅ | `ip-allow-list` (Traefik `ipAllowList` middleware gating the external SNI route), `/users` (CNPG managed roles, password revealed once), and PgBouncer pooler strings (CNPG `Pooler`) in `connection-info` — over REST + GraphQL (`databaseIpAllowList`/`databaseUsers`/`setDatabaseIpAllowList`/`createDatabaseUser`/`deleteDatabaseUser`) + MCP; access-control panel on the detail page (w1/m17). |
 | Postgres observability (live queries · top-queries · sizes · table-scans · param overrides) | ✖ | ✖ | ✖ | ✖ | Render `GET /postgres/{id}/{processes,top-queries,sizes,table-scans}` + `parameter-overrides`. Runtime introspection over `pg_stat_activity`/`pg_stat_statements`. bex has none. Untracked, low (extends **w1/m17**). |
 
 ## Other datastores & storage
@@ -155,7 +155,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Health-check path → readiness probe | `w1/005` | todo |
 | Env groups + secret files | `w1/m16` | todo |
 | Per-service autoscaling config | **`w1/008`** (new) | todo |
-| Postgres advanced lifecycle & data protection | `w1/m17` (HA → `w1/013`) | todo |
+| Postgres advanced lifecycle & data protection | `w1/m17` (HA → `w1/013`) | done 2026-07-09 (backups+PITR, suspend/resume/restart, IP allowlist + PgBouncer pooler + users, across REST/GraphQL/MCP + dashboard; HA/replicas → `w1/013`) |
 | Additional service types: background worker + cron job | `w1/m15` | done 2026-07-09 (static site split → `w1/012`) |
 | Request/HTTP logs + structured filters | **`w3/002`** (new) | todo |
 | Projects & environments; registry creds; notifications; outbound webhooks; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |

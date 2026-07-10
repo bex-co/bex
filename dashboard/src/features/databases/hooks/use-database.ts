@@ -11,6 +11,8 @@ export interface UseDatabaseResult {
   database: DatabaseDetailView | null;
   loading: boolean;
   error: Error | undefined;
+  /** Re-read the database now (used after a lifecycle verb converges the state). */
+  refetch: () => void;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface UseDatabaseResult {
  * (docs/bex-api.md §Managed Postgres: the password is surfaced only on request).
  */
 export function useDatabase(id: string): UseDatabaseResult {
-  const { data, loading, error, startPolling, stopPolling } = useQuery(
+  const { data, loading, error, startPolling, stopPolling, refetch } = useQuery(
     DatabaseDocument,
     { variables: { id }, fetchPolicy: "cache-and-network", errorPolicy: "all" },
   );
@@ -41,5 +43,12 @@ export function useDatabase(id: string): UseDatabaseResult {
     return () => stopPolling();
   }, [converging, startPolling, stopPolling]);
 
-  return { database, loading, error };
+  return {
+    database,
+    loading,
+    error,
+    refetch: () => {
+      void refetch();
+    },
+  };
 }

@@ -215,6 +215,11 @@ func main() {
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		DBDomain: envOr("BEX_DB_DOMAIN", ""),
+		Backup: controller.BackupStore{
+			DestinationPath: envOr("BEX_DB_BACKUP_DESTINATION", ""),
+			EndpointURL:     envOr("BEX_DB_BACKUP_ENDPOINT", ""),
+			S3Secret:        envOr("BEX_DB_BACKUP_S3_SECRET", ""),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "database")
 		os.Exit(1)

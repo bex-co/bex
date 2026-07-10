@@ -255,7 +255,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if kv.Spec.Public && r.KvDomain != "" {
 		externalHost := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, route, func() error {
-			route.Object["spec"] = ingressRouteTCPSpec(kvEntryPoint, externalHost, kv.Name, kvPort)
+			route.Object["spec"] = ingressRouteTCPSpec(kvEntryPoint, externalHost, kv.Name, kvPort, nil)
 			return controllerutil.SetControllerReference(&kv, route, r.Scheme)
 		}); err != nil {
 			return r.kvFail(ctx, &kv, "RouteFailed", err)
@@ -263,7 +263,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		kv.Status.ExternalHost = externalHost
 	} else {
 		// Not public (or no base domain): best-effort remove any route we made.
-		if err := deleteTraefikRoute(ctx, r.Client, route); err != nil {
+		if err := deleteOptionalObject(ctx, r.Client, route); err != nil {
 			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
 		}
 		kv.Status.ExternalHost = ""

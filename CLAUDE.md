@@ -45,6 +45,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | operator | `BEX_OPENSANDBOX_URL` | OpenSandbox endpoint (opensandbox runtime) |
 | operator | `BEX_BASE_DOMAIN`, `BEX_CLUSTER_ISSUER` | `*.onbex.co` app URLs, cert-manager issuer |
 | operator | `BEX_DB_DOMAIN` | public managed-Postgres hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/postgresql-management.md); unset ⇒ internal-only |
+| operator | `BEX_DB_BACKUP_DESTINATION`, `BEX_DB_BACKUP_ENDPOINT`, `BEX_DB_BACKUP_S3_SECRET` | CNPG `barmanObjectStore` target for managed-Postgres backups + PITR (docs/postgresql-management.md): S3 URL prefix (e.g. `s3://bex-tfstate/postgres`), S3-compatible endpoint, and the Secret name (in the DB's namespace) with `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` — the etcd/OpenBao backup credential pattern; any unset ⇒ backups disabled for every plan (recovery unavailable) |
 | operator | `BEX_KV_DOMAIN` | public managed key-value (Valkey) hostnames `<name>.<domain>` via Traefik TCP/SNI (docs/keyvalue-management.md); unset ⇒ internal-only |
 | operator | `BEX_ACTIVATOR_SERVICE` | k8s Service name of the wake activator (e.g. `bex-activator`); unset ⇒ auto-sleep disabled |
 | operator | `BEX_ACTIVATOR_PORT` | activator service port (default `8888`) |

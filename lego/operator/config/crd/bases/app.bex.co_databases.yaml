@@ -55,6 +55,15 @@ spec:
               the same namespace; the plan sets resources/storage. See
               docs/postgresql-management.md.
             properties:
+              ipAllowList:
+                description: |-
+                  IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
+                  Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
+                  route is open to all source IPs. The internal "-rw" path is never affected.
+                  Render's ipAllowList; only meaningful when Public.
+                items:
+                  type: string
+                type: array
               plan:
                 default: free
                 description: |-
@@ -65,6 +74,12 @@ spec:
                 - basic-256mb
                 - basic-1gb
                 type: string
+              pooler:
+                description: |-
+                  Pooler, when true, provisions a PgBouncer connection pooler (a CNPG Pooler
+                  in transaction mode) for this database; the connection info then surfaces
+                  pooled connection strings. Render's connection pooling.
+                type: boolean
               public:
                 description: |-
                   Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
@@ -72,12 +87,75 @@ spec:
                   passthrough — Postgres terminates its own TLS). Default: in-cluster only.
                   External connections use sslmode=require. See docs/postgresql-management.md.
                 type: boolean
+              recovery:
+                description: |-
+                  Recovery, when set, provisions this Database by restoring another Database's
+                  object-store backups to a point in time (PITR) into a NEW instance, instead
+                  of initializing an empty database (CNPG bootstrap.recovery). Immutable after
+                  first provision. Recovery requires the controller's backup store to be
+                  configured. See docs/postgresql-management.md.
+                properties:
+                  sourceDatabase:
+                    description: |-
+                      SourceDatabase is the name of the Database whose object-store backups to
+                      restore from (its CNPG serverName in the shared destination path).
+                    type: string
+                  targetTime:
+                    description: |-
+                      TargetTime is the RFC3339 point in time to recover to (PITR). Empty =>
+                      recover to the latest available point (the end of the WAL stream).
+                    type: string
+                required:
+                - sourceDatabase
+                type: object
+              restartedAt:
+                description: |-
+                  RestartedAt, when bumped to a fresh timestamp, triggers a CNPG rolling
+                  restart of the primary (the operator stamps the cluster's
+                  kubectl.kubernetes.io/restartedAt annotation). Verb-as-timestamp, mirroring
+                  App.spec.restartedAt.
+                type: string
               storageGB:
                 description: |-
                   StorageGB overrides the plan's default volume size (GB). Storage can only
                   grow, never shrink. 0 => plan default.
                 format: int32
                 type: integer
+              suspended:
+                description: |-
+                  Suspended hibernates the CNPG cluster (cnpg.io/hibernation=on): compute is
+                  stopped but the PVC is kept (data survives) — Render's Postgres suspend, the
+                  sibling of App/KeyValue suspend. Default: running. See
+                  docs/restart-suspend-and-resume.md.
+                type: boolean
+              users:
+                description: |-
+                  Users are additional managed PostgreSQL login roles, projected to the CNPG
+                  cluster's spec.managed.roles. The owner role (<db>_user) is provisioned by
+                  CNPG's bootstrap and is not listed here. Each user's password lives in the
+                  referenced Secret's "password" key (created by bex-api, never in status).
+                items:
+                  description: DatabaseUser is an additional managed PostgreSQL login
+                    role on a Database.
+                  properties:
+                    name:
+                      description: Name is the role name (a valid unquoted PostgreSQL
+                        identifier).
+                      type: string
+                    secretName:
+                      description: |-
+                        SecretName references a Secret in the Database's namespace whose "password"
+                        key holds the role's password (a CNPG basic-auth Secret referenced by
+                        spec.managed.roles[].passwordSecret). bex-api creates it as
+                        "<db>-user-<name>" with a generated password on user creation.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               version:
                 description: Version is the major PostgreSQL version (e.g. "16").
                   Empty => operator default.
@@ -93,6 +171,12 @@ spec:
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:
+              backupsEnabled:
+                description: |-
+                  BackupsEnabled is true when the controller projected a barmanObjectStore +
+                  ScheduledBackup for this database (the plan opts in and the backup store is
+                  configured) — the signal that recovery/PITR is available.
+                type: boolean
               conditions:
                 description: Conditions represent the current state (Ready).
                 items:
@@ -175,6 +259,17 @@ spec:
                 - Provisioning
                 - Ready
                 - Failed
+                type: string
+              poolerExternalHost:
+                description: |-
+                  PoolerExternalHost is the public SNI hostname for the pooled endpoint when
+                  both Pooler and Public are set (empty otherwise).
+                type: string
+              poolerHost:
+                description: |-
+                  PoolerHost is the in-cluster PgBouncer service host ("<name>-pooler.<ns>.svc")
+                  when Pooler is enabled (empty otherwise). The pooled internal URL routes
+                  through it.
                 type: string
               port:
                 description: Port the database listens on.

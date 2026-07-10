@@ -117,6 +117,156 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, res, nil
 	})
+
+	s.registerLifecycleMCP(srv)
+	s.registerRecoveryMCP(srv)
+	s.registerAccessMCP(srv)
+}
+
+// registerLifecycleMCP adds suspend/resume/restart — bex extensions over
+// Render's MCP (which has no Postgres lifecycle tools), named like the
+// service lifecycle tools.
+func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "suspend_postgres",
+		Description: "Suspend a managed Postgres database (hibernate: stop compute, keep the data volume). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.Suspend(ctx, in.PostgresID)
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "resume_postgres",
+		Description: "Resume a suspended managed Postgres database (un-hibernate). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.Resume(ctx, in.PostgresID)
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "restart_postgres",
+		Description: "Restart a managed Postgres database (rolling restart of the primary). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.Restart(ctx, in.PostgresID)
+		return nil, v, err
+	})
+}
+
+// recoverPostgresArgs is recover_postgres' input: the source id, the new
+// instance name, and an optional PITR target time.
+type recoverPostgresArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the source postgres id (bex Database name) to recover from"`
+	Name       string `json:"name" jsonschema:"the name of the NEW database to restore into (must differ from the source)"`
+	TargetTime string `json:"targetTime,omitempty" jsonschema:"an RFC3339 point in time to recover to; omit to restore the latest available point"`
+	Plan       string `json:"plan,omitempty" jsonschema:"the new instance's plan (omit to match the source)"`
+	Version    string `json:"version,omitempty" jsonschema:"the new instance's PostgreSQL version (omit to match the source)"`
+}
+
+// exportsResult wraps the export list (MCP outputs must be JSON objects).
+type exportsResult struct {
+	Exports []BackupView `json:"exports"`
+}
+
+// registerRecoveryMCP adds recovery info, recover-to-new, and exports.
+func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_postgres_recovery_info",
+		Description: "Get the point-in-time recovery window (earliest/latest restorable time) and backup list for a managed Postgres database. Returns enabled=false for plans without backups.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, RecoveryInfoView, error) {
+		v, err := s.RecoveryInfo(ctx, in.PostgresID)
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "recover_postgres",
+		Description: "Recover a managed Postgres database to a NEW instance restored to a point in time (the source is never modified).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in recoverPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.Recover(ctx, in.PostgresID, RecoverRequest{Name: in.Name, TargetTime: in.TargetTime, Plan: in.Plan, Version: in.Version})
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_exports",
+		Description: "List the on-demand export snapshots taken for a managed Postgres database.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, exportsResult, error) {
+		list, err := s.ListExports(ctx, in.PostgresID)
+		if err != nil {
+			return nil, exportsResult{}, err
+		}
+		return nil, exportsResult{Exports: list}, nil
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_postgres_export",
+		Description: "Trigger an on-demand export (a restorable snapshot to object storage) of a managed Postgres database. Requires a plan with backups.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, BackupView, error) {
+		v, err := s.CreateExport(ctx, in.PostgresID)
+		return nil, v, err
+	})
+}
+
+// ipAllowListArgs / userArgs are the access-tool inputs.
+type ipAllowListArgs struct {
+	PostgresID string   `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	CIDRs      []string `json:"cidrs" jsonschema:"the CIDR allowlist for the external endpoint; an empty list opens it to all source IPs"`
+}
+
+type userArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	Name       string `json:"name" jsonschema:"the login role name (lowercase letters, digits and underscores)"`
+}
+
+// allowListResult / usersResult wrap arrays for MCP object outputs.
+type allowListResult struct {
+	CIDRs []string `json:"cidrs"`
+}
+type usersResult struct {
+	Users []PostgresUserView `json:"users"`
+}
+
+// registerAccessMCP adds the IP-allowlist and Postgres-users tools.
+func (s *Service) registerAccessMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_postgres_ip_allow_list",
+		Description: "Get the CIDR allowlist gating a managed Postgres database's external endpoint (empty => open to all source IPs).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, allowListResult, error) {
+		list, err := s.GetIPAllowList(ctx, in.PostgresID)
+		if err != nil {
+			return nil, allowListResult{}, err
+		}
+		return nil, allowListResult{CIDRs: list}, nil
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_postgres_ip_allow_list",
+		Description: "Replace the CIDR allowlist gating a managed Postgres database's external endpoint. Each entry must be a valid CIDR; an empty list opens the endpoint to all source IPs.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in ipAllowListArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.SetIPAllowList(ctx, in.PostgresID, in.CIDRs)
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_users",
+		Description: "List the additional managed login roles on a managed Postgres database (not the owner role).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, usersResult, error) {
+		users, err := s.ListUsers(ctx, in.PostgresID)
+		if err != nil {
+			return nil, usersResult{}, err
+		}
+		return nil, usersResult{Users: users}, nil
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_postgres_user",
+		Description: "Create an additional managed login role on a managed Postgres database. Returns the generated password once.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in userArgs) (*mcp.CallToolResult, CreateUserResult, error) {
+		v, err := s.CreateUser(ctx, in.PostgresID, in.Name)
+		return nil, v, err
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "delete_postgres_user",
+		Description: "Delete an additional managed login role from a managed Postgres database.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in userArgs) (*mcp.CallToolResult, deleteResult, error) {
+		err := s.DeleteUser(ctx, in.PostgresID, in.Name)
+		return nil, deleteResult{Deleted: err == nil}, err
+	})
+}
+
+// deleteResult is the boolean-shaped output for delete_postgres_user.
+type deleteResult struct {
+	Deleted bool `json:"deleted"`
 }
 
 // resolveOwnerID is list_postgres_instances' ownerId-scoping precedence: an

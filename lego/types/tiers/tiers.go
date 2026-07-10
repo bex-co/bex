@@ -67,6 +67,12 @@ type PostgresTier struct {
 	StorageGB int32 `json:"storageGB"`
 	// Instances is the CNPG cluster size.
 	Instances int32 `json:"instances"`
+	// Backup is the durability axis (docs/postgresql-management.md §5): when
+	// true and the operator's backup store is configured, the plan gets
+	// continuous WAL archiving + a daily base backup to object storage, which
+	// is what makes point-in-time recovery available. Free plans keep it off
+	// (Render's Free is ephemeral); paid plans opt in.
+	Backup bool `json:"backup"`
 }
 
 // ValkeyTier is one rung of the managed key-value ladder (the KeyValue CRD's

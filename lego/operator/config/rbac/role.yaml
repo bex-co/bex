@@ -92,6 +92,8 @@ rules:
   - postgresql.cnpg.io
   resources:
   - clusters
+  - poolers
+  - scheduledbackups
   verbs:
   - create
   - delete
@@ -104,6 +106,7 @@ rules:
   - traefik.io
   resources:
   - ingressroutetcps
+  - middlewaretcps
   verbs:
   - create
   - delete

@@ -64,6 +64,16 @@ type PostgresView struct {
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
 
+	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
+	// ipAllowList). Empty => the external route is open to all source IPs.
+	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// PoolerEnabled reports whether a PgBouncer pooler is provisioned (its pooled
+	// connection strings appear in connection-info).
+	PoolerEnabled bool `json:"poolerEnabled"`
+	// BackupsEnabled reports whether continuous backups (and so recovery/PITR)
+	// are active for this instance — surfaced by the controller once projected.
+	BackupsEnabled bool `json:"backupsEnabled"`
+
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004), read from the
 	// Database CR's core.LabelTenant label (the same one apps.AppView.OwnerID
 	// and the App CR projector use). Always omitted today: unlike Apps,
@@ -80,7 +90,8 @@ type PostgresConnectionInfo struct {
 	Password                 string `json:"password"`
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
-	// Pooler variants are empty until a PgBouncer Pooler is wired (deferred).
+	// Pooler variants are populated when a PgBouncer Pooler is provisioned
+	// (spec.pooler); empty otherwise. The external variant additionally needs Public.
 	InternalConnectionPoolString string `json:"internalConnectionPoolString,omitempty"`
 	ExternalConnectionPoolString string `json:"externalConnectionPoolString,omitempty"`
 	PSQLCommand                  string `json:"psqlCommand"`
@@ -93,6 +104,10 @@ type CreatePostgresRequest struct {
 	Version    string `json:"version,omitempty"`
 	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	Public     bool   `json:"public,omitempty"`
+	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
+	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// Pooler optionally provisions a PgBouncer pooler at create.
+	Pooler bool `json:"pooler,omitempty"`
 }
 
 // pgIdent mirrors the operator's normalizeIdent: a valid unquoted PostgreSQL
@@ -126,11 +141,14 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		DatabaseName:            dbn,
 		DatabaseUser:            dbn + "_user",
 		DiskSizeGB:              d.Spec.StorageGB,
-		HighAvailabilityEnabled: false, // single-instance MVP
-		Suspended:               core.RenderNotSuspended,
+		HighAvailabilityEnabled: false, // single-instance MVP (HA => w1/013)
+		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
 		CreatedAt:               created,
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
+		IPAllowList:             d.Spec.IPAllowList,
+		PoolerEnabled:           d.Spec.Pooler,
+		BackupsEnabled:          d.Status.BackupsEnabled,
 		OwnerID:                 d.Labels[core.LabelTenant],
 	}
 }
@@ -226,10 +244,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
-			Plan:      req.Plan,
-			Version:   req.Version,
-			StorageGB: req.DiskSizeGB,
-			Public:    req.Public,
+			Plan:        req.Plan,
+			Version:     req.Version,
+			StorageGB:   req.DiskSizeGB,
+			Public:      req.Public,
+			IPAllowList: req.IPAllowList,
+			Pooler:      req.Pooler,
 		},
 	}
 	// Stamp the workspace label so the database controller can propagate it to
@@ -288,5 +308,41 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=require sslnegotiation=direct'",
 			pass, d.Status.ExternalHost, dbn, user)
 	}
+	// Pooled strings: same credentials, routed through the PgBouncer pooler.
+	// The hosts come straight from status (the operator's contract) — the backend
+	// doesn't recompute CNPG's Service naming. Each is omitted until reconciled,
+	// exactly like the external string is gated on status.ExternalHost.
+	if d.Status.PoolerHost != "" {
+		info.InternalConnectionPoolString = fmt.Sprintf(
+			"postgresql://%s:%s@%s:5432/%s", user, pass, d.Status.PoolerHost, dbn)
+	}
+	if d.Status.PoolerExternalHost != "" {
+		info.ExternalConnectionPoolString = fmt.Sprintf(
+			"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
+			user, pass, d.Status.PoolerExternalHost, dbn)
+	}
 	return info, nil
+}
+
+// patchDatabaseObj applies mutate to an already-fetched Database and writes it
+// back as a merge patch — conflict-free against the operator's concurrent status
+// writes (no full-object optimistic lock), the same discipline apps.patchFetched
+// follows. Callers that already hold the object use this to avoid a re-fetch.
+func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
+	patch := client.MergeFrom(d.DeepCopy())
+	mutate(d)
+	if err := s.Client.Patch(ctx, d, patch); err != nil {
+		return PostgresView{}, err
+	}
+	return pgView(d), nil
+}
+
+// patchDatabase fetches the Database and merge-patches it — the spec-intent
+// writer the operator converges (the App/KeyValue lifecycle discipline).
+func (s *Service) patchDatabase(ctx context.Context, name string, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	return s.patchDatabaseObj(ctx, d, mutate)
 }
