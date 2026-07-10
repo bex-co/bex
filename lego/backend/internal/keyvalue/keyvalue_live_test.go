@@ -89,7 +89,7 @@ func TestKeyValueLiveIntegration(t *testing.T) {
 	t.Logf("created %s (plan=%s public=%t)", view.ID, view.Plan, view.Public)
 
 	// List + Get see it.
-	list, err := svc.ListKeyValues(ctx)
+	list, err := svc.ListKeyValues(ctx, "")
 	if err != nil {
 		t.Fatalf("ListKeyValues: %v", err)
 	}

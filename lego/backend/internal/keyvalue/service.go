@@ -45,6 +45,11 @@ import (
 // Service exposes managed key-value stores as Render's "key-value" shape.
 type Service struct {
 	*core.Base
+	// Selections is the shared MCP per-session workspace selection
+	// (w6/m2/t005): list_key_value_instances falls back to the caller's
+	// selected workspace when its ownerId argument is omitted. Read-only
+	// (key-value never selects a workspace). Nil => no fallback.
+	Selections core.WorkspaceSelectionReader
 }
 
 // KeyValueView is the Render-shaped "key-value" object. Fields bex cannot back
@@ -63,6 +68,13 @@ type KeyValueView struct {
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
+
+	// OwnerID is Render's workspace-scoping field (w6/m4/t002), read from the
+	// KeyValue CR's core.LabelTenant label — mirroring apps.AppView.OwnerID and
+	// postgres.PostgresView.OwnerID. Populated for any KeyValue created via
+	// CreateKeyValue with the store on; a hand-applied CR without the label
+	// still reads as unowned.
+	OwnerID string `json:"ownerId,omitempty"`
 }
 
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
@@ -111,6 +123,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		CreatedAt:    created,
 		ExternalHost: kv.Status.ExternalHost,
 		Public:       kv.Spec.Public,
+		OwnerID:      kv.Labels[core.LabelTenant],
 	}
 }
 
@@ -149,13 +162,26 @@ func (s *Service) loadSecret(ctx context.Context, name string) (*appv1alpha1.Key
 	return kv, &sec, nil
 }
 
-// ListKeyValues returns every managed key-value store in the namespace.
-func (s *Service) ListKeyValues(ctx context.Context) ([]KeyValueView, error) {
+// ListKeyValues returns every managed key-value store in the namespace,
+// optionally narrowed to a single owning workspace — Render's `ownerId`
+// list-filter contract (w6/m4/t002), mirroring postgres.Service.ListPostgres.
+// ownerID == "" lists unscoped. A non-empty ownerID authorizes can_view on
+// that exact workspace (an inaccessible ownerId is ErrForbidden) and then
+// filters by core.LabelTenant; never silently returns unscoped data for a
+// scoped request.
+func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValueView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
+	opts := []client.ListOption{client.InNamespace(s.Namespace)}
+	if ownerID != "" {
+		if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+			return nil, err
+		}
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
+	}
 	var list appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
 	out := make([]KeyValueView, 0, len(list.Items))
@@ -199,6 +225,14 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			StorageGB: req.StorageGB,
 			Public:    req.Public,
 		},
+	}
+	// Stamp both the tenant label (ownerId scoping — kvView/ListKeyValues read
+	// this) and the workspace label (same-workspace NetworkPolicy selectors,
+	// docs/tenant-isolation.md — this is also what lets a tenant's own App
+	// reach its own KeyValue instance), mirroring postgres.CreatePostgres.
+	// Skip when the store is off (no resolver).
+	if tenantID, ok := s.Tenant(ctx); ok {
+		kv.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if err := s.Client.Create(ctx, kv); err != nil {
 		return KeyValueView{}, err

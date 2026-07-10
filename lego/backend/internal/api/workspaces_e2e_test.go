@@ -29,10 +29,29 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// fakeWorkspace is a map-backed core.WorkspaceResolver stand-in for the w6/m4
+// teardown assertions below (mirroring the same helper in postgres/keyvalue's
+// ownerid_test.go): it pins a subject's resolved tenant so CreatePostgres/
+// CreateKeyValue/secrets verbs (which stamp whichever workspace
+// core.Base.Workspace resolves the caller to — they take no explicit ownerId
+// of their own, unlike the list verbs) land in the exact workspace this test
+// is about to delete, rather than whichever of alice's several memberships the
+// real store-backed resolver would otherwise pick. Identities not in the map
+// resolve ok=false.
+type fakeWorkspace map[string]string
+
+func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	tid, ok := f[id.Subject]
+	return tid, ok
+}
 
 // TestWorkspaceLifecycleE2E proves the w6/m1 definition of done end-to-end
 // against REAL infrastructure — a live Postgres (the source of truth) and a
@@ -225,6 +244,133 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		restMux.ServeHTTP(rr, httptest.NewRequest(method, "/v1/owners", nil))
 		if rr.Code != 404 {
 			t.Errorf("%s /v1/owners = %d, want 404 (no mutation route)", method, rr.Code)
+		}
+	}
+
+	// (7) w6/m4: a workspace delete tears down every managed Postgres, every
+	// managed KeyValue, and (when a test OpenBao is available) every OpenBao
+	// secret it owns — not just the tenant row and FGA tuples. A fresh
+	// workspace on a non-Hobby plan (alice already holds her 5-Hobby cap from
+	// section 2 above), so this doesn't interfere with the App-CR assertions
+	// already made against secondID above.
+	r = run("alice", createMut, map[string]any{"n": "datastores", "p": "pro"})
+	mustOK(t, r)
+	ws = r.Data.(map[string]any)["createWorkspace"].(map[string]any)
+	dsID, _ := ws["id"].(string)
+
+	// mustCreateWithOwner runs a create mutation and asserts the returned
+	// object's ownerId, cutting the createDatabase/createKeyValue duplication.
+	mustCreateWithOwner := func(mutation, field string, args map[string]any, wantOwner string) {
+		t.Helper()
+		r := run("alice", mutation, args)
+		mustOK(t, r)
+		if got := r.Data.(map[string]any)[field].(map[string]any)["ownerId"]; got != wantOwner {
+			t.Fatalf("%s ownerId = %v, want %s", field, got, wantOwner)
+		}
+	}
+	// mustListCount runs an ownerId-scoped list query and asserts its length,
+	// cutting the databases/keyValues duplication.
+	mustListCount := func(query, field string, args map[string]any, wantN int) {
+		t.Helper()
+		r := run("alice", query, args)
+		mustOK(t, r)
+		if got := r.Data.(map[string]any)[field].([]any); len(got) != wantN {
+			t.Fatalf("%s(%v) = %+v, want %d", field, args, got, wantN)
+		}
+	}
+
+	// Pin alice's resolved tenant to dsID for what follows: CreatePostgres/
+	// CreateKeyValue/secrets take no explicit ownerId of their own, they stamp
+	// whichever workspace core.Base.Workspace resolves the caller to. Every
+	// feature Service embeds this same *core.Base pointer, so mutating the field
+	// now only affects calls from here on — everything above already ran.
+	base.Workspace = fakeWorkspace{"alice": dsID}
+
+	// (7a) Render parity spot-check (t007): a SECOND, unrelated workspace with
+	// its own Database must never leak into dsID's ownerId-scoped list below —
+	// flip the resolver to it just long enough to create one, then back.
+	r = run("alice", createMut, map[string]any{"n": "leakcheck", "p": "pro"})
+	mustOK(t, r)
+	leakID, _ := r.Data.(map[string]any)["createWorkspace"].(map[string]any)["id"].(string)
+	base.Workspace = fakeWorkspace{"alice": leakID}
+	mustOK(t, run("alice", `mutation($n:String!){ createDatabase(name:$n){ id } }`, map[string]any{"n": "leak-pg"}))
+	base.Workspace = fakeWorkspace{"alice": dsID}
+
+	// Seed an App under dsID for the secrets assertion (secrets.GetApp gates on
+	// the App's own tenant label, same store-seeded path section 5 uses).
+	if _, err := st.CreateApp(ctx, store.App{TenantID: dsID, Name: "worker", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "free"}); err != nil {
+		t.Fatalf("seed worker app: %v", err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	mustCreateWithOwner(`mutation($n:String!){ createDatabase(name:$n){ id ownerId } }`,
+		"createDatabase", map[string]any{"n": "ds-pg"}, dsID)
+	mustCreateWithOwner(`mutation($n:String!){ createKeyValue(name:$n){ id ownerId } }`,
+		"createKeyValue", map[string]any{"n": "ds-kv"}, dsID)
+
+	// The KeyValue CR itself carries the workspace label the same-workspace
+	// NetworkPolicy selector matches on (docs/tenant-isolation.md) — the label
+	// t002 stamps is what lets dsID's own App reach its own Valkey instance.
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ds-kv"}, &kv); err != nil {
+		t.Fatalf("get KeyValue CR: %v", err)
+	}
+	if kv.Labels[core.LabelWorkspace] != dsID {
+		t.Fatalf("KeyValue CR workspace label = %q, want %s", kv.Labels[core.LabelWorkspace], dsID)
+	}
+
+	// ownerId list-filter correctness pre-delete (t001/t002): scoped to dsID
+	// returns exactly the seeded resources, never another workspace's (proven
+	// by leak-pg above sharing the namespace under a different owner).
+	mustListCount(`query($o:String!){ databases(ownerId:$o){ id } }`, "databases", map[string]any{"o": dsID}, 1)
+	mustListCount(`query($o:String!){ keyValues(ownerId:$o){ id } }`, "keyValues", map[string]any{"o": dsID}, 1)
+
+	// Secrets: only when a test OpenBao is available (BEX_TEST_OPENBAO_URL) — the
+	// purge assertion needs a real KV v2 store, hermetic-by-default like DB/FGA
+	// above.
+	var secretsStore core.SecretKV
+	if baoURL := os.Getenv("BEX_TEST_OPENBAO_URL"); baoURL != "" {
+		secretsStore = secrets.NewOpenBaoStore(baoURL)
+		secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
+		aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
+		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", "bar"); err != nil {
+			t.Fatalf("seed secret: %v", err)
+		}
+	}
+
+	// Wire the purgers exactly as cmd/api/main.go does (t005) — mutating the
+	// already-built srv.Workspaces in place takes effect immediately, since the
+	// schema's resolvers read s.Purgers at call time through the same pointer.
+	srv.Workspaces.Purgers = []workspaces.WorkspacePurger{
+		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: secretsStore}},
+		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
+		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
+	}
+	mustOK(t, run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"datastores") }`, map[string]any{"id": dsID}))
+
+	var dbList appv1alpha1.DatabaseList
+	if err := cl.List(ctx, &dbList, client.MatchingLabels{core.LabelTenant: dsID}); err != nil {
+		t.Fatalf("list Databases: %v", err)
+	}
+	if len(dbList.Items) != 0 {
+		t.Fatalf("Database CR not purged on workspace delete: %+v", dbList.Items)
+	}
+	var kvList appv1alpha1.KeyValueList
+	if err := cl.List(ctx, &kvList, client.MatchingLabels{core.LabelTenant: dsID}); err != nil {
+		t.Fatalf("list KeyValues: %v", err)
+	}
+	if len(kvList.Items) != 0 {
+		t.Fatalf("KeyValue CR not purged on workspace delete: %+v", kvList.Items)
+	}
+	if secretsStore != nil {
+		env, err := secretsStore.Get(ctx, "services/worker/env")
+		if err != nil {
+			t.Fatalf("read purged secret: %v", err)
+		}
+		if len(env) != 0 {
+			t.Fatalf("secret not purged on workspace delete: %+v", env)
 		}
 	}
 }

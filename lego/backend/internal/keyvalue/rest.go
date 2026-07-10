@@ -32,7 +32,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	base := "/v1/key-value"
 
 	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
-		out, err := s.ListKeyValues(r.Context())
+		out, err := s.ListKeyValues(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

@@ -182,7 +182,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		Postgres:  &postgres.Service{Base: base, Selections: selections},
-		KeyValue:  &keyvalue.Service{Base: base},
+		KeyValue:  &keyvalue.Service{Base: base, Selections: selections},
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
 		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore},

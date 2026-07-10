@@ -52,13 +52,19 @@ type listKeyValueResult struct {
 	KeyValues []KeyValueView `json:"keyValues"`
 }
 
+// listKeyValueArgs is list_key_value_instances' input — the ownerId scoping
+// filter (w6/m4/t002), mirroring the REST/GraphQL surfaces. Empty => unscoped.
+type listKeyValueArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
+}
+
 // RegisterMCP adds the managed key-value tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_key_value_instances",
-		Description: "List all managed key-value (Valkey/Redis) stores in the workspace with their status.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listKeyValueResult, error) {
-		list, err := s.ListKeyValues(ctx)
+		Description: "List all managed key-value (Valkey/Redis) stores in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
+		list, err := s.ListKeyValues(ctx, s.resolveOwnerID(req, in.OwnerID))
 		if err != nil {
 			return nil, listKeyValueResult{}, err
 		}
@@ -92,4 +98,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, v, nil
 	})
+}
+
+// resolveOwnerID is list_key_value_instances' ownerId-scoping precedence: an
+// explicit argument wins; otherwise fall back to the calling MCP session's
+// selected workspace (select_workspace, w6/m2/t005); with neither, ""
+// (unscoped) — mirrors apps.Service.resolveOwnerID / postgres.Service.resolveOwnerID.
+func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
+	if arg != "" {
+		return arg
+	}
+	if s.Selections == nil || req == nil || req.Session == nil {
+		return ""
+	}
+	id, _ := s.Selections.Get(req.Session.ID())
+	return id
 }

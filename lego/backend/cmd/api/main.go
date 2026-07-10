@@ -50,10 +50,12 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/mailer"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -195,6 +197,15 @@ func main() {
 		}
 		if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
 			deps.WorkspaceRevoker = rv
+		}
+		// Out-of-cascade teardown (w6/m4/t005): a deleted workspace's OpenBao
+		// secrets and managed Databases/KeyValue stores live outside the tenant
+		// row's FK cascade, so Delete runs these after the row is gone. Order
+		// doesn't matter — each purger only touches its own resource type.
+		deps.WorkspacePurgers = []workspaces.WorkspacePurger{
+			&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
+			&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
+			&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 		}
 
 		// Workspace members & roles (w4/m12): the team surface writes through the

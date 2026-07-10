@@ -39,6 +39,7 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.CreatedAt })},
 		"externalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ExternalHost })},
 		"public":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Public })},
+		"ownerId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
 	},
 })
 
@@ -70,8 +71,15 @@ var keyValueConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"keyValues": &graphql.Field{
-			Type:    graphql.NewList(keyValueGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListKeyValues(p.Context) },
+			Type: graphql.NewList(keyValueGQLType),
+			Args: graphql.FieldConfigArgument{
+				// ownerId mirrors Render's REST/MCP key-value list filter (w6/m4/t002).
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				ownerID, _ := p.Args["ownerId"].(string)
+				return s.ListKeyValues(p.Context, ownerID)
+			},
 		},
 		"keyValue": &graphql.Field{
 			Type: keyValueGQLType,

@@ -76,12 +76,9 @@ type PostgresView struct {
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004), read from the
 	// Database CR's core.LabelTenant label (the same one apps.AppView.OwnerID
-	// and the App CR projector use). Always omitted today: unlike Apps,
-	// Database CRs aren't yet projected from the tenant-scoped control plane
-	// (no create path stamps this label), so no managed Postgres carries an
-	// owner — documented gap, w6 follow-up. The field and the `ownerId` list
-	// filter exist now so a client/tool written against the pinned contract
-	// works unchanged once that labeling lands.
+	// and the App CR projector use). Populated for any Database created via
+	// CreatePostgres with the store on (w6/m4/t001); a hand-applied CR without
+	// the label still reads as unowned.
 	OwnerID string `json:"ownerId,omitempty"`
 }
 
@@ -190,12 +187,11 @@ func (s *Service) loadAppSecret(ctx context.Context, name string) (*appv1alpha1.
 
 // ListPostgres returns every managed Postgres in the namespace, optionally
 // narrowed to a single owning workspace — Render's `ownerId` list-filter
-// contract (w6/m2/t004), mirroring apps.Service.List. ownerID == "" lists
-// unscoped. A non-empty ownerID authorizes can_view on that exact workspace
-// (an inaccessible ownerId is ErrForbidden) and then filters by
-// core.LabelTenant — today that always yields an empty (not unscoped) list,
-// since no Database CR carries the label yet (see PostgresView.OwnerID); never
-// silently returns unscoped data for a scoped request.
+// contract (w6/m2/t004, labeling fixed by w6/m4/t001), mirroring
+// apps.Service.List. ownerID == "" lists unscoped. A non-empty ownerID
+// authorizes can_view on that exact workspace (an inaccessible ownerId is
+// ErrForbidden) and then filters by core.LabelTenant; never silently returns
+// unscoped data for a scoped request.
 func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
@@ -252,11 +248,13 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Pooler:      req.Pooler,
 		},
 	}
-	// Stamp the workspace label so the database controller can propagate it to
-	// CNPG pod metadata (inheritedMetadata.labels) for same-workspace NetworkPolicy
-	// selectors (docs/tenant-isolation.md). Skip when the store is off (no resolver).
+	// Stamp both the tenant label (ownerId scoping — pgView/ListPostgres read
+	// this) and the workspace label (so the database controller can propagate
+	// it to CNPG pod metadata for same-workspace NetworkPolicy selectors,
+	// docs/tenant-isolation.md), mirroring the App CR dual-stamp
+	// (store/reconciler.go's stampLabels). Skip when the store is off (no resolver).
 	if tenantID, ok := s.Tenant(ctx); ok {
-		d.Labels = map[string]string{core.LabelWorkspace: tenantID}
+		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if err := s.Client.Create(ctx, d); err != nil {
 		return PostgresView{}, err
