@@ -84,10 +84,35 @@ resource "hcloud_firewall_attachment" "infra" {
   server_ids  = [hcloud_server.infra.id]
 }
 
-# NOTE: no firewall on the CAPH-provisioned APP-cluster nodes (the `bex-app`
-# hcloud_firewall from w1/m7 t001 was removed 2026-07-09 — see
-# .pm/DO_NOT_DO.md and docs/infra-credentials.md). A static source-IP allowlist
-# fits neither a dynamic-IP operator nor GitHub-hosted CI, so :22/:6443 stay on
-# authentication-only (key-only SSH + kube TLS/RBAC). If a network second layer
-# is ever wanted, it's Tailscale/WireGuard (stable tailnet allowlist), not a
-# static CIDR.
+# App-cluster node firewall (w1/m19 t005, docs/rearchitecture.md decision 4).
+# NOT the static source-IP allowlist rejected 2026-07-09 (.pm/DO_NOT_DO.md) —
+# that restricted WHO may reach :22/:6443 and broke on dynamic operator/CI IPs.
+# This one restricts WHICH PORTS exist on the nodes' PUBLIC interface, from
+# anywhere: with the CAPH-owned private network (rearchitecture decision 1),
+# every cluster-internal port (VXLAN :8472/udp — unauthenticated!, kubelet
+# :10250, etcd :2379, NodePorts) moves to the private net, and the LBs reach
+# nodes privately too — so public ingress needs exactly SSH (key-only,
+# authentication-only baseline) and ICMP. 80/443/6443 terminate on the LBs'
+# public fronts, not on nodes. Applied by LABEL SELECTOR so machines the
+# autoscaler creates inherit it automatically; Hetzner firewalls don't touch
+# private-net traffic at all, so east-west is unaffected by design.
+resource "hcloud_firewall" "app_nodes" {
+  name = "bex-app-nodes"
+
+  apply_to {
+    label_selector = "caph-cluster-bex"
+  }
+
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
+    source_ips = ["0.0.0.0/0", "::/0"]
+  }
+
+  rule {
+    direction  = "in"
+    protocol   = "icmp"
+    source_ips = ["0.0.0.0/0", "::/0"]
+  }
+}

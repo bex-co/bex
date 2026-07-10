@@ -15,6 +15,14 @@ spec:
       labels:
         app.kubernetes.io/name: bex-dashboard
     spec:
+      # w1/m19 t003: platform pool
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       securityContext:
         runAsNonRoot: true
         # node:22-alpine's `node` user (Dockerfile's USER node) — Kubernetes

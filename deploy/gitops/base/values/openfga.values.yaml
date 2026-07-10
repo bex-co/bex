@@ -7,6 +7,13 @@
 # Single app node today (chart defaults to 3); bump alongside the HA work.
 replicaCount: 1
 
+# w1/m19 t003: platform pool (top-level — the chart wires these into both the
+# server Deployment and the migrate Job).
+nodeSelector:
+  bex.co/pool: platform
+tolerations:
+  - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+
 datastore:
   engine: postgres
   uriSecret: openfga # -> env OPENFGA_DATASTORE_URI from key `uri`

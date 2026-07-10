@@ -70,6 +70,11 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 1Gi }
+          # w1/m19 t003: platform pool
+          nodeSelector:
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
         # Single-binary minimal: no gateway, no caches, no canary/tests, no
         # self-monitoring, no bundled minio — this exists solely to answer
         # bex-api's query_range calls.

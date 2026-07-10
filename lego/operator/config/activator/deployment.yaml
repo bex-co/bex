@@ -14,6 +14,14 @@ spec:
         app.bex.co/component: activator
     spec:
       serviceAccountName: bex-activator
+      # w1/m19 t003: platform pool
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       containers:
         - name: activator
           image: controller:latest  # overridden by kustomize; same image as the manager, different entrypoint

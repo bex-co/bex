@@ -1,0 +1,54 @@
+# Cluster Autoscaler — steady-state form (w1/m19 t004, post-pivot): the cluster
+# is self-managed (CAPI objects live in-cluster after `clusterctl move`, t007),
+# so the autoscaler runs in-cluster with clusterAPIMode=incluster-incluster and
+# needs no kubeconfig secret. Shared tuning lives in
+# infra/clusterapi/autoscaler-values.yaml (also used by the bootstrap-phase
+# installer scripts/install-autoscaler.sh, which t007 uninstalls at pivot —
+# two autoscalers must never manage the same MachineDeployments).
+# Image tag pins to the workload k8s minor (DRA informers of a newer CA never
+# sync against an older apiserver and the main loop silently never starts).
+# Pre-pivot this Application is a harmless no-op: it finds no CAPI objects.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-autoscaler
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubernetes.github.io/autoscaler
+      chart: cluster-autoscaler
+      targetRevision: 9.58.0
+      helm:
+        releaseName: cluster-autoscaler
+        valueFiles:
+          - $values/infra/clusterapi/autoscaler-values.yaml
+        parameters:
+          - name: clusterAPIMode
+            value: incluster-incluster
+          - name: image.tag
+            value: v1.31.5 # match the workload k8s minor (overlay `version:`)
+        # w1/m19 t003: platform pool. Set here, NOT in the shared values file —
+        # the bootstrap-phase install (scripts/install-autoscaler.sh) targets the
+        # mgmt cluster, whose nodes have no bex.co labels. The autoscaler must
+        # never ride a tenant node it might itself scale down.
+        valuesObject:
+          nodeSelector:
+            bex.co/pool: platform
+          tolerations:
+            - key: bex.co/platform
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+    - repoURL: git@github.com:bex-co/bex.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default # CAPI Cluster/MachineDeployments live here post-pivot
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

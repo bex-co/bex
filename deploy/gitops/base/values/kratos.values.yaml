@@ -113,6 +113,19 @@ kratos:
 courier:
   enabled: false
 
+# w1/m19 t003: platform pool — the server Deployment and the automigration Job
+# schedule independently, so each needs the pin.
+deployment:
+  nodeSelector:
+    bex.co/pool: platform
+  tolerations:
+    - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+job:
+  nodeSelector:
+    bex.co/pool: platform
+  tolerations:
+    - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+
 ingress:
   public:
     enabled: true

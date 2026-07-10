@@ -38,6 +38,11 @@ server:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits: { cpu: 250m, memory: 256Mi }
+  # w1/m19 t003: platform pool
+  nodeSelector:
+    bex.co/pool: platform
+  tolerations:
+    - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   # server.authDelegator.enabled defaults to true in the chart — grants
   # OpenBao's own ServiceAccount the TokenReview permission the Kubernetes
   # auth method needs to validate a caller's projected SA token

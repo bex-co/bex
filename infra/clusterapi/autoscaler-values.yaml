@@ -23,10 +23,12 @@
 # annotations. The autoscaler moves machines, never App spec.replicas.
 cloudProvider: clusterapi
 
-# Syntax is <workload>-<management>: workload cluster via kubeconfig,
-# management (CAPI) objects in-cluster.
-clusterAPIMode: kubeconfig-incluster
-clusterAPIKubeconfigSecret: bex-kubeconfig
+# clusterAPIMode is deliberately NOT set here — it differs by lifecycle phase
+# and is passed by the caller (w1/m19 t004):
+#   bootstrap (pre-pivot, mgmt cluster):  install-autoscaler.sh sets
+#     kubeconfig-incluster + clusterAPIKubeconfigSecret=bex-kubeconfig
+#   steady state (post-pivot, in-cluster): the Argo Application
+#     (deploy/gitops/base/autoscaler.yaml) sets incluster-incluster (no secret)
 
 autoDiscovery:
   clusterName: bex

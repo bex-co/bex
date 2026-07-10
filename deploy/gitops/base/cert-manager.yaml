@@ -20,6 +20,32 @@ spec:
         crds:
           enabled: true                # install the cert-manager CRDs
           keep: true                   # don't GC CRDs (+ issued certs) on uninstall
+        # w1/m19 t003: platform pool — controller (top-level) + webhook + cainjector
+        # + startupapicheck each schedule independently, so each needs the pin.
+        # nodeSelector REPLACES the chart default, so keep kubernetes.io/os: linux.
+        nodeSelector:
+          kubernetes.io/os: linux
+          bex.co/pool: platform
+        tolerations:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+        webhook:
+          nodeSelector:
+            kubernetes.io/os: linux
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+        cainjector:
+          nodeSelector:
+            kubernetes.io/os: linux
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+        startupapicheck:
+          nodeSelector:
+            kubernetes.io/os: linux
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager

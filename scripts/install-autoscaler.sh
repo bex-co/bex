@@ -20,12 +20,21 @@ cd "$(dirname "$0")/.."
 CTX="${1:-}"
 CA_TAG="${CA_TAG:-}"
 
+# This script is the BOOTSTRAP-phase installer (management cluster, pre-pivot):
+# CAPI objects in-cluster, workload reached via the CAPI-generated
+# bex-kubeconfig secret. Post-pivot the autoscaler is Argo-managed in-cluster
+# with clusterAPIMode=incluster-incluster (deploy/gitops/base/autoscaler.yaml);
+# uninstall this release at pivot time (w1/m19 t007) so two autoscalers never
+# manage the same MachineDeployments.
+#
 # --repo avoids `helm repo add` state (and a duplicate index fetch in CI);
 # --wait replaces a rollout wait on the chart's derived deployment name.
 helm upgrade --install cluster-autoscaler cluster-autoscaler \
   --repo https://kubernetes.github.io/autoscaler \
   ${CTX:+--kube-context=$CTX} \
   ${CA_TAG:+--set image.tag=$CA_TAG} \
+  --set clusterAPIMode=kubeconfig-incluster \
+  --set clusterAPIKubeconfigSecret=bex-kubeconfig \
   --version 9.58.0 --namespace default \
   -f infra/clusterapi/autoscaler-values.yaml \
   --wait --timeout 3m

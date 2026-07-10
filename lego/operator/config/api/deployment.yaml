@@ -17,6 +17,14 @@ spec:
         app.kubernetes.io/name: bex-api
     spec:
       serviceAccountName: api
+      # w1/m19 t003: platform pool
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       securityContext:
         runAsNonRoot: true
         seccompProfile:

@@ -36,6 +36,11 @@ spec:
         fullnameOverride: log-shipper
         controller:
           type: daemonset
+          # w1/m19 t003: DaemonSet exception — must tail logs on EVERY node
+          # (tenant pool, platform pool, control plane), so tolerate everything
+          # and pin no pool.
+          tolerations:
+            - operator: Exists
         alloy:
           # Static River config: discover pods -> keep App pods -> label -> push.
           configMap:

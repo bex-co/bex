@@ -7,6 +7,11 @@
 deployment:
   replicas: 1 # single app node today
   dnsPolicy: ClusterFirstWithHostNet # reach in-cluster API/DNS under hostNetwork
+# w1/m19 t003: platform pool
+nodeSelector:
+  bex.co/pool: platform
+tolerations:
+  - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
 hostNetwork: true # bind the node's public IP directly (no Hetzner LB)
 # Bind :80/:443 directly. The traefik binary has no file caps, so a non-root
 # uid drops NET_BIND_SERVICE on exec -> "permission denied"; run as root with

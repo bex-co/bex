@@ -176,13 +176,18 @@ jobs:
       # and can fight it. NOTE: CAPH attaches nodes born after hcloudNetwork.enabled=true
       # to the network automatically; the pre-existing single node was attached out-of-band
       # (hcloud API attach_to_network + netplan apply → 10.0.1.2). See docs/infra-credentials.md.
+      # Scheduling (w1/m19 t003): CCM is bootstrap-critical — it initializes nodes
+      # (clears the cloud-provider taint), so it cannot wait for a worker pool to be
+      # Ready. It already tolerates the control-plane taint by default; pinning it
+      # to the CP makes that its home (the recorded CP exemption, not platform pool).
       - name: install Hetzner CCM
         run: |
           helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
             -n kube-system \
             --set networking.enabled=true \
             --set networking.clusterCIDR="${POD_CIDR}" \
-            --set env.HCLOUD_NETWORK_ROUTES_ENABLED.value="false"
+            --set env.HCLOUD_NETWORK_ROUTES_ENABLED.value="false" \
+            --set 'nodeSelector.node-role\.kubernetes\.io/control-plane='
 
       # CNI: Cilium in tunnel mode (works without a private network / native routing).
       # WireGuard node-to-node encryption is ON (w1/m7 t004): Cilium establishes a
@@ -191,6 +196,10 @@ jobs:
       # gossip etcd/kubelet/pod traffic over the network — transparently encrypted
       # even before the private network (t005) lands. The KubeadmConfigTemplate
       # already ships the `net.ipv4.conf.lxc*.rp_filter=0` sysctl WireGuard needs.
+      # Scheduling (w1/m19 t003): the cilium + cilium-envoy DaemonSets tolerate
+      # everything by default (they run on ALL nodes, both pools + CP). The operator
+      # is bootstrap-critical (no CNI anywhere until it runs) and already tolerates
+      # the CP taint — pin it to the CP like the CCM.
       - name: install Cilium (CNI)
         run: |
           helm upgrade --install cilium cilium/cilium -n kube-system \
@@ -198,12 +207,21 @@ jobs:
             --set ipam.operator.clusterPoolIPv4PodCIDRList="{${POD_CIDR}}" \
             --set encryption.enabled=true \
             --set encryption.type=wireguard \
-            --set encryption.nodeEncryption=true
+            --set encryption.nodeEncryption=true \
+            --set 'operator.nodeSelector.node-role\.kubernetes\.io/control-plane='
 
       # hcloud-csi: PersistentVolumes (registry volume, stateful apps like a Postgres).
+      # Scheduling (w1/m19 t003): the node DaemonSet tolerates everything by default;
+      # the controller is not bootstrap-critical (PVs are first needed by the platform
+      # charts, by which time the platform pool is Ready) → platform pool.
       - name: install hcloud CSI
         run: |
-          helm upgrade --install hcloud-csi hcloud/hcloud-csi -n kube-system
+          helm upgrade --install hcloud-csi hcloud/hcloud-csi -n kube-system \
+            --set 'controller.nodeSelector.bex\.co/pool=platform' \
+            --set 'controller.tolerations[0].key=bex.co/platform' \
+            --set 'controller.tolerations[0].operator=Equal' \
+            --set-string 'controller.tolerations[0].value=true' \
+            --set 'controller.tolerations[0].effect=NoSchedule'
 
       - name: wait for app cluster nodes Ready
         run: |

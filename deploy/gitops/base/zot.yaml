@@ -19,6 +19,11 @@ spec:
           port: 5000
         mountConfig: false
         persistence: true
+        # w1/m19 t003: platform pool
+        nodeSelector:
+          bex.co/pool: platform
+        tolerations:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-registry

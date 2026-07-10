@@ -1,17 +1,15 @@
-# Cluster API + provider controllers — the node-provisioning ENGINE (installed into
-# the infra cluster). The desired node pools it consumes (Cluster /
-# MachineDeployment) live in infra/clusterapi/ (NOT here): engine = deploy/, desired
-# infrastructure = infra/.
+# Cluster API + CAPH provider — the node-provisioning ENGINE. Post-pivot
+# (w1/m19 t007) the controllers run IN THIS CLUSTER (self-managed: the cluster
+# reconciles its own Cluster/MachineDeployment objects after `clusterctl move`).
 #
-# In practice this is installed once with `clusterctl init` (see infra/local/), then
-# kept in GitOps. Provider is chosen per-env in the overlay: docker (CAPD) locally,
-# hetzner (CAPH) in prod.
+# Deliberately still installed/upgraded by `clusterctl init` (t007 runbook /
+# app-cluster.yml), NOT by an Argo Application: clusterctl owns the provider
+# lifecycle (CRD upgrades, cert-manager dependency ordering, provider version
+# contracts), and wrapping its generated manifests in Argo would make two
+# owners fight over them. Revisit only via the cluster-api-operator chart if
+# GitOps-managed provider upgrades ever become worth that migration.
 #
-# PLACEHOLDER Application — wire when a git remote + clusterctl-managed manifests exist:
-# apiVersion: argoproj.io/v1alpha1
-# kind: Application
-# metadata: { name: cluster-api, namespace: argocd }
-# spec:
-#   source: { repoURL: <repo>, path: infra/clusterapi/_providers, targetRevision: main }
-#   destination: { server: https://kubernetes.default.svc, namespace: capi-system }
-#   syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }
+# The DESIRED infrastructure (Cluster/MachineDeployments) stays declarative in
+# infra/clusterapi/overlays/hetzner-caph/cluster.yaml, applied by
+# app-cluster.yml — engine = clusterctl, desired state = git + CI, scaling =
+# autoscaler.yaml (in-cluster, Argo-managed).

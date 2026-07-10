@@ -54,6 +54,19 @@ deployment:
         secretKeyRef:
           name: hydra
           key: oidcPairwiseSalt
+  # w1/m19 t003: platform pool
+  nodeSelector:
+    bex.co/pool: platform
+  tolerations:
+    - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+
+# w1/m19 t003: platform pool — the automigration Job schedules independently of
+# the server Deployment above.
+job:
+  nodeSelector:
+    bex.co/pool: platform
+  tolerations:
+    - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
 
 # OAuth2 clients are managed through the admin API (bex-api, w4/m2), not the
 # hydra-maester CRD controller — keep the extra controller off.

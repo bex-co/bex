@@ -15,6 +15,13 @@ spec:
     repoURL: https://cloudnative-pg.github.io/charts
     chart: cloudnative-pg
     targetRevision: "0.29.0" # pin exact for reproducibility
+    helm:
+      values: |
+        # w1/m19 t003: platform pool
+        nodeSelector:
+          bex.co/pool: platform
+        tolerations:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   destination:
     server: https://kubernetes.default.svc
     namespace: cnpg-system

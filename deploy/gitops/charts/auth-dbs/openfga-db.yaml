@@ -10,6 +10,15 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
 spec:
   instances: 1
+  # w1/m19 t003: platform pool (CNPG's affinity block carries both knobs)
+  affinity:
+    nodeSelector:
+      bex.co/pool: platform
+    tolerations:
+      - key: bex.co/platform
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
   storage:
     size: 5Gi
     storageClass: hcloud-volumes

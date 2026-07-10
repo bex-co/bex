@@ -23,6 +23,7 @@
 - [x] **m16** — Config surfaces beyond env vars: environment groups + secret files (7 tasks) ← promoted from `010` 2026-07-08
 - [x] **m17** — Managed Postgres advanced: data-protection + lifecycle + access (8 tasks) ← promoted from `011` 2026-07-08 (HA/replicas split to `013`) — done 2026-07-09, moved to `done/m17/` (HA/replicas remain in note `013`)
 - [x] **m18** — Root Directory: CRD + build engine + webhook path-filter + API surface (10 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic, monorepo support); UI half is `w5/m13` — done 2026-07-10, moved to `done/m18/`
+- [ ] **m19** — Rearchitecture: rebuild the Hetzner substrate right (12 tasks) ← from [docs/rearchitecture.md](../../docs/rearchitecture.md) 2026-07-10, promoted from `014` (CAPH-owned network · 3×CP tainted · platform/tenant pools · self-managed pivot · port firewall + WireGuard); closes `w1/014`, unblocks m3/t008, `008`, `013`
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
@@ -46,9 +47,7 @@
 - `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** landing node elasticity (the metric→replica reconciler is new work in 008)
 - `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
 - `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
-- `014.md` — **Prod KCP cannot manage the control plane** (m7 LB/private-net aftermath): etcd unreachable from mgmt, CSR denials, immutable `hcloudNetwork`, `app-cluster.yml` red since 2026-07-09 — blocks m3/t008's scheduler rollout
-
-> **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above.
+> **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above. **Promoted 2026-07-10:** `014` (prod KCP unmanageable, m7 aftermath) → **m19** via `docs/rearchitecture.md`; note moved to `done/`.
 
 > `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`. m12 was subsequently relocated to **w2** (done: `w2/done/m12/`).
 

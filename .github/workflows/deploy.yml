@@ -158,6 +158,15 @@ jobs:
           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply --server-side --force-conflicts -n argocd \
             -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          # w1/m19 t003: Argo CD itself rides the platform pool (upstream install
+          # carries no scheduling; patching here keeps us on the stock manifest).
+          # Idempotent: re-patching the same values causes no rollout.
+          SCHED='{"spec":{"template":{"spec":{"nodeSelector":{"bex.co/pool":"platform"},"tolerations":[{"key":"bex.co/platform","operator":"Equal","value":"true","effect":"NoSchedule"}]}}}}'
+          for d in argocd-server argocd-repo-server argocd-applicationset-controller \
+                   argocd-notifications-controller argocd-dex-server argocd-redis; do
+            kubectl -n argocd patch deployment "$d" --type strategic -p "$SCHED"
+          done
+          kubectl -n argocd patch statefulset argocd-application-controller --type strategic -p "$SCHED"
           kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
           kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
 
