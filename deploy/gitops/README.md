@@ -17,7 +17,9 @@ deploy/gitops/
 │   ├── opensandbox-controller.yaml   CRDs + controller (chart 0.2.0, image v0.2.0)
 │   ├── bex.yaml            the bex control plane
 │   ├── cluster-api.yaml    CAPI/provider controllers (engine; desired pools in infra/)
-│   ├── autoscaler.yaml     Cluster Autoscaler (reactive add/remove machines)
+│   │                       (cluster-autoscaler is deliberately NOT here — it installs on
+│   │                       the MGMT cluster via scripts/install-autoscaler.sh; rationale
+│   │                       in infra/clusterapi/autoscaler-values.yaml, w1/m3)
 │   ├── values/             default values
 │   └── kustomization.yaml
 ├── overlays/               per-env differences only (reference ../base)

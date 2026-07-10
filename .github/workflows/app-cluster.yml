@@ -22,6 +22,8 @@ on:
     branches: [main]
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
+      - "infra/clusterapi/autoscaler-values.yaml"
+      - "scripts/install-autoscaler.sh"
       - ".github/workflows/app-cluster.yml"
   workflow_dispatch: {}
 
@@ -132,6 +134,11 @@ jobs:
             echo "control plane not initialized in time"; kubectl get cluster,kcp,machines -A -o wide; exit 1
           fi
           kubectl get cluster,machines -A -o wide
+
+      # --- cluster-autoscaler on the INFRA cluster, beside CAPI (w1/m3) ---
+      # Why here and not Argo: infra/clusterapi/autoscaler-values.yaml (decision record).
+      - name: cluster-autoscaler (infra cluster)
+        run: bash scripts/install-autoscaler.sh
 
       # --- pull the app cluster kubeconfig; switch default context to it ---
       - name: app cluster kubeconfig

@@ -137,30 +137,34 @@ spec:
           name: admission-pss
           pathType: File
           readOnly: true
+      # APPEND to files (`/files/-`), don't `add` the whole list: the KCP template
+      # now ships files of its own (the w1/m3 scheduler config), and RFC 6902
+      # `add` on an existing member REPLACES it — which silently dropped the
+      # scheduler config and broke control-plane joins (learned 2026-07-09).
       - op: add
-        path: /spec/template/spec/kubeadmConfigSpec/files
+        path: /spec/template/spec/kubeadmConfigSpec/files/-
         valueFrom:
           template: |
-            - content: |
-                apiVersion: apiserver.config.k8s.io/v1
-                kind: AdmissionConfiguration
-                plugins:
-                - name: PodSecurity
-                  configuration:
-                    apiVersion: pod-security.admission.config.k8s.io/v1{{ if semverCompare "< v1.25-0" .builtin.controlPlane.version }}beta1{{ end }}
-                    kind: PodSecurityConfiguration
-                    defaults:
-                      enforce: "{{ .podSecurityStandard.enforce }}"
-                      enforce-version: "latest"
-                      audit: "{{ .podSecurityStandard.audit }}"
-                      audit-version: "latest"
-                      warn: "{{ .podSecurityStandard.warn }}"
-                      warn-version: "latest"
-                    exemptions:
-                      usernames: []
-                      runtimeClasses: []
-                      namespaces: [kube-system]
-              path: /etc/kubernetes/kube-apiserver-admission-pss.yaml
+            content: |
+              apiVersion: apiserver.config.k8s.io/v1
+              kind: AdmissionConfiguration
+              plugins:
+              - name: PodSecurity
+                configuration:
+                  apiVersion: pod-security.admission.config.k8s.io/v1{{ if semverCompare "< v1.25-0" .builtin.controlPlane.version }}beta1{{ end }}
+                  kind: PodSecurityConfiguration
+                  defaults:
+                    enforce: "{{ .podSecurityStandard.enforce }}"
+                    enforce-version: "latest"
+                    audit: "{{ .podSecurityStandard.audit }}"
+                    audit-version: "latest"
+                    warn: "{{ .podSecurityStandard.warn }}"
+                    warn-version: "latest"
+                  exemptions:
+                    usernames: []
+                    runtimeClasses: []
+                    namespaces: [kube-system]
+            path: /etc/kubernetes/kube-apiserver-admission-pss.yaml
       selector:
         apiVersion: controlplane.cluster.x-k8s.io/v1beta2
         kind: KubeadmControlPlaneTemplate
@@ -305,6 +309,42 @@ spec:
             - 127.0.0.1
             - 0.0.0.0
             - host.docker.internal
+          scheduler:
+            # Bin-pack (w1/m3): NodeResourcesFit MostAllocated — pods land on the
+            # fullest node so empty nodes free up for autoscaler scale-down.
+            # Mirrors the hetzner-caph overlay (kubeadm map-form there, list here).
+            extraArgs:
+            - name: config
+              value: /etc/kubernetes/scheduler-config.yaml
+            extraVolumes:
+            - name: scheduler-config
+              hostPath: /etc/kubernetes/scheduler-config.yaml
+              mountPath: /etc/kubernetes/scheduler-config.yaml
+              pathType: File
+              readOnly: true
+        files:
+        - content: |
+            apiVersion: kubescheduler.config.k8s.io/v1
+            kind: KubeSchedulerConfiguration
+            clientConnection:
+              kubeconfig: /etc/kubernetes/scheduler.conf
+            profiles:
+            - schedulerName: default-scheduler
+              pluginConfig:
+              - name: NodeResourcesFit
+                args:
+                  apiVersion: kubescheduler.config.k8s.io/v1
+                  kind: NodeResourcesFitArgs
+                  scoringStrategy:
+                    type: MostAllocated
+                    resources:
+                    - name: cpu
+                      weight: 1
+                    - name: memory
+                      weight: 1
+          owner: root:root
+          path: /etc/kubernetes/scheduler-config.yaml
+          permissions: "0644"
         initConfiguration:
           nodeRegistration:
             kubeletExtraArgs:
@@ -401,4 +441,11 @@ spec:
       machineDeployments:
       - class: default-worker
         name: worker-0
-        replicas: 1
+        # replicas deliberately unset: the cluster-autoscaler owns the count
+        # within [min,max] below (w1/m3). `mock-cluster.sh scale N` re-sets
+        # replicas — a manual override the topology controller then enforces,
+        # fighting the autoscaler; use it only with the autoscaler uninstalled.
+        metadata:
+          annotations:
+            cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
+            cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "5"

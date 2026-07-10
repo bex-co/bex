@@ -9,7 +9,9 @@ resources:
   - bex.yaml                     # the bex control plane (operator + gateway)
   - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/auth.md §5)
   - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
-  - autoscaler.yaml              # Cluster Autoscaler (reacts to pending pods -> add/remove machines)
+  # cluster-autoscaler: deliberately NOT an Argo app — it installs on the MGMT
+  # cluster beside CAPI (scripts/install-autoscaler.sh, called by app-cluster.yml
+  # and mock-cluster.sh); rationale: infra/clusterapi/autoscaler-values.yaml.
   - traefik.yaml                 # edge / ingress controller (Hetzner LB front door)
   - metrics-server.yaml          # resource-metrics backend (metrics.k8s.io) for bex-api metrics
   - prometheus.yaml              # request-metrics backend (scrapes Traefik) for bex-api metrics

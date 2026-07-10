@@ -171,9 +171,22 @@ metadata:
     nodepool: bex-worker-0
   name: bex-worker-0
   namespace: default
+  annotations:
+    # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
+    # MachineDeployment via clusterName=bex and scales replicas within [min,max].
+    # min 0 keeps today's cost profile (no dedicated workers; apps run on the
+    # untainted control-plane) — a node is added only when a pod is unschedulable.
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "0"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
+    # Scale-from-zero capacity hints (no live node to inspect at 0 replicas):
+    # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
+    capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
+    capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
 spec:
   clusterName: bex
-  replicas: 0 # no dedicated workers at current scale; apps run on the (untainted) control-plane. Scale up later.
+  # replicas is deliberately UNSET: the autoscaler owns it (w1/m3). With the
+  # min/max annotations above, CAPI's defaulting webhook seeds a fresh create at
+  # min-size; a `kubectl apply` of this file then never stomps the live count.
   selector:
     matchLabels: null
   template:
@@ -311,10 +324,43 @@ spec:
       scheduler:
         extraArgs:
           bind-address: 0.0.0.0
+          # Bin-pack (w1/m3): score with NodeResourcesFit MostAllocated so pods
+          # land on the fullest node and empty nodes free up for scale-down.
+          # The kubeconfig moves into the config file's clientConnection (the
+          # --kubeconfig flag is ignored once --config is set).
+          config: /etc/kubernetes/scheduler-config.yaml
           kubeconfig: /etc/kubernetes/scheduler.conf
           profiling: "false"
           secure-port: "10259"
+        extraVolumes:
+        - name: scheduler-config
+          hostPath: /etc/kubernetes/scheduler-config.yaml
+          mountPath: /etc/kubernetes/scheduler-config.yaml
+          pathType: File
+          readOnly: true
     files:
+    - content: |
+        apiVersion: kubescheduler.config.k8s.io/v1
+        kind: KubeSchedulerConfiguration
+        clientConnection:
+          kubeconfig: /etc/kubernetes/scheduler.conf
+        profiles:
+        - schedulerName: default-scheduler
+          pluginConfig:
+          - name: NodeResourcesFit
+            args:
+              apiVersion: kubescheduler.config.k8s.io/v1
+              kind: NodeResourcesFitArgs
+              scoringStrategy:
+                type: MostAllocated
+                resources:
+                - name: cpu
+                  weight: 1
+                - name: memory
+                  weight: 1
+      owner: root:root
+      path: /etc/kubernetes/scheduler-config.yaml
+      permissions: "0644"
     - content: |
         net.ipv4.conf.lxc*.rp_filter = 0
       owner: root:root

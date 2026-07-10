@@ -12,10 +12,17 @@ export CLUSTER_TOPOLOGY=true                 # CAPD's flavor uses ClusterClass/t
 MGMT=kind-bex-mgmt
 WL_KUBECONFIG=infra/local/bex.kubeconfig
 
+# The cluster-autoscaler (w1/m3) owns the worker count, so `scale N` raises the
+# pool's min-size floor to N (and max if N exceeds it) instead of setting
+# replicas — a replicas write would be a manual override the topology controller
+# enforces against the autoscaler. The array patch also clears any stale
+# replicas field, handing ownership back to the autoscaler.
 scale() {
+  local n=$1 max=5; [ "$n" -gt 5 ] && max=$n
   kubectl --context "$MGMT" patch cluster bex --type merge \
-    -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"replicas\":$1}]}}}}"
-  echo "worker pool -> $1 machine(s); watch: docker ps --format '{{.Names}}' | grep bex-worker-0"
+    -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"$n\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"$max\"}}}]}}}}"
+  echo "worker floor -> $n machine(s) (min-size $n / max-size $max; the autoscaler converges the count)"
+  echo "watch: docker ps --format '{{.Names}}' | grep bex-worker-0"
 }
 if [ "${1:-}" = scale ]; then scale "${2:?usage: scale N}"; exit 0; fi
 
@@ -55,6 +62,10 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy coredns --type m
   '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
    "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"},
    {"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}' >/dev/null
+
+# 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
+#    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
+bash scripts/install-autoscaler.sh "$MGMT"
 
 echo
 echo "app cluster 'bex' up. kubeconfig: $WL_KUBECONFIG"
