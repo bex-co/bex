@@ -1,0 +1,18 @@
+# Namespaces the base's raw resources (NetworkPolicies, backup CronJobs) land
+# in. The child Applications that "own" these namespaces create them too
+# (CreateNamespace=true), but the app-of-apps applies the base's raw resources
+# in the same sync operation that CREATES those children — on a from-scratch
+# cluster the namespaces don't exist yet and the whole sync fails (found live
+# on the w1/m19 t006 rebuild: "namespaces monitoring/secrets not found",
+# invisible before only because the old cluster's namespaces pre-existed).
+# Declaring them here makes the base self-sufficient; kustomize orders
+# Namespace objects first.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: secrets
