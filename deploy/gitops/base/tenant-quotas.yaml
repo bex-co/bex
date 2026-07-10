@@ -1,0 +1,45 @@
+# Aggregate resource ceilings for the tenant apps namespace (w7/m2/t003).
+# Defense-in-depth beyond per-pod tier limits: caps the sum across all tenant
+# pods and provides LimitRange defaults for any pod that slips through without
+# explicit requests/limits (e.g. hand-applied App CRs without spec.tier).
+#
+# Sizing is a generous first cut — tighten once real usage data lands via
+# BEX_PROM_URL (docs/usage-metering.md).
+#
+# Build Jobs run in bex-system (BEX_BUILD_NAMESPACE) — NOT subject to this
+# quota; their limits are set directly in the Job spec (lego/operator/internal/build/build.go).
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-apps-quota
+  namespace: default
+spec:
+  hard:
+    requests.cpu: "100" # 100 vCPUs aggregate across all tenant pods
+    requests.memory: 200Gi # 200 GiB aggregate
+    limits.cpu: "200" # 200 vCPUs burst ceiling
+    limits.memory: 400Gi # 400 GiB burst ceiling
+    pods: "1000" # max pods (across all tenant replicas)
+    count/jobs.batch: "500" # cron + on-demand batch jobs combined
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-apps-limits
+  namespace: default
+spec:
+  limits:
+    - type: Container
+      # Defaults applied to containers that omit requests/limits (no spec.tier).
+      # Tiered apps set explicit Guaranteed QoS via resourcesForTier(); these
+      # defaults are backstops for hand-crafted or legacy App CRs.
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: "2"
+        memory: 4Gi
+      max:
+        cpu: "8" # matches pro-ultra tier ceiling (lego/types/tiers/tiers.yaml)
+        memory: 32Gi

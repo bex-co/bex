@@ -165,6 +165,31 @@ func TestBuildCreatesJobWhenAbsent(t *testing.T) {
 	}
 }
 
+func TestBuildJobResourceLimits(t *testing.T) {
+	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]
+	r, l := c.Resources.Requests, c.Resources.Limits
+	// resource.Quantity.Cpu()/Memory() return zero-value Quantity, not nil, for
+	// absent keys — no nil guards needed before IsZero().
+	if r.Cpu().IsZero() {
+		t.Error("build Job cpu request must not be zero")
+	}
+	if r.Memory().IsZero() {
+		t.Error("build Job memory request must not be zero")
+	}
+	if l.Cpu().IsZero() {
+		t.Error("build Job cpu limit must not be zero")
+	}
+	if l.Memory().IsZero() {
+		t.Error("build Job memory limit must not be zero")
+	}
+	if l.Cpu().Cmp(*r.Cpu()) < 0 {
+		t.Error("cpu limit must be >= cpu request")
+	}
+	if l.Memory().Cmp(*r.Memory()) < 0 {
+		t.Error("memory limit must be >= memory request")
+	}
+}
+
 func TestBuildRejectsBuildpackAndNilClient(t *testing.T) {
 	o := opts()
 	o.Client = fakeClient()

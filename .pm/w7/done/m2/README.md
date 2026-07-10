@@ -1,18 +1,18 @@
 # w7 · m2 — Tenant workload hardening: Pod Security baseline + quotas + token hygiene
 
-**Worker:** worker7 **Goal:** A hostile or compromised tenant workload can't escalate to the node or carry cluster credentials: Pod Security `baseline` enforced on the apps namespace, operator-set securityContext defaults, no ServiceAccount tokens in tenant pods, aggregate namespace quotas, and resource-bounded build Jobs. **Status:** todo
+**Worker:** worker7 **Goal:** A hostile or compromised tenant workload can't escalate to the node or carry cluster credentials: Pod Security `baseline` enforced on the apps namespace, operator-set securityContext defaults, no ServiceAccount tokens in tenant pods, aggregate namespace quotas, and resource-bounded build Jobs. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                              | est | depends_on   |
 | ---- | --------------------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Enforce PSS `baseline` on the apps namespace                                                        | 30m | w7/m1/t001   |
-| t002 | Operator pod-spec defaults: drop capabilities, RuntimeDefault seccomp, no SA token automount        | 45m | t001         |
-| t003 | ResourceQuota + LimitRange on the apps namespace; resource limits on BuildKit Jobs                  | 45m | —            |
-| t004 | Verification: hostile spec rejected, no SA token, build limits, samples still Ready                 | 30m | t002, t003   |
-| t005 | Simplify — `/simplify` over the code this milestone changed                                         | 20m | t004         |
-| t006 | Test coverage — meaningful tests for securityContext defaults + build-Job limits                    | 30m | t004         |
-| t007 | Closeout — DoD verified, milestone moved to `done/`                                                 | 15m | t006         |
+| t001 | Enforce PSS `baseline` on the apps namespace                                                        | 30m | w7/m1/t001   | — **DONE** |
+| t002 | Operator pod-spec defaults: drop capabilities, RuntimeDefault seccomp, no SA token automount        | 45m | t001         | — **DONE** |
+| t003 | ResourceQuota + LimitRange on the apps namespace; resource limits on BuildKit Jobs                  | 45m | —            | — **DONE** |
+| t004 | Verification: hostile spec rejected, no SA token, build limits, samples still Ready                 | 30m | t002, t003   | — **DONE** |
+| t005 | Simplify — `/simplify` over the code this milestone changed                                         | 20m | t004         | — **DONE** |
+| t006 | Test coverage — meaningful tests for securityContext defaults + build-Job limits                    | 30m | t004         | — **DONE** |
+| t007 | Closeout — DoD verified, milestone moved to `done/`                                                 | 15m | t006         | — **DONE** |
 
 ## Definition of done
 

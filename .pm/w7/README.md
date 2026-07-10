@@ -5,7 +5,7 @@
 ## Milestones
 
 - [x] **m1** — East-west tenant isolation: default-deny network for tenant workloads (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
-- [ ] **m2** — Tenant workload hardening: Pod Security baseline + quotas + token hygiene (7 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
+- [x] **m2** — Tenant workload hardening: Pod Security baseline + quotas + token hygiene (7 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 - [ ] **m3** — bex-api abuse hardening: Render-shaped rate limits + request caps (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 
 ## Inbox

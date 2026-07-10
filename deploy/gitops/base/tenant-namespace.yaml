@@ -1,0 +1,18 @@
+# Tenant apps namespace: where bex projects App CRs (BEX_CP_APPS_NAMESPACE /
+# BEX_API_NAMESPACE, default "default"). PSS baseline enforced at admission —
+# blocks privileged containers, hostPath, hostNetwork, hostPID, hostIPC, and
+# other high-risk capabilities at the kubelet (w7/m2/t001). warn+audit at
+# restricted surfaces how far tenant images are from the stricter tier without
+# enforcing it; tenant images may legitimately run as root (see
+# docs/tenant-isolation.md §mechanism-choice: restricted deliberately deferred).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest

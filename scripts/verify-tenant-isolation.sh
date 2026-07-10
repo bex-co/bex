@@ -184,6 +184,110 @@ probe_allow_nc "same-workspace-private-service" probe-a "$APP_A.$NS.svc" 80
 # public internet egress
 probe_allow "internet-egress" probe-a "https://example.com"
 
+#──────────────────────────────────────── m2: pod hardening + quota checks ──────
+
+echo ""
+echo "=== m2 hardening checks (PSS · securityContext · SA token · quotas) ==="
+
+BUILD_NS="${BUILD_NS:-bex-system}"
+
+# PSS baseline must reject a privileged pod spec.
+log "testing PSS baseline admission rejection..."
+PSS_OUT=$(kubectl apply -n "$NS" -f - 2>&1 <<'HOSTILEEOF' || true
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pss-hostile-test
+spec:
+  containers:
+    - name: hostile
+      image: busybox
+      securityContext:
+        privileged: true
+HOSTILEEOF
+)
+if echo "$PSS_OUT" | grep -qiE "violates PodSecurity|forbidden|admission"; then
+  ok "pss-baseline-rejects-privileged"
+else
+  fail "pss-baseline-rejects-privileged (expected rejection, got: $PSS_OUT)"
+fi
+kubectl delete pod pss-hostile-test -n "$NS" --ignore-not-found &>/dev/null || true
+
+# Inspect the reconciled App A pod for hardening fields.
+POD_NAME=$(kubectl get pods -n "$NS" -l "app.bex.co/app=$APP_A" \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+if [ -n "$POD_NAME" ]; then
+  # AutomountServiceAccountToken=false: the default SA token projected volume
+  # must be absent from the pod spec.
+  SA_TOKEN=$(kubectl get pod "$POD_NAME" -n "$NS" \
+    -o jsonpath='{.spec.automountServiceAccountToken}' 2>/dev/null || echo "")
+  if [ "$SA_TOKEN" = "false" ]; then
+    ok "tenant-pod-no-sa-token"
+  else
+    fail "tenant-pod-no-sa-token (automountServiceAccountToken=$SA_TOKEN, want false)"
+  fi
+
+  # RuntimeDefault seccomp.
+  SECCOMP=$(kubectl get pod "$POD_NAME" -n "$NS" \
+    -o jsonpath='{.spec.containers[0].securityContext.seccompProfile.type}' 2>/dev/null || echo "")
+  if [ "$SECCOMP" = "RuntimeDefault" ]; then
+    ok "tenant-pod-runtimedefault-seccomp"
+  else
+    fail "tenant-pod-runtimedefault-seccomp (got: $SECCOMP)"
+  fi
+
+  # allowPrivilegeEscalation=false.
+  APE=$(kubectl get pod "$POD_NAME" -n "$NS" \
+    -o jsonpath='{.spec.containers[0].securityContext.allowPrivilegeEscalation}' 2>/dev/null || echo "")
+  if [ "$APE" = "false" ]; then
+    ok "tenant-pod-no-privilege-escalation"
+  else
+    fail "tenant-pod-no-privilege-escalation (got: $APE)"
+  fi
+
+  # capabilities.drop includes ALL.
+  CAPS=$(kubectl get pod "$POD_NAME" -n "$NS" \
+    -o jsonpath='{.spec.containers[0].securityContext.capabilities.drop}' 2>/dev/null || echo "")
+  if echo "$CAPS" | grep -q "ALL"; then
+    ok "tenant-pod-drop-all-caps"
+  else
+    fail "tenant-pod-drop-all-caps (got: $CAPS)"
+  fi
+else
+  log "SKIP pod hardening checks (App A pod not found in $NS)"
+fi
+
+# Build Job resource limits (jobs run in BEX_BUILD_NAMESPACE = bex-system by default).
+BUILD_JOB=$(kubectl get jobs -n "$BUILD_NS" -l "app.bex.co/component=build" \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+if [ -n "$BUILD_JOB" ]; then
+  CPU_LIMIT=$(kubectl get job "$BUILD_JOB" -n "$BUILD_NS" \
+    -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}' 2>/dev/null || echo "")
+  if [ -n "$CPU_LIMIT" ]; then
+    ok "build-job-has-resource-limits"
+  else
+    fail "build-job-has-resource-limits (no cpu limit on job $BUILD_JOB in $BUILD_NS)"
+  fi
+else
+  log "SKIP build-job-resource-limits (no build Job in $BUILD_NS — run a build-from-git deploy to test)"
+fi
+
+# ResourceQuota must be present on the tenant apps namespace.
+QUOTA=$(kubectl get resourcequota -n "$NS" -o name 2>/dev/null || echo "")
+if [ -n "$QUOTA" ]; then
+  ok "namespace-has-resourcequota"
+else
+  fail "namespace-has-resourcequota (no ResourceQuota in $NS)"
+fi
+
+# LimitRange must be present.
+LIMITRANGE=$(kubectl get limitrange -n "$NS" -o name 2>/dev/null || echo "")
+if [ -n "$LIMITRANGE" ]; then
+  ok "namespace-has-limitrange"
+else
+  fail "namespace-has-limitrange (no LimitRange in $NS)"
+fi
+
 #───────────────────────────────────────────────────────── summary ───────────────
 
 echo ""

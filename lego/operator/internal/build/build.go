@@ -37,6 +37,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -197,11 +198,26 @@ func BuildJob(o Options, image string) *batchv1.Job {
 							// unprivileged user's home.
 							{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
 						},
+						// Rootless BuildKit runs as UID 1000; unconfined seccomp
+						// is required (privileged seccomp would block some syscalls
+						// the userspace overlay FS needs). Resources are bounded so
+						// a long-running or runaway build can't starve the node
+						// (w7/m2/t003).
 						SecurityContext: &corev1.SecurityContext{
 							RunAsUser:  ptr(int64(1000)),
 							RunAsGroup: ptr(int64(1000)),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: corev1.SeccompProfileTypeUnconfined,
+							},
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("500m"),
+								corev1.ResourceMemory: resource.MustParse("1Gi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("4"),
+								corev1.ResourceMemory: resource.MustParse("8Gi"),
 							},
 						},
 					}},

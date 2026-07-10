@@ -322,12 +322,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			ports = []corev1.ContainerPort{{ContainerPort: int32(port)}}
 		}
 		container := corev1.Container{
-			Name:      "app",
-			Image:     image,
-			Env:       appEnv(app, port),
-			EnvFrom:   envFromSources(app),
-			Ports:     ports,
-			Resources: resourcesForTier(app.Spec.Tier),
+			Name:            "app",
+			Image:           image,
+			Env:             appEnv(app, port),
+			EnvFrom:         envFromSources(app),
+			Ports:           ports,
+			Resources:       resourcesForTier(app.Spec.Tier),
+			SecurityContext: tenantSecCtx(),
 		}
 		// Secret files: one projected /etc/secrets volume (the service's own
 		// "<name>-files" + each linked env group's files). Rebuilt every reconcile
@@ -338,6 +339,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
 		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{container}
+		dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
@@ -741,17 +743,19 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // shell (Render's cron "Command" field); empty leaves the image's own command.
 func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
 	container := corev1.Container{
-		Name:      "app",
-		Image:     image,
-		Env:       appEnv(app, port),
-		EnvFrom:   envFromSources(app),
-		Resources: resourcesForTier(app.Spec.Tier),
+		Name:            "app",
+		Image:           image,
+		Env:             appEnv(app, port),
+		EnvFrom:         envFromSources(app),
+		Resources:       resourcesForTier(app.Spec.Tier),
+		SecurityContext: tenantSecCtx(),
 	}
 	if app.Spec.Command != "" {
 		container.Command = []string{"/bin/sh", "-c", app.Spec.Command}
 	}
 	spec := corev1.PodSpec{
-		RestartPolicy: corev1.RestartPolicyNever,
+		RestartPolicy:                corev1.RestartPolicyNever,
+		AutomountServiceAccountToken: ptr(false),
 	}
 	// Secret files reach the cron run's container the same way as a Deployment's.
 	if vol, mount := secretFileMounts(app); vol != nil {
@@ -995,6 +999,22 @@ func tlsSecretName(appName string, i int, host string) string {
 	}
 	return name
 }
+
+// tenantSecCtx returns the hardening SecurityContext stamped on every tenant
+// container: no privilege escalation, all capabilities dropped, RuntimeDefault
+// seccomp. runAsNonRoot is deliberately absent — tenant images may run as root
+// (PSS baseline only, not restricted; see docs/tenant-isolation.md).
+func tenantSecCtx() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: ptr(false),
+		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+	}
+}
+
+// ptr returns a pointer to v. Needed because Go cannot take the address of a
+// composite literal or constant — e.g. &false is a compile error.
+func ptr[T any](v T) *T { return &v }
 
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
 	app.Status.Phase = p

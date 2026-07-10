@@ -25,3 +25,5 @@ resources:
   - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/secrets.md)
   - openbao-backup.yaml          # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
   - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/tenant-isolation.md)
+  - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
+  - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
