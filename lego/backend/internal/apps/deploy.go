@@ -55,6 +55,7 @@ type bexApp struct {
 	Image           string      `json:"image"`
 	Branch          string      `json:"branch"`
 	Builder         string      `json:"builder"`
+	RootDir         string      `json:"rootDir"`
 	Port            int32       `json:"port"`
 	Replicas        int32       `json:"replicas"`
 	Tier            string      `json:"tier"`
@@ -136,6 +137,7 @@ func createFromManifest(req DeployRequest) (CreateRequest, error) {
 		Image:           a.Image,
 		Branch:          branch,
 		Builder:         a.Builder,
+		RootDir:         a.RootDir,
 		Port:            a.Port,
 		Replicas:        a.Replicas,
 		Plan:            a.Tier,

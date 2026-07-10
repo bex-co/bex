@@ -145,7 +145,7 @@ Changing `domains[0]` and re-applying is how an App moves to a real domain: the 
 Setting `App.spec.repo` builds the image **on the cluster**, so there is no laptop step and no docker daemon (app nodes run containerd). When the operator reconciles a repo-backed App whose revision changed, it:
 
 1. Dispatches a Kubernetes **Job** (`bld-<name>-gen-<generation>`, in `BEX_BUILD_NAMESPACE`) running **rootless BuildKit** (`moby/buildkit:*-rootless`) — no privileged container, only seccomp/AppArmor `unconfined`, which containerd nodes allow.
-2. BuildKit's dockerfile frontend **clones the repo itself** (`context=<repo>.git#<branch>` — the `.git` suffix is what makes BuildKit git-clone rather than fetch the URL as a file) and builds the Dockerfile.
+2. BuildKit's dockerfile frontend **clones the repo itself** (`context=<repo>.git#<branch>` — the `.git` suffix is what makes BuildKit git-clone rather than fetch the URL as a file) and builds the Dockerfile. When `App.spec.rootDir` is set (monorepo support, Render's Root Directory setting), the context grows a `:<rootDir>` suffix (`context=<repo>.git#<branch>:<rootDir>`), so BuildKit builds only that subdirectory's Dockerfile instead of the repo root.
 3. It **pushes `<BEX_REGISTRY>/<name>:gen-<generation>`** to the in-cluster registry (Zot, `zot.bex-registry.svc:5000`; `registry.insecure=true` for the local/dev HTTP registry — front with TLS on prod).
 4. The operator waits for the Job, then runs that image — the node pulls it from Zot.
 
@@ -154,7 +154,7 @@ The tag is the App's **generation**, so any spec change — including a webhook 
 ## Gotchas
 
 - **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/control-plane.md`](control-plane.md) for the planned Postgres source of truth.
-- **Build-from-git needs a root Dockerfile today** — BuildKit builds from the repo root; a repo whose Dockerfile sits in a subdirectory (no `spec.rootDir` field yet) won't build. CNB (`spec.builder: buildpack`) is likewise not yet in-cluster.
+- **Monorepo support is Dockerfile-only** — `App.spec.rootDir` (set via REST/GraphQL/MCP too, e.g. `rootDir: "services/api"`) scopes the BuildKit build context to that subdirectory (`context=<repo>.git#<branch>:<rootDir>`) and scopes the git-push auto-deploy webhook so a push whose diff touches only files outside `rootDir` doesn't trigger a redeploy. It only works with `spec.builder: auto`/`dockerfile` — CNB (`spec.builder: buildpack`) is still not in-cluster (needs kpack), so `rootDir` has no effect there yet.
 - **The edge IP is the node IP** (traefik on hostNetwork) — the `*.sslip.io` host is tied to it and changes if the node is replaced.
 - **Server IPs drift** — reread them from `hcloud`/the kubeconfig rather than trusting old notes; the kubeconfig's API endpoint is also distinct from the node IP.
 - Day-0 cluster creation lives in [`infra/`](../infra/README.md); Argo-reconciled platform apps in [`deploy/gitops/`](../deploy/gitops/README.md). This doc is day-N **app**-level deployment only.

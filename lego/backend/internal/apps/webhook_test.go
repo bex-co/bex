@@ -1,0 +1,174 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+// --- rootDirMatches (the path-scoped auto-deploy filter, monorepo support) ---
+
+func TestRootDirMatches(t *testing.T) {
+	cases := []struct {
+		name    string
+		rootDir string
+		paths   []string
+		want    bool
+	}{
+		{"empty rootDir always matches (today's whole-repo behavior)", "", []string{"unrelated/file.go"}, true},
+		{"no changed paths at all fails open (nothing to filter on)", "services/api", nil, true},
+		{"file inside rootDir matches", "services/api", []string{"services/api/main.go"}, true},
+		{"file outside rootDir does not match", "services/api", []string{"services/web/index.js"}, false},
+		{"file at an unrelated top-level path does not match", "services/api", []string{"README.md"}, false},
+		{"one matching path among several is enough", "services/api", []string{"README.md", "services/api/main.go"}, true},
+		{"leading slash on the changed path is tolerated", "services/api", []string{"/services/api/main.go"}, true},
+		{"trailing slash on rootDir is tolerated", "services/api/", []string{"services/api/main.go"}, true},
+		{"sibling directory with a matching prefix string is not a match", "services/api", []string{"services/api-gateway/main.go"}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := rootDirMatches(c.rootDir, c.paths); got != c.want {
+				t.Errorf("rootDirMatches(%q, %v) = %v, want %v", c.rootDir, c.paths, got, c.want)
+			}
+		})
+	}
+}
+
+func TestPushEventChangedPaths(t *testing.T) {
+	var ev pushEvent
+	ev.Commits = append(ev.Commits, struct {
+		Added    []string `json:"added"`
+		Removed  []string `json:"removed"`
+		Modified []string `json:"modified"`
+	}{Added: []string{"a.go"}, Removed: []string{"b.go"}, Modified: []string{"c.go"}})
+	ev.Commits = append(ev.Commits, struct {
+		Added    []string `json:"added"`
+		Removed  []string `json:"removed"`
+		Modified []string `json:"modified"`
+	}{Modified: []string{"services/api/main.go"}})
+
+	got := ev.changedPaths()
+	want := []string{"a.go", "b.go", "c.go", "services/api/main.go"}
+	if len(got) != len(want) {
+		t.Fatalf("changedPaths() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("changedPaths()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// --- redeployMatching end-to-end: in-root vs out-of-root push ---
+
+func newPush(cloneURL string, changed []string) pushEvent {
+	ev := pushEvent{Ref: "refs/heads/main"}
+	ev.Repository.CloneURL = cloneURL
+	ev.Commits = []struct {
+		Added    []string `json:"added"`
+		Removed  []string `json:"removed"`
+		Modified []string `json:"modified"`
+	}{{Modified: changed}}
+	return ev
+}
+
+func TestRedeployMatchingScopesToRootDir(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	scoped := &appv1alpha1.App{}
+	scoped.Name, scoped.Namespace = "api", "default"
+	scoped.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", RootDir: "services/api", AutoDeploy: true}
+
+	unscoped := &appv1alpha1.App{}
+	unscoped.Name, unscoped.Namespace = "whole-repo", "default"
+	unscoped.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+
+	svc, _ := newService(nil, scoped, unscoped)
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	outside := newPush(repo, []string{"services/web/index.js"})
+	redeployed, err := h.redeployMatching(context.Background(), outside, "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if contains(redeployed, "api") {
+		t.Errorf("push outside rootDir must not redeploy the scoped App: redeployed=%v", redeployed)
+	}
+	if !contains(redeployed, "whole-repo") {
+		t.Errorf("push outside rootDir must still redeploy an App with no rootDir: redeployed=%v", redeployed)
+	}
+
+	inside := newPush(repo, []string{"services/api/main.go"})
+	redeployed2, err := h.redeployMatching(context.Background(), inside, "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if !contains(redeployed2, "api") {
+		t.Errorf("push inside rootDir must redeploy the scoped App: redeployed=%v", redeployed2)
+	}
+	if !contains(redeployed2, "whole-repo") {
+		t.Errorf("push inside rootDir must still redeploy an App with no rootDir: redeployed=%v", redeployed2)
+	}
+}
+
+// TestWebhookHTTPParsesCommitPaths exercises the real JSON wire shape (a raw
+// push payload's "commits[].modified", not a hand-built pushEvent) through
+// ServeHTTP end to end, so a tag/parsing regression in pushEvent would fail
+// here even though TestRedeployMatchingScopesToRootDir builds pushEvent directly.
+func TestWebhookHTTPParsesCommitPaths(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/mono"
+	scoped := &appv1alpha1.App{}
+	scoped.Name, scoped.Namespace = "api", "default"
+	scoped.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", RootDir: "services/api", AutoDeploy: true}
+	svc, cl := newService(nil, scoped)
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	body, err := json.Marshal(map[string]any{
+		"ref":        "refs/heads/main",
+		"repository": map[string]string{"clone_url": repo},
+		"commits":    []map[string]any{{"modified": []string{"services/web/index.js"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+	req.Header.Set("X-Hub-Signature-256", sign(secret, body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("=> 200, got %d: %s", rec.Code, rec.Body)
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt != "" {
+		t.Error("a push whose commits[].modified sits outside rootDir must not redeploy")
+	}
+}
+
+func contains(ss []string, want string) bool {
+	for _, s := range ss {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}

@@ -50,7 +50,10 @@ type GitWebhook struct {
 }
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
-// ref moved and which repository it belongs to (matched against App.spec.repo).
+// ref moved, which repository it belongs to (matched against App.spec.repo),
+// and which files each pushed commit touched (matched against
+// App.spec.rootDir, monorepo support) — GitHub and Gitea both carry
+// added/removed/modified paths per commit in this shape.
 type pushEvent struct {
 	Ref        string `json:"ref"` // e.g. refs/heads/main
 	Repository struct {
@@ -59,6 +62,23 @@ type pushEvent struct {
 		HTMLURL  string `json:"html_url"`
 		URL      string `json:"url"`
 	} `json:"repository"`
+	Commits []struct {
+		Added    []string `json:"added"`
+		Removed  []string `json:"removed"`
+		Modified []string `json:"modified"`
+	} `json:"commits"`
+}
+
+// changedPaths flattens the added/removed/modified paths across every commit
+// in the push.
+func (ev pushEvent) changedPaths() []string {
+	var paths []string
+	for _, c := range ev.Commits {
+		paths = append(paths, c.Added...)
+		paths = append(paths, c.Removed...)
+		paths = append(paths, c.Modified...)
+	}
+	return paths
 }
 
 // ServeHTTP verifies the signature, resolves the pushed repo+branch to matching
@@ -100,6 +120,7 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 	if err := h.Svc.Client.List(ctx, &list, client.InNamespace(h.Svc.Namespace)); err != nil {
 		return nil, err
 	}
+	paths := ev.changedPaths()
 	redeployed := []string{}
 	for i := range list.Items {
 		a := &list.Items[i]
@@ -109,6 +130,9 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 			continue
 		}
 		if a.Spec.Repo == "" || !repoMatches(a.Spec.Repo, ev) || !branchMatches(a.Spec.Branch, branch) {
+			continue
+		}
+		if !rootDirMatches(a.Spec.RootDir, paths) {
 			continue
 		}
 		if _, err := h.Svc.redeploy(ctx, a.Name); err != nil {
@@ -157,6 +181,28 @@ func branchMatches(specBranch, branch string) bool {
 		specBranch = "main"
 	}
 	return branch == "" || specBranch == branch
+}
+
+// rootDirMatches gates the path-scoped auto-deploy filter (App.spec.rootDir,
+// monorepo support, mirroring Render's Root Directory setting): a push whose
+// changed files all sit outside rootDir does not redeploy an App scoped to it.
+// An empty rootDir always matches (today's whole-repo behavior, unchanged).
+// When rootDir is set but the payload carries no commit path info at all
+// (e.g. a host/event that omits it), this fails open and matches, since there
+// is nothing to filter on.
+func rootDirMatches(rootDir string, paths []string) bool {
+	if rootDir == "" || len(paths) == 0 {
+		return true
+	}
+	dir := strings.Trim(rootDir, "/")
+	prefix := dir + "/"
+	for _, p := range paths {
+		p = strings.TrimPrefix(p, "/")
+		if p == dir || strings.HasPrefix(p, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // validSignature verifies a "sha256=<hex>" header against the HMAC-SHA256 of

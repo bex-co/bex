@@ -79,6 +79,16 @@ type AppSpec struct {
 	// +optional
 	Image string `json:"image,omitempty"`
 
+	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root
+	// Directory setting, for monorepos): the build-context git ref gets a
+	// ":<RootDir>" suffix so BuildKit builds only that subdirectory's
+	// Dockerfile, and the git-push auto-deploy webhook only redeploys when the
+	// pushed diff touches paths under it. Empty means the repo root (today's
+	// behavior, unchanged). Dockerfile builder only; ignored for prebuilt
+	// Image apps.
+	// +optional
+	RootDir string `json:"rootDir,omitempty"`
+
 	// Branch to track. Defaults to "main".
 	// +optional
 	// +kubebuilder:default=main

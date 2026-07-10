@@ -80,6 +80,7 @@ type createWebServiceArgs struct {
 	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir    string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
@@ -100,6 +101,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Repo:       a.Repo,
 		Image:      a.Image,
 		Branch:     a.Branch,
+		RootDir:    a.RootDir,
 		Plan:       a.Plan,
 		Env:        toEnvVars(a.EnvVars),
 		AutoDeploy: parseYesNo(a.AutoDeploy),
@@ -118,6 +120,7 @@ type createCronJobArgs struct {
 	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir    string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
 	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
 	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
@@ -132,6 +135,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Repo:       a.Repo,
 		Image:      a.Image,
 		Branch:     a.Branch,
+		RootDir:    a.RootDir,
 		Plan:       a.Plan,
 		Env:        toEnvVars(a.EnvVars),
 		AutoDeploy: parseYesNo(a.AutoDeploy),

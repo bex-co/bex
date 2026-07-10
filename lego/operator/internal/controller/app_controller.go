@@ -161,7 +161,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
 		res, err := build.Build(ctx, build.Options{
-			Repo: app.Spec.Repo, Ref: branch, Name: app.Name,
+			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir, Name: app.Name,
 			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
 			Builder:   app.Spec.Builder,
 			Revision:  fmt.Sprintf("gen-%d", app.Generation),

@@ -132,6 +132,9 @@ type AppView struct {
 	// for Apps the control-plane projector didn't stamp (the hand-applied path,
 	// scripts/app-apply.sh) — an honest superset rather than a faked id.
 	OwnerID string `json:"ownerId,omitempty"`
+	// RootDir is the subdirectory of the repo this App builds from (Render's
+	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
+	RootDir string `json:"rootDir,omitempty"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -164,6 +167,7 @@ func view(a *appv1alpha1.App) AppView {
 		CreatedAt:      created,
 		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
 		OwnerID:        a.Labels[core.LabelTenant],
+		RootDir:        a.Spec.RootDir,
 	}
 }
 
@@ -293,11 +297,14 @@ type CreateRequest struct {
 	Schedule string
 	// Command overrides a cron_job's default entrypoint (spec.command); empty
 	// runs the image's own command. Ignored for every other type.
-	Command         string
-	Repo            string
-	Image           string
-	Branch          string
-	Builder         string
+	Command string
+	Repo    string
+	Image   string
+	Branch  string
+	Builder string
+	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root
+	// Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
+	RootDir         string
 	Port            int32
 	Replicas        int32
 	Plan            string
@@ -468,6 +475,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Image:           req.Image,
 		Branch:          branch,
 		Builder:         req.Builder,
+		RootDir:         req.RootDir,
 		Port:            port,
 		Replicas:        replicas,
 		Tier:            tier,
@@ -517,6 +525,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Image = want.Image
 	dst.Branch = want.Branch
 	dst.Builder = want.Builder
+	dst.RootDir = want.RootDir
 	dst.Port = want.Port
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier

@@ -54,6 +54,9 @@ type renderService struct {
 	Command        string        `json:"command,omitempty"`
 	Runs           []CronRunView `json:"runs,omitempty"`
 	IdleTTLSeconds int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
+	// RootDir is the subdirectory of the repo this service builds from (Render's
+	// Root Directory setting, monorepo support). Empty is the repo root.
+	RootDir string `json:"rootDir,omitempty"`
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item
@@ -104,6 +107,7 @@ func toRenderService(a AppView) renderService {
 		Command:        a.Command,
 		Runs:           a.Runs,
 		IdleTTLSeconds: a.IdleTTLSeconds,
+		RootDir:        a.RootDir,
 	}
 }
 

@@ -96,6 +96,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
 		"ownerId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
+		// rootDir is the subdirectory of the repo this App builds from (Render's
+		// Root Directory setting, monorepo support); empty is the repo root.
+		"rootDir": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
 	},
 })
 
@@ -325,6 +328,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"repo":       &graphql.ArgumentConfig{Type: graphql.String},
 				"image":      &graphql.ArgumentConfig{Type: graphql.String},
 				"branch":     &graphql.ArgumentConfig{Type: graphql.String},
+				"rootDir":    &graphql.ArgumentConfig{Type: graphql.String}, // subdirectory of repo to build from (monorepo support)
 				"plan":       &graphql.ArgumentConfig{Type: graphql.String},
 				"autoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"port":       &graphql.ArgumentConfig{Type: graphql.Int},
@@ -339,6 +343,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Repo:       gqlStr(p.Args, "repo"),
 					Image:      gqlStr(p.Args, "image"),
 					Branch:     gqlStr(p.Args, "branch"),
+					RootDir:    gqlStr(p.Args, "rootDir"),
 					Plan:       gqlStr(p.Args, "plan"),
 					AutoDeploy: gqlBoolPtr(p.Args, "autoDeploy"),
 					Port:       int32(gqlInt(p.Args, "port")),

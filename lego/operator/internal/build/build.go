@@ -66,6 +66,7 @@ const pollInterval = 3 * time.Second
 type Options struct {
 	Repo       string        // git URL to clone (BuildKit fetches it)
 	Ref        string        // branch or commit; defaults to the repo's default branch
+	RootDir    string        // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
 	Name       string        // image repo name (the service name)
 	Registry   string        // in-cluster registry host, e.g. zot.bex-registry.svc:5000
 	Revision   string        // image tag, operator-supplied (e.g. "gen-7") — deterministic per revision
@@ -146,7 +147,7 @@ func Build(ctx context.Context, o Options) (Result, error) {
 // it push to the in-cluster Zot over plain HTTP (local/dev). The container runs
 // rootless — only seccomp/AppArmor unconfined are needed, no privileged.
 func BuildJob(o Options, image string) *batchv1.Job {
-	ctxArg := gitContext(o.Repo, o.Ref)
+	ctxArg := gitContext(o.Repo, o.Ref, o.RootDir)
 	buildkitImage := o.BuildkitImage
 	if buildkitImage == "" {
 		buildkitImage = defaultBuildkitImage
@@ -234,13 +235,22 @@ func BuildJob(o Options, image string) *batchv1.Job {
 // downloaded as an HTML page and parsed as the Dockerfile ("<!DOCTYPE …") — so
 // we ensure the .git suffix for http(s) repos (github/gitlab/gitea/bitbucket all
 // accept it); ssh/git-scheme and local paths are left untouched.
-func gitContext(repo, ref string) string {
+//
+// rootDir (App.spec.rootDir, monorepo support) appends BuildKit's ":<subdir>"
+// git-context suffix, scoping the build to that subdirectory's Dockerfile. It
+// follows the ref after a "#", e.g. "repo.git#main:services/api"; if ref is
+// empty but rootDir is set, "#" alone still introduces the ":<subdir>" so
+// BuildKit resolves the default branch scoped to that subdirectory.
+func gitContext(repo, ref, rootDir string) string {
 	ctx := repo
 	if (strings.HasPrefix(ctx, "https://") || strings.HasPrefix(ctx, "http://")) && !strings.HasSuffix(ctx, ".git") {
 		ctx += ".git"
 	}
-	if ref != "" {
+	if ref != "" || rootDir != "" {
 		ctx += "#" + ref
+	}
+	if rootDir != "" {
+		ctx += ":" + rootDir
 	}
 	return ctx
 }

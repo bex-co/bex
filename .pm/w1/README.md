@@ -22,7 +22,7 @@
 - [x] **m15** — Additional service types: background worker + cron job (8 tasks) ← promoted from `009` 2026-07-08 (static site split to `012`) — done 2026-07-09, moved to `done/m15/` (had been staged under `w7/m15/`)
 - [x] **m16** — Config surfaces beyond env vars: environment groups + secret files (7 tasks) ← promoted from `010` 2026-07-08
 - [x] **m17** — Managed Postgres advanced: data-protection + lifecycle + access (8 tasks) ← promoted from `011` 2026-07-08 (HA/replicas split to `013`) — done 2026-07-09, moved to `done/m17/` (HA/replicas remain in note `013`)
-- [ ] **m18** — Root Directory: CRD + build engine + webhook path-filter + API surface (10 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic, monorepo support); UI half is `w5/m13`
+- [x] **m18** — Root Directory: CRD + build engine + webhook path-filter + API surface (10 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic, monorepo support); UI half is `w5/m13` — done 2026-07-10, moved to `done/m18/`
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

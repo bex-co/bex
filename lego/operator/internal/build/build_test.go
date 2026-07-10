@@ -93,15 +93,18 @@ func TestBuildJobShape(t *testing.T) {
 }
 
 func TestGitContext(t *testing.T) {
-	cases := map[[2]string]string{
-		{"https://github.com/x/y", "main"}:     "https://github.com/x/y.git#main", // .git appended, ref added
-		{"https://github.com/x/y.git", "main"}: "https://github.com/x/y.git#main", // already .git, not doubled
-		{"https://github.com/x/y", ""}:         "https://github.com/x/y.git",      // no trailing # when ref empty
-		{"git@github.com:x/y.git", "dev"}:      "git@github.com:x/y.git#dev",      // ssh scheme untouched
+	cases := map[[3]string]string{
+		{"https://github.com/x/y", "main", ""}:             "https://github.com/x/y.git#main",              // .git appended, ref added
+		{"https://github.com/x/y.git", "main", ""}:         "https://github.com/x/y.git#main",              // already .git, not doubled
+		{"https://github.com/x/y", "", ""}:                 "https://github.com/x/y.git",                   // no trailing # when ref and rootDir empty
+		{"git@github.com:x/y.git", "dev", ""}:              "git@github.com:x/y.git#dev",                   // ssh scheme untouched
+		{"https://github.com/x/y", "main", "services/api"}: "https://github.com/x/y.git#main:services/api", // rootDir suffix after ref
+		{"https://github.com/x/y", "", "services/api"}:     "https://github.com/x/y.git#:services/api",     // rootDir with default (empty) ref: bare "#" still introduces it
+		{"git@github.com:x/y.git", "dev", "apps/web"}:      "git@github.com:x/y.git#dev:apps/web",          // ssh scheme + rootDir
 	}
 	for in, want := range cases {
-		if got := gitContext(in[0], in[1]); got != want {
-			t.Errorf("gitContext(%q,%q) = %q, want %q", in[0], in[1], got, want)
+		if got := gitContext(in[0], in[1], in[2]); got != want {
+			t.Errorf("gitContext(%q,%q,%q) = %q, want %q", in[0], in[1], in[2], got, want)
 		}
 	}
 }

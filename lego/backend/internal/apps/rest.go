@@ -69,7 +69,10 @@ type createServiceRequest struct {
 	// bex extensions (no Render create-body equivalent): the build strategy, the
 	// listen port (Render auto-detects it; bex's App CR needs it explicitly),
 	// custom domains in one call, and a top-level plan convenience.
-	Builder string   `json:"builder"`
+	Builder string `json:"builder"`
+	// RootDir scopes build-from-git to a subdirectory of Repo, mirroring
+	// Render's Root Directory setting (monorepo support). Empty is the repo root.
+	RootDir string   `json:"rootDir"`
 	Port    int32    `json:"port"`
 	Plan    string   `json:"plan"`
 	Domains []string `json:"domains"`
@@ -135,6 +138,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Image:           image,
 		Branch:          r.Branch,
 		Builder:         r.Builder,
+		RootDir:         r.RootDir,
 		Port:            r.Port,
 		Replicas:        replicas,
 		Plan:            plan,
