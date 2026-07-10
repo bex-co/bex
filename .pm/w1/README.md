@@ -46,6 +46,7 @@
 - `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** landing node elasticity (the metric→replica reconciler is new work in 008)
 - `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
 - `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
+- `014.md` — **Prod KCP cannot manage the control plane** (m7 LB/private-net aftermath): etcd unreachable from mgmt, CSR denials, immutable `hcloudNetwork`, `app-cluster.yml` red since 2026-07-09 — blocks m3/t008's scheduler rollout
 
 > **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above.
 

@@ -137,8 +137,11 @@ jobs:
 
       # --- cluster-autoscaler on the INFRA cluster, beside CAPI (w1/m3) ---
       # Why here and not Argo: infra/clusterapi/autoscaler-values.yaml (decision record).
+      # CA_TAG matches the app cluster's k8s minor (overlay `version:`) — a newer
+      # CA's DRA informers never sync against a v1.31 apiserver and the main loop
+      # silently never starts. Bump together with the overlay's k8s version.
       - name: cluster-autoscaler (infra cluster)
-        run: bash scripts/install-autoscaler.sh
+        run: CA_TAG=v1.31.5 bash scripts/install-autoscaler.sh
 
       # --- pull the app cluster kubeconfig; switch default context to it ---
       - name: app cluster kubeconfig
