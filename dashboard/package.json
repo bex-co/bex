@@ -2,6 +2,7 @@
   "name": "dashboard",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "yarn@4.17.0",
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 5173",
