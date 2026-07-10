@@ -91,7 +91,8 @@ spec:
 
 ---
 # monitoring: Prometheus
-# Allowed: monitoring itself (internal Alertmanager / Grafana).
+# Allowed: monitoring itself (internal Alertmanager / Grafana),
+#   bex-system (bex-api queries Prometheus for request + resource metrics via BEX_PROM_URL).
 # Blocked: tenant pods (they must not scrape cross-tenant metrics).
 # Note: Prometheus scrapes targets in OTHER namespaces by design — that is
 # egress from monitoring, not ingress to it; this policy does not restrict it.
@@ -109,3 +110,7 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
