@@ -1,12 +1,12 @@
 # w5 · m14 — Delete service: dashboard danger-zone action
 
-**Worker:** worker5 **Goal:** Give the dashboard the one core-lifecycle destructive action it's missing — a Settings-tab danger zone with type-to-confirm delete, wired to w2/m4's `deleteService` mutation, matching the pattern w6/m3/t004 establishes for workspace delete and `use-delete-database.ts` establishes for databases. **Status:** todo (gated on w2/m4)
+**Worker:** worker5 **Goal:** Give the dashboard the one core-lifecycle destructive action it's missing — a Settings-tab danger zone with type-to-confirm delete, wired to w2/m4's shipped `deleteService` mutation (`lego/backend/internal/apps/graphql.go`), matching the shipped workspace-delete pattern (`dashboard/src/features/workspaces/components/delete-workspace-card.tsx`) and `use-delete-database.ts` for databases. **Status:** ready (w2/m4 done 2026-07-09 — gate open)
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | GraphQL document + `useDeleteService` hook: mutation, cache eviction from the services list, redirect on success | 30m | w2/m4      |
+| t001 | GraphQL document + `useDeleteService` hook: mutation, cache eviction from the services list, redirect on success | 30m | —          |
 | t002 | Settings-tab danger zone: delete button + type-to-confirm dialog (service name must match)     | 35m | t001       |
 | t003 | Acceptance: create → delete → gone from list + services query, redirected with toast, no dangling row | 25m | t002       |
 | t004 | i18n (en/zh) for the danger-zone copy + confirm dialog                                         | 15m | t002       |
@@ -24,7 +24,7 @@ On dashboard.bex.co, a service's Settings tab has a danger zone; typing the serv
 - **Source:** `/pm-brainstorm new milestones` 2026-07-09 — gap analysis against `docs/render-parity.md`'s "Delete service" row (UI ✖, only `w2/m4` as owner, which is backend-only per its own README); `GOAL.md` item 1 names Delete explicitly ("Suspend. Delete. Create.").
 - **Goal linkage:** V0 roadmap item 1 (Create/Suspend/Delete — the last unbuilt verb of the three); pillar 1 (Render dashboard parity).
 - **Expected outcome:** service deletion becomes possible without `kubectl`/`curl`/MCP — the last resource type (services) catches up to databases/workspaces, which already have this pattern.
-- **Why now:** w2/m4 is about to build the backend verb this gap analysis surfaced as still-missing; wiring the UI as a sibling milestone means the feature ships whole instead of backend-then-forgotten.
+- **Why now:** w2/m4 shipped the backend verb 2026-07-09 (`deleteService` lives in `lego/backend/internal/apps/graphql.go`; the milestone moved to `.pm/w2/done/m4`) — the gate this milestone was created behind is open, and only the UI half is missing before the verb goes backend-then-forgotten. _(Updated 2026-07-11 board review; originally written when w2/m4 was still upcoming.)_
 - **Render parity task included:** yes — this is dashboard surface work; t005 compares against Render's service Settings danger zone.
 
 ## Note

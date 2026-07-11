@@ -7,7 +7,7 @@
 - [x] **m1** — Reliability: fix config drift + back up etcd (4 tasks) ← from `009`, `007` — done 2026-07-05, moved to `done/m1/`
 - [x] **m2** — Control plane: Postgres source of truth in `lego/backend` (7 tasks; DONE 2026-07-09 — committed `aebbd43`, prod `BEX_CP_DB_URI` on since m9, live acceptance via `scripts/auth-tenant-e2e.sh` in m9/t004) ← from `005`, moved to `done/m2/`
 - [x] **m2.5** — Refactor bex-api into feature packages (one package per feature) (9 tasks) ← from `/pm` architecture review 2026-07-06 — done (shipped `06f247e` 2026-07-06, verified + board synced 2026-07-08), in `done/m2.5/`
-- [ ] **m3** — Elastic substrate: bin-pack + autoscale (8 tasks) ← from `002`, `004` (t001 done; retrofitted to current `/pm` canon 2026-07-08; Closeout t008 added 2026-07-09)
+- [x] **m3** — Elastic substrate: bin-pack + autoscale (8 tasks) ← from `002`, `004` (retrofitted to current `/pm` canon 2026-07-08) — done 2026-07-11, moved to `done/m3/` (t008 unblocked by m19: 014 repaired, scheduler --config live, CI green; elastic behaviors proven on prod)
 - [x] **m4** — Free tier = sleep: scale-to-zero + wake activator (5 tasks) ← from `003` — done 2026-07-08, moved to `done/m4/`
 - [x] **m4.5** — Sleep in the dashboard: hibernated state, idle-timeout setting, wake UX (6 tasks; DONE 2026-07-09 — Sleeping badge + idle-timeout control, verified live) ← user request 2026-07-08, UI half of m4, moved to `done/m4.5/`
 - [x] **m5** — Build & deploy from git, in-cluster (5 tasks; DONE 2026-07-09 — in-cluster BuildKit builds, verified live, simplified + tested; unblocks w2/m2 t004) ← from `008`, moved to `done/m5/`
@@ -48,6 +48,8 @@
 - `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** landing node elasticity (the metric→replica reconciler is new work in 008)
 - `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
 - `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
+- `015.md` — Mock cluster: platform-pool labels so the GitOps stack schedules locally — from the 2026-07-11 board review (theme A); unblocks w4/m7, w4/m11 local verification
+- `016.md` — Sweep stale "single-node / data-loss" comments inverted by the m19 rebuild — from the 2026-07-11 board review (theme F)
 > **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above. **Promoted 2026-07-10:** `014` (prod KCP unmanageable, m7 aftermath) → **m19** via `docs/rearchitecture.md` (since absorbed into architecture.md); note moved to `done/`.
 
 > `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`. m12 was subsequently relocated to **w2** (done: `w2/done/m12/`).

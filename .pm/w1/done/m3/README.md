@@ -1,7 +1,6 @@
 # w1 · m3 — Elastic substrate: bin-pack + autoscale
 
-**Worker:** worker1 **Goal:** Make provisioning track aggregate demand (Σ running tiers), not be hand-driven: pack pods onto the fullest node for density, and add/remove machines reactively. This is bex's auto-allocator. **Status:** shipped (`b02d354`, 2026-07-10) + **prod scale-from-zero proven live**: a pending pod created a real Hetzner cx33 that joined Ready in ~2m and ran it (and prod's 28h-pending `openbao-2` finally scheduled — the autoscaler sized 0→2 for the real backlog, max 3 respected). Autoscaler installed on the infra cluster manually (CI's step aborted upstream of it); CA image pinned to the workload minor (`CA_TAG=v1.31.5` — newer CA's DRA informers never sync against a v1.31 apiserver and the main loop silently never starts). Open: t008 only — the prod **scheduler-config leg** (pack-on-fullest, verified on the mock) is queued in a KCP rollout that is **blocked by the m7 LB/private-net aftermath** (`w1/014`: KCP can't reach the CP's etcd at its private IP; HetznerCluster.hcloudNetwork immutable ⇒ app-cluster.yml red since 2026-07-09). t008 closes when `w1/014` is repaired and the queued rollout lands.
-
+**Worker:** worker1 **Goal:** Make provisioning track aggregate demand (Σ running tiers), not be hand-driven: pack pods onto the fullest node for density, and add/remove machines reactively. This is bex's auto-allocator. **Status:** done — closed 2026-07-11 (t008: 014 repaired by m19, scheduler --config live, CI green; elastic behaviors proven on prod) 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on |
@@ -13,7 +12,7 @@
 | t005 | Verify pack + scale-up + scale-down end-to-end — **DONE** (CAPD mock)         | 25m | t002,t004  |
 | t006 | Simplify — `/simplify` over what this milestone changed — **DONE**            | 20m | t005       |
 | t007 | Test coverage — script-level checks for the elastic behavior — **DONE**       | 20m | t005       |
-| t008 | Closeout — verify DoD holds, then move the milestone to `done/`               | 10m | t007       |
+| t008 | Closeout — verify DoD holds, then move the milestone to `done/` — **DONE**               | 10m | t007       |
 
 ## Definition of done
 

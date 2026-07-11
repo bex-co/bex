@@ -8,9 +8,13 @@
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Capture live Render workspace settings/rename/delete semantics → `docs/render-artifacts/workspace-lifecycle.md` (the never-completed `m1/t001` acceptance criteria: confirmation wording, stated resource consequences, ownership-transfer check) | 30m | —          |
 | t002 | Reconcile bex's dashboard danger-zone/rename UX (`w6/m3`'s settings/delete components) against the captured semantics; fix copy/flow drift or document deliberate deviation | 30m | t001       |
-| t003 | Live-cluster acceptance rerun: `scripts/mock-cluster.sh`, drive create → switch → rename → delete end to end in a real browser against real Postgres + OpenFGA + Kratos (re-run `m3/t005`'s DoD for real, not the offline stub)          | 40m | t002       |
-| t004 | Regenerate `yarn codegen` against the live bex-api schema (same cluster session); diff and fix any drift in the hand-authored workspace GraphQL definitions (`dashboard/src/graphql/definitions.ts`)                                     | 30m | t003       |
+| t003 | Live acceptance rerun against the prod stack (dashboard.bex.co / api.bex.co, scratch workspace): drive create → switch → rename → delete end to end in a real browser against the live Postgres + OpenFGA + Kratos, incl. the `w6/m4`-handed-off `secrets.WorkspacePurger` OpenBao-purge live-verify (re-run `m3/t005`'s DoD for real, not the offline stub; _2026-07-11: retargeted off `mock-cluster.sh`, which deploys none of this stack_) | 40m | t002       |
+| t004 | Regenerate `yarn codegen` against the live bex-api schema (`VITE_API_URL` + `CODEGEN_SESSION_TOKEN` at the same bex-api t003 used — no cluster needed); diff and fix any drift in the hand-authored workspace GraphQL definitions (`dashboard/src/graphql/definitions.ts`) | 30m | t003       |
 | t005 | Update `w6/m1`'s and `w6/m3`'s README follow-up notes to mark these items resolved                                                       | 15m | t004       |
+| t006 | Render parity: workspace lifecycle UX vs Render, final check — add the missing Workspaces/owners row to `docs/render-parity.md`          | 20m | t005       |
+| t007 | Simplify: workspace UX verification changes                                                                                              | 20m | t006       |
+| t008 | Test coverage for reconciled UX                                                                                                          | 25m | t006       |
+| t009 | Closeout: verify DoD, mark done, move to `done/`                                                                                         | 15m | t008       |
 
 ## Definition of done
 

@@ -21,8 +21,8 @@ A caller exceeding the configured rate gets a Render-shaped **429 + `Retry-After
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w7` (2026-07-09, take 2). Verified 2026-07-09: no 429 handling or rate limiting anywhere in `lego/backend/` — the public API is unmetered.
+- **Source:** `/pm-brainstorm for w7` (2026-07-09, take 2). Verified 2026-07-09: no 429 handling or rate limiting anywhere in `lego/backend/` — the public API is unmetered. Re-verified 2026-07-11: still true, and api.bex.co is now live behind the rebuilt cluster's LB.
 - **Goal linkage:** GOAL.md V0 #7 (security review); pillar 1 (Render-compatible API — Render documents API rate limits and 429 responses, so matching them *is* parity).
 - **Expected outcome:** the API surface w1/m9 exposes to open signup can't be trivially DoS'd or monopolized by one caller; agents get a machine-readable back-off signal (`Retry-After`) instead of degraded latency.
-- **Why now:** w1/m9 (first in w1's execution order) makes the API publicly signup-reachable; limits must exist before the first hostile or runaway client, not after.
+- **Why now:** w1/m9 shipped 2026-07-09 — the API is publicly signup-reachable **today**, served at api.bex.co through the LB (`lego/operator/config/api/ingress.yaml`) with **zero rate limiting**. The precondition already fired: this is a live exposure, not a pre-signup prerequisite, and the last open w7 milestone — schedule it next for worker7. _(Updated 2026-07-11 board review; originally written when m9 was still upcoming.)_
 - **Render parity: included** — this changes REST/GraphQL/MCP response semantics (429 envelope + headers); t005 checks the three adapters against each other and against Render's documented contract, and that the dashboard degrades gracefully.

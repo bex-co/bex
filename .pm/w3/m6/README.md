@@ -7,9 +7,9 @@
 | id   | title                                                                                       | est | depends_on   |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ------------ |
 | t001 | Enable Alertmanager in the Prometheus chart + one receiver (webhook/email), secret out-of-band | 30m | —            |
-| t002 | Enable kube-state-metrics (minimal exporter scope)                                            | 25m | —            |
+| t002 | Enable kube-state-metrics + explicit scrape jobs (KSM incl. cronjobs collector, kubelet /metrics, cert-manager :9402, OpenBao telemetry) | 40m | —            |
 | t003 | Rule pack — platform: CrashLoop/not-Ready in platform namespaces, node NotReady, PVC near-full, cert expiry | 30m | t001, t002   |
-| t004 | Rule pack — bex: backup CronJob last-success age > 26h, OpenBao sealed, bex-api down, Traefik 5xx spike | 30m | t003         |
+| t004 | Rule pack — bex: backup CronJob last-success age > 26h, OpenBao any-member sealed, bex-api replicas==0, Traefik 5xx spike, stranded node-local images | 30m | t003         |
 | t005 | Acceptance: synthetically break two rules → notifications arrive; recovery resolves          | 25m | t004         |
 | t006 | Simplify — `/simplify` over what this milestone changed                                       | 20m | t005         |
 | t007 | Test coverage — promtool rule tests (else close n/a)                                          | 20m | t005         |

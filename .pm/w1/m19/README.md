@@ -14,9 +14,9 @@
 | t006 | Execute: teardown → rebuild via CI → GitOps converge → restore OpenBao + CNPG data                         | 90m | t001,t002,t003,t004,t005 |
 | t007 | Pivot: `clusterctl move` to self-managed · in-cluster autoscaler · destroy `bex-infra` node — **DONE** (by m19.1)                | 45m | t006                |
 | t008 | External pointers: DNS → new Traefik LB IP · rotate CI kubeconfig secrets — **DONE** (by m19.1)                                  | 30m | t006                |
-| t009 | Full acceptance: verify-elastic on self-managed prod · CI green e2e · port scan · close `w1/014`           | 45m | t007,t008           |
+| t009 | Full acceptance: verify-elastic on self-managed prod · CI green e2e · port scan · close `w1/014`           | 45m | t007,t008,t011      |
 | t010 | Simplify — `/simplify` over what this milestone changed                                                    | 20m | t009                |
-| t011 | Test coverage — scripted, asserting rearch verification (extend verify-elastic / add verify-substrate)     | 30m | t009                |
+| t011 | Test coverage — rewrite verify-elastic for self-managed (verify-substrate shipped by m19.1)                | 30m | t007,t008           |
 | t012 | Closeout — verify DoD holds, then move the milestone to `done/`                                            | 10m | t011                |
 
 ## Definition of done
@@ -25,9 +25,9 @@ On prod, all observable and re-checkable:
 
 - `app-cluster.yml` runs **green end-to-end** on main (apply → wait → autoscaler → addons), twice in a row (idempotence).
 - `HetznerCluster.spec.hcloudNetwork.enabled: true` — CAPH owns network `bex` (`10.10.0.0/16`); every machine (CP + workers) attached at creation; **zero out-of-band network state**.
-- 3 control-plane machines Ready and **tainted** (no platform workloads on CP); `bex-platform` pool ≥2 runs the platform (OpenBao **3/3 Ready** — the 28h-Pending regression class is dead); tenant pool carries the m3 autoscaler annotations (min 0).
+- 3 control-plane machines Ready and **tainted** (no platform workloads on CP); `bex-platform` pool ≥2 runs the platform (OpenBao **3/3 Ready** — the 28h-Pending regression class is dead); tenant pool carries the m3 autoscaler annotations (min 1 since m19.1 t005 — a hosting platform keeps one tenant node warm; renamed `bex-tenant-0` 2026-07-11).
 - KCP `Available=True`, no stuck `RollingOut`; CAPI objects live **in the cluster itself** (self-managed; `bex-infra` server destroyed, Terraform definition retained).
-- kube-scheduler runs `--config=/etc/kubernetes/scheduler-config.yaml` (closes the last m3/t008 leg); `scripts/verify-elastic.sh` passes all three phases against the self-managed pair.
+- kube-scheduler runs `--config=/etc/kubernetes/scheduler-config.yaml` (closes the last m3/t008 leg); `scripts/verify-elastic.sh` (rewritten by t011 for the self-managed cluster) passes all three phases against the tenant pool.
 - No `CSRValidationFailed` events over a 24h window (serving-cert rotation healthy at `cluster-signing-duration: 6h`).
 - Both LBs use private-net targets; a public port scan of node IPs shows **only :22**; LB fronts expose only 80/443 (Traefik) and 6443 (kube-api).
 - `w1/014` closed (root cause removed); `w1/m3` closes via its own t008.
