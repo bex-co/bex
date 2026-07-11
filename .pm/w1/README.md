@@ -24,6 +24,7 @@
 - [x] **m17** — Managed Postgres advanced: data-protection + lifecycle + access (8 tasks) ← promoted from `011` 2026-07-08 (HA/replicas split to `013`) — done 2026-07-09, moved to `done/m17/` (HA/replicas remain in note `013`)
 - [x] **m18** — Root Directory: CRD + build engine + webhook path-filter + API surface (10 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic, monorepo support); UI half is `w5/m13` — done 2026-07-10, moved to `done/m18/`
 - [ ] **m19** — Rearchitecture: rebuild the Hetzner substrate right (12 tasks) ← from [docs/rearchitecture.md](../../docs/rearchitecture.md) 2026-07-10, promoted from `014` (CAPH-owned network · 3×CP tainted · platform/tenant pools · self-managed pivot · port firewall + WireGuard); closes `w1/014`, unblocks m3/t008, `008`, `013`
+- [ ] **m19.1** — 5-server interim: rescue prod + early pivot (9 tasks) ← from m19 t006's Hetzner-quota blocker + user decisions 2026-07-10/11 (pivot pulled forward, `bex-infra` destroyed to free the slot for the first tenant node; tenant pool floor becomes min 1; m19 resumes with a two-number revert after the quota raise)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

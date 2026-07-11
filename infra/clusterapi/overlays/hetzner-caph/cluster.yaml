@@ -171,7 +171,9 @@ metadata:
     # min 0 keeps today's cost profile (no dedicated workers; apps run on the
     # untainted control-plane) — a node is added only when a pod is unschedulable.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "0"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
+    # TEMP (m19.1): max 0 while the pivot frees the quota slot — m19.1 t005
+    # flips this pool to min 1 / max 3 (permanent floor, user decision).
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "0"
     # Scale-from-zero capacity hints (no live node to inspect at 0 replicas):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
@@ -531,7 +533,9 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: HCloudMachineTemplate
       name: bex-control-plane
-  replicas: 3 # etcd quorum (rearchitecture decision 2) — CP is HA and tainted
+  # TEMP (m19.1): 2 until the Hetzner server quota is raised — revert to 3.
+  # Target stays 3 (etcd quorum, rearchitecture decision 2 — CP is HA and tainted).
+  replicas: 2
   # Bumping this k8s version? Also bump the kubeadm-matched etcd image in
   # deploy/gitops/charts/etcd-backup/cronjob.yaml (and the runbook it links).
   version: v1.31.0
@@ -791,7 +795,9 @@ metadata:
     # min 0 keeps today's cost profile (no dedicated workers; apps run on the
     # untainted control-plane) — a node is added only when a pod is unschedulable.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "2"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
+    # TEMP (m19.1): max 2 until the Hetzner server quota is raised — revert to
+    # "3" (openbao-1's anti-affinity then pulls the third platform node).
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
     # Scale-from-zero capacity hints (no live node to inspect at 0 replicas):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
