@@ -1,26 +1,23 @@
 # Cluster Autoscaler (clusterapi provider) — the reactive add/remove-machine
-# engine (w1/m3), and THE decision record for where it runs. One values file,
-# one installer (scripts/install-autoscaler.sh — owns the chart pin), both envs:
-#   prod:  the Hetzner INFRA cluster (.github/workflows/app-cluster.yml)
-#   local: the kind mgmt cluster (scripts/mock-cluster.sh)
+# engine (w1/m3). One SHARED values file, two lifecycle homes (w1/m19.1):
+#   prod (steady state): IN the self-managed app cluster, Argo-managed
+#     (deploy/gitops/base/autoscaler.yaml, clusterAPIMode=incluster-incluster —
+#     CAPI objects live in the same cluster since the clusterctl-move pivot;
+#     no kubeconfig secret needed)
+#   bootstrap/DR + local mock: on the temporary mgmt cluster
+#     (scripts/install-autoscaler.sh sets kubeconfig-incluster + the
+#     CAPI-generated bex-kubeconfig secret; scripts/mock-cluster.sh — the
+#     mock never pivots)
 #
-# It runs on the MANAGEMENT cluster, beside CAPI, on purpose: the Cluster /
-# MachineDeployment objects it scales are in-cluster there, and the workload
-# cluster (nodes + pending pods) is reached through the CAPI-generated
-# `bex-kubeconfig` secret (key `value`, ns default) — so no new credential is
-# minted, and the app cluster never holds a management-cluster kubeconfig (the
-# docs/infra-credentials.md trust chain stays one-way, mgmt -> app). This is why
-# it is NOT an Argo Application: Argo runs on the app cluster and can't reach
-# CAPI without exactly that reverse credential.
-#
-# Install into ns `default` — the chart mounts clusterAPIKubeconfigSecret from
-# the release namespace, and CAPI writes bex-kubeconfig in default.
+# Install into ns `default` — CAPI Cluster/MachineDeployment objects live there
+# (and, bootstrap-phase, the chart mounts bex-kubeconfig from that namespace).
 #
 # Scaling behavior: only MachineDeployments of Cluster `bex` that carry the
 # cluster-api-autoscaler-node-group-{min,max}-size annotations are managed
 # (infra/clusterapi/overlays/*/cluster.yaml). Scale-up triggers on unschedulable
-# pods; scale-from-zero (prod min=0) reads the capacity.cluster-autoscaler
-# annotations. The autoscaler moves machines, never App spec.replicas.
+# pods; scale-from-zero reads the capacity.cluster-autoscaler annotations
+# (tenant pool floor is min 1 since m19.1 t005). The autoscaler moves machines,
+# never App spec.replicas.
 cloudProvider: clusterapi
 
 # clusterAPIMode is deliberately NOT set here — it differs by lifecycle phase
