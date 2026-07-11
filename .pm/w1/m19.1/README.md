@@ -11,7 +11,7 @@
 | t003 | Rewrite CI cluster access (m19-t008 item, pulled forward): SSH-to-CP replaces SSH-to-infra — **DONE**     | 20m | t002       |
 | t004 | Destroy `bex-infra` (definition retained); docs trust-chain + architecture update              — **DONE** | 15m | t003       |
 | t005 | Tenant node birth: tenant pool min 1/max 3 (permanent) → apps Running, LE certs issue          — **DONE** | 20m | t004       |
-| t006 | External cutover: DNS → `49.12.20.236` (user, Cloudflare) + serve verification; sync m19       | 15m | t005       |
+| t006 | External cutover: DNS → `49.12.20.236` (user, Cloudflare) + serve verification; sync m19 — **DONE**       | 15m | t005       |
 | t007 | Simplify — `/simplify` over what this milestone changed (overlay, workflows, docs)             | 15m | t006       |
 | t008 | Test coverage — scripted assertion of the self-managed access path (no mgmt-cluster dependency)| 20m | t007       |
 | t009 | Closeout — verify DoD holds, then move the milestone to `done/`                                | 10m | t008       |
