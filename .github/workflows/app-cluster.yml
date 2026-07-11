@@ -1,29 +1,26 @@
 name: app-cluster (CAPH)
 
-# Phase 2: turn the infra cluster (single-node k3s, built by infra.yml/terraform)
-# into a running APP CLUSTER on Hetzner. It:
-#   1. discovers the infra cluster IP from terraform state, fetches its kubeconfig
-#   2. installs CAPH into the infra cluster (clusterctl init)
-#   3. applies the CAPH overlay -> CAPH provisions Hetzner servers -> app cluster
-#   4. installs the bootstrap addons on the app cluster: CNI (Cilium) + Hetzner CCM + CSI
+# Phase 2: reconcile the SELF-MANAGED app cluster (w1/m19.1 pivot — CAPI lives
+# in the cluster it manages; no mgmt cluster). It:
+#   1. fetches the cluster's own kubeconfig (hcloud API -> CP node -> SSH admin.conf)
+#   2. ensures CAPH at the pinned version (clusterctl, in-cluster)
+#   3. applies the CAPH overlay -> the cluster reconciles its own machines
+#   4. ensures the addons: CNI (Cilium) + Hetzner CCM + CSI
 #
 # Runs in CI, never a laptop. Idempotent: re-runnable (clusterctl init / kubectl
 # apply / helm upgrade --install / secret apply are all no-ops when unchanged).
 #
-# Prereq: infra.yml has applied (infra cluster + remote state exist).
-# Extra secret beyond infra.yml's:
-#   BEX_SSH_PRIVATE_KEY   private key matching BEX_SSH_PUBLIC_KEY (to read k3s.yaml over SSH)
-#
-# ⚠ Untested against a live Hetzner account — structurally correct, but chart
-#   versions / values may need tuning on the first real run (see NOTE comments).
+# Prereq: the app cluster exists and a CP node is SSH-reachable (initial
+# bring-up / DR bootstrap happens elsewhere: infra.yml + a temporary mgmt
+# cluster, then clusterctl move — docs/architecture.md).
+# Secrets: HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY (to read admin.conf off a CP node).
 
 on:
   push:
     branches: [main]
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
-      - "infra/clusterapi/autoscaler-values.yaml"
-      - "scripts/install-autoscaler.sh"
+      - "scripts/fetch-app-kubeconfig.sh"
       - ".github/workflows/app-cluster.yml"
   workflow_dispatch: {}
 
@@ -44,24 +41,13 @@ jobs:
       - uses: actions/checkout@v4
 
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
-      # Post-pivot there is no mgmt cluster: CAPI lives IN the app cluster, so the
-      # overlay below applies to the cluster itself. Access = discover a CP by its
-      # CAPH label via the hcloud API, SSH-fetch admin.conf (key-only :22 — the
-      # recorded auth-only baseline, docs/infra-credentials.md). admin.conf already
-      # points at the kube-api LB (CAPH controlPlaneEndpoint), so no rewrite needed.
       - name: fetch app cluster kubeconfig (via a CP node)
         run: |
-          install -m700 -d ~/.ssh ~/.kube
+          install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
-            "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
-            | jq -r '[.servers[] | select(.name | startswith("bex-control-plane"))][0].public_net.ipv4.ip')
-          test -n "$CP_IP" && test "$CP_IP" != "null"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${CP_IP}" \
-            'cat /etc/kubernetes/admin.conf' > ~/.kube/config
-          chmod 600 ~/.kube/config
-          kubectl cluster-info
+          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
+          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
 
       # --- tools ---
       - name: install clusterctl
@@ -71,7 +57,7 @@ jobs:
           sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
           clusterctl version
 
-      # --- install/upgrade CAPH on the infra cluster (idempotent across version bumps) ---
+      # --- install/upgrade CAPH in the app cluster itself (idempotent across version bumps) ---
       # clusterctl init is one-shot; to change provider version we delete just the
       # infrastructure provider (keeps CAPI core + CRDs + any Cluster objects) and
       # re-init it. The canonical version lives on the clusterctl Provider object.
@@ -95,13 +81,13 @@ jobs:
           done
 
       # --- credential Secret (hcloud-only; robot keys only needed for bare-metal) ---
-      - name: hetzner credential secret (infra cluster, ns default)
+      - name: hetzner credential secret (app cluster, ns default)
         run: |
           kubectl create secret generic hetzner -n default \
             --from-literal=hcloud="$HCLOUD_TOKEN" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      # --- apply the overlay -> CAPH provisions the app cluster ---
+      # --- apply the overlay -> the cluster reconciles its own machines ---
       - name: apply CAPH overlay
         run: kubectl apply -f infra/clusterapi/overlays/hetzner-caph/cluster.yaml
       # NOTE: `kubectl wait --for=condition=ControlPlaneInitialized` is unreliable on
@@ -119,17 +105,9 @@ jobs:
           fi
           kubectl get cluster,machines -A -o wide
 
-      # cluster-autoscaler: Argo-managed in-cluster post-pivot (deploy/gitops/base/
-      # autoscaler.yaml, incluster-incluster) — no bootstrap install step anymore.
-      # scripts/install-autoscaler.sh remains for the mock-cluster/DR bootstrap phase.
+      # cluster-autoscaler is Argo-managed post-pivot (deploy/gitops/base/autoscaler.yaml).
 
-      # --- expose the kubeconfig under the path the addon steps expect ---
-      - name: app cluster kubeconfig
-        run: |
-          cp ~/.kube/config "$PWD/app.kubeconfig"
-          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
-
-      # ====== addons on the APP cluster (KUBECONFIG now points at it) ======
+      # ====== addons ======
       - name: helm repos
         run: |
           helm repo add hcloud https://charts.hetzner.cloud

@@ -168,14 +168,12 @@ metadata:
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
-    # min 0 keeps today's cost profile (no dedicated workers; apps run on the
-    # untainted control-plane) — a node is added only when a pod is unschedulable.
     # min 1 (w1/m19.1 t005, user decision 2026-07-11): a hosting platform keeps
     # at least one tenant node warm — apps and ACME solvers must never wait for
     # a cold scale-from-zero. Elastic 1→3 beyond that.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
-    # Scale-from-zero capacity hints (no live node to inspect at 0 replicas):
+    # Capacity hints (kept for DR bring-up / if min ever returns to 0):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
@@ -794,13 +792,13 @@ metadata:
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
-    # min 0 keeps today's cost profile (no dedicated workers; apps run on the
-    # untainted control-plane) — a node is added only when a pod is unschedulable.
+    # min 2: the platform stack (CNPG × 4, Ory, OpenBao, Traefik, monitoring)
+    # needs two nodes for capacity and failure-domain spread.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "2"
     # TEMP (m19.1): max 2 until the Hetzner server quota is raised — revert to
     # "3" (openbao-1's anti-affinity then pulls the third platform node).
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
-    # Scale-from-zero capacity hints (no live node to inspect at 0 replicas):
+    # Capacity hints (used by scale-from-zero; kept for symmetry with the pools):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"

@@ -10,7 +10,7 @@ name: deploy (bex via Argo)
 # After this the operator is running; deploy a user App with `kubectl apply`
 # (that's the product runtime — NOT GitOps). CI-only, idempotent.
 #
-# Secrets: same as app-cluster.yml (HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY, TF_STATE_*).
+# Secrets: same as app-cluster.yml (HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY).
 # GITHUB_TOKEN (auto) pushes to GHCR. ⚠ Make the GHCR packages public, or add an
 # imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
@@ -32,7 +32,6 @@ permissions:
 env:
   IMAGE: ghcr.io/bex-co/bex-operator
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
-  CLUSTER_NAME: bex
 
 jobs:
   build-and-deploy:
@@ -111,9 +110,6 @@ jobs:
           done
 
       # --- 2. fetch the app cluster kubeconfig via a CP node (self-managed, w1/m19.1) ---
-      # No mgmt cluster / clusterctl hop anymore: discover a CP by its CAPH label
-      # via the hcloud API and SSH-fetch admin.conf (key-only :22, the recorded
-      # auth-only baseline). admin.conf already targets the kube-api LB.
       - name: get app cluster kubeconfig
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
@@ -121,15 +117,8 @@ jobs:
           install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
-            "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
-            | jq -r '[.servers[] | select(.name | startswith("bex-control-plane"))][0].public_net.ipv4.ip')
-          test -n "$CP_IP" && test "$CP_IP" != "null"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${CP_IP}" \
-            'cat /etc/kubernetes/admin.conf' > "$PWD/app.kubeconfig"
-          chmod 600 "$PWD/app.kubeconfig"
+          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
-          KUBECONFIG="$PWD/app.kubeconfig" kubectl cluster-info
 
       # --- 3. install Argo CD on the app cluster (idempotent) ---
       # --server-side: the argo install bundles CRDs (applicationsets) whose schema

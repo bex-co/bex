@@ -14,34 +14,32 @@ This _is_ a genuine build-from-local-disk flow (unlike the old, wrong version of
 
 This SSHes into a live Hetzner node and patches a running App CR — state a one-line plan (repo, app name, target image tag) and get a go-ahead before Step 4 (the actual `ctr import` + `kubectl patch`). Steps 1–3 (discovery, build, smoke test) are safe/local and don't need to wait for that confirmation.
 
-## Step 1 — Discover the infra + app node IPs (no terraform, no asking the user)
+## Step 1 — Fetch the app-cluster kubeconfig (self-managed, no infra node)
 
-`terraform` is CI-only for this repo (`infra/terraform/README.md`) and its state needs backend creds beyond what's local. Skip it — hit the Hetzner Cloud API directly with `.env`'s `HCLOUD_TOKEN`:
+Since the w1/m19.1 pivot there is no mgmt cluster — `scripts/fetch-app-kubeconfig.sh` discovers a control-plane node via the hcloud API (label `caph-cluster-bex`) and SSH-fetches `/etc/kubernetes/admin.conf`:
 
 ```bash
 # from the bex repo root (where this command runs)
 set -a; source ./.env; set +a
-curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" https://api.hetzner.cloud/v1/servers \
-  | python3 -c "
-import json, sys
-for s in json.load(sys.stdin)['servers']:
-    print(s['id'], s['name'], s['status'], s['public_net']['ipv4']['ip'], sep='\t')
-"
-```
-
-Never print `$HCLOUD_TOKEN` itself. Identify by name: `bex-infra` (management/infra node — holds the app-cluster kubeconfig secret) vs the app-cluster control-plane node (name pattern `<cluster>-control-plane-*`, e.g. `bex-control-plane-xxxxx` — this is where the image gets imported).
-
-## Step 2 — Fetch the app-cluster kubeconfig — _laptop → infra node_
-
-```bash
-ssh -i "$BEX_SSH_PRIVATE_KEY_FILE" root@<infra-ip> \
-  'kubectl -n default get secret bex-kubeconfig -o jsonpath="{.data.value}" | base64 -d' \
-  > /tmp/bex-app.kubeconfig
+BEX_SSH_KEY_PATH=~/.ssh/bex bash scripts/fetch-app-kubeconfig.sh /tmp/bex-app.kubeconfig
 export KUBECONFIG=/tmp/bex-app.kubeconfig
 kubectl get app <app-name> -o yaml   # baseline: current image, port, generation, revision
 ```
 
-Never print kubeconfig contents (per repo rules) — only read specific `jsonpath` fields from it.
+Never print `$HCLOUD_TOKEN` or kubeconfig contents (per repo rules) — only read specific `jsonpath` fields.
+
+## Step 2 — Discover the node the App runs on (import target)
+
+Apps run on the **tenant pool** (`bex-worker-*`), not the control plane — the image must be imported into the containerd of the node hosting the App's pod:
+
+```bash
+NODE=$(kubectl get pods -n default -l app.bex.co/app=<app-name> -o jsonpath='{.items[0].spec.nodeName}')
+APP_NODE_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+  "https://api.hetzner.cloud/v1/servers?per_page=50" \
+  | python3 -c "import json,sys; print([s['public_net']['ipv4']['ip'] for s in json.load(sys.stdin)['servers'] if s['name']=='$NODE'][0])")
+```
+
+(If the pod is Pending with no node yet — e.g. first deploy — import into every `bex-worker-*` node instead. ⚠ Known fragility: `ctr`-imported images live only in that node's containerd; an autoscaler node replacement loses them and the App falls to `ImagePullBackOff` until re-imported — re-run this runbook then.)
 
 ## Step 3 — Build + smoke-test — _laptop, from the local repo path in `$ARGUMENTS`_
 
@@ -59,7 +57,7 @@ Use a **fresh tag** (git sha, never `:latest`) — the operator sets no `imagePu
 ## Step 4 — Import into the app node's containerd — _laptop → app node_ (confirm with user first, see Step 0)
 
 ```bash
-docker save <app-name>:$SHA | ssh -i "$BEX_SSH_PRIVATE_KEY_FILE" root@<app-node-ip> \
+docker save <app-name>:$SHA | ssh -i ~/.ssh/bex "root@${APP_NODE_IP}" \
   'ctr -n k8s.io images import -'
 ```
 
