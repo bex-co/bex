@@ -11,6 +11,8 @@
 - [x] **m6** — MCP `query_render_postgres` — read-only SQL for agents ← reassigned to **w5/m9** (label collision with w5's done m6) and shipped there 2026-07-08 (`w5/done/m9/`)
 - [ ] **m7** — Key Value API surface (REST/GraphQL/MCP, Render-shaped) (10 tasks) ← promoted from `003` 2026-07-09, unblocked by w1/m14 (mechanism live in prod); dashboard half is `w5/m12`
 - [x] **m12** — Render scale API (`POST /v1/services/{id}/scale`) (5 tasks) ← relocated from w1 2026-07-08
+- [ ] **m8** — Connect GitHub: GitHub App connection + repo listing (REST/GraphQL/MCP/UI) (10 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (parity row "Git connections" ◐)
+- [ ] **m9** — Private-repo deploys + zero-config GitHub push-to-deploy (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11, needs w2/m8; unblocks `w5/m15`
 
 ## Inbox
 

@@ -18,6 +18,7 @@
 - [x] **m12** — Key Value dashboard (create / list / detail, Render-consistent) (9 tasks) ← from user parity report 2026-07-09 (dashboard.render.com/new/redis); UI half of `w2/m7`, on the w1/m14 mechanism — done 2026-07-09, moved to `done/m12/`
 - [x] **m13** — Build & Deploy settings section (Root Directory) (8 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic); UI half of `w1/m18`, gated on it — done 2026-07-10, moved to `done/m13/`
 - [ ] **m14** — Delete service: dashboard danger-zone action (8 tasks) ← from `/pm-brainstorm new milestones` 2026-07-09, unblocked — w2/m4 done 2026-07-09
+- [ ] **m15** — New-service create wizard (source picker · repo picker · deploy) (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (Render `/web/new` parity); GitHub tab needs `w2/m8`, private repos `w2/m9` — public-URL/image tabs unblocked
 
 ## Inbox
 
