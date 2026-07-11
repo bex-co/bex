@@ -16,8 +16,8 @@
 
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 - `002.md` — Workspace MCP tools (`list_workspaces`/`select_workspace`/`get_selected_workspace`) — superseded by `w6/m2` (t005) 2026-07-08; retire to `done/` when w6/m2 closes
-- `004.md` — Agent-connect recipe: document Claude Code/Cursor → `/mcp` with OAuth 2.1 (w4/m9 flow)
 
 > `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`.
+> `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/connect-an-agent.md`) — moved to `done/`.
 
 > **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/sandboxes.md (ADR, status: proposed) for a future explicit re-open.

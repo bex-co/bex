@@ -77,6 +77,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/control-plane.md](docs/control-plane.md) — Postgres source of truth (built, opt-in via `BEX_CP_DB_URI`) vs. operator mechanism.
 - [docs/identifiers.md](docs/identifiers.md) — ADR: typed opaque resource ids `<prefix>-<xid>` (`tea-`/`srv-`/`cdm-`), hyphen not underscore; minted + guarded in `lego/backend/internal/id`.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.
+- [docs/connect-an-agent.md](docs/connect-an-agent.md) — recipe: Claude Code/Cursor → bex `/mcp` over OAuth 2.1 (discovery, DCR, PKCE, API-key alternative, troubleshooting).
 - [docs/render-parity.md](docs/render-parity.md) — the parity ledger: one row per Render capability × REST/GraphQL/MCP/UI, each cell ✅/◐/✖/— with evidence; gaps mapped to owning milestones.
 - [docs/deploy-from-chat.md](docs/deploy-from-chat.md) — ADR: deploy-from-chat rides `Core.Create` (no bespoke endpoint) + the HMAC push-to-deploy webhook (pillar 4).
 - [docs/observability.md](docs/observability.md) — Logs (query + live-tail) and metrics over REST/GraphQL/MCP.

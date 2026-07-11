@@ -72,7 +72,7 @@ spec:
 | Suspend / resume / restart | ✅ |
 | REST API (Render-compatible) | ✅ lifecycle verbs, logs, metrics, env vars, API keys — create-service / deploys planned |
 | GraphQL (Render dashboard-compatible) | ✅ |
-| MCP server | ✅ `/mcp` + stdio ([docs/bex-api.md](docs/bex-api.md)) |
+| MCP server | ✅ `/mcp` + stdio, OAuth 2.1 ([docs/bex-api.md](docs/bex-api.md), connect recipe: [docs/connect-an-agent.md](docs/connect-an-agent.md)) |
 | Managed Postgres | ✅ Render `/v1/postgres`-compatible ([docs/postgresql-management.md](docs/postgresql-management.md)) |
 | Auth (API keys, sessions, roles) | ✅ Ory Hydra/Kratos + OpenFGA ([docs/auth.md](docs/auth.md)) |
 | Elastic machines | ✅ manual scale — autoscaler planned |
@@ -101,8 +101,8 @@ dashboard/       the human-facing dashboard (TanStack Start + Apollo + shadcn), 
 infra/           bex-infra: terraform/ · clusterapi/{base,overlays/{local-capd,hetzner-caph}} · local/
 deploy/          gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} · opensandbox/ configs
 examples/        whoami-app.yaml (prebuilt) · hello-go/ (build-from-git sample)
-docs/            vision · architecture · control-plane · bex-api · render-parity · observability ·
-                 deployment · custom-domain · restart-suspend-and-resume · auth · secrets ·
+docs/            vision · architecture · control-plane · bex-api · connect-an-agent · render-parity ·
+                 observability · deployment · custom-domain · restart-suspend-and-resume · auth · secrets ·
                  postgresql-management · sandboxes · etcd-backup-restore · go-and-gitops
 scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-sample.sh ·
                  auth-*.sh + authz-model.sh (Ory/OpenFGA bootstrap) · bao-*.sh + secrets-verify.sh (OpenBao) ·
