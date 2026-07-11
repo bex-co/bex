@@ -13,11 +13,9 @@ flowchart TB
     op["📦 bex operator"]
     apppod["📦 App pod"]
     zot["📦 bex-zot · zot-0"]
+    capi["📦 Cluster API controllers"]
     cpnode["control-plane node · machine"]
     wnode["worker node · machine"]
-  end
-  subgraph infra["INFRA CLUSTER · bex-infra"]
-    capi["📦 Cluster API controllers"]
   end
   dev -->|"submits App CR via"| api
   op -->|"apiserver client · watch CRs, write Deployment"| api
@@ -44,7 +42,7 @@ flowchart TB
 
 Note the direction: "operator _creates_ pod" becomes **`pod → operator`**, and "CAPI _provisions_ machine" becomes **`machine → CAPI`** — in a dependency graph the created/managed thing points at what it depends on, i.e. the arrow is the reverse of the "who-makes-what" flow. Outer boxes = the two **clusters**; a _machine_ is a server (Hetzner) or Docker container (local). Swap `CAPD`→`CAPH` and the picture is identical. (For a request/response view of a deploy, see the request-flow diagram in [`control-plane.md`](control-plane.md).)
 
-- **Two clusters.** The **app cluster** runs the bex operator **and** your Apps; the **infra cluster** runs only Cluster API (it provisions the app cluster's machines). `BEX OPERATOR`, Cluster API and `bex-zot` are **pods / containers** — no extra machines. On Hetzner the machines are the cluster **nodes**; swap `CAPD`→`CAPH` and the picture is identical. (_infra cluster_ / _app cluster_ are bex's names for Cluster API's _management_ / _workload_ cluster; a 3rd legacy `orbstack` cluster still hosts the OpenSandbox `hello-go` demo.)
+- **One self-managed cluster** (since the w1/m19.1 pivot). The app cluster runs the bex operator, your Apps, **and Cluster API itself** — after `clusterctl move`, the CAPI controllers run as pods on the control-plane nodes and the cluster reconciles its own machines. A disposable **bootstrap cluster** (`bex-infra`, single-node k3s from Terraform) exists only during initial bring-up or disaster recovery: it births the app cluster, hands CAPI over, and is destroyed (definition retained). `BEX OPERATOR`, Cluster API and `bex-zot` are **pods / containers** — no extra machines. On Hetzner the machines are the cluster **nodes**; swap `CAPD`→`CAPH` and the picture is identical. (Locally, the kind cluster stays as a persistent management cluster — the mock never pivots.)
 - **machines = nodes** of the app cluster — Docker containers under CAPD locally, Hetzner servers under CAPH. **Add/remove a machine** = scale the worker pool; the operator bin-packs pods onto the nodes.
 
 ## Two layers: `bex` and `bex-infra`
@@ -66,10 +64,10 @@ bex is **node-aware but provision-unaware**: it never adds a machine itself; it 
 | layer | directory | runtime entity |
 | --- | --- | --- |
 | **bex** | `lego/` (types + operator + backend) | the **BEX OPERATOR** — a **pod in the app cluster** (deploys Apps) |
-| **bex-infra** | `infra/` | the **INFRA CLUSTER** (Cluster API; makes clusters/machines) |
-| _(substrate)_ | — | the **APP CLUSTER** — runs the bex operator **and** your Apps; bex-infra builds it |
+| **bex-infra** | `infra/` | the **CAPI controllers** — pods **in the app cluster** (self-managed since m19.1); plus the disposable bootstrap k3s node during bring-up/DR |
+| _(substrate)_ | — | the **APP CLUSTER** — runs the bex operator, your Apps, and its own machine engine |
 
-The APP CLUSTER belongs to _neither_ layer cleanly — it's the substrate bex-infra provisions, and it hosts both the bex operator pod and the user Apps. The operator runs **in-cluster** (a `Deployment` in `bex-system`), never on a laptop; `make run` from source is only a dev inner-loop.
+The layer boundary survives the pivot unchanged: bex still never provisions, bex-infra (as a layer) still owns machines — the two layers simply now share one cluster's nodes, on opposite sides of the CP taint. The operator runs **in-cluster** (a `Deployment` in `bex-system`), never on a laptop; `make run` from source is only a dev inner-loop.
 
 ### Control plane (source of truth) vs. operator (mechanism)
 
