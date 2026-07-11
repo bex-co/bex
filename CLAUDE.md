@@ -73,7 +73,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 ## Docs index
 
 - [docs/vision.md](docs/vision.md) — mission, AI-native pillars, roadmap.
-- [docs/architecture.md](docs/architecture.md) — the map: two clusters, two layers, panorama diagram.
+- [docs/architecture.md](docs/architecture.md) — the map: self-managed cluster + disposable bootstrap, two layers, node pools + substrate decisions, panorama diagram.
 - [docs/control-plane.md](docs/control-plane.md) — Postgres source of truth (built, opt-in via `BEX_CP_DB_URI`) vs. operator mechanism.
 - [docs/identifiers.md](docs/identifiers.md) — ADR: typed opaque resource ids `<prefix>-<xid>` (`tea-`/`srv-`/`cdm-`), hyphen not underscore; minted + guarded in `lego/backend/internal/id`.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.

@@ -109,6 +109,26 @@ bex is identical locally and in prod; only the **infrastructure provider overlay
 | node-pool overlay | `infra/clusterapi/overlays/local-capd` | `…/hetzner-caph` |
 | microVMs (Kata/FC) | not available | bare-metal (Robot) |
 
+## The production substrate (Hetzner)
+
+The shape the 2026-07 rebuild established (w1/m19 + m19.1). Everything below is declared in [`infra/clusterapi/overlays/hetzner-caph/cluster.yaml`](../infra/clusterapi/overlays/hetzner-caph/cluster.yaml) and reconciled by the cluster itself.
+
+**Node pools** — three roles, hard-separated by taints:
+
+| pool | taint / label | runs | size |
+| --- | --- | --- | --- |
+| control plane | `node-role.kubernetes.io/control-plane` | Kubernetes itself + mgmt-plane exemptions (CCM, cilium-operator, etcd-backup, CAPI controllers) | target **3** (etcd quorum + safe rolls) |
+| `bex-platform` | `bex.co/platform` taint, `bex.co/pool: platform` label | the platform stack: Traefik, Ory, OpenBao, CNPG, observability, Argo, bex itself | min 2 |
+| tenant (`bex-worker-0`) | untainted | **user Apps only** — tenant code never shares a kernel with platform credentials ([tenant-isolation.md](tenant-isolation.md)) | min 1, autoscaler-elastic |
+
+**Network** — CAPH owns network `bex` (`10.10.0.0/16`); every machine is attached at creation, so there is zero out-of-band network state. kubeadm advertises each machine's **private IP** (a placeholder `advertiseAddress` rewritten by `preKubeadmCommands` — the accepted CABPK pattern, since kubeadm has no per-machine templating): the `kubernetes` Service endpoint, etcd peer traffic, and apiserver→kubelet all ride the private net. Both LBs target nodes by private IP; Cilium WireGuard encrypts east-west (`devices` pinned to the private NIC — auto-detection needs node IPs the CCM hasn't set yet at bring-up).
+
+**Public surface** — a label-selector Hetzner firewall (auto-inherited by new machines): nodes expose only `:22` (key-only SSH) + ICMP; the LB fronts expose 80/443 (Traefik) and 6443 (kube-api, TLS/RBAC). Ports-only — never source-IP allowlists (see DO_NOT_DO).
+
+**Interim vs target** — under the current 5-server quota the cluster runs 1 CP + 2 platform + ≥1 tenant; two grep-able `TEMP (m19.1)` knobs in the overlay (KCP replicas, platform max) flip it to 3 CP + 3 platform when the quota lands (trigger + runbook: `.pm/FUTURE-MAYBE.md`).
+
+**The change rule** (the rebuild's lesson): the substrate accepts changes **only via declaration** — git → CI → controller. When the declaration layer refuses (immutable fields, webhook validation), the answer is to rebuild the correct declaration, never to bypass it and mutate reality out-of-band; one out-of-band "fix" is how the previous cluster ended up unmanageable-but-unfixable. Full diagnosis and execution trail: `.pm/w1/m19/` (op log) and the git history of `docs/rearchitecture.md`.
+
 ## Build → deploy → serve (the product)
 
 1. **build** — clone repo @ ref → Dockerfile (BuildKit) or Cloud Native Buildpacks (`pack`) → OCI image → push to **Zot** (`lego/operator/internal/build`).
