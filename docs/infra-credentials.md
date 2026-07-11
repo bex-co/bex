@@ -11,7 +11,7 @@ bex's secret story so far has two published layers:
 
 Neither covers the layer underneath: the handful of **bootstrap** credentials that let a human or CI reach the clusters _at all_ — the SSH key, the cloud API token, the Terraform-state keys, and the Kubernetes PKI that Cluster API mints. These are held out-of-band (in [`.env`](../.env.example) locally, and as CI secrets), because they must exist before Argo, OpenBao, or the sealed-secrets controller do. This ADR maps them and records the decisions about how they're custodied — and the gaps that follow.
 
-Since the w1/m19.1 pivot there is **one self-managed cluster** (see [architecture.md](architecture.md)): the app cluster runs Cluster API itself and holds its own machine records and PKI. The bootstrap `bex-infra` node (single k3s, Terraform-provisioned) exists only during initial bring-up or disaster recovery — its Terraform definition is retained, the instance is destroyed after `clusterctl move`.
+Since the w1/m19.1 pivot there is **one self-managed cluster** (see [architecture.md](architecture.md)): the app cluster runs Cluster API itself and holds its own machine records and PKI. The bootstrap `bex-bootstrap` node (single k3s, Terraform-provisioned; renamed from `bex-infra` 2026-07-11) exists only during initial bring-up or disaster recovery — its Terraform definition is retained, the instance is destroyed after `clusterctl move`.
 
 ## The trust chain
 
@@ -38,7 +38,7 @@ graph TD
 | **app cluster PKI** | CA cert+key pairs | `bex-ca` / `bex-etcd` / `bex-proxy` / `bex-sa` secrets, app cluster `default` ns (in-cluster since the m19.1 pivot) | Cluster API (owner); anyone with cluster-admin | **`bex-ca` = mint any app cert, incl. new admin** — crown jewels |
 | **`bex-argo-deploy` key** | ed25519, comment `argocd-deploy-key@bex` | operator laptop; deploy key on the GitHub repo | operator; Argo CD (repo-server) | **read** `git@github.com:bex-co/bex.git` (GitOps pulls) — **not** a cluster credential |
 | **`HCLOUD_TOKEN`** | Hetzner Cloud API token | [`.env`](../.env.example); GitHub secret | operator; CI; Terraform; CCM (`hcloud` secret, `kube-system`) | full Hetzner Cloud API: servers, LBs, networks, firewalls |
-| **TF-state keys** | S3 access/secret (`TF_STATE_ACCESS_KEY`/`_SECRET_KEY`) | `.env`; GitHub secret | operator; CI | read/write Terraform state (infra topology, incl. `infra_server_ipv4`) |
+| **TF-state keys** | S3 access/secret (`TF_STATE_ACCESS_KEY`/`_SECRET_KEY`) | `.env`; GitHub secret | operator; CI | read/write Terraform state (infra topology, incl. `bootstrap_server_ipv4`) |
 | **platform app secrets** | `BEX_BOOTSTRAP_CLIENT_SECRET`, `KRATOS_SECRETS_*`, `HYDRA_SECRETS_*`, `HYDRA_OIDC_PAIRWISE_SALT`, `OPENFGA_PRESHARED_KEY` | `.env`; applied to the app cluster by `scripts/auth-secrets.sh` / `auth-bootstrap-client.sh` | operator; CI | bex-api bootstrap key ([auth.md](auth.md)), Kratos/Hydra/OpenFGA signing + preshared keys |
 | **OpenBao unseal material** | `BAO_UNSEAL_KEY_1..3`, `BAO_ROOT_TOKEN` | `.env` (written back by `bao-init.sh`); GitHub secret | operator; CI | unseal + root the tenant secret store ([secrets.md §3](secrets.md)) |
 
@@ -61,7 +61,7 @@ CAPH provisions every node with a single SSH key ([infra/terraform/main.tf](../i
 
 ### 2. App-cluster PKI lives in the cluster itself — accepted (self-managed since m19.1)
 
-`bex-ca`/`bex-etcd`/`bex-proxy`/`bex-sa` are CAPI-owned and, since the `clusterctl move` pivot, live in the app cluster's own `default` namespace — replicated by etcd and captured by the nightly etcd snapshot (on the retired mgmt node they had **no** backup at all). Whoever holds cluster-admin can read the CA and mint revocation-proof certs; node-level hardening of the CP nodes is therefore in scope for any hardening pass. The bootstrap `bex-infra` node, when it temporarily exists (initial bring-up / DR), briefly holds this same material and must be treated with app-cluster sensitivity for its lifetime.
+`bex-ca`/`bex-etcd`/`bex-proxy`/`bex-sa` are CAPI-owned and, since the `clusterctl move` pivot, live in the app cluster's own `default` namespace — replicated by etcd and captured by the nightly etcd snapshot (on the retired mgmt node they had **no** backup at all). Whoever holds cluster-admin can read the CA and mint revocation-proof certs; node-level hardening of the CP nodes is therefore in scope for any hardening pass. The bootstrap node, when it temporarily exists (initial bring-up / DR), briefly holds this same material and must be treated with app-cluster sensitivity for its lifetime.
 
 ### 3. Bootstrap secrets stay out-of-band in `.env` / CI secrets — accepted
 
@@ -69,7 +69,7 @@ They cannot live in the in-cluster stores they bootstrap (chicken-and-egg), and 
 
 ### 4. Network exposure is currently authentication-only — accepted as interim
 
-As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, gated by the admin cert + TLS/RBAC) are reachable from `0.0.0.0/0`: the `bex-infra` firewall defaults `allowed_ssh_cidrs` to open, and no app-node firewall exists. Protection is the credential layer only, with **no network second layer**. This is an accepted baseline (key-only SSH + kube RBAC is industry-standard) but is explicitly single-layer — see gaps.
+As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, gated by the admin cert + TLS/RBAC) are reachable from `0.0.0.0/0`: the `bex-bootstrap` firewall defaults `allowed_ssh_cidrs` to open, and no app-node firewall exists. Protection is the credential layer only, with **no network second layer**. This is an accepted baseline (key-only SSH + kube RBAC is industry-standard) but is explicitly single-layer — see gaps.
 
 ## Consequences & known gaps
 

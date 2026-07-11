@@ -5,7 +5,7 @@ variable "hcloud_token" {
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key material (e.g. 'ssh-ed25519 AAAA...'). Uploaded as `ssh_key_name`; used for the infra node AND by CAPH for app-cluster nodes (single source of truth)."
+  description = "SSH public key material (e.g. 'ssh-ed25519 AAAA...'). Uploaded as `ssh_key_name`; used for the bootstrap node AND by CAPH for app-cluster nodes (single source of truth)."
   type        = string
 }
 
@@ -16,7 +16,7 @@ variable "ssh_key_name" {
 }
 
 variable "location" {
-  description = "Hetzner location for the infra cluster (fsn1, nbg1, hel1, ash, hil, sin)."
+  description = "Hetzner location for the bootstrap cluster (fsn1, nbg1, hel1, ash, hil, sin)."
   type        = string
   default     = "fsn1"
 }
@@ -27,14 +27,14 @@ variable "network_zone" {
   default     = "eu-central"
 }
 
-variable "infra_server_type" {
-  description = "Server type for the infra (management) cluster node. Intel cx line — 3.5x cheaper than cpx (AMD) for identical specs in fsn1. cx23 (4GB) also works; cx33 gives headroom for cert-manager + CAPI/CAPH controllers."
+variable "bootstrap_server_type" {
+  description = "Server type for the bootstrap cluster node. Intel cx line — 3.5x cheaper than cpx (AMD) for identical specs in fsn1. cx23 (4GB) also works; cx33 gives headroom for cert-manager + CAPI/CAPH controllers."
   type        = string
   default     = "cx33"
 }
 
 variable "image" {
-  description = "OS image for the infra node."
+  description = "OS image for the bootstrap node."
   type        = string
   default     = "ubuntu-24.04"
 }
@@ -46,7 +46,7 @@ variable "k3s_channel" {
 }
 
 variable "network_cidr" {
-  description = "Private network CIDR shared by the infra cluster and (later) the app-cluster nodes."
+  description = "Private network CIDR for the bootstrap cluster (the app cluster has its own CAPH-owned network)."
   type        = string
   default     = "10.0.0.0/16"
 }
@@ -61,4 +61,10 @@ variable "allowed_ssh_cidrs" {
   description = "CIDRs allowed to reach SSH (22) and the k3s / kube API (6443) on the infra node. Lock to your CI egress + admin IPs in prod — the default is wide open."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+variable "bootstrap_enabled" {
+  description = "Create the disposable bootstrap k3s node (bring-up / disaster recovery only). Post-pivot the app cluster is self-managed and the desired state is NO bootstrap node — flipping this to true is the first step of the DR runbook."
+  type        = bool
+  default     = false
 }

@@ -25,7 +25,7 @@ The only irreducible "bottom turtle" is the **remote-state bucket** + the CI run
 | `ssh_public_key` | — (secret) | uploaded as `ssh_key_name`; **reused by CAPH** for app nodes |
 | `ssh_key_name` | `bex` | MUST match `sshKeys.hcloud.name` in the CAPH overlay |
 | `location` | `fsn1` | match the CAPH overlay's region |
-| `infra_server_type` | `cx33` | Intel cx line (3.5x cheaper than cpx for same specs); only CAPI controllers run here |
+| `bootstrap_server_type` | `cx33` | Intel cx line (3.5x cheaper than cpx for same specs); only CAPI controllers run here |
 | `allowed_ssh_cidrs` | `0.0.0.0/0` | **tighten in prod** (CI egress + admin IPs) |
 
 ## First-run setup (one-time, out-of-band — the bottom turtle)

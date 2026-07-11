@@ -9,21 +9,21 @@ The examples below use a placeholder App `my-app` (container port 3000); substit
 | place | role in a deploy |
 | --- | --- |
 | **laptop** | builds the image, smoke-tests it, runs `kubectl`/`ssh` |
-| **infra cluster** (`bex-infra`) | holds the app-cluster kubeconfig (CAPI secret `bex-kubeconfig`) — touched once, for access |
-| **app cluster** (single node) | containerd stores the image; apiserver holds the `App` CR; the **operator** turns the CR change into a rollout |
+| **a CP node** (via hcloud API + SSH) | serves `/etc/kubernetes/admin.conf` — `scripts/fetch-app-kubeconfig.sh`, touched once, for access (self-managed since w1/m19.1; no mgmt cluster) |
+| **app cluster** | containerd stores the image; apiserver holds the `App` CR; the **operator** turns the CR change into a rollout |
 
 ## The whole deploy in one picture
 
 ```mermaid
 sequenceDiagram
   participant L as laptop
-  participant I as infra cluster<br/>(bex-infra)
+  participant I as CP node<br/>(admin.conf via SSH)
   participant A as app-cluster apiserver<br/>(App CR)
   participant O as bex operator<br/>(pod, in-cluster)
   participant N as app node<br/>(containerd + kubelet + traefik)
 
   O->>A: (at startup) operator opens a long-lived WATCH —<br/>"notify me whenever an App changes"
-  L->>I: ⓪ ssh — read secret bex-kubeconfig → KUBECONFIG
+  L->>I: ⓪ scripts/fetch-app-kubeconfig.sh → KUBECONFIG
   Note over L: ① docker build --platform linux/amd64<br/>-t my-app:#lt;sha#gt;
   Note over L: ② smoke test — docker run + curl → 200
   L->>N: ③ docker save | ssh 'ctr -n k8s.io images import -'

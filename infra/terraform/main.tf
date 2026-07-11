@@ -1,4 +1,4 @@
-# The bex infra (management) cluster base on Hetzner: SSH key + private network +
+# The bex BOOTSTRAP cluster base on Hetzner: SSH key + private network +
 # firewall + ONE small node running single-node k3s. CAPH gets installed on top of
 # this k3s afterwards (clusterctl init — a k8s-level step, see README phase 2), and
 # CAPH then provisions the app cluster. This file is just the day-0 substrate.
@@ -10,15 +10,15 @@ resource "hcloud_ssh_key" "bex" {
   public_key = var.ssh_public_key
 }
 
-# Private network for the infra (management) cluster. The APP cluster gets its
+# Private network for the bootstrap cluster (bring-up / DR only). The APP cluster gets its
 # OWN CAPH-managed private network (w1/m7 t005): CAPH's HetznerCluster.hcloudNetwork
 # has no field to reference an existing network — it always CREATES one named after
-# the cluster (`bex`). So this infra network is named `bex-infra` to avoid colliding
+# the cluster (`bex`). So this bootstrap network is named `bex-bootstrap` to avoid colliding
 # with the `bex` network CAPH provisions for the app cluster. The two clusters need
-# no L3 connectivity (the infra node reaches the app cluster over its public kube-API
+# no L3 connectivity (the bootstrap node reaches the app cluster over its public kube-API
 # LB), so separate private networks are correct, not a compromise.
 resource "hcloud_network" "bex" {
-  name     = "bex-infra"
+  name     = "bex-bootstrap"
   ip_range = var.network_cidr
 }
 
@@ -29,9 +29,9 @@ resource "hcloud_network_subnet" "bex" {
   ip_range     = var.subnet_cidr
 }
 
-# Firewall for the infra node: SSH + k3s API from allowed CIDRs, ICMP for diag.
-resource "hcloud_firewall" "infra" {
-  name = "bex-infra"
+# Firewall for the bootstrap node: SSH + k3s API from allowed CIDRs, ICMP for diag.
+resource "hcloud_firewall" "bootstrap" {
+  name = "bex-bootstrap"
 
   rule {
     direction  = "in"
@@ -54,11 +54,15 @@ resource "hcloud_firewall" "infra" {
   }
 }
 
-# The infra (management) cluster: a single small node running single-node k3s.
+# The bootstrap cluster: a single small k3s node. DISPOSABLE — it exists only
+# during initial bring-up or disaster recovery; after `clusterctl move` the app
+# cluster manages itself and this server is destroyed (definition retained).
 # cloud-init installs k3s; CAPH is layered on later via clusterctl (README phase 2).
-resource "hcloud_server" "infra" {
-  name        = "bex-infra"
-  server_type = var.infra_server_type
+resource "hcloud_server" "bootstrap" {
+  count = var.bootstrap_enabled ? 1 : 0 # post-pivot desired state is NO bootstrap node
+
+  name        = "bex-bootstrap"
+  server_type = var.bootstrap_server_type
   image       = var.image
   location    = var.location
   ssh_keys    = [hcloud_ssh_key.bex.id]
@@ -72,16 +76,18 @@ resource "hcloud_server" "infra" {
   }
 
   labels = {
-    role = "infra-cluster"
+    role = "bootstrap-cluster"
     bex  = "true"
   }
 
   depends_on = [hcloud_network_subnet.bex]
 }
 
-resource "hcloud_firewall_attachment" "infra" {
-  firewall_id = hcloud_firewall.infra.id
-  server_ids  = [hcloud_server.infra.id]
+resource "hcloud_firewall_attachment" "bootstrap" {
+  count = var.bootstrap_enabled ? 1 : 0
+
+  firewall_id = hcloud_firewall.bootstrap.id
+  server_ids  = hcloud_server.bootstrap[*].id
 }
 
 # App-cluster node firewall (w1/m19 t005, docs/rearchitecture.md decision 4).
@@ -115,4 +121,21 @@ resource "hcloud_firewall" "app_nodes" {
     protocol   = "icmp"
     source_ips = ["0.0.0.0/0", "::/0"]
   }
+}
+
+# w1 rename (2026-07-11): bex-infra -> bex-bootstrap ("infra" suggested permanence;
+# the node is disposable scaffolding — CAPI's own term is "bootstrap cluster").
+moved {
+  from = hcloud_firewall.infra
+  to   = hcloud_firewall.bootstrap
+}
+
+moved {
+  from = hcloud_server.infra
+  to   = hcloud_server.bootstrap[0]
+}
+
+moved {
+  from = hcloud_firewall_attachment.infra
+  to   = hcloud_firewall_attachment.bootstrap[0]
 }

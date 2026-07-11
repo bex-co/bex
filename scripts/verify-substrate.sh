@@ -6,7 +6,7 @@
 #                nodeRefs, KubeadmControlPlane initialized
 #   3. PLACEMENT: CAPI controllers run on control-plane nodes (mgmt-plane home)
 #   4. AUTOSCALER: the Argo-managed in-cluster autoscaler is Running
-#   5. NO PET:    no bex-infra bootstrap server exists on Hetzner
+#   5. NO PET:    no bootstrap pet server exists on Hetzner
 #
 # Env: HCLOUD_TOKEN (required; sourced from ./.env if unset)
 #      BEX_SSH_KEY_PATH   SSH key for the CP fetch (default ~/.ssh/bex)
@@ -70,8 +70,8 @@ pass "autoscaler: in-cluster cluster-autoscaler Running"
 
 # --- 5. NO PET: bootstrap server retired --------------------------------------
 INFRA_COUNT=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
-  "https://api.hetzner.cloud/v1/servers?name=bex-infra" | jq '.servers | length')
-[ "$INFRA_COUNT" -eq 0 ] || fail "no-pet: bex-infra server still exists"
-pass "no-pet: no bex-infra bootstrap server on Hetzner"
+  "https://api.hetzner.cloud/v1/servers?name=bex-bootstrap" | jq '.servers | length')
+[ "$INFRA_COUNT" -eq 0 ] || fail "no-pet: bex-bootstrap server still exists"
+pass "no-pet: no bex-bootstrap server on Hetzner"
 
 echo "verify-substrate: ALL PASS"
