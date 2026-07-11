@@ -2,7 +2,7 @@ name: deploy (bex via Argo)
 
 # Phase 3: deploy the bex platform onto the app cluster via GitOps.
 #   1. build + push the operator + dashboard images to GHCR (linux/amd64 = Hetzner cpx)
-#   2. discover the app cluster (terraform state -> infra IP -> SSH -> clusterctl kubeconfig)
+#   2. fetch the app cluster kubeconfig (hcloud API -> CP node IP -> SSH admin.conf)
 #   3. install Argo CD on the app cluster (idempotent)
 #   4. apply the prod app-of-apps -> Argo reconciles deploy/gitops/overlays/prod
 #      (zot, opensandbox-controller, the bex operator, the bex dashboard) continuously from git
@@ -33,7 +33,6 @@ env:
   IMAGE: ghcr.io/bex-co/bex-operator
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
   CLUSTER_NAME: bex
-  CLUSTERCTL_VERSION: v1.13.2
 
 jobs:
   build-and-deploy:
@@ -111,44 +110,26 @@ jobs:
             git reset --soft HEAD~1
           done
 
-      # --- 2. discover the app cluster kubeconfig (same path as app-cluster.yml) ---
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.10.5"
-          terraform_wrapper: false
-      - name: terraform init (read state only)
-        working-directory: infra/terraform
-        env:
-          TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
-          TF_VAR_ssh_public_key: ${{ secrets.BEX_SSH_PUBLIC_KEY }}
-        run: |
-          terraform init \
-            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=infra/terraform.tfstate" \
-            -backend-config="region=${{ secrets.TF_STATE_REGION }}" \
-            -backend-config="endpoints={s3=\"${{ secrets.TF_STATE_ENDPOINT }}\"}" \
-            -backend-config="access_key=${{ secrets.TF_STATE_ACCESS_KEY }}" \
-            -backend-config="secret_key=${{ secrets.TF_STATE_SECRET_KEY }}"
-      - name: discover infra cluster IP
-        id: infra
-        working-directory: infra/terraform
-        run: echo "ip=$(terraform output -raw infra_server_ipv4)" >> "$GITHUB_OUTPUT"
-      - name: install clusterctl
-        run: |
-          curl -fsSL -o /tmp/clusterctl \
-            "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
-          sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
+      # --- 2. fetch the app cluster kubeconfig via a CP node (self-managed, w1/m19.1) ---
+      # No mgmt cluster / clusterctl hop anymore: discover a CP by its CAPH label
+      # via the hcloud API and SSH-fetch admin.conf (key-only :22, the recorded
+      # auth-only baseline). admin.conf already targets the kube-api LB.
       - name: get app cluster kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
           install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          IP="${{ steps.infra.outputs.ip }}"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${IP}" \
-            'cat /etc/rancher/k3s/k3s.yaml' \
-            | sed "s#https://127.0.0.1:6443#https://${IP}:6443#" > infra.kubeconfig
-          KUBECONFIG="$PWD/infra.kubeconfig" clusterctl get kubeconfig "$CLUSTER_NAME" > "$PWD/app.kubeconfig"
+          CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
+            | jq -r '[.servers[] | select(.name | startswith("bex-control-plane"))][0].public_net.ipv4.ip')
+          test -n "$CP_IP" && test "$CP_IP" != "null"
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${CP_IP}" \
+            'cat /etc/kubernetes/admin.conf' > "$PWD/app.kubeconfig"
+          chmod 600 "$PWD/app.kubeconfig"
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
+          KUBECONFIG="$PWD/app.kubeconfig" kubectl cluster-info
 
       # --- 3. install Argo CD on the app cluster (idempotent) ---
       # --server-side: the argo install bundles CRDs (applicationsets) whose schema

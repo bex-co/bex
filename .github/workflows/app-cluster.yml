@@ -43,39 +43,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # --- discover the infra cluster from terraform state ---
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.10.5"
-          terraform_wrapper: false
-      - name: terraform init (read state only)
-        working-directory: infra/terraform
-        env:
-          TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
-          TF_VAR_ssh_public_key: ${{ secrets.BEX_SSH_PUBLIC_KEY }}
-        run: |
-          terraform init \
-            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=infra/terraform.tfstate" \
-            -backend-config="region=${{ secrets.TF_STATE_REGION }}" \
-            -backend-config="endpoints={s3=\"${{ secrets.TF_STATE_ENDPOINT }}\"}" \
-            -backend-config="access_key=${{ secrets.TF_STATE_ACCESS_KEY }}" \
-            -backend-config="secret_key=${{ secrets.TF_STATE_SECRET_KEY }}"
-      - name: discover infra cluster IP
-        id: infra
-        working-directory: infra/terraform
-        run: echo "ip=$(terraform output -raw infra_server_ipv4)" >> "$GITHUB_OUTPUT"
-
-      # --- fetch the infra cluster kubeconfig over SSH (becomes the default context) ---
-      - name: fetch infra kubeconfig
+      # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
+      # Post-pivot there is no mgmt cluster: CAPI lives IN the app cluster, so the
+      # overlay below applies to the cluster itself. Access = discover a CP by its
+      # CAPH label via the hcloud API, SSH-fetch admin.conf (key-only :22 — the
+      # recorded auth-only baseline, docs/infra-credentials.md). admin.conf already
+      # points at the kube-api LB (CAPH controlPlaneEndpoint), so no rewrite needed.
+      - name: fetch app cluster kubeconfig (via a CP node)
         run: |
           install -m700 -d ~/.ssh ~/.kube
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          IP="${{ steps.infra.outputs.ip }}"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${IP}" \
-            'cat /etc/rancher/k3s/k3s.yaml' \
-            | sed "s#https://127.0.0.1:6443#https://${IP}:6443#" > ~/.kube/config
+          CP_IP=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-bex" \
+            | jq -r '[.servers[] | select(.name | startswith("bex-control-plane"))][0].public_net.ipv4.ip')
+          test -n "$CP_IP" && test "$CP_IP" != "null"
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_bex "root@${CP_IP}" \
+            'cat /etc/kubernetes/admin.conf' > ~/.kube/config
           chmod 600 ~/.kube/config
           kubectl cluster-info
 
@@ -135,18 +119,14 @@ jobs:
           fi
           kubectl get cluster,machines -A -o wide
 
-      # --- cluster-autoscaler on the INFRA cluster, beside CAPI (w1/m3) ---
-      # Why here and not Argo: infra/clusterapi/autoscaler-values.yaml (decision record).
-      # CA_TAG matches the app cluster's k8s minor (overlay `version:`) — a newer
-      # CA's DRA informers never sync against a v1.31 apiserver and the main loop
-      # silently never starts. Bump together with the overlay's k8s version.
-      - name: cluster-autoscaler (infra cluster)
-        run: CA_TAG=v1.31.5 bash scripts/install-autoscaler.sh
+      # cluster-autoscaler: Argo-managed in-cluster post-pivot (deploy/gitops/base/
+      # autoscaler.yaml, incluster-incluster) — no bootstrap install step anymore.
+      # scripts/install-autoscaler.sh remains for the mock-cluster/DR bootstrap phase.
 
-      # --- pull the app cluster kubeconfig; switch default context to it ---
+      # --- expose the kubeconfig under the path the addon steps expect ---
       - name: app cluster kubeconfig
         run: |
-          clusterctl get kubeconfig "$CLUSTER_NAME" > "$PWD/app.kubeconfig"
+          cp ~/.kube/config "$PWD/app.kubeconfig"
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
 
       # ====== addons on the APP cluster (KUBECONFIG now points at it) ======
