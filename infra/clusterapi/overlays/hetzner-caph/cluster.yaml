@@ -1,7 +1,7 @@
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
-  name: bex-worker-0
+  name: bex-tenant-0
   namespace: default
 spec:
   template:
@@ -162,8 +162,8 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   labels:
-    nodepool: bex-worker-0
-  name: bex-worker-0
+    nodepool: bex-tenant-0
+  name: bex-tenant-0
   namespace: default
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
@@ -187,19 +187,19 @@ spec:
   template:
     metadata:
       labels:
-        nodepool: bex-worker-0
+        nodepool: bex-tenant-0
     spec:
       bootstrap:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
           kind: KubeadmConfigTemplate
-          name: bex-worker-0
+          name: bex-tenant-0
       clusterName: bex
       failureDomain: fsn1
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-worker-0
+        name: bex-tenant-0
       version: v1.31.0
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -229,7 +229,7 @@ spec:
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
 metadata:
-  name: bex-worker-0-unhealthy-5m
+  name: bex-tenant-0-unhealthy-5m
   namespace: default
 spec:
   clusterName: bex
@@ -241,7 +241,7 @@ spec:
     name: worker-remediation-request
   selector:
     matchLabels:
-      nodepool: bex-worker-0
+      nodepool: bex-tenant-0
   unhealthyConditions: # Ready 600s (t006): fresh nodes stay NotReady until CNI converges (pulls + cilium init retries) — 180s remediated healthy joins mid-bring-up
     - status: Unknown
       timeout: 600s
@@ -555,13 +555,13 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
-  name: bex-worker-0
+  name: bex-tenant-0
   namespace: default
 spec:
   template:
     spec:
       imageName: ubuntu-24.04
-      placementGroupName: worker-0
+      placementGroupName: tenant-0
       type: cx33
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -622,7 +622,7 @@ spec:
   hcloudPlacementGroups:
     - name: control-plane
       type: spread
-    - name: worker-0
+    - name: tenant-0
       type: spread
     - name: platform
       type: spread
