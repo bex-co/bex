@@ -12,13 +12,13 @@
 | t004 | Destroy `bex-infra` (definition retained); docs trust-chain + architecture update              — **DONE** | 15m | t003       |
 | t005 | Tenant node birth: tenant pool min 1/max 3 (permanent) → apps Running, LE certs issue          — **DONE** | 20m | t004       |
 | t006 | External cutover: DNS → `49.12.20.236` (user, Cloudflare) + serve verification; sync m19 — **DONE**       | 15m | t005       |
-| t007 | Simplify — `/simplify` over what this milestone changed (overlay, workflows, docs)             | 15m | t006       |
-| t008 | Test coverage — scripted assertion of the self-managed access path (no mgmt-cluster dependency)| 20m | t007       |
-| t009 | Closeout — verify DoD holds, then move the milestone to `done/`                                | 10m | t008       |
+| t007 | Simplify — `/simplify` over what this milestone changed (overlay, workflows, docs) — **DONE**             | 15m | t006       |
+| t008 | Test coverage — scripted assertion of the self-managed access path (no mgmt-cluster dependency) — **DONE** | 20m | t007       |
+| t009 | Closeout — verify DoD holds, then move the milestone to `done/` — **DONE**                                | 10m | t008       |
 
 ## Definition of done
 
-- prod serves users again on **5 servers**: 2 CP + 2 platform + 1 tenant, `bex-infra` destroyed (Terraform definition retained for DR).
+- prod serves users again on **5-server quota**: 1 CP + 2 platform + 1 tenant (amended from 2 CP — the KCP webhook forbids even counts with stacked etcd), `bex-infra` destroyed (Terraform definition retained for DR).
 - Pivot complete and self-managed: `kubectl get machines -n default` works **inside** the app cluster and shows all machines Running; the Argo-managed in-cluster autoscaler is healthy (pre-pivot crashloop gone); the bootstrap autoscaler is uninstalled.
 - Both CI workflows green against the pivoted cluster via the new SSH-to-CP access path.
 - The 3 Apps serve on `*.onbex.co` with valid LE certs; `dashboard.bex.co` serves from the new cluster (after the user's Cloudflare cutover).
