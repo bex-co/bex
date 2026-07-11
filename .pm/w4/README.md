@@ -18,6 +18,7 @@
 - [ ] **m11** — MFA: TOTP + passkeys via Kratos (8 tasks) ← promoted from `002` 2026-07-08 (its w1/m2 revisit condition met; closing tasks retrofitted 2026-07-09)
 - [x] **m12** — Workspace members & roles (Render team surface) (9 tasks) ← from `/pm-brainstorm tasks for w4` 2026-07-08, needs w1/m9 + w4/m7 (closing tasks retrofitted 2026-07-09)
 - [x] **m13** — API-key hygiene: token TTL + key metadata (7 tasks) ← promoted from `004` 2026-07-09 (its m8 pairing plan didn't happen); done 2026-07-09
+- [ ] **m14** — Audit log in the dashboard: Settings → Audit Log panel over the m10 API (10 tasks) ← user request 2026-07-11, needs m10 (done)
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
