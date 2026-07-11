@@ -126,6 +126,9 @@ type Base struct {
 	// control-plane store is wired; nil => every check targets workspace:default
 	// (the legacy store-off mode). See WorkspaceResolver for the ok contract.
 	Workspace WorkspaceResolver
+	// Audit records write-verb authorization decisions (w4/m10); nil => audit.go's
+	// NoopAuditSink, the store-off degrade every other store-backed feature uses.
+	Audit AuditSink
 }
 
 // Now returns the (injectable) current time.
@@ -142,7 +145,11 @@ func (b *Base) Now() time.Time {
 // machine caller that 403s on the default workspace's tuples unless it is the
 // seeded bootstrap). Every App/logs/metrics/apikeys verb starts here — it is
 // the caller-scoped case of AuthorizeOn, which every one of those verbs uses
-// implicitly by never naming a workspace itself.
+// implicitly by never naming a workspace itself. This is also the audit
+// interception point (w4/m10, audit.go): the caller two frames up is the verb
+// itself (docs/... every verb calls Authorize/AuthorizeOn exactly once, per
+// CLAUDE.md), so it's resolved here rather than threaded through 80+ call
+// sites — a write-relation verb can't opt out of being recorded.
 func (b *Base) Authorize(ctx context.Context, relation string) error {
 	workspace := DefaultWorkspace
 	if b.Workspace != nil {
@@ -152,18 +159,38 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 			}
 		}
 	}
-	return b.AuthorizeOn(ctx, relation, workspace)
+	return b.authorizeAndAudit(ctx, relation, workspace, callerVerb(verbFrameSkip))
 }
 
 // AuthorizeOn gates a verb on the caller's permission against a specific object
 // (e.g. workspace:tea-abc) — the seam for verbs scoped to a named workspace
 // rather than the caller's own (the workspaces lifecycle verbs check `admin` on
 // the exact workspace being renamed/deleted, which may differ from the
-// caller's default). nil checker allows (authorization not enforced); with a
-// checker wired, no identity in context or a negative check is ErrForbidden, and
-// an unreachable checker fails closed with ErrAuthzUnavailable — never a
-// pass-through, so the three surfaces stay authorization-identical.
+// caller's default — the cross-tenant case the audit log's denial events cover
+// for the RelCanManage/RelCanCreate/RelCanOperate/RelCanManageKeys verbs that
+// call this directly). Same audit interception as Authorize.
 func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
+	return b.authorizeAndAudit(ctx, relation, object, callerVerb(verbFrameSkip))
+}
+
+// authorizeAndAudit runs the OpenFGA check and, for write relations only,
+// records the outcome (audit.go) — the one place both Authorize and
+// AuthorizeOn funnel through, so a verb is recorded exactly once regardless of
+// which entry point it calls.
+func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, verb string) error {
+	err := b.checkAuthz(ctx, relation, object)
+	if writeRelations[relation] {
+		b.emit(ctx, verb, object, err)
+	}
+	return err
+}
+
+// checkAuthz is the raw OpenFGA decision, no audit side effect: nil checker
+// allows (authorization not enforced); with a checker wired, no identity in
+// context or a negative check is ErrForbidden, and an unreachable checker
+// fails closed with ErrAuthzUnavailable — never a pass-through, so the three
+// surfaces stay authorization-identical.
+func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 	if b.Authz == nil {
 		return nil
 	}

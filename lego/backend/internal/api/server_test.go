@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -532,19 +533,12 @@ func TestAPIKeys_SessionCaller(t *testing.T) {
 // that take a context and return an error) with a deny-all checker: each must
 // return ErrForbidden before doing anything else. A new verb that forgets its
 // Authorize guard fails this sweep automatically — the CLAUDE.md rule, enforced.
-func TestAuthzGuardsEveryVerb(t *testing.T) {
-	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
-
-	// The promoted core.Base helpers (Authorize/GetApp/AppPods/Now) are kernel
-	// primitives, not verbs — exclude them from the sweep by name.
-	baseMethods := map[string]bool{}
-	bt := reflect.TypeOf(&core.Base{})
-	for i := 0; i < bt.NumMethod(); i++ {
-		baseMethods[bt.Method(i).Name] = true
-	}
-
-	services := []any{
+// sweepableServices lists every feature service TestAuthzGuardsEveryVerb (and
+// w4/m10's audit-coverage sweep, which reuses it so the two inventories can't
+// drift) walks by reflection. One list, shared, so a new feature added here
+// automatically joins both sweeps.
+func sweepableServices(base *core.Base) []any {
+	return []any{
 		&apps.Service{Base: base},
 		&logs.Service{Base: base},
 		&metrics.Service{Base: base},
@@ -555,48 +549,255 @@ func TestAuthzGuardsEveryVerb(t *testing.T) {
 		&workspaces.Service{Base: base},
 		&members.Service{Base: base},
 		&deploys.Service{Base: base},
+		&audit.Service{Base: base},
 	}
+}
+
+// baseMethodNames returns the promoted core.Base helpers (Authorize/GetApp/
+// AppPods/Now) — kernel primitives, not verbs, excluded from every sweep by
+// name.
+func baseMethodNames() map[string]bool {
+	names := map[string]bool{}
+	bt := reflect.TypeOf(&core.Base{})
+	for i := 0; i < bt.NumMethod(); i++ {
+		names[bt.Method(i).Name] = true
+	}
+	return names
+}
+
+// isVerbMethod reports whether m is a verb the sweeps below walk: exported,
+// (ctx, ...) -> (..., error), and not one of the promoted core.Base helpers.
+func isVerbMethod(baseMethods map[string]bool, m reflect.Method) bool {
+	if baseMethods[m.Name] {
+		return false
+	}
+	mt := m.Func.Type()
+	if mt.NumIn() < 2 || mt.In(1) != reflect.TypeFor[context.Context]() {
+		return false
+	}
+	return mt.NumOut() > 0 && mt.Out(mt.NumOut()-1) == reflect.TypeFor[error]()
+}
+
+// callVerb invokes m on cv with ctx plus zero-valued remaining args (e.g.
+// FollowLogs' emit callback becomes a no-op func), returning its error result.
+func callVerb(cv reflect.Value, m reflect.Method, ctx context.Context) error {
+	mt := m.Func.Type()
+	args := []reflect.Value{cv, reflect.ValueOf(ctx)}
+	for a := 2; a < mt.NumIn(); a++ {
+		at := mt.In(a)
+		if at.Kind() == reflect.Func {
+			args = append(args, reflect.MakeFunc(at, func(_ []reflect.Value) []reflect.Value {
+				outs := make([]reflect.Value, at.NumOut())
+				for o := range outs {
+					outs[o] = reflect.Zero(at.Out(o))
+				}
+				return outs
+			}))
+			continue
+		}
+		args = append(args, reflect.Zero(at))
+	}
+	out := m.Func.Call(args)
+	err, _ := out[len(out)-1].Interface().(error)
+	return err
+}
+
+// sweepEveryVerb walks every service's verb methods (isVerbMethod) and calls
+// fn once per verb with the zero-valued call's error result.
+func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(serviceName, method string, err error)) int {
+	t.Helper()
+	baseMethods := baseMethodNames()
 	swept := 0
 	for _, svc := range services {
 		cv := reflect.ValueOf(svc)
 		ct := cv.Type()
 		for i := 0; i < ct.NumMethod(); i++ {
 			m := ct.Method(i)
-			if baseMethods[m.Name] {
-				continue
-			}
-			mt := m.Func.Type()
-			if mt.NumIn() < 2 || mt.In(1) != reflect.TypeFor[context.Context]() {
-				continue
-			}
-			if mt.NumOut() == 0 || mt.Out(mt.NumOut()-1) != reflect.TypeFor[error]() {
+			if !isVerbMethod(baseMethods, m) {
 				continue
 			}
 			swept++
-			args := []reflect.Value{cv, reflect.ValueOf(ctx)}
-			for a := 2; a < mt.NumIn(); a++ {
-				at := mt.In(a)
-				if at.Kind() == reflect.Func { // e.g. FollowLogs' emit callback
-					args = append(args, reflect.MakeFunc(at, func(_ []reflect.Value) []reflect.Value {
-						outs := make([]reflect.Value, at.NumOut())
-						for o := range outs {
-							outs[o] = reflect.Zero(at.Out(o))
-						}
-						return outs
-					}))
-					continue
-				}
-				args = append(args, reflect.Zero(at))
-			}
-			out := m.Func.Call(args)
-			err, _ := out[len(out)-1].Interface().(error)
-			if !errors.Is(err, core.ErrForbidden) {
-				t.Errorf("%s.%s: unguarded — returned %v, want ErrForbidden", ct.Elem().Name(), m.Name, err)
-			}
+			fn(ct.Elem().Name(), m.Name, callVerb(cv, m, ctx))
 		}
 	}
-	if swept < 19 {
+	return swept
+}
+
+// wantMinSweptVerbs is the sanity floor every reflection sweep below checks
+// its walk against — shared so the two sweeps' thresholds can't drift apart.
+const wantMinSweptVerbs = 19
+
+// sweepVerbPairs walks two parallel service inventories (same types, same
+// method order — sweepableServices called twice, once per core.Base) verb by
+// verb, calling each verb on BOTH before moving to the next and handing fn
+// both outcomes — the seam TestAuditCoversEveryWriteVerbExactlyOnce uses to
+// compare an allow-all run against a deny-all run of the exact same call.
+//
+// This deliberately does NOT build on sweepEveryVerb by running it twice
+// (once per inventory): TestAuditCoversEveryWriteVerbExactlyOnce identifies
+// each verb's own event by the *delta* in cumulative sink length since the
+// previous verb, which only holds if the allow and deny calls for one verb
+// happen back-to-back. Two fully separate passes would front-load the entire
+// deny sink's growth onto the first verb of the second pass — a real bug, not
+// a style choice, so the interleaving here is load-bearing.
+func sweepVerbPairs(t *testing.T, ctx context.Context, allowServices, denyServices []any, fn func(serviceName, method string, allowErr, denyErr error)) int {
+	t.Helper()
+	baseMethods := baseMethodNames()
+	swept := 0
+	for i := range allowServices {
+		av, dv := reflect.ValueOf(allowServices[i]), reflect.ValueOf(denyServices[i])
+		ct := av.Type()
+		for j := 0; j < ct.NumMethod(); j++ {
+			m := ct.Method(j)
+			if !isVerbMethod(baseMethods, m) {
+				continue
+			}
+			swept++
+			allowErr := callVerb(av, m, ctx)
+			denyErr := callVerb(dv, m, ctx)
+			fn(ct.Elem().Name(), m.Name, allowErr, denyErr)
+		}
+	}
+	return swept
+}
+
+func TestAuthzGuardsEveryVerb(t *testing.T) {
+	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+
+	swept := sweepEveryVerb(t, ctx, sweepableServices(base), func(serviceName, method string, err error) {
+		if !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("%s.%s: unguarded — returned %v, want ErrForbidden", serviceName, method, err)
+		}
+	})
+	if swept < wantMinSweptVerbs {
 		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
+	}
+}
+
+// fakeAuditSink records every event handed to it (w4/m10, t004's acceptance
+// bar: "unit-verifiable with a fake sink").
+type fakeAuditSink struct {
+	events []core.AuditEvent
+}
+
+func (f *fakeAuditSink) Record(_ context.Context, ev core.AuditEvent) error {
+	f.events = append(f.events, ev)
+	return nil
+}
+
+// TestAuditCoversEveryWriteVerbExactlyOnce sweeps the SAME service inventory
+// TestAuthzGuardsEveryVerb does (sweepableServices — one list, so a verb that
+// joins the authz sweep automatically joins this one, per t001/t004's design
+// goal) once with an allow-all checker and once with a deny-all checker, each
+// wired to its own fake sink, and compares event counts per verb. No
+// hand-maintained "these are the write verbs" list: a write-relation verb
+// necessarily records on BOTH outcomes (one event each, matching), a
+// read-relation verb records on NEITHER (zero events on both) — any other
+// pattern (recorded on only one outcome, or more than one event per call) is
+// the bug this test exists to catch.
+func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
+	allowSink := &fakeAuditSink{}
+	allowBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: true}, Audit: allowSink}
+	denySink := &fakeAuditSink{}
+	denyBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}, Audit: denySink}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+
+	var allowSeen, denySeen, writeVerbs int
+	swept := sweepVerbPairs(t, ctx, sweepableServices(allowBase), sweepableServices(denyBase),
+		func(serviceName, method string, allowErr, denyErr error) {
+			allowDelta := len(allowSink.events) - allowSeen
+			denyDelta := len(denySink.events) - denySeen
+			allowSeen, denySeen = len(allowSink.events), len(denySink.events)
+
+			if allowDelta != denyDelta {
+				t.Errorf("%s.%s: allow run recorded %d event(s), deny run recorded %d — a write verb must record on both outcomes, a read verb on neither",
+					serviceName, method, allowDelta, denyDelta)
+				return
+			}
+			if allowDelta > 1 {
+				t.Errorf("%s.%s: recorded %d events for one call, want at most 1", serviceName, method, allowDelta)
+				return
+			}
+			if allowDelta == 0 {
+				return // a read-relation verb — correctly unaudited
+			}
+			writeVerbs++
+			allowEv := allowSink.events[len(allowSink.events)-1]
+			if allowEv.Outcome != core.AuditAllowed {
+				t.Errorf("%s.%s: allow-run event outcome = %q, want %q", serviceName, method, allowEv.Outcome, core.AuditAllowed)
+			}
+			if allowEv.Verb == "" || allowEv.Resource == "" {
+				t.Errorf("%s.%s: event has an empty Verb/Resource: %+v", serviceName, method, allowEv)
+			}
+			if allowEv.Caller != "client-1" {
+				t.Errorf("%s.%s: event Caller = %q, want the calling identity", serviceName, method, allowEv.Caller)
+			}
+			denyEv := denySink.events[len(denySink.events)-1]
+			if denyEv.Outcome != core.AuditDenied {
+				t.Errorf("%s.%s: deny-run event outcome = %q, want %q", serviceName, method, denyEv.Outcome, core.AuditDenied)
+			}
+			if !errors.Is(denyErr, core.ErrForbidden) {
+				t.Errorf("%s.%s: deny run returned %v, want ErrForbidden alongside the denial event", serviceName, method, denyErr)
+			}
+		})
+	if swept < wantMinSweptVerbs {
+		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
+	}
+	if writeVerbs == 0 {
+		t.Fatal("no write verbs recorded an audit event — the hook or the sweep is broken")
+	}
+	t.Logf("%d/%d swept verbs are audited write verbs", writeVerbs, swept)
+}
+
+// fakeAuditKV is a minimal in-memory core.SecretKV for TestAuditNeverCarriesSecretValues.
+type fakeAuditKV struct{ m map[string]map[string]string }
+
+func (f *fakeAuditKV) Get(_ context.Context, path string) (map[string]string, error) {
+	if f.m[path] == nil {
+		return map[string]string{}, nil
+	}
+	out := make(map[string]string, len(f.m[path]))
+	for k, v := range f.m[path] {
+		out[k] = v
+	}
+	return out, nil
+}
+func (f *fakeAuditKV) Put(_ context.Context, path string, data map[string]string) error {
+	if f.m == nil {
+		f.m = map[string]map[string]string{}
+	}
+	f.m[path] = data
+	return nil
+}
+func (f *fakeAuditKV) Delete(_ context.Context, path string) error    { delete(f.m, path); return nil }
+func (f *fakeAuditKV) List(context.Context, string) ([]string, error) { return nil, nil }
+
+// TestAuditNeverCarriesSecretValues proves the hygiene half of t004's
+// acceptance bar directly against the highest-risk write verb: setting an env
+// var. The audit hook fires from Base.Authorize, called before SetEnvVar ever
+// reads its key/value arguments (internal/secrets/service.go) — a structural
+// guarantee, not a scrub step — so no event field can ever contain the value.
+// This test pins that guarantee so a future refactor that moved the Authorize
+// call after the value was touched would be caught here.
+func TestAuditNeverCarriesSecretValues(t *testing.T) {
+	sink := &fakeAuditSink{}
+	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: true}, Audit: sink}
+	svc := &secrets.Service{Base: base, Store: &fakeAuditKV{}}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+
+	const secretValue = "sk_live_do_not_leak_this_9f8e7d6c"
+	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", secretValue); err != nil {
+		t.Fatalf("SetEnvVar: %v", err)
+	}
+	if len(sink.events) != 1 {
+		t.Fatalf("got %d audit events, want exactly 1", len(sink.events))
+	}
+	ev := sink.events[0]
+	for _, field := range []string{ev.Verb, ev.Resource, ev.Caller, ev.CallerMethod, string(ev.Outcome)} {
+		if strings.Contains(field, secretValue) {
+			t.Fatalf("audit event field %q contains the secret value — event: %+v", field, ev)
+		}
 	}
 }
 

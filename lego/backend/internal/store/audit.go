@@ -1,0 +1,149 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package store
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
+)
+
+// DefaultAuditPageSize/MaxAuditPageSize bound ListAuditEvents' page (Render's
+// GET .../audit-logs defaults to 20, caps at 1000 — bex caps lower pending
+// real volume data, a documented divergence, docs/render-parity.md).
+const (
+	DefaultAuditPageSize = 20
+	MaxAuditPageSize     = 200
+)
+
+// AuditRow is one persisted audit_events row.
+type AuditRow struct {
+	ID           string
+	WorkspaceID  string
+	Caller       string
+	CallerMethod string
+	Verb         string
+	Resource     string
+	Outcome      string
+	At           time.Time
+}
+
+// AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
+// (Render's startTime/endTime); Cursor resumes strictly after a previously
+// returned row's id (newest-first keyset paging, stable under concurrent
+// inserts — unlike an OFFSET); Limit caps the page (<1 or >MaxAuditPageSize
+// clamps to DefaultAuditPageSize).
+type AuditFilter struct {
+	Since  time.Time
+	Until  time.Time
+	Cursor string
+	Limit  int
+}
+
+// workspaceOf extracts the tenant component of an OpenFGA workspace object
+// ("workspace:tea-abc" -> "tea-abc"). Every Authorize/AuthorizeOn call passes
+// a core.WorkspaceObject, so this always matches; an unshaped resource (should
+// never happen) falls back to the raw string rather than failing the write.
+func workspaceOf(resource string) string {
+	_, id, ok := strings.Cut(resource, ":")
+	if !ok {
+		return resource
+	}
+	return id
+}
+
+// Record persists one audit event — *PGStore structurally satisfies
+// core.AuditSink (Record(ctx, core.AuditEvent) error), so the composition root
+// wires it directly onto core.Base.Audit (cmd/api/main.go) with no adapter
+// type needed.
+func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
+	_, err := s.Pool.Exec(ctx, `
+		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, outcome, at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, string(ev.Outcome), ev.At)
+	return err
+}
+
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, outcome, at`
+
+func scanAuditRow(row pgx.Row) (AuditRow, error) {
+	var r AuditRow
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Outcome, &r.At)
+	return r, err
+}
+
+// ListAuditEvents returns workspaceID's audit trail newest-first, honoring
+// filter's time bounds/cursor/limit — the one query the REST and GraphQL read
+// fragments (internal/audit) both delegate to, so they can't diverge.
+func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filter AuditFilter) ([]AuditRow, error) {
+	limit := filter.Limit
+	if limit < 1 || limit > MaxAuditPageSize {
+		limit = DefaultAuditPageSize
+	}
+	query := `SELECT ` + auditColumns + ` FROM audit_events WHERE workspace_id = $1`
+	args := []any{workspaceID}
+	if !filter.Since.IsZero() {
+		args = append(args, filter.Since)
+		query += fmt.Sprintf(" AND at >= $%d", len(args))
+	}
+	if !filter.Until.IsZero() {
+		args = append(args, filter.Until)
+		query += fmt.Sprintf(" AND at <= $%d", len(args))
+	}
+	if filter.Cursor != "" {
+		// Keyset resume: strictly older than the cursor row's own (at, id). An
+		// unknown cursor id matches no subquery row, so the comparison is NULL
+		// (never true) — an invalid cursor yields an empty page, not a crash or
+		// a leak of the unfiltered list.
+		args = append(args, filter.Cursor)
+		query += fmt.Sprintf(" AND (at, id) < (SELECT at, id FROM audit_events WHERE id = $%d)", len(args))
+	}
+	args = append(args, limit)
+	query += fmt.Sprintf(" ORDER BY at DESC, id DESC LIMIT $%d", len(args))
+
+	rows, err := s.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AuditRow
+	for rows.Next() {
+		r, err := scanAuditRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// PurgeAuditEvents deletes rows older than before — the retention sweep
+// (internal/audit, BEX_AUDIT_RETENTION_DAYS) calls this, mirroring
+// CompactUsage's atomic, idempotent delete.
+func (s *PGStore) PurgeAuditEvents(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := s.Pool.Exec(ctx, `DELETE FROM audit_events WHERE at < $1`, before)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}

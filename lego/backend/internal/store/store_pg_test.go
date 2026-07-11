@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // TestPGStore exercises migrations + the real Store against a live Postgres.
@@ -51,8 +53,13 @@ func TestPGStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	// Isolate from previous runs (order respects FKs via cascade).
+	// Isolate from previous runs (order respects FKs via cascade). audit_events
+	// has no FK to tenants (w4/m10 — a purged tenant's audit trail must outlive
+	// the row's own cascade delete), so it needs its own truncate.
 	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `TRUNCATE audit_events`); err != nil {
 		t.Fatal(err)
 	}
 	s := NewPGStore(pool)
@@ -80,6 +87,7 @@ func TestPGStore(t *testing.T) {
 	assertErrorTaxonomy(ctx, t, s, ten)
 	assertProjectionJoin(ctx, t, s, app)
 	assertDeployLifecycle(ctx, t, s, app)
+	assertAuditEvents(ctx, t, s, ten)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
@@ -133,6 +141,87 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 
 	if _, err := s.GetDeploy(ctx, "srv-doesnotexist00000", second.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get deploy scoped to the wrong app: want ErrNotFound, got %v", err)
+	}
+}
+
+// assertAuditEvents exercises w4/m10's audit_events store methods against real
+// Postgres: Record (the core.AuditSink write side, *PGStore satisfies it
+// directly), newest-first ordering, the since/until/cursor filters, and
+// PurgeAuditEvents' retention delete — all things that depend on Postgres's
+// ORDER BY/keyset comparison, not just Go logic.
+func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant) {
+	t.Helper()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	var recorded []AuditRow
+	for i, outcome := range []core.AuditOutcome{core.AuditAllowed, core.AuditDenied, core.AuditAllowed} {
+		ev := core.AuditEvent{
+			Caller: "user-x", CallerMethod: "session",
+			Verb:     "apps.Suspend",
+			Resource: "workspace:" + ten.ID,
+			Outcome:  outcome,
+			At:       base.Add(time.Duration(i) * time.Minute),
+		}
+		if err := s.Record(ctx, ev); err != nil {
+			t.Fatalf("record audit event %d: %v", i, err)
+		}
+	}
+	// A second workspace's event must never leak into ten's list.
+	if err := s.Record(ctx, core.AuditEvent{Caller: "other", Verb: "apps.Suspend", Resource: "workspace:tea-other0000000", Outcome: core.AuditAllowed, At: base}); err != nil {
+		t.Fatalf("record audit event for other workspace: %v", err)
+	}
+
+	all, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{})
+	if err != nil {
+		t.Fatalf("list audit events: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("list audit events = %d rows, want 3 (scoped to %s)", len(all), ten.ID)
+	}
+	// Newest first.
+	if all[0].At.Before(all[1].At) || all[1].At.Before(all[2].At) {
+		t.Fatalf("list audit events not newest-first: %+v", all)
+	}
+	if all[0].Outcome != string(core.AuditAllowed) || all[0].Verb != "apps.Suspend" || all[0].Caller != "user-x" {
+		t.Errorf("newest row = %+v", all[0])
+	}
+	recorded = all
+
+	// Cursor resumes strictly after the given row — page size 1 from the
+	// newest should walk the same three rows in the same order.
+	page, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Limit: 1})
+	if err != nil || len(page) != 1 || page[0].ID != recorded[0].ID {
+		t.Fatalf("first page = %+v (err %v), want [%s]", page, err, recorded[0].ID)
+	}
+	page2, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Limit: 1, Cursor: page[0].ID})
+	if err != nil || len(page2) != 1 || page2[0].ID != recorded[1].ID {
+		t.Fatalf("second page = %+v (err %v), want [%s]", page2, err, recorded[1].ID)
+	}
+
+	// since/until bound At inclusively — the middle event only.
+	windowed, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Since: base.Add(time.Minute), Until: base.Add(time.Minute)})
+	if err != nil || len(windowed) != 1 || windowed[0].Outcome != string(core.AuditDenied) {
+		t.Fatalf("windowed list = %+v (err %v), want the single denied event", windowed, err)
+	}
+
+	// An unknown cursor yields an empty page, not an error or the unfiltered list.
+	if junk, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Cursor: "aud-doesnotexist00000"}); err != nil || len(junk) != 0 {
+		t.Fatalf("unknown cursor = %+v (err %v), want an empty page", junk, err)
+	}
+
+	// Retention is a global sweep, not workspace-scoped: purging everything
+	// before base+2m removes ten's two oldest events AND the other
+	// workspace's single (older) event — 3 rows total — leaving only ten's
+	// newest event standing.
+	purged, err := s.PurgeAuditEvents(ctx, base.Add(2*time.Minute))
+	if err != nil {
+		t.Fatalf("purge audit events: %v", err)
+	}
+	if purged != 3 {
+		t.Fatalf("purged = %d, want 3 (ten's 2 oldest + the other workspace's 1 event)", purged)
+	}
+	remaining, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{})
+	if err != nil || len(remaining) != 1 || remaining[0].ID != recorded[0].ID {
+		t.Fatalf("remaining after purge = %+v (err %v), want [%s] (the newest event, at+2m, not < the purge boundary)", remaining, err, recorded[0].ID)
 	}
 }
 

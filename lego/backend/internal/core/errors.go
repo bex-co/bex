@@ -66,6 +66,10 @@ var (
 	// ErrUsageUnavailable is returned by the usage verb when the store isn't
 	// wired (BEX_CP_DB_URI unset); adapters surface it as 503.
 	ErrUsageUnavailable = errors.New("usage unavailable")
+	// ErrAuditUnavailable is returned by the audit-log read verb when the
+	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
+	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
+	ErrAuditUnavailable = errors.New("audit log store not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

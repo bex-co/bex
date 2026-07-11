@@ -48,6 +48,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
+	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
@@ -186,6 +187,11 @@ func main() {
 		deps.Store = st       // single writer of intent: suspend/resume write the row first
 		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
 
+		// Audit log (w4/m10): *store.PGStore structurally satisfies
+		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
+		// starts recording the instant the store is wired — no extra plumbing.
+		base.Audit = st
+
 		// Workspace lifecycle (w6/m1): the workspaces feature writes through the
 		// same store and nudges the same projector to prune a deleted workspace's
 		// App CRs. The OpenFGA checker (when wired) is both the grant and revoke
@@ -253,6 +259,21 @@ func main() {
 		}
 		deps.Usage = usageSvc
 		go usageSvc.Run(ctx)
+
+		// Audit log retention (w4/m10): purges audit_events rows older than
+		// BEX_AUDIT_RETENTION_DAYS daily, same cadence/shape as usage's
+		// compaction loop above. The write side is base.Audit (wired above);
+		// this Service is the read verb + the sweep only.
+		auditSvc := &audit.Service{Base: base, Store: st}
+		if v := os.Getenv("BEX_AUDIT_RETENTION_DAYS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+				auditSvc.RetentionDays = n
+			} else {
+				log.Printf("BEX_AUDIT_RETENTION_DAYS=%q invalid (want integer ≥ 1); using default %d", v, audit.DefaultRetentionDays)
+			}
+		}
+		deps.Audit = auditSvc
+		go auditSvc.Run(ctx)
 
 		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: os.Getenv("BEX_CP_TOKEN"), Grant: granter}
 		cpAddr := envOr("BEX_CP_ADDR", ":8091")

@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -72,6 +73,7 @@ type Server struct {
 	Members    *members.Service
 	Usage      *usage.Service
 	Deploys    *deploys.Service
+	Audit      *audit.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -160,6 +162,11 @@ type Deps struct {
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
 	Identities workspaces.IdentityReader
+	// Audit, when set (store + Prom-independent — only BEX_CP_DB_URI is
+	// needed), backs the audit-log read verb (w4/m10). Constructed and its
+	// retention loop started in cmd/api/main.go, same as Usage. nil => the
+	// verb reports core.ErrAuditUnavailable (503).
+	Audit *audit.Service
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -206,6 +213,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		Onboard: d.Onboard,
 		Usage:   d.Usage,
+		Audit:   d.Audit,
 	}
 }
 
@@ -258,6 +266,9 @@ func (s *Server) features() []any {
 	}
 	if s.Deploys != nil {
 		out = append(out, s.Deploys)
+	}
+	if s.Audit != nil {
+		out = append(out, s.Audit)
 	}
 	return out
 }
