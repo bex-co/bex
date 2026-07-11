@@ -532,10 +532,9 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: HCloudMachineTemplate
       name: bex-control-plane
-  # TEMP (m19.1): 1 until the Hetzner server quota is raised — revert to 3.
-  # (2 is illegal: the KCP webhook forbids even counts with stacked etcd.)
-  # Target stays 3 (etcd quorum, rearchitecture decision 2 — CP is HA and tainted).
-  replicas: 1
+  # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
+  # webhook forbids even counts with stacked etcd.
+  replicas: 3
   # Bumping this k8s version? Also bump the kubeadm-matched etcd image in
   # deploy/gitops/charts/etcd-backup/cronjob.yaml (and the runbook it links).
   version: v1.31.0
@@ -795,9 +794,7 @@ metadata:
     # min 2: the platform stack (CNPG × 4, Ory, OpenBao, Traefik, monitoring)
     # needs two nodes for capacity and failure-domain spread.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "2"
-    # TEMP (m19.1): max 2 until the Hetzner server quota is raised — revert to
-    # "3" (openbao-1's anti-affinity then pulls the third platform node).
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
     # Capacity hints (used by scale-from-zero; kept for symmetry with the pools):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
