@@ -1041,33 +1041,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
-  "services.autoDeployLabel": {
-    message: "自动部署",
-    description: "Build & Deploy: label for the auto-deploy toggle",
-  },
-  "services.autoDeployViaGitHub": {
-    message: "向跟踪分支推送将通过 GitHub 应用自动重新部署。",
-    description:
-      "Build & Deploy: source indicator when the repo is on the connected GitHub account",
-  },
-  "services.autoDeployViaWebhook": {
-    message:
-      "只有在仓库配置了使用 BEX_WEBHOOK_SECRET 的手动 git webhook 时，推送才会重新部署。",
-    description:
-      "Build & Deploy: source indicator when the repo is not on the connected GitHub account",
-  },
-  "services.autoDeployOnSuccess": {
-    message: "已开启自动部署。",
-    description: "Toast after enabling auto-deploy",
-  },
-  "services.autoDeployOffSuccess": {
-    message: "已关闭自动部署。",
-    description: "Toast after disabling auto-deploy",
-  },
-  "services.autoDeployError": {
-    message: "无法更改自动部署，请重试。",
-    description: "Toast after setAutoDeploy fails",
-  },
   "services.colType": {
     message: "类型",
     description: "Services table column header (service type)",

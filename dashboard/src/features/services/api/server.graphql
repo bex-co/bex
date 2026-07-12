@@ -26,8 +26,6 @@ query Server($id: String!) {
     repo
     branch
     rootDir
-    # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
-    autoDeploy
     # cron_job fields (null/empty for other service types)
     schedule
     command

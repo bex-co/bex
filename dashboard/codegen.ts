@@ -15,11 +15,19 @@ const apiUrl = process.env.VITE_API_URL || "http://localhost:8090/graphql";
 // API) before running `yarn codegen` so it can reach the schema.
 const sessionToken = process.env.CODEGEN_SESSION_TOKEN;
 
+// SCHEMA_JSON, when set, points at a GraphQL introspection JSON file so codegen
+// can regenerate offline without a live bex-api — dump it from the backend with
+// `SCHEMA_DUMP_PATH=... go test ./internal/api -run TestDumpGraphQLSchema`
+// (internal/api/schema_dump_test.go). Unset => the live-endpoint path below.
+const schemaJSON = process.env.SCHEMA_JSON;
+
 const config: CodegenConfig = {
   overwrite: true,
-  schema: sessionToken
-    ? [{ [apiUrl]: { headers: { "X-Session-Token": sessionToken } } }]
-    : apiUrl,
+  schema: schemaJSON
+    ? schemaJSON
+    : sessionToken
+      ? [{ [apiUrl]: { headers: { "X-Session-Token": sessionToken } } }]
+      : apiUrl,
   // This assumes that all your source files are in a top-level `src/` directory - you might need to adjust this to your file structure
   documents: ["src/**/*.graphql"],
   // Don't exit with non-zero status when there are no documents
