@@ -117,16 +117,17 @@ No `%+v` whole-struct dump of a config/server/secret struct exists anywhere; no 
 
 ## Follow-up register
 
-Newly discovered issues filed as `.pm/w6/` inbox notes (each sub-hour, to be triaged into a future milestone):
+All seven findings filed during this review were **implemented 2026-07-12** as the w6 follow-up batch (notes moved to `.pm/w6/done/`):
 
-- [w6/002](../.pm/w6/002.md) — bex-api cluster-wide `secrets`/`pods` RBAC scoping (MEDIUM-HIGH) + operator `secrets` CRUD defense-in-depth.
-- [w6/003](../.pm/w6/003.md) — OAuth PKCE Hydra-side enforcement for all authorization_code clients (LOW).
-- [w6/004](../.pm/w6/004.md) — constant-time comparison hardening: webhook either-key path + internal tenant-API bearer (LOW).
-- [w6/005](../.pm/w6/005.md) — collapse GitHub `APIError` 5xx body in error responses (LOW).
-- [w6/006](../.pm/w6/006.md) — CNB tenant-image signing/SBOM in the in-cluster BuildKit path (MEDIUM).
-- [w6/007](../.pm/w6/007.md) — CRD-schema `+kubebuilder:validation` markers on `Repo`/`Branch`/`RootDir` so hand-applied App CRs can't bypass the input validators (LOW-MEDIUM).
+- [w6/002](../.pm/w6/done/002.md) — ✅ bex-api `secrets`/`pods`/`pods-log`/`metrics` moved from the cluster-wide ClusterRole to a `default`-namespace-scoped Role+RoleBinding (`deploy/gitops/base/bex-api-apps-rbac.yaml`); the ClusterRole now holds only the `app.bex.co` verbs.
+- [w6/003](../.pm/w6/done/003.md) — ✅ PKCE required at the dashboard consent acceptor (`hydra-consent.ts`); a consent request whose authorize URL lacks a `code_challenge` is rejected. (Hydra has no global toggle.)
+- [w6/004](../.pm/w6/done/004.md) — ✅ webhook `verify` computes every configured key's MAC with no early return; the internal tenant-API bearer uses `crypto/subtle.ConstantTimeCompare`.
+- [w6/005](../.pm/w6/done/005.md) — ✅ `APIError.Error()` returns status only; the upstream response body is no longer interpolated into error responses.
+- [w6/006](../.pm/w6/done/006.md) — ✅ opt-in tenant-image signing in the build Job (`build.go`: build+push as an initContainer, cosign as the main container), gated behind `BEX_TENANT_SIGNING_KEY_SECRET`. Admission-time verification is the remaining open half.
+- [w6/007](../.pm/w6/done/007.md) — ✅ `+kubebuilder:validation:Pattern`/`:MaxLength` markers on `Repo`/`Branch`/`RootDir` (`lego/types`); CRD regenerated so hand-applied App CRs can't bypass the input validators.
+- [w6/008](../.pm/w6/done/008.md) — ✅ two pre-existing red `internal/apps` autoscaling tests fixed (root cause: missing `Context` in `graphql.Params` — graphql-go v0.8.1 doesn't default a nil context).
 
 ## Out of scope
 
 - Dependabot triage (36 findings) is owned by `w1/m23/t002` — excluded here.
-- Admission-time signature verification and namespace-per-workspace isolation are deferred (see the follow-up notes and `docs/ADR022-tenant-isolation.md` §Rejected options).
+- Admission-time tenant-image signature verification remains deferred (w6/006 implemented signing only); namespace-per-workspace isolation is deferred (`docs/ADR022-tenant-isolation.md` §Rejected options).

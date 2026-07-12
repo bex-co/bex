@@ -60,6 +60,19 @@ export async function handleConsent(request: Request): Promise<Response> {
     return home();
   }
 
+  // Require PKCE for every authorization_code grant (w6/003). Hydra mandates PKCE
+  // for public clients (token_endpoint_auth_method: none) at the token endpoint,
+  // but a confidential DCR client could run auth_code without it and Hydra has no
+  // global "enforce PKCE" toggle — consent is the one place bex sees the flow, so
+  // require a code_challenge in the original authorize request URL.
+  const requestUrl = consent.request_url ? new URL(consent.request_url) : null;
+  if (!requestUrl?.searchParams.get("code_challenge")) {
+    return new Response(
+      "PKCE required: the authorization request must include a code_challenge (S256)",
+      { status: 400 },
+    );
+  }
+
   const clientID = consent.client?.client_id ?? "";
   const trusted =
     consent.skip === true ||

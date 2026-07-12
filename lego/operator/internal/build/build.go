@@ -54,6 +54,10 @@ const (
 // (set on the pod below), which containerd nodes allow.
 const defaultBuildkitImage = "moby/buildkit:v0.13.2-rootless"
 
+// defaultSignImage is the cosign image the signing container runs when tenant
+// image signing is enabled (w6/006). Pinned; bump deliberately.
+const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
+
 // buildTimeout bounds a single build Job's wall-clock before Build gives up
 // waiting (the Job's own activeDeadlineSeconds matches, so a stuck build is
 // reaped rather than lingering).
@@ -81,6 +85,16 @@ type Options struct {
 	CloneSecret string
 	// BuildkitImage overrides the rootless BuildKit image (tests / air-gapped).
 	BuildkitImage string
+	// SignKeySecret names a Secret (in Namespace, keys "cosign.key" +
+	// "cosign.password") whose cosign key signs the pushed tenant image after a
+	// successful build (w6/006). Empty = unsigned (the default; existing builds
+	// are byte-identical). When set, build+push moves to an initContainer and a
+	// cosign container signs as the main container (k8s runs init → containers
+	// sequentially, so signing only fires on a successful push). Admission-time
+	// signature verification is still deferred (see docs/ADR028-security-review.md).
+	SignKeySecret string
+	// SignImage overrides the cosign image used by the signing container.
+	SignImage string
 }
 
 // Result is a successful build.
@@ -157,6 +171,10 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if buildkitImage == "" {
 		buildkitImage = defaultBuildkitImage
 	}
+	signImage := o.SignImage
+	if signImage == "" {
+		signImage = defaultSignImage
+	}
 
 	// buildctl-daemonless.sh starts an ephemeral buildkitd and runs the build.
 	args := []string{
@@ -190,6 +208,87 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
 	ttl := int32(3600)  // reap the finished Job after an hour
 
+	// buildkit container (rootless BuildKit builds + pushes the image).
+	buildkit := corev1.Container{
+		Name:    "buildkit",
+		Image:   buildkitImage,
+		Command: []string{"buildctl-daemonless.sh"},
+		Args:    args,
+		Env:     env,
+		// Rootless BuildKit runs as UID 1000; unconfined seccomp is required
+		// (privileged seccomp would block some syscalls the userspace overlay FS
+		// needs). Resources are bounded so a long-running or runaway build can't
+		// starve the node (w7/m2/t003).
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser:  ptr(int64(1000)),
+			RunAsGroup: ptr(int64(1000)),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeUnconfined,
+			},
+		},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("500m"),
+				corev1.ResourceMemory: resource.MustParse("1Gi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("4"),
+				corev1.ResourceMemory: resource.MustParse("8Gi"),
+			},
+		},
+	}
+
+	podSpec := corev1.PodSpec{
+		RestartPolicy: corev1.RestartPolicyNever,
+		Containers:    []corev1.Container{buildkit},
+	}
+	annotations := map[string]string{
+		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
+	}
+	// Tenant-image signing (w6/006): when a signing key Secret is configured, the
+	// build+push moves to an initContainer and a cosign container signs the pushed
+	// image as the main container. k8s runs initContainers → containers
+	// sequentially, so cosign only runs after a successful push — no sh -c wrapping
+	// of the build (the validated context string stays a discrete container arg).
+	if o.SignKeySecret != "" {
+		sign := corev1.Container{
+			Name:    "sign",
+			Image:   signImage,
+			Command: []string{"cosign"},
+			Args:    []string{"sign", "--yes", "--allow-insecure-registry", "--key", "/keys/cosign.key", image},
+			Env: []corev1.EnvVar{{
+				Name: "COSIGN_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: o.SignKeySecret},
+					Key:                  "cosign.password",
+				}},
+			}},
+			VolumeMounts: []corev1.VolumeMount{{Name: "cosign-key", ReadOnly: true, MountPath: "/keys"}},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot:             ptr(true),
+				AllowPrivilegeEscalation: ptr(false),
+				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("100m"),
+					corev1.ResourceMemory: resource.MustParse("128Mi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("512Mi"),
+				},
+			},
+		}
+		podSpec.InitContainers = []corev1.Container{buildkit}
+		podSpec.Containers = []corev1.Container{sign}
+		podSpec.Volumes = []corev1.Volume{{
+			Name:         "cosign-key",
+			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.SignKeySecret}},
+		}}
+		annotations["container.apparmor.security.beta.kubernetes.io/sign"] = "unconfined"
+	}
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
@@ -205,45 +304,10 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app.bex.co/build": o.Name},
-					// Rootless BuildKit needs an unconfined AppArmor profile; the
-					// annotation form works on clusters older than k8s 1.30 too.
-					Annotations: map[string]string{
-						"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
-					},
+					Labels:      map[string]string{"app.bex.co/build": o.Name},
+					Annotations: annotations,
 				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					Containers: []corev1.Container{{
-						Name:    "buildkit",
-						Image:   buildkitImage,
-						Command: []string{"buildctl-daemonless.sh"},
-						Args:    args,
-						Env:     env,
-						// Rootless BuildKit runs as UID 1000; unconfined seccomp
-						// is required (privileged seccomp would block some syscalls
-						// the userspace overlay FS needs). Resources are bounded so
-						// a long-running or runaway build can't starve the node
-						// (w7/m2/t003).
-						SecurityContext: &corev1.SecurityContext{
-							RunAsUser:  ptr(int64(1000)),
-							RunAsGroup: ptr(int64(1000)),
-							SeccompProfile: &corev1.SeccompProfile{
-								Type: corev1.SeccompProfileTypeUnconfined,
-							},
-						},
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("500m"),
-								corev1.ResourceMemory: resource.MustParse("1Gi"),
-							},
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("4"),
-								corev1.ResourceMemory: resource.MustParse("8Gi"),
-							},
-						},
-					}},
-				},
+				Spec: podSpec,
 			},
 		},
 	}

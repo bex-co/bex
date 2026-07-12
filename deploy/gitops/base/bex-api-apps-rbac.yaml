@@ -1,0 +1,60 @@
+# bex-api's namespace-scoped grants for the tenant apps namespace (w6/002, RBAC
+# least-privilege audit). bex-api serves a single apps namespace
+# (BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE, default "default") — App pods, their
+# logs, the per-app "<app>-env" Secrets the env-vars API materializes, the CNPG
+# "<db>-app" connection Secrets, and metrics-server resource metrics all live
+# THERE, not cluster-wide. Scoping these grants to the apps namespace means a
+# compromised bex-api pod can no longer read platform secrets (Kratos/Hydra in
+# auth, OpenBao in secrets, the GitHub App key, CNPG creds everywhere) nor tail
+# arbitrary pods — only the tenant namespace it actually serves.
+#
+# This file lives in deploy/gitops (not lego/operator/config/api) deliberately:
+# config/api inherits the bex-system namespace transform from config/default,
+# which would rewrite a Role's namespace to bex-system. deploy/gitops resources
+# keep their explicit namespace, so the Role lands in the apps namespace.
+#
+# The app.bex.co verbs stay cluster-wide (in lego/operator/config/api/rbac.yaml)
+# for dynamic tenant namespaces. If a deployment uses a non-default apps namespace,
+# duplicate this Role+RoleBinding there (same caveat as tenant-namespace.yaml /
+# tenant-quotas.yaml, which also pin "default").
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-api-apps
+  namespace: default
+rules:
+  # Read the CNPG-generated "<db>-app" Secret to assemble connection strings;
+  # create/update the per-app "<app>-env" Secret the env-vars API materializes
+  # from OpenBao (docs/ADR013-secrets.md) so the Deployment consumes it via envFrom.
+  # No delete, no watch (deliberate narrowing).
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  # Read-only pod access for the logs + metrics verbs: list pods by App label,
+  # read logs (pods/log), and read pod resource limits for percentage-mode metrics.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  # Resource metrics (cpu/memory) from metrics-server's aggregated API.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-api-apps
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-api-apps
+subjects:
+  # The bex-api ServiceAccount lives in bex-system (rendered from config/api);
+  # a RoleBinding may reference a ServiceAccount in another namespace.
+  - kind: ServiceAccount
+    name: bex-api
+    namespace: bex-system

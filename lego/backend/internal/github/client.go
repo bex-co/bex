@@ -121,7 +121,11 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("github: unexpected status %d: %s", e.Status, e.Body)
+	// Status only — the upstream response body is intentionally NOT interpolated
+	// here. Error() flows into HTTP responses (core.WriteErr), and GitHub's
+	// verbatim 4xx/5xx error text is upstream-error disclosure (w6/005). The body
+	// stays on the struct for any internal/structured-log consumer that wants it.
+	return fmt.Sprintf("github: unexpected status %d", e.Status)
 }
 
 // appJWT signs a short-lived (≤10m) RS256 assertion identifying the app itself.

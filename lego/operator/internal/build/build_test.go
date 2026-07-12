@@ -92,6 +92,69 @@ func TestBuildJobShape(t *testing.T) {
 	}
 }
 
+// TestBuildJobSigningMovesBuildToInitAndSignsAfterPush pins the w6/006 tenant-
+// image-signing path: with a signing key Secret set, build+push becomes an
+// initContainer and a cosign container signs the pushed image as the main
+// container (k8s runs init → containers sequentially, so signing only fires on a
+// successful push). Unset (the default) stays a single buildkit container.
+func TestBuildJobSigningMovesBuildToInitAndSignsAfterPush(t *testing.T) {
+	image := opts().ImageRef()
+
+	// Default (no signing): one buildkit container, no init/volumes — unchanged.
+	def := BuildJob(opts(), image).Spec.Template.Spec
+	if len(def.Containers) != 1 || def.Containers[0].Name != "buildkit" || len(def.InitContainers) != 0 {
+		t.Fatalf("unsigned job = %d containers (%v) + %d init; want single buildkit, no init",
+			len(def.Containers), contNames(def.Containers), len(def.InitContainers))
+	}
+
+	// Signing enabled: buildkit is an initContainer, cosign is the main container.
+	o := opts()
+	o.SignKeySecret = "bex-tenant-cosign"
+	signed := BuildJob(o, image).Spec.Template.Spec
+	if len(signed.InitContainers) != 1 || signed.InitContainers[0].Name != "buildkit" {
+		t.Fatalf("signed job init = %v; want [buildkit]", contNames(signed.InitContainers))
+	}
+	if len(signed.Containers) != 1 || signed.Containers[0].Name != "sign" {
+		t.Fatalf("signed job containers = %v; want [sign]", contNames(signed.Containers))
+	}
+	sign := signed.Containers[0]
+	// Signs the exact pushed ref, keyless-disabled (key from the mounted Secret),
+	// insecure-registry for the in-cluster Zot over HTTP.
+	joined := strings.Join(sign.Args, " ")
+	if !strings.Contains(joined, "sign --yes --allow-insecure-registry --key /keys/cosign.key "+image) {
+		t.Fatalf("sign args = %q; want cosign sign of %s", joined, image)
+	}
+	if sign.Image != defaultSignImage {
+		t.Errorf("sign image = %s, want default %s", sign.Image, defaultSignImage)
+	}
+	// Key Secret mounted read-only at /keys + COSIGN_PASSWORD from the same Secret.
+	if len(sign.VolumeMounts) != 1 || sign.VolumeMounts[0].MountPath != "/keys" || !sign.VolumeMounts[0].ReadOnly {
+		t.Errorf("sign volumeMounts = %+v; want /keys ro", sign.VolumeMounts)
+	}
+	if len(signed.Volumes) != 1 || signed.Volumes[0].VolumeSource.Secret == nil ||
+		signed.Volumes[0].VolumeSource.Secret.SecretName != "bex-tenant-cosign" {
+		t.Errorf("volumes = %+v; want the cosign-key Secret", signed.Volumes)
+	}
+	gotPW := false
+	for _, e := range sign.Env {
+		if e.Name == "COSIGN_PASSWORD" && e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil &&
+			e.ValueFrom.SecretKeyRef.Name == "bex-tenant-cosign" {
+			gotPW = true
+		}
+	}
+	if !gotPW {
+		t.Error("sign container must pull COSIGN_PASSWORD from the signing-key Secret")
+	}
+}
+
+func contNames(cs []corev1.Container) []string {
+	out := make([]string, len(cs))
+	for i, c := range cs {
+		out[i] = c.Name
+	}
+	return out
+}
+
 func TestBuildJobCloneSecret(t *testing.T) {
 	// Unset: no GIT_AUTH_TOKEN env, no --secret arg — byte-identical to a public clone.
 	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]

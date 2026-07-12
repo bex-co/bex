@@ -57,15 +57,18 @@ type GitWebhook struct {
 // configured reports whether at least one HMAC key is set.
 func (h *GitWebhook) configured() bool { return h.Secret != "" || h.GitHubSecret != "" }
 
-// verify reports whether the signature matches under any configured key
-// (constant-time per key).
+// verify reports whether the signature matches under any configured key. Each
+// validSignature call is constant-time (hmac.Equal); both configured keys are
+// evaluated with no early return, so a remote timing analysis can't distinguish
+// WHICH key matched — only that at least one did (w6/004).
 func (h *GitWebhook) verify(sig string, body []byte) bool {
+	var ok byte
 	for _, secret := range []string{h.Secret, h.GitHubSecret} {
 		if secret != "" && validSignature(secret, sig, body) {
-			return true
+			ok = 1
 		}
 	}
-	return false
+	return ok == 1
 }
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which

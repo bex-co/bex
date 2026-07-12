@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -355,7 +356,11 @@ func (a *API) bearer(h http.Handler) http.Handler {
 		return h
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer "+a.Token {
+		// Constant-time compare (w6/004): a plain == on the bearer header is a
+		// timing side-channel on BEX_CP_TOKEN. Length leaks at most the token length.
+		got := []byte(r.Header.Get("Authorization"))
+		want := []byte("Bearer " + a.Token)
+		if subtle.ConstantTimeCompare(got, want) != 1 {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}

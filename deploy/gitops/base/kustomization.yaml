@@ -31,3 +31,4 @@ resources:
   - platform-namespaces.yaml     # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
   - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
   - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
+  - bex-api-apps-rbac.yaml       # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)

@@ -97,6 +97,12 @@ type AppReconciler struct {
 	StaticServerService string
 	// StaticServerPort is the static-server Service port (default 8080).
 	StaticServerPort int
+	// TenantSignKeySecret names a Secret (in the build namespace, keys
+	// "cosign.key"+"cosign.password") that enables tenant-image signing in the
+	// in-cluster build Job (w6/006). Empty => tenant images unsigned (the default).
+	TenantSignKeySecret string
+	// TenantSignImage overrides the cosign image used by the signing container.
+	TenantSignImage string
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -191,11 +197,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir, Name: app.Name,
 			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
-			Builder:     app.Spec.Builder,
-			Revision:    fmt.Sprintf("gen-%d", app.Generation),
-			Namespace:   buildNs,
-			CloneSecret: app.Spec.CloneSecret,
-			Client:      r.Client,
+			Builder:       app.Spec.Builder,
+			Revision:      fmt.Sprintf("gen-%d", app.Generation),
+			Namespace:     buildNs,
+			CloneSecret:   app.Spec.CloneSecret,
+			SignKeySecret: r.TenantSignKeySecret,
+			SignImage:     r.TenantSignImage,
+			Client:        r.Client,
 		})
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", err)

@@ -230,6 +230,8 @@ func main() {
 		},
 		StaticServerService: envOr("BEX_STATIC_SERVER_SERVICE", ""),
 		StaticServerPort:    staticServerPort,
+		TenantSignKeySecret: os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
+		TenantSignImage:     envOr("BEX_TENANT_SIGNING_IMAGE", ""),
 	}
 	if cs != nil {
 		appReconciler.MetricsReader = controller.NewMetricsServerReader(cs)

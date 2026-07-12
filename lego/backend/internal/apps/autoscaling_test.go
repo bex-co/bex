@@ -250,7 +250,7 @@ func TestGraphQLSetAutoscalingMutation(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:  schema,
-		Context: context.Background(),
+		Context: context.Background(), // graphql-go v0.8.1 Do does not default a nil Context; the resolver dereferences it
 		RequestString: `mutation {
 			setAutoscaling(id:"web",minInstances:1,maxInstances:4,targetCPUPercent:80) {
 				enabled maxInstances
@@ -277,7 +277,7 @@ func TestGraphQLDisableAutoscalingMutation(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
-		Context:       context.Background(),
+		Context:       context.Background(), // graphql-go v0.8.1 Do does not default a nil Context; the resolver dereferences it
 		RequestString: `mutation { disableAutoscaling(id:"web") }`,
 	})
 	if len(res.Errors) > 0 {

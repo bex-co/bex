@@ -9,6 +9,10 @@ function consentRequest(overrides: Record<string, unknown> = {}) {
     client: { client_id: "some-client", skip_consent: false },
     requested_scope: ["openid", "offline_access"],
     requested_access_token_audience: ["https://api.bex.co/mcp"],
+    // request_url carries the original authorize URL incl. a PKCE code_challenge
+    // (w6/003) — present by default so the existing happy-path tests pass.
+    request_url:
+      "https://oauth.bex.co/oauth2/auth?response_type=code&code_challenge=abc&code_challenge_method=S256",
     ...overrides,
   };
 }
@@ -96,6 +100,17 @@ describe("handleConsent", () => {
     const calls = mockHydra({ lookupBody: consentRequest() });
     const res = await handleConsent(req("?consent_challenge=abc"));
     expect(res.status).toBe(403);
+    expect(calls.some((c) => c.init?.method === "PUT")).toBe(false);
+  });
+
+  it("rejects an authorization_code grant without a PKCE code_challenge (w6/003)", async () => {
+    const calls = mockHydra({
+      lookupBody: consentRequest({
+        request_url: "https://oauth.bex.co/oauth2/auth?response_type=code",
+      }),
+    });
+    const res = await handleConsent(req("?consent_challenge=abc"));
+    expect(res.status).toBe(400);
     expect(calls.some((c) => c.init?.method === "PUT")).toBe(false);
   });
 

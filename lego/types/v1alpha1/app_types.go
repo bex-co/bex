@@ -98,9 +98,13 @@ type AppSpec struct {
 	// +optional
 	Headers []StaticHeader `json:"headers,omitempty"`
 
-	// Repo is the git repository URL (or local path) to deploy from. Either Repo
-	// (build-from-git) or Image (prebuilt) must be set.
+	// Repo is the git repository URL to deploy from (https://, ssh://, or git@
+	// SCP form). Either Repo (build-from-git) or Image (prebuilt) must be set.
+	// file:// and bare local paths are rejected at the CRD schema so a request
+	// can never point a build at the build pod's own filesystem (w6/m6 t003).
 	// +optional
+	// +kubebuilder:validation:Pattern=`^(https?://|ssh://|git@)`
+	// +kubebuilder:validation:MaxLength=2048
 	Repo string `json:"repo,omitempty"`
 
 	// Image is a prebuilt OCI image to run directly, skipping the build plane.
@@ -113,13 +117,17 @@ type AppSpec struct {
 	// Dockerfile, and the git-push auto-deploy webhook only redeploys when the
 	// pushed diff touches paths under it. Empty means the repo root (today's
 	// behavior, unchanged). Dockerfile builder only; ignored for prebuilt
-	// Image apps.
+	// Image apps. Traversal ("..") is rejected at the API boundary (w6/m6 t003).
 	// +optional
+	// +kubebuilder:validation:MaxLength=512
 	RootDir string `json:"rootDir,omitempty"`
 
-	// Branch to track. Defaults to "main".
+	// Branch to track. Defaults to "main". A git ref (no shell metacharacters,
+	// no leading dash) — enforced at the CRD schema (w6/m6 t003).
 	// +optional
 	// +kubebuilder:default=main
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/@+-]*$`
+	// +kubebuilder:validation:MaxLength=255
 	Branch string `json:"branch,omitempty"`
 
 	// CloneSecret names a Secret in the App's namespace holding a git credential
