@@ -44,8 +44,11 @@ kratos:
           ui_url: http://localhost:5173/auth/forgot-password
         settings:
           ui_url: http://localhost:5173/settings
+        # Flipped on to match base (w4/m7): Argo merges valueFiles later-wins, so
+        # leaving this false here would override base's `enabled: true`. `use: code`
+        # deep-merges through from base. (docs/ADR012-auth.md §11.)
         verification:
-          enabled: false
+          enabled: true
           ui_url: http://localhost:5173/auth/verification
         error:
           ui_url: http://localhost:5173/auth/error

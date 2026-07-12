@@ -1,0 +1,21 @@
+# Local-only Argo Application: the mock cluster's mail catcher (docs/ADR012-auth.md §11).
+# Added to the local overlay's resources (kustomization.yaml) — it exists ONLY in
+# this overlay, so prod never gets a Mailpit. Kratos's courier is pointed at it by
+# running scripts/auth-secrets.sh with KRATOS_COURIER_SMTP_URI=smtp://mailpit.auth.svc:1025.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mailpit
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/overlays/local/mailpit
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: auth
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

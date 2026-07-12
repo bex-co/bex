@@ -140,6 +140,30 @@ spec:
                   name: bex-github-app
                   key: webhook-secret
                   optional: true
+            # Invite mailer (docs/ADR012-auth.md §11, w4/m12): the same SMTP relay Kratos's
+            # courier uses. ADDR/FROM are non-secret prod values (SendGrid); the
+            # credentials ride the out-of-band bex-smtp Secret (scripts/auth-secrets.sh,
+            # .env BEX_SMTP_USERNAME/PASSWORD). optional:true ⇒ absent Secret leaves
+            # the mailer nil, so invites are recorded but not emailed (best-effort
+            # delivery — an invite is accepted on the recipient's first login).
+            # Local: run bex-api on the host with BEX_SMTP_ADDR=localhost:1025 pointed
+            # at a port-forwarded Mailpit.
+            - name: BEX_SMTP_ADDR
+              value: smtp.sendgrid.net:587
+            - name: BEX_SMTP_FROM
+              value: bex <no-reply@bex.co>
+            - name: BEX_SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bex-smtp
+                  key: username
+                  optional: true
+            - name: BEX_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bex-smtp
+                  key: password
+                  optional: true
           ports:
             - name: http
               containerPort: 8090

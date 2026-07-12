@@ -1,19 +1,19 @@
 # w4 · m7 — Email flows: Kratos courier + recovery/verification live
 
-**Worker:** worker4 **Goal:** the identity lifecycle stops dead-ending — Kratos's courier sends real mail (SendGrid SMTP relay in prod, secret out-of-band; Mailpit catcher locally), so the dashboard's already-shipped forgot-password/reset-password pages work end-to-end and signup triggers a verification email. Resolves the "no SMTP configured" consequence in `docs/ADR012-auth.md` and the TODO in `base/values/kratos.values.yaml`. **Status:** todo
+**Worker:** worker4 **Goal:** the identity lifecycle stops dead-ending — Kratos's courier sends real mail (SendGrid SMTP relay in prod, secret out-of-band; Mailpit catcher locally), so the dashboard's already-shipped forgot-password/reset-password pages work end-to-end and signup triggers a verification email. Resolves the "no SMTP configured" consequence in `docs/ADR012-auth.md` and the TODO in `base/values/kratos.values.yaml`. **Status:** done (2026-07-12; recovery + verification + both negatives proven end-to-end by `scripts/auth-mail-e2e.sh`, exit 0. Per the 2026-07-11 mock-cluster pool-label precondition, the scripted proof runs as a self-contained Docker harness — real Kratos with the courier enabled + `code` recovery/verification wired exactly as `base/values/kratos.values.yaml`, plus a Mailpit catcher — the same shape the social-login milestone used; base values verified via `helm template` (courier StatefulSet platform-pinned, `COURIER_SMTP_CONNECTION_URI` from the Secret key `smtpConnectionURI`, placeholder stripped from the ConfigMap), Mailpit confined to the local overlay via kustomize render. Missing `auth.verification` dashboard page filed as inbox note `w4/008`.)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                        | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | SendGrid SMTP relay + secret plumbing (`.env` → `auth-secrets.sh` → gh-secrets) for both consumers (Kratos courier + bex-api `BEX_SMTP_*`), recorded in `docs/ADR012-auth.md` | 30m | —          |
-| t002 | Mailpit in the local overlay (Argo app, mail catcher; control-plane pin + PSA per local quirks)                | 30m | t001       |
-| t003 | Kratos values: enable courier from secret + verification flow; local overlay targets Mailpit                   | 35m | t002       |
-| t004 | E2E on mock: recovery end-to-end via Mailpit API + verification email on signup                                | 40m | t003       |
-| t005 | Prod wiring + docs: `deploy.yml` step, `BEX_SMTP_*` into the bex-api deployment, `docs/ADR012-auth.md` consequences updated, reset-password page verified | 30m | t004       |
-| t006 | Simplify — run `/simplify` over the code this milestone changed                                                | 20m | t005       |
-| t007 | Test coverage — meaningful tests for the behavior this milestone shipped                                       | 30m | t005       |
-| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                           | 10m | t007       |
+| t001 | SendGrid SMTP relay + secret plumbing (`.env` → `auth-secrets.sh` → gh-secrets) for both consumers (Kratos courier + bex-api `BEX_SMTP_*`), recorded in `docs/ADR012-auth.md` — **DONE** | 30m | —          |
+| t002 | Mailpit in the local overlay (Argo app, mail catcher; control-plane pin + PSA per local quirks) — **DONE**     | 30m | t001       |
+| t003 | Kratos values: enable courier from secret + verification flow; local overlay targets Mailpit — **DONE**        | 35m | t002       |
+| t004 | E2E on mock: recovery end-to-end via Mailpit API + verification email on signup — **DONE**                     | 40m | t003       |
+| t005 | Prod wiring + docs: `deploy.yml` step, `BEX_SMTP_*` into the bex-api deployment, `docs/ADR012-auth.md` consequences updated, reset-password page verified — **DONE** | 30m | t004       |
+| t006 | Simplify — run `/simplify` over the code this milestone changed — **DONE**                                     | 20m | t005       |
+| t007 | Test coverage — meaningful tests for the behavior this milestone shipped — **DONE**                            | 30m | t005       |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09) — **DONE**                                | 10m | t007       |
 
 ## Definition of done
 

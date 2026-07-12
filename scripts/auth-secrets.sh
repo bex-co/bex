@@ -12,6 +12,11 @@
 #   HYDRA_SECRETS_COOKIE      hydra cookie secret            (>= 16 chars)
 #   HYDRA_OIDC_PAIRWISE_SALT  hydra pairwise subject salt    (>= 8 chars)
 #   OPENFGA_PRESHARED_KEY     openfga API preshared key      (>= 16 chars)
+#   KRATOS_COURIER_SMTP_URI   kratos courier SMTP relay URI  (smtp:// or smtps://)
+#     Prod (SendGrid): smtps://apikey:<sendgrid-api-key>@smtp.sendgrid.net:465
+#     Local (Mailpit): smtp://mailpit.auth.svc:1025/?disable_starttls=true  (no TLS)
+#     Written into the kratos Secret under the chart key `smtpConnectionURI`; the
+#     courier is enabled in the values, so the key must exist (docs/ADR012-auth.md §11).
 #
 # Optional (Sign in with GitHub via Kratos oidc — docs/ADR012-auth.md § Social login).
 # When BOTH are set, the kratos Secret gains an `oidc.yaml` fragment enabling the
@@ -60,6 +65,16 @@ require HYDRA_SECRETS_SYSTEM 16
 require HYDRA_SECRETS_COOKIE 16
 require HYDRA_OIDC_PAIRWISE_SALT 8
 require OPENFGA_PRESHARED_KEY 16
+
+# The courier is enabled in the values (docs/ADR012-auth.md §11), so the Kratos chart
+# injects COURIER_SMTP_CONNECTION_URI from this key as a NON-optional secretKeyRef
+# — the pod won't start without it. Require presence + an smtp(s):// shape (never
+# echo the value; it carries the SendGrid API key in prod).
+require KRATOS_COURIER_SMTP_URI 1
+case "$KRATOS_COURIER_SMTP_URI" in
+  smtp://* | smtps://*) : ;;
+  *) echo "error: KRATOS_COURIER_SMTP_URI must be an smtp:// or smtps:// URI" >&2; exit 1 ;;
+esac
 
 # Kratos OIDC provider fragment (a SECOND `--config` file the kratos Deployment
 # loads via deployment.extraArgs; the client_secret must not live in git, so it
@@ -115,7 +130,7 @@ if [ "${DRY_RUN:-}" = "1" ]; then
     echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (BEX_GITHUB_OIDC_* unset)"
   fi
   echo "would ensure namespace $NS"
-  echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher oidc.yaml)"
+  echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher smtpConnectionURI oidc.yaml)"
   echo "would apply secret $NS/hydra (keys: dsn secretsSystem secretsCookie oidcPairwiseSalt)"
   echo "would apply secret $NS/openfga (keys: uri keys)"
   exit 0
@@ -139,6 +154,7 @@ kubectl create secret generic kratos -n "$NS" \
   --from-literal=secretsDefault="$KRATOS_SECRETS_DEFAULT" \
   --from-literal=secretsCookie="$KRATOS_SECRETS_COOKIE" \
   --from-literal=secretsCipher="$KRATOS_SECRETS_CIPHER" \
+  --from-literal=smtpConnectionURI="$KRATOS_COURIER_SMTP_URI" \
   --from-literal=oidc.yaml="$(oidc_fragment)" \
   --dry-run=client -o yaml | kubectl apply -f -
 
@@ -161,3 +177,14 @@ kubectl create secret generic openfga -n "$NS" \
 kubectl create secret generic bex-openfga -n bex-system \
   --from-literal=token="$OPENFGA_PRESHARED_KEY" \
   --dry-run=client -o yaml | kubectl apply -f -
+
+# bex-api's invite mailer (docs/ADR012-auth.md §11, w4/m12) shares the courier's relay.
+# ADDR/FROM are non-secret and baked into the bex-api Deployment; only the
+# credentials ride a Secret (referenced optional:true, so absent ⇒ mailer nil ⇒
+# invites recorded but not emailed). Create bex-smtp only when a credential is set.
+if [ -n "${BEX_SMTP_USERNAME:-}" ] || [ -n "${BEX_SMTP_PASSWORD:-}" ]; then
+  kubectl create secret generic bex-smtp -n bex-system \
+    --from-literal=username="${BEX_SMTP_USERNAME:-}" \
+    --from-literal=password="${BEX_SMTP_PASSWORD:-}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi

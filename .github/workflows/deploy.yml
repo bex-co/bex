@@ -210,6 +210,12 @@ jobs:
           # resolve empty, so auth-secrets.sh writes the oidc.yaml fragment disabled.
           BEX_GITHUB_OIDC_CLIENT_ID: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_ID }}
           BEX_GITHUB_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_SECRET }}
+          # Shared SMTP relay (docs/ADR012-auth.md §11): the courier URI (required — the
+          # courier is enabled) into the kratos Secret, and the bex-api invite
+          # mailer's credentials into bex-system/bex-smtp.
+          KRATOS_COURIER_SMTP_URI: ${{ secrets.KRATOS_COURIER_SMTP_URI }}
+          BEX_SMTP_USERNAME: ${{ secrets.BEX_SMTP_USERNAME }}
+          BEX_SMTP_PASSWORD: ${{ secrets.BEX_SMTP_PASSWORD }}
         run: |
           for s in kratos-db-app hydra-db-app openfga-db-app; do
             timeout 300 bash -c "until kubectl -n auth get secret $s >/dev/null 2>&1; do sleep 5; done" \

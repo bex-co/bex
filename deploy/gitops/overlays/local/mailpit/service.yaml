@@ -1,0 +1,19 @@
+# Cluster-internal only (no ingress). Kratos's courier reaches SMTP at
+# mailpit.auth.svc:1025; scripts port-forward :8025 to read the HTTP API.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: auth
+  labels:
+    app.kubernetes.io/name: mailpit
+spec:
+  selector:
+    app.kubernetes.io/name: mailpit
+  ports:
+    - name: smtp
+      port: 1025
+      targetPort: smtp
+    - name: http
+      port: 8025
+      targetPort: http

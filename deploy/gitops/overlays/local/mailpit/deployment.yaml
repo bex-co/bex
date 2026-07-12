@@ -1,0 +1,74 @@
+# Mailpit — a throwaway SMTP catcher for the local mock cluster (docs/ADR012-auth.md §11).
+# Kratos's courier is pointed here (smtp://mailpit.auth.svc:1025) so recovery /
+# verification mail is observable + scriptable via Mailpit's HTTP API (:8025)
+# instead of leaving the cluster. LOCAL OVERLAY ONLY — never rendered in prod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  namespace: auth
+  labels:
+    app.kubernetes.io/name: mailpit
+    app.kubernetes.io/component: mail-catcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mailpit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mailpit
+    spec:
+      # Pin to the CAPD control-plane node — the same quirk the OpenBao/CoreDNS
+      # local pins document: this single-worker CAPD/OrbStack cluster schedules
+      # platform services reliably only on the control-plane node.
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mailpit
+          image: axllent/mailpit:v1.21.8
+          # In-memory store (no MP_DATABASE) — a catcher needs no persistence.
+          env:
+            - name: MP_SMTP_AUTH_ACCEPT_ANY
+              value: "1"
+            - name: MP_SMTP_AUTH_ALLOW_INSECURE
+              value: "1"
+          ports:
+            - name: smtp
+              containerPort: 1025
+            - name: http
+              containerPort: 8025
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

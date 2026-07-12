@@ -1,0 +1,7 @@
+# Raw Mailpit manifests the local-only `mailpit` Argo Application points at
+# (../mailpit.yaml). Not referenced by base — nothing here renders in prod.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
