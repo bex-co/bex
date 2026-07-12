@@ -1,0 +1,8 @@
+# scaleService: Render's manual instance-count verb (w2/m12 backend, w5/m16 UI).
+# numInstances mirrors the REST scale body field; 1–100 (store.MaxReplicas).
+mutation ScaleService($id: String!, $numInstances: Int!) {
+  scaleService(id: $id, numInstances: $numInstances) {
+    id
+    replicas
+  }
+}

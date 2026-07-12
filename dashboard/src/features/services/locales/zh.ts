@@ -1444,6 +1444,34 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法创建 {name}，请重试。",
     description: "Toast shown after createService fails",
   },
+  "services.scalingInstanceCount": {
+    message: "实例数量",
+    description: "Settings row label for the manual instance-count stepper (w5/m16)",
+  },
+  "services.scalingInstanceCountHint": {
+    message: "同时运行的实例数量。",
+    description: "Settings row help text for the manual instance-count stepper",
+  },
+  "services.scalingDecrement": {
+    message: "减少实例数量",
+    description: "aria-label for the − stepper button",
+  },
+  "services.scalingIncrement": {
+    message: "增加实例数量",
+    description: "aria-label for the + stepper button",
+  },
+  "services.scalingSaveCount": {
+    message: "保存",
+    description: "Save button label on the instance-count stepper",
+  },
+  "services.scaleSuccess": {
+    message: "已缩放至 {count} 个实例。",
+    description: "Toast shown after scaleService succeeds",
+  },
+  "services.scaleError": {
+    message: "更新实例数量失败。",
+    description: "Toast shown after scaleService fails",
+  },
 };
 
 export default zhServices;

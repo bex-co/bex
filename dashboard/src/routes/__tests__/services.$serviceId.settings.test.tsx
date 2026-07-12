@@ -59,6 +59,12 @@ vi.mock("@/features/services/hooks/use-delete-service", () => ({
   useDeleteService: () => ({ remove: vi.fn(async () => true), deleting: false }),
 }));
 
+// Scaling row (w5/m16) calls scaleService; mock so section-presence assertions
+// don't hit Apollo.
+vi.mock("@/features/services/hooks/use-scale-service", () => ({
+  useScaleService: () => ({ scaleService: vi.fn(async () => true), busy: false }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
@@ -104,16 +110,24 @@ beforeEach(() => {
 });
 
 describe("ServiceSettingsPage", () => {
-  it("shows Custom Domains + Idle timeout, no Deploy section, for a web service", async () => {
+  it("shows Custom Domains + Idle timeout + instance count stepper, no Deploy section, for a web service", async () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
     expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
+    expect(screen.getByText("Instance count")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
 
-  it("shows a Deploy section (schedule + command), no Custom Domains or Idle timeout, for a cron job", async () => {
+  it("shows instance count stepper for a background_worker", async () => {
+    serverState.service = svc({ type: "background_worker" });
+    renderSettings();
+
+    expect(await screen.findByText("Instance count")).toBeInTheDocument();
+  });
+
+  it("shows a Deploy section (schedule + command), hides Custom Domains, Idle timeout, and instance count for a cron job", async () => {
     serverState.service = svc({
       type: "cron_job",
       url: null,
@@ -127,5 +141,6 @@ describe("ServiceSettingsPage", () => {
     expect(screen.getByText("npm run send-nightly-report")).toBeInTheDocument();
     expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
+    expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
   });
 });

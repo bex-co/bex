@@ -19,7 +19,7 @@
 - [x] **m13** — Build & Deploy settings section (Root Directory) (8 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic); UI half of `w1/m18`, gated on it — done 2026-07-10, moved to `done/m13/`
 - [x] **m14** — Delete service: dashboard danger-zone action (8 tasks) ← from `/pm-brainstorm new milestones` 2026-07-09, unblocked — w2/m4 done 2026-07-09; done 2026-07-11, moved to `done/m14/`
 - [x] **m15** — New-service create wizard (source picker · repo picker · deploy) (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (Render `/web/new` parity); done 2026-07-11, moved to `done/m15/`
-- [ ] **m16** — Manual-scaling section in service Settings (9 tasks) ← promoted from `004` 2026-07-11, unblocked by `w2/m12` (backend scale API shipped 2026-07-08)
+- [x] **m16** — Manual-scaling section in service Settings (9 tasks) ← promoted from `004` 2026-07-11, unblocked by `w2/m12` (backend scale API shipped 2026-07-08) — done 2026-07-12, moved to `done/m16/`
 
 ## Inbox
 

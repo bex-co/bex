@@ -530,6 +530,14 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (i >= 0) SERVICES.splice(i, 1);
       return { deleteService: true };
     }
+    case "ScaleService": {
+      // Manual instance-count scaling (w5/m16); mirrors backend's 1–100 bounds.
+      const n = variables.numInstances;
+      if (n < 1 || n > 100) throw new Error("numInstances must be 1-100");
+      const svc = serviceById(variables.id);
+      if (svc) svc.replicas = n;
+      return { scaleService: svc ?? null };
+    }
     case "Logs": {
       // Honor the same filters bex-api honors: type (app-only) + text substring.
       const type = variables.type;

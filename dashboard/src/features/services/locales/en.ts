@@ -1463,6 +1463,34 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't create {name}. Please try again.",
     description: "Toast shown after createService fails",
   },
+  "services.scalingInstanceCount": {
+    message: "Instance count",
+    description: "Settings row label for the manual instance-count stepper (w5/m16)",
+  },
+  "services.scalingInstanceCountHint": {
+    message: "Number of instances to run simultaneously.",
+    description: "Settings row help text for the manual instance-count stepper",
+  },
+  "services.scalingDecrement": {
+    message: "Decrease instance count",
+    description: "aria-label for the − stepper button",
+  },
+  "services.scalingIncrement": {
+    message: "Increase instance count",
+    description: "aria-label for the + stepper button",
+  },
+  "services.scalingSaveCount": {
+    message: "Save",
+    description: "Save button label on the instance-count stepper",
+  },
+  "services.scaleSuccess": {
+    message: "Scaled to {count} instance(s).",
+    description: "Toast shown after scaleService succeeds",
+  },
+  "services.scaleError": {
+    message: "Failed to update instance count.",
+    description: "Toast shown after scaleService fails",
+  },
 };
 
 export default enServices;

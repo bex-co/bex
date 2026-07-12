@@ -17,6 +17,7 @@ import { PlatformSubdomainSection } from "@/features/services/components/platfor
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
+import { ScalingRow } from "@/features/services/components/scaling-row";
 import { isCron, isStaticSite } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
@@ -56,16 +57,22 @@ export function ServiceSettingsPage() {
                 serviceId={serviceId}
                 plan={service?.plan ?? null}
               />
-              {/* Idle timeout only applies to a running-container service — a
-                  cron_job has no idle traffic to sleep on, and a static_site
-                  serves from the object store with no pod to hibernate
-                  (Render parity, w5/m11, w1/m21). */}
+              {/* Idle timeout and manual scaling only apply to running-container
+                  services — a cron_job has no idle traffic to sleep on, and a
+                  static_site serves from the object store with no pod to
+                  hibernate or scale (Render parity, w5/m11, w1/m21, w5/m16). */}
               {!cron && !staticSite && (
-                <IdleTimeoutRow
-                  serviceId={serviceId}
-                  plan={service?.plan ?? null}
-                  idleTTLSeconds={service?.idleTTLSeconds ?? 0}
-                />
+                <>
+                  <IdleTimeoutRow
+                    serviceId={serviceId}
+                    plan={service?.plan ?? null}
+                    idleTTLSeconds={service?.idleTTLSeconds ?? 0}
+                  />
+                  <ScalingRow
+                    serviceId={serviceId}
+                    replicas={service?.replicas ?? null}
+                  />
+                </>
               )}
             </div>
           )}
