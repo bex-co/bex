@@ -30,6 +30,7 @@
 - [ ] **m22** — Managed Postgres HA (Render `enableHighAvailability` + failover + read replicas) (9 tasks) ← promoted from `013` 2026-07-11 (unblocked by m17 + m19)
 - [ ] **m23** — Misc: small parity + hardening/dev-infra chores (7 tasks) ← groups `005`, `006`, `015`, `016` 2026-07-11 (each sub-hour)
 - [ ] **m24** — Multi-service `bex.yml`: Blueprint-shaped stack deploys (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (revives the 2026-07-09 proposal; DO_NOT_DO routes `fromDatabase` spec work to w1; all ingredients — types m15, env groups m16, Postgres m17, KV m14 — now shipped)
+- [ ] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17, last open Postgres parity row)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

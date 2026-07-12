@@ -13,6 +13,7 @@
 - [ ] **m6** — Platform alerting: Alertmanager + rules for bex's own health (8 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (alertmanager disabled; backup CronJobs unwatched)
 - [ ] **m7** — Service events feed (`GET /v1/services/{id}/events`) (8 tasks) ← from `/pm-brainstorm more` 2026-07-12 — composes w2/m5 deploy objects + w4/m10 audit log (both done); Events-tab UI rides `w5/007`
 - [ ] **m8** — Request/HTTP logs + structured filters over the Loki pipeline (9 tasks) ← promoted from `002` 2026-07-12 (its gate — the m5 log-backend decision — is settled; gated on m5 closeout)
+- [ ] **m9** — Deploy notifications: email on deploy success/failure (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (unblocked by w2/m5 deploy events + w4/m7 SMTP courier, both done)
 
 ## Inbox
 
