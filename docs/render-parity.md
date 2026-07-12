@@ -19,7 +19,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Create service (web / private) | ◐ | ◐ | ◐ | ✖ | `POST /v1/services` upsert; GraphQL `createService`; MCP `create_web_service` + `deploy`. Verified field-by-field vs Render's OpenAPI (w2/m4/t001): `type`/`name`/`repo`/`branch`/`image{imagePath}`/`autoDeploy`/`envVars`/`serviceDetails.{plan,numInstances,healthCheckPath}` honored; `autoDeploy` sets `spec.autoDeploy` (gates the push-to-deploy webhook). Omits Render `region`/`runtime`/`buildCommand`/`startCommand` (Dockerfile/CNB auto-detect) + `ownerId` (single workspace). **Divergence:** returns the bare service object, not Render's create-only `{service, deployId}` envelope (deploy history is its own endpoint; no faked `deployId`) — [bex-api.md](bex-api.md). No dashboard create wizard (API-first; deploy-from-chat is the path — w2/m2). |
 | Root Directory (build from a monorepo subdirectory) | ✅ | ✅ | ✅ | ✅ | `App.spec.rootDir` (`app_types.go`) scopes the BuildKit git context to `:<rootDir>` (`build.go` `gitContext`) and scopes the git-push auto-deploy webhook to paths under it (`webhook.go` `rootDirMatches`); settable on create (REST `rootDir`, GraphQL `createService(rootDir:)`, MCP `create_web_service`/`create_cron_job`) and after create (REST `PATCH .../{id}` `rootDir`, GraphQL `setRootDir`, MCP `set_root_directory` — `w1/m18`); readable back on all three, including `repo`/`branch` (`AppView`/`renderService`/GraphQL `Service`). Dockerfile builder only — CNB (`spec.builder: buildpack`) is still not in-cluster, so `rootDir` has no effect there. Dashboard Settings → Build & Deploy section (Source/Branch read-only, Root Directory editable) — `w5/m13`. |
 | Health checks (path → readiness gating) | ◐ | ✖ | ✖ | ✖ | `serviceDetails.healthCheckPath` is accepted into `spec.healthCheckPath` (`apps/deploy.go`, `apps/rest.go`) but the operator never wires it to a ReadinessProbe — Running gates on replica-readiness only. Not on GraphQL/MCP create or the dashboard. → **w1/005**. |
-| Change instance plan / type | ✅ | ✅ | ✅ | ✅ | `PATCH /v1/services/{id}` (plan); GraphQL `updateServicePlan`; MCP `update_service_plan`; Plan-picker page. Broader `PATCH` fields (name, autoDeploy, rootDir, buildFilter) not editable — ◐, low. |
+| Change instance plan / type | ✅ | ✅ | ✅ | ✅ | `PATCH /v1/services/{id}` (plan); GraphQL `updateServicePlan`; MCP `update_service_plan`; Plan-picker page. `rootDir` (w5/m13) and `autoDeploy` (w2/m9 — `PATCH autoDeploy`, GraphQL `setAutoDeploy`, MCP `set_auto_deploy`, Build & Deploy toggle) are also editable. Remaining `PATCH` fields (name, buildFilter) not editable — ◐, low. |
 | Suspend / Resume | ✅ | ✅ | ✅ | ✅ | `POST …/suspend` (202) · `…/resume` (202); GraphQL `suspendService`/`resumeService`; MCP `suspend_service`/`resume_service`; row + header actions. Render parity verified in [bex-api.md](bex-api.md). |
 | Restart | ✅ | ✅ | ✅ | ✅ | `POST …/restart` (200); GraphQL `restartServer`; MCP `restart_service`; header action. Render's official MCP omits these — bex adds them (named after Render's REST verbs). |
 | Manual scale (instance count) | ✅ | ✅ | ✅ | ✖ | `POST …/scale`; GraphQL `scaleService`; MCP `scale_service` (backend shipped w2/m12). Dashboard stepper → **w5/004**. |
@@ -32,7 +32,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Static site | ✖ | ✖ | ✖ | ✖ | Render `static_site` type (build → CDN with redirects/rewrites/headers). A larger build→CDN effort than the compute types. → **w1/012**. |
 | One-off jobs (run a command) | — | — | — | — | Render `/services/{id}/jobs` runs an arbitrary command in the service context — an execution surface, off-roadmap (`DO_NOT_DO` §pillar 5), the same call as Shell/SSH below. (Scheduled cron jobs are a service type, tracked separately → w1/m15.) |
 | Shell / SSH into a running instance | — | — | — | — | Render Shell tab / `render ssh`. No exec surface — hosted execution is off-roadmap (DO_NOT_DO §pillar 5). Non-goal for now. |
-| PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/previews` (plural) + Previews tab. Ties to git integration + deploys; low priority, untracked. |
+| PR preview environments | ✖ | ✖ | ✖ | ✖ | Render `POST …/previews` (plural) + Previews tab. The git-integration prerequisite is now met (GitHub App connection + private clones + signed webhook, w2/m8–m9), so this is unblocked — still low priority, untracked. |
 
 ## Deploys
 
@@ -84,7 +84,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Blueprint / `render.yaml` IaC | ◐ | ✖ | ◐ | ✖ | bex consumes a `render.yaml`-shaped `bex.yml` via `deploy` (MCP) + `scripts/app-apply.sh`, but exposes no `/blueprints` resource (validate/list/sync). → extends **w2/m2**; resource untracked, low. |
 | Projects & environments (grouping) | ✖ | ✖ | ✖ | ✖ | Render `/projects`, `/environments`, protected environments. bex is flat apps in one workspace. Belongs to the tenancy line → nearest **w1/m9**; low. |
 | Registry credentials (private images) | ✖ | ✖ | ✖ | ✖ | Render `/registrycredentials`. bex pulls from its own zot registry; external private registries unsupported. Low, untracked. |
-| Git connections (GitHub / GitLab app) | ◐ | ✖ | ✖ | ✖ | Repo URL + HMAC push webhook works; no managed OAuth git-app connection. GitHub OAuth **login** → w4/003. Low. |
+| Git connections (GitHub / GitLab app) | ✅ | ✅ | ✅ | ✅ | **GitHub App** across all four surfaces (w2/m8 connect+list, w2/m9 private deploy + push): connect (install → callback) + repo list; private-repo deploys clone with a 1h installation token bex-api mints into a `<app>-clone` Secret (`spec.cloneSecret` → BuildKit `GIT_AUTH_TOKEN`); **zero-config push-to-deploy** — the app's app-wide webhook is a second accepted HMAC key on `POST /v1/webhooks/git` (no per-repo config); Auto-Deploy toggle (`setAutoDeploy`) + dashboard Connect-GitHub card & Build & Deploy toggle. GitLab/Bitbucket providers remain ◐ (out of scope). `GET /v1/repos` + MCP `list_repos`/`get_git_connection` are bex supersets (§ bex ahead). [github-integration.md](github-integration.md). GitHub OAuth **login** is separate → w4/003. |
 | Header rules · redirects / rewrites | — | — | — | — | Render's static-site-only edge rules (`/headers`, `/routes`). bex serves web/private services, which have no such rules — non-goal for those types; revisit only if w1/012 adds static sites. |
 
 ## Logs
@@ -130,13 +130,14 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 ## bex ahead of Render
 
-Three verbs where bex's AI-native posture exposes _more_ than Render does — tracked here so they read as deliberate supersets, not accidental drift:
+Verbs where bex's AI-native posture exposes _more_ than Render does — tracked here so they read as deliberate supersets, not accidental drift:
 
 - **API-key management over the API** — `POST/GET/DELETE /v1/api-keys` + GraphQL + MCP. Render mints keys in the dashboard only (account-scoped, non-expiring); bex makes them a first-class, workspace-scoped, revocable OAuth2-client resource an agent can rotate itself ([auth.md](auth.md)).
 - **Deploy-from-chat** — MCP `deploy {repo, bexYaml}` rides the same `Create` verb (no bespoke endpoint): one call takes a repo + `bex.yml` to a live URL ([deploy-from-chat.md](deploy-from-chat.md)).
 - **Inbound push-to-deploy webhook** — `POST /v1/webhooks/git` (HMAC-SHA256, outside the OAuth gate). Render's public `/webhooks` are _outbound_; bex additionally accepts the git host's push.
 - **Usage metering** — `GET /v1/usage` + GraphQL `usage` query + MCP `get_usage` tool return month-to-date instance-seconds (per tier), egress bytes, and build seconds for the caller's workspace. Render's billing surface is dashboard-only (no REST/GraphQL/MCP billing endpoints — verified against Render's OpenAPI spec 2026-07-09). See [docs/usage-metering.md](usage-metering.md).
 - **In-app Audit Log viewer** — dashboard Settings → Audit Log (`w4/m14`) is a live, paginated, in-app table. Render's dashboard has no in-app audit-log table at all — only a date-range CSV export under Workspace Settings → Compliance (render.com/docs/audit-logs, checked 2026-07-11).
+- **GitHub repo listing & connection status over the API** — `GET /v1/repos` + MCP `list_repos`/`get_git_connection` return the connected installation's repositories (private included) and the connection's account/install URL, so "which of my repos can you deploy?" is one agent call. Render lists repos only through its private dashboard API and its MCP has no repo tools (w2/m8, [github-integration.md](github-integration.md)).
 
 Read-only SQL over MCP (`query_render_postgres`) is parity, not a superset — Render is MCP-only there too.
 
@@ -154,6 +155,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | API keys in the dashboard | `w4/m8` | done 2026-07-08; key metadata (created-by/last-used) + token TTL → `w4/m13` done 2026-07-09 |
 | Workspace members & roles | `w4/m12` | done 2026-07-09 — invite/list/change-role/remove across all four surfaces + invite-accept-on-login ([members.md](members.md)) |
 | Audit logs | `w4/m10` + `w4/m14` | done 2026-07-11 (REST + GraphQL, admin-scoped, read-only, `w4/m10`; dashboard Settings → Audit Log card, `w4/m14`) — MCP still out of scope (Render's own MCP has no audit-log tool); IA-placement drift filed as `w4/007` |
+| Git connections (GitHub App): connect + repo list + private deploy + zero-config push | `w2/m8` · `w2/m9` | done 2026-07-11 (all four surfaces; GitLab/Bitbucket providers remain ◐, untracked) |
 | Health-check path → readiness probe | `w1/005` | todo |
 | Env groups + secret files | `w1/m16` | todo |
 | Per-service autoscaling config | **`w1/m20`** | done 2026-07-11 (HPA-style reconciler + REST/GraphQL/MCP surfaces + dashboard Scaling tab; CRD `AutoscalingSpec`, 5-min scale-down stabilization window) |

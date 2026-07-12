@@ -92,6 +92,40 @@ func TestBuildJobShape(t *testing.T) {
 	}
 }
 
+func TestBuildJobCloneSecret(t *testing.T) {
+	// Unset: no GIT_AUTH_TOKEN env, no --secret arg — byte-identical to a public clone.
+	c := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec.Containers[0]
+	if strings.Contains(strings.Join(c.Args, " "), "GIT_AUTH_TOKEN") {
+		t.Error("no clone secret => no GIT_AUTH_TOKEN build secret")
+	}
+	for _, e := range c.Env {
+		if e.Name == "GIT_AUTH_TOKEN" {
+			t.Error("no clone secret => no GIT_AUTH_TOKEN env")
+		}
+	}
+
+	// Set: BuildKit gets the token as its GIT_AUTH_TOKEN secret sourced from the
+	// named Secret's "token" key.
+	o := opts()
+	o.CloneSecret = "hello-clone"
+	c = BuildJob(o, o.ImageRef()).Spec.Template.Spec.Containers[0]
+	if !strings.Contains(strings.Join(c.Args, " "), "id=GIT_AUTH_TOKEN,env=GIT_AUTH_TOKEN") {
+		t.Errorf("missing --secret GIT_AUTH_TOKEN arg: %v", c.Args)
+	}
+	var found *corev1.EnvVar
+	for i := range c.Env {
+		if c.Env[i].Name == "GIT_AUTH_TOKEN" {
+			found = &c.Env[i]
+		}
+	}
+	if found == nil || found.ValueFrom == nil || found.ValueFrom.SecretKeyRef == nil {
+		t.Fatalf("GIT_AUTH_TOKEN env not sourced from a Secret: %+v", c.Env)
+	}
+	if found.ValueFrom.SecretKeyRef.Name != "hello-clone" || found.ValueFrom.SecretKeyRef.Key != "token" {
+		t.Errorf("secret ref = %+v, want hello-clone/token", found.ValueFrom.SecretKeyRef)
+	}
+}
+
 func TestGitContext(t *testing.T) {
 	cases := map[[3]string]string{
 		{"https://github.com/x/y", "main", ""}:             "https://github.com/x/y.git#main",              // .git appended, ref added

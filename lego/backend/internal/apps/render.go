@@ -64,6 +64,9 @@ type renderService struct {
 	// maxInstances / targetCPUPercent / targetMemoryPercent); omitted when
 	// autoscaling is not configured.
 	Autoscaling *renderAutoscaling `json:"autoscaling,omitempty"`
+	// AutoDeploy is Render's Auto-Deploy toggle: whether a signed git push
+	// redeploys this service (spec.autoDeploy).
+	AutoDeploy bool `json:"autoDeploy"`
 }
 
 // renderAutoscaling is Render's autoscaling sub-object shape (verified against
@@ -138,6 +141,7 @@ func toRenderService(a AppView) renderService {
 		Repo:           a.Repo,
 		Branch:         a.Branch,
 		Autoscaling:    ras,
+		AutoDeploy:     a.AutoDeploy,
 	}
 }
 

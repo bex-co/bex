@@ -109,6 +109,37 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
+            # GitHub App integration (docs/github-integration.md): private-repo
+            # deploys + zero-config push-to-deploy. Created out-of-band by
+            # scripts/github-app-secret.sh (reads .env). optional:true so bex-api
+            # still starts on a cluster with no GitHub App configured — the
+            # git-connect verbs then 503 (any BEX_GITHUB_APP_* empty).
+            - name: BEX_GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: app-id
+                  optional: true
+            - name: BEX_GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: private-key
+                  optional: true
+            - name: BEX_GITHUB_APP_SLUG
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: slug
+                  optional: true
+            # Second accepted webhook HMAC key (w2/m9) so app-signed pushes
+            # redeploy hands-free. Empty => only BEX_WEBHOOK_SECRET is accepted.
+            - name: BEX_GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-github-app
+                  key: webhook-secret
+                  optional: true
           ports:
             - name: http
               containerPort: 8090

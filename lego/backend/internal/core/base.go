@@ -59,6 +59,12 @@ const (
 	RelCanManage        = "can_manage"         // admin only: manage the workspace itself (rename/delete)
 
 	DefaultWorkspace = "workspace:default"
+	// DefaultTenant is the tenant/workspace id used when no control-plane tenant
+	// resolves for a caller (the single-workspace fallback) — the bare id form of
+	// DefaultWorkspace ("workspace:" + DefaultTenant). Features that key
+	// per-workspace state by tenant id (github connections, secrets) share this
+	// so their fallback key can't drift.
+	DefaultTenant = "default"
 )
 
 // WorkspaceObject is the OpenFGA object for a workspace (tenant) id — the target

@@ -1,20 +1,20 @@
 # w2 · m9 — Private-repo deploys + zero-config GitHub push-to-deploy
 
-**Worker:** worker2 **Goal:** a private GitHub repo deploys end-to-end via the m8 connection, and a plain `git push` redeploys with no manual webhook setup. **Status:** todo (blocked on w2/m8)
+**Worker:** worker2 **Goal:** a private GitHub repo deploys end-to-end via the m8 connection, and a plain `git push` redeploys with no manual webhook setup. **Status:** code-complete (t001–t004, t006–t008 built + unit/envtest-tested + lint-clean; m8 built alongside as the prerequisite); t005 live acceptance pending a real private repo + cluster run (see t005).
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Types + operator: `App.spec.cloneSecret` → BuildKit `GIT_AUTH_TOKEN` for the git context      | 45m | —          |
-| t002 | bex-api: mint installation token → clone Secret on create/deploy/webhook-redeploy             | 45m | t001       |
-| t003 | Webhook: accept GitHub-App-signed pushes (`BEX_GITHUB_WEBHOOK_SECRET` as second key)          | 30m | t002       |
-| t004 | Dashboard: Build & Deploy — Auto-Deploy toggle + "deploys via GitHub" source indicator        | 40m | t003       |
-| t005 | Live acceptance: private repo → live URL; push → auto-redeploy; `autoDeploy:false` suppresses | 40m | t004       |
-| t006 | Render parity — cross-surface consistency, ledger row "Git connections" → ✅                  | 30m | t005       |
-| t007 | Simplify — `/simplify` over the milestone's diff                                              | 30m | t006       |
-| t008 | Test coverage — token refresh, expired-token failure mode, two-key webhook, autoDeploy gate   | 40m | t006       |
-| t009 | Closeout — DoD verified, move to `done/`                                                      | 15m | t008       |
+| t001 | Types + operator: `App.spec.cloneSecret` → BuildKit `GIT_AUTH_TOKEN` for the git context      | 45m | —          | — **DONE** |
+| t002 | bex-api: mint installation token → clone Secret on create/deploy/webhook-redeploy             | 45m | t001       | — **DONE** |
+| t003 | Webhook: accept GitHub-App-signed pushes (`BEX_GITHUB_WEBHOOK_SECRET` as second key)          | 30m | t002       | — **DONE** |
+| t004 | Dashboard: Build & Deploy — Auto-Deploy toggle + "deploys via GitHub" source indicator        | 40m | t003       | — **DONE** (code + backend `setAutoDeploy`/read field; UI needs `yarn codegen` + build to verify) |
+| t005 | Live acceptance: private repo → live URL; push → auto-redeploy; `autoDeploy:false` suppresses | 40m | t004       | — **OPEN** (needs a real GitHub App + private repo + cluster; runbook in t005) |
+| t006 | Render parity — cross-surface consistency, ledger row "Git connections" → ✅                  | 30m | t005       | — **DONE** |
+| t007 | Simplify — `/simplify` over the milestone's diff                                              | 30m | t006       | — **DONE** |
+| t008 | Test coverage — token refresh, expired-token failure mode, two-key webhook, autoDeploy gate   | 40m | t006       | — **DONE** |
+| t009 | Closeout — DoD verified, move to `done/`                                                      | 15m | t008       | — **OPEN** (gated on t005 live run) |
 
 ## Definition of done
 

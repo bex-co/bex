@@ -94,6 +94,17 @@ type AppSpec struct {
 	// +kubebuilder:default=main
 	Branch string `json:"branch,omitempty"`
 
+	// CloneSecret names a Secret in the App's namespace holding a git credential
+	// (key "token") used to clone a private Repo. When set, the build Job passes
+	// it to BuildKit as the standard GIT_AUTH_TOKEN build secret so the https
+	// git-context fetch authenticates. Empty means an unauthenticated (public)
+	// clone — today's behavior, unchanged. The operator is GitHub-unaware: it
+	// only mounts the Secret; bex-api mints and refreshes the token
+	// (docs/github-integration.md). An absent/expired Secret fails the build
+	// with a clear condition (no silent public-clone fallback).
+	// +optional
+	CloneSecret string `json:"cloneSecret,omitempty"`
+
 	// Builder selects how the image is built:
 	// "auto" (Dockerfile if present, else Cloud Native Buildpacks), "buildpack", or "dockerfile".
 	// +optional

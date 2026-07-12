@@ -1055,6 +1055,34 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.autoDeployLabel": {
+    message: "Auto-Deploy",
+    description: "Build & Deploy: label for the auto-deploy toggle",
+  },
+  "services.autoDeployViaGitHub": {
+    message:
+      "A push to the tracked branch redeploys automatically via the GitHub app.",
+    description:
+      "Build & Deploy: source indicator when the repo is on the connected GitHub account",
+  },
+  "services.autoDeployViaWebhook": {
+    message:
+      "A push redeploys only if the repo's manual git webhook is configured with your BEX_WEBHOOK_SECRET.",
+    description:
+      "Build & Deploy: source indicator when the repo is not on the connected GitHub account",
+  },
+  "services.autoDeployOnSuccess": {
+    message: "Auto-Deploy turned on.",
+    description: "Toast after enabling auto-deploy",
+  },
+  "services.autoDeployOffSuccess": {
+    message: "Auto-Deploy turned off.",
+    description: "Toast after disabling auto-deploy",
+  },
+  "services.autoDeployError": {
+    message: "Couldn't change Auto-Deploy. Please try again.",
+    description: "Toast after setAutoDeploy fails",
+  },
   "services.colType": {
     message: "Type",
     description: "Services table column header (service type)",

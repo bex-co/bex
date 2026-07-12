@@ -76,6 +76,12 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
+// autoDeployArgs is set_auto_deploy's input — Render's Auto-Deploy toggle.
+type autoDeployArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -351,6 +357,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.DeleteAutoscaling(ctx, in.ServiceID)
 		return nil, deletedResult{Deleted: err == nil}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_auto_deploy",
+		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
 	})
 
 	// Custom domain tools — tracking render-oss/render-mcp-server tool names.

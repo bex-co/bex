@@ -12,6 +12,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
+import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -52,6 +53,7 @@ export default function SettingsPage() {
             </div>
           )}
           <TeamPanel />
+          <ConnectGithubCard />
           <ApiKeysPanel />
           <AuditLogPanel />
         </div>

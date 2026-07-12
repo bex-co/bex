@@ -64,6 +64,8 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_CP_DB_URI` | Postgres URI for the control-plane store (docs/control-plane.md); set ⇒ runs migrations + the apps-rows→App-CR projector + the internal tenant API; unset ⇒ bex-api alone |
 | bex-api | `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` (:8091), `BEX_CP_RESYNC`, `BEX_CP_TOKEN` | control-plane knobs: projection target ns, internal API addr, resync interval, internal API bearer |
 | bex-api | `BEX_WEBHOOK_SECRET` | shared HMAC-SHA256 key for the git push webhook (`POST /v1/webhooks/git`); unset ⇒ webhook 503 (docs/bex-api.md) |
+| bex-api | `BEX_GITHUB_APP_ID`, `BEX_GITHUB_APP_PRIVATE_KEY`, `BEX_GITHUB_APP_SLUG` | self-hosted GitHub App (docs/github-integration.md): app id (JWT `iss`), RSA private key PEM (out-of-band secret, signs the app JWT), and slug (builds the `github.com/apps/<slug>/installations/new` install URL). Any unset ⇒ every git-connect verb 503 |
+| bex-api | `BEX_GITHUB_WEBHOOK_SECRET` | the GitHub App's webhook HMAC-SHA256 key (docs/github-integration.md): a **second** accepted key on `POST /v1/webhooks/git` so app-signed pushes redeploy hands-free; verified alongside `BEX_WEBHOOK_SECRET` (valid under either ⇒ accept; 503 only when neither set) |
 | bex-api | `BEX_SMTP_ADDR`, `BEX_SMTP_FROM` | SMTP relay (`host:port`) + envelope `From` for workspace-invite email (w4/m12, docs/members.md); same relay as the Kratos courier (SendGrid prod, Mailpit local). Either unset ⇒ invites recorded but not emailed |
 | bex-api | `BEX_SMTP_USERNAME`, `BEX_SMTP_PASSWORD` | optional SMTP PLAIN-auth credentials (secret, out-of-band); unset ⇒ unauthenticated relay (Mailpit) |
 | bex-api | `BEX_DASHBOARD_URL` | dashboard origin the invite email links to (e.g. `https://dashboard.bex.co`); unset ⇒ the invite email carries instructions without a deep link |
@@ -79,6 +81,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/identifiers.md](docs/identifiers.md) — ADR: typed opaque resource ids `<prefix>-<xid>` (`tea-`/`srv-`/`cdm-`), hyphen not underscore; minted + guarded in `lego/backend/internal/id`.
 - [docs/bex-api.md](docs/bex-api.md) — REST/GraphQL/MCP design: one core, thin adapters, Render compatibility.
 - [docs/connect-an-agent.md](docs/connect-an-agent.md) — recipe: Claude Code/Cursor → bex `/mcp` over OAuth 2.1 (discovery, DCR, PKCE, API-key alternative, troubleshooting).
+- [docs/github-integration.md](docs/github-integration.md) — ADR: self-hosted GitHub App (manifest flow) for private-repo deploys + zero-config push-to-deploy; installation tokens → clone Secret, app webhook as a second key.
 - [docs/render-parity.md](docs/render-parity.md) — the parity ledger: one row per Render capability × REST/GraphQL/MCP/UI, each cell ✅/◐/✖/— with evidence; gaps mapped to owning milestones.
 - [docs/deploy-from-chat.md](docs/deploy-from-chat.md) — ADR: deploy-from-chat rides `Core.Create` (no bespoke endpoint) + the HMAC push-to-deploy webhook (pillar 4).
 - [docs/observability.md](docs/observability.md) — Logs (query + live-tail) and metrics over REST/GraphQL/MCP.

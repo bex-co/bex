@@ -26,11 +26,10 @@ import (
 )
 
 // patchServiceRequest is the subset of Render's PATCH /v1/services/{id} body
-// bex honors: a plan change nested under serviceDetails, matching where GET
-// reports it back. PATCH is partial — fields this bex doesn't support (name,
-// autoDeploy, ...) are accepted and silently ignored rather than rejected, a
-// safe superset like the rest of the Render surface; omitting serviceDetails
-// or plan leaves the App's plan unchanged.
+// bex honors: a plan change nested under serviceDetails, a root-directory change,
+// and Render's top-level autoDeploy toggle. PATCH is partial — fields this bex
+// doesn't support (name, ...) are accepted and silently ignored rather than
+// rejected, a safe superset; omitting a field leaves it unchanged.
 type patchServiceRequest struct {
 	ServiceDetails *struct {
 		Plan string `json:"plan"`
@@ -43,6 +42,10 @@ type patchServiceRequest struct {
 	// explicit "" (restore the repo root) — Render's Root Directory setting,
 	// the Settings → Build & Deploy save flow (w5/m13).
 	RootDir *string `json:"rootDir"`
+	// AutoDeploy is Render's "yes"/"no" (or bool-ish) toggle for push-to-deploy
+	// (spec.autoDeploy). "" => absent (leave unchanged); parseYesNo maps the rest
+	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
+	AutoDeploy string `json:"autoDeploy"`
 }
 
 // scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
@@ -217,7 +220,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 		}
-		if plan == "" && idleTTL == nil && req.RootDir == nil {
+		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
+		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -239,6 +243,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.RootDir != nil {
 			if app, err = s.SetRootDir(r.Context(), id, *req.RootDir); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if autoDeploy != nil {
+			if app, err = s.SetAutoDeploy(r.Context(), id, *autoDeploy); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

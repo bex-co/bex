@@ -80,6 +80,7 @@ export function ServiceSettingsPage() {
               repo={service.repo}
               branch={service.branch}
               rootDir={service.rootDir}
+              autoDeploy={service.autoDeploy ?? false}
             />
           )}
           <CustomDomainsSection serviceId={serviceId} />

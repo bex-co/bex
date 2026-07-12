@@ -167,10 +167,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir, Name: app.Name,
 			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
-			Builder:   app.Spec.Builder,
-			Revision:  fmt.Sprintf("gen-%d", app.Generation),
-			Namespace: r.buildNamespace(app.Namespace),
-			Client:    r.Client,
+			Builder:     app.Spec.Builder,
+			Revision:    fmt.Sprintf("gen-%d", app.Generation),
+			Namespace:   r.buildNamespace(app.Namespace),
+			CloneSecret: app.Spec.CloneSecret,
+			Client:      r.Client,
 		})
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", err)

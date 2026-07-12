@@ -51,6 +51,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/mailer"
@@ -137,6 +138,17 @@ func main() {
 	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
 		deps.Secrets = secrets.NewOpenBaoStore(bao)
 	}
+	// GitHub App integration (docs/github-integration.md): private-repo deploys +
+	// zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
+	// are set (and the key parses) — else the git-connect verbs 503. The store
+	// half (git_connections) is wired inside the BEX_CP_DB_URI block below.
+	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
+		ghClient, err := github.NewClient(github.Config{AppID: appID, PrivateKey: key, Slug: slug})
+		if err != nil {
+			log.Fatalf("bex-api: github app config: %v", err)
+		}
+		deps.GitHubClient = ghClient
+	}
 	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
 	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
 	// email/MFA needs the admin API, not a session. Unset => those fields omitted.
@@ -186,6 +198,7 @@ func main() {
 		go rec.Run(ctx)
 		deps.Store = st       // single writer of intent: suspend/resume write the row first
 		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
+		deps.GitHubStore = st // git connections (w2/m8): connect/disconnect/list read+write git_connections
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
@@ -301,6 +314,9 @@ func main() {
 		deps.Mailer = m
 	}
 	deps.InviteBaseURL = os.Getenv("BEX_DASHBOARD_URL")
+	// The GitHub install callback (docs/github-integration.md) redirects the
+	// browser back to the dashboard settings page on success.
+	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 
 	srv := api.NewServer(base, deps)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
@@ -312,6 +328,10 @@ func main() {
 	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
 	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
 	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
+	// The GitHub App's app-wide webhook signs pushes with its own secret — a
+	// second accepted key so installed repos redeploy hands-free
+	// (docs/github-integration.md).
+	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.

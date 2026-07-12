@@ -113,8 +113,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
 		// repo/branch are the build-from-git source, empty for an image-backed App.
-		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
-		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		"repo":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
+		"branch":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		"autoDeploy": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
 		// autoscaling is the per-service autoscaling config (Render's Scaling tab).
 		// Null when spec.autoscaling is unset (autoscaling never configured).
 		"autoscaling": &graphql.Field{
@@ -458,6 +459,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
+			},
+		},
+		// setAutoDeploy: the Settings → Build & Deploy Auto-Deploy toggle (w2/m9)
+		// flips whether a signed git push redeploys the App (spec.autoDeploy). A
+		// bex extension name (Render's dashboard mutation is uncaptured), following
+		// the scalar-arg convention.
+		"setAutoDeploy": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetAutoDeploy(p.Context, p.Args["id"].(string), p.Args["enabled"].(bool))
 			},
 		},
 		// Custom domain mutations — Render-dashboard-shaped operation names.

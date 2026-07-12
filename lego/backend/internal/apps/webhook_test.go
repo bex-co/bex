@@ -164,6 +164,118 @@ func TestWebhookHTTPParsesCommitPaths(t *testing.T) {
 	}
 }
 
+// autoDeployApp is a repo-backed app that opts into push redeploys.
+func autoDeployApp(name, repo string) *appv1alpha1.App {
+	a := &appv1alpha1.App{}
+	a.Name, a.Namespace = name, "default"
+	a.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: true}
+	return a
+}
+
+func postPush(t *testing.T, h *GitWebhook, sigSecret, event string, body []byte) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
+	if sigSecret != "" {
+		req.Header.Set("X-Hub-Signature-256", sign(sigSecret, body))
+	}
+	if event != "" {
+		req.Header.Set("X-GitHub-Event", event)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestWebhookAcceptsEitherKey(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	body := pushBody(t, repo, "refs/heads/main")
+
+	// GitHub App key alone (BEX_WEBHOOK_SECRET unset): a GitHub-App-signed push
+	// still redeploys.
+	svc, cl := newService(nil, autoDeployApp("api", repo))
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key"}
+	if rec := postPush(t, h, "gh-key", "push", body); rec.Code != http.StatusOK {
+		t.Fatalf("github key => %d: %s", rec.Code, rec.Body)
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt == "" {
+		t.Error("github-key push should redeploy")
+	}
+
+	// Both keys set: valid under EITHER key is accepted.
+	for _, key := range []string{"manual-key", "gh-key"} {
+		svc, cl := newService(nil, autoDeployApp("api", repo))
+		h := &GitWebhook{Svc: svc, Secret: "manual-key", GitHubSecret: "gh-key"}
+		if rec := postPush(t, h, key, "push", body); rec.Code != http.StatusOK {
+			t.Fatalf("key %s => %d", key, rec.Code)
+		}
+		if getApp(t, cl, "api").Spec.RestartedAt == "" {
+			t.Errorf("push signed with %s should redeploy", key)
+		}
+	}
+}
+
+func TestWebhookRejectsUnknownKey(t *testing.T) {
+	body := pushBody(t, "https://github.com/x/app", "refs/heads/main")
+	svc, _ := newService(nil, autoDeployApp("api", "https://github.com/x/app"))
+	h := &GitWebhook{Svc: svc, Secret: "manual-key", GitHubSecret: "gh-key"}
+	if rec := postPush(t, h, "attacker-key", "push", body); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong-key push => %d, want 401", rec.Code)
+	}
+}
+
+func TestWebhookGitHubLifecycleEventsAreNoOp(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	body := pushBody(t, repo, "refs/heads/main")
+	svc, cl := newService(nil, autoDeployApp("api", repo))
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key"}
+
+	// A validly-signed ping (or installation) is a 200 no-op, not a 401 and not a redeploy.
+	for _, event := range []string{"ping", "installation", "installation_repositories"} {
+		rec := postPush(t, h, "gh-key", event, body)
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s => %d, want 200", event, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), "ignored") {
+			t.Errorf("%s body = %s, want ignored", event, rec.Body.String())
+		}
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt != "" {
+		t.Error("lifecycle events must not redeploy")
+	}
+
+	// An unsigned ping is still rejected — the signature gate runs first.
+	if rec := postPush(t, h, "", "ping", body); rec.Code != http.StatusUnauthorized {
+		t.Errorf("unsigned ping => %d, want 401", rec.Code)
+	}
+}
+
+func TestWebhookAutoDeployFalseSuppressesGitHubPush(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	// AutoDeploy off: a valid GitHub-App-signed push must NOT redeploy.
+	app := &appv1alpha1.App{}
+	app.Name, app.Namespace = "api", "default"
+	app.Spec = appv1alpha1.AppSpec{Repo: repo, Branch: "main", AutoDeploy: false}
+	svc, cl := newService(nil, app)
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key"}
+
+	rec := postPush(t, h, "gh-key", "push", pushBody(t, repo, "refs/heads/main"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("push => %d, want 200", rec.Code)
+	}
+	if getApp(t, cl, "api").Spec.RestartedAt != "" {
+		t.Error("autoDeploy:false must suppress the GitHub-key push redeploy")
+	}
+}
+
+func TestWebhook503WhenNoKeys(t *testing.T) {
+	svc, _ := newService(nil)
+	h := &GitWebhook{Svc: svc} // neither key set
+	body := pushBody(t, "https://github.com/x/app", "refs/heads/main")
+	if rec := postPush(t, h, "anything", "push", body); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("no keys => %d, want 503", rec.Code)
+	}
+}
+
 func contains(ss []string, want string) bool {
 	for _, s := range ss {
 		if s == want {

@@ -57,6 +57,11 @@ type Service struct {
 	// ownerId argument is omitted. Read-only (apps never selects a workspace,
 	// only workspaces.Service's select_workspace does). Nil => no fallback.
 	Selections core.WorkspaceSelectionReader
+	// GitHub, when set (the GitHub App + control-plane store are wired), mints a
+	// fresh installation token and writes the <app>-clone Secret on every deploy
+	// trigger whose repo belongs to the workspace's connection, so private repos
+	// clone (docs/github-integration.md). nil => public-clone only, unchanged.
+	GitHub CloneTokenSource
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -144,6 +149,10 @@ type AppView struct {
 	// Autoscaling is the current per-service autoscaling config (nil when
 	// spec.autoscaling is unset, i.e. disabled and unconfigured).
 	Autoscaling *AutoscalingView `json:"autoscaling,omitempty"`
+	// AutoDeploy is whether a signed git push to Branch redeploys this App
+	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
+	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
+	AutoDeploy bool `json:"autoDeploy"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -185,6 +194,7 @@ func view(a *appv1alpha1.App) AppView {
 		Repo:           a.Spec.Repo,
 		Branch:         a.Spec.Branch,
 		Autoscaling:    asView,
+		AutoDeploy:     a.Spec.AutoDeploy,
 	}
 }
 
@@ -377,6 +387,16 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 				a.Labels = map[string]string{core.LabelTenant: tenantID}
 			}
 		}
+		// A private-connection repo gets a fresh clone token + spec.cloneSecret so
+		// its first build authenticates. create-owned only: never set on a spec
+		// that already hand-pointed cloneSecret elsewhere.
+		if desired.CloneSecret == "" {
+			secretName, err := s.ensureCloneSecret(ctx, a)
+			if err != nil {
+				return AppView{}, err
+			}
+			a.Spec.CloneSecret = secretName
+		}
 		if err := s.Client.Create(ctx, a); err != nil {
 			return AppView{}, err
 		}
@@ -390,6 +410,17 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// no other field changed.
 		base := client.MergeFrom(existing.DeepCopy())
 		applyCreateToSpec(&existing.Spec, desired)
+		// Refresh the clone token so the rebuild starts with a token minted
+		// seconds ago. ensureCloneSecret reads the just-applied repo; it returns
+		// "" for an unconnected repo, so a hand-set cloneSecret pointing elsewhere
+		// is left untouched.
+		secretName, err := s.ensureCloneSecret(ctx, existing)
+		if err != nil {
+			return AppView{}, err
+		}
+		if secretName != "" {
+			existing.Spec.CloneSecret = secretName
+		}
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return AppView{}, err
@@ -427,6 +458,12 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 				return fmt.Errorf("delete source of truth: %w", err)
 			}
 		}
+	}
+	// Remove the private-repo clone Secret bex-api wrote for it (docs/github-
+	// integration.md) — the operator doesn't own it (no ownerRef), so the CR
+	// delete cascade wouldn't. Best-effort: an absent Secret (public app) is fine.
+	if err := s.deleteCloneSecret(ctx, a.Namespace, a.Name); err != nil {
+		return fmt.Errorf("delete clone secret: %w", err)
 	}
 	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a
 	// store-managed App whose row delete triggered a Kick) — the end state is
@@ -576,7 +613,20 @@ func normalizeTierOrPlan(v string) (string, error) {
 // caller is the HMAC-verified git webhook, whose signature check is the
 // authorization (there is no OpenFGA identity on a git-host callback).
 func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
-	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	// Refresh the clone token so the push-triggered rebuild clones the private
+	// repo with a token minted seconds ago.
+	secretName, err := s.ensureCloneSecret(ctx, a)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		if secretName != "" {
+			a.Spec.CloneSecret = secretName
+		}
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }
@@ -721,6 +771,19 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// SetAutoDeploy flips whether a signed git push to the tracked branch redeploys
+// this App (spec.autoDeploy, Render's Auto-Deploy toggle). A direct CR patch,
+// not projection-owned (mirrors Builder/RootDir), and no restartedAt bump —
+// flipping the toggle changes future push behavior, it does not itself redeploy.
+func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+		a.Spec.AutoDeploy = enabled
 	})
 }
 

@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
@@ -74,6 +75,7 @@ type Server struct {
 	Usage      *usage.Service
 	Deploys    *deploys.Service
 	Audit      *audit.Service
+	GitHub     *github.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -94,6 +96,11 @@ type Server struct {
 	// signatures against; empty disables the endpoint (it 503s). The webhook sits
 	// OUTSIDE the OAuth gate — its signature is its authentication.
 	WebhookSecret string
+	// GitHubWebhookSecret is the GitHub App's webhook HMAC key
+	// (BEX_GITHUB_WEBHOOK_SECRET) — a second accepted key on the same endpoint so
+	// app-signed pushes redeploy hands-free. The endpoint 503s only when both
+	// this and WebhookSecret are empty (docs/github-integration.md).
+	GitHubWebhookSecret string
 
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login. nil => store off: no mint.
@@ -167,6 +174,14 @@ type Deps struct {
 	// retention loop started in cmd/api/main.go, same as Usage. nil => the
 	// verb reports core.ErrAuditUnavailable (503).
 	Audit *audit.Service
+	// GitHub App integration (docs/github-integration.md). GitHubClient is the
+	// GitHub REST client (nil when BEX_GITHUB_APP_* unset); GitHubStore is the
+	// git_connections store (nil when BEX_CP_DB_URI unset). Either nil => the
+	// git-connect verbs report core.ErrGitHubUnavailable. DashboardURL is where
+	// the install callback redirects.
+	GitHubClient github.APIClient
+	GitHubStore  github.ConnectionStore
+	DashboardURL string
 }
 
 // NewServer wires the five feature services over one core.Base + deps. Callers
@@ -176,8 +191,17 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// apps/postgres list tools (read) — w6/m2/t005. Always wired: with no MCP
 	// transport in use, it simply never gets a Get/Set call.
 	selections := core.NewWorkspaceSelections()
+	// The GitHub-connect service is also the apps deploy path's clone-token seam
+	// (docs/github-integration.md), so build it once and share it. Always
+	// non-nil; its verbs 503 until BEX_GITHUB_APP_* + the store are wired.
+	gh := &github.Service{
+		Base:         base,
+		GitHub:       d.GitHubClient,
+		Store:        d.GitHubStore,
+		DashboardURL: d.DashboardURL,
+	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, Selections: selections},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, Selections: selections, GitHub: gh.DeployTokenSource()},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -211,6 +235,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Mailer:        d.Mailer,
 			InviteBaseURL: d.InviteBaseURL,
 		},
+		GitHub:  gh,
 		Onboard: d.Onboard,
 		Usage:   d.Usage,
 		Audit:   d.Audit,
@@ -270,6 +295,9 @@ func (s *Server) features() []any {
 	if s.Audit != nil {
 		out = append(out, s.Audit)
 	}
+	if s.GitHub != nil {
+		out = append(out, s.GitHub)
+	}
 	return out
 }
 
@@ -301,7 +329,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
 	// wins in net/http's mux). A git host can't present a bearer token.
 	if s.Apps != nil {
-		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret})
+		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret})
 	}
 	// All three adapters sit behind the same auth gate.
 	mux.Handle("/v1/", auth(s.restHandler()))

@@ -42,11 +42,30 @@ import (
 
 const maxWebhookBody = 1 << 20 // 1 MiB — push payloads are small; cap to bound HMAC work.
 
-// GitWebhook is the HMAC-verified push endpoint. Secret is the shared HMAC key;
-// empty disables the endpoint (503) rather than accepting unsigned pushes.
+// GitWebhook is the HMAC-verified push endpoint. It accepts two independent
+// HMAC keys: Secret (the shared BEX_WEBHOOK_SECRET, manual per-repo webhooks) and
+// GitHubSecret (BEX_GITHUB_WEBHOOK_SECRET, the GitHub App's app-wide webhook, so
+// installed repos redeploy with zero per-repo config — docs/github-integration.md).
+// A delivery is accepted if it verifies under EITHER key; the endpoint 503s only
+// when BOTH are empty (never accept unsigned pushes).
 type GitWebhook struct {
-	Svc    *Service
-	Secret string
+	Svc          *Service
+	Secret       string
+	GitHubSecret string
+}
+
+// configured reports whether at least one HMAC key is set.
+func (h *GitWebhook) configured() bool { return h.Secret != "" || h.GitHubSecret != "" }
+
+// verify reports whether the signature matches under any configured key
+// (constant-time per key).
+func (h *GitWebhook) verify(sig string, body []byte) bool {
+	for _, secret := range []string{h.Secret, h.GitHubSecret} {
+		if secret != "" && validSignature(secret, sig, body) {
+			return true
+		}
+	}
+	return false
 }
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
@@ -84,8 +103,8 @@ func (ev pushEvent) changedPaths() []string {
 // ServeHTTP verifies the signature, resolves the pushed repo+branch to matching
 // Apps, and redeploys each. An absent/mismatched signature is 401 with no action.
 func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.Secret == "" {
-		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "git webhook not configured (BEX_WEBHOOK_SECRET unset)"})
+	if !h.configured() {
+		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "git webhook not configured (BEX_WEBHOOK_SECRET / BEX_GITHUB_WEBHOOK_SECRET unset)"})
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBody))
@@ -93,8 +112,17 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "cannot read body"})
 		return
 	}
-	if !validSignature(h.Secret, r.Header.Get("X-Hub-Signature-256"), body) {
+	if !h.verify(r.Header.Get("X-Hub-Signature-256"), body) {
 		core.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid or missing signature"})
+		return
+	}
+	// The GitHub App's one app-wide webhook also delivers lifecycle events
+	// (ping on setup, installation/installation_repositories on grant changes).
+	// They're validly signed, so don't 401 them — just no-op with 200. An absent
+	// event header (Gitea, or a manual GitHub push webhook) is treated as a push,
+	// preserving the pre-App behavior byte-for-byte.
+	if event := r.Header.Get("X-GitHub-Event"); event != "" && event != "push" {
+		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": event})
 		return
 	}
 	var ev pushEvent
@@ -147,31 +175,16 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 // comparing against every URL form the payload carries (clone/ssh/html/api),
 // each canonicalized so an https clone URL matches a ".git"-suffixed spec.
 func repoMatches(specRepo string, ev pushEvent) bool {
-	want := canonicalRepo(specRepo)
+	want := core.CanonicalRepo(specRepo)
 	if want == "" {
 		return false
 	}
 	for _, u := range []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL} {
-		if u != "" && canonicalRepo(u) == want {
+		if u != "" && core.CanonicalRepo(u) == want {
 			return true
 		}
 	}
 	return false
-}
-
-// canonicalRepo reduces a git URL to a comparable key: lowercased, scheme and
-// any user@ stripped, trailing ".git" and slashes removed — so https, ssh, and
-// scp-style forms of the same repo compare equal.
-func canonicalRepo(u string) string {
-	s := strings.ToLower(strings.TrimSpace(u))
-	for _, scheme := range []string{"https://", "http://", "ssh://", "git://"} {
-		s = strings.TrimPrefix(s, scheme)
-	}
-	if at := strings.Index(s, "@"); at != -1 {
-		s = s[at+1:] // drop user@ (git@github.com:... / user@host/...)
-	}
-	s = strings.ReplaceAll(s, ":", "/") // scp-style host:owner/repo -> host/owner/repo
-	return strings.TrimSuffix(strings.TrimRight(s, "/"), ".git")
 }
 
 // branchMatches reports whether an App tracking specBranch should redeploy for a

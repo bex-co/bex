@@ -74,6 +74,11 @@ type Options struct {
 	CNBBuilder string        // CNB builder image (buildpack strategy; not yet in-cluster)
 	Namespace  string        // namespace the build Job runs in
 	Client     client.Client // cluster client used to create + watch the Job
+	// CloneSecret names a Secret (in Namespace, key "token") whose value is
+	// passed to BuildKit as the GIT_AUTH_TOKEN build secret so a private Repo's
+	// https git context authenticates (App.spec.cloneSecret). Empty = public
+	// clone (unchanged). The operator only mounts it; bex-api mints the token.
+	CloneSecret string
 	// BuildkitImage overrides the rootless BuildKit image (tests / air-gapped).
 	BuildkitImage string
 }
@@ -161,6 +166,26 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		"--output", "type=image,name=" + image + ",push=true,registry.insecure=true",
 	}
 
+	// Rootless buildkitd needs a writable state dir under the unprivileged
+	// user's home.
+	env := []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"}}
+
+	// Private-repo clone: hand BuildKit the token from the App's clone Secret as
+	// its standard GIT_AUTH_TOKEN build secret (from env, so no volume). BuildKit's
+	// git source uses it as x-access-token basic auth for the https git context.
+	if o.CloneSecret != "" {
+		args = append(args, "--secret", "id=GIT_AUTH_TOKEN,env=GIT_AUTH_TOKEN")
+		env = append(env, corev1.EnvVar{
+			Name: "GIT_AUTH_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: o.CloneSecret},
+					Key:                  "token",
+				},
+			},
+		})
+	}
+
 	deadline := int64(buildTimeout / time.Second)
 	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
 	ttl := int32(3600)  // reap the finished Job after an hour
@@ -194,11 +219,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 						Image:   buildkitImage,
 						Command: []string{"buildctl-daemonless.sh"},
 						Args:    args,
-						Env: []corev1.EnvVar{
-							// Rootless buildkitd needs a writable state dir under the
-							// unprivileged user's home.
-							{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
-						},
+						Env:     env,
 						// Rootless BuildKit runs as UID 1000; unconfined seccomp
 						// is required (privileged seccomp would block some syscalls
 						// the userspace overlay FS needs). Resources are bounded so

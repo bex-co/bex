@@ -10,6 +10,7 @@ import enWorkspaces from "@/features/workspaces/locales/en";
 import enTeam from "@/features/team/locales/en";
 import enUsage from "@/features/usage/locales/en";
 import enAudit from "@/features/audit/locales/en";
+import enGit from "@/features/git/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -22,6 +23,7 @@ import zhWorkspaces from "@/features/workspaces/locales/zh";
 import zhTeam from "@/features/team/locales/zh";
 import zhUsage from "@/features/usage/locales/zh";
 import zhAudit from "@/features/audit/locales/zh";
+import zhGit from "@/features/git/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -60,6 +62,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enTeam),
   ...extractMessages(enUsage),
   ...extractMessages(enAudit),
+  ...extractMessages(enGit),
 };
 
 export const zh: Record<string, string> = {
@@ -75,6 +78,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhTeam),
   ...extractMessages(zhUsage),
   ...extractMessages(zhAudit),
+  ...extractMessages(zhGit),
 };
 
 export const resources: Record<
