@@ -14,6 +14,7 @@
 - [ ] **m7** — Service events feed (`GET /v1/services/{id}/events`) (8 tasks) ← from `/pm-brainstorm more` 2026-07-12 — composes w2/m5 deploy objects + w4/m10 audit log (both done); Events-tab UI rides `w5/007`
 - [ ] **m8** — Request/HTTP logs + structured filters over the Loki pipeline (9 tasks) ← promoted from `002` 2026-07-12 (its gate — the m5 log-backend decision — is settled; gated on m5 closeout)
 - [ ] **m9** — Deploy notifications: email on deploy success/failure (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (unblocked by w2/m5 deploy events + w4/m7 SMTP courier, both done)
+- [ ] **m10** — Extended resource metrics: autoscale target, disk, DB connections (9 tasks) ← from `/pm-brainstorm for more` 2026-07-12 (closes the "Extended metrics" parity row, unblocked by w1/008→w1/m20 + w1/m17; replication-lag scaffolded pending w1/m22)
 
 ## Inbox
 
