@@ -53,6 +53,12 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   }),
 }));
 
+// The danger-zone card (w5/m14) is a client of useDeleteService (Apollo) —
+// mock it so this page test stays about section presence, not the delete wire.
+vi.mock("@/features/services/hooks/use-delete-service", () => ({
+  useDeleteService: () => ({ remove: vi.fn(async () => true), deleting: false }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",

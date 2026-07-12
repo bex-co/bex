@@ -1,19 +1,19 @@
 # w5 · m14 — Delete service: dashboard danger-zone action
 
-**Worker:** worker5 **Goal:** Give the dashboard the one core-lifecycle destructive action it's missing — a Settings-tab danger zone with type-to-confirm delete, wired to w2/m4's shipped `deleteService` mutation (`lego/backend/internal/apps/graphql.go`), matching the shipped workspace-delete pattern (`dashboard/src/features/workspaces/components/delete-workspace-card.tsx`) and `use-delete-database.ts` for databases. **Status:** ready (w2/m4 done 2026-07-09 — gate open)
+**Worker:** worker5 **Goal:** Give the dashboard the one core-lifecycle destructive action it's missing — a Settings-tab danger zone with type-to-confirm delete, wired to w2/m4's shipped `deleteService` mutation (`lego/backend/internal/apps/graphql.go`), matching the shipped workspace-delete pattern (`dashboard/src/features/workspaces/components/delete-workspace-card.tsx`) and `use-delete-database.ts` for databases. **Status:** done (2026-07-11)
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | GraphQL document + `useDeleteService` hook: mutation, cache eviction from the services list, redirect on success | 30m | —          |
-| t002 | Settings-tab danger zone: delete button + type-to-confirm dialog (service name must match)     | 35m | t001       |
-| t003 | Acceptance: create → delete → gone from list + services query, redirected with toast, no dangling row | 25m | t002       |
-| t004 | i18n (en/zh) for the danger-zone copy + confirm dialog                                         | 15m | t002       |
-| t005 | Render parity — dashboard danger-zone UX vs Render's service Settings delete flow              | 20m | t003, t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                    | 20m | t005       |
-| t007 | Test coverage — meaningful tests for the delete flow (confirm-guard, cache eviction, redirect)  | 30m | t005       |
-| t008 | Closeout — DoD met → move milestone to `done/`                                                 | 10m | t007       |
+| t001 | GraphQL document + `useDeleteService` hook: mutation, cache eviction from the services list, redirect on success — **DONE** | 30m | —          |
+| t002 | Settings-tab danger zone: delete button + type-to-confirm dialog (service name must match) — **DONE**    | 35m | t001       |
+| t003 | Acceptance: create → delete → gone from list + services query, redirected with toast, no dangling row — **DONE** | 25m | t002       |
+| t004 | i18n (en/zh) for the danger-zone copy + confirm dialog — **DONE**                              | 15m | t002       |
+| t005 | Render parity — dashboard danger-zone UX vs Render's service Settings delete flow — **DONE**   | 20m | t003, t004 |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                         | 20m | t005       |
+| t007 | Test coverage — meaningful tests for the delete flow (confirm-guard, cache eviction, redirect) — **DONE** | 30m | t005       |
+| t008 | Closeout — DoD met → move milestone to `done/` — **DONE**                                      | 10m | t007       |
 
 ## Definition of done
 

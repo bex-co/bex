@@ -1102,6 +1102,47 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "失败",
     description: "Cron run status badge",
   },
+  "services.dangerZoneTitle": {
+    message: "危险区域",
+    description: "Settings tab delete section title (destructive)",
+  },
+  "services.dangerZoneDescription": {
+    message: "删除服务将永久移除该服务、其部署及其 URL，且无法撤销。",
+    description: "Settings tab delete section description",
+  },
+  "services.deleteButton": {
+    message: "删除服务",
+    description: "Danger-zone button that opens the delete-confirm dialog",
+  },
+  "services.deleteConfirmTitle": {
+    message: "删除 {name}？",
+    description: "Delete-confirm dialog title",
+  },
+  "services.deleteConfirmBody": {
+    message: "此操作将永久移除该服务、其部署及其 URL，且无法撤销。",
+    description: "Delete-confirm dialog body",
+  },
+  "services.deleteConfirmPrompt": {
+    message: "输入 {name} 以确认",
+    description: "Delete-confirm input label naming the exact service name",
+  },
+  "services.deleteCancel": {
+    message: "取消",
+    description: "Delete-confirm dialog cancel button",
+  },
+  "services.deleteConfirm": {
+    message: "删除服务",
+    description:
+      "Delete-confirm dialog submit button (armed once the name matches)",
+  },
+  "services.deleteSuccess": {
+    message: "已删除 {name}",
+    description: "Toast on a successful service delete",
+  },
+  "services.deleteError": {
+    message: "无法删除 {name}",
+    description: "Toast on a failed service delete",
+  },
 };
 
 export default zhServices;

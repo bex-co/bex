@@ -421,6 +421,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "Server":
       // null for an unknown id — never borrow another service's object.
       return { server: serviceById(variables.id) };
+    case "DeleteService": {
+      // Danger-zone delete (w5/m14), mirroring DeleteDatabase: drop the service
+      // from the in-memory store so a subsequent Services list omits it.
+      const i = SERVICES.findIndex((s) => s.id === variables.id);
+      if (i >= 0) SERVICES.splice(i, 1);
+      return { deleteService: true };
+    }
     case "Logs": {
       // Honor the same filters bex-api honors: type (app-only) + text substring.
       const type = variables.type;

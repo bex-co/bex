@@ -1116,6 +1116,48 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Failed",
     description: "Cron run status badge",
   },
+  "services.dangerZoneTitle": {
+    message: "Danger Zone",
+    description: "Settings tab delete section title (destructive)",
+  },
+  "services.dangerZoneDescription": {
+    message:
+      "Deleting a service permanently removes it, its deployment, and its URL. This can't be undone.",
+    description: "Settings tab delete section description",
+  },
+  "services.deleteButton": {
+    message: "Delete Service",
+    description: "Danger-zone button that opens the delete-confirm dialog",
+  },
+  "services.deleteConfirmTitle": {
+    message: "Delete {name}?",
+    description: "Delete-confirm dialog title",
+  },
+  "services.deleteConfirmBody": {
+    message:
+      "This permanently removes the service, its deployment, and its URL. This can't be undone.",
+    description: "Delete-confirm dialog body",
+  },
+  "services.deleteConfirmPrompt": {
+    message: "Type {name} to confirm",
+    description: "Delete-confirm input label naming the exact service name",
+  },
+  "services.deleteCancel": {
+    message: "Cancel",
+    description: "Delete-confirm dialog cancel button",
+  },
+  "services.deleteConfirm": {
+    message: "Delete Service",
+    description: "Delete-confirm dialog submit button (armed once the name matches)",
+  },
+  "services.deleteSuccess": {
+    message: "Deleted {name}",
+    description: "Toast on a successful service delete",
+  },
+  "services.deleteError": {
+    message: "Couldn't delete {name}",
+    description: "Toast on a failed service delete",
+  },
 };
 
 export default enServices;

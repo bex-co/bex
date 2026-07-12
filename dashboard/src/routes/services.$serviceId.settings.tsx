@@ -15,6 +15,7 @@ import { BuildDeploySection } from "@/features/services/components/build-deploy-
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
+import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
 import { isCron } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
@@ -86,6 +87,10 @@ export function ServiceSettingsPage() {
           <PlatformSubdomainSection url={service?.url ?? null} />
         </>
       )}
+
+      {/* Danger zone: type-to-confirm delete (every service type). Only once the
+          service has loaded — the confirm matches against its exact name. */}
+      {service && <DeleteServiceCard service={service} />}
     </div>
   );
 }

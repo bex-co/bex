@@ -50,3 +50,10 @@ mutation RestartServer($id: String!) {
     phase
   }
 }
+
+# deleteService returns a success boolean — there's no service left to select
+# (backend/internal/apps/graphql.go, following the deleteDatabase shape). The
+# dashboard danger zone (w5/m14) gates it behind a typed-name confirm.
+mutation DeleteService($id: String!) {
+  deleteService(id: $id)
+}
