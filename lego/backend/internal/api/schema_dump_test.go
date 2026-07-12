@@ -24,7 +24,9 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 
+	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/usage"
 )
 
 // TestDumpGraphQLSchema is a developer tool, not an assertion: set
@@ -36,7 +38,13 @@ func TestDumpGraphQLSchema(t *testing.T) {
 	if path == "" {
 		t.Skip("set SCHEMA_DUMP_PATH to dump the introspection JSON")
 	}
-	srv := NewServer(&core.Base{Namespace: "default"}, Deps{})
+	// Usage and Audit register their GraphQL fields only when wired (they are
+	// store-gated at runtime), so pass empty services to dump the FULL schema.
+	base := &core.Base{Namespace: "default"}
+	srv := NewServer(base, Deps{
+		Usage: &usage.Service{Base: base},
+		Audit: &audit.Service{Base: base},
+	})
 	schema, err := srv.newSchema()
 	if err != nil {
 		t.Fatalf("build schema: %v", err)

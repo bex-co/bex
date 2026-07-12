@@ -33,7 +33,7 @@ import {
 } from "@/features/services/lib/instance-type";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
 import { useRepos } from "@/features/services/hooks/use-repos";
-import { useGitConnection } from "@/features/services/hooks/use-git-connection";
+import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 

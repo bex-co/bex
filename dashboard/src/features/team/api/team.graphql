@@ -2,17 +2,9 @@
 # w4/m12; docs/ADR012-auth.md role matrix). The Team page lists a workspace's members
 # and their roles, invites teammates by email, changes roles, and removes
 # members. Roles are Render's UPPERCASE enum on the wire
-# (VIEWER/CONTRIBUTOR/DEVELOPER/ADMIN/BILLING). `workspaces` names the caller's
-# workspaces (the switcher / current-workspace source).
-
-query Workspaces {
-  workspaces {
-    id
-    name
-    plan
-    role
-  }
-}
+# (VIEWER/CONTRIBUTOR/DEVELOPER/ADMIN/BILLING). The caller's workspace list
+# (the switcher / current-workspace source) is the `Workspaces` query owned by
+# features/workspaces/api/workspaces.graphql — one operation name, one document.
 
 query WorkspaceMembers($workspaceId: String!) {
   workspaceMembers(workspaceId: $workspaceId) {

@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
+import { Switch } from "@/common/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,8 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
+import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
+import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 
 export interface BuildDeploySectionProps {
   serviceId: string;
@@ -31,6 +34,8 @@ export interface BuildDeploySectionProps {
   branch: string | null;
   /** spec.rootDir; empty/null builds from the repo root. */
   rootDir: string | null;
+  /** spec.autoDeploy — whether a signed git push redeploys this App. */
+  autoDeploy: boolean;
 }
 
 /**
@@ -47,14 +52,30 @@ export function BuildDeploySection({
   repo,
   branch,
   rootDir,
+  autoDeploy,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   const { setRootDir, busy } = useRootDir();
+  const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
+  const { connection } = useGitConnection();
+  // Optimistic switch state — reverted on a failed mutation.
+  const [autoDeployOn, setAutoDeployOn] = useState(autoDeploy);
   // A linear flow (view -> editing -> confirming), modeled as one enum rather
   // than two independent booleans so "editing but not confirming" and
   // "confirming" can't drift out of sync.
   const [mode, setMode] = useState<"view" | "editing" | "confirming">("view");
   const [draft, setDraft] = useState("");
+
+  // A repo hosted on the connected GitHub account auto-deploys hands-free via
+  // the app's app-wide webhook; otherwise a push needs the manual HMAC webhook.
+  // (The backend does the precise repo-grant match; this is the UI hint.)
+  const viaGitHub = !!connection?.connected && /github\.com[/:]/i.test(repo);
+
+  async function handleAutoDeployChange(next: boolean) {
+    setAutoDeployOn(next);
+    const ok = await setAutoDeploy(serviceId, next);
+    if (!ok) setAutoDeployOn(!next); // revert
+  }
 
   const current = rootDir ?? "";
   const canSave = draft.trim() !== current;
@@ -69,7 +90,6 @@ export function BuildDeploySection({
     const ok = await setRootDir(serviceId, draft.trim());
     if (ok) setMode("view");
   }
-
 
   return (
     <Card>
@@ -157,6 +177,25 @@ export function BuildDeploySection({
               </Button>
             </div>
           )}
+        </div>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">
+              {t("services.autoDeployLabel")}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {viaGitHub
+                ? t("services.autoDeployViaGitHub")
+                : t("services.autoDeployViaWebhook")}
+            </div>
+          </div>
+          <Switch
+            checked={autoDeployOn}
+            disabled={autoDeployBusy}
+            onCheckedChange={handleAutoDeployChange}
+            aria-label={t("services.autoDeployLabel")}
+          />
         </div>
       </CardContent>
 

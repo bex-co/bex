@@ -1,6 +1,6 @@
 # w2 · m8 — Connect GitHub: GitHub App connection + repo listing
 
-**Worker:** worker2 **Goal:** an admin connects a GitHub account once (bex GitHub App install); agents and the dashboard can enumerate its repos on all four surfaces. **Status:** backend shipped 2026-07-11 (t001–t005, t007–t009 built + unit-tested + lint-clean, on `main`); t006 dashboard card **written but reverted from the ship** — the dashboard image build needs `yarn codegen` and codegen is blocked by a pre-existing duplicate `Workspaces` operation (team.graphql vs workspaces.graphql); re-land after that's fixed. t010 live acceptance pending a real GitHub App + cluster run (see t010).
+**Worker:** worker2 **Goal:** an admin connects a GitHub account once (bex GitHub App install); agents and the dashboard can enumerate its repos on all four surfaces. **Status:** **DONE 2026-07-12** — backend shipped 2026-07-11; t006 dashboard card re-landed 2026-07-12 after the codegen fix (duplicate `Workspaces` op deduped into workspaces.graphql; offline `SCHEMA_JSON` regen; 634/634 dashboard tests + typecheck + `yarn build` green); t010 live DoD PASSED 2026-07-12 (evidence below).
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Control-plane store: `git_connections` table + connection verbs (authz-gated)             | 40m | t002       | — **DONE** |
 | t004 | REST: connect · callback · get/delete connection · `GET /v1/repos`                        | 45m | t003       | — **DONE** |
 | t005 | GraphQL (`gitConnection`/`repos` + mutations) and MCP (`list_repos`, `get_git_connection`) | 40m | t004       | — **DONE** |
-| t006 | Dashboard: Settings → "Connect GitHub" card (install link, status, disconnect)            | 45m | t005       | — **REVERTED** (code in git history, commit `98e6835`; reverted in `7504210` — dashboard image build blocked on `yarn codegen`, itself blocked by a pre-existing duplicate `Workspaces` op. Re-land after codegen fix) |
+| t006 | Dashboard: Settings → "Connect GitHub" card (install link, status, disconnect)            | 45m | t005       | — **DONE** (reverted in `7504210`, re-landed 2026-07-12 after the codegen fix; verified live against the mock cluster — card shows/creates/removes, screenshot `.playwright-mcp/m8-connect-github-card-connected.png`) |
 | t007 | Render parity — cross-surface consistency + declare REST/MCP repo surface a bex superset  | 30m | t006       | — **DONE** |
 | t008 | Simplify — `/simplify` over the milestone's diff                                          | 30m | t007       | — **DONE** (run jointly with m9/t007 over the combined diff) |
 | t009 | Test coverage — connection lifecycle, 503-when-unconfigured, token minting, pagination    | 40m | t007       | — **DONE** |
-| t010 | Closeout — DoD verified, move to `done/`                                                  | 15m | t009       | — **OPEN** (needs a real GitHub App + cluster live run; runbook in t010) |
+| t010 | Closeout — DoD verified, move to `done/`                                                  | 15m | t009       | — **DONE** (live DoD PASSED 2026-07-12, evidence below) |
 
 ## Definition of done
 
@@ -27,6 +27,16 @@ With `BEX_GITHUB_APP_ID`/`BEX_GITHUB_APP_PRIVATE_KEY`/`BEX_GITHUB_APP_SLUG` + `B
 - **Goal linkage:** pillars 3–4 (agent-native deploy surface) + Render parity — "which of my repos can you deploy?" becomes one MCP call.
 - **Expected outcome:** a workspace admin installs the bex GitHub App and every surface can list the granted repos; the connection is stored in the control-plane DB and revocable.
 - **Why now:** prerequisite for private-repo deploys and zero-config push-to-deploy (`w2/m9`) and the dashboard create wizard (`w5/m15`) — the last big gap in the deploy story now that in-cluster builds (w1/m5), rootDir (w1/m18), and deploy history (w2/m5) are done. Render parity task included: feature dev across REST/GraphQL/MCP/UI (REST `GET /v1/repos` + MCP repo tools are declared supersets — Render lists repos only via its private dashboard API and its MCP has no repo tools).
+
+## Live DoD evidence (2026-07-12, local CAPD mock cluster)
+
+Run against the real GitHub App **bex-co** (id 2091812, installed org-wide on `bex-co` as installation 90623475), `bex-operator:dev` built from main, `BEX_CP_DB_URI` + `bex-github-app` Secret wired; caller = fresh Kratos identity `m8m9-live@bex.test` (session token).
+
+- **Unconfigured ⇒ 503**: with no `bex-github-app` Secret, authenticated `GET/DELETE /v1/git/connection`, `POST /v1/git/connect`, `GET /v1/repos` all returned `503 {"error":"github integration not configured"}`.
+- **Connect**: `POST /v1/git/connect` → `{"connected":false,"installUrl":"https://github.com/apps/bex-co/installations/new"}`; `GET /v1/git/callback?installation_id=90623475` (authenticated — the documented agent path, given the ADR'd browser-callback limitation) → 302, connection recorded (`connected:true, accountLogin:"bex-co"`).
+- **Three surfaces, private repo included**: `GET /v1/repos`, GraphQL `repos`, MCP `list_repos` each returned the same 69 repos including private `bex-co/bex-hello-go-live` (`private:true`); MCP `get_git_connection` matched REST/GraphQL connection.
+- **Disconnect empties**: `DELETE /v1/git/connection` → 204; `GET /v1/repos` → `[]`; connection `connected:false`. Reconnect via callback → 302, connected again.
+- **Dashboard card** (local `yarn dev` against the live bex-api): shows "Connected as bex-co" + install-URL link (screenshot `.playwright-mcp/m8-connect-github-card-connected.png`); Disconnect (type-safe confirm dialog) flips the card to the not-connected state; Connect fires `connectGit` and redirects the browser to `github.com/apps/bex-co/installations/new`. Audit log panel shows the day's `github.StartConnect`/`Connect`/`Disconnect` entries.
 
 ## Design decisions (from the brainstorm)
 

@@ -57,3 +57,30 @@ mutation RestartServer($id: String!) {
 mutation DeleteService($id: String!) {
   deleteService(id: $id)
 }
+
+# The create wizard's submit (w5/m15): exactly one of repo (build-from-git) or
+# image must be set; branch/rootDir/autoDeploy apply to git sources only.
+mutation CreateService(
+  $name: String!
+  $repo: String
+  $image: String
+  $branch: String
+  $rootDir: String
+  $plan: String
+  $autoDeploy: Boolean
+) {
+  createService(
+    name: $name
+    repo: $repo
+    image: $image
+    branch: $branch
+    rootDir: $rootDir
+    plan: $plan
+    autoDeploy: $autoDeploy
+  ) {
+    id
+    name
+    type
+    phase
+  }
+}

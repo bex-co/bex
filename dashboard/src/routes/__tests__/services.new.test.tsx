@@ -50,7 +50,7 @@ const connectionState: {
   loading: boolean;
 } = { connection: null, loading: false };
 
-vi.mock("@/features/services/hooks/use-git-connection", () => ({
+vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 

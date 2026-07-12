@@ -1,0 +1,39 @@
+# bex-api's GitHub-connect surface (backend/internal/github/graphql.go,
+# docs/github-integration.md). A workspace connects one GitHub App installation;
+# connecting redirects the browser to GitHub's install screen (installUrl) and
+# GitHub's callback records it. `connected` is false until then; `installUrl` is
+# always present so the Connect button always has a target. A backend 503
+# (BEX_GITHUB_APP_* unset) surfaces as a query error the card treats as
+# "unavailable".
+
+# The connected installation's repositories (private included) — the create
+# wizard's GitHub tab (w5/m15). Empty until a connection exists.
+query Repos {
+  repos {
+    id
+    fullName
+    private
+    defaultBranch
+    htmlUrl
+    cloneUrl
+  }
+}
+
+query GitConnection {
+  gitConnection {
+    connected
+    accountLogin
+    installUrl
+  }
+}
+
+mutation ConnectGit {
+  connectGit {
+    connected
+    installUrl
+  }
+}
+
+mutation DisconnectGit {
+  disconnectGit
+}

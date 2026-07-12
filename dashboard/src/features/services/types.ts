@@ -60,6 +60,11 @@ export interface ServiceView {
    */
   rootDir: string | null;
   /**
+   * Whether a signed git push redeploys this App (`spec.autoDeploy`, w2/m9);
+   * null when not selected (list query) or for an image-backed App.
+   */
+  autoDeploy: boolean | null;
+  /**
    * Built output directory a `static_site` serves (`spec.publishPath`, Render's
    * Publish Directory); null for other types / when not selected. Only the detail
    * `server` query selects it.

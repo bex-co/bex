@@ -11,12 +11,13 @@
 - [x] **m6** — MCP `query_render_postgres` — read-only SQL for agents ← reassigned to **w5/m9** (label collision with w5's done m6) and shipped there 2026-07-08 (`w5/done/m9/`)
 - [x] **m7** — Key Value API surface (REST/GraphQL/MCP, Render-shaped) (10 tasks) ← promoted from `003` 2026-07-09, unblocked by w1/m14 (mechanism live in prod); dashboard half is `w5/m12` — done (in `done/m7/`; row synced 2026-07-12, was stale)
 - [x] **m12** — Render scale API (`POST /v1/services/{id}/scale`) (5 tasks) ← relocated from w1 2026-07-08
-- [ ] **m8** — Connect GitHub: GitHub App connection + repo listing (REST/GraphQL/MCP/UI) (10 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (parity row "Git connections" ◐). **Code-complete 2026-07-11** (t001–t009 built + tested + lint-clean); t010 live acceptance pending a real GitHub App + cluster.
-- [ ] **m9** — Private-repo deploys + zero-config GitHub push-to-deploy (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11, needs w2/m8; unblocks `w5/m15`. **Code-complete 2026-07-11** (t001–t004, t006–t008 built + tested + lint-clean; m8 built alongside as the prerequisite); t005 live acceptance pending.
+- [x] **m8** — Connect GitHub: GitHub App connection + repo listing (REST/GraphQL/MCP/UI) (10 tasks; DONE 2026-07-12 — live DoD PASSED against the real `bex-co` GitHub App on the mock cluster; dashboard card re-landed after the codegen fix) ← from `/pm-brainstorm for w2` 2026-07-11 (parity row "Git connections" ◐)
+- [x] **m9** — Private-repo deploys + zero-config GitHub push-to-deploy (9 tasks; DONE 2026-07-12 — t005 live acceptance PASSED: private repo → live URL, hands-free push → rev-2, `autoDeploy:false` suppresses, tampered signature 401; follow-up `005.md` filed on store-path composition) ← from `/pm-brainstorm for w2` 2026-07-11, needs w2/m8; unblocks `w5/m15`
 - [ ] **m10** — Deploy cancel + rollback (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (the two ✖ Deploys rows m5 left; rollback target recorded per deploy); UI buttons ride `w5/007`
 
 ## Inbox
 
+- `005.md` — Compose the control-plane store path with clone secrets + deploy history (found during the m8/m9 live acceptance 2026-07-12: projector doesn't mint `cloneSecret`; public creates aren't store-managed so deploy history is empty for them)
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 - _(none open — `002.md` retired to `done/` after w6/m2 closed; README line synced 2026-07-12, was stale)_
 
