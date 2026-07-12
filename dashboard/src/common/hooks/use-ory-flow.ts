@@ -4,6 +4,7 @@ import type {
   LoginFlow,
   RegistrationFlow,
   RecoveryFlow,
+  VerificationFlow,
   SettingsFlow,
   FrontendApi,
 } from "@ory/client-fetch";
@@ -15,6 +16,7 @@ type OryFlowMap = {
   login: LoginFlow;
   registration: RegistrationFlow;
   recovery: RecoveryFlow;
+  verification: VerificationFlow;
   settings: SettingsFlow;
 };
 
@@ -75,7 +77,9 @@ function getFlow<K extends keyof OryFlowMap>(
         ? api.getRegistrationFlow({ id })
         : kind === "recovery"
           ? api.getRecoveryFlow({ id })
-          : api.getSettingsFlow({ id });
+          : kind === "verification"
+            ? api.getVerificationFlow({ id })
+            : api.getSettingsFlow({ id });
   return req as Promise<OryFlowMap[K]>;
 }
 
@@ -109,7 +113,9 @@ function createFlow<K extends keyof OryFlowMap>(
         ? api.createBrowserRegistrationFlow({ returnTo, loginChallenge })
         : kind === "recovery"
           ? api.createBrowserRecoveryFlow({ returnTo })
-          : api.createBrowserSettingsFlow({ returnTo });
+          : kind === "verification"
+            ? api.createBrowserVerificationFlow({ returnTo })
+            : api.createBrowserSettingsFlow({ returnTo });
   return req as Promise<OryFlowMap[K]>;
 }
 

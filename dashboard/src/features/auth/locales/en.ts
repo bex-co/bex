@@ -25,6 +25,14 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Enter your email to receive a recovery code",
     description: "Forgot-password page hero subtitle",
   },
+  "auth.verificationTitle": {
+    message: "Verify your email",
+    description: "Verification page hero title",
+  },
+  "auth.verificationSubtitle": {
+    message: "Enter the code we sent to confirm your address",
+    description: "Verification page hero subtitle",
+  },
   "auth.settingsTitle": {
     message: "Settings",
     description: "Account settings page heading",

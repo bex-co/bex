@@ -25,6 +25,14 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "输入您的邮箱以接收恢复代码",
     description: "Forgot-password page hero subtitle",
   },
+  "auth.verificationTitle": {
+    message: "验证您的邮箱",
+    description: "Verification page hero title",
+  },
+  "auth.verificationSubtitle": {
+    message: "输入我们发送的验证码以确认您的地址",
+    description: "Verification page hero subtitle",
+  },
   "auth.settingsTitle": {
     message: "设置",
     description: "Account settings page heading",
