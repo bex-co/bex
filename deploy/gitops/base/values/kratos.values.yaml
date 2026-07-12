@@ -74,6 +74,39 @@ kratos:
         # allowlist entry: redirecting a user to their own localhost is
         # harmless, and CORS/cookies stay locked down (the proxy is same-origin).
         - http://localhost:5173
+      # Second-factor MFA (w4/m11, docs/auth.md § MFA). password stays the sole
+      # first factor; totp/webauthn/lookup_secret are second factors that only
+      # come into play once the AAL policy below demands aal2 (i.e. after a user
+      # enrolls one) — a password-only user's login is untouched.
+      methods:
+        password:
+          enabled: true # explicit: the only first factor
+        totp:
+          enabled: true
+          config:
+            # Names the entry in the user's authenticator app (issuer field of
+            # the otpauth:// URI). Human-facing only; safe to read, never secret.
+            issuer: bex
+        webauthn:
+          enabled: true
+          config:
+            # SECOND factor, not passwordless: passkey/first-factor mode
+            # (`passwordless: true`) and Kratos's separate `passkey` method
+            # cannot satisfy an aal2 challenge — the whole point of this
+            # milestone. Do not flip this to true (docs/auth.md § MFA).
+            passwordless: false
+            rp:
+              # RP ID must be a registrable parent of every origin that runs
+              # the WebAuthn ceremony (dashboard.bex.co, auth.bex.co) — bex.co
+              # is that parent. RP-ID-is-forever: changing it later invalidates
+              # every already-registered security key (docs/auth.md § MFA). The
+              # local overlay overrides id→localhost, origins→localhost:5173.
+              id: bex.co
+              display_name: bex
+              origins:
+                - https://dashboard.bex.co
+        lookup_secret:
+          enabled: true # recovery codes: MFA + lost device ≠ lockout
       flows:
         login:
           ui_url: https://dashboard.bex.co/auth/login
@@ -94,12 +127,24 @@ kratos:
           ui_url: https://dashboard.bex.co/auth/forgot-password
         settings:
           ui_url: https://dashboard.bex.co/settings
+          # A user who has a second factor must present it (aal2) before
+          # changing security-sensitive settings; password-only users keep
+          # aal1. Matches session.whoami.required_aal below (w4/m11).
+          required_aal: highest_available
         verification:
           enabled: false
           ui_url: https://dashboard.bex.co/auth/verification
         error:
           ui_url: https://dashboard.bex.co/auth/error
     session:
+      # `highest_available` (w4/m11): a session is only "fully authenticated"
+      # (whoami 200) at the highest AAL the identity CAN reach — so a user who
+      # enrolled a second factor must complete it (aal2), while a password-only
+      # identity stays satisfied at aal1. This is what makes enrollment turn
+      # login into a two-step challenge; it never affects users without a
+      # second factor.
+      whoami:
+        required_aal: highest_available
       cookie:
         # Scopes the session cookie to every *.bex.co subdomain so it's sent
         # as same-site (not cross-site) from dashboard.bex.co to auth.bex.co —

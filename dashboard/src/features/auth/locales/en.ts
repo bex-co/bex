@@ -30,7 +30,7 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Account settings page heading",
   },
   "auth.settingsSubtitle": {
-    message: "Manage your account profile and password.",
+    message: "Manage your account profile, password, and two-factor security.",
     description: "Account settings page subheading",
   },
   "auth.loggingOutTitle": {

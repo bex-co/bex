@@ -18,6 +18,21 @@ type OryFlowMap = {
   settings: SettingsFlow;
 };
 
+/** Kratos UI-node groups that represent a second factor (docs/auth.md § MFA). */
+const SECOND_FACTOR_GROUPS = new Set(["totp", "webauthn", "lookup_secret"]);
+
+/**
+ * True when an aal2 step-up login flow actually presents a second-factor
+ * challenge. Guards the step-up path: a session that is already aal2 (or an
+ * identity with no second factor) yields a flow with no such node, and we must
+ * not render an empty challenge card — the caller falls back to navigating on.
+ */
+function offersSecondFactor(flow: LoginFlow): boolean {
+  return (flow.ui?.nodes ?? []).some((node) =>
+    SECOND_FACTOR_GROUPS.has(node.group),
+  );
+}
+
 /**
  * Per-tab persistence of the active flow id, so a mid-form reload (or the
  * two-step recovery flow's email → code hop) resumes the same flow instead
@@ -75,16 +90,21 @@ function getFlow<K extends keyof OryFlowMap>(
  * `loginChallenge` (login/registration only) links the flow to a Hydra OAuth2
  * authorization request — Kratos's native `oauth2_provider` integration then
  * accepts the challenge itself on success (docs/auth.md, w4/m9).
+ *
+ * `aal` (login only) requests a higher assurance level: `"aal2"` makes Kratos
+ * return the second-factor step against the existing session (docs/auth.md
+ * § MFA, w4/m11) instead of a first-factor password form.
  */
 function createFlow<K extends keyof OryFlowMap>(
   api: FrontendApi,
   kind: K,
   returnTo: string | undefined,
   loginChallenge?: string,
+  aal?: string,
 ): Promise<OryFlowMap[K]> {
   const req =
     kind === "login"
-      ? api.createBrowserLoginFlow({ returnTo, loginChallenge })
+      ? api.createBrowserLoginFlow({ returnTo, loginChallenge, aal })
       : kind === "registration"
         ? api.createBrowserRegistrationFlow({ returnTo, loginChallenge })
         : kind === "recovery"
@@ -219,8 +239,39 @@ export function useOryFlow<K extends keyof OryFlowMap>(
         if (cancelled) return;
         const { id: errorId } = await oryErrorInfo(err);
         if (errorId === "session_already_available") {
-          // Already signed in — Kratos refuses to create login/registration
-          // flows. Go where the user was headed instead.
+          // A session exists, so Kratos refuses a first-factor login flow.
+          // Under the `highest_available` AAL policy (docs/auth.md § MFA) this
+          // is exactly the "authenticated with a password (aal1) but a second
+          // factor is still owed" case — the whoami that gates protected pages
+          // 403s until aal2, so the auth guard bounced the user here. Mint an
+          // aal2 step-up flow: Kratos returns the second-factor challenge
+          // against the live session and Ory Elements renders it. If that flow
+          // carries no second-factor node (session already aal2, or an
+          // identity with no second factor manually visiting /auth/login),
+          // there's nothing to challenge — go where the user was headed.
+          if (kind === "login") {
+            try {
+              const stepUp = await createFlow(
+                api,
+                kind,
+                returnUrl,
+                loginChallenge,
+                "aal2",
+              );
+              if (cancelled) return;
+              if (offersSecondFactor(stepUp as LoginFlow)) {
+                // Step-up flows are bound to the live session; never persist —
+                // a later fresh visit must start its own first-factor flow.
+                setFlow(stepUp);
+                return;
+              }
+            } catch {
+              // Kratos rejects the aal2 request (no second factor to satisfy
+              // it) — fall through to navigate on.
+            }
+          }
+          // Already signed in with nothing more to prove — go where the user
+          // was headed instead.
           void navigate({ to: returnTo, replace: true });
           return;
         }

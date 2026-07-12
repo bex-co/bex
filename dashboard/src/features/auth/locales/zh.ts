@@ -30,7 +30,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Account settings page heading",
   },
   "auth.settingsSubtitle": {
-    message: "管理您的账户资料和密码。",
+    message: "管理您的账户资料、密码和双重身份验证安全设置。",
     description: "Account settings page subheading",
   },
   "auth.loggingOutTitle": {

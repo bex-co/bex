@@ -21,6 +21,18 @@ kratos:
       default_browser_return_url: http://localhost:5173/
       allowed_return_urls:
         - http://localhost:5173
+      # WebAuthn RP is registrable-parent-scoped (w4/m11): the base value
+      # `bex.co` can't sign ceremonies served from localhost, so the mock stack
+      # registers keys under `localhost`. Deep-merged over base, so
+      # passwordless:false / display_name / totp / lookup_secret all carry
+      # through; `origins` (a list) is replaced wholesale, which is intended.
+      methods:
+        webauthn:
+          config:
+            rp:
+              id: localhost
+              origins:
+                - http://localhost:5173
       flows:
         login:
           ui_url: http://localhost:5173/auth/login
