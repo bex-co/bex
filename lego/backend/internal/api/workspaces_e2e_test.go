@@ -186,7 +186,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	if len(r.Errors) == 0 || !strings.Contains(strings.ToLower(r.Errors[0].Message), "forbidden") {
 		t.Fatalf("non-admin rename: want forbidden, got %v", r.Errors)
 	}
-	r = run("bob", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"second2") }`, map[string]any{"id": secondID})
+	r = run("bob", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"sudo delete workspace second2") }`, map[string]any{"id": secondID})
 	if len(r.Errors) == 0 || !strings.Contains(strings.ToLower(r.Errors[0].Message), "forbidden") {
 		t.Fatalf("non-admin delete: want forbidden, got %v", r.Errors)
 	}
@@ -202,8 +202,10 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	if n := managedAppCRCount(t, cl); n != 1 {
 		t.Fatalf("App CR not projected: count=%d", n)
 	}
-	// Wrong confirmation is a no-op (guard).
-	r = run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"WRONG") }`, map[string]any{"id": secondID})
+	// Wrong confirmation is a no-op (guard). The bare workspace name is
+	// insufficient: Render's guard is the full "sudo delete workspace <name>"
+	// phrase (w6/m5, docs/render-artifacts/workspace-lifecycle.md).
+	r = run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"second2") }`, map[string]any{"id": secondID})
 	if len(r.Errors) == 0 {
 		t.Fatal("wrong confirmation should error")
 	}
@@ -211,7 +213,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		t.Fatalf("workspace destroyed on wrong confirmation: %v", err)
 	}
 	// Correct delete.
-	mustOK(t, run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"second2") }`, map[string]any{"id": secondID}))
+	mustOK(t, run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"sudo delete workspace second2") }`, map[string]any{"id": secondID}))
 	// Row gone (404-shaped).
 	if _, err := st.GetTenant(ctx, secondID); err == nil {
 		t.Fatal("tenants row not deleted")
@@ -348,7 +350,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 	}
-	mustOK(t, run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"datastores") }`, map[string]any{"id": dsID}))
+	mustOK(t, run("alice", `mutation($id:String!){ deleteWorkspace(id:$id, confirmation:"sudo delete workspace datastores") }`, map[string]any{"id": dsID}))
 
 	var dbList appv1alpha1.DatabaseList
 	if err := cl.List(ctx, &dbList, client.MatchingLabels{core.LabelTenant: dsID}); err != nil {

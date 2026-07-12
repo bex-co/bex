@@ -31,27 +31,35 @@ describe("useDeleteWorkspace", () => {
     const { result } = renderHook(() => useDeleteWorkspace());
     let ok;
     await act(async () => {
-      ok = await result.current.remove("tea-1", "acme-hq", "acme-hq");
+      ok = await result.current.remove(
+        "tea-1",
+        "acme-hq",
+        "sudo delete workspace acme-hq",
+      );
     });
 
     expect(ok).toBe(true);
-    expect(mutate).toHaveBeenCalledWith({ variables: { id: "tea-1", confirmation: "acme-hq" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "tea-1", confirmation: "sudo delete workspace acme-hq" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Deleted acme-hq");
   });
 
   it("surfaces a mismatched-confirmation refusal inline", async () => {
     const mutate = vi.fn().mockRejectedValue(
-      new Error('bad request: confirmation must equal the workspace name "acme-hq"'),
+      new Error('bad request: confirmation must be "sudo delete workspace acme-hq"'),
     );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteWorkspace());
     let ok;
     await act(async () => {
-      ok = await result.current.remove("tea-1", "acme-hq", "acme-hq-typo");
+      ok = await result.current.remove("tea-1", "acme-hq", "acme-hq");
     });
 
     expect(ok).toBe(false);
-    expect(result.current.error).toBe('bad request: confirmation must equal the workspace name "acme-hq"');
+    expect(result.current.error).toBe(
+      'bad request: confirmation must be "sudo delete workspace acme-hq"',
+    );
   });
 });

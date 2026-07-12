@@ -154,12 +154,14 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace settings delete section title",
   },
   "workspaces.dangerZoneDescription": {
-    message: "删除工作区将永久移除其服务、数据库和环境变量，且无法撤销。",
+    message:
+      "此操作将删除该工作区的所有资源和数据。所有服务、数据存储和环境变量都将丢失，且无法撤销。",
     description: "Workspace settings delete section description",
   },
   "workspaces.deleteConfirmLabel": {
-    message: "输入 {name} 以确认",
-    description: "Delete-guard input label naming the exact workspace name",
+    message: "在下方输入 {phrase} 以确认",
+    description:
+      "Delete-guard input label naming the exact 'sudo delete workspace <name>' phrase to type",
   },
   "workspaces.deleteErrorTitle": {
     message: "删除工作区失败",

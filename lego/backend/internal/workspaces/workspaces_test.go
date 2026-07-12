@@ -355,7 +355,7 @@ func TestDelete_TearsDownEverything(t *testing.T) {
 	svc := allowSvc(st, &fakeGranter{}, rev, func() { kicks++ }, purge)
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 
-	if err := svc.Delete(ctxAs("user-a"), w.ID, "acme"); err != nil {
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	if _, err := st.GetTenant(context.Background(), w.ID); !errors.Is(err, store.ErrNotFound) {
@@ -379,7 +379,9 @@ func TestDelete_WrongConfirmationNoSideEffects(t *testing.T) {
 	svc := allowSvc(st, &fakeGranter{}, rev, func() { kicks++ })
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 
-	err := svc.Delete(ctxAs("user-a"), w.ID, "wrong")
+	// The bare workspace name is deliberately insufficient: Render's guard is
+	// the full "sudo delete workspace <name>" phrase (w6/m5, workspace-lifecycle.md).
+	err := svc.Delete(ctxAs("user-a"), w.ID, "acme")
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("want bad request, got %v", err)
 	}
@@ -396,7 +398,7 @@ func TestDelete_AdminOnly(t *testing.T) {
 	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil)
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
-	if err := denied.Delete(ctxAs("user-b"), w.ID, "acme"); !errors.Is(err, core.ErrForbidden) {
+	if err := denied.Delete(ctxAs("user-b"), w.ID, "sudo delete workspace acme"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("non-admin delete: want forbidden, got %v", err)
 	}
 	if _, err := st.GetTenant(context.Background(), w.ID); err != nil {
@@ -408,7 +410,7 @@ func TestDelete_PurgerFailureSurfaces(t *testing.T) {
 	st := newFakeStore()
 	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil, &fakePurger{failErr: errors.New("bao down")})
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
-	if err := svc.Delete(ctxAs("user-a"), w.ID, "acme"); err == nil {
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err == nil {
 		t.Fatal("want purger error surfaced")
 	}
 }

@@ -21,6 +21,17 @@ export interface WorkspaceView {
 export const WORKSPACE_NAME_RE = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
 
 /**
+ * The exact phrase the user must type to arm a workspace delete, cloning
+ * Render's live dashboard guard verbatim (docs/render-artifacts/workspace-lifecycle.md,
+ * captured 2026-07-11): "sudo delete workspace <name>", not the bare name. Kept
+ * in lockstep with the backend's `DeleteConfirmation` helper
+ * (backend/internal/workspaces/service.go), which re-validates the same phrase.
+ */
+export function workspaceDeleteConfirmation(name: string): string {
+  return `sudo delete workspace ${name}`;
+}
+
+/**
  * The Render flat-rate lineup (verified 2026-07-08, .pm/w6/RESEARCH-workspaces.md
  * finding 1 + 4): Hobby is free and capped (1 member, 25 services, 5
  * workspaces/user); Pro/Scale/Enterprise lift every cap and add a flat monthly

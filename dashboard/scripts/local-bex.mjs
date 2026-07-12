@@ -521,10 +521,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "DeleteWorkspace": {
       const w = WORKSPACES.find((ws) => ws.id === variables.id);
       if (!w) throw new Error("not found");
-      if (variables.confirmation !== w.name) {
-        throw new Error(
-          `bad request: confirmation must equal the workspace name "${w.name}"`,
-        );
+      // Render's live delete guard: "sudo delete workspace <name>", mirroring the
+      // backend's DeleteConfirmation helper (backend/internal/workspaces/service.go,
+      // w6/m5/t002, docs/render-artifacts/workspace-lifecycle.md).
+      const want = `sudo delete workspace ${w.name}`;
+      if (variables.confirmation !== want) {
+        throw new Error(`bad request: confirmation must be "${want}"`);
       }
       WORKSPACES.splice(WORKSPACES.indexOf(w), 1);
       return { deleteWorkspace: w.id };

@@ -19,19 +19,23 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteWorkspace } from "@/features/workspaces/hooks/use-delete-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import type { WorkspaceView } from "@/features/workspaces/types";
+import {
+  workspaceDeleteConfirmation,
+  type WorkspaceView,
+} from "@/features/workspaces/types";
 
 export interface DeleteWorkspaceCardProps {
   workspace: WorkspaceView;
 }
 
 /**
- * The danger zone (w6/m3/t004): typing the workspace's exact name arms the
- * delete button — a typo is a no-op, not a destroyed workspace (mirrors the
- * backend's own confirmation check, backend/internal/workspaces/service.go
- * Delete). On success, lands the caller in a remaining workspace (chosen from
- * the pre-delete list — the deleted one is already gone from any list a
- * refetch would return) or `/new/workspace` if none is left.
+ * The danger zone (w6/m3/t004, phrase-aligned in w6/m5/t002): typing Render's
+ * "sudo delete workspace <name>" phrase arms the delete button — a typo is a
+ * no-op, not a destroyed workspace (mirrors the backend's own confirmation
+ * check, backend/internal/workspaces/service.go Delete). On success, lands the
+ * caller in a remaining workspace (chosen from the pre-delete list — the deleted
+ * one is already gone from any list a refetch would return) or `/new/workspace`
+ * if none is left.
  */
 export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
   const { t } = useTranslations();
@@ -39,12 +43,13 @@ export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
   const { remove, busy, error } = useDeleteWorkspace();
   const { workspaces, setCurrentWorkspaceId, refetch } = useWorkspace();
 
+  const confirmPhrase = workspaceDeleteConfirmation(workspace.name);
   const [confirmation, setConfirmation] = useState("");
-  const matches = confirmation === workspace.name;
+  const matches = confirmation === confirmPhrase;
 
   async function handleDelete() {
     if (!matches || busy) return;
-    const ok = await remove(workspace.id, workspace.name, confirmation);
+    const ok = await remove(workspace.id, workspace.name, confirmPhrase);
     if (!ok) return;
     const fallback = workspaces.find((w) => w.id !== workspace.id);
     void refetch();
@@ -69,13 +74,13 @@ export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="delete-workspace-confirm">
-            {t("workspaces.deleteConfirmLabel", { name: workspace.name })}
+            {t("workspaces.deleteConfirmLabel", { phrase: confirmPhrase })}
           </Label>
           <Input
             id="delete-workspace-confirm"
             value={confirmation}
             onChange={(e) => setConfirmation(e.target.value)}
-            placeholder={workspace.name}
+            placeholder={confirmPhrase}
             autoComplete="off"
             className="max-w-sm"
           />

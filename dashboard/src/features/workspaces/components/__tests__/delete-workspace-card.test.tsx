@@ -45,20 +45,26 @@ beforeEach(() => {
   workspaceState.workspaces = [WORKSPACE, OTHER];
 });
 
-describe("DeleteWorkspaceCard — type-to-confirm guard (w6/m3/t004)", () => {
-  it("keeps delete disabled until the typed text exactly matches the workspace name", async () => {
+// Render's live guard: the full "sudo delete workspace <name>" phrase, not the
+// bare name (w6/m5/t002, docs/render-artifacts/workspace-lifecycle.md).
+const PHRASE = "sudo delete workspace acme-hq";
+
+describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t002)", () => {
+  it("keeps delete disabled until the full sudo phrase is typed (bare name is not enough)", async () => {
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    const input = screen.getByLabelText(/Type acme-hq to confirm/);
+    const input = screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`));
     const button = screen.getByRole("button", { name: "Delete Workspace" });
     expect(button).toBeDisabled();
 
-    await user.type(input, "acme-h");
+    // The bare workspace name is deliberately insufficient.
+    await user.type(input, "acme-hq");
     expect(button).toBeDisabled();
     expect(remove).not.toHaveBeenCalled();
 
-    await user.type(input, "q");
+    await user.clear(input);
+    await user.type(input, PHRASE);
     expect(button).toBeEnabled();
   });
 
@@ -66,7 +72,10 @@ describe("DeleteWorkspaceCard — type-to-confirm guard (w6/m3/t004)", () => {
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(screen.getByLabelText(/Type acme-hq to confirm/), "acme-hq ");
+    await user.type(
+      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      `${PHRASE} `,
+    );
     const button = screen.getByRole("button", { name: "Delete Workspace" });
     expect(button).toBeDisabled();
 
@@ -78,10 +87,13 @@ describe("DeleteWorkspaceCard — type-to-confirm guard (w6/m3/t004)", () => {
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(screen.getByLabelText(/Type acme-hq to confirm/), "acme-hq");
+    await user.type(
+      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      PHRASE,
+    );
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
 
-    expect(remove).toHaveBeenCalledWith("tea-1", "acme-hq", "acme-hq");
+    expect(remove).toHaveBeenCalledWith("tea-1", "acme-hq", PHRASE);
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
@@ -91,7 +103,10 @@ describe("DeleteWorkspaceCard — type-to-confirm guard (w6/m3/t004)", () => {
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(screen.getByLabelText(/Type acme-hq to confirm/), "acme-hq");
+    await user.type(
+      screen.getByLabelText(new RegExp(`Type ${PHRASE} below to confirm`)),
+      PHRASE,
+    );
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
 
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();

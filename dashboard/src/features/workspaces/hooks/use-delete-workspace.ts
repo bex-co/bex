@@ -16,9 +16,10 @@ export interface UseDeleteWorkspaceResult {
 /**
  * Wires the danger-zone delete to bex-api's `deleteWorkspace` (w6/m1,
  * admin-only): tears down the workspace's Apps, Databases, env-var secrets,
- * and FGA tuples. `confirmation` must equal the workspace's exact name — the
- * backend re-validates it (a client-side-only check would be bypassable), so
- * this hook never second-guesses the server's answer.
+ * and FGA tuples. `confirmation` must equal Render's "sudo delete workspace
+ * <name>" phrase (workspaceDeleteConfirmation) — the backend re-validates it (a
+ * client-side-only check would be bypassable), so this hook never second-guesses
+ * the server's answer.
  */
 export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
   const { t } = useTranslations();

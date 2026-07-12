@@ -82,8 +82,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// delete mutations echo the affected id); a boolean would lose it.
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{
-				"id":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"confirmation": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"confirmation": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.String),
+					// Render's live delete guard: "sudo delete workspace <name>"
+					// (docs/render-artifacts/workspace-lifecycle.md).
+					Description: `must equal "sudo delete workspace <name>"`,
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				id := p.Args["id"].(string)

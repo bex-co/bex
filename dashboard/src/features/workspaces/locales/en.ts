@@ -156,12 +156,13 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.dangerZoneDescription": {
     message:
-      "Deleting a workspace permanently removes its services, databases, and env vars. This can't be undone.",
+      "This will delete all of your workspace's resources and data. All services, datastores, and environment variables will be lost. This can't be undone.",
     description: "Workspace settings delete section description",
   },
   "workspaces.deleteConfirmLabel": {
-    message: "Type {name} to confirm",
-    description: "Delete-guard input label naming the exact workspace name",
+    message: "Type {phrase} below to confirm",
+    description:
+      "Delete-guard input label naming the exact 'sudo delete workspace <name>' phrase to type",
   },
   "workspaces.deleteErrorTitle": {
     message: "Couldn't delete workspace",

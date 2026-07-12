@@ -410,13 +410,22 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 	return view(t, "admin"), nil
 }
 
+// DeleteConfirmation is the exact phrase the caller must type to arm a
+// workspace delete, cloning Render's live dashboard guard verbatim
+// (docs/render-artifacts/workspace-lifecycle.md, captured 2026-07-11): the
+// literal "sudo delete workspace " prefixed to the workspace's own name, not
+// the bare name. Single source of truth so the service guard, the GraphQL arg
+// docs, and the dashboard danger-zone (delete-workspace-card.tsx) agree.
+func DeleteConfirmation(name string) string { return "sudo delete workspace " + name }
+
 // Delete tears a workspace down: it revokes each member's OpenFGA tuple, deletes
 // the tenant row (the FK cascade drops its apps, domains, and memberships in the
 // same statement), nudges the projector to prune the orphaned App CRs, and runs
 // the injected purgers (OpenBao secrets, managed Databases). Admin-only, and
-// guarded by a confirmation that must equal the workspace name (a typo is a
-// no-op, not a destroyed workspace). Idempotent enough to re-run after a partial
-// failure: revoke/purge tolerate already-gone tuples/resources.
+// guarded by a confirmation that must equal DeleteConfirmation(name) — Render's
+// "sudo delete workspace <name>" phrase (a typo is a no-op, not a destroyed
+// workspace). Idempotent enough to re-run after a partial failure: revoke/purge
+// tolerate already-gone tuples/resources.
 func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
 		return err
@@ -428,8 +437,8 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if err != nil {
 		return mapStoreErr(err)
 	}
-	if confirmName != t.Name {
-		return fmt.Errorf("%w: confirmation must equal the workspace name %q", core.ErrBadRequest, t.Name)
+	if want := DeleteConfirmation(t.Name); confirmName != want {
+		return fmt.Errorf("%w: confirmation must be %q", core.ErrBadRequest, want)
 	}
 	// Revoke authz tuples before dropping the rows: the tenant_members rows name
 	// exactly the subjects to revoke, and reading them after the cascade would be
