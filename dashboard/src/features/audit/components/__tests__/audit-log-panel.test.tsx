@@ -1,25 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
-import type { AuditEvent } from "@/features/audit/types";
+import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 
-vi.mock("@/features/team/hooks/use-current-workspace", () => ({
-  useCurrentWorkspace: () => ({
-    workspace: { id: "tea-1", name: "acme", plan: "pro", role: "ADMIN" },
-    loading: false,
-    error: undefined,
-  }),
-}));
-
-const auditState: {
-  events: AuditEvent[];
-  loading: boolean;
-  loadingMore: boolean;
-  error: Error | undefined;
-  forbidden: boolean;
-  unavailable: boolean;
-  hasMore: boolean;
-} = {
+// The panel is presentational (w4/m15): its owner (SecurityComplianceSection)
+// runs the query and passes the result down, so tests inject `state` directly.
+const loadMore = vi.fn();
+const auditState: UseAuditLogResult = {
   events: [],
   loading: false,
   loadingMore: false,
@@ -27,11 +14,12 @@ const auditState: {
   forbidden: false,
   unavailable: false,
   hasMore: false,
+  loadMore,
 };
-const loadMore = vi.fn();
-vi.mock("@/features/audit/hooks/use-audit-log", () => ({
-  useAuditLog: () => ({ ...auditState, loadMore }),
-}));
+
+function renderPanel(overrides: Partial<UseAuditLogResult> = {}) {
+  return render(<AuditLogPanel state={{ ...auditState, ...overrides }} />);
+}
 
 beforeEach(() => {
   auditState.events = [];
@@ -47,13 +35,13 @@ beforeEach(() => {
 describe("AuditLogPanel", () => {
   it("renders nothing for a non-admin (forbidden) caller", () => {
     auditState.forbidden = true;
-    const { container } = render(<AuditLogPanel />);
+    const { container } = renderPanel();
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows a loading skeleton on the initial fetch", () => {
     auditState.loading = true;
-    const { container } = render(<AuditLogPanel />);
+    const { container } = renderPanel();
     expect(screen.getByText("Audit Log")).toBeInTheDocument();
     expect(
       container.querySelectorAll("[data-slot='skeleton']").length,
@@ -63,19 +51,19 @@ describe("AuditLogPanel", () => {
 
   it("shows an explanatory state when the audit store isn't configured (503)", () => {
     auditState.unavailable = true;
-    render(<AuditLogPanel />);
+    renderPanel();
     expect(screen.getByText("Audit log not configured")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("shows a generic error state for any other failure", () => {
     auditState.error = new Error("boom");
-    render(<AuditLogPanel />);
+    renderPanel();
     expect(screen.getByText("Couldn't load the audit log")).toBeInTheDocument();
   });
 
   it("shows an empty state with no events", () => {
-    render(<AuditLogPanel />);
+    renderPanel();
     expect(screen.getByText("No audit events yet")).toBeInTheDocument();
   });
 
@@ -101,7 +89,7 @@ describe("AuditLogPanel", () => {
       },
     ];
     auditState.hasMore = true;
-    render(<AuditLogPanel />);
+    renderPanel();
 
     const rows = screen.getAllByRole("row").slice(1); // drop the header row
     expect(rows).toHaveLength(2);
@@ -128,7 +116,9 @@ describe("AuditLogPanel", () => {
       },
     ];
     auditState.hasMore = false;
-    render(<AuditLogPanel />);
-    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+    renderPanel();
+    expect(
+      screen.queryByRole("button", { name: "Load more" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -19,22 +19,23 @@ import {
   PanelTableSkeleton,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCurrentWorkspace } from "@/features/team/hooks/use-current-workspace";
-import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
+import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 import { AuditEventRow } from "@/features/audit/components/audit-event-row";
 
 type StateKind = "unavailable" | "error";
 
 /**
  * Settings → Audit Log (w4/m14): a workspace's write-verb trail, newest-first —
- * the human-facing counterpart of w4/m10's REST/GraphQL surface. Entirely
- * admin-gated (unlike Team, which shows a read-only list to non-admins): a
- * `forbidden` result renders nothing, not an empty/error card, since a
- * non-admin shouldn't even learn this feature exists.
+ * the human-facing counterpart of w4/m10's REST/GraphQL surface. Presentational:
+ * its `state` (the `useAuditLog` result) is owned by the enclosing
+ * `SecurityComplianceSection` (w4/m15), which shares the single query and gates
+ * the whole section on `forbidden` so a non-admin sees no empty heading.
+ * Entirely admin-gated (unlike Team, which shows a read-only list to
+ * non-admins): a `forbidden` result renders nothing — a non-admin shouldn't
+ * even learn this feature exists.
  */
-export function AuditLogPanel() {
+export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
   const { t } = useTranslations();
-  const { workspace } = useCurrentWorkspace();
   const {
     events,
     loading,
@@ -44,7 +45,7 @@ export function AuditLogPanel() {
     unavailable,
     hasMore,
     loadMore,
-  } = useAuditLog(workspace?.id ?? null);
+  } = state;
 
   if (forbidden) return null;
 

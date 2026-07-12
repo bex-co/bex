@@ -33,6 +33,15 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "管理您的账户资料、密码和双重身份验证安全设置。",
     description: "Account settings page subheading",
   },
+  "auth.securityComplianceSection": {
+    message: "安全与合规",
+    description:
+      "Settings page section heading grouping security and audit cards",
+  },
+  "auth.securityComplianceSectionSubtitle": {
+    message: "账户安全控制以及您工作区的审计记录。",
+    description: "Settings page Security & Compliance section description",
+  },
   "auth.loggingOutTitle": {
     message: "正在退出登录…",
     description: "Logout page heading while the logout request is in flight",

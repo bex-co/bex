@@ -33,6 +33,15 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Manage your account profile, password, and two-factor security.",
     description: "Account settings page subheading",
   },
+  "auth.securityComplianceSection": {
+    message: "Security & Compliance",
+    description:
+      "Settings page section heading grouping security and audit cards",
+  },
+  "auth.securityComplianceSectionSubtitle": {
+    message: "Account security controls and your workspace's audit trail.",
+    description: "Settings page Security & Compliance section description",
+  },
   "auth.loggingOutTitle": {
     message: "Signing out...",
     description: "Logout page heading while the logout request is in flight",
