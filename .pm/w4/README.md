@@ -18,7 +18,7 @@
 - [ ] **m11** — MFA: TOTP + passkeys via Kratos (8 tasks) ← promoted from `002` 2026-07-08 (its w1/m2 revisit condition met; closing tasks retrofitted 2026-07-09)
 - [x] **m12** — Workspace members & roles (Render team surface) (9 tasks) ← from `/pm-brainstorm tasks for w4` 2026-07-08, needs w1/m9 + w4/m7 (closing tasks retrofitted 2026-07-09)
 - [x] **m13** — API-key hygiene: token TTL + key metadata (7 tasks) ← promoted from `004` 2026-07-09 (its m8 pairing plan didn't happen); done 2026-07-09
-- [ ] **m14** — Audit log in the dashboard: Settings → Audit Log panel over the m10 API (10 tasks) ← user request 2026-07-11, needs m10 (done)
+- [x] **m14** — Audit log in the dashboard: Settings → Audit Log panel over the m10 API (10 tasks) ← user request 2026-07-11, needs m10 (done) — done 2026-07-11 (`yarn test`/`yarn lint` green; IA-placement drift vs Render found in parity check, filed as `007`), moved to `done/m14/`
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
@@ -28,4 +28,5 @@
 
 - `003.md` — GitHub social login via Kratos `oidc` — still parked on its two blockers (OAuth-app ownership for self-hosters; local E2E story)
 - `006.md` — Account session management (Kratos `/sessions` list + sign-out-everywhere card in Settings→Security) — sub-hour; ride alongside m11 ← `/pm-brainstorm for w4` 2026-07-09
+- `007.md` — Audit Log dashboard placement: Render's actual IA has no in-app table (CSV-export-only, under Compliance, not Team-adjacent) — revisit if Settings ever gets a Compliance/Security grouping ← m14 t007 2026-07-11
 > `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; notes moved to `done/`.

@@ -1,0 +1,29 @@
+# bex-api's audit-log surface (backend/internal/audit — w4/m10; docs/bex-api.md
+# § Audit log). `auditLogs` is a bare list (no {object, cursor} envelope) —
+# newest-first, admin-scoped (RelCanManage) per workspace. Pagination resumes
+# from the last returned item's `id` passed back as `cursor` (keyset paging on
+# (at, id) descending, internal/store/audit.go).
+
+query AuditLogs(
+  $ownerId: String!
+  $startTime: String
+  $endTime: String
+  $cursor: String
+  $limit: Int
+) {
+  auditLogs(
+    ownerId: $ownerId
+    startTime: $startTime
+    endTime: $endTime
+    cursor: $cursor
+    limit: $limit
+  ) {
+    id
+    timestamp
+    actor
+    actorMethod
+    action
+    status
+    resource
+  }
+}
