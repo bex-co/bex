@@ -235,14 +235,8 @@ func autoscaleDesired(as *appv1alpha1.AutoscalingSpec, usage []PodUsage, tier st
 		return 0, true // no metrics or not enabled — skip
 	}
 
-	minR := as.MinReplicas
-	if minR < 1 {
-		minR = 1
-	}
-	maxR := as.MaxReplicas
-	if maxR < minR {
-		maxR = minR
-	}
+	minR := max(as.MinReplicas, 1)
+	maxR := max(as.MaxReplicas, minR)
 
 	current := int32(len(usage))
 

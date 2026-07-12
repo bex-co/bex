@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -33,10 +34,25 @@ import (
 // off and every deploy uses today's public-clone path, unchanged.
 type CloneTokenSource interface {
 	// CloneToken returns a fresh installation token to clone repoURL if it
-	// belongs to the workspace's GitHub connection. ok=false (nil err) => not a
+	// belongs to workspaceID's GitHub connection. ok=false (nil err) => not a
 	// connected repo (leave cloneSecret alone). A non-nil err is a GitHub failure
 	// the caller must not swallow into a public-clone of a private repo.
-	CloneToken(ctx context.Context, repoURL string) (token string, ok bool, err error)
+	CloneToken(ctx context.Context, workspaceID, repoURL string) (token string, ok bool, err error)
+}
+
+// deployWorkspace resolves the workspace whose GitHub connection owns this App's
+// clone token. The App's own tenant label (stamped by create / the control-plane
+// projector) takes precedence — so a no-identity trigger (the push webhook) still
+// resolves the right connection instead of falling back to the default workspace
+// — then the caller's tenant, then the single-workspace default.
+func (s *Service) deployWorkspace(ctx context.Context, a *appv1alpha1.App) string {
+	if t := a.Labels[core.LabelTenant]; t != "" {
+		return t
+	}
+	if t, ok := s.Tenant(ctx); ok && t != "" {
+		return t
+	}
+	return core.DefaultTenant
 }
 
 // cloneSecretLabel marks the Secrets this feature writes, so the delete cascade
@@ -60,7 +76,7 @@ func (s *Service) ensureCloneSecret(ctx context.Context, a *appv1alpha1.App) (st
 	if s.GitHub == nil || a.Spec.Repo == "" {
 		return "", nil
 	}
-	token, ok, err := s.GitHub.CloneToken(ctx, a.Spec.Repo)
+	token, ok, err := s.GitHub.CloneToken(ctx, s.deployWorkspace(ctx, a), a.Spec.Repo)
 	if err != nil {
 		return "", fmt.Errorf("minting github clone token for %s: %w", a.Spec.Repo, err)
 	}

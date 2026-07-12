@@ -36,8 +36,10 @@ func fakePodMetricsList(items []struct{ cpu, mem string }) []byte {
 		Usage usage  `json:"usage"`
 	}
 	type item struct {
-		Metadata   struct{ Name string `json:"name"` }   `json:"metadata"`
-		Containers []container                            `json:"containers"`
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+		Containers []container `json:"containers"`
 	}
 	type list struct {
 		Items []item `json:"items"`
@@ -45,7 +47,9 @@ func fakePodMetricsList(items []struct{ cpu, mem string }) []byte {
 	var l list
 	for i, it := range items {
 		l.Items = append(l.Items, item{
-			Metadata: struct{ Name string `json:"name"` }{Name: "pod-" + string(rune('a'+i))},
+			Metadata: struct {
+				Name string `json:"name"`
+			}{Name: "pod-" + string(rune('a'+i))},
 			Containers: []container{
 				{Name: "app", Usage: usage{CPU: it.cpu, Memory: it.mem}},
 			},

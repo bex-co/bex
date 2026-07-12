@@ -32,14 +32,16 @@ import (
 
 // fakeCloneTokens is a stub CloneTokenSource.
 type fakeCloneTokens struct {
-	token string
-	ok    bool
-	err   error
-	calls int
+	token         string
+	ok            bool
+	err           error
+	calls         int
+	lastWorkspace string
 }
 
-func (f *fakeCloneTokens) CloneToken(_ context.Context, _ string) (string, bool, error) {
+func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, _ string) (string, bool, error) {
 	f.calls++
+	f.lastWorkspace = workspaceID
 	return f.token, f.ok, f.err
 }
 
@@ -145,6 +147,25 @@ func TestDeployMintFailureSurfaces(t *testing.T) {
 	var a appv1alpha1.App
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &a); !apierrors.IsNotFound(err) {
 		t.Errorf("app should not be created on mint failure, got err=%v", err)
+	}
+}
+
+func TestRedeployResolvesWorkspaceFromAppTenantLabel(t *testing.T) {
+	// The push webhook redeploys with NO caller identity; the clone-token
+	// workspace must come from the App's own tenant label, not the default
+	// workspace (Gap B) — else a tenant-owned private repo can't refresh its token.
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Labels: map[string]string{core.LabelTenant: "tea-xyz"}},
+		Spec:       appv1alpha1.AppSpec{Repo: "https://github.com/octo/app", AutoDeploy: true, CloneSecret: "web-clone"},
+	}
+	gh := &fakeCloneTokens{token: "ghs_fresh", ok: true}
+	svc, _ := ghService(gh, app)
+
+	if _, err := svc.redeploy(context.Background(), "web"); err != nil {
+		t.Fatal(err)
+	}
+	if gh.lastWorkspace != "tea-xyz" {
+		t.Errorf("clone token resolved workspace %q, want the App's tenant tea-xyz", gh.lastWorkspace)
 	}
 }
 

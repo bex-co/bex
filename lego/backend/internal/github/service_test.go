@@ -267,7 +267,7 @@ func TestCloneToken(t *testing.T) {
 	// Repo in the grant (RepoAccessible ok) => a fresh token, across URL forms.
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "ghs_fresh", repoOK: true}, Store: st}
 	for _, url := range []string{"https://github.com/octo/app", "https://github.com/octo/app.git", "git@github.com:octo/app.git"} {
-		tok, ok, err := svc.cloneToken(ctx, url)
+		tok, ok, err := svc.cloneToken(ctx, "default", url)
 		if err != nil || !ok || tok != "ghs_fresh" {
 			t.Errorf("cloneToken(%q) = %q,%v,%v", url, tok, ok, err)
 		}
@@ -275,36 +275,36 @@ func TestCloneToken(t *testing.T) {
 
 	// Repo NOT in the grant (RepoAccessible false) => no token, no error.
 	notGranted := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoOK: false}, Store: st}
-	if tok, ok, err := notGranted.cloneToken(ctx, "https://github.com/octo/app"); ok || tok != "" || err != nil {
+	if tok, ok, err := notGranted.cloneToken(ctx, "default", "https://github.com/octo/app"); ok || tok != "" || err != nil {
 		t.Errorf("unconnected repo = %q,%v,%v", tok, ok, err)
 	}
 
 	// A URL with no owner/repo => no token, no error (public-clone path).
-	if _, ok, err := svc.cloneToken(ctx, "not-a-url"); ok || err != nil {
+	if _, ok, err := svc.cloneToken(ctx, "default", "not-a-url"); ok || err != nil {
 		t.Errorf("unparseable repo = ok=%v err=%v", ok, err)
 	}
 
 	// GitHub off => no token, no error.
 	off := &Service{Base: &core.Base{Namespace: "default"}}
-	if _, ok, err := off.cloneToken(ctx, "https://github.com/octo/app"); ok || err != nil {
+	if _, ok, err := off.cloneToken(ctx, "default", "https://github.com/octo/app"); ok || err != nil {
 		t.Errorf("github off should be (false,nil), got ok=%v err=%v", ok, err)
 	}
 
 	// No connection => no token, no error.
 	noConn := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoOK: true}, Store: newFakeStore()}
-	if _, ok, err := noConn.cloneToken(ctx, "https://github.com/octo/app"); ok || err != nil {
+	if _, ok, err := noConn.cloneToken(ctx, "default", "https://github.com/octo/app"); ok || err != nil {
 		t.Errorf("no connection should be (false,nil), got ok=%v err=%v", ok, err)
 	}
 
 	// Mint failure on a connected repo => error (never a silent public clone).
 	failMint := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{tokenErr: &APIError{Status: 500}, repoOK: true}, Store: st}
-	if _, _, err := failMint.cloneToken(ctx, "https://github.com/octo/app"); err == nil {
+	if _, _, err := failMint.cloneToken(ctx, "default", "https://github.com/octo/app"); err == nil {
 		t.Error("mint failure on a connected repo must surface an error")
 	}
 
 	// Grant-check failure (5xx) => error, not a silent public clone.
 	failCheck := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoErr: &APIError{Status: 500}}, Store: st}
-	if _, _, err := failCheck.cloneToken(ctx, "https://github.com/octo/app"); err == nil {
+	if _, _, err := failCheck.cloneToken(ctx, "default", "https://github.com/octo/app"); err == nil {
 		t.Error("repo-access-check failure must surface an error")
 	}
 }

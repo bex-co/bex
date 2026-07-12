@@ -164,12 +164,24 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// stamps spec.restartedAt) yields a new tag, so the built image is fresh and
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
+		buildNs := r.buildNamespace(app.Namespace)
+		// The clone Secret (docs/github-integration.md) that bex-api wrote lives
+		// in the App's namespace, but the build Job runs in buildNs
+		// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
+		// GIT_AUTH_TOKEN — otherwise the build pod is CreateContainerConfigError
+		// ("secret not found"). Mechanism-only: the operator just copies an opaque
+		// Secret across namespaces; it never mints or inspects the token.
+		if app.Spec.CloneSecret != "" && buildNs != app.Namespace {
+			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
+				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err))
+			}
+		}
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir, Name: app.Name,
 			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
 			Builder:     app.Spec.Builder,
 			Revision:    fmt.Sprintf("gen-%d", app.Generation),
-			Namespace:   r.buildNamespace(app.Namespace),
+			Namespace:   buildNs,
 			CloneSecret: app.Spec.CloneSecret,
 			Client:      r.Client,
 		})
@@ -224,6 +236,30 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 		return r.BuildNamespace
 	}
 	return appNS
+}
+
+// copyCloneSecret relocates an opaque git-credential Secret from srcNS to dstNS
+// so a build Job running in a separate BEX_BUILD_NAMESPACE can read it (the
+// Secret is created by bex-api in the App's namespace). Idempotent: overwritten
+// on every build, so the token stays fresh. Mechanism-only — the operator never
+// reads the token, only copies the bytes.
+func (r *AppReconciler) copyCloneSecret(ctx context.Context, srcNS, dstNS, name string) error {
+	var src corev1.Secret
+	if err := r.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
+		return err
+	}
+	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, dst, func() error {
+		dst.Type = src.Type
+		dst.Data = src.Data
+		if dst.Labels == nil {
+			dst.Labels = map[string]string{}
+		}
+		dst.Labels[labelApp] = name
+		dst.Labels["app.bex.co/component"] = "clone-secret"
+		return nil
+	})
+	return err
 }
 
 // lastActiveTime parses the annotLastActive annotation, returning zero if absent or invalid.

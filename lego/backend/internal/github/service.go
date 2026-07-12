@@ -211,8 +211,8 @@ func (s *Service) ListRepos(ctx context.Context) ([]Repo, error) {
 type tokenSource struct{ s *Service }
 
 // CloneToken satisfies apps.CloneTokenSource.
-func (t tokenSource) CloneToken(ctx context.Context, repoURL string) (string, bool, error) {
-	return t.s.cloneToken(ctx, repoURL)
+func (t tokenSource) CloneToken(ctx context.Context, workspaceID, repoURL string) (string, bool, error) {
+	return t.s.cloneToken(ctx, workspaceID, repoURL)
 }
 
 // DeployTokenSource returns the deploy path's clone-token seam (wired onto
@@ -228,7 +228,7 @@ func (s *Service) DeployTokenSource() tokenSource { return tokenSource{s} }
 //     grant — the caller keeps today's public-clone behavior.
 //   - non-nil err: a GitHub failure — the caller must fail the deploy, never
 //     silently public-clone what might be a private repo.
-func (s *Service) cloneToken(ctx context.Context, repoURL string) (string, bool, error) {
+func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (string, bool, error) {
 	if !s.configured() {
 		return "", false, nil
 	}
@@ -236,7 +236,7 @@ func (s *Service) cloneToken(ctx context.Context, repoURL string) (string, bool,
 	if !ok {
 		return "", false, nil // not an owner/repo URL — nothing to match against
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	row, err := s.Store.GetGitConnection(ctx, workspaceID)
 	if errors.Is(err, store.ErrNotFound) {
 		return "", false, nil
 	}
