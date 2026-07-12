@@ -92,7 +92,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Application logs (query + live tail) | ✅ | ✅ | ✅ | ✅ | `GET /v1/logs` + `/v1/logs/subscribe`; GraphQL `logs`; MCP `list_logs`; Logs tab (w3/m1, w5/m6). **Durable history (w3/m5):** with `BEX_LOKI_URL` set the query reads a Loki store (log-shipper DaemonSet) so logs survive pod restarts and time-range is a real bounded search; 7-day retention = Render's Hobby window (Render tiers 7/14/30 by plan). Pure `QueryLogs` backend swap — shapes/limits identical, byte-identical fallback when unset. **Divergence:** live tail is **SSE** where Render upgrades to WebSocket (and always reads pod logs, not Loki). [ADR010-observability.md](ADR010-observability.md). |
-| Request / HTTP logs + structured filters | ✖ | ✖ | ✖ | ✖ | Render filters `level`/`statusCode`/`method`/`path`/`instance`/`host`/`direction` + MCP `list_log_label_values`. bex sources application logs only (accepted-but-empty for `type=request`/`build`). → **w3/002**. |
+| Request / HTTP logs + structured filters | ✖ | ✖ | ✖ | ✖ | Render filters `level`/`statusCode`/`method`/`path`/`instance`/`host`/`direction` + MCP `list_log_label_values`. bex sources application logs only (accepted-but-empty for `type=request`/`build`). → **w3/m8** (promoted from w3/002, 2026-07-12; rides the m5 Loki pipeline). |
 | Log streams (external drains) | — | — | — | — | Render `owner-log-stream`/`resource-log-streams`. External log-drain integration — non-goal. |
 
 ## Metrics
@@ -170,7 +170,7 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Per-service autoscaling config | **`w1/m20`** | done 2026-07-11 (HPA-style reconciler + REST/GraphQL/MCP surfaces + dashboard Scaling tab; CRD `AutoscalingSpec`, 5-min scale-down stabilization window) |
 | Postgres advanced lifecycle & data protection | `w1/m17` (HA → `w1/013`) | done 2026-07-09 (backups+PITR, suspend/resume/restart, IP allowlist + PgBouncer pooler + users, across REST/GraphQL/MCP + dashboard; HA/replicas → `w1/013`) |
 | Additional service types: background worker + cron job | `w1/m15` | done 2026-07-09 (static site split → `w1/012`) |
-| Request/HTTP logs + structured filters | **`w3/002`** (new) | todo |
+| Request/HTTP logs + structured filters | `w3/m8` (promoted from `w3/002` 2026-07-12) | todo (gated on w3/m5 closeout) |
 | Projects & environments; registry creds; notifications; outbound webhooks; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |
 
 Deliberate non-goals (marked `—`): persistent disks, shell/SSH & one-off exec, static-site edge rules, SSO/SAML/SCIM, log/metric streams, maintenance, dedicated IPs, workflows — see the rationale in each row and [DO_NOT_DO.md](../.pm/DO_NOT_DO.md).

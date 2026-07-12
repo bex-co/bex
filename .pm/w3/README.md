@@ -12,10 +12,12 @@
 - [ ] **m5** — Durable logs: Loki-backed history behind the same API (9 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (w3/001's explicit v0 deferral)
 - [ ] **m6** — Platform alerting: Alertmanager + rules for bex's own health (8 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (alertmanager disabled; backup CronJobs unwatched)
 - [ ] **m7** — Service events feed (`GET /v1/services/{id}/events`) (8 tasks) ← from `/pm-brainstorm more` 2026-07-12 — composes w2/m5 deploy objects + w4/m10 audit log (both done); Events-tab UI rides `w5/007`
+- [ ] **m8** — Request/HTTP logs + structured filters over the Loki pipeline (9 tasks) ← promoted from `002` 2026-07-12 (its gate — the m5 log-backend decision — is settled; gated on m5 closeout)
 
 ## Inbox
 
-- `002.md` — Request/HTTP logs + structured log filters (level · status · method · path · instance) — from the w1/m13 parity audit; request logs likely ride m5's pipeline
 - `003.md` — Log Streams: forward logs to external observability tools (Render parity) — park until m5's shipper exists
+
+> `002.md` (request logs + structured filters) promoted to **m8** 2026-07-12; note moved to `done/`.
 
 > `001.md` (v0 observability backend strategy → docs/ADR010-observability.md) done — the doc shipped and is indexed; moved to `done/001.md` 2026-07-09.
