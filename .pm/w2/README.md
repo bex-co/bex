@@ -14,14 +14,15 @@
 - [x] **m8** — Connect GitHub: GitHub App connection + repo listing (REST/GraphQL/MCP/UI) (10 tasks; DONE 2026-07-12 — live DoD PASSED against the real `bex-co` GitHub App on the mock cluster; dashboard card re-landed after the codegen fix) ← from `/pm-brainstorm for w2` 2026-07-11 (parity row "Git connections" ◐)
 - [x] **m9** — Private-repo deploys + zero-config GitHub push-to-deploy (9 tasks; DONE 2026-07-12 — t005 live acceptance PASSED: private repo → live URL, hands-free push → rev-2, `autoDeploy:false` suppresses, tampered signature 401; follow-up `005.md` filed on store-path composition) ← from `/pm-brainstorm for w2` 2026-07-11, needs w2/m8; unblocks `w5/m15`
 - [ ] **m10** — Deploy cancel + rollback (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (the two ✖ Deploys rows m5 left; rollback target recorded per deploy); UI buttons ride `w5/007`
+- [ ] **m11** — Unify service creation through the control-plane store (9 tasks) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
 
 ## Inbox
 
-- `005.md` — Compose the control-plane store path with clone secrets + deploy history (found during the m8/m9 live acceptance 2026-07-12: projector doesn't mint `cloneSecret`; public creates aren't store-managed so deploy history is empty for them)
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 - _(none open — `002.md` retired to `done/` after w6/m2 closed; README line synced 2026-07-12, was stale)_
 
 > `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`.
 > `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/ADR025-connect-an-agent.md`) — moved to `done/`.
+> `005.md` promoted to **m11** (unify service creation) 2026-07-12 — moved to `done/`.
 
 > **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/ADR014-sandboxes.md (ADR, status: proposed) for a future explicit re-open.
