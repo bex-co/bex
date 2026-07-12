@@ -19,9 +19,10 @@
 - [x] **m13** — Build & Deploy settings section (Root Directory) (8 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic); UI half of `w1/m18`, gated on it — done 2026-07-10, moved to `done/m13/`
 - [x] **m14** — Delete service: dashboard danger-zone action (8 tasks) ← from `/pm-brainstorm new milestones` 2026-07-09, unblocked — w2/m4 done 2026-07-09; done 2026-07-11, moved to `done/m14/`
 - [ ] **m15** — New-service create wizard (source picker · repo picker · deploy) (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (Render `/web/new` parity); GitHub tab needs `w2/m8`, private repos `w2/m9` — public-URL/image tabs unblocked
+- [ ] **m16** — Manual-scaling section in service Settings (9 tasks) ← promoted from `004` 2026-07-11, unblocked by `w2/m12` (backend scale API shipped 2026-07-08)
 
 ## Inbox
 
-- `004.md` — Manual-scaling section in service Settings — blocked on `w1/004` (backend API half)
+_(empty — `004` promoted to m16)_
 
-> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09.
+> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`.
