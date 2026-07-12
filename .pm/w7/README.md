@@ -9,6 +9,8 @@
 - [x] **m3** — bex-api abuse hardening: Render-shaped rate limits + request caps (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 - [x] **m4** — Tenant egress hardening: block cloud metadata + node-local endpoints (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-11
 - [x] **m5** — Managed Key Value network access controls (ipAllowList parity) (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-11
+- [ ] **m6** — Custom domain ownership verification + cross-App collision guard (9 tasks) ← from `/pm-brainstorm for w7` 2026-07-12
+- [ ] **m7** — Least-privilege platform RBAC (operator + bex-api secret scoping) (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-12
 
 ## Inbox
 
