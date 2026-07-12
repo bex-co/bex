@@ -30,9 +30,9 @@ import (
 )
 
 // fakeHydra serves POST /admin/oauth2/introspect: testToken is active (sub
-// "client-1", with the given aud list, if any), everything else inactive. hits
-// counts real introspections.
-func fakeHydra(t *testing.T, hits *atomic.Int32, aud ...string) *httptest.Server {
+// "client-1", with the given issuer and aud list), everything else inactive.
+// hits counts real introspections.
+func fakeHydra(t *testing.T, hits *atomic.Int32, iss string, aud ...string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/admin/oauth2/introspect" || r.Method != http.MethodPost {
@@ -44,7 +44,7 @@ func fakeHydra(t *testing.T, hits *atomic.Int32, aud ...string) *httptest.Server
 		w.Header().Set("Content-Type", "application/json")
 		if r.PostFormValue("token") == testToken {
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"active": true, "sub": "client-1", "client_id": "client-1", "aud": aud,
+				"active": true, "sub": "client-1", "client_id": "client-1", "iss": iss, "aud": aud,
 			})
 			return
 		}
@@ -58,7 +58,7 @@ func fakeHydra(t *testing.T, hits *atomic.Int32, aud ...string) *httptest.Server
 // accepting testToken.
 func fakeHydraURL(t *testing.T) string {
 	var hits atomic.Int32
-	return fakeHydra(t, &hits).URL
+	return fakeHydra(t, &hits, "").URL
 }
 
 // fakeKratos serves GET /sessions/whoami: session token "live-session" or a
@@ -112,7 +112,7 @@ var echoIdentity = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 
 func TestAuthGate(t *testing.T) {
 	var hits atomic.Int32
-	hydra := fakeHydra(t, &hits)
+	hydra := fakeHydra(t, &hits, "")
 	kratos := fakeKratos(t)
 
 	cases := []struct {
@@ -192,8 +192,8 @@ func TestAuthGate(t *testing.T) {
 
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
-	hydra := fakeHydra(t, &hits)
-	mw := newOryAuth(hydra.URL, "", "", "", nil, nil).middleware(echoIdentity)
+	hydra := fakeHydra(t, &hits, "")
+	mw := newOryAuth(hydra.URL, "", "", "", "", nil, nil).middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)
@@ -227,9 +227,9 @@ func TestIntrospectionCache(t *testing.T) {
 // synchronous capture so the assertion is deterministic.
 func TestIntrospectionTouchesKey(t *testing.T) {
 	var hits atomic.Int32
-	hydra := fakeHydra(t, &hits)
+	hydra := fakeHydra(t, &hits, "")
 	touched := make(chan string, 4)
-	mw := newOryAuth(hydra.URL, "", "", "", nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
 
 	do := func(token string) {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)

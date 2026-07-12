@@ -86,9 +86,10 @@ type Server struct {
 	// OAuthIssuer is Hydra's public issuer (e.g. https://oauth.bex.co);
 	// OAuthResource is this API's canonical resource URI (e.g.
 	// https://api.bex.co/mcp) — advertised via RFC 9728 protected-resource
-	// metadata and enforced as the expected token audience. Both unset =>
+	// metadata. When set, the introspected token's `aud` must include the
+	// resource and its `iss` must match the issuer (w6/m6). Both unset =>
 	// behavior is byte-identical to before (no metadata endpoint, bare
-	// WWW-Authenticate, no audience check).
+	// WWW-Authenticate, no audience/issuer check).
 	OAuthIssuer   string
 	OAuthResource string
 
@@ -385,7 +386,7 @@ func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.APIKeys != nil {
 		touch = s.APIKeys.TouchAPIKey
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.resourceMetadataURL(), s.Onboard, touch).middleware, nil
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.Onboard, touch).middleware, nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata

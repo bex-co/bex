@@ -18,6 +18,37 @@ for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/;
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
 
+# Platform-side tenant-isolation lockdown shape (w6/m6 t004, docs/ADR022-tenant-isolation.md
+# §platform-side). Each platform namespace must carry a default-deny-ingress
+# NetworkPolicy (empty podSelector + policyTypes [Ingress]) and none may name the
+# tenant apps namespace ("default") in an allow-list. This is the cluster-less,
+# CI-runnable twin of the live reachability matrix in verify-tenant-isolation.sh —
+# a regression here fails CI, not at a live penetration.
+# Caveat: the namespace set below is hardcoded, so a NEW platform namespace added
+# without a deny-tenant-ingress policy is not caught — extend the list when one is added.
+POL="deploy/gitops/base/network-policies.yaml"
+if [ -f "$POL" ]; then
+  echo "==> $POL lockdown shape"
+  # One row per deny-tenant-ingress policy: "<ns>:<podSelectorLen>:<policyTypes>".
+  # Four invariants checked over this single pass, then the allow-list peer check
+  # (a different query shape) as a second pass.
+  rows="$(yq -N '. | select(.kind=="NetworkPolicy" and .metadata.name=="deny-tenant-ingress") | .metadata.namespace + ":" + ((.spec.podSelector | length) | tostring) + ":" + (.spec.policyTypes | join(","))' "$POL")"
+  for ns in bex-system bex-registry secrets monitoring; do
+    echo "$rows" | grep -q "^${ns}:" || { echo "FAIL: $ns has no deny-tenant-ingress NetworkPolicy" >&2; fail=1; }
+  done
+  # empty podSelector (default-deny all pods) — non-zero lengths are a regression.
+  # awk (not grep) for field-2 comparison: BSD grep -E mishandles the [^:]+ form.
+  bad="$(echo "$rows" | awk -F: '$2 != 0' || true)"
+  [ -z "$bad" ] || { echo "FAIL: non-empty podSelector (must default-deny ALL pods): $bad" >&2; fail=1; }
+  # policyTypes must include Ingress
+  bad="$(echo "$rows" | grep -v Ingress || true)"
+  [ -z "$bad" ] || { echo "FAIL: missing Ingress in policyTypes: $bad" >&2; fail=1; }
+  # no allow-list peer may name the tenant apps namespace (bex-registry's build-pod
+  # exception uses a podSelector gate, not a bare namespace allow, so it stays clean)
+  cnt="$(yq -N '. | select(.kind=="NetworkPolicy") | .spec.ingress[].from[]? | .namespaceSelector.matchLabels["kubernetes.io/metadata.name"]' "$POL" | grep -cx default || true)"
+  [ "$cnt" -eq 0 ] || { echo "FAIL: a platform NetworkPolicy allow-lists the tenant apps namespace (default)" >&2; fail=1; }
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

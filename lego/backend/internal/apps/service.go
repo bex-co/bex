@@ -482,6 +482,18 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.Repo == "" && req.Image == "" {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
+	// Build-from-git inputs are validated at the API boundary (w6/m6 t003) so the
+	// operator never forwards an unchecked repo/branch/rootDirectory into the
+	// BuildKit context string. A bare image deploy skips these (no build).
+	if req.Repo != "" && !store.ValidRepo(req.Repo) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: repo must be an https/ssh/git URL", core.ErrBadRequest)
+	}
+	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
+	}
+	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
+	}
 	svcType, err := normalizeType(req.Type)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -767,6 +779,9 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	}
 	if a.Spec.Repo == "" {
 		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (root directory only applies to build-from-git)", core.ErrBadRequest, name)
+	}
+	if !store.ValidRootDir(rootDir) {
+		return AppView{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir

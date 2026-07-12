@@ -107,6 +107,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR021-keyvalue-management.md](docs/ADR021-keyvalue-management.md) — managed tenant key-value (Valkey): `KeyValue` CR → Valkey StatefulSet, plans, internal/external URLs.
 - [docs/ADR001-go-and-gitops.md](docs/ADR001-go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 - [docs/ADR022-tenant-isolation.md](docs/ADR022-tenant-isolation.md) — ADR: east-west network enforcement — threat model, label-scoped NetworkPolicy mechanism, dialect choice, reachability matrix.
+- [docs/ADR028-security-review.md](docs/ADR028-security-review.md) — evidence-backed audit (RBAC, supply chain, injection surface, network isolation, secrets hygiene, OAuth) with severities, remediation status, and a follow-up register.
 
 ## Rules
 

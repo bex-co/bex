@@ -220,6 +220,12 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 	if req.Repo == "" && req.Image == "" {
 		return App{}, fmt.Errorf("%w: one of repo or image is required", ErrInvalid)
 	}
+	if req.Repo != "" && !ValidRepo(req.Repo) {
+		return App{}, fmt.Errorf("%w: repo must be an https/ssh/git URL", ErrInvalid)
+	}
+	if req.Branch != "" && !ValidGitRef(req.Branch) {
+		return App{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", ErrInvalid)
+	}
 	tier, err := normalizeTier("tier", req.Tier)
 	if err != nil {
 		return App{}, err
@@ -364,6 +370,22 @@ var (
 	// hostRE: lowercase FQDN with at least two labels (custom domains are
 	// full hostnames, never bare labels).
 	hostRE = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
+	// repoRE: an https://, http://, ssh://, or git@ SCP-form git URL with no
+	// whitespace or control characters — the only shapes BuildKit's git context
+	// should ever receive. file:// and bare local paths are refused (w6/m6 t003)
+	// so a request can never point a build at the build pod's own filesystem.
+	// '#' is excluded too: the operator's gitContext concatenates repo+"#"+ref
+	// (lego/operator/internal/build/build.go) and BuildKit splits the context at
+	// the FIRST '#', so a '#' embedded in repo would let an attacker's trailing
+	// text become the ref/subdir and demote the validated branch/rootDir —
+	// reopening leading-dash ref injection and ".." rootDir traversal.
+	// Length is bounded separately in ValidRepo (RE2 caps repetition at 1000).
+	repoRE = regexp.MustCompile(`^(https?://|ssh://|git@)[^\x00-\x20\x7f#]+$`)
+	// refRE: a git branch/tag/ref/SHA — alphanumerics and . _ / @ + -, starting
+	// with an alphanumeric (no leading "-" so a ref can never be read as a git
+	// flag, no leading "." or "/"). Rejects all control/whitespace/shell-meta
+	// characters (w6/m6 t003).
+	refRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@+-]{0,254}$`)
 )
 
 func validateName(field, v string) error {
@@ -378,6 +400,38 @@ func validateName(field, v string) error {
 // rule as this internal create API — the two can't disagree about what a valid
 // name is (the same single-source rationale as MaxReplicas).
 func ValidAppName(v string) bool { return nameRE.MatchString(v) }
+
+// ValidRepo reports whether v is an acceptable git repo URL for a build-from-git
+// App (https/ssh/git@, no whitespace or control chars, ≤2048 bytes). Exported so
+// bex-api and the internal create API enforce one rule (w6/m6 t003).
+func ValidRepo(v string) bool { return len(v) <= 2048 && repoRE.MatchString(v) }
+
+// ValidGitRef reports whether v is an acceptable git branch/tag/ref for a
+// build-from-git App (no shell metacharacters, no leading dash). Single-source
+// for both create paths (w6/m6 t003).
+func ValidGitRef(v string) bool { return refRE.MatchString(v) }
+
+// ValidRootDir reports whether v is a safe build root directory: a relative path
+// with no traversal ("..") or absolute components and no control characters, ≤512
+// bytes. Empty (the default — build the repo root) is valid. Exported so bex-api's
+// SetRootDir and create enforce one rule (w6/m6 t003).
+func ValidRootDir(v string) bool {
+	if v == "" {
+		return true
+	}
+	if len(v) > 512 { // bound pathological input (symmetric with ValidRepo's cap)
+		return false
+	}
+	if strings.ContainsAny(v, "\x00\r\n\t") || strings.Contains(v, "\\") || strings.HasPrefix(v, "/") {
+		return false
+	}
+	for _, part := range strings.Split(v, "/") {
+		if part == ".." || part == "" {
+			return false
+		}
+	}
+	return true
+}
 
 // normalizeTier validates a tier/plan string against lego/types/tiers'
 // compute family, the one shared ladder (also consumed by the operator for

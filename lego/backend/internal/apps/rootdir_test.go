@@ -158,6 +158,22 @@ func TestSetRootDirRejectsImageBackedApp(t *testing.T) {
 	}
 }
 
+// TestSetRootDirRejectsTraversal is the w6/m6 t003 regression: an untrusted
+// rootDirectory must never escape the cloned repo. A traversal or absolute path
+// is rejected at the API boundary rather than forwarded to BuildKit.
+func TestSetRootDirRejectsTraversal(t *testing.T) {
+	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+
+	for _, bad := range []string{"../escape", "apps/../escape", "/etc/passwd", "apps\n/web"} {
+		if _, err := svc.SetRootDir(context.Background(), "web", bad); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("SetRootDir(%q) should be core.ErrBadRequest, got %v", bad, err)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.RootDir; got != "" {
+		t.Errorf("rejected SetRootDir calls must not mutate spec.rootDir, got %q", got)
+	}
+}
+
 func TestRESTPatchServiceRootDir(t *testing.T) {
 	svc, _ := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
 	mux := http.NewServeMux()

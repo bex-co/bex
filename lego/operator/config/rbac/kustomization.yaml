@@ -9,20 +9,11 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
-# The following RBAC configurations are used to protect
-# the metrics endpoint with authn/authz. These configurations
-# ensure that only authorized users and service accounts
-# can access the metrics endpoint. Comment the following
-# permissions if you want to disable this protection.
-# More info: https://book.kubebuilder.io/reference/metrics.html
-- metrics_auth_role.yaml
-- metrics_auth_role_binding.yaml
-- metrics_reader_role.yaml
-# For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
-# default, aiding admins in cluster management. Those roles are
-# not used by the control-plane itself. You can comment the following lines
-# if you do not want those helpers be installed with your Project.
-- service_admin_role.yaml
-- service_editor_role.yaml
-- service_viewer_role.yaml
-
+# w6/m6 RBAC least-privilege audit: removed the kubebuilder-scaffolded
+# metrics + service helper roles. The metrics_auth_role / metrics_reader_role
+# granted tokenreview/subjectaccessreview (auth delegation) and /metrics read
+# for a kube-rbac-proxy sidecar that this repo does not run — dead privileges.
+# The service_admin/editor/viewer roles targeted a non-existent app.bex.co
+# "services" CRD (the CRD group defines apps/databases/keyvalues only) and
+# service_admin_role carried an unjustified verbs: ['*'] wildcard. Re-add these
+# only alongside the consumer that actually needs them (e.g. kube-rbac-proxy).

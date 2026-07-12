@@ -94,6 +94,13 @@ test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expect
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
 
+# Live-verify the tenant-isolation reachability matrix against the current
+# kubeconfig cluster. Needs a CNI that enforces NetworkPolicy (Cilium/Calico)
+# and the operator + platform policies deployed. Idempotent + self-cleaning.
+.PHONY: verify-tenant-isolation
+verify-tenant-isolation:
+	bash $(CURDIR)/../../scripts/verify-tenant-isolation.sh
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint over both modules (operator + backend); fails if either does
 	@rc=0; \

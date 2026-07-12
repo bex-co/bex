@@ -59,6 +59,13 @@ type oryAuth struct {
 	// request param), so plain API-key (client_credentials) tokens carry no
 	// audience and must keep working. A documented subset, not full RFC 8707.
 	resource string
+	// Issuer pinning (w6/m6): when set (Hydra's public issuer, e.g.
+	// https://oauth.bex.co), a token whose introspected `iss` is non-empty must
+	// match it. Defense-in-depth on top of introspecting one fixed Hydra admin
+	// URL — bounds the residual risk of BEX_HYDRA_ADMIN_URL misconfiguration
+	// pointing at the wrong/shared Hydra. Empty iss stays accepted (the same
+	// defensive shape as the aud check: client_credentials tokens need not carry it).
+	issuer string
 	// challenge is the constant WWW-Authenticate value for 401s: bare "Bearer",
 	// or — when discovery is configured — enriched with RFC 9728's
 	// `resource_metadata="…"` so an MCP client can find the authorization server.
@@ -84,7 +91,7 @@ type oryAuth struct {
 	touch func(clientID string)
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, onboard Onboarding, touch func(string)) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, onboard Onboarding, touch func(string)) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
@@ -93,6 +100,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, resourceMetadataURL string, 
 		hydraAdminURL: strings.TrimSuffix(hydraAdminURL, "/"),
 		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
 		resource:      resource,
+		issuer:        issuer,
 		challenge:     challenge,
 		onboard:       onboard,
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
@@ -184,6 +192,7 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 		Active   bool     `json:"active"`
 		Sub      string   `json:"sub"`
 		ClientID string   `json:"client_id"`
+		Iss      string   `json:"iss"`
 		Exp      float64  `json:"exp"`
 		Aud      []string `json:"aud"`
 	}
@@ -196,6 +205,11 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 	// Audience discipline (see the resource field): a token minted for another
 	// resource must not authorize this one. Empty aud stays accepted (API keys).
 	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
+		return core.Identity{}, nil
+	}
+	// Issuer discipline (see the issuer field): a token from a different issuer
+	// must not authorize this resource. Empty iss stays accepted.
+	if a.issuer != "" && out.Iss != "" && out.Iss != a.issuer {
 		return core.Identity{}, nil
 	}
 	subject := out.Sub
