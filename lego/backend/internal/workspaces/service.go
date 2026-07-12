@@ -88,6 +88,10 @@ type WorkspaceStore interface {
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
 	CountWorkspacesForSubjectPlan(ctx context.Context, subject, plan string) (int, error)
+	// OwnerIDForSubject returns the stable opaque "own-" id for a subject
+	// (minted on first sight) — the Render userId the members surface reports
+	// instead of the raw subject (w6/m7).
+	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
 }
 
 // WorkspaceGranter writes a subject's OpenFGA membership on a workspace (the
@@ -296,9 +300,12 @@ func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
 }
 
 // MemberView is a workspace member with the identity attributes Render's
-// teamMember object needs, layered onto the tenant_members row.
+// teamMember object needs, layered onto the tenant_members row. OwnerID is the
+// member's opaque "own-" id — the Render userId (w6/m7); Subject is the raw
+// OpenFGA subject, kept for internal use (revoke/email lookup), never emitted.
 type MemberView struct {
 	Subject    string
+	OwnerID    string
 	Role       string
 	Email      string
 	MFAEnabled bool
@@ -327,6 +334,12 @@ func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView
 	out := make([]MemberView, 0, len(rows))
 	for _, m := range rows {
 		mv := MemberView{Subject: m.Subject, Role: m.Role}
+		// Resolve the opaque own- id (minted on first sight) — the Render userId.
+		ownID, err := s.Store.OwnerIDForSubject(ctx, m.Subject)
+		if err != nil {
+			return nil, err
+		}
+		mv.OwnerID = ownID
 		if s.Identities != nil {
 			if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
 				mv.Email, mv.MFAEnabled = attrs.Email, attrs.MFAEnabled

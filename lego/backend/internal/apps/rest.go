@@ -178,12 +178,17 @@ func parseYesNo(s string) *bool {
 // it holds no logic beyond routing + Render serialization.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	list := func(w http.ResponseWriter, r *http.Request) {
-		apps, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		apps, err := s.List(r.Context(), q.Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toServiceList(apps)) // [{service, cursor}, ...]
+		// Render's cursor pagination (docs/render-artifacts/owners-api.md): a
+		// service's cursor is its name; `cursor`/`limit` page the result.
+		after, limit := core.PageParams(q)
+		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
+		core.WriteJSON(w, http.StatusOK, toServiceList(page)) // [{service, cursor}, ...]
 	}
 	get := func(w http.ResponseWriter, r *http.Request) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))

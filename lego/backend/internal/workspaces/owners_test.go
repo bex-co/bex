@@ -215,9 +215,13 @@ func TestRenderTeamMemberRole_UppercaseMapping(t *testing.T) {
 }
 
 func TestToRenderTeamMember_NoNameHonestOmission(t *testing.T) {
-	m := toRenderTeamMember(MemberView{Subject: "user-a", Role: "admin", Email: "a@example.com", MFAEnabled: true})
-	if m.UserID != "user-a" || m.Name != "" || m.Email != "a@example.com" || m.Status != "active" ||
-		m.Role != "ADMIN" || !m.MFAEnabled {
+	// userId is the opaque own- id (w6/m7), NOT the raw subject.
+	m := toRenderTeamMember(MemberView{
+		Subject: "user-a", OwnerID: "own-00000000000000000001",
+		Role: "admin", Email: "a@example.com", MFAEnabled: true,
+	})
+	if m.UserID != "own-00000000000000000001" || m.Name != "" || m.Email != "a@example.com" ||
+		m.Status != "active" || m.Role != "ADMIN" || !m.MFAEnabled {
 		t.Fatalf("renderTeamMember = %+v", m)
 	}
 }

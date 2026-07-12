@@ -44,9 +44,10 @@ var _ workspaces.WorkspaceStore = (*fakeWSStore)(nil)
 // creation order so ListTenantsForSubject's "oldest first" contract (the
 // own- default-workspace resolution) is exercised meaningfully.
 type fakeWSStore struct {
-	mu      sync.Mutex
-	tenants []store.Tenant
-	members map[string][]store.TenantMember
+	mu       sync.Mutex
+	tenants  []store.Tenant
+	members  map[string][]store.TenantMember
+	ownerIDs map[string]string // subject -> own- id (lazy)
 }
 
 func newFakeWSStore() *fakeWSStore { return &fakeWSStore{members: map[string][]store.TenantMember{}} }
@@ -94,6 +95,21 @@ func (f *fakeWSStore) ListTenantMembers(_ context.Context, id string) ([]store.T
 }
 func (f *fakeWSStore) CountWorkspacesForSubjectPlan(context.Context, string, string) (int, error) {
 	return 0, nil
+}
+
+// OwnerIDForSubject mints a stable, well-formed own- id per subject (w6/m7).
+func (f *fakeWSStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.ownerIDs == nil {
+		f.ownerIDs = map[string]string{}
+	}
+	if id, ok := f.ownerIDs[subject]; ok {
+		return id, nil
+	}
+	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+	f.ownerIDs[subject] = id
+	return id, nil
 }
 
 // addMember is a test-only helper to add a second member with a given role
@@ -197,15 +213,90 @@ func TestOwnersREST_ListGetMembers(t *testing.T) {
 	if len(members) != 2 {
 		t.Fatalf("members = %+v, want 2", members)
 	}
-	byUser := map[string]string{}
+	roles := map[string]bool{}
 	for _, m := range members {
-		byUser[m.UserID] = m.Role
+		// userId is the opaque own- id (w6/m7), never the raw Kratos subject.
+		if !strings.HasPrefix(m.UserID, "own-") {
+			t.Errorf("member userId = %q, want an own- id (not a raw subject)", m.UserID)
+		}
 		if m.Status != "active" {
 			t.Errorf("status = %q, want active", m.Status)
 		}
+		roles[m.Role] = true
 	}
-	if byUser["client-1"] != "ADMIN" || byUser["bob"] != "DEVELOPER" {
-		t.Fatalf("roles = %+v", byUser)
+	if !roles["ADMIN"] || !roles["DEVELOPER"] {
+		t.Fatalf("roles = %+v, want ADMIN + DEVELOPER", roles)
+	}
+}
+
+// TestOwnersREST_Pagination drives Render's cursor pagination end to end:
+// ?limit caps the page, and ?cursor resumes after a given item (w6/001).
+func TestOwnersREST_Pagination(t *testing.T) {
+	st := newFakeWSStore()
+	h, _ := serverWith(t, serverBase(t, st), Deps{WorkspaceStore: st})
+	for i := 0; i < 3; i++ {
+		mustCreate(t, st, fmt.Sprintf("ws%d", i), "hobby", "client-1")
+	}
+
+	type entry struct {
+		Owner  struct{ ID string }
+		Cursor string
+	}
+	page := func(query string) []entry {
+		rec := do(t, h, "GET", "/v1/owners"+query, testToken, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /v1/owners%s: %d body=%s", query, rec.Code, rec.Body.String())
+		}
+		var out []entry
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("decode %s: %v (%s)", query, err, rec.Body.String())
+		}
+		return out
+	}
+
+	// First page of 2, then resume after its last cursor for the remainder.
+	first := page("?limit=2")
+	if len(first) != 2 {
+		t.Fatalf("first page = %d entries, want 2", len(first))
+	}
+	next := page("?limit=2&cursor=" + first[1].Cursor)
+	if len(next) != 1 {
+		t.Fatalf("second page = %d entries, want 1 (3 total)", len(next))
+	}
+	if next[0].Owner.ID == first[0].Owner.ID || next[0].Owner.ID == first[1].Owner.ID {
+		t.Fatalf("second page %q overlaps first page", next[0].Owner.ID)
+	}
+	// Paging past the end returns an empty array (the stop signal), not an error.
+	if last := page("?cursor=" + next[0].Cursor); len(last) != 0 {
+		t.Fatalf("page past end = %d entries, want 0", len(last))
+	}
+}
+
+// TestOwnersREST_MemberUserIDStableOwnID asserts a member's userId is an opaque
+// own- id (never the raw Kratos subject) and stable across calls (w6/m7).
+func TestOwnersREST_MemberUserIDStableOwnID(t *testing.T) {
+	st := newFakeWSStore()
+	h, _ := serverWith(t, serverBase(t, st), Deps{WorkspaceStore: st})
+	ws := mustCreate(t, st, "acme", "hobby", "client-1")
+
+	userID := func() string {
+		rec := do(t, h, "GET", "/v1/owners/"+ws.ID+"/members", testToken, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET members: %d body=%s", rec.Code, rec.Body.String())
+		}
+		var members []struct{ UserID string }
+		if err := json.Unmarshal(rec.Body.Bytes(), &members); err != nil || len(members) != 1 {
+			t.Fatalf("decode members: %v (%s)", err, rec.Body.String())
+		}
+		return members[0].UserID
+	}
+
+	first := userID()
+	if !strings.HasPrefix(first, "own-") || first == "client-1" {
+		t.Fatalf("userId = %q, want an opaque own- id", first)
+	}
+	if second := userID(); second != first {
+		t.Fatalf("userId not stable across calls: %q then %q", first, second)
 	}
 }
 

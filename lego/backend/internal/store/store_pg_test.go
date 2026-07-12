@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // TestPGStore exercises migrations + the real Store against a live Postgres.
@@ -364,6 +365,44 @@ func assertOneTenantOneMember(ctx context.Context, t *testing.T, pool *pgxpool.P
 // TestTenantForIdentityAndClient exercises the resolver's read path
 // (tenant_members.subject, shared by human identities and API-key client ids)
 // plus AddMember/BindClient/UnbindClient against a real database.
+func TestOwnerIDForSubject(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE owner_ids`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	// First sight mints an own- id; a second call returns the SAME id (stable).
+	a1, err := s.OwnerIDForSubject(ctx, "identity-a")
+	if err != nil {
+		t.Fatalf("OwnerIDForSubject: %v", err)
+	}
+	if _, ok := ids.KindOf(a1); !ok || a1[:4] != "own-" {
+		t.Fatalf("own id = %q, want a well-formed own- id", a1)
+	}
+	a2, err := s.OwnerIDForSubject(ctx, "identity-a")
+	if err != nil || a2 != a1 {
+		t.Fatalf("not stable: %q then %q (err %v)", a1, a2, err)
+	}
+	// A different subject gets a distinct id.
+	b1, err := s.OwnerIDForSubject(ctx, "identity-b")
+	if err != nil || b1 == a1 {
+		t.Fatalf("distinct subjects share an id: a=%q b=%q (err %v)", a1, b1, err)
+	}
+}
+
 func TestTenantForIdentityAndClient(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {

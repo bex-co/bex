@@ -96,7 +96,8 @@ type renderTeamMember struct {
 
 func toRenderTeamMember(m MemberView) renderTeamMember {
 	return renderTeamMember{
-		UserID: m.Subject,
+		// Render's userId is an opaque own- id, not the raw Kratos subject (w6/m7).
+		UserID: m.OwnerID,
 		Email:  m.Email,
 		// bex tracks no invited/deactivated member state yet — every row in
 		// tenant_members is an active member.

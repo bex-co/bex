@@ -36,9 +36,10 @@ import (
 // (ErrConflict on duplicate name, ErrNotFound on missing id) so the service's
 // error mapping can be asserted without Postgres.
 type fakeStore struct {
-	mu      sync.Mutex
-	tenants map[string]store.Tenant
-	members map[string][]store.TenantMember // tenantID -> members
+	mu       sync.Mutex
+	tenants  map[string]store.Tenant
+	members  map[string][]store.TenantMember // tenantID -> members
+	ownerIDs map[string]string               // subject -> own- id (lazy)
 }
 
 func newFakeStore() *fakeStore {
@@ -120,6 +121,22 @@ func (f *fakeStore) ListTenantMembers(_ context.Context, id string) ([]store.Ten
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]store.TenantMember(nil), f.members[id]...), nil
+}
+
+// OwnerIDForSubject mints a stable, well-formed own- id per subject (matches the
+// PGStore's get-or-create semantics for tests).
+func (f *fakeStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.ownerIDs == nil {
+		f.ownerIDs = map[string]string{}
+	}
+	if id, ok := f.ownerIDs[subject]; ok {
+		return id, nil
+	}
+	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+	f.ownerIDs[subject] = id
+	return id, nil
 }
 
 func (f *fakeStore) CountWorkspacesForSubjectPlan(_ context.Context, subject, plan string) (int, error) {

@@ -62,13 +62,14 @@ var (
 	Deploy    = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
 	Invite    = Kind{prefix: "inv", desc: "workspace member invite"} // w4/m12 team invites
 	Export    = Kind{prefix: "exp", desc: "managed-postgres export (on-demand snapshot)"}
-	Audit     = Kind{prefix: "aud", desc: "audit log event"} // w4/m10 audit log
+	Audit     = Kind{prefix: "aud", desc: "audit log event"}             // w4/m10 audit log
+	Owner     = Kind{prefix: "own", desc: "user identity (Render own-)"} // w6/m7: opaque per-subject user id
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

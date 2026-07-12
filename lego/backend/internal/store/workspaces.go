@@ -190,3 +190,24 @@ func (s *PGStore) ListTenantMembers(ctx context.Context, tenantID string) ([]Ten
 	}
 	return out, rows.Err()
 }
+
+// OwnerIDForSubject returns the stable opaque "own-" id for a subject, minting
+// and persisting one on first sight (w6/m7). The Render owners members surface
+// reports userId as this id instead of leaking the raw Kratos/Hydra subject.
+// The upsert is race-safe and idempotent: a concurrent first-sight for the same
+// subject yields exactly one row (the unique PK is the gate), and DO UPDATE is a
+// no-op that only lets RETURNING surface the EXISTING own_id rather than the
+// freshly-minted candidate.
+func (s *PGStore) OwnerIDForSubject(ctx context.Context, subject string) (string, error) {
+	var ownID string
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO owner_ids (subject, own_id) VALUES ($1, $2)
+		 ON CONFLICT (subject) DO UPDATE SET subject = EXCLUDED.subject
+		 RETURNING own_id`,
+		subject, ids.New(ids.Owner),
+	).Scan(&ownID)
+	if err != nil {
+		return "", classify("owner_id", err)
+	}
+	return ownID, nil
+}

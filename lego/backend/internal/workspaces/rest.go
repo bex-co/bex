@@ -35,7 +35,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toOwnerList(owners)) // [{owner, cursor}, ...]
+		// Render's cursor pagination (docs/render-artifacts/owners-api.md): each
+		// item's cursor is its workspace id; `cursor`/`limit` page the result.
+		after, limit := core.PageParams(q)
+		page := core.Page(owners, after, limit, func(o OwnerView) string { return o.ID })
+		core.WriteJSON(w, http.StatusOK, toOwnerList(page)) // [{owner, cursor}, ...]
 	})
 	mux.HandleFunc("GET /v1/owners/{ownerId}", func(w http.ResponseWriter, r *http.Request) {
 		ws, err := s.GetWorkspace(r.Context(), r.PathValue("ownerId"))
