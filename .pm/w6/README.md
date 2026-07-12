@@ -11,6 +11,14 @@
 - [x] **m5** — Live-verify workspace dashboard UX against Render + real infrastructure (5 tasks) ← from `/pm-brainstorm for w6` ("more for w6") 2026-07-09, closing m1/t001's unmet live-capture acceptance criteria and m3's own "Follow-ups" (offline-stub-only verification, ungenerated codegen diff) — done 2026-07-11 (live Render capture → `docs/render-artifacts/workspace-lifecycle.md` revealed the `sudo delete workspace <name>` guard + Hobby-only delete; reconciled end-to-end with tests; codegen drift closed by source-diff; live-cluster _browser_ rerun blocked by a diagnosed local-cluster outage, see `done/m5/README.md`), moved to `done/m5/`
 - [x] **m6** — Security review: RBAC, supply chain, injection surface, network isolation (10 tasks) ← from `/pm-brainstorm` 2026-07-11 (`GOAL.md` #7, "Security review"); placed here as the least-loaded worker (0 open milestones at brainstorm time), not for topical fit — done 2026-07-11 (`docs/ADR028-security-review.md` written; cosign + SBOM in `deploy.yml`; input validators + OAuth `iss` check added with tests; tenant-isolation matrix live-tested + CI structural guard; stale wildcard/unused RBAC deleted), six follow-up notes filed (`w6/002`–`w6/007`), moved to `done/m6/`
 - [x] **m7** — User owners: opaque `own-` identity ids for member identifiers (6 tasks) ← from `/pm how to implement own- or owner feature` 2026-07-11 + design review that trimmed it — done 2026-07-11 (mint `id.Owner` + `owner_ids` table/migration 0009; members `userId` is now an opaque own- id instead of a raw Kratos subject, verified through the full REST stack + a real-Postgres round-trip; owner `type: user` and peer `own-` resolution recorded as deliberate non-goals — bex has only team workspaces, peer-resolve has no consumer), moved to `done/m7/`.
+- [ ] **m8** — Scope down bex-api's cluster-wide RBAC (7 tasks) ← promoted from `002` 2026-07-12 (`w6/m6`'s RBAC least-privilege audit top finding)
+- [ ] **m9** — Security hygiene chores (9 tasks) ← from `/pm-brainstorm` 2026-07-12, groups `003`, `004`, `005`, `007`, `008` (each sub-hour; `008` is an urgent pre-existing test break)
+
+## Inbox
+
+- `006.md` — Sign CNB tenant images in-cluster — parked until tenant-image provenance becomes a requirement (its own note says not to file as a milestone before then)
+
+> `002.md` promoted to **m8**; `003.md`, `004.md`, `005.md`, `007.md`, `008.md` grouped into **m9** — all moved to `done/` 2026-07-12.
 
 ## Not in w6 (deliberate)
 
