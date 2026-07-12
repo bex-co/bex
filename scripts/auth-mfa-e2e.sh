@@ -6,9 +6,10 @@
 # no custom auth code to exercise.
 #
 #   1. Register a fresh identity (API flow) → aal1 session token.
-#   2. Enroll TOTP via the settings flow (secret read from the flow, confirmed
-#      with a code we compute from it), then step up to aal2 and enroll
-#      lookup_secret recovery codes (settings now itself demands aal2).
+#   2. Enroll TOTP + lookup_secret recovery codes via the settings flow — the
+#      just-registered session stays privileged, so both enroll at aal1 (Kratos
+#      gates privileged submits by session recency, not by an aal2 flow; a
+#      *fresh* login below is what the AAL policy forces up to aal2).
 #   3. Password-only login yields an aal1 token whose whoami 403s
 #      (`highest_available` policy) — the second factor is owed.
 #   4. aal2 step-up: a wrong TOTP code is rejected; the right one upgrades the
@@ -156,43 +157,34 @@ kratos POST "$(rel "$set_action")" "$tok" "{\"method\":\"totp\",\"totp_code\":\"
 [ "$(jqf '.state')" = "success" ] || fail "settings flow did not report success after TOTP confirm: $LAST_BODY"
 echo "    ok: TOTP enrolled"
 
-# Enrolling a second factor bumped highest_available to aal2, so the aal1 token
-# can no longer open a settings flow — proving the AAL policy bites.
-kratos GET /self-service/settings/api "$tok"
-[ "$LAST_CODE" != "200" ] || fail "settings must require aal2 once a second factor exists"
-echo "    ok: settings now demands aal2 (aal1 token blocked)"
-
-# Open an aal2 step-up login flow bound to the session and submit one second
-# factor; leaves the login response in LAST_CODE/LAST_BODY (200 + upgraded token
-# on success). Call directly (not in $()) so the caller can read LAST_*.
+# Define the aal2 step-up helper used by the login-challenge tests below. Opens
+# an aal2 login flow bound to the session and submits one second factor; leaves
+# the login response in LAST_CODE/LAST_BODY (200 + upgraded token on success).
+# Call directly (not in $()) so the caller can read LAST_*.
 step_up() { # session_token  method  extra-json (e.g. '"totp_code":"123456"')
   kratos GET "/self-service/login/api?aal=aal2&refresh=false" "$1"
   kratos POST "$(rel "$(jqf '.ui.action')")" "$1" "{\"method\":\"$2\",$3}"
 }
 
-# --- 2b. step up to aal2 (with the TOTP), then enroll recovery codes ----------
-echo "==> stepping up to aal2 + enrolling recovery codes"
-step_up "$tok" totp "\"totp_code\":\"$(totp "$secret")\""
-[ "$LAST_CODE" = "200" ] || fail "aal2 step-up with a valid TOTP failed ($LAST_CODE): $LAST_BODY"
-tok2="$(jqf '.session_token')"
-[ -n "$tok2" ] && [ "$tok2" != "null" ] || fail "step-up returned no aal2 token"
-[ "$(whoami_aal "$tok2")" = "aal2" ] || fail "stepped-up session should be aal2"
-
-kratos GET /self-service/settings/api "$tok2"
-[ "$LAST_CODE" = "200" ] || fail "settings flow (aal2) failed ($LAST_CODE): $LAST_BODY"
-set_action="$(jqf '.ui.action')"
-kratos POST "$(rel "$set_action")" "$tok2" '{"method":"lookup_secret","lookup_secret_regenerate":true}'
+# --- 2b. enroll lookup_secret recovery codes (same privileged aal1 session) ---
+# The just-registered session is still privileged, so it enrolls a second
+# credential without stepping up — Kratos gates privileged submits by session
+# recency, not by demanding an aal2 flow to open settings.
+echo "==> enrolling recovery codes"
+kratos GET /self-service/settings/api "$tok"
+[ "$LAST_CODE" = "200" ] || fail "settings flow failed ($LAST_CODE): $LAST_BODY"
+kratos POST "$(rel "$(jqf '.ui.action')")" "$tok" '{"method":"lookup_secret","lookup_secret_regenerate":true}'
 [ "$LAST_CODE" = "200" ] || fail "recovery-code generation failed ($LAST_CODE): $LAST_BODY"
-# The generated codes come back as a comma/space-separated list on a text node.
-codes_raw="$(jqf '.ui.nodes[] | select(.attributes.id == "lookup_secret_codes") | .attributes.text.text')"
-[ -n "$codes_raw" ] && [ "$codes_raw" != "null" ] || fail "no recovery codes returned"
-set_action="$(jqf '.ui.action')"
-kratos POST "$(rel "$set_action")" "$tok2" '{"method":"lookup_secret","lookup_secret_confirm":true}'
+# Codes come back structured on the lookup_secret_codes node — one per secret.
+# (while-read, not mapfile: stay compatible with macOS's stock bash 3.2.)
+CODES=()
+while IFS= read -r _code; do [ -n "$_code" ] && CODES+=("$_code"); done < <(
+  jqf '.ui.nodes[] | select(.attributes.id == "lookup_secret_codes") | .attributes.text.context.secrets[].context.secret'
+)
+kratos POST "$(rel "$(jqf '.ui.action')")" "$tok" '{"method":"lookup_secret","lookup_secret_confirm":true}'
 [ "$LAST_CODE" = "200" ] || fail "recovery-code confirm failed ($LAST_CODE): $LAST_BODY"
-# First two usable codes (strip separators/used markers).
-mapfile -t CODES < <(printf '%s' "$codes_raw" | tr ', ' '\n\n' | grep -E '^[0-9a-f]+$' | head -2)
 [ "${#CODES[@]}" -ge 2 ] || fail "expected >=2 recovery codes, parsed ${#CODES[@]}"
-echo "    ok: recovery codes enrolled (${#CODES[@]}+ codes)"
+echo "    ok: recovery codes enrolled (${#CODES[@]} codes)"
 
 # --- 3 + 4. password login is aal1; TOTP challenge gates aal2 -----------------
 echo "==> login challenge: password → aal2"

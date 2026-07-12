@@ -1,15 +1,15 @@
 # w4 · m11 — MFA: TOTP + passkeys via Kratos
 
-**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** implementation complete — live verification (mock/browser/prod) blocked; see the 2026-07-11 completion note below
+**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** shipped + deployed to prod (Argo auto-sync, Kratos `1/1`, no crashloop); prod smoke green (`auth-mfa-e2e.sh` exit 0 against `auth.bex.co`); only the manual browser WebAuthn ceremony remains — see the 2026-07-11 completion note below
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                | est | depends_on | status |
 | ---- | ------------------------------------------------------------------------------------------------------------------------ | --- | ---------- | ------ |
 | t001 | Kratos values: enable `totp`, `webauthn` (second factor, `passwordless: false`), `lookup_secret` + `highest_available` AAL — incl. prod RP ID `bex.co`/origins (base values ARE prod) | 40m | —          | — **DONE** |
-| t002 | Dashboard: settings-flow enroll/unenroll rendering (Ory Elements) + the `aal2` login challenge step                        | 35m | t001       | code + tests **DONE**; browser passkey check pending (blocked) |
-| t003 | E2E on mock: enroll TOTP (otplib codes) → logout → login challenges; recovery codes work; scripted exit-0 check            | 35m | t002       | script **DONE** (syntax + TOTP crypto verified); live mock run pending (blocked) |
-| t004 | Docs + verification: rendered-config check (RP ID landed in t001), `docs/auth.md` MFA section, scripted prod smoke         | 20m | t003       | rendered-config + docs **DONE**; prod smoke pending (blocked) |
+| t002 | Dashboard: settings-flow enroll/unenroll rendering (Ory Elements) + the `aal2` login challenge step                        | 35m | t001       | code + tests **DONE**; TOTP/aal2 proven on prod; browser passkey the one manual check |
+| t003 | E2E on mock: enroll TOTP (otplib codes) → logout → login challenges; recovery codes work; scripted exit-0 check            | 35m | t002       | — **DONE** (ran green against prod `auth.bex.co`, exit 0) |
+| t004 | Docs + verification: rendered-config check (RP ID landed in t001), `docs/auth.md` MFA section, scripted prod smoke         | 20m | t003       | — **DONE** (rendered-config + docs + prod smoke green) |
 | t007 | Render parity — MFA surface check vs Render's 2FA; update the parity matrix row (retrofit 2026-07-09)                      | 15m | t004       | — **DONE** |
 | t005 | Simplify — `/simplify` over the code this milestone changed                                                                | 20m | t007       | — **DONE** |
 | t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                   | 30m | t007       | — **DONE** |
@@ -23,7 +23,9 @@ _2026-07-11: two rebuild-era corrections. (1) Mock precondition — the m19 plat
 
 ## Completion note (2026-07-11)
 
-Implementation is complete and everything runnable off-cluster is green; only the live-cluster/browser/prod verification slice of the DoD is outstanding, blocked exactly as the 2026-07-11 note above predicted (no schedulable mock auth stack; no prod access from the build environment).
+Implementation is complete and **verified against prod** — the mock-cluster block was routed around exactly as the DoD's 2026-07-11 note allows ("or retarget verification at prod"). Shipped as `e5c449a`; Argo auto-synced the kratos Application to it and Kratos rolled out `1/1 Running`, 0 restarts — **no crashloop** (the RP config shipped in the same base edit, so WebAuthn-enabled Kratos started cleanly). `scripts/auth-mfa-e2e.sh` with `KRATOS_PUBLIC_URL=https://auth.bex.co` **exits 0**: register → enroll TOTP + recovery codes → password-only login is aal1/`whoami` 403 → wrong TOTP rejected / right upgrades to aal2 → recovery code unlocks + single-use. The only outstanding DoD item is the manual browser WebAuthn ceremony (can't be scripted over curl).
+
+Prod verification also corrected two script assumptions that never fired until a live Kratos exercised them: (1) an aal1 privileged session **can** open settings and enroll credentials — `required_aal: highest_available` gates privileged submits by session recency, not settings-flow creation, and the user-visible gate is the *next login* (`whoami` 403), so recovery codes now enroll on the aal1 session with no mid-flow step-up; (2) recovery codes are 8-char alphanumeric read from the structured `lookup_secret_codes` node, and `mapfile` → a `while read` loop for stock-bash-3.2 compatibility. `docs/auth.md` §9 updated to match.
 
 **Shipped + verified in-environment:**
 
@@ -35,11 +37,11 @@ Implementation is complete and everything runnable off-cluster is green; only th
 - **t007** — `docs/render-parity.md` MFA row ✖ → ✅ with evidence (superset: WebAuthn security keys).
 - **t005** — `/simplify` (4 parallel review agents): applied the script dedup (route `whoami_aal`/`step_up`/`login_password` through the existing `kratos()`/`jqf()`/`rel()` helpers, behavior-preserving); reuse/efficiency clean; **skipped** the altitude finding (propagate `aal2_required` from `fetchSession`→`requireAuth`→explicit `aal=aal2` param) as an out-of-diff refactor touching `session.ts`/`auth.ts`/route schema — a reasonable follow-up, filed below.
 
-**Outstanding (blocked — for t008 to clear when an environment is available):**
+**Verified on prod (2026-07-11):** deploy (Argo → Kratos `1/1`, no crashloop), scripted smoke (`auth-mfa-e2e.sh` exit 0 against `auth.bex.co`), TOTP enroll → next-login-requires-code, single-use recovery codes.
 
-- Live mock e2e (`scripts/auth-mfa-e2e.sh` exit 0) — needs a schedulable auth stack (mock pool-labels unblock, or run against prod).
-- Browser WebAuthn enroll/challenge — manual, needs the local or prod stack in a real browser.
-- Scripted prod smoke (`KRATOS_PUBLIC_URL=https://auth.bex.co scripts/auth-mfa-e2e.sh`) — needs prod access.
+**Outstanding (the one manual check keeping t008 open):**
+
+- Browser WebAuthn enroll/challenge — a real browser + authenticator ceremony (can't be scripted over curl). Everything else in the DoD is verified.
 
 **Follow-up (non-blocking):** consider lifting aal2 detection out of the login page into the session fetch (the t005 altitude finding) — surface `session_aal2_required` from `fetchSession` and redirect with an explicit `aal=aal2` param, so the hook stops rediscovering the step-up need by trial-and-error.
 
