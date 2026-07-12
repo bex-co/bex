@@ -141,6 +141,9 @@ type AppView struct {
 	// (SetRootDir) — Repo/Branch are fixed at create time.
 	Repo   string `json:"repo,omitempty"`
 	Branch string `json:"branch,omitempty"`
+	// Autoscaling is the current per-service autoscaling config (nil when
+	// spec.autoscaling is unset, i.e. disabled and unconfigured).
+	Autoscaling *AutoscalingView `json:"autoscaling,omitempty"`
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -155,6 +158,11 @@ func view(a *appv1alpha1.App) AppView {
 	svcType := a.Spec.Type
 	if svcType == "" {
 		svcType = appv1alpha1.TypeWebService // empty spec.type == web_service
+	}
+	var asView *AutoscalingView
+	if a.Spec.Autoscaling != nil {
+		v := autoscalingView(a)
+		asView = &v
 	}
 	return AppView{
 		Name:           a.Name,
@@ -176,6 +184,7 @@ func view(a *appv1alpha1.App) AppView {
 		RootDir:        a.Spec.RootDir,
 		Repo:           a.Spec.Repo,
 		Branch:         a.Spec.Branch,
+		Autoscaling:    asView,
 	}
 }
 
@@ -772,4 +781,118 @@ func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate f
 		return AppView{}, err
 	}
 	return view(a), nil
+}
+
+// AutoscalingView is the neutral projection of a service's autoscaling config —
+// Render's Scaling tab shape (minInstances/maxInstances/targetCPUPercent/
+// targetMemoryPercent) mapped from spec.autoscaling.
+type AutoscalingView struct {
+	Enabled             bool   `json:"enabled"`
+	MinInstances        int32  `json:"minInstances"`
+	MaxInstances        int32  `json:"maxInstances"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+}
+
+// SetAutoscalingRequest is the input for SetAutoscaling — Render's PUT
+// /v1/services/{id}/autoscaling request body projected onto spec.autoscaling.
+type SetAutoscalingRequest struct {
+	MinInstances        int32  `json:"minInstances"`
+	MaxInstances        int32  `json:"maxInstances"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+}
+
+// autoscalingView projects spec.autoscaling onto the neutral view. Nil
+// spec.autoscaling => disabled with zero bounds (the disabled state).
+func autoscalingView(a *appv1alpha1.App) AutoscalingView {
+	as := a.Spec.Autoscaling
+	if as == nil {
+		return AutoscalingView{}
+	}
+	return AutoscalingView{
+		Enabled:             as.Enabled,
+		MinInstances:        as.MinReplicas,
+		MaxInstances:        as.MaxReplicas,
+		TargetCPUPercent:    as.TargetCPUPercent,
+		TargetMemoryPercent: as.TargetMemoryPercent,
+	}
+}
+
+// GetAutoscaling returns the current autoscaling configuration for a service.
+// Returns AutoscalingView{Enabled:false} when no autoscaling spec is set.
+func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return AutoscalingView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AutoscalingView{}, err
+	}
+	return autoscalingView(a), nil
+}
+
+// SetAutoscaling enables autoscaling on a service (Render's PUT
+// .../autoscaling). Validates min ≤ max and that at least one target is set.
+// The autoscaling config is written directly to the CR spec (not row-first,
+// like SetRootDir) — autoscaling is not a projection-owned field.
+func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutoscalingRequest) (AutoscalingView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AutoscalingView{}, err
+	}
+	if req.MinInstances < 0 {
+		return AutoscalingView{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
+	}
+	if req.MaxInstances < 1 {
+		return AutoscalingView{}, fmt.Errorf("%w: maxInstances must be ≥ 1", core.ErrBadRequest)
+	}
+	if req.MinInstances > req.MaxInstances {
+		return AutoscalingView{}, fmt.Errorf("%w: minInstances must be ≤ maxInstances", core.ErrBadRequest)
+	}
+	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
+		return AutoscalingView{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
+	}
+	if req.TargetMemoryPercent != nil && (*req.TargetMemoryPercent < 1 || *req.TargetMemoryPercent > 100) {
+		return AutoscalingView{}, fmt.Errorf("%w: targetMemoryPercent must be 1–100", core.ErrBadRequest)
+	}
+	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
+		return AutoscalingView{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AutoscalingView{}, err
+	}
+	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
+			Enabled:             true,
+			MinReplicas:         req.MinInstances,
+			MaxReplicas:         req.MaxInstances,
+			TargetCPUPercent:    req.TargetCPUPercent,
+			TargetMemoryPercent: req.TargetMemoryPercent,
+		}
+	})
+	if err != nil {
+		return AutoscalingView{}, err
+	}
+	return autoscalingView(a), nil
+}
+
+// DeleteAutoscaling disables autoscaling on a service (Render's DELETE
+// .../autoscaling): clears spec.autoscaling so the service reverts to its
+// fixed spec.replicas count. Idempotent — already-disabled is a no-op.
+func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return err
+	}
+	if a.Spec.Autoscaling == nil || !a.Spec.Autoscaling.Enabled {
+		return nil // already disabled — idempotent
+	}
+	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Autoscaling = nil
+	})
+	return err
 }

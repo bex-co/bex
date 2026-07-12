@@ -177,6 +177,13 @@ type AppSpec struct {
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
 
+	// Autoscaling declares the per-service autoscaling policy. When enabled, the
+	// operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
+	// live CPU/memory utilization. When nil or disabled, the service runs at a
+	// fixed spec.replicas. Only applies to the kubernetes runtime.
+	// +optional
+	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
+
 	// Tier is the plan/size; the operator sets the pod's resources (requests==limits)
 	// from it. Empty => no resource constraints (best-effort); the control plane sets
 	// a tier explicitly. Resource ladder lives in docs/control-plane.md.
@@ -205,6 +212,44 @@ type AppSpec struct {
 	// broken DNS can never block another's issuance or renewal.
 	// +optional
 	Hosts []string `json:"hosts,omitempty"`
+}
+
+// AutoscalingSpec declares the autoscaling policy for a service. When enabled,
+// the operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
+// live CPU/memory utilization vs the declared targets. Mirrors Render's Scaling
+// tab (minInstances / maxInstances / targetCPUPercent / targetMemoryPercent).
+type AutoscalingSpec struct {
+	// Enabled turns per-service autoscaling on. When false the service runs at
+	// spec.replicas as today (a fixed count). Required.
+	Enabled bool `json:"enabled"`
+
+	// MinReplicas is the lower replica bound; the autoscaler never drives replicas
+	// below this. Must be ≥ 0. Defaults to 1 when omitted and autoscaling is enabled.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MinReplicas int32 `json:"minReplicas,omitempty"`
+
+	// MaxReplicas is the upper replica bound; the autoscaler never drives replicas
+	// above this. Must be ≥ MinReplicas. Required when Enabled.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxReplicas int32 `json:"maxReplicas,omitempty"`
+
+	// TargetCPUPercent is the desired average CPU utilization as a percentage of
+	// the tier's CPU limit across all running pods. The autoscaler adjusts
+	// replicas to approach this target. Either TargetCPUPercent or
+	// TargetMemoryPercent (or both) is required when Enabled.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	TargetCPUPercent *int32 `json:"targetCPUPercent,omitempty"`
+
+	// TargetMemoryPercent is the desired average memory utilization as a
+	// percentage of the tier's memory limit across all running pods.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
 // EnvVar is a single literal name/value environment variable for an App's

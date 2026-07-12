@@ -56,6 +56,53 @@ spec:
               autoDeploy:
                 description: AutoDeploy triggers a deploy on each push to Branch.
                 type: boolean
+              autoscaling:
+                description: |-
+                  Autoscaling declares the per-service autoscaling policy. When enabled, the
+                  operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
+                  live CPU/memory utilization. When nil or disabled, the service runs at a
+                  fixed spec.replicas. Only applies to the kubernetes runtime.
+                properties:
+                  enabled:
+                    description: |-
+                      Enabled turns per-service autoscaling on. When false the service runs at
+                      spec.replicas as today (a fixed count). Required.
+                    type: boolean
+                  maxReplicas:
+                    description: |-
+                      MaxReplicas is the upper replica bound; the autoscaler never drives replicas
+                      above this. Must be ≥ MinReplicas. Required when Enabled.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  minReplicas:
+                    description: |-
+                      MinReplicas is the lower replica bound; the autoscaler never drives replicas
+                      below this. Must be ≥ 0. Defaults to 1 when omitted and autoscaling is enabled.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  targetCPUPercent:
+                    description: |-
+                      TargetCPUPercent is the desired average CPU utilization as a percentage of
+                      the tier's CPU limit across all running pods. The autoscaler adjusts
+                      replicas to approach this target. Either TargetCPUPercent or
+                      TargetMemoryPercent (or both) is required when Enabled.
+                    format: int32
+                    maximum: 100
+                    minimum: 1
+                    type: integer
+                  targetMemoryPercent:
+                    description: |-
+                      TargetMemoryPercent is the desired average memory utilization as a
+                      percentage of the tier's memory limit across all running pods.
+                    format: int32
+                    maximum: 100
+                    minimum: 1
+                    type: integer
+                required:
+                - enabled
+                type: object
               branch:
                 default: main
                 description: Branch to track. Defaults to "main".

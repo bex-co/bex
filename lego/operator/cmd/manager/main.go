@@ -28,6 +28,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -188,13 +189,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Build a kubernetes clientset for the metrics-server reader (autoscaling).
+	// A failure here is not fatal — the autoscaler is skipped when MetricsReader
+	// is nil, so existing behavior is preserved.
+	cs, csErr := kubernetes.NewForConfig(mgr.GetConfig())
+	if csErr != nil {
+		setupLog.Info("metrics-server reader unavailable; autoscaling disabled", "reason", csErr)
+	}
+
 	activatorPort := 8888
 	if v := os.Getenv("BEX_ACTIVATOR_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil {
 			activatorPort = p
 		}
 	}
-	if err := (&controller.AppReconciler{
+	appReconciler := &controller.AppReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		Mode:             envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
@@ -206,7 +215,11 @@ func main() {
 		ClusterIssuer:    envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		ActivatorService: envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorPort:    activatorPort,
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if cs != nil {
+		appReconciler.MetricsReader = controller.NewMetricsServerReader(cs)
+	}
+	if err := appReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "service")
 		os.Exit(1)
 	}

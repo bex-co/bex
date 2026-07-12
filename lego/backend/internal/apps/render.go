@@ -60,6 +60,20 @@ type renderService struct {
 	// Repo/Branch are the build-from-git source, empty for an image-backed App.
 	Repo   string `json:"repo,omitempty"`
 	Branch string `json:"branch,omitempty"`
+	// Autoscaling mirrors Render's autoscaling sub-object (minInstances /
+	// maxInstances / targetCPUPercent / targetMemoryPercent); omitted when
+	// autoscaling is not configured.
+	Autoscaling *renderAutoscaling `json:"autoscaling,omitempty"`
+}
+
+// renderAutoscaling is Render's autoscaling sub-object shape (verified against
+// Render's PUT /v1/services/{id}/autoscaling request/response contract).
+type renderAutoscaling struct {
+	Enabled             bool   `json:"enabled"`
+	MinInstances        int32  `json:"minInstances"`
+	MaxInstances        int32  `json:"maxInstances"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
 // serviceWithCursor is components.schemas.serviceWithCursor — the list-item
@@ -93,6 +107,16 @@ func toRenderService(a AppView) renderService {
 	if a.Command != "" {
 		set("command", a.Command) // cronJobDetails.command (render-public-api-1.json)
 	}
+	var ras *renderAutoscaling
+	if a.Autoscaling != nil {
+		ras = &renderAutoscaling{
+			Enabled:             a.Autoscaling.Enabled,
+			MinInstances:        a.Autoscaling.MinInstances,
+			MaxInstances:        a.Autoscaling.MaxInstances,
+			TargetCPUPercent:    a.Autoscaling.TargetCPUPercent,
+			TargetMemoryPercent: a.Autoscaling.TargetMemoryPercent,
+		}
+	}
 	return renderService{
 		ID:             a.Name,
 		Name:           a.Name,
@@ -113,6 +137,7 @@ func toRenderService(a AppView) renderService {
 		RootDir:        a.RootDir,
 		Repo:           a.Repo,
 		Branch:         a.Branch,
+		Autoscaling:    ras,
 	}
 }
 

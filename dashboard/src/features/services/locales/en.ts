@@ -170,6 +170,98 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Metrics",
     description: "Service-detail nav item (metrics tab)",
   },
+  "services.navScaling": {
+    message: "Scaling",
+    description: "Service-detail nav item (autoscaling tab)",
+  },
+  "services.scalingTitle": {
+    message: "Autoscaling",
+    description: "Scaling tab section heading",
+  },
+  "services.scalingEnabled": {
+    message: "Enable autoscaling",
+    description: "Autoscaling enable/disable toggle label",
+  },
+  "services.scalingMinInstances": {
+    message: "Min instances",
+    description: "Autoscaling min instances input label",
+  },
+  "services.scalingMaxInstances": {
+    message: "Max instances",
+    description: "Autoscaling max instances input label",
+  },
+  "services.scalingTargetCPU": {
+    message: "Target CPU %",
+    description: "Autoscaling target CPU utilisation input label",
+  },
+  "services.scalingTargetMemory": {
+    message: "Target memory %",
+    description: "Autoscaling target memory utilisation input label",
+  },
+  "services.scalingSave": {
+    message: "Save",
+    description: "Autoscaling form save button",
+  },
+  "services.scalingSaved": {
+    message: "Autoscaling settings saved.",
+    description: "Autoscaling save success toast",
+  },
+  "services.scalingDisabled": {
+    message: "Autoscaling disabled.",
+    description: "Autoscaling disable success toast",
+  },
+  "services.scalingError": {
+    message: "Failed to update autoscaling settings.",
+    description: "Autoscaling save error toast",
+  },
+  "services.scalingDescription": {
+    message:
+      "Automatically scale this service up or down based on CPU and memory utilization.",
+    description: "Autoscaling card description",
+  },
+  "services.scalingOn": {
+    message: "Autoscaling on",
+    description: "Autoscaling main toggle label when enabled",
+  },
+  "services.scalingOff": {
+    message: "Autoscaling off",
+    description: "Autoscaling main toggle label when disabled",
+  },
+  "services.scalingInstancesTitle": {
+    message: "Number of Instances",
+    description: "Autoscaling instances range-slider section heading",
+  },
+  "services.scalingInstancesHint": {
+    message:
+      "Render scales the number of instances for this service within the range you specify.",
+    description: "Autoscaling instances range-slider section description",
+  },
+  "services.scalingCPUTitle": {
+    message: "Target CPU Utilization",
+    description: "Autoscaling CPU metric section heading",
+  },
+  "services.scalingCPUHint": {
+    message:
+      "If average CPU utilization is significantly above or below this value, bex adds or removes instances accordingly.",
+    description: "Autoscaling CPU metric section description",
+  },
+  "services.scalingMemoryTitle": {
+    message: "Target Memory Utilization",
+    description: "Autoscaling memory metric section heading",
+  },
+  "services.scalingMemoryHint": {
+    message:
+      "If average memory utilization is significantly above or below this value, bex adds or removes instances accordingly.",
+    description: "Autoscaling memory metric section description",
+  },
+  "services.scalingCancel": {
+    message: "Cancel",
+    description: "Autoscaling form cancel button",
+  },
+  "services.scalingSaveChanges": {
+    message: "Save Changes",
+    description: "Autoscaling form save-changes button",
+  },
   "services.overviewPhase": {
     message: "Phase",
     description: "Overview panel field label (operator phase, verbatim)",

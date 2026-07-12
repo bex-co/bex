@@ -355,6 +355,39 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderCustomDomain(d))
 	}
 
+	// Autoscaling sub-resource (Render-compatible).
+	// GET   …/autoscaling — current config (bex extension; Render has no GET)
+	// PUT   …/autoscaling — upsert autoscaling (Render: PUT, 200)
+	// DELETE …/autoscaling — disable autoscaling (Render: DELETE, 204)
+	getAutoscaling := func(w http.ResponseWriter, r *http.Request) {
+		av, err := s.GetAutoscaling(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, av)
+	}
+	putAutoscaling := func(w http.ResponseWriter, r *http.Request) {
+		var req SetAutoscalingRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		av, err := s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, av)
+	}
+	deleteAutoscaling := func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteAutoscaling(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base, list)
@@ -367,6 +400,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
 		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
 		mux.HandleFunc("POST "+base+"/{id}/runs", runCron)                           // cron run trigger (bex noun)
+		mux.HandleFunc("GET "+base+"/{id}/autoscaling", getAutoscaling)
+		mux.HandleFunc("PUT "+base+"/{id}/autoscaling", putAutoscaling)
+		mux.HandleFunc("DELETE "+base+"/{id}/autoscaling", deleteAutoscaling)
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
 		mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)

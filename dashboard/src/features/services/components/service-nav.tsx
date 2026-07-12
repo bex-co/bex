@@ -32,6 +32,11 @@ const ITEMS: ServiceNavItem[] = [
     exact: false,
   },
   {
+    labelKey: "services.navScaling",
+    to: "/services/$serviceId/scaling",
+    exact: false,
+  },
+  {
     labelKey: "services.navSettings",
     to: "/services/$serviceId/settings",
     exact: false,

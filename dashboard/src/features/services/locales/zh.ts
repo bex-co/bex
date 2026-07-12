@@ -169,6 +169,95 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "指标",
     description: "Service-detail nav item (metrics tab)",
   },
+  "services.navScaling": {
+    message: "弹性伸缩",
+    description: "Service-detail nav item (autoscaling tab)",
+  },
+  "services.scalingTitle": {
+    message: "自动伸缩",
+    description: "Scaling tab section heading",
+  },
+  "services.scalingEnabled": {
+    message: "启用自动伸缩",
+    description: "Autoscaling enable/disable toggle label",
+  },
+  "services.scalingMinInstances": {
+    message: "最少实例数",
+    description: "Autoscaling min instances input label",
+  },
+  "services.scalingMaxInstances": {
+    message: "最多实例数",
+    description: "Autoscaling max instances input label",
+  },
+  "services.scalingTargetCPU": {
+    message: "目标 CPU 使用率 %",
+    description: "Autoscaling target CPU utilisation input label",
+  },
+  "services.scalingTargetMemory": {
+    message: "目标内存使用率 %",
+    description: "Autoscaling target memory utilisation input label",
+  },
+  "services.scalingSave": {
+    message: "保存",
+    description: "Autoscaling form save button",
+  },
+  "services.scalingSaved": {
+    message: "自动伸缩设置已保存。",
+    description: "Autoscaling save success toast",
+  },
+  "services.scalingDisabled": {
+    message: "自动伸缩已禁用。",
+    description: "Autoscaling disable success toast",
+  },
+  "services.scalingError": {
+    message: "更新自动伸缩设置失败。",
+    description: "Autoscaling save error toast",
+  },
+  "services.scalingDescription": {
+    message: "根据 CPU 和内存使用率自动扩缩此服务的实例数量。",
+    description: "Autoscaling card description",
+  },
+  "services.scalingOn": {
+    message: "自动伸缩已开启",
+    description: "Autoscaling main toggle label when enabled",
+  },
+  "services.scalingOff": {
+    message: "自动伸缩已关闭",
+    description: "Autoscaling main toggle label when disabled",
+  },
+  "services.scalingInstancesTitle": {
+    message: "实例数量",
+    description: "Autoscaling instances range-slider section heading",
+  },
+  "services.scalingInstancesHint": {
+    message: "bex 将在你指定的范围内自动调整此服务的实例数量。",
+    description: "Autoscaling instances range-slider section description",
+  },
+  "services.scalingCPUTitle": {
+    message: "CPU 使用率目标",
+    description: "Autoscaling CPU metric section heading",
+  },
+  "services.scalingCPUHint": {
+    message: "当平均 CPU 使用率明显高于或低于此值时，bex 会相应地增加或减少实例数。",
+    description: "Autoscaling CPU metric section description",
+  },
+  "services.scalingMemoryTitle": {
+    message: "内存使用率目标",
+    description: "Autoscaling memory metric section heading",
+  },
+  "services.scalingMemoryHint": {
+    message:
+      "当平均内存使用率明显高于或低于此值时，bex 会相应地增加或减少实例数。",
+    description: "Autoscaling memory metric section description",
+  },
+  "services.scalingCancel": {
+    message: "取消",
+    description: "Autoscaling form cancel button",
+  },
+  "services.scalingSaveChanges": {
+    message: "保存更改",
+    description: "Autoscaling form save-changes button",
+  },
   "services.overviewPhase": {
     message: "阶段",
     description: "Overview panel field label (operator phase, verbatim)",

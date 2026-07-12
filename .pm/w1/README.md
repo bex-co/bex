@@ -25,6 +25,10 @@
 - [x] **m18** — Root Directory: CRD + build engine + webhook path-filter + API surface (10 tasks) ← from `/pm-brainstorm for w1` 2026-07-09 (Root Directory topic, monorepo support); UI half is `w5/m13` — done 2026-07-10, moved to `done/m18/`
 - [ ] **m19** — Rearchitecture: rebuild the Hetzner substrate right (12 tasks) ← from docs/rearchitecture.md 2026-07-10 (absorbed into [docs/architecture.md](../../docs/architecture.md) §The production substrate, 2026-07-11; original in git history), promoted from `014` (CAPH-owned network · 3×CP tainted · platform/tenant pools · self-managed pivot · port firewall + WireGuard); closes `w1/014`, unblocks m3/t008, `008`, `013`
 - [x] **m19.1** — 5-server interim: rescue prod + early pivot (9 tasks) ← from m19 t006's Hetzner-quota blocker + user decisions 2026-07-10/11 (pivot pulled forward, `bex-infra` destroyed to free the slot for the first tenant node; tenant pool floor becomes min 1; m19 resumes with a two-number revert after the quota raise) — done 2026-07-11, moved to `done/m19.1/`; prod serving, self-managed, verify-substrate green
+- [x] **m20** — Per-service autoscaling (Render `PUT …/autoscaling`) (8 tasks) ← promoted from `008` 2026-07-11 (unblocked by m3 + m19) — done 2026-07-11, moved to `done/m20/`
+- [ ] **m21** — Static sites (Render `static_site` type) (8 tasks) ← promoted from `012` 2026-07-11 (unlocks the CDN edge rules DO_NOT_DO parked until 012 lands)
+- [ ] **m22** — Managed Postgres HA (Render `enableHighAvailability` + failover + read replicas) (9 tasks) ← promoted from `013` 2026-07-11 (unblocked by m17 + m19)
+- [ ] **m23** — Misc: small parity + hardening/dev-infra chores (7 tasks) ← groups `005`, `006`, `015`, `016` 2026-07-11 (each sub-hour)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
@@ -43,13 +47,9 @@
 
 ## Inbox
 
-- `005.md` — Wire `spec.healthCheckPath` into a ReadinessProbe (or drop the field) — from the 2026-07-08 docs-vs-code audit
-- `006.md` — Triage 36 Dependabot findings (2 critical, 15 high) reported 2026-07-08
-- `008.md` — Per-service autoscaling config (Render `PUT …/autoscaling`) — from the m13 audit; gated on **m3** landing node elasticity (the metric→replica reconciler is new work in 008)
-- `012.md` — Static sites (Render `static_site` type) — split from **m15** (build→CDN; a larger effort than the compute service types)
-- `013.md` — Managed Postgres HA: high availability + failover + read replicas — split from **m17** (needs a replicated CNPG cluster)
-- `015.md` — Mock cluster: platform-pool labels so the GitOps stack schedules locally — from the 2026-07-11 board review (theme A); unblocks w4/m7, w4/m11 local verification
-- `016.md` — Sweep stale "single-node / data-loss" comments inverted by the m19 rebuild — from the 2026-07-11 board review (theme F)
+_(empty — all open notes promoted into milestones 2026-07-11; see below)_
+
+> **Promoted 2026-07-11 (`/pm group them into milestones`):** `008`→**m20** (per-service autoscaling), `012`→**m21** (static sites), `013`→**m22** (Postgres HA); the four sub-hour notes `005`+`006`+`015`+`016`→**m23** (misc chores milestone — each below milestone size individually, grouped per the sizing rule). All seven notes moved to `done/`.
 > **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above. **Promoted 2026-07-10:** `014` (prod KCP unmanageable, m7 aftermath) → **m19** via `docs/rearchitecture.md` (since absorbed into architecture.md); note moved to `done/`.
 
 > `003` (custom-domains API) promoted to **m11** and `004` (scale API) promoted to **m12** on 2026-07-08; notes moved to `done/`. m12 was subsequently relocated to **w2** (done: `w2/done/m12/`).

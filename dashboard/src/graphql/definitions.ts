@@ -1119,3 +1119,40 @@ export const AuditLogsDocument = {"kind":"Document","definitions":[{"kind":"Oper
 // environment to run `yarn codegen` against internal/audit/graphql.go's real
 // schema. Shape matches that file exactly; re-run `yarn codegen` once a live
 // bex-api is available to replace this with a verified generation.
+
+// --- w1/m20: per-service autoscaling (hand-added; codegen needs a live bex-api) ---
+
+export type AutoscalingConfig = {
+  __typename: 'AutoscalingConfig';
+  enabled: Maybe<Scalars['Boolean']['output']>;
+  maxInstances: Maybe<Scalars['Int']['output']>;
+  minInstances: Maybe<Scalars['Int']['output']>;
+  targetCPUPercent: Maybe<Scalars['Int']['output']>;
+  targetMemoryPercent: Maybe<Scalars['Int']['output']>;
+};
+
+export type AutoscalingConfigQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+export type AutoscalingConfigQuery = { autoscalingConfig: { __typename: 'AutoscalingConfig', enabled: boolean | null, minInstances: number | null, maxInstances: number | null, targetCPUPercent: number | null, targetMemoryPercent: number | null } | null };
+
+export type SetAutoscalingMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  minInstances: Scalars['Int']['input'];
+  maxInstances: Scalars['Int']['input'];
+  targetCPUPercent?: InputMaybe<Scalars['Int']['input']>;
+  targetMemoryPercent?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+export type SetAutoscalingMutation = { setAutoscaling: { __typename: 'AutoscalingConfig', enabled: boolean | null, minInstances: number | null, maxInstances: number | null, targetCPUPercent: number | null, targetMemoryPercent: number | null } | null };
+
+export type DisableAutoscalingMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+export type DisableAutoscalingMutation = { disableAutoscaling: boolean | null };
+
+export const AutoscalingConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AutoscalingConfig"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"autoscalingConfig"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"minInstances"}},{"kind":"Field","name":{"kind":"Name","value":"maxInstances"}},{"kind":"Field","name":{"kind":"Name","value":"targetCPUPercent"}},{"kind":"Field","name":{"kind":"Name","value":"targetMemoryPercent"}}]}}]}}]} as unknown as DocumentNode<AutoscalingConfigQuery, AutoscalingConfigQueryVariables>;
+export const SetAutoscalingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetAutoscaling"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"minInstances"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"maxInstances"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"targetCPUPercent"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"targetMemoryPercent"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setAutoscaling"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"minInstances"},"value":{"kind":"Variable","name":{"kind":"Name","value":"minInstances"}}},{"kind":"Argument","name":{"kind":"Name","value":"maxInstances"},"value":{"kind":"Variable","name":{"kind":"Name","value":"maxInstances"}}},{"kind":"Argument","name":{"kind":"Name","value":"targetCPUPercent"},"value":{"kind":"Variable","name":{"kind":"Name","value":"targetCPUPercent"}}},{"kind":"Argument","name":{"kind":"Name","value":"targetMemoryPercent"},"value":{"kind":"Variable","name":{"kind":"Name","value":"targetMemoryPercent"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"minInstances"}},{"kind":"Field","name":{"kind":"Name","value":"maxInstances"}},{"kind":"Field","name":{"kind":"Name","value":"targetCPUPercent"}},{"kind":"Field","name":{"kind":"Name","value":"targetMemoryPercent"}}]}}]}}]} as unknown as DocumentNode<SetAutoscalingMutation, SetAutoscalingMutationVariables>;
+export const DisableAutoscalingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DisableAutoscaling"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"disableAutoscaling"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DisableAutoscalingMutation, DisableAutoscalingMutationVariables>;

@@ -31,6 +31,19 @@ import (
 // the string `suspended` enum. Every resolver delegates to the Service — the
 // schema is presentation, the behavior is shared with REST and MCP.
 
+// autoscalingGQLType renders AutoscalingView — the per-service autoscaling
+// config backed by spec.autoscaling (Render's Scaling tab shape).
+var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Autoscaling",
+	Fields: graphql.Fields{
+		"enabled":             &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.Enabled })},
+		"minInstances":        &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.MinInstances })},
+		"maxInstances":        &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.MaxInstances })},
+		"targetCPUPercent":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.TargetCPUPercent })},
+		"targetMemoryPercent": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.TargetMemoryPercent })},
+	},
+})
+
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
@@ -102,6 +115,17 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
 		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		// autoscaling is the per-service autoscaling config (Render's Scaling tab).
+		// Null when spec.autoscaling is unset (autoscaling never configured).
+		"autoscaling": &graphql.Field{
+			Type: autoscalingGQLType,
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.Autoscaling == nil {
+					return nil
+				}
+				return *a.Autoscaling
+			}),
+		},
 	},
 })
 
@@ -260,6 +284,19 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 // server(id)) for the composition root to merge into the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
+		// autoscalingConfig: read the autoscaling config for a specific service by id.
+		// A bex extension (Render exposes autoscaling only via REST PUT/DELETE).
+		"autoscalingConfig": &graphql.Field{
+			Type: autoscalingGQLType,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				av, err := s.GetAutoscaling(p.Context, p.Args["id"].(string))
+				if err != nil {
+					return nil, err
+				}
+				return av, nil
+			},
+		},
 		"services": &graphql.Field{
 			Type: graphql.NewList(serviceGQLType),
 			Args: graphql.FieldConfigArgument{
@@ -456,6 +493,43 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.VerifyDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
+		// setAutoscaling: enable/update autoscaling on a service (mirrors Render's
+		// PUT /v1/services/{id}/autoscaling). Returns the updated autoscaling config.
+		"setAutoscaling": &graphql.Field{
+			Type: autoscalingGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":                  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"minInstances":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+				"maxInstances":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+				"targetCPUPercent":    &graphql.ArgumentConfig{Type: graphql.Int},
+				"targetMemoryPercent": &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				req := SetAutoscalingRequest{
+					MinInstances: int32(p.Args["minInstances"].(int)),
+					MaxInstances: int32(p.Args["maxInstances"].(int)),
+				}
+				if v, ok := p.Args["targetCPUPercent"].(int); ok {
+					i := int32(v)
+					req.TargetCPUPercent = &i
+				}
+				if v, ok := p.Args["targetMemoryPercent"].(int); ok {
+					i := int32(v)
+					req.TargetMemoryPercent = &i
+				}
+				return s.SetAutoscaling(p.Context, p.Args["id"].(string), req)
+			},
+		},
+		// disableAutoscaling: disable autoscaling on a service (mirrors Render's
+		// DELETE /v1/services/{id}/autoscaling). Returns true on success.
+		"disableAutoscaling": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DeleteAutoscaling(p.Context, p.Args["id"].(string))
+				return err == nil, err
 			},
 		},
 	}

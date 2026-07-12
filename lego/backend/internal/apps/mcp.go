@@ -167,6 +167,17 @@ type deployArgs struct {
 	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml (render.yaml-shaped manifest) describing the service"`
 }
 
+// autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
+// /v1/services/{id}/autoscaling request body (minInstances / maxInstances /
+// targetCPUPercent / targetMemoryPercent).
+type autoscalingArgs struct {
+	ServiceID           string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (≥ 0; default 1)"`
+	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (≥ 1; must be ≥ minInstances)"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty" jsonschema:"target average memory utilization % of tier limit (1-100); required if targetCPUPercent is absent"`
+}
+
 // domainArgs is the shared custom-domain argument (serviceId + domain name).
 type domainArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
@@ -304,6 +315,42 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, renderService{}, err
 		}
 		return nil, toRenderService(app), nil
+	})
+
+	// Autoscaling tools — tracking Render's PUT/DELETE .../autoscaling contract.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_autoscaling",
+		Description: "Get the autoscaling configuration for a service (minInstances, maxInstances, targetCPUPercent, targetMemoryPercent). Returns enabled:false when autoscaling is not configured. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, AutoscalingView, error) {
+		av, err := s.GetAutoscaling(ctx, in.ServiceID)
+		if err != nil {
+			return nil, AutoscalingView{}, err
+		}
+		return nil, av, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_autoscaling",
+		Description: "Enable or update autoscaling for a service. The operator adjusts replicas within [minInstances, maxInstances] to hold the target CPU and/or memory utilization. Tracks Render's PUT /v1/services/{id}/autoscaling.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoscalingArgs) (*mcp.CallToolResult, AutoscalingView, error) {
+		av, err := s.SetAutoscaling(ctx, in.ServiceID, SetAutoscalingRequest{
+			MinInstances:        in.MinInstances,
+			MaxInstances:        in.MaxInstances,
+			TargetCPUPercent:    in.TargetCPUPercent,
+			TargetMemoryPercent: in.TargetMemoryPercent,
+		})
+		if err != nil {
+			return nil, AutoscalingView{}, err
+		}
+		return nil, av, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "disable_autoscaling",
+		Description: "Disable autoscaling for a service, reverting it to its fixed spec.replicas count. Tracks Render's DELETE /v1/services/{id}/autoscaling.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
+		err := s.DeleteAutoscaling(ctx, in.ServiceID)
+		return nil, deletedResult{Deleted: err == nil}, err
 	})
 
 	// Custom domain tools — tracking render-oss/render-mcp-server tool names.

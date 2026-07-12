@@ -1,0 +1,40 @@
+# autoscalingConfig fetches the current autoscaling configuration for a service,
+# backing the Scaling tab's read path (backend/internal/apps/graphql.go).
+query AutoscalingConfig($id: String!) {
+  autoscalingConfig(id: $id) {
+    enabled
+    minInstances
+    maxInstances
+    targetCPUPercent
+    targetMemoryPercent
+  }
+}
+
+# setAutoscaling enables (or updates) autoscaling for a service.
+mutation SetAutoscaling(
+  $id: String!
+  $minInstances: Int!
+  $maxInstances: Int!
+  $targetCPUPercent: Int
+  $targetMemoryPercent: Int
+) {
+  setAutoscaling(
+    id: $id
+    minInstances: $minInstances
+    maxInstances: $maxInstances
+    targetCPUPercent: $targetCPUPercent
+    targetMemoryPercent: $targetMemoryPercent
+  ) {
+    enabled
+    minInstances
+    maxInstances
+    targetCPUPercent
+    targetMemoryPercent
+  }
+}
+
+# disableAutoscaling turns off autoscaling for a service without deleting the
+# stored configuration.
+mutation DisableAutoscaling($id: String!) {
+  disableAutoscaling(id: $id)
+}

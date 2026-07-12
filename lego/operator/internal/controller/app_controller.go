@@ -85,6 +85,10 @@ type AppReconciler struct {
 	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
 	ActivatorService string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
 	ActivatorPort    int                     // activator listen port (default 8888)
+	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
+	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
+	// is skipped (no replica adjustment). Tests inject a fake reader.
+	MetricsReader MetricsReader
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -289,6 +293,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
 
 	replicas := effectiveReplicas(app)
+	// When autoscaling is enabled, adjust replicas from live metrics before any
+	// further use. applyAutoscaling patches spec.replicas and returns the desired
+	// count so this reconcile pass uses it immediately. It is a no-op when
+	// metrics are unavailable or autoscaling is disabled. Overridden to 0 below
+	// if the app is auto-hibernating.
+	var autoscaleRequeue bool
+	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !worker && !app.Spec.Suspended {
+		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
+	}
 	if autoHibernating {
 		replicas = 0
 	}
@@ -526,6 +539,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			}
 		}
 		return ctrl.Result{RequeueAfter: idleRequeueAfter(app, now)}, nil
+	}
+	// Autoscaling: always requeue at the poll interval so the loop keeps running.
+	if autoscaleRequeue {
+		return ctrl.Result{RequeueAfter: autoscaleInterval}, nil
 	}
 	return ctrl.Result{}, nil
 }
