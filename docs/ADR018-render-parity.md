@@ -25,7 +25,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Manual scale (instance count) | ✅ | ✅ | ✅ | ✖ | `POST …/scale`; GraphQL `scaleService`; MCP `scale_service` (backend shipped w2/m12). Dashboard stepper → **w5/004**. |
 | Autoscaling config (min/max + CPU/mem target) | ✅ | ✅ | ✅ | ✅ | Render `GET`/`PUT`/`DELETE /services/{id}/autoscaling`. bex: REST + GraphQL (`autoscalingConfig` query, `setAutoscaling` / `disableAutoscaling` mutations) + MCP (`get_autoscaling` / `set_autoscaling` / `disable_autoscaling` tools) + Dashboard Scaling tab. Operator reconciler: HPA-style metrics-server loop at 30 s, 5-min scale-down stabilization window. → **w1/m20**. |
 | Delete service | ✅ | ✅ | ✅ | ✅ | `DELETE /v1/services/{id}` (204, empty body); GraphQL `deleteService` (success boolean, like `deleteCustomDomain`); MCP `delete_service` (`{deleted:true}`, bex extension — Render's official MCP ships no delete tool). One `Service.Delete` verb (`can_create` scope): store-managed → delete the apps row first (projector removes the CR, resync-safe) then the CR directly for immediate convergence; store-less → delete the CR directly. Operator ownerRefs cascade Deployment/Service/Ingress/CronJob/NetworkPolicy; the cert-manager TLS `Secret` is the one documented orphan (w2/m4). Dashboard: Settings-tab danger zone → **Delete Service** button opens a type-to-confirm dialog (exact service name), evicts the deleted `Service` from the Apollo cache, and redirects to the services list with a success toast (`delete-service-card.tsx`/`use-delete-service.ts`, w5/m14). |
-| Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. bex has no event objects. → **w2/m5** (deploy objects) + **w4/m10** (audit log). |
+| Service events / activity feed | ✖ | ✖ | ✖ | ✖ | Render `GET /services/{id}/events`. Both prerequisites shipped (deploy objects w2/m5, audit log w4/m10) — the composed feed → **w3/m7** (2026-07-12); Events-tab UI → `w5/007`. |
 | Cache purge | — | — | — | — | Render `POST …/cache/purge` (static-site CDN). bex has no build CDN cache — non-goal. |
 | Background worker (no HTTP port) | ✅ | ✅ | ✅ | ✅ | `spec.type=background_worker` → Deployment only, no Service/Ingress/URL (`app_controller.go`); create over `POST /v1/services`, GraphQL `createService(type:)`, MCP `create_web_service(type:)`; dashboard type badge + no-URL. (w1/m15) |
 | Cron job (schedule + command + run history) | ✅ | ✅ | ✅ | ✅ | `spec.type=cron_job` + `spec.schedule` + `spec.command` (entrypoint override, applied via a shell in `cronPodSpec`) → k8s CronJob, `status.runs` (`app_controller.go`); run trigger `POST /v1/cron-jobs/{id}/runs` / GraphQL `runCronJob` / MCP `run_cron_job`; create/update thread both fields on REST (`schedule`/`command`, top-level or nested under `serviceDetails`), GraphQL (`createService(schedule:, command:)`), MCP (`create_cron_job`). Settings page (w5/m11): a cron job's Settings tab shows a **Deploy** section (Schedule + Command, read-only — write path is a follow-on) instead of Custom Domains/Idle timeout, neither of which applies to a service with no HTTP traffic. Deferred vs Render's cron Deploy section: Build Command, Auto Deploy toggle, Log Stream, Notifications (◐ — tracked here, not a separate row). (w1/m15, w5/m11) |
@@ -39,9 +39,9 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Trigger a deploy | ◐ | ◐ | ✅ | ✖ | No dedicated endpoint: `POST /v1/services` upsert re-applies the spec (rebuild) and the HMAC webhook redeploys on push; MCP `deploy` (bexYaml) + `create_web_service`. Render `POST …/deploys` → **w2/m5**. See [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md). |
-| List / get deploy objects | ✖ | ✖ | ✖ | ✖ | Render `list_deploys`/`get_deploy`, `GET …/deploys`. bex tracks only `status.revision` on the App, no deploy objects. → **w2/m5**. |
-| Cancel deploy | ✖ | ✖ | ✖ | ✖ | Render `POST /services/{serviceId}/deploys/{deployId}/cancel`. → **w2/m5**. |
-| Rollback | ✖ | ✖ | ✖ | ✖ | Render `POST …/rollback {deployId}`. Depends on deploy objects → extends **w2/m5**. |
+| List / get deploy objects | ✖ | ✖ | ✖ | ✖ | Render `list_deploys`/`get_deploy`, `GET …/deploys`. **Stale row** — shipped by w2/m5 2026-07-09 (`internal/deploys/{rest,graphql,mcp}.go`); refresh with evidence in w2/m10/t006 (flagged 2026-07-12). |
+| Cancel deploy | ✖ | ✖ | ✖ | ✖ | Render `POST /services/{serviceId}/deploys/{deployId}/cancel`. Deploy objects shipped without it (w2/m5) → **w2/m10** (2026-07-12). |
+| Rollback | ✖ | ✖ | ✖ | ✖ | Render `POST …/rollback {deployId}`. Rollback target recorded per deploy → **w2/m10** (2026-07-12); UI button → `w5/007`. |
 
 ## Environment & config
 
@@ -81,7 +81,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Blueprint / `render.yaml` IaC | ◐ | ✖ | ◐ | ✖ | bex consumes a `render.yaml`-shaped `bex.yml` via `deploy` (MCP) + `scripts/app-apply.sh`, but exposes no `/blueprints` resource (validate/list/sync). → extends **w2/m2**; resource untracked, low. |
+| Blueprint / `render.yaml` IaC | ◐ | ✖ | ◐ | ✖ | bex consumes a `render.yaml`-shaped `bex.yml` via `deploy` (MCP) + `scripts/app-apply.sh` — single-service only; the multi-service form (`services:` + `databases:` + `fromDatabase`) → **w1/m24** (2026-07-12). `/blueprints` resource (validate/list/sync) stays untracked, low. |
 | Projects & environments (grouping) | ✖ | ✖ | ✖ | ✖ | Render `/projects`, `/environments`, protected environments. bex is flat apps in one workspace. Belongs to the tenancy line → nearest **w1/m9**; low. |
 | Registry credentials (private images) | ✖ | ✖ | ✖ | ✖ | Render `/registrycredentials`. bex pulls from its own zot registry; external private registries unsupported. Low, untracked. |
 | Git connections (GitHub / GitLab app) | ✅ | ✅ | ✅ | ✅ | **GitHub App** across all four surfaces (w2/m8 connect+list, w2/m9 private deploy + push): connect (install → callback) + repo list; private-repo deploys clone with a 1h installation token bex-api mints into a `<app>-clone` Secret (`spec.cloneSecret` → BuildKit `GIT_AUTH_TOKEN`); **zero-config push-to-deploy** — the app's app-wide webhook is a second accepted HMAC key on `POST /v1/webhooks/git` (no per-repo config); Auto-Deploy toggle (`setAutoDeploy`) + dashboard Connect-GitHub card & Build & Deploy toggle. GitLab/Bitbucket providers remain ◐ (out of scope). `GET /v1/repos` + MCP `list_repos`/`get_git_connection` are bex supersets (§ bex ahead). [ADR026-github-integration.md](ADR026-github-integration.md). GitHub OAuth **login** is separate → w4/003. |
@@ -154,7 +154,10 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Gap | Owner | Status |
 | --- | --- | --- |
 | Delete service | `w2/m4` · `w5/m14` | done 2026-07-09 (REST/GraphQL/MCP); dashboard danger-zone UI done 2026-07-11 (`w5/m14`) |
-| Deploy objects (list/get/trigger/cancel) + rollback | `w2/m5` | todo |
+| Deploy objects (list/get/trigger) | `w2/m5` | done 2026-07-09 (`internal/deploys/`; §Deploys rows refresh in w2/m10/t006) |
+| Deploy cancel + rollback | `w2/m10` | todo |
+| Service events feed | `w3/m7` | todo (UI → `w5/007`) |
+| Multi-service `bex.yml` (Blueprint stack deploys) | `w1/m24` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |
 | Custom-domain DNS/CNAME instructions in dashboard | `w5/006` | done (w5/m10) |
 | Key Value (Valkey/Redis) store | `w1/m14` · `w2/m7` · `w5/m12` | done — mechanism (CR + reconciler, live in prod 2026-07-09); REST/GraphQL/MCP (w2/m7); dashboard (w5/m12, 2026-07-09) |

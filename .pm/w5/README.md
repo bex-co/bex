@@ -23,6 +23,6 @@
 
 ## Inbox
 
-_(empty — `004` promoted to m16)_
+- `007.md` — Events tab + deploy list UI (Rollback/Cancel) — gated on `w3/m7` + `w2/m10` (backends materialized 2026-07-12)
 
 > `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (ADR008-vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`.
