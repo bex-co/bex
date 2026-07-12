@@ -13,7 +13,10 @@
 #   HYDRA_OIDC_PAIRWISE_SALT  hydra pairwise subject salt    (>= 8 chars)
 #   OPENFGA_PRESHARED_KEY     openfga API preshared key      (>= 16 chars)
 #   KRATOS_COURIER_SMTP_URI   kratos courier SMTP relay URI  (smtp:// or smtps://)
-#     Prod (SendGrid): smtps://apikey:<sendgrid-api-key>@smtp.sendgrid.net:465
+#     Prod (SendGrid): smtp://apikey:<sendgrid-api-key>@smtp.sendgrid.net:587
+#       Port 587 + STARTTLS, NOT 465 — Hetzner blocks outbound 25/465; 587/2525 are
+#       open. With :465 the courier loops on `dial tcp: i/o timeout` and mail never
+#       lands, while the flow still reports "sent_email" (docs/ADR012-auth.md §11).
 #     Local (Mailpit): smtp://mailpit.auth.svc:1025/?disable_starttls=true  (no TLS)
 #     Written into the kratos Secret under the chart key `smtpConnectionURI`; the
 #     courier is enabled in the values, so the key must exist (docs/ADR012-auth.md §11).
