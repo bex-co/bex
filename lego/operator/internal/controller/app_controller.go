@@ -165,7 +165,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
 		buildNs := r.buildNamespace(app.Namespace)
-		// The clone Secret (docs/github-integration.md) that bex-api wrote lives
+		// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
 		// in the App's namespace, but the build Job runs in buildNs
 		// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
 		// GIT_AUTH_TOKEN — otherwise the build pod is CreateContainerConfigError

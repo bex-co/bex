@@ -22,7 +22,7 @@ On a cluster with `BEX_CP_DB_URI`: every identity resolves to a stable `own-<xid
 ## Source + Goal linkage
 
 - **Source:** user request 2026-07-11 (`/pm how to implement own- or owner feature`) + the design review that followed, tracing `w6/done/001.md` item 1 to its root: bex emits no `own-` ids (`renderOwnerType = "team"` hardcoded; member `userId` = raw subject — `lego/backend/internal/workspaces/render.go`).
-- **Goal linkage:** `docs/vision.md` pillar 1 (Render parity). Closes the member-identifier cell of the `owners` read-API vs Render's OpenAPI; explicitly records the two adjacent behaviors that are non-goals for bex's all-teams model.
+- **Goal linkage:** `docs/ADR008-vision.md` pillar 1 (Render parity). Closes the member-identifier cell of the `owners` read-API vs Render's OpenAPI; explicitly records the two adjacent behaviors that are non-goals for bex's all-teams model.
 - **Expected outcome:** the owners/members surface emits opaque, Render-shaped `own-` user ids instead of leaking internal Kratos subject strings — a small fidelity + information-hygiene win.
 - **Why now (honest — low-priority polish):** this is **not** a blocker and has no hard why-now. The only sequence rationale is soft: `w4/m12` (members) renders user identifiers, so landing opaque `own-` ids first avoids retrofitting raw subjects into that UI/API later. If `w4/m12` isn't imminent this is a fair **defer** — flagged so the choice is explicit. Leaking a Kratos subject as `userId` is a fidelity/hygiene issue, not a correctness bug.
 - **Render parity task included:** yes — changes the REST/GraphQL/MCP member shape, so t003 checks all three and records the non-goals. (Dashboard needs no change — it keys users by Kratos session, not `own-` id.)
