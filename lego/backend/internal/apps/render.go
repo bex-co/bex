@@ -110,6 +110,9 @@ func toRenderService(a AppView) renderService {
 	if a.Command != "" {
 		set("command", a.Command) // cronJobDetails.command (render-public-api-1.json)
 	}
+	if a.PublishPath != "" {
+		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
+	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {
 		ras = &renderAutoscaling{
@@ -143,6 +146,38 @@ func toRenderService(a AppView) renderService {
 		Autoscaling:    ras,
 		AutoDeploy:     a.AutoDeploy,
 	}
+}
+
+// renderRoute mirrors Render's static-site route shape
+// (components.schemas.route: type/source/destination) for the /routes endpoints.
+type renderRoute struct {
+	Type        string `json:"type"` // redirect | rewrite
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+}
+
+// renderHeader mirrors Render's static-site custom-header shape
+// (path/name/value) for the /headers endpoints.
+type renderHeader struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+func toRenderRoutes(routes []StaticRouteView) []renderRoute {
+	out := make([]renderRoute, 0, len(routes))
+	for _, r := range routes {
+		out = append(out, renderRoute{Type: r.Type, Source: r.Source, Destination: r.Destination})
+	}
+	return out
+}
+
+func toRenderHeaders(headers []StaticHeaderView) []renderHeader {
+	out := make([]renderHeader, 0, len(headers))
+	for _, h := range headers {
+		out = append(out, renderHeader{Path: h.Path, Name: h.Name, Value: h.Value})
+	}
+	return out
 }
 
 // toRenderServices maps a slice of AppViews to bare Render service objects (no

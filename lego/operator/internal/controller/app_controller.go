@@ -43,6 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -85,6 +86,17 @@ type AppReconciler struct {
 	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
 	ActivatorService string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
 	ActivatorPort    int                     // activator listen port (default 8888)
+	// StaticStore is the object-store target for static_site publishing
+	// (BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET). Unconfigured => static_site Apps are
+	// rejected with a clear status, the way unset backup vars disable backups.
+	StaticStore publish.Store
+	// StaticServerService is the k8s Service name of the shared static-server that
+	// serves static_site content; a static-site host's Ingress backs onto it (the
+	// same by-name backend wiring the activator uses). Empty => static_site
+	// serving is unavailable.
+	StaticServerService string
+	// StaticServerPort is the static-server Service port (default 8080).
+	StaticServerPort int
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -318,6 +330,11 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if app.Spec.Type == appv1alpha1.TypeCronJob {
 		return r.reconcileCronJob(ctx, app, image, port)
 	}
+	// A static_site diverges too: build → object store, then serve from the shared
+	// static-server (no Deployment/Service for the served content).
+	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		return r.reconcileStaticSite(ctx, app, image)
+	}
 	// A background_worker runs the image with no HTTP port: a bare Deployment, no
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
@@ -435,53 +452,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		ingressPort = int32(r.ActivatorPort)
 	}
 
-	if len(hosts) > 0 {
-		ingressClass := "traefik"
-		pathType := networkingv1.PathTypePrefix
-		ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
-			if ing.Annotations == nil {
-				ing.Annotations = map[string]string{}
-			}
-			if r.ClusterIssuer != "" {
-				ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
-			}
-			ing.Spec.IngressClassName = &ingressClass
-			ing.Spec.TLS = nil
-			ing.Spec.Rules = nil
-			for i, host := range hosts {
-				ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
-					Hosts:      []string{host},
-					SecretName: tlsSecretName(app.Name, i, host),
-				})
-				ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
-					Host: host,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{{
-								Path:     "/",
-								PathType: &pathType,
-								Backend: networkingv1.IngressBackend{
-									Service: &networkingv1.IngressServiceBackend{
-										Name: ingressSvc,
-										Port: networkingv1.ServiceBackendPort{Number: ingressPort},
-									},
-								},
-							}},
-						},
-					},
-				})
-			}
-			return controllerutil.SetControllerReference(app, ing, r.Scheme)
-		}); err != nil {
-			return r.fail(ctx, app, "IngressFailed", err)
-		}
-	} else {
-		// Exposure turned off (all hosts cleared): remove any Ingress we previously created.
-		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
-			return r.fail(ctx, app, "IngressCleanupFailed", err)
-		}
+	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort); err != nil {
+		return r.fail(ctx, app, "IngressFailed", err)
 	}
 
 	// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
@@ -635,6 +607,167 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	return ctrl.Result{}, nil
+}
+
+// reconcileIngress applies one networking.k8s.io Ingress fronting the App's
+// hosts, each with a rule + cert-manager TLS certificate, routed to backend
+// svc:port. With no hosts it removes any Ingress previously created (exposure
+// turned off). The backend is parameterized so a web/private service points at
+// its own Service, an auto-hibernating app at the activator, and a static_site
+// at the shared static-server — all through the same emitted Ingress shape, so
+// the ingress controller (traefik today) stays swappable.
+func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) error {
+	if len(hosts) == 0 {
+		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	ingressClass := "traefik"
+	pathType := networkingv1.PathTypePrefix
+	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+		if ing.Annotations == nil {
+			ing.Annotations = map[string]string{}
+		}
+		if r.ClusterIssuer != "" {
+			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
+		}
+		ing.Spec.IngressClassName = &ingressClass
+		ing.Spec.TLS = nil
+		ing.Spec.Rules = nil
+		for i, host := range hosts {
+			ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
+				Hosts:      []string{host},
+				SecretName: tlsSecretName(app.Name, i, host),
+			})
+			ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
+				Host: host,
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{{
+							Path:     "/",
+							PathType: &pathType,
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: svc,
+									Port: networkingv1.ServiceBackendPort{Number: port},
+								},
+							},
+						}},
+					},
+				},
+			})
+		}
+		return controllerutil.SetControllerReference(app, ing, r.Scheme)
+	})
+	return err
+}
+
+// reconcileStaticSite materializes a static_site: build → object store (the
+// publish plane), then serve the published revision from the shared
+// static-server (no Deployment/Service for the served content). Routes/headers
+// live on the CR and the static-server reads them live, so an edge-rule edit
+// takes effect on the next resolver refresh without a republish. The image is
+// already resolved (built from git or prebuilt) by Reconcile.
+func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha1.App, image string) (ctrl.Result, error) {
+	if app.Spec.PublishPath == "" {
+		return r.fail(ctx, app, "BadSpec", fmt.Errorf("static_site requires spec.publishPath"))
+	}
+	if !r.StaticStore.Configured() || r.StaticServerService == "" {
+		return r.fail(ctx, app, "StaticUnavailable",
+			fmt.Errorf("static_site is unavailable: set BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET and BEX_STATIC_SERVER_SERVICE"))
+	}
+
+	// Type-change cleanup: a static_site has no Deployment/Service of its own.
+	for _, obj := range []client.Object{
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
+	} {
+		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
+			return r.fail(ctx, app, "StaticCleanupFailed", err)
+		}
+	}
+
+	rev := fmt.Sprintf("rev-%d", app.Generation)
+
+	// Publish this revision's built output to the object store, unless it is
+	// already the active revision (idempotent: the publish Job is named per
+	// revision, so a retry adopts it rather than re-uploading).
+	if app.Status.ActiveRevision != rev {
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
+		if err := publish.Publish(ctx, publish.Options{
+			Image:       image,
+			PublishPath: app.Spec.PublishPath,
+			AppID:       app.Name,
+			Revision:    rev,
+			Store:       r.StaticStore,
+			Namespace:   r.buildNamespace(app.Namespace),
+			Client:      r.Client,
+		}); err != nil {
+			return r.fail(ctx, app, "PublishFailed", err)
+		}
+	}
+
+	// A static_site must be reachable at a host (there is no in-cluster-only mode
+	// for served content — the static-server dispatches by Host).
+	hosts := effectiveHosts(app, r.BaseDomain)
+	if len(hosts) == 0 {
+		return r.fail(ctx, app, "BadSpec",
+			fmt.Errorf("static_site requires a host: set spec.expose (with BEX_BASE_DOMAIN), spec.host, or spec.hosts"))
+	}
+
+	// Suspended: stop serving by removing the Ingress; the published content stays
+	// in the object store, so resume just recreates the Ingress.
+	if app.Spec.Suspended {
+		if err := r.reconcileIngress(ctx, app, nil, "", 0); err != nil {
+			return r.fail(ctx, app, "IngressCleanupFailed", err)
+		}
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		app.Status.Image = image
+		app.Status.ActiveRevision = rev
+		app.Status.ObservedGeneration = app.Generation
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Message: "static site suspended (not served; published content kept)", ObservedGeneration: app.Generation,
+		})
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.reconcileIngress(ctx, app, hosts, r.StaticServerService, int32(r.staticServerPort())); err != nil {
+		return r.fail(ctx, app, "IngressFailed", err)
+	}
+
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.Image = image
+	app.Status.ActiveRevision = rev
+	app.Status.ObservedGeneration = app.Generation
+	app.Status.URL = "https://" + hosts[0]
+	app.Status.URLs = nil
+	for _, h := range hosts {
+		app.Status.URLs = append(app.Status.URLs, "https://"+h)
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Published",
+		Message: "static site published and served from the object-store origin", ObservedGeneration: app.Generation,
+	})
+	if err := r.Status().Update(ctx, app); err != nil {
+		return ctrl.Result{}, err
+	}
+	logf.FromContext(ctx).Info("static site running", "name", app.Name, "revision", rev, "image", image)
+	return ctrl.Result{}, nil
+}
+
+// staticServerPort is the static-server Service port, defaulting to 8080.
+func (r *AppReconciler) staticServerPort() int {
+	if r.StaticServerPort != 0 {
+		return r.StaticServerPort
+	}
+	return 8080
 }
 
 // maxCronRuns caps how many recent runs the status carries — enough to show a

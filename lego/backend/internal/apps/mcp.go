@@ -190,6 +190,101 @@ type domainArgs struct {
 	Name      string `json:"name" jsonschema:"the custom domain FQDN, e.g. www.example.com"`
 }
 
+// staticRouteArg / staticHeaderArg are the MCP shapes of a static_site's edge
+// rules — Render's route (type/source/destination) and header (path/name/value).
+type staticRouteArg struct {
+	Type        string `json:"type" jsonschema:"redirect (301 to destination) or rewrite (serve destination's content with 200)"`
+	Source      string `json:"source" jsonschema:"request path pattern to match, e.g. /old or /app/* (trailing /* is a wildcard)"`
+	Destination string `json:"destination" jsonschema:"target path, e.g. /new or /index.html; :splat or a trailing /* substitutes the wildcard capture"`
+}
+
+type staticHeaderArg struct {
+	Path  string `json:"path" jsonschema:"request path pattern the header applies to, e.g. /* or /assets/*"`
+	Name  string `json:"name" jsonschema:"response header name, e.g. X-Frame-Options"`
+	Value string `json:"value" jsonschema:"response header value, e.g. DENY"`
+}
+
+// createStaticSiteArgs is create_static_site's input — Render's MCP tool name.
+// A static site builds a repo and serves its publishPath output from the
+// object-store origin (no running container). publishPath is required; routes and
+// headers are the optional edge rules.
+type createStaticSiteArgs struct {
+	Name        string            `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
+	Repo        string            `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
+	Image       string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
+	Branch      string            `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir     string            `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	PublishPath string            `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
+	EnvVars     []envVarArg       `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
+	Domains     []string          `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
+	Routes      []staticRouteArg  `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
+	Headers     []staticHeaderArg `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
+}
+
+func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
+	return CreateRequest{
+		Name:        a.Name,
+		Type:        appv1alpha1.TypeStaticSite,
+		Repo:        a.Repo,
+		Image:       a.Image,
+		Branch:      a.Branch,
+		RootDir:     a.RootDir,
+		PublishPath: a.PublishPath,
+		Env:         toEnvVars(a.EnvVars),
+		Hosts:       a.Domains,
+		Routes:      routeArgViews(a.Routes),
+		Headers:     headerArgViews(a.Headers),
+	}
+}
+
+// routesArgs / headersArgs / publishPathArgs are the static-site edge-rule tool
+// inputs; the set tools replace the whole list (Render's bulk update).
+type routesArgs struct {
+	ServiceID string           `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	Routes    []staticRouteArg `json:"routes" jsonschema:"the full ordered list of redirect/rewrite rules to set (replaces the existing routes)"`
+}
+
+type headersArgs struct {
+	ServiceID string            `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	Headers   []staticHeaderArg `json:"headers" jsonschema:"the full list of custom response-header rules to set (replaces the existing headers)"`
+}
+
+type publishPathArgs struct {
+	ServiceID   string `json:"serviceId" jsonschema:"the static site id (bex App name), as returned by list_services"`
+	PublishPath string `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist"`
+}
+
+// routesResult / headersResult wrap the arrays — MCP tool outputs must be objects.
+type routesResult struct {
+	Routes []renderRoute `json:"routes"`
+}
+
+type headersResult struct {
+	Headers []renderHeader `json:"headers"`
+}
+
+func routeArgViews(in []staticRouteArg) []StaticRouteView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]StaticRouteView, len(in))
+	for i, r := range in {
+		out[i] = StaticRouteView{Type: r.Type, Source: r.Source, Destination: r.Destination}
+	}
+	return out
+}
+
+func headerArgViews(in []staticHeaderArg) []StaticHeaderView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]StaticHeaderView, len(in))
+	for i, h := range in {
+		out[i] = StaticHeaderView{Path: h.Path, Name: h.Name, Value: h.Value}
+	}
+	return out
+}
+
 // domainListResult wraps the array — MCP tool outputs must be JSON objects.
 type domainListResult struct {
 	CustomDomains []renderCustomDomain `json:"customDomains"`
@@ -233,6 +328,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_cron_job",
 		Description: "Create (or update) a cron job that runs a repo/image's command on a schedule, and get back the service. Calling it again for the same name redeploys it. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Create(ctx, in.toCreateRequest())
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "create_static_site",
+		Description: "Create (or update) a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. Calling it again for the same name republishes it. Tracks Render's MCP tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -425,6 +531,64 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, renderCustomDomain{}, err
 		}
 		return nil, toRenderCustomDomain(d), nil
+	})
+
+	// Static-site edge-rule tools. Render's official MCP ships only a
+	// non-functional update_static_site stub; bex makes routes/headers/publishPath
+	// real, delegating to the same Service verbs REST/GraphQL use.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_static_routes",
+		Description: "List a static site's redirect/rewrite rules (in order, first match wins).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, routesResult, error) {
+		routes, err := s.ListRoutes(ctx, in.ServiceID)
+		if err != nil {
+			return nil, routesResult{}, err
+		}
+		return nil, routesResult{Routes: toRenderRoutes(routes)}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_static_routes",
+		Description: "Replace a static site's redirect/rewrite rules with the given ordered list (Render's routes). The change takes effect without a rebuild. Rejected for a non-static-site service.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in routesArgs) (*mcp.CallToolResult, routesResult, error) {
+		app, err := s.SetRoutes(ctx, in.ServiceID, routeArgViews(in.Routes))
+		if err != nil {
+			return nil, routesResult{}, err
+		}
+		return nil, routesResult{Routes: toRenderRoutes(app.Routes)}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_static_headers",
+		Description: "List a static site's custom response-header rules.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, headersResult, error) {
+		headers, err := s.ListHeaders(ctx, in.ServiceID)
+		if err != nil {
+			return nil, headersResult{}, err
+		}
+		return nil, headersResult{Headers: toRenderHeaders(headers)}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_static_headers",
+		Description: "Replace a static site's custom response-header rules with the given list (Render's headers). The change takes effect without a rebuild. Rejected for a non-static-site service.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in headersArgs) (*mcp.CallToolResult, headersResult, error) {
+		app, err := s.SetHeaders(ctx, in.ServiceID, headerArgViews(in.Headers))
+		if err != nil {
+			return nil, headersResult{}, err
+		}
+		return nil, headersResult{Headers: toRenderHeaders(app.Headers)}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_publish_path",
+		Description: "Change the built output directory a static site serves (its publishPath) and republish. Rejected for a non-static-site service.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in publishPathArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetPublishPath(ctx, in.ServiceID, in.PublishPath)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
 	})
 }
 

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bex-static-server
+  namespace: bex-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.bex.co/component: static-server
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: static-server
+    spec:
+      serviceAccountName: bex-static-server
+      # w1/m19 t003: platform pool (same placement as the activator/operator).
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: static-server
+          image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
+          command: ["/staticserver"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BEX_STATIC_ADDR
+              value: ":8080"
+          # Object-store config (endpoint/bucket/region + base domain) comes from
+          # an optional ConfigMap; the S3 credentials from the out-of-band Secret
+          # (created from .env like etcd-backup-s3, keys AWS_ACCESS_KEY_ID /
+          # AWS_SECRET_ACCESS_KEY). Both optional so the pod stays Ready and serves
+          # 503 until configured (docs/ADR029-static-sites.md). The Secret name here must
+          # match the operator's BEX_STATIC_S3_SECRET.
+          envFrom:
+            - configMapRef:
+                name: bex-static-config
+                optional: true
+            - secretRef:
+                name: static-s3
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5

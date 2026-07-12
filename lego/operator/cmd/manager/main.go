@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/bex-co/bex/lego/operator/internal/controller"
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -203,6 +204,12 @@ func main() {
 			activatorPort = p
 		}
 	}
+	staticServerPort := 8080
+	if v := os.Getenv("BEX_STATIC_SERVER_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			staticServerPort = p
+		}
+	}
 	appReconciler := &controller.AppReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
@@ -215,6 +222,14 @@ func main() {
 		ClusterIssuer:    envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		ActivatorService: envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorPort:    activatorPort,
+		StaticStore: publish.Store{
+			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
+			Endpoint: envOr("BEX_STATIC_S3_ENDPOINT", ""),
+			Region:   envOr("BEX_STATIC_S3_REGION", ""),
+			Secret:   envOr("BEX_STATIC_S3_SECRET", ""),
+		},
+		StaticServerService: envOr("BEX_STATIC_SERVER_SERVICE", ""),
+		StaticServerPort:    staticServerPort,
 	}
 	if cs != nil {
 		appReconciler.MetricsReader = controller.NewMetricsServerReader(cs)

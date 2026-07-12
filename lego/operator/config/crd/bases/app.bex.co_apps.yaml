@@ -196,6 +196,33 @@ spec:
                 items:
                   type: string
                 type: array
+              headers:
+                description: |-
+                  Headers are the custom response-header rules a static_site applies at the
+                  edge (Render's /headers), scoped by request-path pattern. Ignored for every
+                  other type.
+                items:
+                  description: |-
+                    StaticHeader is one custom response-header rule for a static_site, matching
+                    Render's header shape: Name/Value is added to responses whose request path
+                    matches Path (e.g. "/*" for all paths, "/assets/*" for a subtree).
+                  properties:
+                    name:
+                      description: Name is the response header name (e.g. "X-Frame-Options").
+                      type: string
+                    path:
+                      description: Path is the request path pattern the header applies
+                        to (e.g. "/*").
+                      type: string
+                    value:
+                      description: Value is the response header value (e.g. "DENY").
+                      type: string
+                  required:
+                  - name
+                  - path
+                  - value
+                  type: object
+                type: array
               healthCheckPath:
                 default: /
                 description: |-
@@ -235,6 +262,15 @@ spec:
                 description: Port the application listens on (PORT is injected).
                 format: int32
                 type: integer
+              publishPath:
+                description: |-
+                  PublishPath is the built output directory a static_site serves as its
+                  document root (Render's "Publish Directory", e.g. "dist", "build",
+                  "public"), relative to the built image's working directory. The publish
+                  step uploads only this directory's contents to the object-store origin, so
+                  the origin prefix root IS the site root. Required when Type is static_site;
+                  ignored for every other type. See docs/ADR029-static-sites.md.
+                type: string
               replicas:
                 default: 1
                 description: Replicas for the kubernetes runtime (pods bin-packed
@@ -264,6 +300,40 @@ spec:
                   behavior, unchanged). Dockerfile builder only; ignored for prebuilt
                   Image apps.
                 type: string
+              routes:
+                description: |-
+                  Routes are the ordered redirect/rewrite rules a static_site applies at the
+                  edge (Render's /routes), first match wins. Ignored for every other type.
+                items:
+                  description: |-
+                    StaticRoute is one redirect/rewrite rule for a static_site, matching Render's
+                    route shape. Rules are evaluated in order (first match wins). A redirect
+                    answers with a 301 to Destination; a rewrite serves Destination's content
+                    with 200 (the SPA fallback is a rewrite of "/*" to "/index.html"). Source and
+                    Destination are request paths; "/*" is a trailing wildcard.
+                  properties:
+                    destination:
+                      description: |-
+                        Destination is the target path ("/new", "/index.html"). A trailing "/*" in
+                        Source is appended to a Destination that ends in "/*".
+                      type: string
+                    source:
+                      description: Source is the request path pattern to match (e.g.
+                        "/old", "/app/*").
+                      type: string
+                    type:
+                      description: Type is "redirect" (301 Location) or "rewrite"
+                        (200, serve another path).
+                      enum:
+                      - redirect
+                      - rewrite
+                      type: string
+                  required:
+                  - destination
+                  - source
+                  - type
+                  type: object
+                type: array
               runAt:
                 description: |-
                   RunAt requests a one-off run of a cron_job now (verb-as-timestamp, like
@@ -300,15 +370,19 @@ spec:
               type:
                 description: |-
                   Type is the service kind, tracking Render's serviceType vocabulary:
-                  web_service (default), private_service, background_worker, cron_job. Empty is
-                  treated as web_service so existing Apps are unchanged. A background_worker
-                  runs the image with no HTTP port/Service/Ingress; a cron_job runs the image's
-                  command on Schedule as a Kubernetes CronJob (no Deployment/Service/Ingress).
+                  web_service (default), private_service, background_worker, cron_job,
+                  static_site. Empty is treated as web_service so existing Apps are unchanged.
+                  A background_worker runs the image with no HTTP port/Service/Ingress; a
+                  cron_job runs the image's command on Schedule as a Kubernetes CronJob (no
+                  Deployment/Service/Ingress); a static_site builds the repo and serves its
+                  PublishPath output from an object-store origin behind the shared
+                  static-server (no Deployment/Service for the served content).
                 enum:
                 - web_service
                 - private_service
                 - background_worker
                 - cron_job
+                - static_site
                 type: string
             type: object
           status:

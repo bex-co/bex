@@ -238,7 +238,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Autoscaling CPU metric section heading",
   },
   "services.scalingCPUHint": {
-    message: "当平均 CPU 使用率明显高于或低于此值时，bex 会相应地增加或减少实例数。",
+    message:
+      "当平均 CPU 使用率明显高于或低于此值时，bex 会相应地增加或减少实例数。",
     description: "Autoscaling CPU metric section description",
   },
   "services.scalingMemoryTitle": {
@@ -1061,6 +1062,134 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.typeCron": {
     message: "定时任务",
     description: "Service-type badge: runs a command on a schedule",
+  },
+  "services.typeStatic": {
+    message: "静态站点",
+    description:
+      "Service-type badge: built output served from the object-store origin",
+  },
+  "services.staticTitle": {
+    message: "静态站点",
+    description:
+      "Settings section title for a static site's publish dir + edge rules",
+  },
+  "services.staticDescription": {
+    message: "发布的输出目录，以及提供服务时应用的边缘规则。",
+    description: "Static Site settings section description",
+  },
+  "services.staticEdit": {
+    message: "编辑",
+    description: "Edit an inline field",
+  },
+  "services.staticSave": {
+    message: "保存",
+    description: "Save an inline field",
+  },
+  "services.staticCancel": {
+    message: "取消",
+    description: "Cancel an inline edit",
+  },
+  "services.publishPathLabel": {
+    message: "发布目录",
+    description: "Label for a static site's publishPath",
+  },
+  "services.publishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory input",
+  },
+  "services.publishPathHint": {
+    message:
+      "作为站点根目录提供服务的构建输出目录（例如 dist、build、public）。修改后将重新发布站点。",
+    description: "Help text under the publish directory field",
+  },
+  "services.publishPathSaved": {
+    message: "发布目录已更新",
+    description: "Toast after saving a static site's publishPath",
+  },
+  "services.publishPathRepublishNote": {
+    message: "站点将很快重新发布。",
+    description: "Toast description after changing publishPath",
+  },
+  "services.publishPathError": {
+    message: "无法更新发布目录",
+    description: "Error toast for a failed publishPath change",
+  },
+  "services.routesTitle": {
+    message: "重定向与重写",
+    description: "Title for the static-site routes editor",
+  },
+  "services.routesHint": {
+    message:
+      "按顺序匹配，首个匹配生效。重定向返回 301；重写提供另一路径的内容（SPA 回退将 /* 重写为 /index.html）。",
+    description: "Help text for the routes editor",
+  },
+  "services.routeAdd": { message: "添加规则", description: "Add a route rule" },
+  "services.routeType": { message: "类型", description: "Route type column" },
+  "services.routeSource": {
+    message: "源路径",
+    description: "Route source-path column",
+  },
+  "services.routeDestination": {
+    message: "目标路径",
+    description: "Route destination-path column",
+  },
+  "services.routeRewrite": {
+    message: "重写",
+    description: "Route type: rewrite",
+  },
+  "services.routeRedirect": {
+    message: "重定向",
+    description: "Route type: redirect",
+  },
+  "services.routeRemove": {
+    message: "删除规则",
+    description: "Remove a route rule (aria-label)",
+  },
+  "services.routesSave": {
+    message: "保存路由",
+    description: "Save the routes list",
+  },
+  "services.staticRoutesSaved": {
+    message: "路由已更新",
+    description: "Toast after saving routes",
+  },
+  "services.staticRoutesError": {
+    message: "无法更新路由",
+    description: "Error toast for a failed routes save",
+  },
+  "services.headersTitle": {
+    message: "响应头",
+    description: "Title for the static-site custom-headers editor",
+  },
+  "services.headersHint": {
+    message: "为路径匹配的响应添加的自定义响应头。",
+    description: "Help text for the headers editor",
+  },
+  "services.headerAdd": {
+    message: "添加响应头",
+    description: "Add a custom header",
+  },
+  "services.headerPath": { message: "路径", description: "Header path column" },
+  "services.headerName": { message: "名称", description: "Header name column" },
+  "services.headerValue": {
+    message: "值",
+    description: "Header value column",
+  },
+  "services.headerRemove": {
+    message: "删除响应头",
+    description: "Remove a header (aria-label)",
+  },
+  "services.headersSave": {
+    message: "保存响应头",
+    description: "Save the headers list",
+  },
+  "services.staticHeadersSaved": {
+    message: "响应头已更新",
+    description: "Toast after saving headers",
+  },
+  "services.staticHeadersError": {
+    message: "无法更新响应头",
+    description: "Error toast for a failed headers save",
   },
   "services.typeUnknown": {
     message: "服务",

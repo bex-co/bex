@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bex-static-server
+  namespace: bex-system
+spec:
+  selector:
+    app.bex.co/component: static-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

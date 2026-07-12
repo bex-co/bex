@@ -83,6 +83,13 @@ type createServiceRequest struct {
 	Port    int32    `json:"port"`
 	Plan    string   `json:"plan"`
 	Domains []string `json:"domains"`
+	// PublishPath is a static_site's publish directory; a top-level convenience
+	// mirroring serviceDetails.publishPath (top level wins).
+	PublishPath string `json:"publishPath"`
+	// Routes/Headers are a static_site's edge rules at create time (Render sets
+	// these via separate endpoints; bex also accepts them in the create body).
+	Routes  []renderRoute  `json:"routes"`
+	Headers []renderHeader `json:"headers"`
 }
 
 type keyValue struct {
@@ -106,6 +113,10 @@ type serviceDetailsReq struct {
 	HealthCheckPath string `json:"healthCheckPath"`
 	Schedule        string `json:"schedule"`
 	Command         string `json:"command"`
+	// PublishPath is Render's staticSiteDetails.publishPath — the built output
+	// directory a static_site serves. Accepted here or at the top level (top
+	// level wins), mirroring schedule/command.
+	PublishPath string `json:"publishPath"`
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -113,7 +124,7 @@ type serviceDetailsReq struct {
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
 // fallback. type:private_service maps to the in-cluster-only flag.
 func (r createServiceRequest) toCreateRequest() CreateRequest {
-	plan, health, schedule, command := r.Plan, "", r.Schedule, r.Command
+	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	var replicas int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
@@ -126,6 +137,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		}
 		if command == "" {
 			command = r.ServiceDetails.Command // top-level command wins over the nested one
+		}
+		if publishPath == "" {
+			publishPath = r.ServiceDetails.PublishPath // top-level publishPath wins over the nested one
 		}
 	}
 	image := ""
@@ -153,7 +167,34 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Env:             env,
 		Hosts:           r.Domains,
 		AutoDeploy:      parseYesNo(r.AutoDeploy),
+		PublishPath:     publishPath,
+		Routes:          routeViewsFromRender(r.Routes),
+		Headers:         headerViewsFromRender(r.Headers),
 	}
+}
+
+// routeViewsFromRender / headerViewsFromRender convert the Render-shaped decode
+// structs into the neutral surface views the service layer accepts.
+func routeViewsFromRender(routes []renderRoute) []StaticRouteView {
+	if len(routes) == 0 {
+		return nil
+	}
+	out := make([]StaticRouteView, len(routes))
+	for i, r := range routes {
+		out[i] = StaticRouteView{Type: r.Type, Source: r.Source, Destination: r.Destination}
+	}
+	return out
+}
+
+func headerViewsFromRender(headers []renderHeader) []StaticHeaderView {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make([]StaticHeaderView, len(headers))
+	for i, h := range headers {
+		out[i] = StaticHeaderView{Path: h.Path, Name: h.Name, Value: h.Value}
+	}
+	return out
 }
 
 // parseYesNo maps Render's autoDeploy enum ("yes"/"no", or the bool-ish
@@ -403,6 +444,51 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent)
 	}
 
+	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
+	// /headers (custom response headers). GET lists; PUT replaces the whole list.
+	listRoutes := func(w http.ResponseWriter, r *http.Request) {
+		routes, err := s.ListRoutes(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderRoutes(routes))
+	}
+	putRoutes := func(w http.ResponseWriter, r *http.Request) {
+		var body []renderRoute
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		app, err := s.SetRoutes(r.Context(), r.PathValue("id"), routeViewsFromRender(body))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderRoutes(app.Routes))
+	}
+	listHeaders := func(w http.ResponseWriter, r *http.Request) {
+		headers, err := s.ListHeaders(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderHeaders(headers))
+	}
+	putHeaders := func(w http.ResponseWriter, r *http.Request) {
+		var body []renderHeader
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		app, err := s.SetHeaders(r.Context(), r.PathValue("id"), headerViewsFromRender(body))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderHeaders(app.Headers))
+	}
+
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base, list)
@@ -423,5 +509,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
 		mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
 		mux.HandleFunc("POST "+base+"/{id}/custom-domains/{name}/verify", verifyDomain)
+		mux.HandleFunc("GET "+base+"/{id}/routes", listRoutes)
+		mux.HandleFunc("PUT "+base+"/{id}/routes", putRoutes)
+		mux.HandleFunc("GET "+base+"/{id}/headers", listHeaders)
+		mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
 	}
 }

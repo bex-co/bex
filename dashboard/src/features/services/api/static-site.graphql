@@ -1,0 +1,34 @@
+# Static-site edge-rule mutations (w1/m21): bulk-replace a static_site's
+# redirect/rewrite routes and custom response headers, and change its publish
+# directory. Field names match bex-api's GraphQL (backend/internal/apps/graphql.go);
+# each returns the updated Service so the detail view refreshes in place.
+
+mutation SetStaticRoutes($id: String!, $routes: [StaticRouteInput]) {
+  setStaticRoutes(id: $id, routes: $routes) {
+    id
+    routes {
+      type
+      source
+      destination
+    }
+  }
+}
+
+mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {
+  setStaticHeaders(id: $id, headers: $headers) {
+    id
+    headers {
+      path
+      name
+      value
+    }
+  }
+}
+
+mutation SetPublishPath($id: String!, $publishPath: String!) {
+  setPublishPath(id: $id, publishPath: $publishPath) {
+    id
+    publishPath
+    revision
+  }
+}

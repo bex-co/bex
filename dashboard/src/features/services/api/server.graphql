@@ -35,5 +35,18 @@ query Server($id: String!) {
       finishedAt
       status
     }
+    # static_site fields (null/empty for other service types): the published
+    # output directory and its edge rules (w1/m21).
+    publishPath
+    routes {
+      type
+      source
+      destination
+    }
+    headers {
+      path
+      name
+      value
+    }
   }
 }

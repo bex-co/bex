@@ -38,18 +38,26 @@ const (
 	// TypeCronJob runs the built image's command on Spec.Schedule as a Kubernetes
 	// CronJob — no Deployment/Service/Ingress; run history lands in Status.Runs.
 	TypeCronJob = "cron_job"
+	// TypeStaticSite builds a repo and serves the built output (Spec.PublishPath)
+	// from an object-store origin behind the shared static-server proxy — no
+	// Deployment/Service/Ingress for the served content. Redirects/rewrites
+	// (Spec.Routes) and custom response headers (Spec.Headers) apply at the edge.
+	TypeStaticSite = "static_site"
 )
 
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
 type AppSpec struct {
 	// Type is the service kind, tracking Render's serviceType vocabulary:
-	// web_service (default), private_service, background_worker, cron_job. Empty is
-	// treated as web_service so existing Apps are unchanged. A background_worker
-	// runs the image with no HTTP port/Service/Ingress; a cron_job runs the image's
-	// command on Schedule as a Kubernetes CronJob (no Deployment/Service/Ingress).
+	// web_service (default), private_service, background_worker, cron_job,
+	// static_site. Empty is treated as web_service so existing Apps are unchanged.
+	// A background_worker runs the image with no HTTP port/Service/Ingress; a
+	// cron_job runs the image's command on Schedule as a Kubernetes CronJob (no
+	// Deployment/Service/Ingress); a static_site builds the repo and serves its
+	// PublishPath output from an object-store origin behind the shared
+	// static-server (no Deployment/Service for the served content).
 	// +optional
-	// +kubebuilder:validation:Enum=web_service;private_service;background_worker;cron_job
+	// +kubebuilder:validation:Enum=web_service;private_service;background_worker;cron_job;static_site
 	Type string `json:"type,omitempty"`
 
 	// Schedule is the cron expression (standard 5-field crontab) a cron_job runs
@@ -69,6 +77,26 @@ type AppSpec struct {
 	// no-op. Ignored for non-cron types. See docs/ADR006-bex-api.md (cron run trigger).
 	// +optional
 	RunAt string `json:"runAt,omitempty"`
+
+	// PublishPath is the built output directory a static_site serves as its
+	// document root (Render's "Publish Directory", e.g. "dist", "build",
+	// "public"), relative to the built image's working directory. The publish
+	// step uploads only this directory's contents to the object-store origin, so
+	// the origin prefix root IS the site root. Required when Type is static_site;
+	// ignored for every other type. See docs/ADR029-static-sites.md.
+	// +optional
+	PublishPath string `json:"publishPath,omitempty"`
+
+	// Routes are the ordered redirect/rewrite rules a static_site applies at the
+	// edge (Render's /routes), first match wins. Ignored for every other type.
+	// +optional
+	Routes []StaticRoute `json:"routes,omitempty"`
+
+	// Headers are the custom response-header rules a static_site applies at the
+	// edge (Render's /headers), scoped by request-path pattern. Ignored for every
+	// other type.
+	// +optional
+	Headers []StaticHeader `json:"headers,omitempty"`
 
 	// Repo is the git repository URL (or local path) to deploy from. Either Repo
 	// (build-from-git) or Image (prebuilt) must be set.
@@ -274,6 +302,44 @@ type EnvVar struct {
 	// Value is the literal value; empty is allowed (sets the variable to "").
 	// +optional
 	Value string `json:"value,omitempty"`
+}
+
+// StaticRoute is one redirect/rewrite rule for a static_site, matching Render's
+// route shape. Rules are evaluated in order (first match wins). A redirect
+// answers with a 301 to Destination; a rewrite serves Destination's content
+// with 200 (the SPA fallback is a rewrite of "/*" to "/index.html"). Source and
+// Destination are request paths; "/*" is a trailing wildcard.
+type StaticRoute struct {
+	// Type is "redirect" (301 Location) or "rewrite" (200, serve another path).
+	// +required
+	// +kubebuilder:validation:Enum=redirect;rewrite
+	Type string `json:"type"`
+
+	// Source is the request path pattern to match (e.g. "/old", "/app/*").
+	// +required
+	Source string `json:"source"`
+
+	// Destination is the target path ("/new", "/index.html"). A trailing "/*" in
+	// Source is appended to a Destination that ends in "/*".
+	// +required
+	Destination string `json:"destination"`
+}
+
+// StaticHeader is one custom response-header rule for a static_site, matching
+// Render's header shape: Name/Value is added to responses whose request path
+// matches Path (e.g. "/*" for all paths, "/assets/*" for a subtree).
+type StaticHeader struct {
+	// Path is the request path pattern the header applies to (e.g. "/*").
+	// +required
+	Path string `json:"path"`
+
+	// Name is the response header name (e.g. "X-Frame-Options").
+	// +required
+	Name string `json:"name"`
+
+	// Value is the response header value (e.g. "DENY").
+	// +required
+	Value string `json:"value"`
 }
 
 // AppPhase mirrors the lifecycle state machine (211.09 §Agent Lifecycle).

@@ -1,0 +1,360 @@
+import { useState } from "react";
+import { Plus, Trash2, Pencil } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/common/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/common/components/ui/table";
+import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
+import type {
+  ServiceView,
+  StaticRouteView,
+  StaticHeaderView,
+} from "@/features/services/types";
+
+/**
+ * The Static Site section of the service Settings tab (w1/m21): the published
+ * output directory (publishPath) plus the two edge-rule editors — redirects/
+ * rewrites (routes) and custom response headers — over bex-api's static-site
+ * GraphQL (docs/static-sites.md). Routes/headers apply without a rebuild; a
+ * publishPath change republishes. Rendered only when the service is a static_site.
+ */
+export function StaticSiteSection({
+  serviceId,
+  service,
+  refetch,
+}: {
+  serviceId: string;
+  service: ServiceView;
+  refetch: () => Promise<ServiceView[]>;
+}) {
+  const { t } = useTranslations();
+  const { setRoutes, setHeaders, setPublishPath, busy } =
+    useStaticSiteMutations(serviceId, refetch);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("services.staticTitle")}</CardTitle>
+        <CardDescription>{t("services.staticDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <PublishPathRow
+          publishPath={service.publishPath}
+          onSave={setPublishPath}
+          busy={busy}
+        />
+        <RoutesEditor routes={service.routes} onSave={setRoutes} busy={busy} />
+        <HeadersEditor
+          headers={service.headers}
+          onSave={setHeaders}
+          busy={busy}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The publish-directory row: shows the current value, with an inline edit that
+ *  republishes on save (mirrors BuildDeploySection's Root Directory row). */
+function PublishPathRow({
+  publishPath,
+  onSave,
+  busy,
+}: {
+  publishPath: string | null;
+  onSave: (v: string) => Promise<boolean>;
+  busy: boolean;
+}) {
+  const { t } = useTranslations();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(publishPath ?? "");
+
+  async function save() {
+    if (draft.trim() === "") return;
+    if (await onSave(draft.trim())) setEditing(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">
+          {t("services.publishPathLabel")}
+        </span>
+        {!editing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDraft(publishPath ?? "");
+              setEditing(true);
+            }}
+          >
+            <Pencil /> {t("services.staticEdit")}
+          </Button>
+        )}
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={t("services.publishPathPlaceholder")}
+            autoFocus
+          />
+          <Button disabled={busy} onClick={() => void save()}>
+            {t("services.staticSave")}
+          </Button>
+          <Button variant="ghost" onClick={() => setEditing(false)}>
+            {t("services.staticCancel")}
+          </Button>
+        </div>
+      ) : (
+        <div className="bg-background overflow-x-auto rounded-md border px-3 py-2">
+          <code className="font-mono text-xs">{publishPath || "—"}</code>
+        </div>
+      )}
+      <p className="text-muted-foreground text-xs">
+        {t("services.publishPathHint")}
+      </p>
+    </div>
+  );
+}
+
+/** The redirects/rewrites editor: an editable list of {type, source, destination}
+ *  rows with add/remove, saved as a bulk replace (Render's /routes). */
+function RoutesEditor({
+  routes,
+  onSave,
+  busy,
+}: {
+  routes: StaticRouteView[];
+  onSave: (r: StaticRouteView[]) => Promise<boolean>;
+  busy: boolean;
+}) {
+  const { t } = useTranslations();
+  const [draft, setDraft] = useState<StaticRouteView[]>(routes);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(routes);
+
+  function update(i: number, patch: Partial<StaticRouteView>) {
+    setDraft((d) => d.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    setDraft((d) => [...d, { type: "rewrite", source: "", destination: "" }]);
+  }
+  function removeRow(i: number) {
+    setDraft((d) => d.filter((_, j) => j !== i));
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">{t("services.routesTitle")}</p>
+          <p className="text-muted-foreground text-xs">
+            {t("services.routesHint")}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={addRow}>
+          <Plus /> {t("services.routeAdd")}
+        </Button>
+      </div>
+      {draft.length > 0 && (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-32">{t("services.routeType")}</TableHead>
+              <TableHead>{t("services.routeSource")}</TableHead>
+              <TableHead>{t("services.routeDestination")}</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {draft.map((r, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <Select
+                    value={r.type}
+                    onValueChange={(v) => update(i, { type: v })}
+                  >
+                    <SelectTrigger size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rewrite">
+                        {t("services.routeRewrite")}
+                      </SelectItem>
+                      <SelectItem value="redirect">
+                        {t("services.routeRedirect")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={r.source}
+                    onChange={(e) => update(i, { source: e.target.value })}
+                    placeholder="/old/*"
+                    className="font-mono text-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={r.destination}
+                    onChange={(e) => update(i, { destination: e.target.value })}
+                    placeholder="/index.html"
+                    className="font-mono text-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("services.routeRemove")}
+                    onClick={() => removeRow(i)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      <div className="flex justify-end gap-2">
+        {dirty && (
+          <Button variant="ghost" onClick={() => setDraft(routes)}>
+            {t("services.staticCancel")}
+          </Button>
+        )}
+        <Button disabled={busy || !dirty} onClick={() => void onSave(draft)}>
+          {t("services.routesSave")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** The custom-headers editor: an editable list of {path, name, value} rows with
+ *  add/remove, saved as a bulk replace (Render's /headers). */
+function HeadersEditor({
+  headers,
+  onSave,
+  busy,
+}: {
+  headers: StaticHeaderView[];
+  onSave: (h: StaticHeaderView[]) => Promise<boolean>;
+  busy: boolean;
+}) {
+  const { t } = useTranslations();
+  const [draft, setDraft] = useState<StaticHeaderView[]>(headers);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(headers);
+
+  function update(i: number, patch: Partial<StaticHeaderView>) {
+    setDraft((d) => d.map((h, j) => (j === i ? { ...h, ...patch } : h)));
+  }
+  function addRow() {
+    setDraft((d) => [...d, { path: "/*", name: "", value: "" }]);
+  }
+  function removeRow(i: number) {
+    setDraft((d) => d.filter((_, j) => j !== i));
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">{t("services.headersTitle")}</p>
+          <p className="text-muted-foreground text-xs">
+            {t("services.headersHint")}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={addRow}>
+          <Plus /> {t("services.headerAdd")}
+        </Button>
+      </div>
+      {draft.length > 0 && (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-40">{t("services.headerPath")}</TableHead>
+              <TableHead>{t("services.headerName")}</TableHead>
+              <TableHead>{t("services.headerValue")}</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {draft.map((h, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <Input
+                    value={h.path}
+                    onChange={(e) => update(i, { path: e.target.value })}
+                    placeholder="/*"
+                    className="font-mono text-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={h.name}
+                    onChange={(e) => update(i, { name: e.target.value })}
+                    placeholder="X-Frame-Options"
+                    className="font-mono text-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={h.value}
+                    onChange={(e) => update(i, { value: e.target.value })}
+                    placeholder="DENY"
+                    className="font-mono text-xs"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("services.headerRemove")}
+                    onClick={() => removeRow(i)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      <div className="flex justify-end gap-2">
+        {dirty && (
+          <Button variant="ghost" onClick={() => setDraft(headers)}>
+            {t("services.staticCancel")}
+          </Button>
+        )}
+        <Button disabled={busy || !dirty} onClick={() => void onSave(draft)}>
+          {t("services.headersSave")}
+        </Button>
+      </div>
+    </div>
+  );
+}

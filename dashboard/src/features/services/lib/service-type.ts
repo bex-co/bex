@@ -8,6 +8,7 @@ const TYPE_KEY: Record<string, ServiceTypeKey> = {
   private_service: "private",
   background_worker: "worker",
   cron_job: "cron",
+  static_site: "static",
 };
 
 /** Resolve a wire serviceType onto its type key; unknown/legacy types map to "unknown". */
@@ -21,10 +22,16 @@ export const SERVICE_TYPE_LABEL: Record<ServiceTypeKey, keyof typeof en> = {
   private: "services.typePrivate",
   worker: "services.typeWorker",
   cron: "services.typeCron",
+  static: "services.typeStatic",
   unknown: "services.typeUnknown",
 };
 
 /** True for a cron_job — the type whose detail shows a schedule + run history. */
 export function isCron(s: ServiceView): boolean {
   return s.type === "cron_job";
+}
+
+/** True for a static_site — the type whose settings show publishPath + edge rules. */
+export function isStaticSite(s: ServiceView): boolean {
+  return s.type === "static_site";
 }

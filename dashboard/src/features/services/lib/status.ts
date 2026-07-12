@@ -4,6 +4,8 @@ import type {
   ServiceStatus,
   ServiceStats,
   CronRunView,
+  StaticRouteView,
+  StaticHeaderView,
 } from "@/features/services/types";
 
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
@@ -45,7 +47,32 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     repo: "repo" in s ? (s.repo ?? null) : null,
     branch: "branch" in s ? (s.branch ?? null) : null,
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
+    publishPath: "publishPath" in s ? (s.publishPath ?? null) : null,
+    routes: "routes" in s ? toStaticRoutes(s.routes) : [],
+    headers: "headers" in s ? toStaticHeaders(s.headers) : [],
   };
+}
+
+/** Project the detail query's nullable `routes` array onto StaticRouteView[]. */
+function toStaticRoutes(routes: ServerNode["routes"]): StaticRouteView[] {
+  return (routes ?? [])
+    .filter((r): r is NonNullable<typeof r> => r != null)
+    .map((r) => ({
+      type: r.type ?? "",
+      source: r.source ?? "",
+      destination: r.destination ?? "",
+    }));
+}
+
+/** Project the detail query's nullable `headers` array onto StaticHeaderView[]. */
+function toStaticHeaders(headers: ServerNode["headers"]): StaticHeaderView[] {
+  return (headers ?? [])
+    .filter((h): h is NonNullable<typeof h> => h != null)
+    .map((h) => ({
+      path: h.path ?? "",
+      name: h.name ?? "",
+      value: h.value ?? "",
+    }));
 }
 
 /** Project the detail query's nullable `runs` array onto CronRunView[]. */

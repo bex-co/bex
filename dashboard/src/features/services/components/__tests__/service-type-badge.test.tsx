@@ -37,8 +37,13 @@ describe("ServiceTypeBadge", () => {
     expect(screen.getByText("Web Service")).toBeInTheDocument();
   });
 
-  it("falls back to the neutral label for an unknown/legacy type", () => {
+  it("labels a static site", () => {
     render(<ServiceTypeBadge service={svc("static_site")} />);
+    expect(screen.getByText("Static Site")).toBeInTheDocument();
+  });
+
+  it("falls back to the neutral label for an unknown/legacy type", () => {
+    render(<ServiceTypeBadge service={svc("some_future_type")} />);
     expect(screen.getByText("Service")).toBeInTheDocument();
   });
 });

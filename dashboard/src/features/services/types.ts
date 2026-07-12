@@ -59,6 +59,40 @@ export interface ServiceView {
    * Only the detail `server` query selects it.
    */
   rootDir: string | null;
+  /**
+   * Built output directory a `static_site` serves (`spec.publishPath`, Render's
+   * Publish Directory); null for other types / when not selected. Only the detail
+   * `server` query selects it.
+   */
+  publishPath: string | null;
+  /**
+   * A `static_site`'s ordered redirect/rewrite rules (`spec.routes`, Render's
+   * /routes); empty for other types / when not selected.
+   */
+  routes: StaticRouteView[];
+  /**
+   * A `static_site`'s custom response-header rules (`spec.headers`, Render's
+   * /headers); empty for other types / when not selected.
+   */
+  headers: StaticHeaderView[];
+}
+
+/** One redirect/rewrite rule for a static_site (Render's route shape). */
+export interface StaticRouteView {
+  /** "redirect" (301 to destination) or "rewrite" (serve destination, 200). */
+  type: string;
+  /** Request path pattern to match, e.g. "/old" or "/app/*". */
+  source: string;
+  /** Target path, e.g. "/new" or "/index.html". */
+  destination: string;
+}
+
+/** One custom response-header rule for a static_site (Render's header shape). */
+export interface StaticHeaderView {
+  /** Request path pattern the header applies to, e.g. "/*". */
+  path: string;
+  name: string;
+  value: string;
 }
 
 /** One execution of a `cron_job` — the Render cron-run shape bex-api projects. */
@@ -77,7 +111,13 @@ export interface CronRunView {
 export type LifecycleAction = "suspend" | "resume" | "restart";
 
 /** A resolved service-type key (i18n label) + the badge variant it renders as. */
-export type ServiceTypeKey = "web" | "private" | "worker" | "cron" | "unknown";
+export type ServiceTypeKey =
+  | "web"
+  | "private"
+  | "worker"
+  | "cron"
+  | "static"
+  | "unknown";
 
 /**
  * One env-var key on the Environment tab (Render dashboard shape: the list is

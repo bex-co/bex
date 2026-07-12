@@ -153,6 +153,56 @@ type AppView struct {
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
 	AutoDeploy bool `json:"autoDeploy"`
+	// PublishPath is the built output directory a static_site serves as its
+	// document root (spec.publishPath, Render's "Publish Directory"). Empty for
+	// every other type.
+	PublishPath string `json:"publishPath,omitempty"`
+	// Routes are a static_site's ordered redirect/rewrite rules (spec.routes,
+	// Render's /routes). Empty for every other type.
+	Routes []StaticRouteView `json:"routes,omitempty"`
+	// Headers are a static_site's custom response-header rules (spec.headers,
+	// Render's /headers). Empty for every other type.
+	Headers []StaticHeaderView `json:"headers,omitempty"`
+}
+
+// StaticRouteView is the neutral projection of one static_site redirect/rewrite
+// rule — Render's route shape (type/source/destination).
+type StaticRouteView struct {
+	Type        string `json:"type"` // redirect | rewrite
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+}
+
+// StaticHeaderView is the neutral projection of one static_site custom response
+// header — Render's header shape (path/name/value).
+type StaticHeaderView struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// staticRouteViews / staticHeaderViews project the CR spec lists onto the neutral
+// view shapes; the fromView helpers convert the surface input back to CR types.
+func staticRouteViews(routes []appv1alpha1.StaticRoute) []StaticRouteView {
+	if len(routes) == 0 {
+		return nil
+	}
+	out := make([]StaticRouteView, len(routes))
+	for i, r := range routes {
+		out[i] = StaticRouteView{Type: r.Type, Source: r.Source, Destination: r.Destination}
+	}
+	return out
+}
+
+func staticHeaderViews(headers []appv1alpha1.StaticHeader) []StaticHeaderView {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make([]StaticHeaderView, len(headers))
+	for i, h := range headers {
+		out[i] = StaticHeaderView{Path: h.Path, Name: h.Name, Value: h.Value}
+	}
+	return out
 }
 
 func view(a *appv1alpha1.App) AppView {
@@ -195,6 +245,9 @@ func view(a *appv1alpha1.App) AppView {
 		Branch:         a.Spec.Branch,
 		Autoscaling:    asView,
 		AutoDeploy:     a.Spec.AutoDeploy,
+		PublishPath:    a.Spec.PublishPath,
+		Routes:         staticRouteViews(a.Spec.Routes),
+		Headers:        staticHeaderViews(a.Spec.Headers),
 	}
 }
 
@@ -343,6 +396,15 @@ type CreateRequest struct {
 	// repo-backed service (Render's default too), off for an image-backed one
 	// (nothing to rebuild on push).
 	AutoDeploy *bool
+	// PublishPath is the built output directory a static_site serves (Render's
+	// "Publish Directory", spec.publishPath). Required when Type is static_site,
+	// ignored otherwise.
+	PublishPath string
+	// Routes / Headers are a static_site's edge rules at create time (spec.routes /
+	// spec.headers). Ignored for every other type; editable later via
+	// SetRoutes/SetHeaders.
+	Routes  []StaticRouteView
+	Headers []StaticHeaderView
 }
 
 // Create writes the App CR for a new service, or updates it in place when one
@@ -506,6 +568,20 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
 	}
+	// A static_site needs a publish directory, and its edge rules must be valid.
+	if svcType == appv1alpha1.TypeStaticSite {
+		if strings.TrimSpace(req.PublishPath) == "" {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath is required for a static_site", core.ErrBadRequest)
+		}
+		if err := validateRoutes(req.Routes); err != nil {
+			return appv1alpha1.AppSpec{}, err
+		}
+		if err := validateHeaders(req.Headers); err != nil {
+			return appv1alpha1.AppSpec{}, err
+		}
+	} else if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
+	}
 	tier, err := normalizeTierOrPlan(req.Plan)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -548,14 +624,20 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		HealthCheckPath: req.HealthCheckPath,
 		Env:             req.Env,
 		AutoDeploy:      autoDeploy,
-		// Only a web service is public: expose it at <name>.<BEX_BASE_DOMAIN> so the
-		// caller gets a live URL with no custom domain. Every other type opts out
-		// (private has no platform host; worker/cron have no HTTP endpoint at all).
-		Expose: svcType == appv1alpha1.TypeWebService,
+		// A web service and a static site are public: expose them at
+		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
+		// domain. Every other type opts out (private has no platform host;
+		// worker/cron have no HTTP endpoint at all).
+		Expose: svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite,
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		spec.Schedule = strings.TrimSpace(req.Schedule)
 		spec.Command = strings.TrimSpace(req.Command)
+	}
+	if svcType == appv1alpha1.TypeStaticSite {
+		spec.PublishPath = strings.TrimSpace(req.PublishPath)
+		spec.Routes = routesFromViews(req.Routes)
+		spec.Headers = headersFromViews(req.Headers)
 	}
 	if len(req.Hosts) > 0 {
 		spec.Host = req.Hosts[0]
@@ -572,10 +654,10 @@ func normalizeType(t string) (string, error) {
 	case "":
 		return appv1alpha1.TypeWebService, nil
 	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService,
-		appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob:
+		appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite:
 		return t, nil
 	default:
-		return "", fmt.Errorf("%w: type must be one of web_service|private_service|background_worker|cron_job", core.ErrBadRequest)
+		return "", fmt.Errorf("%w: type must be one of web_service|private_service|background_worker|cron_job|static_site", core.ErrBadRequest)
 	}
 }
 
@@ -601,6 +683,9 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Expose = want.Expose
 	dst.Host = want.Host
 	dst.Hosts = want.Hosts
+	dst.PublishPath = want.PublishPath
+	dst.Routes = want.Routes
+	dst.Headers = want.Headers
 }
 
 // normalizeTierOrPlan resolves a plan/tier string to a bex tier id, accepting
@@ -859,6 +944,179 @@ func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate f
 		return AppView{}, err
 	}
 	return view(a), nil
+}
+
+// routesFromViews / headersFromViews convert surface input (neutral views) into
+// the CR spec types, trimming whitespace.
+func routesFromViews(views []StaticRouteView) []appv1alpha1.StaticRoute {
+	if len(views) == 0 {
+		return nil
+	}
+	out := make([]appv1alpha1.StaticRoute, len(views))
+	for i, v := range views {
+		out[i] = appv1alpha1.StaticRoute{
+			Type:        strings.TrimSpace(v.Type),
+			Source:      strings.TrimSpace(v.Source),
+			Destination: strings.TrimSpace(v.Destination),
+		}
+	}
+	return out
+}
+
+func headersFromViews(views []StaticHeaderView) []appv1alpha1.StaticHeader {
+	if len(views) == 0 {
+		return nil
+	}
+	out := make([]appv1alpha1.StaticHeader, len(views))
+	for i, v := range views {
+		out[i] = appv1alpha1.StaticHeader{
+			Path:  strings.TrimSpace(v.Path),
+			Name:  strings.TrimSpace(v.Name),
+			Value: v.Value,
+		}
+	}
+	return out
+}
+
+// validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
+// known type and a rooted source + destination path (Render's contract).
+func validateRoutes(routes []StaticRouteView) error {
+	for i, r := range routes {
+		t := strings.TrimSpace(r.Type)
+		if t != "redirect" && t != "rewrite" {
+			return fmt.Errorf("%w: routes[%d].type must be redirect or rewrite", core.ErrBadRequest, i)
+		}
+		if !strings.HasPrefix(strings.TrimSpace(r.Source), "/") {
+			return fmt.Errorf("%w: routes[%d].source must be a path starting with /", core.ErrBadRequest, i)
+		}
+		if !strings.HasPrefix(strings.TrimSpace(r.Destination), "/") {
+			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
+		}
+	}
+	return nil
+}
+
+// validateHeaders rejects a malformed custom-header list: each rule needs a
+// rooted path pattern and a header name.
+func validateHeaders(headers []StaticHeaderView) error {
+	for i, h := range headers {
+		if !strings.HasPrefix(strings.TrimSpace(h.Path), "/") {
+			return fmt.Errorf("%w: headers[%d].path must be a path starting with /", core.ErrBadRequest, i)
+		}
+		if strings.TrimSpace(h.Name) == "" {
+			return fmt.Errorf("%w: headers[%d].name is required", core.ErrBadRequest, i)
+		}
+	}
+	return nil
+}
+
+// requireStaticSite returns ErrBadRequest unless a is a static_site — the edge
+// verbs (routes/headers/publishPath) apply only to that type.
+func requireStaticSite(a *appv1alpha1.App, name string) error {
+	if a.Spec.Type != appv1alpha1.TypeStaticSite {
+		return fmt.Errorf("%w: service %q is not a static_site", core.ErrBadRequest, name)
+	}
+	return nil
+}
+
+// ListRoutes returns a static_site's ordered redirect/rewrite rules (Render's
+// GET /v1/services/{id}/routes).
+func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireStaticSite(a, name); err != nil {
+		return nil, err
+	}
+	return staticRouteViews(a.Spec.Routes), nil
+}
+
+// SetRoutes replaces a static_site's redirect/rewrite rules (Render's bulk
+// PUT /v1/services/{id}/routes). Routes live on the CR spec and the
+// static-server reads them live, so the change takes effect on the next resolver
+// refresh — no rebuild/republish. Direct CR patch (not projection-owned).
+func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRouteView) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if err := validateRoutes(routes); err != nil {
+		return AppView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if err := requireStaticSite(a, name); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Routes = routesFromViews(routes)
+	})
+}
+
+// ListHeaders returns a static_site's custom response-header rules (Render's
+// GET /v1/services/{id}/headers).
+func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireStaticSite(a, name); err != nil {
+		return nil, err
+	}
+	return staticHeaderViews(a.Spec.Headers), nil
+}
+
+// SetHeaders replaces a static_site's custom response-header rules (Render's bulk
+// PUT /v1/services/{id}/headers). Same live-read semantics as SetRoutes.
+func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticHeaderView) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if err := validateHeaders(headers); err != nil {
+		return AppView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if err := requireStaticSite(a, name); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Headers = headersFromViews(headers)
+	})
+}
+
+// SetPublishPath changes the built output directory a static_site serves
+// (spec.publishPath) and bumps spec.restartedAt so the change republishes (a new
+// generation invalidates the cached revision, re-running the publish plane).
+// Rejected for a non-static_site or an empty path.
+func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if strings.TrimSpace(publishPath) == "" {
+		return AppView{}, fmt.Errorf("%w: publishPath must not be empty", core.ErrBadRequest)
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if err := requireStaticSite(a, name); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.PublishPath = strings.TrimSpace(publishPath)
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
 }
 
 // AutoscalingView is the neutral projection of a service's autoscaling config —

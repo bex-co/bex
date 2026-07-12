@@ -20,6 +20,9 @@ resources:
 - ../manager
 # The control-plane-seed API (REST + GraphQL for restart/suspend/resume).
 - ../api
+# The shared static-site origin proxy (w1/m21): serves static_site Apps from the
+# object store. Same image as the manager, different entrypoint (/staticserver).
+- ../staticserver
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- ../webhook

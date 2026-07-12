@@ -249,7 +249,8 @@ func TestGraphQLSetAutoscalingMutation(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	res := graphql.Do(graphql.Params{
-		Schema: schema,
+		Schema:  schema,
+		Context: context.Background(),
 		RequestString: `mutation {
 			setAutoscaling(id:"web",minInstances:1,maxInstances:4,targetCPUPercent:80) {
 				enabled maxInstances
@@ -276,6 +277,7 @@ func TestGraphQLDisableAutoscalingMutation(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
+		Context:       context.Background(),
 		RequestString: `mutation { disableAutoscaling(id:"web") }`,
 	})
 	if len(res.Errors) > 0 {

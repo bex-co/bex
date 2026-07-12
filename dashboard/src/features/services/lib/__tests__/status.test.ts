@@ -86,6 +86,9 @@ describe("toServiceView", () => {
       repo: null,
       branch: null,
       rootDir: null,
+      publishPath: null,
+      routes: [],
+      headers: [],
     });
   });
 

@@ -16,7 +16,8 @@ import { CustomDomainsSection } from "@/features/services/components/custom-doma
 import { PlatformSubdomainSection } from "@/features/services/components/platform-subdomain-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
-import { isCron } from "@/features/services/lib/service-type";
+import { StaticSiteSection } from "@/features/services/components/static-site-section";
+import { isCron, isStaticSite } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -34,9 +35,10 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
  */
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
-  const { service, loading } = useServer(serviceId);
+  const { service, loading, refetch } = useServer(serviceId);
   const { t } = useTranslations();
   const cron = service ? isCron(service) : false;
+  const staticSite = service ? isStaticSite(service) : false;
 
   return (
     <div className="space-y-6">
@@ -54,9 +56,11 @@ export function ServiceSettingsPage() {
                 serviceId={serviceId}
                 plan={service?.plan ?? null}
               />
-              {/* Idle timeout only applies to an HTTP-served service — a cron_job
-                  has no idle traffic to sleep on (Render parity, w5/m11). */}
-              {!cron && (
+              {/* Idle timeout only applies to a running-container service — a
+                  cron_job has no idle traffic to sleep on, and a static_site
+                  serves from the object store with no pod to hibernate
+                  (Render parity, w5/m11, w1/m21). */}
+              {!cron && !staticSite && (
                 <IdleTimeoutRow
                   serviceId={serviceId}
                   plan={service?.plan ?? null}
@@ -81,6 +85,13 @@ export function ServiceSettingsPage() {
               repo={service.repo}
               branch={service.branch}
               rootDir={service.rootDir}
+            />
+          )}
+          {staticSite && service && (
+            <StaticSiteSection
+              serviceId={serviceId}
+              service={service}
+              refetch={refetch}
             />
           )}
           <CustomDomainsSection serviceId={serviceId} />

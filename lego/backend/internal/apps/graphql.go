@@ -44,6 +44,87 @@ var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// staticRouteGQLType / staticHeaderGQLType render a static_site's edge rules
+// (Render's route and header shapes); the *Input variants are their mutation
+// inputs (setRoutes/setHeaders and createService).
+var staticRouteGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "StaticRoute",
+	Fields: graphql.Fields{
+		"type":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Type })},
+		"source":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Source })},
+		"destination": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Destination })},
+	},
+})
+
+var staticHeaderGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "StaticHeader",
+	Fields: graphql.Fields{
+		"path":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Path })},
+		"name":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Name })},
+		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Value })},
+	},
+})
+
+var staticRouteInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "StaticRouteInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"type":        &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"source":      &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"destination": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+var staticHeaderInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "StaticHeaderInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"path":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+// gqlRouteInputs / gqlHeaderInputs parse a list argument of input objects
+// (graphql-go delivers each element as map[string]any) into the neutral views.
+func gqlRouteInputs(args map[string]any, key string) []StaticRouteView {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]StaticRouteView, 0, len(raw))
+	for _, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		out = append(out, StaticRouteView{
+			Type:        gqlStr(m, "type"),
+			Source:      gqlStr(m, "source"),
+			Destination: gqlStr(m, "destination"),
+		})
+	}
+	return out
+}
+
+func gqlHeaderInputs(args map[string]any, key string) []StaticHeaderView {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]StaticHeaderView, 0, len(raw))
+	for _, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		out = append(out, StaticHeaderView{
+			Path:  gqlStr(m, "path"),
+			Name:  gqlStr(m, "name"),
+			Value: gqlStr(m, "value"),
+		})
+	}
+	return out
+}
+
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
@@ -126,6 +207,17 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				}
 				return *a.Autoscaling
 			}),
+		},
+		// publishPath/routes/headers describe a static_site (empty/null for other
+		// types): the served output directory and its edge rules.
+		"publishPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PublishPath })},
+		"routes": &graphql.Field{
+			Type:    graphql.NewList(staticRouteGQLType),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.Routes }),
+		},
+		"headers": &graphql.Field{
+			Type:    graphql.NewList(staticHeaderGQLType),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.Headers }),
 		},
 	},
 })
@@ -374,21 +466,28 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"autoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"port":       &graphql.ArgumentConfig{Type: graphql.Int},
 				"replicas":   &graphql.ArgumentConfig{Type: graphql.Int},
+				// static_site create fields.
+				"publishPath": &graphql.ArgumentConfig{Type: graphql.String},
+				"routes":      &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
+				"headers":     &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
-					Name:       p.Args["name"].(string),
-					Type:       gqlStr(p.Args, "type"),
-					Schedule:   gqlStr(p.Args, "schedule"),
-					Command:    gqlStr(p.Args, "command"),
-					Repo:       gqlStr(p.Args, "repo"),
-					Image:      gqlStr(p.Args, "image"),
-					Branch:     gqlStr(p.Args, "branch"),
-					RootDir:    gqlStr(p.Args, "rootDir"),
-					Plan:       gqlStr(p.Args, "plan"),
-					AutoDeploy: gqlBoolPtr(p.Args, "autoDeploy"),
-					Port:       int32(gqlInt(p.Args, "port")),
-					Replicas:   int32(gqlInt(p.Args, "replicas")),
+					Name:        p.Args["name"].(string),
+					Type:        gqlStr(p.Args, "type"),
+					Schedule:    gqlStr(p.Args, "schedule"),
+					Command:     gqlStr(p.Args, "command"),
+					Repo:        gqlStr(p.Args, "repo"),
+					Image:       gqlStr(p.Args, "image"),
+					Branch:      gqlStr(p.Args, "branch"),
+					RootDir:     gqlStr(p.Args, "rootDir"),
+					Plan:        gqlStr(p.Args, "plan"),
+					AutoDeploy:  gqlBoolPtr(p.Args, "autoDeploy"),
+					Port:        int32(gqlInt(p.Args, "port")),
+					Replicas:    int32(gqlInt(p.Args, "replicas")),
+					PublishPath: gqlStr(p.Args, "publishPath"),
+					Routes:      gqlRouteInputs(p.Args, "routes"),
+					Headers:     gqlHeaderInputs(p.Args, "headers"),
 				})
 			},
 		},
@@ -473,6 +572,39 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetAutoDeploy(p.Context, p.Args["id"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// Static-site edge-rule mutations: replace the whole routes/headers list
+		// (Render's bulk PUT), or change the publish directory. Rejected for a
+		// non-static_site (core.ErrBadRequest).
+		"setStaticRoutes": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"routes": &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetRoutes(p.Context, p.Args["id"].(string), gqlRouteInputs(p.Args, "routes"))
+			},
+		},
+		"setStaticHeaders": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"headers": &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetHeaders(p.Context, p.Args["id"].(string), gqlHeaderInputs(p.Args, "headers"))
+			},
+		},
+		"setPublishPath": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"publishPath": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPublishPath(p.Context, p.Args["id"].(string), p.Args["publishPath"].(string))
 			},
 		},
 		// Custom domain mutations — Render-dashboard-shaped operation names.

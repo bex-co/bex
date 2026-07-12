@@ -50,6 +50,9 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | operator | `BEX_ACTIVATOR_SERVICE` | k8s Service name of the wake activator (e.g. `bex-activator`); unset ⇒ auto-sleep disabled |
 | operator | `BEX_ACTIVATOR_PORT` | activator service port (default `8888`) |
 | activator | `BEX_ACTIVATOR_ADDR` | listen address (default `:8888`) |
+| operator | `BEX_STATIC_S3_ENDPOINT`, `BEX_STATIC_S3_BUCKET`, `BEX_STATIC_S3_REGION`, `BEX_STATIC_S3_SECRET` | static-site (`static_site`) publish target (docs/ADR029-static-sites.md): S3-compatible endpoint + a bucket **dedicated to static content** (never `bex-tfstate`) + optional region + the Secret name (in the publish Job's namespace) with `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` — the etcd/OpenBao backup credential pattern; any unset ⇒ `static_site` Apps rejected |
+| operator | `BEX_STATIC_SERVER_SERVICE`, `BEX_STATIC_SERVER_PORT` | k8s Service name + port (default `8080`) of the shared static-server a static-site host's Ingress backs onto (docs/ADR029-static-sites.md); service unset ⇒ `static_site` serving unavailable |
+| static-server | `BEX_STATIC_ADDR`, `BEX_STATIC_NAMESPACE`, `BEX_STATIC_S3_ENDPOINT`/`_BUCKET`/`_REGION`, `BEX_STATIC_CACHE_BYTES`, `BEX_STATIC_RESYNC` | listen addr (default `:8080`), watched App ns (empty ⇒ all), object-store origin (endpoint/bucket unset ⇒ degraded 503 mode), in-memory cache budget (default 256 MiB), host→site refresh interval (default `10s`); AWS creds from the env (the `static-s3` Secret) |
 | bex-api | `BEX_API_ADDR` (:8090), `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN` | listen addr, watched ns, CORS origin allowlist (comma-separated) |
 | bex-api | `BEX_HYDRA_ADMIN_URL` (required), `BEX_KRATOS_URL` | OAuth2 API keys via Hydra introspection; Kratos sessions (docs/ADR012-auth.md) |
 | bex-api | `BEX_KRATOS_ADMIN_URL` | Kratos' admin API for the owners/members read API's email/MFA lookup (docs/render-artifacts/owners-api.md); unset ⇒ those fields omitted |
@@ -105,6 +108,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR016-sealed-secrets.md](docs/ADR016-sealed-secrets.md) — infra creds encrypted at rest in git (SealedSecrets), controller + `kubeseal` workflow.
 - [docs/ADR009-postgresql-management.md](docs/ADR009-postgresql-management.md) — managed tenant Postgres: `Database` CR → CNPG Cluster, plans, internal/external URLs.
 - [docs/ADR021-keyvalue-management.md](docs/ADR021-keyvalue-management.md) — managed tenant key-value (Valkey): `KeyValue` CR → Valkey StatefulSet, plans, internal/external URLs.
+- [docs/ADR029-static-sites.md](docs/ADR029-static-sites.md) — the `static_site` type: build → object-store origin, the shared static-server, redirects/rewrites + custom headers, REST/GraphQL/MCP surface.
 - [docs/ADR001-go-and-gitops.md](docs/ADR001-go-and-gitops.md) — why bex (Go product) ≠ GitOps (platform infra).
 - [docs/ADR022-tenant-isolation.md](docs/ADR022-tenant-isolation.md) — ADR: east-west network enforcement — threat model, label-scoped NetworkPolicy mechanism, dialect choice, reachability matrix.
 - [docs/ADR028-security-review.md](docs/ADR028-security-review.md) — evidence-backed audit (RBAC, supply chain, injection surface, network isolation, secrets hygiene, OAuth) with severities, remediation status, and a follow-up register.

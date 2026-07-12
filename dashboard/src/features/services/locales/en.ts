@@ -1076,6 +1076,135 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Cron Job",
     description: "Service-type badge: runs a command on a schedule",
   },
+  "services.typeStatic": {
+    message: "Static Site",
+    description:
+      "Service-type badge: built output served from the object-store origin",
+  },
+  "services.staticTitle": {
+    message: "Static Site",
+    description:
+      "Settings section title for a static site's publish dir + edge rules",
+  },
+  "services.staticDescription": {
+    message:
+      "The published output directory and the edge rules applied when serving it.",
+    description: "Static Site settings section description",
+  },
+  "services.staticEdit": {
+    message: "Edit",
+    description: "Edit an inline field",
+  },
+  "services.staticSave": {
+    message: "Save",
+    description: "Save an inline field",
+  },
+  "services.staticCancel": {
+    message: "Cancel",
+    description: "Cancel an inline edit",
+  },
+  "services.publishPathLabel": {
+    message: "Publish directory",
+    description: "Label for a static site's publishPath",
+  },
+  "services.publishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory input",
+  },
+  "services.publishPathHint": {
+    message:
+      "The built output directory served as the site root (e.g. dist, build, public). Changing it republishes the site.",
+    description: "Help text under the publish directory field",
+  },
+  "services.publishPathSaved": {
+    message: "Publish directory updated",
+    description: "Toast after saving a static site's publishPath",
+  },
+  "services.publishPathRepublishNote": {
+    message: "The site will republish shortly.",
+    description: "Toast description after changing publishPath",
+  },
+  "services.publishPathError": {
+    message: "Couldn't update the publish directory",
+    description: "Error toast for a failed publishPath change",
+  },
+  "services.routesTitle": {
+    message: "Redirects & rewrites",
+    description: "Title for the static-site routes editor",
+  },
+  "services.routesHint": {
+    message:
+      "Matched in order, first match wins. A redirect returns 301; a rewrite serves another path (an SPA fallback rewrites /* to /index.html).",
+    description: "Help text for the routes editor",
+  },
+  "services.routeAdd": { message: "Add rule", description: "Add a route rule" },
+  "services.routeType": { message: "Type", description: "Route type column" },
+  "services.routeSource": {
+    message: "Source",
+    description: "Route source-path column",
+  },
+  "services.routeDestination": {
+    message: "Destination",
+    description: "Route destination-path column",
+  },
+  "services.routeRewrite": {
+    message: "Rewrite",
+    description: "Route type: rewrite",
+  },
+  "services.routeRedirect": {
+    message: "Redirect",
+    description: "Route type: redirect",
+  },
+  "services.routeRemove": {
+    message: "Remove rule",
+    description: "Remove a route rule (aria-label)",
+  },
+  "services.routesSave": {
+    message: "Save routes",
+    description: "Save the routes list",
+  },
+  "services.staticRoutesSaved": {
+    message: "Routes updated",
+    description: "Toast after saving routes",
+  },
+  "services.staticRoutesError": {
+    message: "Couldn't update the routes",
+    description: "Error toast for a failed routes save",
+  },
+  "services.headersTitle": {
+    message: "Response headers",
+    description: "Title for the static-site custom-headers editor",
+  },
+  "services.headersHint": {
+    message: "Custom response headers added to responses whose path matches.",
+    description: "Help text for the headers editor",
+  },
+  "services.headerAdd": {
+    message: "Add header",
+    description: "Add a custom header",
+  },
+  "services.headerPath": { message: "Path", description: "Header path column" },
+  "services.headerName": { message: "Name", description: "Header name column" },
+  "services.headerValue": {
+    message: "Value",
+    description: "Header value column",
+  },
+  "services.headerRemove": {
+    message: "Remove header",
+    description: "Remove a header (aria-label)",
+  },
+  "services.headersSave": {
+    message: "Save headers",
+    description: "Save the headers list",
+  },
+  "services.staticHeadersSaved": {
+    message: "Headers updated",
+    description: "Toast after saving headers",
+  },
+  "services.staticHeadersError": {
+    message: "Couldn't update the headers",
+    description: "Error toast for a failed headers save",
+  },
   "services.typeUnknown": {
     message: "Service",
     description: "Service-type badge fallback for an unrecognized type",
