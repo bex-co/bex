@@ -6,6 +6,17 @@ kind: Kustomization
 resources:
   - ../../base
 patches:
+  # The local CAPD mock cluster runs Calico, not Cilium (scripts/mock-cluster.sh),
+  # so the Cilium-native node/metadata egressDeny CRD doesn't exist here. Drop it;
+  # the portable per-App k8s NetworkPolicy (which excepts 169.254.0.0/16) still
+  # applies, and the node-entity deny is a prod-cluster concern.
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumNetworkPolicy
+      metadata:
+        name: deny-tenant-node-and-metadata-egress
+        namespace: default
+      $patch: delete
   # No etcd backups locally: the CAPD cluster is disposable and has no
   # object-storage creds.
   - patch: |-

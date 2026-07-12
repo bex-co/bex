@@ -1,17 +1,17 @@
 # w7 · m4 — Tenant egress hardening: block cloud metadata + node-local endpoints
 
-**Worker:** worker7 **Goal:** A hostile or compromised tenant pod can no longer reach the cloud-metadata endpoint (`169.254.169.254`) or node-local services (kubelet, nodePorts on the node's public IP) that the m1 egress policy left open — closing the SSRF → credential-theft and pod→node access paths while genuine external egress keeps working. **Status:** todo
+**Worker:** worker7 **Goal:** A hostile or compromised tenant pod can no longer reach the cloud-metadata endpoint (`169.254.169.254`) or node-local services (kubelet, nodePorts on the node's public IP) that the m1 egress policy left open — closing the SSRF → credential-theft and pod→node access paths while genuine external egress keeps working. **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                                       | est | depends_on |
-| ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Except `169.254.0.0/16` (link-local incl. cloud metadata) in the tenant egress policy; document the threat  | 30m | —          |
-| t002 | Close the pod→node path: assess node-public-IP reachability (kubelet `:10250`, nodePorts) + add a deny      | 60m | t001       |
-| t003 | Extend `verify-tenant-isolation.sh` with DENY probes: metadata + node IP blocked, external egress allowed   | 30m | t002       |
-| t004 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t003       |
-| t005 | Test coverage — meaningful tests for the extended egress policy generation                                   | 30m | t003       |
-| t006 | Closeout — DoD verified, milestone moved to `done/`                                                          | 15m | t005       |
+| id   | title                                                                                                       | est | depends_on |            |
+| ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------- | ---------- |
+| t001 | Except `169.254.0.0/16` (link-local incl. cloud metadata) in the tenant egress policy; document the threat  | 30m | —          | — **DONE** |
+| t002 | Close the pod→node path: assess node-public-IP reachability (kubelet `:10250`, nodePorts) + add a deny      | 60m | t001       | — **DONE** |
+| t003 | Extend `verify-tenant-isolation.sh` with DENY probes: metadata + node IP blocked, external egress allowed   | 30m | t002       | — **DONE** |
+| t004 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t003       | — **DONE** |
+| t005 | Test coverage — meaningful tests for the extended egress policy generation                                   | 30m | t003       | — **DONE** |
+| t006 | Closeout — DoD verified, milestone moved to `done/`                                                          | 15m | t005       | — **DONE** |
 
 ## Definition of done
 

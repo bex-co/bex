@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # verify-tenant-isolation.sh — proves the w7/m1 tenant-isolation DoD matrix.
 #
-# Deploys two probe pods in distinct workspaces (using direct App CRs with
-# explicit workspace labels) and runs a reachability matrix:
+# Deploys probe pods in distinct workspaces (using direct App CRs with explicit
+# workspace labels) and runs a reachability matrix:
 #   DENY probes: cross-workspace pod, platform services (bex-api, OpenBao,
-#                Prometheus, zot) — connection must be REFUSED or TIME OUT
+#                Prometheus, zot), cloud metadata (169.254.169.254), and the
+#                node's own IP (kubelet :10250) — must be REFUSED or TIME OUT
 #   ALLOW probes: same-workspace private service, public internet — must SUCCEED
+#
+# The egress-probe pod (probe-a) borrows a per-App policy (via the app label of
+# a dedicated egress-probe App) so it faithfully models a real tenant pod: the
+# platform node/metadata CiliumNetworkPolicy (w7/m4) puts every workspace pod
+# into egress default-deny, and only a pod that also has the per-App *allow*
+# policy keeps its legitimate egress (DNS, same-workspace, internet). A bare
+# workspace-labeled pod would lose all egress and mis-report the ALLOW probes.
 #
 # Usage:
 #   bash scripts/verify-tenant-isolation.sh          # runs against current kubeconfig
@@ -24,6 +32,10 @@ WS_A="tea-verify-a00000000000"
 WS_B="tea-verify-b00000000000"
 APP_A="verify-iso-a"
 APP_B="verify-iso-b"
+# Egress-probe App: exists only to donate its operator-generated per-App
+# NetworkPolicy to probe-a (which carries this app label). Its own Service is
+# never targeted, so probe-a joining it is harmless.
+APP_EG="verify-iso-eg"
 
 BEX_SYSTEM_NS="${BEX_SYSTEM_NS:-bex-system}"
 OPENBAO_NS="${OPENBAO_NS:-secrets}"
@@ -52,15 +64,33 @@ probe_deny() {
   fi
 }
 
+# http_reachable <src-pod> <target-url> — true if an HTTP fetch succeeds.
+http_reachable() {
+  kubectl exec -n "$NS" "$1" -- \
+    curl -sf --max-time "$TIMEOUT" -o /dev/null "$2" &>/dev/null 2>&1
+}
+
 # probe_allow <probe-name> <src-pod> <target-url>
 # Expects HTTP 2xx/3xx — a connection failure is a FAIL.
 probe_allow() {
   local name="$1" pod="$2" url="$3"
-  if kubectl exec -n "$NS" "$pod" -- \
-      curl -sf --max-time "$TIMEOUT" -o /dev/null "$url" &>/dev/null 2>&1; then
+  if http_reachable "$pod" "$url"; then
     ok "$name"
   else
     fail "$name (BLOCKED — expected CONNECTED)"
+  fi
+}
+
+# probe_deny_url <probe-name> <src-pod> <target-url>
+# curl-based deny: a successful HTTP fetch is a FAIL (the target must be
+# unreachable). Used for the cloud-metadata endpoint, where reachability means
+# a live SSRF hole, not just an open port.
+probe_deny_url() {
+  local name="$1" pod="$2" url="$3"
+  if http_reachable "$pod" "$url"; then
+    fail "$name (CONNECTED — expected BLOCKED)"
+  else
+    ok "$name"
   fi
 }
 
@@ -80,7 +110,7 @@ probe_allow_nc() {
 
 cleanup() {
   log "cleaning up test resources..."
-  kubectl delete app "$APP_A" "$APP_B" -n "$NS" --ignore-not-found &>/dev/null || true
+  kubectl delete app "$APP_A" "$APP_B" "$APP_EG" -n "$NS" --ignore-not-found &>/dev/null || true
   kubectl delete pod "probe-a" "probe-b" -n "$NS" --ignore-not-found &>/dev/null || true
 }
 trap cleanup EXIT
@@ -117,9 +147,25 @@ spec:
   expose: false
 EOF
 
+# App EG — workspace A, egress-probe policy donor (see APP_EG comment above).
+kubectl apply -n "$NS" -f - <<EOF
+apiVersion: app.bex.co/v1alpha1
+kind: App
+metadata:
+  name: $APP_EG
+  namespace: $NS
+  labels:
+    app.bex.co/workspace: $WS_A
+spec:
+  image: traefik/whoami
+  port: 80
+  expose: false
+EOF
+
 log "waiting for App deployments to be Ready (up to 120s)..."
-kubectl wait --for=condition=Available deployment/"$APP_A" -n "$NS" --timeout=120s &>/dev/null || true
-kubectl wait --for=condition=Available deployment/"$APP_B" -n "$NS" --timeout=120s &>/dev/null || true
+kubectl wait --for=condition=Available \
+  deployment/"$APP_A" deployment/"$APP_B" deployment/"$APP_EG" \
+  -n "$NS" --timeout=120s &>/dev/null || true
 
 # Get pod IPs for cross-pod probes
 POD_A_IP=$(kubectl get pods -n "$NS" -l "app.bex.co/app=$APP_A" -o jsonpath='{.items[0].status.podIP}' 2>/dev/null || echo "")
@@ -127,10 +173,13 @@ POD_B_IP=$(kubectl get pods -n "$NS" -l "app.bex.co/app=$APP_B" -o jsonpath='{.i
 
 log "launching probe pods..."
 
-# Probe pod A: in workspace A (carries the workspace label)
+# Probe pod A: workspace A. Carries the egress-probe App label too, so it
+# inherits that App's operator-generated per-App NetworkPolicy (the egress
+# *allow* rules) and behaves like a real tenant pod under the node/metadata
+# CiliumNetworkPolicy — see the header note.
 kubectl run probe-a -n "$NS" \
   --image="$PROBE_IMAGE" --restart=Never \
-  --labels="app.bex.co/workspace=$WS_A" \
+  --labels="app.bex.co/app=$APP_EG,app.bex.co/workspace=$WS_A" \
   --command -- sleep 300 &>/dev/null || true
 
 # Probe pod B: in workspace B
@@ -173,6 +222,29 @@ probe_deny "tenant-to-prometheus" probe-a "$PROM_SVC" 9090
 ZOT_SVC="zot.$REGISTRY_NS.svc"
 probe_deny "tenant-to-zot" probe-a "$ZOT_SVC" 5000
 
+# tenant pod → cloud instance-metadata (169.254.169.254) — the SSRF → metadata
+# theft path (w7/m4). Excepted from the per-App egress ipBlock AND egressDeny-ed
+# by the platform CiliumNetworkPolicy.
+probe_deny_url "metadata-egress" probe-a "http://169.254.169.254/"
+
+# tenant pod → a node's own IP on kubelet :10250 (w7/m4). Prefer a node's public
+# IP (the real threat: public IPs aren't RFC1918, so the per-App ipBlock doesn't
+# cover them — the CiliumNetworkPolicy host/remote-node egressDeny does). Fall
+# back to the internal IP on clusters with no ExternalIP (e.g. the CAPD mock,
+# where node IPs are RFC1918 and the per-App ipBlock covers them anyway).
+NODE_IP=$(kubectl get nodes \
+  -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="ExternalIP")].address}{"\n"}{end}' 2>/dev/null \
+  | grep -m1 . || true)
+if [ -z "$NODE_IP" ]; then
+  NODE_IP=$(kubectl get nodes \
+    -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+fi
+if [ -n "$NODE_IP" ]; then
+  probe_deny "node-kubelet-10250" probe-a "$NODE_IP" 10250
+else
+  log "SKIP node-kubelet-10250 (no node IP discovered)"
+fi
+
 #───────────────────────────────────────────────────────── allow probes ──────────
 
 echo ""
@@ -181,7 +253,8 @@ echo "=== ALLOW probes (expected: CONNECTED) ==="
 # same-workspace: probe-a → App A service (private)
 probe_allow_nc "same-workspace-private-service" probe-a "$APP_A.$NS.svc" 80
 
-# public internet egress
+# public internet egress — the counter-assertion for the metadata + node DENY
+# probes above: genuine external egress must still succeed from the same pod.
 probe_allow "internet-egress" probe-a "https://example.com"
 
 #──────────────────────────────────────── m2: pod hardening + quota checks ──────

@@ -1,0 +1,47 @@
+# Platform-side tenant→node/metadata egress deny (docs/ADR022-tenant-isolation.md
+# §node-and-metadata-egress). Closes two paths the portable per-App k8s
+# NetworkPolicy (app_controller.go reconcileNetworkPolicy) cannot express:
+#
+#   1. The node's own IPs — kubelet :10250 and any nodePort on the node's
+#      public interface. A k8s NetworkPolicy ipBlock can't name "the nodes":
+#      their public IPs aren't a contiguous owned CIDR and rotate with the
+#      autoscaler. Cilium models them as the `host` (the local node) and
+#      `remote-node` (every other node) identities.
+#   2. Link-local 169.254.0.0/16 — the cloud instance-metadata service
+#      (169.254.169.254 on Hetzner: instance identity + cloud-init user-data,
+#      a classic SSRF → metadata-theft target). Denied here too so the block
+#      holds even if the per-App policy's Except list regresses.
+#
+# Mechanism: a Cilium-native CiliumNetworkPolicy `egressDeny`. Deny rules take
+# precedence over any allow (including the per-App policy's 0.0.0.0/0 egress)
+# and — unlike an egress *allow* rule — do NOT flip the endpoint into
+# default-deny, so a selected tenant pod keeps all its other egress (DNS,
+# same-workspace, genuine internet). The per-App policies stay portable vanilla
+# networking.k8s.io/v1 (envtest can validate them); only this cluster-wide
+# node/metadata guard is Cilium-native, which is acceptable because Cilium is
+# the CNI on every bex cluster (docs/ADR022-tenant-isolation.md §policy-dialect).
+#
+# Scope: every workspace-labeled tenant pod (app.bex.co/workspace present), in
+# whatever namespace tenant Apps project into. Platform pods carry no workspace
+# label and are unaffected. A CiliumNetworkPolicy (namespaced) selects only
+# pods in its own namespace, so this lives in the apps namespace (default /
+# BEX_CP_APPS_NAMESPACE).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-tenant-node-and-metadata-egress
+  namespace: default
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app.bex.co/workspace
+        operator: Exists
+  egressDeny:
+    # The nodes themselves: local node (host) + every other node (remote-node).
+    # Covers kubelet :10250 and nodePorts reached via any node IP.
+    - toEntities:
+        - host
+        - remote-node
+    # Cloud instance-metadata / link-local range.
+    - toCIDR:
+        - 169.254.0.0/16

@@ -1156,7 +1156,9 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 						}},
 					},
 				},
-				// public internet (not RFC1918 / CGNAT — blocks in-cluster platform services)
+				// public internet, minus RFC1918/CGNAT (in-cluster platforms) and
+				// link-local 169.254.0.0/16 (cloud-metadata SSRF path; also
+				// egressDeny-ed by the platform CNP — docs/ADR022-tenant-isolation.md)
 				{
 					To: []networkingv1.NetworkPolicyPeer{
 						{IPBlock: &networkingv1.IPBlock{
@@ -1166,6 +1168,7 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 								"172.16.0.0/12",
 								"192.168.0.0/16",
 								"100.64.0.0/10",
+								"169.254.0.0/16",
 							},
 						}},
 					},

@@ -125,6 +125,36 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			Expect(np.Spec.Egress).To(HaveLen(3))
 		})
 
+		It("excepts RFC1918/CGNAT and link-local from the public-internet egress rule", func() {
+			reconcileApp(r, name)
+
+			np := &networkingv1.NetworkPolicy{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+
+			By("finding the public-internet egress rule (the 0.0.0.0/0 ipBlock)")
+			var internet *networkingv1.IPBlock
+			for _, rule := range np.Spec.Egress {
+				for _, peer := range rule.To {
+					if peer.IPBlock != nil && peer.IPBlock.CIDR == "0.0.0.0/0" {
+						internet = peer.IPBlock
+					}
+				}
+			}
+			Expect(internet).NotTo(BeNil(), "expected an egress rule allowing 0.0.0.0/0")
+
+			By("verifying the except list blocks in-cluster platforms and the cloud-metadata range")
+			// link-local 169.254.0.0/16 (cloud instance-metadata, 169.254.169.254)
+			// must be excepted — its absence is the w7/m4 SSRF hole. The four
+			// RFC1918/CGNAT ranges keep in-cluster platform services unreachable.
+			Expect(internet.Except).To(ConsistOf(
+				"10.0.0.0/8",
+				"172.16.0.0/12",
+				"192.168.0.0/16",
+				"100.64.0.0/10",
+				"169.254.0.0/16",
+			), "the public-internet egress except list must include link-local (metadata) and every RFC1918/CGNAT range")
+		})
+
 		It("deletes the NetworkPolicy when the workspace label is removed", func() {
 			reconcileApp(r, name)
 
