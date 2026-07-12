@@ -27,7 +27,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"net"
 	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
@@ -67,10 +66,8 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return PostgresView{}, err
 	}
-	for _, c := range cidrs {
-		if _, _, err := net.ParseCIDR(c); err != nil {
-			return PostgresView{}, fmt.Errorf("%w: %q is not a valid CIDR", core.ErrBadRequest, c)
-		}
+	if err := core.ValidateCIDRs(cidrs); err != nil {
+		return PostgresView{}, err
 	}
 	return s.patchDatabase(ctx, name, func(d *appv1alpha1.Database) {
 		if len(cidrs) == 0 {

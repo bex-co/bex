@@ -122,7 +122,7 @@ type KeyValueReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -252,18 +252,35 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
 	route.SetName(kv.Name + "-kv")
 	route.SetNamespace(kv.Namespace)
+	mwName := kv.Name + "-kv-allow"
 	if kv.Spec.Public && r.KvDomain != "" {
+		// IP allowlist: a middleware referenced by the SNI route when CIDRs are
+		// set (the same gate the Database external route uses). Empty list =>
+		// no middleware, open route; internal access is never gated.
+		var middlewares []any
+		if len(kv.Spec.IPAllowList) > 0 {
+			if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(kv.Spec.IPAllowList)); err != nil {
+				return r.kvFail(ctx, &kv, "RouteFailed", err)
+			}
+			middlewares = []any{map[string]any{"name": mwName, "namespace": kv.Namespace}}
+		} else if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
+			return r.kvFail(ctx, &kv, "RouteFailed", err)
+		}
 		externalHost := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, route, func() error {
-			route.Object["spec"] = ingressRouteTCPSpec(kvEntryPoint, externalHost, kv.Name, kvPort, nil)
+			route.Object["spec"] = ingressRouteTCPSpec(kvEntryPoint, externalHost, kv.Name, kvPort, middlewares)
 			return controllerutil.SetControllerReference(&kv, route, r.Scheme)
 		}); err != nil {
 			return r.kvFail(ctx, &kv, "RouteFailed", err)
 		}
 		kv.Status.ExternalHost = externalHost
 	} else {
-		// Not public (or no base domain): best-effort remove any route we made.
+		// Not public (or no base domain): best-effort remove any route and
+		// allowlist middleware we made.
 		if err := deleteOptionalObject(ctx, r.Client, route); err != nil {
+			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
+		}
+		if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
 			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
 		}
 		kv.Status.ExternalHost = ""

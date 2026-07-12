@@ -253,6 +253,14 @@ func TestIPAllowList(t *testing.T) {
 		t.Fatal("a rejected allowlist must not be written")
 	}
 
+	// the create-time seed goes through the same gate (core.ValidateCIDRs)
+	if _, err := svc.CreatePostgres(ctx, CreatePostgresRequest{Name: "acl-bad", IPAllowList: []string{"nonsense"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("create with bad CIDR should be ErrBadRequest, got %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-bad"}, &db); err == nil {
+		t.Fatal("a rejected create must not write the CR")
+	}
+
 	if _, err := svc.SetIPAllowList(ctx, "acl-db", []string{"203.0.113.0/24", "10.0.0.0/8"}); err != nil {
 		t.Fatalf("SetIPAllowList => %v", err)
 	}

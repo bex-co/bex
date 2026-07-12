@@ -1,19 +1,21 @@
 # w7 · m5 — Managed Key Value network access controls (ipAllowList parity)
 
-**Worker:** worker7 **Goal:** A managed Key Value (Valkey) instance's public endpoint can be scoped to an allowlist of source CIDRs — Render's `ipAllowList` "Networking" control, which managed Postgres already has and Key Value doesn't — so a publicly-exposed Valkey is no longer password-only-open, closing a documented parity + security asymmetry. **Status:** todo
+**Worker:** worker7 **Goal:** A managed Key Value (Valkey) instance's public endpoint can be scoped to an allowlist of source CIDRs — Render's `ipAllowList` "Networking" control, which managed Postgres already has and Key Value doesn't — so a publicly-exposed Valkey is no longer password-only-open, closing a documented parity + security asymmetry. **Status:** done
+
+> Closeout note (2026-07-12): DoD verified — projection exercised against a live cluster (kind `bex` + real Traefik CRDs, operator run from the host): non-empty `ipAllowList` on a public KeyValue produced the `MiddlewareTCP` with the exact CIDRs referenced by the SNI route; emptying the list removed the middleware and the route reference; the field round-trips on REST/GraphQL/MCP (pinned by tests) and the dashboard Networking section edits it. Packet-level source-IP rejection was not exercised locally (no Traefik controller in the mock cluster, and a single-host source-IP can't simulate an off-list client) — enforcement is Traefik's `ipAllowList` middleware, the identical mechanism the production managed-Postgres allowlist already relies on.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                  | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Add `spec.ipAllowList` to the `KeyValue` CRD (mirror `Database`); regenerate manifests + deepcopy       | 30m | —          |
-| t002 | Operator: project `ipAllowList` onto the Valkey Traefik TCP/SNI route (reuse the Postgres pattern)      | 45m | t001       |
-| t003 | Surface `ipAllowList` on Key Value create/update + read-back across REST · GraphQL · MCP                | 45m | t002       |
-| t004 | Dashboard: Key Value Networking section (allowlist editor) mirroring the managed-Postgres pattern       | 45m | t003       |
-| t005 | Render parity — `ipAllowList` shape/semantics consistent across REST · GraphQL · MCP + dashboard, vs Render's KV Networking | 30m | t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                             | 20m | t005       |
-| t007 | Test coverage — meaningful tests for allowlist projection + surface round-trip                          | 30m | t005       |
-| t008 | Closeout — DoD verified, milestone moved to `done/`                                                     | 15m | t007       |
+| t001 | Add `spec.ipAllowList` to the `KeyValue` CRD (mirror `Database`); regenerate manifests + deepcopy — **DONE** | 30m | —          |
+| t002 | Operator: project `ipAllowList` onto the Valkey Traefik TCP/SNI route (reuse the Postgres pattern) — **DONE** | 45m | t001       |
+| t003 | Surface `ipAllowList` on Key Value create/update + read-back across REST · GraphQL · MCP — **DONE**     | 45m | t002       |
+| t004 | Dashboard: Key Value Networking section (allowlist editor) mirroring the managed-Postgres pattern — **DONE** | 45m | t003       |
+| t005 | Render parity — `ipAllowList` shape/semantics consistent across REST · GraphQL · MCP + dashboard, vs Render's KV Networking — **DONE** | 30m | t004 |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE**                                  | 20m | t005       |
+| t007 | Test coverage — meaningful tests for allowlist projection + surface round-trip — **DONE**               | 30m | t005       |
+| t008 | Closeout — DoD verified, milestone moved to `done/` — **DONE**                                          | 15m | t007       |
 
 ## Definition of done
 

@@ -90,4 +90,30 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	lifecycle("/suspend", s.Suspend)
 	lifecycle("/resume", s.Resume)
+
+	// IP allowlist (Render's Networking control) — same GET/PUT pair the
+	// postgres feature exposes at /v1/postgres/{id}/ip-allow-list.
+	mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": list})
+	})
+	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			CIDRs []string `json:"cidrs"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+			return
+		}
+		kv, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), req.CIDRs)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, kv)
+	})
 }

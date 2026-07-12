@@ -40,11 +40,12 @@ type keyValueArgs struct {
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
-	Name      string `json:"name" jsonschema:"the key-value store name"`
-	Plan      string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
-	Version   string `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
-	StorageGB int32  `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
-	Public    bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	Name        string   `json:"name" jsonschema:"the key-value store name"`
+	Plan        string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
+	Version     string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
+	StorageGB   int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	Public      bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	IPAllowList []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -84,14 +85,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
-		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB and public are optional.",
+		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public and ipAllowList are optional.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
-			Name:      in.Name,
-			Plan:      in.Plan,
-			Version:   in.Version,
-			StorageGB: in.StorageGB,
-			Public:    in.Public,
+			Name:        in.Name,
+			Plan:        in.Plan,
+			Version:     in.Version,
+			StorageGB:   in.StorageGB,
+			Public:      in.Public,
+			IPAllowList: in.IPAllowList,
 		})
 		if err != nil {
 			return nil, KeyValueView{}, err

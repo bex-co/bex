@@ -53,8 +53,8 @@ type Service struct {
 }
 
 // KeyValueView is the Render-shaped "key-value" object. Fields bex cannot back
-// yet (Render's maxmemoryPolicy / persistenceMode / ipAllowList) are omitted
-// rather than faked — the object stays a safe superset a Render client can read
+// yet (Render's maxmemoryPolicy / persistenceMode) are omitted rather than
+// faked — the object stays a safe superset a Render client can read
 // (docs/ADR018-render-parity.md § Key Value records the omissions).
 type KeyValueView struct {
 	ID        string `json:"id"` // the KeyValue name (name-as-id, postgres sibling)
@@ -64,6 +64,10 @@ type KeyValueView struct {
 	Status    string `json:"status"`    // Render keyValueStatus enum
 	Suspended string `json:"suspended"` // Render string enum (like services/postgres)
 	CreatedAt string `json:"createdAt,omitempty"`
+
+	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
+	// ipAllowList). Empty => the external route is open to all source IPs.
+	IPAllowList []string `json:"ipAllowList,omitempty"`
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
@@ -94,6 +98,8 @@ type CreateKeyValueRequest struct {
 	Version   string `json:"version,omitempty"`
 	StorageGB int32  `json:"storageGB,omitempty"`
 	Public    bool   `json:"public,omitempty"`
+	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
+	IPAllowList []string `json:"ipAllowList,omitempty"`
 }
 
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus string.
@@ -121,6 +127,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Status:       kvStatus(kv.Status.Phase),
 		Suspended:    core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:    created,
+		IPAllowList:  kv.Spec.IPAllowList,
 		ExternalHost: kv.Status.ExternalHost,
 		Public:       kv.Spec.Public,
 		OwnerID:      kv.Labels[core.LabelTenant],
@@ -217,13 +224,17 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			return KeyValueView{}, fmt.Errorf("%w: unknown plan %q (valid: %v)", core.ErrBadRequest, req.Plan, tiers.Valkey.IDs())
 		}
 	}
+	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+		return KeyValueView{}, err
+	}
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
 		Spec: appv1alpha1.KeyValueSpec{
-			Plan:      req.Plan,
-			Version:   req.Version,
-			StorageGB: req.StorageGB,
-			Public:    req.Public,
+			Plan:        req.Plan,
+			Version:     req.Version,
+			StorageGB:   req.StorageGB,
+			Public:      req.Public,
+			IPAllowList: req.IPAllowList,
 		},
 	}
 	// Stamp both the tenant label (ownerId scoping — kvView/ListKeyValues read
@@ -283,6 +294,45 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		if err := s.Client.Update(ctx, kv); err != nil {
 			return KeyValueView{}, err
 		}
+	}
+	return kvView(kv), nil
+}
+
+// GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty
+// => open to all source IPs). The internal path is never gated.
+func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	kv, err := s.fetchKeyValue(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return kv.Spec.IPAllowList, nil
+}
+
+// SetIPAllowList replaces the external-endpoint CIDR allowlist. Every entry must
+// be a valid CIDR (a bad one is a 400 before any write); an empty list opens the
+// endpoint to all source IPs. The operator maps it to a Traefik ipAllowList
+// middleware on the SNI route — the same gate managed Postgres uses.
+func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (KeyValueView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return KeyValueView{}, err
+	}
+	if err := core.ValidateCIDRs(cidrs); err != nil {
+		return KeyValueView{}, err
+	}
+	kv, err := s.fetchKeyValue(ctx, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if len(cidrs) == 0 {
+		kv.Spec.IPAllowList = nil
+	} else {
+		kv.Spec.IPAllowList = cidrs
+	}
+	if err := s.Client.Update(ctx, kv); err != nil {
+		return KeyValueView{}, err
 	}
 	return kvView(kv), nil
 }

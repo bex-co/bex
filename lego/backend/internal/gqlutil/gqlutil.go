@@ -42,3 +42,21 @@ func IDArg() graphql.FieldConfigArgument {
 		"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 	}
 }
+
+// StringList coerces a `[String]` argument value ([]any from graphql-go) into
+// []string, skipping non-string entries. Nil or absent => nil. Shared by the
+// CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,
+// create seeds).
+func StringList(arg any) []string {
+	raw, ok := arg.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if s, ok := v.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}

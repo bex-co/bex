@@ -280,15 +280,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				var cidrs []string
-				if raw, ok := p.Args["cidrs"].([]any); ok {
-					for _, c := range raw {
-						if str, ok := c.(string); ok {
-							cidrs = append(cidrs, str)
-						}
-					}
-				}
-				return s.SetIPAllowList(p.Context, p.Args["id"].(string), cidrs)
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["cidrs"]))
 			},
 		},
 		"createDatabaseUser": &graphql.Field{

@@ -74,7 +74,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value list empty state title",
   },
   "keyvalue.emptyBody": {
-    message: "Create your first managed Key Value store and it'll show up here.",
+    message:
+      "Create your first managed Key Value store and it'll show up here.",
     description: "Key Value list empty state body",
   },
   // --- Row actions / delete ---
@@ -171,7 +172,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.createSuccess": {
     message: "Creating {name}…",
-    description: "Toast after a create request is accepted (provisioning is async)",
+    description:
+      "Toast after a create request is accepted (provisioning is async)",
   },
   "keyvalue.createError": {
     message: "Couldn't create {name}. Please try again.",
@@ -219,7 +221,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Detail page state when keyValue(id) returns nothing",
   },
   "keyvalue.notFoundBody": {
-    message: "No Key Value store named {name} exists, or you don't have access to it.",
+    message:
+      "No Key Value store named {name} exists, or you don't have access to it.",
     description: "Detail page not-found body",
   },
   // --- Connection info panel ---
@@ -250,7 +253,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalUnavailable": {
     message: "Not public. Enable public access to get an external URL.",
-    description: "Shown instead of the external URL when the store isn't public",
+    description:
+      "Shown instead of the external URL when the store isn't public",
   },
   "keyvalue.connCli": {
     message: "Valkey CLI command",
@@ -318,6 +322,49 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.toastResumeError": {
     message: "Couldn't resume {name}. Please try again.",
     description: "Toast when a resume request fails",
+  },
+  // --- Networking (external-endpoint IP allowlist) ---
+  "keyvalue.networkingTitle": {
+    message: "Networking",
+    description: "Detail-page Networking card title (IP allowlist)",
+  },
+  "keyvalue.networkingDescription": {
+    message: "Restrict which source IPs can reach the external endpoint.",
+    description: "Networking card subtitle",
+  },
+  "keyvalue.networkingHint": {
+    message:
+      "Only these CIDR ranges can reach the external endpoint. Empty means open to all source IPs. The internal endpoint is never affected.",
+    description: "Networking IP allowlist helper text",
+  },
+  "keyvalue.networkingInternalOnly": {
+    message:
+      "This store has no external endpoint; the allowlist takes effect once the store is public.",
+    description: "Networking note shown for an internal-only store",
+  },
+  "keyvalue.networkingOpen": {
+    message: "Open to all source IPs.",
+    description: "Networking panel shown when the allowlist is empty",
+  },
+  "keyvalue.networkingAdd": {
+    message: "Add",
+    description: "Networking button to add a CIDR to the draft allowlist",
+  },
+  "keyvalue.networkingRemove": {
+    message: "Remove {cidr}",
+    description: "Accessible label to remove a CIDR chip",
+  },
+  "keyvalue.networkingSave": {
+    message: "Save allowlist",
+    description: "Networking button to persist the allowlist",
+  },
+  "keyvalue.networkingSaved": {
+    message: "Allowlist updated.",
+    description: "Toast after saving the IP allowlist",
+  },
+  "keyvalue.networkingError": {
+    message: "Couldn't save the allowlist: {error}",
+    description: "Toast when saving the allowlist fails",
   },
 };
 

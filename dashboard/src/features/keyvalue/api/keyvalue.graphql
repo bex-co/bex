@@ -61,6 +61,14 @@ query KeyValueInstanceTypes {
   }
 }
 
+# The external-endpoint CIDR allowlist (Render's Networking control), the
+# managed-Postgres databaseIpAllowList sibling. Empty => open to all source IPs;
+# only meaningful when the store is public. Read/edited by the detail page's
+# Networking section.
+query KeyValueIpAllowList($id: String!) {
+  keyValueIpAllowList(id: $id)
+}
+
 mutation CreateKeyValue(
   $name: String!
   $plan: String
@@ -79,6 +87,13 @@ mutation CreateKeyValue(
     name
     plan
     status
+  }
+}
+
+mutation SetKeyValueIpAllowList($id: String!, $cidrs: [String]) {
+  setKeyValueIpAllowList(id: $id, cidrs: $cidrs) {
+    id
+    ipAllowList
   }
 }
 

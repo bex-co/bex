@@ -13,6 +13,9 @@ dist-ssr
 *.local
 coverage
 
+# Yarn local state (node_modules linker — no releases/plugins to commit)
+.yarn/
+
 
 # Editor directories and files
 .vscode/*

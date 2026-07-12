@@ -322,27 +322,29 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // upsertOwned creates-or-updates an owned unstructured object (gvk/name in the
-// Database's namespace), applying mutate to its .spec and stamping an owner
-// reference so the object is garbage-collected with the Database.
-func (r *DatabaseReconciler) upsertOwned(ctx context.Context, db *appv1alpha1.Database, gvk schema.GroupVersionKind, name string, spec map[string]any) error {
+// owner's namespace), applying spec and stamping an owner reference so the
+// object is garbage-collected with its owner. Shared by the Database and
+// KeyValue reconcilers.
+func upsertOwned(ctx context.Context, c client.Client, scheme *runtime.Scheme, owner client.Object, gvk schema.GroupVersionKind, name string, spec map[string]any) error {
 	o := &unstructured.Unstructured{}
 	o.SetGroupVersionKind(gvk)
 	o.SetName(name)
-	o.SetNamespace(db.Namespace)
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, o, func() error {
+	o.SetNamespace(owner.GetNamespace())
+	_, err := controllerutil.CreateOrUpdate(ctx, c, o, func() error {
 		o.Object["spec"] = spec
-		return controllerutil.SetControllerReference(db, o, r.Scheme)
+		return controllerutil.SetControllerReference(owner, o, scheme)
 	})
 	return err
 }
 
-// deleteOwned best-effort removes an owned optional object by gvk/name.
-func (r *DatabaseReconciler) deleteOwned(ctx context.Context, db *appv1alpha1.Database, gvk schema.GroupVersionKind, name string) error {
+// deleteOwned best-effort removes an owned optional object by gvk/name in the
+// owner's namespace.
+func deleteOwned(ctx context.Context, c client.Client, owner client.Object, gvk schema.GroupVersionKind, name string) error {
 	o := &unstructured.Unstructured{}
 	o.SetGroupVersionKind(gvk)
 	o.SetName(name)
-	o.SetNamespace(db.Namespace)
-	return deleteOptionalObject(ctx, r.Client, o)
+	o.SetNamespace(owner.GetNamespace())
+	return deleteOptionalObject(ctx, c, o)
 }
 
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -413,21 +415,21 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// --- daily base backup (ScheduledBackup) when backups are enabled ---
 	if backupEnabled {
-		if err := r.upsertOwned(ctx, &db, cnpgScheduledBackupGVK, db.Name+"-backup", scheduledBackupSpec(db.Name)); err != nil {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, &db, cnpgScheduledBackupGVK, db.Name+"-backup", scheduledBackupSpec(db.Name)); err != nil {
 			return r.dbFail(ctx, &db, "ScheduledBackupFailed", err)
 		}
-	} else if err := r.deleteOwned(ctx, &db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
+	} else if err := deleteOwned(ctx, r.Client, &db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
 		return r.dbFail(ctx, &db, "ScheduledBackupCleanupFailed", err)
 	}
 
 	// --- PgBouncer Pooler when requested ---
 	if db.Spec.Pooler {
-		if err := r.upsertOwned(ctx, &db, cnpgPoolerGVK, db.Name+"-pooler", poolerSpec(db.Name)); err != nil {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, &db, cnpgPoolerGVK, db.Name+"-pooler", poolerSpec(db.Name)); err != nil {
 			return r.dbFail(ctx, &db, "PoolerFailed", err)
 		}
 		db.Status.PoolerHost = fmt.Sprintf("%s-pooler.%s.svc", db.Name, db.Namespace)
 	} else {
-		if err := r.deleteOwned(ctx, &db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
+		if err := deleteOwned(ctx, r.Client, &db, cnpgPoolerGVK, db.Name+"-pooler"); err != nil {
 			return r.dbFail(ctx, &db, "PoolerCleanupFailed", err)
 		}
 		db.Status.PoolerHost = ""
@@ -514,21 +516,21 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 		db.Status.ExternalHost = ""
 		db.Status.PoolerExternalHost = ""
 		for _, name := range []string{db.Name + "-pg", db.Name + "-pool"} {
-			if err := r.deleteOwned(ctx, db, traefikIngressRouteTCPGVK, name); err != nil {
+			if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, name); err != nil {
 				return err
 			}
 		}
-		return r.deleteOwned(ctx, db, traefikMiddlewareTCPGVK, mwName)
+		return deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName)
 	}
 
 	// IP allowlist: a middleware referenced by both routes when CIDRs are set.
 	var middlewares []any
 	if len(db.Spec.IPAllowList) > 0 {
-		if err := r.upsertOwned(ctx, db, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(db.Spec.IPAllowList)); err != nil {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(db.Spec.IPAllowList)); err != nil {
 			return err
 		}
 		middlewares = []any{map[string]any{"name": mwName, "namespace": db.Namespace}}
-	} else if err := r.deleteOwned(ctx, db, traefikMiddlewareTCPGVK, mwName); err != nil {
+	} else if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName); err != nil {
 		return err
 	}
 
@@ -537,7 +539,7 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 	}
 
 	rwHost := fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
-	if err := r.upsertOwned(ctx, db, traefikIngressRouteTCPGVK, db.Name+"-pg", routeSpec(rwHost, db.Name+"-rw")); err != nil {
+	if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, db.Name+"-pg", routeSpec(rwHost, db.Name+"-rw")); err != nil {
 		return err
 	}
 	db.Status.ExternalHost = rwHost
@@ -545,12 +547,12 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 	// Pooled external endpoint (only when pooling is on).
 	if db.Spec.Pooler {
 		poolHost := fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
-		if err := r.upsertOwned(ctx, db, traefikIngressRouteTCPGVK, db.Name+"-pool", routeSpec(poolHost, db.Name+"-pooler")); err != nil {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, db.Name+"-pool", routeSpec(poolHost, db.Name+"-pooler")); err != nil {
 			return err
 		}
 		db.Status.PoolerExternalHost = poolHost
 	} else {
-		if err := r.deleteOwned(ctx, db, traefikIngressRouteTCPGVK, db.Name+"-pool"); err != nil {
+		if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, db.Name+"-pool"); err != nil {
 			return err
 		}
 		db.Status.PoolerExternalHost = ""

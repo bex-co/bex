@@ -237,6 +237,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("name is required")
 	}
+	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+		return PostgresView{}, err
+	}
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{

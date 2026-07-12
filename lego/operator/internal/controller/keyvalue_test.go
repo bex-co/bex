@@ -24,9 +24,14 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -57,6 +62,110 @@ func TestValkeyImage(t *testing.T) {
 	}
 	if got := valkeyImage("7"); got != "valkey/valkey:7-alpine" {
 		t.Errorf("version 7 => %q, want valkey/valkey:7-alpine", got)
+	}
+}
+
+// TestKeyValueIPAllowListProjection drives the full reconcile against a fake
+// client with the Traefik kinds registered (envtest has no Traefik CRDs) and
+// pins the allowlist contract: public + non-empty ipAllowList => a MiddlewareTCP
+// with those CIDRs, referenced by the SNI route; emptying the list removes the
+// middleware and the route reference; going private removes route + middleware.
+func TestKeyValueIPAllowListProjection(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "acl-kv", Namespace: "default"},
+		Spec: appv1alpha1.KeyValueSpec{
+			Plan: "free", Public: true,
+			IPAllowList: []string{"203.0.113.0/24", "10.0.0.0/8"},
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "acl-kv", Namespace: "default"}
+	mwNN := types.NamespacedName{Name: "acl-kv-kv-allow", Namespace: "default"}
+	routeNN := types.NamespacedName{Name: "acl-kv-kv", Namespace: "default"}
+	reconcile1 := func() {
+		t.Helper()
+		if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+	}
+	getObj := func(gvk types.NamespacedName, kind string) (*unstructured.Unstructured, error) {
+		o := &unstructured.Unstructured{}
+		if kind == "route" {
+			o.SetGroupVersionKind(traefikIngressRouteTCPGVK)
+		} else {
+			o.SetGroupVersionKind(traefikMiddlewareTCPGVK)
+		}
+		return o, cl.Get(ctx, gvk, o)
+	}
+
+	// Public + allowlist => middleware with the CIDRs, referenced by the route.
+	reconcile1()
+	mw, err := getObj(mwNN, "middleware")
+	if err != nil {
+		t.Fatalf("middleware not created: %v", err)
+	}
+	ranges, _, _ := unstructured.NestedSlice(mw.Object, "spec", "ipAllowList", "sourceRange")
+	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" || ranges[1] != "10.0.0.0/8" {
+		t.Fatalf("sourceRange = %v", ranges)
+	}
+	route, err := getObj(routeNN, "route")
+	if err != nil {
+		t.Fatalf("route not created: %v", err)
+	}
+	routes, _, _ := unstructured.NestedSlice(route.Object, "spec", "routes")
+	mws, ok := routes[0].(map[string]any)["middlewares"].([]any)
+	if !ok || len(mws) != 1 {
+		t.Fatalf("route middlewares = %v, want 1 ref", routes[0].(map[string]any)["middlewares"])
+	}
+	if ref := mws[0].(map[string]any); ref["name"] != "acl-kv-kv-allow" || ref["namespace"] != "default" {
+		t.Fatalf("middleware ref = %v", ref)
+	}
+
+	// Emptying the list removes the middleware and the route reference.
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatalf("get kv: %v", err)
+	}
+	kv.Spec.IPAllowList = nil
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatalf("clear allowlist: %v", err)
+	}
+	reconcile1()
+	if _, err := getObj(mwNN, "middleware"); !apierrors.IsNotFound(err) {
+		t.Fatalf("emptied allowlist must delete the middleware, got %v", err)
+	}
+	route, err = getObj(routeNN, "route")
+	if err != nil {
+		t.Fatalf("route must survive an emptied allowlist: %v", err)
+	}
+	routes, _, _ = unstructured.NestedSlice(route.Object, "spec", "routes")
+	if _, has := routes[0].(map[string]any)["middlewares"]; has {
+		t.Fatalf("emptied allowlist must drop the route's middleware ref: %v", routes[0])
+	}
+
+	// Going private removes the route and any middleware.
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatalf("get kv: %v", err)
+	}
+	kv.Spec.Public = false
+	kv.Spec.IPAllowList = []string{"203.0.113.0/24"}
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatalf("make private: %v", err)
+	}
+	reconcile1()
+	if _, err := getObj(routeNN, "route"); !apierrors.IsNotFound(err) {
+		t.Fatalf("private store must have no route, got %v", err)
+	}
+	if _, err := getObj(mwNN, "middleware"); !apierrors.IsNotFound(err) {
+		t.Fatalf("private store must have no allowlist middleware, got %v", err)
 	}
 }
 

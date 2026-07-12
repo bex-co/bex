@@ -19,6 +19,7 @@ package keyvalue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -324,6 +325,175 @@ func TestMCPKeyValue(t *testing.T) {
 	var made appv1alpha1.KeyValue
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-new"}, &made); err != nil || made.Spec.Plan != "standard" {
 		t.Fatalf("create_key_value did not create the CR: %v %+v", err, made.Spec)
+	}
+}
+
+// TestIPAllowList pins the service-level allowlist contract, mirroring the
+// postgres sibling (advanced_test.go): a bad CIDR is rejected before any write,
+// a valid list round-trips, and an empty list clears the spec field.
+func TestIPAllowList(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "acl-kv")
+	ctx := context.Background()
+
+	// invalid CIDR rejected before any write
+	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []string{"nonsense"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("bad CIDR should be ErrBadRequest, got %v", err)
+	}
+	var kv appv1alpha1.KeyValue
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-kv"}, &kv)
+	if len(kv.Spec.IPAllowList) != 0 {
+		t.Fatal("a rejected allowlist must not be written")
+	}
+
+	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []string{"203.0.113.0/24", "10.0.0.0/8"}); err != nil {
+		t.Fatalf("SetIPAllowList => %v", err)
+	}
+	got, err := svc.GetIPAllowList(ctx, "acl-kv")
+	if err != nil || len(got) != 2 || got[0] != "203.0.113.0/24" {
+		t.Fatalf("GetIPAllowList = %v (err %v)", got, err)
+	}
+	// empty clears it
+	if _, err := svc.SetIPAllowList(ctx, "acl-kv", nil); err != nil {
+		t.Fatalf("clear allowlist => %v", err)
+	}
+	if got, _ := svc.GetIPAllowList(ctx, "acl-kv"); len(got) != 0 {
+		t.Fatalf("cleared allowlist should be empty, got %v", got)
+	}
+}
+
+// TestRESTIPAllowList pins the REST wire shape: create seeds spec.ipAllowList,
+// PUT/GET /ip-allow-list use the {"cidrs": [...]} envelope (byte-compatible with
+// the postgres endpoints), and the view carries ipAllowList back.
+func TestRESTIPAllowList(t *testing.T) {
+	svc, cl := newService()
+
+	// create with an allowlist seed
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-rest","public":true,"ipAllowList":["203.0.113.0/24"]}`)
+	if w.Code != 201 {
+		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var made appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-rest"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 {
+		t.Fatalf("create must seed spec.ipAllowList: %v %+v", err, made.Spec)
+	}
+
+	// PUT replaces; the response is the updated view carrying ipAllowList
+	w = serveREST(svc, "PUT", "/v1/key-value/acl-rest/ip-allow-list", `{"cidrs":["10.0.0.0/8","192.0.2.0/24"]}`)
+	if w.Code != 200 {
+		t.Fatalf("put => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var view KeyValueView
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if len(view.IPAllowList) != 2 || view.IPAllowList[0] != "10.0.0.0/8" {
+		t.Fatalf("put view ipAllowList = %v", view.IPAllowList)
+	}
+
+	// GET returns the {"cidrs": ...} envelope
+	w = serveREST(svc, "GET", "/v1/key-value/acl-rest/ip-allow-list", "")
+	if w.Code != 200 {
+		t.Fatalf("get => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var env struct {
+		CIDRs []string `json:"cidrs"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &env)
+	if len(env.CIDRs) != 2 || env.CIDRs[1] != "192.0.2.0/24" {
+		t.Fatalf("get cidrs = %v", env.CIDRs)
+	}
+
+	// a bad CIDR is a 400
+	w = serveREST(svc, "PUT", "/v1/key-value/acl-rest/ip-allow-list", `{"cidrs":["not-a-cidr"]}`)
+	if w.Code != 400 {
+		t.Fatalf("bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// create validates the seed too — same gate, no CR written
+	w = serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-bad","ipAllowList":["not-a-cidr"]}`)
+	if w.Code != 400 {
+		t.Fatalf("create with bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	var rejected appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-bad"}, &rejected); err == nil {
+		t.Fatal("a rejected create must not write the CR")
+	}
+}
+
+// TestGraphQLIPAllowList pins the GraphQL surface: the keyValueIpAllowList
+// query, the setKeyValueIpAllowList mutation, the ipAllowList view field, and
+// the createKeyValue seed argument.
+func TestGraphQLIPAllowList(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "acl-gql")
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	run := func(q string) map[string]any {
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
+		if len(res.Errors) > 0 {
+			t.Fatalf("gql %q: %v", q, res.Errors)
+		}
+		return res.Data.(map[string]any)
+	}
+
+	// set, and read the field off the returned object
+	set := run(`mutation { setKeyValueIpAllowList(id:"acl-gql", cidrs:["203.0.113.0/24"]) { ipAllowList } }`)["setKeyValueIpAllowList"].(map[string]any)
+	if l := set["ipAllowList"].([]any); len(l) != 1 || l[0] != "203.0.113.0/24" {
+		t.Fatalf("setKeyValueIpAllowList => %v", set)
+	}
+	// dedicated read query
+	if l := run(`{ keyValueIpAllowList(id:"acl-gql") }`)["keyValueIpAllowList"].([]any); len(l) != 1 || l[0] != "203.0.113.0/24" {
+		t.Fatalf("keyValueIpAllowList => %v", l)
+	}
+	// create with a seed
+	run(`mutation { createKeyValue(name:"acl-gql-new", ipAllowList:["10.0.0.0/8"]) { id } }`)
+	var made appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-gql-new"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0] != "10.0.0.0/8" {
+		t.Fatalf("createKeyValue must seed spec.ipAllowList: %v %+v", err, made.Spec)
+	}
+}
+
+// TestMCPCreateIPAllowList pins that create_key_value (MCP's only KV write,
+// Render's 3-tool set) carries the ipAllowList seed and the view returns it.
+func TestMCPCreateIPAllowList(t *testing.T) {
+	svc, cl := newService()
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "create_key_value",
+		Arguments: map[string]any{
+			"name": "acl-mcp", "public": true,
+			"ipAllowList": []string{"203.0.113.0/24"},
+		},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("create_key_value: err=%v isErr=%v", err, res.IsError)
+	}
+	out := map[string]any{}
+	b, _ := json.Marshal(res.StructuredContent)
+	_ = json.Unmarshal(b, &out)
+	if l, ok := out["ipAllowList"].([]any); !ok || len(l) != 1 || l[0] != "203.0.113.0/24" {
+		t.Fatalf("create_key_value view ipAllowList = %v", out["ipAllowList"])
+	}
+	var made appv1alpha1.KeyValue
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-mcp"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 {
+		t.Fatalf("create_key_value must seed spec.ipAllowList: %v %+v", err, made.Spec)
 	}
 }
 

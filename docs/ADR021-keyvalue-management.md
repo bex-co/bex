@@ -32,6 +32,8 @@ flowchart LR
 
 The external route is created by the operator only when `spec.public: true` **and** `BEX_KV_DOMAIN` is set (private by default) — exactly the Postgres pattern. The credentials Secret carries both URL forms (`uri` internal, `externalUri` external) plus `host`/`port`/`password`, so a future API layer can assemble a Connections panel without re-deriving them.
 
+**IP allowlist** (`spec.ipAllowList`, w7/m5) gates the **external** SNI route only: the controller projects a Traefik `ipAllowList` `MiddlewareTCP` (source-range) referenced by the route, so only listed CIDRs reach the public endpoint — the same mechanism the Database controller uses (ADR009 §IP allowlist). Empty ⇒ open to all source IPs; the internal path is never gated. Surfaced as Render's `ipAllowList` on the key-value REST/GraphQL/MCP create + REST `GET/PUT /v1/key-value/{id}/ip-allow-list`, GraphQL `keyValueIpAllowList`/`setKeyValueIpAllowList`, and the dashboard's Networking section.
+
 ### 3. The TLS caveat (mirrors the Postgres ADR §3)
 
 The public wildcard must be **DNS-only (gray-cloud)** — Cloudflare's proxy is HTTP(S) only and cannot carry raw TCP `:6379`. And like Postgres, SNI passthrough works only for **direct-TLS** clients: the route is TLS-passthrough, so the Valkey instance must terminate TLS for the external path to work end to end. The MVP Valkey instance listens plain (`--requirepass`, no TLS) on the internal path; broad-client public-TLS termination is a follow-on (a TLS-aware Valkey config + cert), exactly as the Postgres ADR defers a Postgres-aware SNI proxy. The internal URL — what tenant Apps use — is unaffected.

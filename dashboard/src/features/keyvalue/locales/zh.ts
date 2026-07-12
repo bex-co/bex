@@ -170,7 +170,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.createSuccess": {
     message: "正在创建 {name}…",
-    description: "Toast after a create request is accepted (provisioning is async)",
+    description:
+      "Toast after a create request is accepted (provisioning is async)",
   },
   "keyvalue.createError": {
     message: "无法创建 {name}。请重试。",
@@ -248,7 +249,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalUnavailable": {
     message: "尚未公开访问。启用公网访问后可获得外部 URL。",
-    description: "Shown instead of the external URL when the store isn't public",
+    description:
+      "Shown instead of the external URL when the store isn't public",
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 命令",
@@ -292,7 +294,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Suspend-confirmation dialog title",
   },
   "keyvalue.confirmSuspendBody": {
-    message: "这会将存储缩容至零并断开所有活动连接。数据会被保留，随时可以恢复。",
+    message:
+      "这会将存储缩容至零并断开所有活动连接。数据会被保留，随时可以恢复。",
     description: "Suspend-confirmation dialog body",
   },
   "keyvalue.confirmCancel": {
@@ -314,6 +317,48 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.toastResumeError": {
     message: "无法恢复 {name}。请重试。",
     description: "Toast when a resume request fails",
+  },
+  // --- Networking (external-endpoint IP allowlist) ---
+  "keyvalue.networkingTitle": {
+    message: "网络",
+    description: "Detail-page Networking card title (IP allowlist)",
+  },
+  "keyvalue.networkingDescription": {
+    message: "限制可访问外部端点的来源 IP。",
+    description: "Networking card subtitle",
+  },
+  "keyvalue.networkingHint": {
+    message:
+      "仅这些 CIDR 网段可访问外部端点。留空表示对所有来源 IP 开放。内部端点始终不受影响。",
+    description: "Networking IP allowlist helper text",
+  },
+  "keyvalue.networkingInternalOnly": {
+    message: "该存储没有外部端点；允许列表将在存储设为公开后生效。",
+    description: "Networking note shown for an internal-only store",
+  },
+  "keyvalue.networkingOpen": {
+    message: "对所有来源 IP 开放。",
+    description: "Networking panel shown when the allowlist is empty",
+  },
+  "keyvalue.networkingAdd": {
+    message: "添加",
+    description: "Networking button to add a CIDR to the draft allowlist",
+  },
+  "keyvalue.networkingRemove": {
+    message: "移除 {cidr}",
+    description: "Accessible label to remove a CIDR chip",
+  },
+  "keyvalue.networkingSave": {
+    message: "保存允许列表",
+    description: "Networking button to persist the allowlist",
+  },
+  "keyvalue.networkingSaved": {
+    message: "允许列表已更新。",
+    description: "Toast after saving the IP allowlist",
+  },
+  "keyvalue.networkingError": {
+    message: "无法保存允许列表：{error}",
+    description: "Toast when saving the allowlist fails",
   },
 };
 

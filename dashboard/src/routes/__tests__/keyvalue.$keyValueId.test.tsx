@@ -39,6 +39,15 @@ vi.mock("@/features/keyvalue/hooks/use-connection-info", () => ({
   }),
 }));
 
+vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
+  useKeyValueNetworking: () => ({
+    allowList: [],
+    loading: false,
+    savingAllowList: false,
+    saveAllowList: vi.fn(),
+  }),
+}));
+
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
     id: "sessions-cache",
@@ -63,7 +72,9 @@ function renderPage() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([detailRoute]),
-    history: createMemoryHistory({ initialEntries: ["/keyvalue/sessions-cache"] }),
+    history: createMemoryHistory({
+      initialEntries: ["/keyvalue/sessions-cache"],
+    }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);

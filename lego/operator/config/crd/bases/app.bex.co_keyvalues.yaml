@@ -54,6 +54,15 @@ spec:
               projects it to a single-instance Valkey StatefulSet in the same namespace; the
               plan sets resources/storage. See docs/ADR021-keyvalue-management.md.
             properties:
+              ipAllowList:
+                description: |-
+                  IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
+                  Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
+                  route is open to all source IPs. The internal path is never affected.
+                  Render's ipAllowList; only meaningful when Public.
+                items:
+                  type: string
+                type: array
               plan:
                 default: free
                 description: |-

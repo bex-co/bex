@@ -8,7 +8,7 @@
 - [x] **m2** — Tenant workload hardening: Pod Security baseline + quotas + token hygiene (7 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 - [x] **m3** — bex-api abuse hardening: Render-shaped rate limits + request caps (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-09
 - [x] **m4** — Tenant egress hardening: block cloud metadata + node-local endpoints (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-11
-- [ ] **m5** — Managed Key Value network access controls (ipAllowList parity) (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-11
+- [x] **m5** — Managed Key Value network access controls (ipAllowList parity) (8 tasks) ← from `/pm-brainstorm for w7` 2026-07-11
 
 ## Inbox
 

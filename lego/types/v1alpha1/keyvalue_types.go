@@ -56,6 +56,13 @@ type KeyValueSpec struct {
 	// password and endpoint. Default: running.
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
+
+	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
+	// Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
+	// route is open to all source IPs. The internal path is never affected.
+	// Render's ipAllowList; only meaningful when Public.
+	// +optional
+	IPAllowList []string `json:"ipAllowList,omitempty"`
 }
 
 // KeyValuePhase mirrors the provisioning lifecycle.

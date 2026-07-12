@@ -11,6 +11,7 @@ import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-st
 import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
 import { KeyValueLifecycleActions } from "@/features/keyvalue/components/key-value-lifecycle-actions";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
+import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
@@ -64,6 +65,10 @@ export function KeyValueDetailPage() {
             <>
               <MetadataCard keyValue={keyValue} />
               <ConnectionInfoPanel id={keyValue.id} />
+              <KeyValueNetworkingPanel
+                id={keyValue.id}
+                isPublic={keyValue.public}
+              />
               <KeyValueLifecycleActions
                 keyValue={keyValue}
                 onChanged={() => void refetch()}

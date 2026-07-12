@@ -39,6 +39,7 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.CreatedAt })},
 		"externalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ExternalHost })},
 		"public":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Public })},
+		"ipAllowList":  &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v KeyValueView) any { return v.IPAllowList })},
 		"ownerId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
 	},
 })
@@ -99,6 +100,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewList(keyValueInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
+		"keyValueIpAllowList": &graphql.Field{
+			Type: graphql.NewList(graphql.String),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetIPAllowList(p.Context, p.Args["id"].(string))
+			},
+		},
 	}
 }
 
@@ -108,11 +116,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan":      &graphql.ArgumentConfig{Type: graphql.String},
-				"version":   &graphql.ArgumentConfig{Type: graphql.String},
-				"storageGB": &graphql.ArgumentConfig{Type: graphql.Int},
-				"public":    &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"name":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan":        &graphql.ArgumentConfig{Type: graphql.String},
+				"version":     &graphql.ArgumentConfig{Type: graphql.String},
+				"storageGB":   &graphql.ArgumentConfig{Type: graphql.Int},
+				"public":      &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowList": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				req := CreateKeyValueRequest{Name: p.Args["name"].(string)}
@@ -128,6 +137,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["public"].(bool); ok {
 					req.Public = v
 				}
+				req.IPAllowList = gqlutil.StringList(p.Args["ipAllowList"])
 				return s.CreateKeyValue(p.Context, req)
 			},
 		},
@@ -151,6 +161,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Resume(p.Context, p.Args["id"].(string))
+			},
+		},
+		"setKeyValueIpAllowList": &graphql.Field{
+			Type: keyValueGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["cidrs"]))
 			},
 		},
 	}
