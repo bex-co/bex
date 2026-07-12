@@ -107,6 +107,22 @@ spec:
           # entrypoint (:6379). Same DNS-only wildcard caveat as Postgres above.
           - name: BEX_KV_DOMAIN
             value: kv.bex.co
+          # Static sites (w1/m21, docs/ADR029-static-sites.md): the object-store
+          # origin a static_site publishes to + the shared static-server its host
+          # Ingress backs onto. Endpoint/bucket/region are deployment-time config
+          # (a bucket DEDICATED to static content — never bex-tfstate); the S3
+          # credentials come from the out-of-band `static-s3` Secret (created from
+          # .env, the etcd-backup pattern). Any unset => static_site is rejected.
+          - name: BEX_STATIC_S3_ENDPOINT
+            value: https://s3.eu-central-2.wasabisys.com
+          - name: BEX_STATIC_S3_BUCKET
+            value: bex-static
+          - name: BEX_STATIC_S3_REGION
+            value: eu-central-2
+          - name: BEX_STATIC_S3_SECRET
+            value: static-s3
+          - name: BEX_STATIC_SERVER_SERVICE
+            value: bex-static-server
         ports:
         - containerPort: 8081
           name: health
