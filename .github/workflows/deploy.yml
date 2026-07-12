@@ -174,6 +174,10 @@ jobs:
           HYDRA_SECRETS_COOKIE: ${{ secrets.HYDRA_SECRETS_COOKIE }}
           HYDRA_OIDC_PAIRWISE_SALT: ${{ secrets.HYDRA_OIDC_PAIRWISE_SALT }}
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
+          # Optional social login (docs/auth.md § Social login) — unset secrets
+          # resolve empty, so auth-secrets.sh writes the oidc.yaml fragment disabled.
+          BEX_GITHUB_OIDC_CLIENT_ID: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_ID }}
+          BEX_GITHUB_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_SECRET }}
         run: |
           for s in kratos-db-app hydra-db-app openfga-db-app; do
             timeout 300 bash -c "until kubectl -n auth get secret $s >/dev/null 2>&1; do sleep 5; done" \

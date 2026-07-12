@@ -13,6 +13,13 @@
 #   HYDRA_OIDC_PAIRWISE_SALT  hydra pairwise subject salt    (>= 8 chars)
 #   OPENFGA_PRESHARED_KEY     openfga API preshared key      (>= 16 chars)
 #
+# Optional (Sign in with GitHub via Kratos oidc — docs/auth.md § Social login).
+# When BOTH are set, the kratos Secret gains an `oidc.yaml` fragment enabling the
+# GitHub provider; unset ⇒ the fragment is written disabled (a valid no-op), so
+# flipping social login on is purely `.env` + a re-run, no git change:
+#   BEX_GITHUB_OIDC_CLIENT_ID     GitHub OAuth app client id
+#   BEX_GITHUB_OIDC_CLIENT_SECRET GitHub OAuth app client secret
+#
 # The DSNs are composed from the CNPG-generated DB credentials (Secrets
 # kratos-db-app / hydra-db-app / openfga-db-app, created by the Clusters in
 # deploy/gitops/charts/auth-dbs/) — DB passwords never live in .env.
@@ -54,9 +61,61 @@ require HYDRA_SECRETS_COOKIE 16
 require HYDRA_OIDC_PAIRWISE_SALT 8
 require OPENFGA_PRESHARED_KEY 16
 
+# Kratos OIDC provider fragment (a SECOND `--config` file the kratos Deployment
+# loads via deployment.extraArgs; the client_secret must not live in git, so it
+# rides this out-of-band Secret). Always emitted — enabled with the GitHub
+# provider when both BEX_GITHUB_OIDC_* are set, else a valid `enabled: false` no-op
+# so the mounted file always exists and Kratos never crashloops on a missing
+# --config target. The Jsonnet claims→traits mapper is inlined via base64:// so
+# no extra file mount is needed (docs/auth.md § Social login).
+oidc_fragment() {
+  if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
+    local mapper
+    mapper="$(printf '%s' \
+      'local claims = std.extVar('"'"'claims'"'"'); { identity: { traits: { email: claims.email } } }' \
+      | base64 | tr -d '\n')"
+    cat <<YAML
+selfservice:
+  methods:
+    oidc:
+      enabled: true
+      config:
+        providers:
+          - id: github
+            provider: github
+            client_id: "${BEX_GITHUB_OIDC_CLIENT_ID}"
+            client_secret: "${BEX_GITHUB_OIDC_CLIENT_SECRET}"
+            mapper_url: "base64://${mapper}"
+            scope:
+              - user:email
+  flows:
+    registration:
+      # Kratos doesn't issue a session after OIDC registration unless told to —
+      # mirror the password flow's session hook (base kratos.values.yaml) so a
+      # first-time GitHub sign-in lands authenticated, not back on the login page.
+      after:
+        oidc:
+          hooks:
+            - hook: session
+YAML
+  else
+    cat <<'YAML'
+selfservice:
+  methods:
+    oidc:
+      enabled: false
+YAML
+  fi
+}
+
 if [ "${DRY_RUN:-}" = "1" ]; then
+  if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
+    echo "would apply secret $NS/kratos oidc.yaml key: GitHub provider ENABLED"
+  else
+    echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (BEX_GITHUB_OIDC_* unset)"
+  fi
   echo "would ensure namespace $NS"
-  echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher)"
+  echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher oidc.yaml)"
   echo "would apply secret $NS/hydra (keys: dsn secretsSystem secretsCookie oidcPairwiseSalt)"
   echo "would apply secret $NS/openfga (keys: uri keys)"
   exit 0
@@ -80,6 +139,7 @@ kubectl create secret generic kratos -n "$NS" \
   --from-literal=secretsDefault="$KRATOS_SECRETS_DEFAULT" \
   --from-literal=secretsCookie="$KRATOS_SECRETS_COOKIE" \
   --from-literal=secretsCipher="$KRATOS_SECRETS_CIPHER" \
+  --from-literal=oidc.yaml="$(oidc_fragment)" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic hydra -n "$NS" \

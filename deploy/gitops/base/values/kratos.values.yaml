@@ -165,6 +165,27 @@ deployment:
     bex.co/pool: platform
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+  # Social login (w4/003, docs/auth.md § Social login): load a SECOND Kratos
+  # config file carrying the `oidc` method's GitHub provider. Its client_secret
+  # is secret material, so it can't live in these git-committed values — instead
+  # scripts/auth-secrets.sh writes an `oidc.yaml` fragment into the out-of-band
+  # `kratos` Secret (always present: the GitHub provider when BEX_GITHUB_OIDC_* are
+  # set in .env, else `enabled: false`), which Kratos merges over the main
+  # config. Kratos accepts repeated --config flags and deep-merges them.
+  extraArgs:
+    - --config
+    - /etc/config-oidc/oidc.yaml
+  extraVolumes:
+    - name: kratos-oidc
+      secret:
+        secretName: kratos
+        items:
+          - key: oidc.yaml
+            path: oidc.yaml
+  extraVolumeMounts:
+    - name: kratos-oidc
+      mountPath: /etc/config-oidc
+      readOnly: true
 job:
   nodeSelector:
     bex.co/pool: platform

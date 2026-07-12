@@ -57,6 +57,14 @@ kratos:
         domain: ""
         same_site: Lax
 
+# Social login (docs/auth.md § Social login) inherits from base: the mock
+# cluster's kratos still loads the second --config file (`oidc.yaml` from the
+# `kratos` Secret), which scripts/auth-secrets.sh writes disabled unless
+# BEX_GITHUB_OIDC_* are in .env — GitHub OAuth apps can't redirect to localhost the
+# way prod does. The credible local check is scripts/auth-oidc-e2e.sh, a
+# self-contained Dex + Kratos harness (mirrors auth-oauth21-e2e.sh), not this
+# overlay.
+
 ingress:
   public:
     hosts:
