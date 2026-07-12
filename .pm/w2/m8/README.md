@@ -1,6 +1,6 @@
 # w2 · m8 — Connect GitHub: GitHub App connection + repo listing
 
-**Worker:** worker2 **Goal:** an admin connects a GitHub account once (bex GitHub App install); agents and the dashboard can enumerate its repos on all four surfaces. **Status:** code-complete (t001–t009 built + unit-tested + lint-clean); t010 live acceptance pending a real GitHub App + cluster run (see t010).
+**Worker:** worker2 **Goal:** an admin connects a GitHub account once (bex GitHub App install); agents and the dashboard can enumerate its repos on all four surfaces. **Status:** backend shipped 2026-07-11 (t001–t005, t007–t009 built + unit-tested + lint-clean, on `main`); t006 dashboard card **written but reverted from the ship** — the dashboard image build needs `yarn codegen` and codegen is blocked by a pre-existing duplicate `Workspaces` operation (team.graphql vs workspaces.graphql); re-land after that's fixed. t010 live acceptance pending a real GitHub App + cluster run (see t010).
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Control-plane store: `git_connections` table + connection verbs (authz-gated)             | 40m | t002       | — **DONE** |
 | t004 | REST: connect · callback · get/delete connection · `GET /v1/repos`                        | 45m | t003       | — **DONE** |
 | t005 | GraphQL (`gitConnection`/`repos` + mutations) and MCP (`list_repos`, `get_git_connection`) | 40m | t004       | — **DONE** |
-| t006 | Dashboard: Settings → "Connect GitHub" card (install link, status, disconnect)            | 45m | t005       | — **DONE** (code; UI needs `yarn codegen` + build to verify) |
+| t006 | Dashboard: Settings → "Connect GitHub" card (install link, status, disconnect)            | 45m | t005       | — **REVERTED** (code in git history, commit `98e6835`; reverted in `7504210` — dashboard image build blocked on `yarn codegen`, itself blocked by a pre-existing duplicate `Workspaces` op. Re-land after codegen fix) |
 | t007 | Render parity — cross-surface consistency + declare REST/MCP repo surface a bex superset  | 30m | t006       | — **DONE** |
 | t008 | Simplify — `/simplify` over the milestone's diff                                          | 30m | t007       | — **DONE** (run jointly with m9/t007 over the combined diff) |
 | t009 | Test coverage — connection lifecycle, 503-when-unconfigured, token minting, pagination    | 40m | t007       | — **DONE** |
