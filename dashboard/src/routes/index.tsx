@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card.tsx";
+import { Button } from "@/common/components/ui/button";
 import {
   Table,
   TableBody,
@@ -76,8 +78,14 @@ export function HomePage() {
             ))}
           </div>
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>{t("services.cardTitle")}</CardTitle>
+              <Button asChild size="sm">
+                <Link to="/services/new">
+                  <Plus className="size-4" />
+                  {t("services.newServiceButton")}
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent>
               {showError ? (

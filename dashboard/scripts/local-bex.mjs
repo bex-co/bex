@@ -412,12 +412,114 @@ function byOwner(list, ownerId) {
   return list.filter((x) => x.ownerId === (ownerId || WORKSPACE_DEFAULT));
 }
 
+// GitHub App connection stub (w5/m15 create wizard): a pre-connected account
+// so the repo picker renders populated. Set connected: false to test the
+// connect-prompt empty state (see the GitConnection query, internal/github/graphql.go).
+const GIT_CONNECTION = {
+  __typename: "GitConnection",
+  connected: true,
+  accountLogin: "acme-corp",
+  installationId: 87654321,
+  createdAt: "2026-06-01T09:00:00Z",
+  installUrl: "https://github.com/apps/bex-local/installations/new",
+};
+
+// Sample repos visible to the connected GitHub App installation (w5/m15):
+// a mix of public and private repos from the same org, with different default
+// branches so the branch auto-fill and UI label are exercised end-to-end.
+const REPOS = [
+  {
+    __typename: "Repo",
+    id: 1001,
+    fullName: "acme-corp/web-frontend",
+    private: false,
+    defaultBranch: "main",
+    htmlUrl: "https://github.com/acme-corp/web-frontend",
+    cloneUrl: "https://github.com/acme-corp/web-frontend.git",
+  },
+  {
+    __typename: "Repo",
+    id: 1002,
+    fullName: "acme-corp/api-service",
+    private: true,
+    defaultBranch: "main",
+    htmlUrl: "https://github.com/acme-corp/api-service",
+    cloneUrl: "https://github.com/acme-corp/api-service.git",
+  },
+  {
+    __typename: "Repo",
+    id: 1003,
+    fullName: "acme-corp/data-pipeline",
+    private: true,
+    defaultBranch: "develop",
+    htmlUrl: "https://github.com/acme-corp/data-pipeline",
+    cloneUrl: "https://github.com/acme-corp/data-pipeline.git",
+  },
+  {
+    __typename: "Repo",
+    id: 1004,
+    fullName: "acme-corp/marketing-site",
+    private: false,
+    defaultBranch: "main",
+    htmlUrl: "https://github.com/acme-corp/marketing-site",
+    cloneUrl: "https://github.com/acme-corp/marketing-site.git",
+  },
+  {
+    __typename: "Repo",
+    id: 1005,
+    fullName: "acme-corp/internal-tools",
+    private: true,
+    defaultBranch: "master",
+    htmlUrl: "https://github.com/acme-corp/internal-tools",
+    cloneUrl: "https://github.com/acme-corp/internal-tools.git",
+  },
+];
+
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard
 // actually fires need real shapes; everything else returns a safe empty.
 function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
     case "Services":
       return { services: byOwner(SERVICES, variables.ownerId) };
+    case "GitConnection":
+      return { gitConnection: GIT_CONNECTION };
+    case "Repos":
+      // Only return repos when connected; an unconnected installation has no repos.
+      return { repos: GIT_CONNECTION.connected ? REPOS : [] };
+    case "ConnectGit":
+      // Simulate the GitHub App install flow completing: mark as connected and
+      // return the install URL (in practice the user visits it and comes back).
+      GIT_CONNECTION.connected = true;
+      return { connectGit: GIT_CONNECTION };
+    case "CreateService": {
+      const svc = {
+        __typename: "Service",
+        id: variables.name,
+        name: variables.name,
+        type: variables.image ? "web_service" : "web_service",
+        suspended: null,
+        dashboardUrl: `http://localhost:5173/services/${variables.name}`,
+        url: `https://${variables.name}.onbex.co`,
+        createdAt: new Date().toISOString(),
+        phase: "Pending",
+        replicas: 1,
+        revision: null,
+        plan: variables.plan ?? "free",
+        schedule: null,
+        command: null,
+        runs: [],
+        ownerId: WORKSPACE_DEFAULT,
+        repo: variables.repo ?? null,
+        branch: variables.branch ?? null,
+        rootDir: variables.rootDir ?? null,
+        image: variables.image ?? null,
+      };
+      SERVICES.push(svc);
+      // Simulate async rollout: transition Pending → Building → Running.
+      setTimeout(() => { svc.phase = "Building"; }, 2000);
+      setTimeout(() => { svc.phase = "Running"; }, 6000);
+      return { createService: svc };
+    }
     case "Server":
       // null for an unknown id — never borrow another service's object.
       return { server: serviceById(variables.id) };
@@ -488,7 +590,14 @@ function resolveGraphQL({ operationName, variables = {} }) {
         },
       };
     case "InstanceTypes":
-      return { instanceTypes: [] };
+      return {
+        instanceTypes: [
+          { __typename: "InstanceType", id: "free", name: "Free", cpu: "0.1", memory: "512Mi" },
+          { __typename: "InstanceType", id: "starter", name: "Starter", cpu: "0.5", memory: "1Gi" },
+          { __typename: "InstanceType", id: "standard", name: "Standard", cpu: "1", memory: "2Gi" },
+          { __typename: "InstanceType", id: "pro", name: "Pro", cpu: "2", memory: "4Gi" },
+        ],
+      };
     case "EnvVarKeys":
       return {
         service: { __typename: "Service", id: variables.id, envVarKeys: [] },

@@ -1,6 +1,6 @@
 # w5 · m15 — New-service create wizard (source picker · repo picker · deploy)
 
-**Worker:** worker5 **Goal:** the dashboard can create a service — bex's answer to Render's `dashboard.render.com/web/new`: pick a source (connected GitHub repo / public git URL / existing image), fill the settings, deploy, watch it come up. **Status:** todo (repo-picker path blocked on w2/m8; private-repo deploys on w2/m9)
+**Worker:** worker5 **Goal:** the dashboard can create a service — bex's answer to Render's `dashboard.render.com/web/new`: pick a source (connected GitHub repo / public git URL / existing image), fill the settings, deploy, watch it come up. **Status:** done
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — wizard vs Render's new-service flow; flip the create-service UI cell        | 30m | t005       |
 | t007 | Simplify — `/simplify` over the milestone's diff                                            | 30m | t006       |
 | t008 | Test coverage — form validation, source-tab state, create error surfaces, connect prompt    | 40m | t006       |
-| t009 | Closeout — DoD verified, move to `done/`                                                    | 15m | t008       |
+| t009 | Closeout — DoD verified, move to `done/`                                                    | 15m | t008       | — **DONE**
 
 ## Definition of done
 

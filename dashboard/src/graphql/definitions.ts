@@ -15,6 +15,25 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
+export type Repo = {
+  __typename: 'Repo';
+  id: Maybe<Scalars['Float']['output']>;
+  fullName: Maybe<Scalars['String']['output']>;
+  private: Maybe<Scalars['Boolean']['output']>;
+  defaultBranch: Maybe<Scalars['String']['output']>;
+  htmlUrl: Maybe<Scalars['String']['output']>;
+  cloneUrl: Maybe<Scalars['String']['output']>;
+};
+
+export type GitConnection = {
+  __typename: 'GitConnection';
+  connected: Maybe<Scalars['Boolean']['output']>;
+  accountLogin: Maybe<Scalars['String']['output']>;
+  installationId: Maybe<Scalars['Float']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
+  installUrl: Maybe<Scalars['String']['output']>;
+};
+
 export type ApiKey = {
   __typename: 'ApiKey';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -213,6 +232,8 @@ export type MonthToDateBandwidth = {
 export type Mutation = {
   __typename: 'Mutation';
   addCustomDomain: Maybe<CustomDomain>;
+  connectGit: Maybe<GitConnection>;
+  disconnectGit: Maybe<Scalars['Boolean']['output']>;
   createApiKey: Maybe<ApiKey>;
   createDatabase: Maybe<Database>;
   createKeyValue: Maybe<KeyValue>;
@@ -414,6 +435,8 @@ export type Query = {
   metricsFilters: Maybe<MetricsFiltersResult>;
   metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
   monthToDateBandwidth: Maybe<MonthToDateBandwidth>;
+  gitConnection: Maybe<GitConnection>;
+  repos: Maybe<Array<Maybe<Repo>>>;
   server: Maybe<Service>;
   service: Maybe<Service>;
   services: Maybe<Array<Maybe<Service>>>;
@@ -1164,3 +1187,34 @@ export type DisableAutoscalingMutation = { disableAutoscaling: boolean | null };
 export const AutoscalingConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AutoscalingConfig"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"autoscalingConfig"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"minInstances"}},{"kind":"Field","name":{"kind":"Name","value":"maxInstances"}},{"kind":"Field","name":{"kind":"Name","value":"targetCPUPercent"}},{"kind":"Field","name":{"kind":"Name","value":"targetMemoryPercent"}}]}}]}}]} as unknown as DocumentNode<AutoscalingConfigQuery, AutoscalingConfigQueryVariables>;
 export const SetAutoscalingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetAutoscaling"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"minInstances"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"maxInstances"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"targetCPUPercent"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"targetMemoryPercent"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setAutoscaling"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"minInstances"},"value":{"kind":"Variable","name":{"kind":"Name","value":"minInstances"}}},{"kind":"Argument","name":{"kind":"Name","value":"maxInstances"},"value":{"kind":"Variable","name":{"kind":"Name","value":"maxInstances"}}},{"kind":"Argument","name":{"kind":"Name","value":"targetCPUPercent"},"value":{"kind":"Variable","name":{"kind":"Name","value":"targetCPUPercent"}}},{"kind":"Argument","name":{"kind":"Name","value":"targetMemoryPercent"},"value":{"kind":"Variable","name":{"kind":"Name","value":"targetMemoryPercent"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"minInstances"}},{"kind":"Field","name":{"kind":"Name","value":"maxInstances"}},{"kind":"Field","name":{"kind":"Name","value":"targetCPUPercent"}},{"kind":"Field","name":{"kind":"Name","value":"targetMemoryPercent"}}]}}]}}]} as unknown as DocumentNode<SetAutoscalingMutation, SetAutoscalingMutationVariables>;
 export const DisableAutoscalingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DisableAutoscaling"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"disableAutoscaling"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DisableAutoscalingMutation, DisableAutoscalingMutationVariables>;
+
+// --- w5/m15: new-service create wizard (hand-added; codegen needs a live bex-api) ---
+
+export type ReposQueryVariables = Exact<{ [key: string]: never; }>;
+
+export type ReposQuery = { repos: Array<{ __typename: 'Repo', id: number | null, fullName: string | null, private: boolean | null, defaultBranch: string | null, htmlUrl: string | null, cloneUrl: string | null } | null> | null };
+
+export type GitConnectionQueryVariables = Exact<{ [key: string]: never; }>;
+
+export type GitConnectionQuery = { gitConnection: { __typename: 'GitConnection', connected: boolean | null, accountLogin: string | null, installationId: number | null, createdAt: string | null, installUrl: string | null } | null };
+
+export type ConnectGitMutationVariables = Exact<{ [key: string]: never; }>;
+
+export type ConnectGitMutation = { connectGit: { __typename: 'GitConnection', connected: boolean | null, accountLogin: string | null, installUrl: string | null } | null };
+
+export type CreateServiceMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  repo?: InputMaybe<Scalars['String']['input']>;
+  image?: InputMaybe<Scalars['String']['input']>;
+  branch?: InputMaybe<Scalars['String']['input']>;
+  rootDir?: InputMaybe<Scalars['String']['input']>;
+  plan?: InputMaybe<Scalars['String']['input']>;
+  autoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+export type CreateServiceMutation = { createService: { __typename: 'Service', id: string | null, name: string | null, type: string | null, phase: string | null } | null };
+
+export const ReposDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Repos"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"repos"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"fullName"}},{"kind":"Field","name":{"kind":"Name","value":"private"}},{"kind":"Field","name":{"kind":"Name","value":"defaultBranch"}},{"kind":"Field","name":{"kind":"Name","value":"htmlUrl"}},{"kind":"Field","name":{"kind":"Name","value":"cloneUrl"}}]}}]}}]} as unknown as DocumentNode<ReposQuery, ReposQueryVariables>;
+export const GitConnectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GitConnection"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gitConnection"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connected"}},{"kind":"Field","name":{"kind":"Name","value":"accountLogin"}},{"kind":"Field","name":{"kind":"Name","value":"installationId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"installUrl"}}]}}]}}]} as unknown as DocumentNode<GitConnectionQuery, GitConnectionQueryVariables>;
+export const ConnectGitDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ConnectGit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connectGit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"connected"}},{"kind":"Field","name":{"kind":"Name","value":"accountLogin"}},{"kind":"Field","name":{"kind":"Name","value":"installUrl"}}]}}]}}]} as unknown as DocumentNode<ConnectGitMutation, ConnectGitMutationVariables>;
+export const CreateServiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateService"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"repo"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"image"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"branch"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"rootDir"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"plan"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"autoDeploy"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createService"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"repo"},"value":{"kind":"Variable","name":{"kind":"Name","value":"repo"}}},{"kind":"Argument","name":{"kind":"Name","value":"image"},"value":{"kind":"Variable","name":{"kind":"Name","value":"image"}}},{"kind":"Argument","name":{"kind":"Name","value":"branch"},"value":{"kind":"Variable","name":{"kind":"Name","value":"branch"}}},{"kind":"Argument","name":{"kind":"Name","value":"rootDir"},"value":{"kind":"Variable","name":{"kind":"Name","value":"rootDir"}}},{"kind":"Argument","name":{"kind":"Name","value":"plan"},"value":{"kind":"Variable","name":{"kind":"Name","value":"plan"}}},{"kind":"Argument","name":{"kind":"Name","value":"autoDeploy"},"value":{"kind":"Variable","name":{"kind":"Name","value":"autoDeploy"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}}]}}]}}]} as unknown as DocumentNode<CreateServiceMutation, CreateServiceMutationVariables>;

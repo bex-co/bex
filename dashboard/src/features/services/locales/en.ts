@@ -1158,6 +1158,154 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't delete {name}",
     description: "Toast on a failed service delete",
   },
+  "services.newServiceButton": {
+    message: "New Service",
+    description: "Button on the services list page that opens the create wizard",
+  },
+  "services.createTitle": {
+    message: "New Service",
+    description: "Create-wizard page title",
+  },
+  "services.createDescription": {
+    message: "Deploy a web service from a Git repo or Docker image.",
+    description: "Create-wizard page subtitle",
+  },
+  "services.createSourceTitle": {
+    message: "Source",
+    description: "Create-wizard source-picker section label",
+  },
+  "services.createTabGitHub": {
+    message: "GitHub",
+    description: "Create-wizard source-tab label for connected GitHub repos",
+  },
+  "services.createTabPublicGit": {
+    message: "Public Git URL",
+    description: "Create-wizard source-tab label for a public git URL",
+  },
+  "services.createTabImage": {
+    message: "Existing Image",
+    description: "Create-wizard source-tab label for a pre-built Docker image",
+  },
+  "services.createRepoSearchPlaceholder": {
+    message: "Search repositories…",
+    description: "Create-wizard GitHub tab repo-search input placeholder",
+  },
+  "services.createRepoPrivateBadge": {
+    message: "Private",
+    description: "Badge on a private GitHub repo row in the repo picker",
+  },
+  "services.createRepoEmpty": {
+    message: "No repositories found.",
+    description:
+      "Create-wizard GitHub tab empty state (no repos in the installation)",
+  },
+  "services.createRepoNoMatch": {
+    message: "No repositories match your search.",
+    description:
+      "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createGitConnectPromptTitle": {
+    message: "Connect GitHub",
+    description:
+      "Create-wizard GitHub tab connect-prompt heading (no GitHub connection yet)",
+  },
+  "services.createGitConnectPromptBody": {
+    message:
+      "Connect your GitHub account to deploy from private or public repositories.",
+    description:
+      "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
+  },
+  "services.createGitConnectButton": {
+    message: "Connect GitHub",
+    description:
+      "Create-wizard GitHub tab button that opens the GitHub App install flow",
+  },
+  "services.createPublicUrlLabel": {
+    message: "Repository URL",
+    description: "Create-wizard Public Git URL tab input label",
+  },
+  "services.createPublicUrlPlaceholder": {
+    message: "https://github.com/you/your-repo",
+    description: "Create-wizard Public Git URL tab input placeholder",
+  },
+  "services.createPublicUrlError": {
+    message: "Enter a valid https://, git@, or git:// URL.",
+    description: "Create-wizard Public Git URL tab validation message",
+  },
+  "services.createImageLabel": {
+    message: "Docker Image",
+    description: "Create-wizard Existing Image tab input label",
+  },
+  "services.createImagePlaceholder": {
+    message: "docker.io/library/nginx:latest",
+    description: "Create-wizard Existing Image tab input placeholder",
+  },
+  "services.createSettingsTitle": {
+    message: "Settings",
+    description: "Create-wizard settings section heading",
+  },
+  "services.createFieldName": {
+    message: "Name",
+    description: "Create-wizard name input label",
+  },
+  "services.createFieldNamePlaceholder": {
+    message: "my-service",
+    description: "Create-wizard name input placeholder",
+  },
+  "services.createFieldNameError": {
+    message:
+      "Use lowercase letters, digits, and hyphens; can't start or end with a hyphen.",
+    description: "Create-wizard name validation message",
+  },
+  "services.createFieldBranch": {
+    message: "Branch",
+    description: "Create-wizard branch input label (git sources)",
+  },
+  "services.createFieldBranchPlaceholder": {
+    message: "main",
+    description: "Create-wizard branch input placeholder",
+  },
+  "services.createFieldRootDir": {
+    message: "Root Directory",
+    description: "Create-wizard root-directory input label",
+  },
+  "services.createFieldRootDirPlaceholder": {
+    message: "e.g. backend",
+    description: "Create-wizard root-directory input placeholder",
+  },
+  "services.createFieldRootDirHint": {
+    message:
+      "Subdirectory to build from. Leave blank to use the repo root.",
+    description: "Create-wizard root-directory input hint text",
+  },
+  "services.createFieldPlan": {
+    message: "Instance Type",
+    description: "Create-wizard plan-picker section label",
+  },
+  "services.createFieldAutoDeploy": {
+    message: "Auto-deploy on push",
+    description: "Create-wizard auto-deploy toggle label",
+  },
+  "services.createFieldAutoDeployHint": {
+    message: "Automatically redeploy when you push to this branch.",
+    description: "Create-wizard auto-deploy toggle hint text",
+  },
+  "services.createCancel": {
+    message: "Cancel",
+    description: "Create-wizard cancel button",
+  },
+  "services.createSubmit": {
+    message: "Deploy Service",
+    description: "Create-wizard submit button",
+  },
+  "services.createSuccess": {
+    message: "Deploying {name}…",
+    description: "Toast shown after createService succeeds",
+  },
+  "services.createError": {
+    message: "Couldn't create {name}. Please try again.",
+    description: "Toast shown after createService fails",
+  },
 };
 
 export default enServices;

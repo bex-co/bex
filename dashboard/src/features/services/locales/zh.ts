@@ -1143,6 +1143,151 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法删除 {name}",
     description: "Toast on a failed service delete",
   },
+  "services.newServiceButton": {
+    message: "新建服务",
+    description: "Button on the services list page that opens the create wizard",
+  },
+  "services.createTitle": {
+    message: "新建服务",
+    description: "Create-wizard page title",
+  },
+  "services.createDescription": {
+    message: "从 Git 仓库或 Docker 镜像部署 Web 服务。",
+    description: "Create-wizard page subtitle",
+  },
+  "services.createSourceTitle": {
+    message: "来源",
+    description: "Create-wizard source-picker section label",
+  },
+  "services.createTabGitHub": {
+    message: "GitHub",
+    description: "Create-wizard source-tab label for connected GitHub repos",
+  },
+  "services.createTabPublicGit": {
+    message: "公开 Git URL",
+    description: "Create-wizard source-tab label for a public git URL",
+  },
+  "services.createTabImage": {
+    message: "已有镜像",
+    description: "Create-wizard source-tab label for a pre-built Docker image",
+  },
+  "services.createRepoSearchPlaceholder": {
+    message: "搜索仓库…",
+    description: "Create-wizard GitHub tab repo-search input placeholder",
+  },
+  "services.createRepoPrivateBadge": {
+    message: "私有",
+    description: "Badge on a private GitHub repo row in the repo picker",
+  },
+  "services.createRepoEmpty": {
+    message: "未找到仓库。",
+    description:
+      "Create-wizard GitHub tab empty state (no repos in the installation)",
+  },
+  "services.createRepoNoMatch": {
+    message: "没有匹配您搜索的仓库。",
+    description:
+      "Create-wizard GitHub tab empty state when the search filter returns nothing",
+  },
+  "services.createGitConnectPromptTitle": {
+    message: "连接 GitHub",
+    description:
+      "Create-wizard GitHub tab connect-prompt heading (no GitHub connection yet)",
+  },
+  "services.createGitConnectPromptBody": {
+    message: "连接您的 GitHub 账号，以便从私有或公开仓库部署服务。",
+    description:
+      "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
+  },
+  "services.createGitConnectButton": {
+    message: "连接 GitHub",
+    description:
+      "Create-wizard GitHub tab button that opens the GitHub App install flow",
+  },
+  "services.createPublicUrlLabel": {
+    message: "仓库 URL",
+    description: "Create-wizard Public Git URL tab input label",
+  },
+  "services.createPublicUrlPlaceholder": {
+    message: "https://github.com/you/your-repo",
+    description: "Create-wizard Public Git URL tab input placeholder",
+  },
+  "services.createPublicUrlError": {
+    message: "请输入有效的 https://、git@ 或 git:// URL。",
+    description: "Create-wizard Public Git URL tab validation message",
+  },
+  "services.createImageLabel": {
+    message: "Docker 镜像",
+    description: "Create-wizard Existing Image tab input label",
+  },
+  "services.createImagePlaceholder": {
+    message: "docker.io/library/nginx:latest",
+    description: "Create-wizard Existing Image tab input placeholder",
+  },
+  "services.createSettingsTitle": {
+    message: "设置",
+    description: "Create-wizard settings section heading",
+  },
+  "services.createFieldName": {
+    message: "名称",
+    description: "Create-wizard name input label",
+  },
+  "services.createFieldNamePlaceholder": {
+    message: "my-service",
+    description: "Create-wizard name input placeholder",
+  },
+  "services.createFieldNameError": {
+    message: "请使用小写字母、数字和连字符，且不能以连字符开头或结尾。",
+    description: "Create-wizard name validation message",
+  },
+  "services.createFieldBranch": {
+    message: "分支",
+    description: "Create-wizard branch input label (git sources)",
+  },
+  "services.createFieldBranchPlaceholder": {
+    message: "main",
+    description: "Create-wizard branch input placeholder",
+  },
+  "services.createFieldRootDir": {
+    message: "根目录",
+    description: "Create-wizard root-directory input label",
+  },
+  "services.createFieldRootDirPlaceholder": {
+    message: "例如：backend",
+    description: "Create-wizard root-directory input placeholder",
+  },
+  "services.createFieldRootDirHint": {
+    message: "构建所使用的子目录。留空则使用仓库根目录。",
+    description: "Create-wizard root-directory input hint text",
+  },
+  "services.createFieldPlan": {
+    message: "实例类型",
+    description: "Create-wizard plan-picker section label",
+  },
+  "services.createFieldAutoDeploy": {
+    message: "推送时自动部署",
+    description: "Create-wizard auto-deploy toggle label",
+  },
+  "services.createFieldAutoDeployHint": {
+    message: "推送到该分支时自动重新部署。",
+    description: "Create-wizard auto-deploy toggle hint text",
+  },
+  "services.createCancel": {
+    message: "取消",
+    description: "Create-wizard cancel button",
+  },
+  "services.createSubmit": {
+    message: "部署服务",
+    description: "Create-wizard submit button",
+  },
+  "services.createSuccess": {
+    message: "正在部署 {name}…",
+    description: "Toast shown after createService succeeds",
+  },
+  "services.createError": {
+    message: "无法创建 {name}，请重试。",
+    description: "Toast shown after createService fails",
+  },
 };
 
 export default zhServices;
