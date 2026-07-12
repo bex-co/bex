@@ -1,19 +1,19 @@
 # w7 · m3 — bex-api abuse hardening: Render-shaped rate limits + request caps
 
-**Worker:** worker7 **Goal:** bex-api enforces per-caller rate limits and request caps with Render-shaped 429 semantics, so a single tenant, key, or anonymous client can't starve the public API once signup opens. **Status:** todo
+**Worker:** worker7 **Goal:** bex-api enforces per-caller rate limits and request caps with Render-shaped 429 semantics, so a single tenant, key, or anonymous client can't starve the public API once signup opens. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's documented rate-limit contract into docs/bex-api.md                                | 30m | —          |
-| t002 | Per-caller token-bucket middleware at the shared mux (REST + GraphQL + MCP)                          | 60m | t001       |
-| t003 | Request caps: body-size limit, log/metrics query-range bounds, SSE connection cap                    | 45m | t002       |
-| t004 | Env knobs for limits, documented + mirrored in `.env.example` / `.env.template`                      | 30m | t002       |
-| t005 | Render parity — 429 shape/semantics consistent across REST · GraphQL · MCP, vs Render's docs; dashboard handles 429 | 30m | t003, t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                          | 20m | t005       |
-| t007 | Test coverage — meaningful tests for limiting, reset, per-caller isolation, caps                     | 30m | t005       |
-| t008 | Closeout — DoD verified, milestone moved to `done/`                                                  | 15m | t007       |
+| t001 | Capture Render's documented rate-limit contract into docs/bex-api.md                                | 30m | —          | — **DONE** |
+| t002 | Per-caller token-bucket middleware at the shared mux (REST + GraphQL + MCP)                          | 60m | t001       | — **DONE** |
+| t003 | Request caps: body-size limit, log/metrics query-range bounds, SSE connection cap                    | 45m | t002       | — **DONE** |
+| t004 | Env knobs for limits, documented + mirrored in `.env.example` / `.env.template`                      | 30m | t002       | — **DONE** |
+| t005 | Render parity — 429 shape/semantics consistent across REST · GraphQL · MCP, vs Render's docs; dashboard handles 429 | 30m | t003, t004 | — **DONE** |
+| t006 | Simplify — `/simplify` over the code this milestone changed                                          | 20m | t005       | — **DONE** |
+| t007 | Test coverage — meaningful tests for limiting, reset, per-caller isolation, caps                     | 30m | t005       | — **DONE** |
+| t008 | Closeout — DoD verified, milestone moved to `done/`                                                  | 15m | t007       | — **DONE** |
 
 ## Definition of done
 

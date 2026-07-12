@@ -57,6 +57,18 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
+	if s.MaxQueryHours > 0 && !q.Start.IsZero() {
+		effectiveEnd := q.End
+		if effectiveEnd.IsZero() {
+			effectiveEnd = time.Now()
+		}
+		if effectiveEnd.Sub(q.Start) > time.Duration(s.MaxQueryHours)*time.Hour {
+			core.WriteJSON(w, http.StatusBadRequest, map[string]string{
+				"error": fmt.Sprintf("query range exceeds %d hours", s.MaxQueryHours),
+			})
+			return
+		}
+	}
 	q.Metric = metric
 
 	var all []MetricSeries

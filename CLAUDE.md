@@ -71,6 +71,11 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_DASHBOARD_URL` | dashboard origin the invite email links to (e.g. `https://dashboard.bex.co`); unset ⇒ the invite email carries instructions without a deep link |
 | bex-api | `BEX_MCP_STDIO` | `1` ⇒ serve only the MCP tools over stdio (same as `api mcp-stdio`) |
 | bex-api | `BEX_OAUTH_ISSUER`, `BEX_OAUTH_RESOURCE` | OAuth 2.1 discovery for MCP/agent clients (docs/auth.md §7): Hydra public issuer + this API's canonical resource URI — drives RFC 9728 metadata, 401 `resource_metadata` hints, and the token-audience check; both unset ⇒ prior behavior |
+| bex-api | `BEX_RATE_LIMIT` | per-caller token-bucket fill rate in requests/min (default 500 — Render's documented budget); `0` disables rate limiting (docs/bex-api.md §Rate limits) |
+| bex-api | `BEX_RATE_BURST` | token-bucket burst capacity (default = `BEX_RATE_LIMIT`); `0` defaults to `BEX_RATE_LIMIT` |
+| bex-api | `BEX_MAX_BODY_BYTES` | max non-GET request body size in bytes (default 2097152 = 2 MiB); `0` disables |
+| bex-api | `BEX_MAX_QUERY_HOURS` | max `startTime`..`endTime` window for REST log/metrics queries in hours (default 720 = 30 days); `0` disables |
+| bex-api | `BEX_MAX_SSE_CONNS` | max concurrent `GET /v1/logs/subscribe` SSE connections (default 100); `0` disables |
 | dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | headless OAuth2 consent acceptor at `/auth/consent` (docs/auth.md §7); server-only (not `VITE_`), unset ⇒ consent 503 |
 
 ## Docs index

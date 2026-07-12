@@ -343,6 +343,25 @@ func main() {
 		return
 	}
 
+	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
+	rpmStr := envOr("BEX_RATE_LIMIT", "500")
+	rpm, err := strconv.ParseFloat(rpmStr, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_RATE_LIMIT %q: %v", rpmStr, err)
+	}
+	burstStr := envOr("BEX_RATE_BURST", "0")
+	burst, _ := strconv.Atoi(burstStr)
+	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
+
+	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
+	srv.MaxBodyBytes = maxBody
+
+	maxQueryHours, _ := strconv.Atoi(envOr("BEX_MAX_QUERY_HOURS", "720"))
+	maxSSEConns, _ := strconv.ParseInt(envOr("BEX_MAX_SSE_CONNS", "100"), 10, 64)
+	srv.Logs.MaxQueryHours = maxQueryHours
+	srv.Logs.MaxSSEConns = maxSSEConns
+	srv.Metrics.MaxQueryHours = maxQueryHours
+
 	handler, err := srv.Handler()
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)

@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -94,6 +95,14 @@ type Service struct {
 	// History, when wired (BEX_LOKI_URL), backs QueryLogs/Logs with durable
 	// history that survives pod restarts; nil => those verbs read live pod logs.
 	History LogHistorySource
+	// MaxQueryHours, when positive, caps the startTime–endTime window accepted by
+	// REST log queries. 0 = unlimited.
+	MaxQueryHours int
+	// MaxSSEConns, when positive, caps concurrent GET /v1/logs/subscribe SSE
+	// connections. Excess connections receive 429. 0 = unlimited.
+	MaxSSEConns int64
+
+	sseConns atomic.Int64
 }
 
 // LogQuery is the resolved filter set for QueryLogs / FollowLogs.

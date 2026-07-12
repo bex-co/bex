@@ -305,6 +305,36 @@ The read surface (`lego/backend/internal/audit`) is admin-scoped (`can_manage` �
 
 Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `lego/operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. No token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
 
+## Rate limits
+
+Render's documented API rate limit is **500 requests per minute per API key** (source: api-docs.render.com/reference/rate-limiting and Render's public OpenAPI spec — every endpoint marks a `429` response). A caller that exceeds the budget receives:
+
+- **HTTP 429 Too Many Requests**
+- `Retry-After: <seconds>` header — the whole-seconds delay until the next token is available
+- Body: `{"id": "rate_limited", "message": "rate limit exceeded; see Retry-After header"}`
+
+bex matches this contract with a per-caller token-bucket at the shared mux, keyed on the authenticated Identity (OAuth2 `client_id` / Kratos session id), falling back to remote IP for unauthenticated paths:
+
+| Surface | 429 form |
+| --- | --- |
+| REST | Standard JSON body above + `Retry-After` |
+| GraphQL | `{"data": null, "errors": [{"message": "rate limit exceeded", "extensions": {"code": "RATE_LIMITED"}}]}` + `Retry-After` |
+| MCP (HTTP) | Same as REST (HTTP-level 429) + `Retry-After` |
+
+Exemptions: `GET /healthz` (liveness) and `POST /v1/webhooks/git` (HMAC-authed, pre-auth, own budget) are outside the rate-limit gate.
+
+**Request caps** (companion limits that rate-limiting alone doesn't catch):
+
+| Cap | Default | Env var |
+| --- | --- | --- |
+| Non-GET body size | 2 MiB (2097152 bytes) → 413 | `BEX_MAX_BODY_BYTES` |
+| Log / metrics query window (`startTime`..`endTime`) | 720 h (30 days) → 400 | `BEX_MAX_QUERY_HOURS` |
+| Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429 | `BEX_MAX_SSE_CONNS` |
+
+All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (per-plan differentiated budgets are a follow-up once real traffic data exists).
+
+**Note:** bex-api is currently single-replica; the per-caller token-bucket is in-process. In a multi-replica deployment each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas` — a distributed counter (Redis token bucket) is the follow-up when bex-api scales out.
+
 ## Scope
 
 Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [control-plane.md](control-plane.md)). Not yet: rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

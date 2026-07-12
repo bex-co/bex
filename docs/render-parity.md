@@ -116,6 +116,12 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | SSO / SAML · SCIM | — | — | — | — | Enterprise; Ory can add later. Non-goal for now. |
 | SSH keys | — | — | — | — | User SSH keys serve the Shell/SSH surface, which is off-roadmap. Non-goal. |
 
+## API contract
+
+| Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
+| --- | :-: | :-: | :-: | :-: | --- |
+| Rate limits (429 + Retry-After) | ✅ | ✅ | ✅ | — | Render: 500 req/min per API key, HTTP 429 + `Retry-After` (api-docs.render.com/reference/rate-limiting; OpenAPI `429` per endpoint). bex: per-caller token-bucket middleware at the shared mux — same 500/min default, same `{"id":"rate_limited","message":"…"}` REST body, `{"data":null,"errors":[{"message":"…","extensions":{"code":"RATE_LIMITED"}}]}` GraphQL envelope, HTTP 429 for MCP. `Retry-After` on all three. Webhook (`/v1/webhooks/git`) and healthz exempt. Env-tunable: `BEX_RATE_LIMIT` (fill rate, 0=disabled), `BEX_RATE_BURST`. Companion caps: body size 2 MiB (`BEX_MAX_BODY_BYTES`), query window 720h (`BEX_MAX_QUERY_HOURS`), SSE connections 100 (`BEX_MAX_SSE_CONNS`). **Single-replica caveat**: effective per-caller budget = BEX_RATE_LIMIT × replicas; distributed counter is the multi-replica follow-up. (w7/m3) |
+
 ## Platform events & integrations
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |

@@ -102,6 +102,14 @@ type Server struct {
 	// this and WebhookSecret are empty (docs/github-integration.md).
 	GitHubWebhookSecret string
 
+	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
+	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
+	// webhook and healthz endpoints are intentionally exempt.
+	RateLimiter *RateLimiter
+	// MaxBodyBytes, when positive, caps non-GET request bodies at this many bytes,
+	// returning 413 for oversized payloads. 0 disables the check.
+	MaxBodyBytes int64
+
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login. nil => store off: no mint.
 	Onboard Onboarding
@@ -331,10 +339,12 @@ func (s *Server) Handler() (http.Handler, error) {
 	if s.Apps != nil {
 		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret})
 	}
-	// All three adapters sit behind the same auth gate.
-	mux.Handle("/v1/", auth(s.restHandler()))
-	mux.Handle("/graphql", auth(s.graphqlHandler()))
-	mux.Handle("/mcp", auth(s.mcpHTTPHandler()))
+	// All three adapters sit behind the same auth gate, with rate limiting inside
+	// the auth wrapper so the limiter keys on the resolved caller Identity.
+	rl := s.rateLimitMiddleware()
+	mux.Handle("/v1/", auth(rl(s.restHandler())))
+	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))
+	mux.Handle("/mcp", auth(rl(s.mcpHTTPHandler())))
 
 	// RFC 9728 protected-resource metadata (w4/m9): open by design — it's how an
 	// unauthenticated MCP client discovers the authorization server (the MCP
@@ -351,7 +361,16 @@ func (s *Server) Handler() (http.Handler, error) {
 		})
 	}
 
-	return withCORS(s.CORSOrigin, mux), nil
+	return withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux)), nil
+}
+
+// rateLimitMiddleware returns the rate-limiting middleware when a RateLimiter
+// is configured, or a no-op pass-through when it is nil (disabled).
+func (s *Server) rateLimitMiddleware() func(http.Handler) http.Handler {
+	if s.RateLimiter == nil {
+		return func(h http.Handler) http.Handler { return h }
+	}
+	return s.RateLimiter.Middleware
 }
 
 // authMiddleware builds the auth gate, validating its configuration up front so a

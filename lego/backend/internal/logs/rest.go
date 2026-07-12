@@ -44,6 +44,18 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
+	if s.MaxQueryHours > 0 && !q.Since.IsZero() {
+		effectiveEnd := q.End
+		if effectiveEnd.IsZero() {
+			effectiveEnd = time.Now()
+		}
+		if effectiveEnd.Sub(q.Since) > time.Duration(s.MaxQueryHours)*time.Hour {
+			core.WriteJSON(w, http.StatusBadRequest, map[string]string{
+				"error": fmt.Sprintf("query range exceeds %d hours", s.MaxQueryHours),
+			})
+			return
+		}
+	}
 
 	// Render's `resource` is an array; merge each App's lines, then sort + cap.
 	var all []LogEntry
@@ -68,6 +80,16 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 // logsSubscribe serves GET /v1/logs/subscribe — a live tail over Server-Sent
 // Events (one `data: <renderLog JSON>` frame per line, following one resource).
 func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
+	if s.MaxSSEConns > 0 {
+		if s.sseConns.Add(1) > s.MaxSSEConns {
+			s.sseConns.Add(-1)
+			core.WriteJSON(w, http.StatusTooManyRequests, map[string]string{
+				"error": "too many active log subscriptions",
+			})
+			return
+		}
+		defer s.sseConns.Add(-1)
+	}
 	resources, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})

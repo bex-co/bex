@@ -199,6 +199,9 @@ type Service struct {
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
 	MetricsFilterValuesSource MetricsFilterValuesSource
+	// MaxQueryHours, when positive, caps the start–end window accepted by REST
+	// metrics queries (GET /v1/metrics/*). 0 = unlimited.
+	MaxQueryHours int
 }
 
 // Metrics is the single metrics read every adapter (REST + GraphQL) calls. It
