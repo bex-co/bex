@@ -21,7 +21,7 @@ Breaking a monitored invariant (e.g. a backup CronJob suspended past its window,
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w3` 2026-07-09; `deploy/gitops/base/prometheus.yaml` ("Server-only (no alertmanager/pushgateway/exporters)"); the unmonitored backup CronJobs from w1/m1 (etcd) and w1/m7/t006 (OpenBao); docs/secrets.md's sealed-on-restart failure mode.
+- **Source:** `/pm-brainstorm for w3` 2026-07-09; `deploy/gitops/base/prometheus.yaml` ("Server-only (no alertmanager/pushgateway/exporters)"); the unmonitored backup CronJobs from w1/m1 (etcd) and w1/m7/t006 (OpenBao); docs/ADR013-secrets.md's sealed-on-restart failure mode.
 - **Goal linkage:** GOAL.md #2 ("Basic obs for operation") — the operator half; continuous complement to w1/m7's point-in-time posture checks.
 - **Expected outcome:** platform failures (and silent backup rot) page a human instead of waiting to be noticed; the OpenBao-sealed state that 503s the env-vars API is alerted, not discovered by tenants.
 - **Why now:** prod now carries real tenant state (OpenBao credentials; enforced authz queued in w1/m9) with zero paging; every day of silent-failure risk on the backup jobs is unrecoverable-data risk.

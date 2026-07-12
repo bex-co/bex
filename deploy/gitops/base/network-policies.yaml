@@ -1,5 +1,5 @@
 # Platform-side tenant isolation: ingress NetworkPolicies for each platform
-# namespace (docs/tenant-isolation.md §platform-side-lockdown). Together with
+# namespace (docs/ADR022-tenant-isolation.md §platform-side-lockdown). Together with
 # the per-App NetworkPolicies the operator creates (t003), these provide
 # defense-in-depth: even if a tenant-side policy regresses, platform services
 # refuse traffic from the tenant apps namespace.

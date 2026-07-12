@@ -1,11 +1,11 @@
 # Nightly OpenBao Raft snapshot → S3-compatible object storage (w1/m7 t006).
 #
-# Why: OpenBao holds every tenant credential (docs/secrets.md) in integrated Raft
+# Why: OpenBao holds every tenant credential (docs/ADR013-secrets.md) in integrated Raft
 # storage on its PVC. Raft gives point-in-time consistent snapshots
 # (`bao operator raft snapshot save`) — the only way to capture a coherent copy
 # of the encrypted store while it is serving. Locally OpenBao is single-node
 # (replicas: 1), so a lost PVC = lost tenant secrets with no quorum peer to heal
-# from; this ships a daily snapshot off-cluster. Restore: docs/openbao-backup-restore.md.
+# from; this ships a daily snapshot off-cluster. Restore: docs/ADR015-openbao-backup-restore.md.
 #
 # Wiring (mirrors the etcd-backup CronJob):
 #  - Runs in ns `secrets` (where OpenBao lives), as ServiceAccount bao-snapshot.

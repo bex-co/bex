@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Apply the platform authorization model to OpenFGA, idempotently, and seed the
-# bootstrap tuples (docs/auth.md) — the same out-of-band deploy step pattern as
+# bootstrap tuples (docs/ADR012-auth.md) — the same out-of-band deploy step pattern as
 # auth-secrets.sh / auth-bootstrap-client.sh:
 #   1. ensure store `bex` exists (create by name if absent),
 #   2. write deploy/gitops/authz/model.json as a new authorization model ONLY
@@ -98,7 +98,7 @@ else
 fi
 
 # --- 3. seed tuples -------------------------------------------------------------
-# bex-bootstrap (the platform operator's / CI's client, docs/bex-api.md#auth)
+# bex-bootstrap (the platform operator's / CI's client, docs/ADR006-bex-api.md#auth)
 # administers the default tenant. Writes of existing tuples fail — tolerate that
 # one error shape and nothing else.
 seed='{"writes":{"tuple_keys":[{"user":"user:bex-bootstrap","relation":"admin","object":"workspace:default"}]}}'

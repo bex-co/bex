@@ -13,7 +13,7 @@ Two paths exist to "restart a pod's service" today:
 | `kubectl rollout restart deployment/<app>` | a human with cluster credentials imperatively poking the k8s object | **escape hatch** — stays available to operators, never the product |
 | App CR → operator | intent written into the contract; the operator converges reality | **the product path** — what this ADR designs |
 
-The architecture rule (see [control-plane.md](control-plane.md)): product actions flow **control plane (policy) → App CR (contract) → operator (mechanism)**. The operator exposes no API and nothing ever calls it — it subscribes to the contract and acts. A lifecycle verb is therefore _not_ an endpoint or a wrapped command; it is **a new word in the contract** plus **a new convergence behavior in the operator**.
+The architecture rule (see [ADR003-control-plane.md](ADR003-control-plane.md)): product actions flow **control plane (policy) → App CR (contract) → operator (mechanism)**. The operator exposes no API and nothing ever calls it — it subscribes to the contract and acts. A lifecycle verb is therefore _not_ an endpoint or a wrapped command; it is **a new word in the contract** plus **a new convergence behavior in the operator**.
 
 Existing pieces this builds on: the CRD already defines `PhaseHibernated` and `spec.idleTTLSeconds` ("sleep = free", currently unread); the opensandbox runtime already has real pause/resume snapshots (~80 ms wake); the kubernetes runtime rolls Deployments via `CreateOrUpdate` and gates `Running` on replica readiness.
 
@@ -35,7 +35,7 @@ The operator copies the value to the pod template annotation `app.bex.co/restart
 
 The operator scales the owned Deployment to **0 replicas** and sets `status.phase: Hibernated`. Everything else stays: the Service, the Ingress, the hostname, and the TLS secrets — cert renewals keep working while asleep, because cert-manager's HTTP-01 solver runs its own challenge pods and doesn't need the app. Requests to the host return an error page from the edge until resume (a "sleeping, click to wake" page is future work, see below).
 
-`spec.replicas` is untouched — it keeps meaning "how many when running", so resume knows what to restore. The manual-**scale** verb (`POST /v1/services/{id}/scale`, `{numInstances}`; the first verb built on this precedent — see [bex-api.md](bex-api.md)) writes exactly this field the same row-first way, and suspend still wins: the operator's `effectiveReplicas` forces 0 while `suspended`, so scaling a suspended App takes visible effect on resume.
+`spec.replicas` is untouched — it keeps meaning "how many when running", so resume knows what to restore. The manual-**scale** verb (`POST /v1/services/{id}/scale`, `{numInstances}`; the first verb built on this precedent — see [ADR006-bex-api.md](ADR006-bex-api.md)) writes exactly this field the same row-first way, and suspend still wins: the operator's `effectiveReplicas` forces 0 while `suspended`, so scaling a suspended App takes visible effect on resume.
 
 ### resume — `spec.suspended: false` (or field removed)
 
@@ -65,7 +65,7 @@ stateDiagram-v2
 Two ways, same field write:
 
 - **`kubectl patch app <name> --type merge -p '{"spec":{"suspended":true}}'`** — the escape hatch.
-- **bex-api** (the control-plane seed, implemented) — a bearer-authed service at `api.<base-domain>` exposing the verbs over **both REST and GraphQL**, shaped to Render's public API (verified against its OpenAPI spec) and dashboard operation names, each a thin adapter over one shared `Core` that patches these spec fields. See [bex-api.md](bex-api.md). It needs only App-write RBAC, never Deployment access.
+- **bex-api** (the control-plane seed, implemented) — a bearer-authed service at `api.<base-domain>` exposing the verbs over **both REST and GraphQL**, shaped to Render's public API (verified against its OpenAPI spec) and dashboard operation names, each a thin adapter over one shared `Core` that patches these spec fields. See [ADR006-bex-api.md](ADR006-bex-api.md). It needs only App-write RBAC, never Deployment access.
 
 ```sh
 curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/eden-cms-v2/restart
@@ -84,7 +84,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 - Every verb is auditable, idempotent, and replayable — rebuilding the cluster from App CRs reproduces suspended state correctly.
 - A suspended App still owns its hostname and Ingress; until a wake page exists, visitors see a bare edge error (404/503) rather than something friendly.
-- Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism. For agent **sandboxes**, that idle-hibernate + wake-on-connect is designed in [sandboxes.md](sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
+- Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism. For agent **sandboxes**, that idle-hibernate + wake-on-connect is designed in [ADR014-sandboxes.md](ADR014-sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
 - Implementation size: 2 CRD fields + ~40 lines in `reconcileKubernetes` + envtest cases (suspend keeps Ingress/TLS and zeroes replicas; restart changes only the template annotation; resume restores and readiness-gates).
 
 ## Verification (when implemented)

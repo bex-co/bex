@@ -1,6 +1,6 @@
 import { Configuration, OAuth2Api } from "@ory/client-fetch";
 
-// Headless OAuth2 consent acceptor (docs/auth.md, w4/m9). Hydra redirects the
+// Headless OAuth2 consent acceptor (docs/ADR012-auth.md, w4/m9). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
 // oauth2_provider integration accepted). Hydra never skips this redirect by
 // design — the canonical pattern for first-party/trusted clients is to accept

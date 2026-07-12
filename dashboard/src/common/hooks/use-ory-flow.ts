@@ -18,7 +18,7 @@ type OryFlowMap = {
   settings: SettingsFlow;
 };
 
-/** Kratos UI-node groups that represent a second factor (docs/auth.md § MFA). */
+/** Kratos UI-node groups that represent a second factor (docs/ADR012-auth.md § MFA). */
 const SECOND_FACTOR_GROUPS = new Set(["totp", "webauthn", "lookup_secret"]);
 
 /**
@@ -89,10 +89,10 @@ function getFlow<K extends keyof OryFlowMap>(
  *
  * `loginChallenge` (login/registration only) links the flow to a Hydra OAuth2
  * authorization request — Kratos's native `oauth2_provider` integration then
- * accepts the challenge itself on success (docs/auth.md, w4/m9).
+ * accepts the challenge itself on success (docs/ADR012-auth.md, w4/m9).
  *
  * `aal` (login only) requests a higher assurance level: `"aal2"` makes Kratos
- * return the second-factor step against the existing session (docs/auth.md
+ * return the second-factor step against the existing session (docs/ADR012-auth.md
  * § MFA, w4/m11) instead of a first-factor password form.
  */
 function createFlow<K extends keyof OryFlowMap>(
@@ -192,7 +192,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
 
     async function load() {
       // A login_challenge visit is an OAuth2 authorization in progress
-      // (docs/auth.md, w4/m9): always mint a fresh flow bound to the challenge —
+      // (docs/ADR012-auth.md, w4/m9): always mint a fresh flow bound to the challenge —
       // a stored flow isn't linked to the Hydra request — and don't persist it
       // (a later ordinary visit must not resume an OAuth-linked flow).
       const knownId = loginChallenge ? null : readStoredFlowId(kind);
@@ -240,7 +240,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
         const { id: errorId } = await oryErrorInfo(err);
         if (errorId === "session_already_available") {
           // A session exists, so Kratos refuses a first-factor login flow.
-          // Under the `highest_available` AAL policy (docs/auth.md § MFA) this
+          // Under the `highest_available` AAL policy (docs/ADR012-auth.md § MFA) this
           // is exactly the "authenticated with a password (aal1) but a second
           // factor is still owed" case — the whoami that gates protected pages
           // 403s until aal2, so the auth guard bounced the user here. Mint an

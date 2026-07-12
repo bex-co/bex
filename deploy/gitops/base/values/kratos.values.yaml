@@ -41,7 +41,7 @@ kratos:
       }
 
   config:
-    # Native Hydra bridge (w4/m9, docs/auth.md): with the admin URL set, Kratos
+    # Native Hydra bridge (w4/m9, docs/ADR012-auth.md): with the admin URL set, Kratos
     # itself resolves + accepts Hydra login challenges — a login/registration
     # flow carrying ?login_challenge= links to the OAuth2 request, and an
     # existing session (skip=true) is accepted with no UI. No custom login
@@ -65,7 +65,7 @@ kratos:
           url: file:///etc/config/identity.schema.json
     selfservice:
       default_browser_return_url: https://auth.bex.co/
-      # dashboard.bex.co is the "custom UI" for every self-service flow (docs/auth.md);
+      # dashboard.bex.co is the "custom UI" for every self-service flow (docs/ADR012-auth.md);
       # without these, Kratos redirects flows back to its own domain instead.
       allowed_return_urls:
         - https://dashboard.bex.co
@@ -74,7 +74,7 @@ kratos:
         # allowlist entry: redirecting a user to their own localhost is
         # harmless, and CORS/cookies stay locked down (the proxy is same-origin).
         - http://localhost:5173
-      # Second-factor MFA (w4/m11, docs/auth.md § MFA). password stays the sole
+      # Second-factor MFA (w4/m11, docs/ADR012-auth.md § MFA). password stays the sole
       # first factor; totp/webauthn/lookup_secret are second factors that only
       # come into play once the AAL policy below demands aal2 (i.e. after a user
       # enrolls one) — a password-only user's login is untouched.
@@ -93,13 +93,13 @@ kratos:
             # SECOND factor, not passwordless: passkey/first-factor mode
             # (`passwordless: true`) and Kratos's separate `passkey` method
             # cannot satisfy an aal2 challenge — the whole point of this
-            # milestone. Do not flip this to true (docs/auth.md § MFA).
+            # milestone. Do not flip this to true (docs/ADR012-auth.md § MFA).
             passwordless: false
             rp:
               # RP ID must be a registrable parent of every origin that runs
               # the WebAuthn ceremony (dashboard.bex.co, auth.bex.co) — bex.co
               # is that parent. RP-ID-is-forever: changing it later invalidates
-              # every already-registered security key (docs/auth.md § MFA). The
+              # every already-registered security key (docs/ADR012-auth.md § MFA). The
               # local overlay overrides id→localhost, origins→localhost:5173.
               id: bex.co
               display_name: bex
@@ -122,7 +122,7 @@ kratos:
                 - hook: session
         recovery:
           # Flow initializes but can't deliver mail until courier.smtp lands
-          # (courier is disabled below) — see docs/auth.md consequences.
+          # (courier is disabled below) — see docs/ADR012-auth.md consequences.
           enabled: true
           ui_url: https://dashboard.bex.co/auth/forgot-password
         settings:
@@ -165,7 +165,7 @@ deployment:
     bex.co/pool: platform
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-  # Social login (w4/003, docs/auth.md § Social login): load a SECOND Kratos
+  # Social login (w4/003, docs/ADR012-auth.md § Social login): load a SECOND Kratos
   # config file carrying the `oidc` method's GitHub provider. Its client_secret
   # is secret material, so it can't live in these git-committed values — instead
   # scripts/auth-secrets.sh writes an `oidc.yaml` fragment into the out-of-band

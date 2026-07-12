@@ -25,8 +25,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". `src/routes/index.tsx:29-33` carries `sampleServices` with a literal "replace with a real Apollo query once wired up" TODO. Wiring path (Apollo + Kratos session + codegen + CORS) proven by w3/m3 (metrics PoC). Render `Service`/operation shapes per `docs/bex-api.md` (verified against Render's OpenAPI spec + dashboard GraphQL).
-- **Goal linkage:** `docs/vision.md` human-facing dashboard pillar + pillar-1 API-first — `services` and the lifecycle verbs are already exposed via REST/GraphQL/MCP, so the dashboard is a pure Render-shaped client, never a dashboard-only feature. `GOAL.md` #2 (basic obs for operation).
+- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". `src/routes/index.tsx:29-33` carries `sampleServices` with a literal "replace with a real Apollo query once wired up" TODO. Wiring path (Apollo + Kratos session + codegen + CORS) proven by w3/m3 (metrics PoC). Render `Service`/operation shapes per `docs/ADR006-bex-api.md` (verified against Render's OpenAPI spec + dashboard GraphQL).
+- **Goal linkage:** `docs/ADR008-vision.md` human-facing dashboard pillar + pillar-1 API-first — `services` and the lifecycle verbs are already exposed via REST/GraphQL/MCP, so the dashboard is a pure Render-shaped client, never a dashboard-only feature. `GOAL.md` #2 (basic obs for operation).
 - **Expected outcome:** an operator opens the dashboard and sees + controls their real running Apps; the home page stops showing fake data and reads as Render's services list.
 - **Why now:** the metrics PoC (w3/m3) just proved the Apollo+Kratos+CORS path end-to-end; services is the highest-traffic next page and the one the metrics page already deep-links into (`/services/$serviceId/metrics`). Wiring it before any further page work stabilizes the primary string/data surface once, on Render-consistent shapes.
 

@@ -3,11 +3,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - sealed-secrets.yaml          # encrypt infra creds at rest -> committable SealedSecrets (docs/sealed-secrets.md)
+  - sealed-secrets.yaml          # encrypt infra creds at rest -> committable SealedSecrets (docs/ADR016-sealed-secrets.md)
   - zot.yaml                     # OCI registry (build -> registry -> deploy)
   - opensandbox-controller.yaml  # OpenSandbox BatchSandbox/Pool/SandboxSnapshot CRDs + controller
   - bex.yaml                     # the bex control plane (operator + gateway)
-  - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/auth.md §5)
+  - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/ADR012-auth.md §5)
   - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
   - autoscaler.yaml              # Cluster Autoscaler, in-cluster post-pivot (w1/m19; bootstrap phase uses scripts/install-autoscaler.sh)
   - traefik.yaml                 # edge / ingress controller (Hetzner LB front door)
@@ -21,12 +21,12 @@ resources:
   - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
   - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)
   - auth-dbs.yaml                # kratos-db + hydra-db CNPG Clusters, after CNPG
-  - kratos.yaml                  # Ory Kratos — platform identity (docs/auth.md)
-  - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/auth.md)
-  - openfga.yaml                 # OpenFGA — platform authorization (ReBAC, docs/auth.md)
-  - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/secrets.md)
+  - kratos.yaml                  # Ory Kratos — platform identity (docs/ADR012-auth.md)
+  - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/ADR012-auth.md)
+  - openfga.yaml                 # OpenFGA — platform authorization (ReBAC, docs/ADR012-auth.md)
+  - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/ADR013-secrets.md)
   - openbao-backup.yaml          # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
-  - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/tenant-isolation.md)
+  - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/ADR022-tenant-isolation.md)
   - platform-namespaces.yaml     # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
   - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
   - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)

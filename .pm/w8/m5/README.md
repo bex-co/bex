@@ -6,7 +6,7 @@
 
 | id   | title                                                                                                                                                              | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design: meter-applicability matrix (instance_seconds yes; egress_bytes/build_seconds N/A for DB/KV — document why) in `docs/usage-metering.md`                      | 30m | —          |
+| t001 | Design: meter-applicability matrix (instance_seconds yes; egress_bytes/build_seconds N/A for DB/KV — document why) in `docs/ADR023-usage-metering.md`                      | 30m | —          |
 | t002 | Rollup: list `Database`+`KeyValue` CRs (k8s client, tenant-labeled) alongside Apps in `catchUp`/`rollup`; query instance_seconds via the existing cAdvisor/Prometheus path keyed to CNPG/Valkey pod names; upsert `HourlyRow{ServiceID: db/kv id, Tier: plan}` | 45m | t001       |
 | t003 | Store/`MonthToDate` layer: confirm the generic `service_id` keying already surfaces the new rows in `services[]`; add a resource-kind field if needed to disambiguate from App rows | 35m | t002       |
 | t004 | Adapter-consistency tests: REST/GraphQL/MCP all return the new rows identically (thin-adapter design — no adapter code expected to change)                          | 30m | t003       |

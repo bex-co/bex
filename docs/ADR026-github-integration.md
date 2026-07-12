@@ -1,17 +1,17 @@
 # ADR: GitHub integration — a GitHub App for private-repo deploys and zero-config push-to-deploy
 
-**Status:** accepted — 2026-07-11. Implements the connect+list half in [w2/m8](../.pm/w2/m8/README.md) (this milestone) and the private-clone + hands-free push-to-deploy half in [w2/m9](../.pm/w2/m9/README.md). Optional feature: unset config ⇒ 503 on every git-connect verb, exactly as [secrets.md](secrets.md)/[control-plane.md](control-plane.md) gate their features.
+**Status:** accepted — 2026-07-11. Implements the connect+list half in [w2/m8](../.pm/w2/m8/README.md) (this milestone) and the private-clone + hands-free push-to-deploy half in [w2/m9](../.pm/w2/m9/README.md). Optional feature: unset config ⇒ 503 on every git-connect verb, exactly as [ADR013-secrets.md](ADR013-secrets.md)/[ADR003-control-plane.md](ADR003-control-plane.md) gate their features.
 
 ## Context
 
-[docs/vision.md](vision.md) pillars 3–4 want "which of my repos can you deploy?" to be one agent call, and "a later git push redeploys" to be true for **private** repos with **no per-repo setup**. Two things were missing:
+[docs/ADR008-vision.md](ADR008-vision.md) pillars 3–4 want "which of my repos can you deploy?" to be one agent call, and "a later git push redeploys" to be true for **private** repos with **no per-repo setup**. Two things were missing:
 
-1. A **managed connection** to a git host, so bex can enumerate a workspace's repos and clone private ones — today [deploy-from-chat.md](deploy-from-chat.md) can only build a public `spec.repo` and only redeploys via a **manually configured** per-repo webhook holding the shared `BEX_WEBHOOK_SECRET`.
+1. A **managed connection** to a git host, so bex can enumerate a workspace's repos and clone private ones — today [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md) can only build a public `spec.repo` and only redeploys via a **manually configured** per-repo webhook holding the shared `BEX_WEBHOOK_SECRET`.
 2. A credential the in-cluster build ([w1/m5](../.pm/w1/m5/README.md)) can use to clone a **private** repo, minted without teaching the operator anything about GitHub.
 
 The parity target is Render's model ([render.com/docs/github](https://render.com/docs/github)): install the Render GitHub App with an all-repos or selected-repos grant → the granted repos appear in the create flow → private clones just work → the app delivers **signed push events** for every installed repo, so auto-deploy needs no per-repo webhook.
 
-The rule this works within (from [restart-suspend-and-resume.md](restart-suspend-and-resume.md), [control-plane.md](control-plane.md)): product concerns live in **bex-api**; the operator is DB-free mechanism. bex-api owns GitHub; the operator only consumes an opaque k8s Secret.
+The rule this works within (from [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md), [ADR003-control-plane.md](ADR003-control-plane.md)): product concerns live in **bex-api**; the operator is DB-free mechanism. bex-api owns GitHub; the operator only consumes an opaque k8s Secret.
 
 ## Decision
 
@@ -29,7 +29,7 @@ A **personal access token** was rejected: it is a long-lived secret bex would ha
 
 bex is open-source and self-hosted, so there is no single "bex GitHub App" — each operator creates their own. GitHub's **app-manifest flow** makes this one click: the operator opens a bex-provided form that POSTs a JSON manifest (name, permissions `contents:read` + `metadata:read`, the `push` webhook event, the callback/webhook/setup URLs) to `github.com/settings/apps/new?state=…`; GitHub creates the app and redirects back with a temporary code; a one-time `POST /app-manifests/{code}/conversions` exchanges it for the app id, slug, private key, and webhook secret, which the operator drops into their `.env`. This is the same "who owns the app for self-hosters" question that blocks GitHub social login ([w4/003](../.pm/w4/003.md)) — the manifest answer unblocks it.
 
-Manifest generation is a small helper; wiring the created values into config is manual (secrets stay out-of-band, [auth.md](auth.md)), so the manifest **conversion endpoint is not automated by bex** — the operator pastes the four values. This keeps the private key on the same out-of-band path as every other platform secret.
+Manifest generation is a small helper; wiring the created values into config is manual (secrets stay out-of-band, [ADR012-auth.md](ADR012-auth.md)), so the manifest **conversion endpoint is not automated by bex** — the operator pastes the four values. This keeps the private key on the same out-of-band path as every other platform secret.
 
 ### 3. Config is env-var-based; unset ⇒ 503
 
@@ -38,25 +38,25 @@ Three variables configure the app, all read once at startup like every other opt
 | Variable | Meaning |
 | --- | --- |
 | `BEX_GITHUB_APP_ID` | numeric app id — the `iss` of the app JWT |
-| `BEX_GITHUB_APP_PRIVATE_KEY` | the app's RSA private key (PEM), an **out-of-band secret** ([auth.md](auth.md)) — signs the app JWT (RS256) |
+| `BEX_GITHUB_APP_PRIVATE_KEY` | the app's RSA private key (PEM), an **out-of-band secret** ([ADR012-auth.md](ADR012-auth.md)) — signs the app JWT (RS256) |
 | `BEX_GITHUB_APP_SLUG` | the app's slug — builds the install URL `github.com/apps/<slug>/installations/new` |
 
 Any of the three unset ⇒ the github service is nil ⇒ **every** git-connect verb (connect, callback, get/delete connection, list repos) returns **503**, matching `BEX_OPENBAO_URL`/`BEX_CP_DB_URI`. The push webhook's second key, **`BEX_GITHUB_WEBHOOK_SECRET`**, is introduced by [w2/m9](../.pm/w2/m9/README.md) (the app's webhook HMAC key); it is independent of these three and gates only the webhook's GitHub-signed path.
 
 ### 4. Connections live in the control-plane Postgres
 
-A connection (which GitHub installation belongs to this workspace) is durable state, so it lives in the control-plane store (`git_connections`, keyed by workspace), which requires `BEX_CP_DB_URI` — consistent with [control-plane.md](control-plane.md)'s opt-in. One connection per workspace for now (bex is effectively single-workspace; multi-workspace is w6). Recording a connection **validates** it first by fetching the installation from GitHub with the app JWT (`GET /app/installations/{id}`, which also yields the account login) — a forged `installation_id` bex can't authenticate against returns 404 and is rejected before anything is persisted, which is what lets the browser-redirect callback (§5) trust an unauthenticated query parameter.
+A connection (which GitHub installation belongs to this workspace) is durable state, so it lives in the control-plane store (`git_connections`, keyed by workspace), which requires `BEX_CP_DB_URI` — consistent with [ADR003-control-plane.md](ADR003-control-plane.md)'s opt-in. One connection per workspace for now (bex is effectively single-workspace; multi-workspace is w6). Recording a connection **validates** it first by fetching the installation from GitHub with the app JWT (`GET /app/installations/{id}`, which also yields the account login) — a forged `installation_id` bex can't authenticate against returns 404 and is rejected before anything is persisted, which is what lets the browser-redirect callback (§5) trust an unauthenticated query parameter.
 
 ### 5. Surfaces — REST/GraphQL/MCP/UI, with the repo surface a bex superset
 
-The connection and repo list are exposed on all four surfaces over one core (the [bex-api.md](bex-api.md) one-core/thin-adapters rule):
+The connection and repo list are exposed on all four surfaces over one core (the [ADR006-bex-api.md](ADR006-bex-api.md) one-core/thin-adapters rule):
 
 - **REST:** `POST /v1/git/connect` → `{installUrl}`; `GET /v1/git/callback?installation_id=…` (GitHub's post-install "Setup URL" target — records the installation, then redirects to the dashboard via `BEX_DASHBOARD_URL`); `GET`/`DELETE /v1/git/connection`; `GET /v1/repos` (paginated repo list).
 - **GraphQL:** `gitConnection` + `repos` queries; `connectGit`/`disconnectGit` mutations.
 - **MCP:** `list_repos` and `get_git_connection` tools — the agent-facing payoff ("which repos can I deploy?" + "how does the human connect?").
 - **UI:** a Settings → "Connect GitHub" card (install link, connected account, disconnect).
 
-`GET /v1/repos` and the MCP repo tools are **bex extensions** (supersets): Render lists repos only through its private dashboard API and its MCP has no repo tools, so the comparison target is bex's own cross-surface consistency, not a Render shape — flagged in-code and recorded in [render-parity.md](render-parity.md) § "bex ahead of Render". The callback authenticates differently from the rest: GitHub redirects a browser to it with no bearer, so its trust comes from the server-side installation-fetch validation of the `installation_id` (§4) plus the logged-in dashboard session on the redirect target — an unauthenticatable installation id is a 400, never a recorded connection.
+`GET /v1/repos` and the MCP repo tools are **bex extensions** (supersets): Render lists repos only through its private dashboard API and its MCP has no repo tools, so the comparison target is bex's own cross-surface consistency, not a Render shape — flagged in-code and recorded in [ADR018-render-parity.md](ADR018-render-parity.md) § "bex ahead of Render". The callback authenticates differently from the rest: GitHub redirects a browser to it with no bearer, so its trust comes from the server-side installation-fetch validation of the `installation_id` (§4) plus the logged-in dashboard session on the redirect target — an unauthenticatable installation id is a 400, never a recorded connection.
 
 ### 6. Private-repo clone — a token in a Secret, the operator stays GitHub-free (w2/m9)
 
@@ -67,7 +67,7 @@ The build mechanism must clone private repos without knowing about GitHub. So:
 
 ### 7. Zero-config push-to-deploy — the app webhook, a second accepted key (w2/m9)
 
-The GitHub App's one app-wide webhook delivers push events (signed with `BEX_GITHUB_WEBHOOK_SECRET`) for **every** installed repo to the existing `POST /v1/webhooks/git`. The handler verifies `X-Hub-Signature-256` against **both** `BEX_WEBHOOK_SECRET` (the existing manual key) **and** `BEX_GITHUB_WEBHOOK_SECRET` in constant time — valid under either ⇒ accept; **503 only when neither is set**. GitHub's own lifecycle deliveries (`ping`, `installation`) get a 200 no-op when the signature is valid (never a 401 on GitHub's health checks). Everything downstream of signature verification — repo canonicalization across URL forms, branch/`rootDir` match, `autoDeploy` gate — is reused unchanged from [deploy-from-chat.md](deploy-from-chat.md). The result: a `git push` to a tracked branch of an installed repo redeploys, with **no per-repo webhook configuration**.
+The GitHub App's one app-wide webhook delivers push events (signed with `BEX_GITHUB_WEBHOOK_SECRET`) for **every** installed repo to the existing `POST /v1/webhooks/git`. The handler verifies `X-Hub-Signature-256` against **both** `BEX_WEBHOOK_SECRET` (the existing manual key) **and** `BEX_GITHUB_WEBHOOK_SECRET` in constant time — valid under either ⇒ accept; **503 only when neither is set**. GitHub's own lifecycle deliveries (`ping`, `installation`) get a 200 no-op when the signature is valid (never a 401 on GitHub's health checks). Everything downstream of signature verification — repo canonicalization across URL forms, branch/`rootDir` match, `autoDeploy` gate — is reused unchanged from [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md). The result: a `git push` to a tracked branch of an installed repo redeploys, with **no per-repo webhook configuration**.
 
 ## Alternatives considered
 
@@ -76,7 +76,7 @@ The GitHub App's one app-wide webhook delivers push events (signed with `BEX_GIT
 - **A single hosted bex GitHub App** — impossible for an open-source, self-hosted product: each operator owns their install, their private key, their webhook. The manifest flow makes per-operator app creation one click.
 - **Storing the connection in a k8s CR / OpenBao instead of Postgres** — rejected: a connection is workspace-scoped relational state that the control-plane store already owns; OpenBao is for tenant credentials, not platform metadata.
 - **Teaching the operator to mint tokens** — rejected: violates the DB-free, mechanism-only operator boundary. bex-api mints; the operator consumes an opaque Secret.
-- **A bespoke `POST /v1/deploy`-style clone endpoint** — unnecessary: the token/Secret write rides the existing `Create`/`redeploy` verbs ([deploy-from-chat.md](deploy-from-chat.md)), no new verb.
+- **A bespoke `POST /v1/deploy`-style clone endpoint** — unnecessary: the token/Secret write rides the existing `Create`/`redeploy` verbs ([ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md)), no new verb.
 
 ## Consequences
 

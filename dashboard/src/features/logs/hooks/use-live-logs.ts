@@ -10,8 +10,8 @@ import { LOG_TYPE_ALL, type LogLine, type LogTypeFilter } from "../types";
  * Render upgrades the connection to a WebSocket. Same "stream new lines live"
  * contract, but SSE needs no extra dependency, works with a plain `EventSource`
  * (and `curl -N`), and rides the same bearer/cookie auth as every other bex-api
- * read. This is bex's documented choice — see docs/bex-api.md and
- * docs/observability.md ("Live tail (SSE)"). If Render parity ever demands a
+ * read. This is bex's documented choice — see docs/ADR006-bex-api.md and
+ * docs/ADR010-observability.md ("Live tail (SSE)"). If Render parity ever demands a
  * WebSocket, it swaps in *here*, behind this hook, without touching the viewer.
  *
  * Auth: `EventSource` carries the Kratos session cookie via `withCredentials`,

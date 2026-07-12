@@ -1,5 +1,5 @@
 # OpenBao — the platform secret store for tenant credentials (see
-# docs/secrets.md). Pinned upstream chart; values are vendored in this repo, so
+# docs/ADR013-secrets.md). Pinned upstream chart; values are vendored in this repo, so
 # this is a multi-source Application: the Helm repo provides the chart, the git
 # source (ref: values) provides base/values/openbao.values.yaml.
 # sync-wave 1: no dependency on the CNPG operator or any Cluster — OpenBao owns

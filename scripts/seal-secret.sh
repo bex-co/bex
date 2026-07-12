@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Seal a platform/infra credential into a committable SealedSecret manifest
-# (w1/m7 t003, docs/sealed-secrets.md). Encrypts with the running sealed-secrets
+# (w1/m7 t003, docs/ADR016-sealed-secrets.md). Encrypts with the running sealed-secrets
 # controller's public key, so the output is safe to commit to git — only this
 # cluster's controller can decrypt it, and only into the namespace/name it was
 # sealed for.

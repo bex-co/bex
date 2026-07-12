@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package github is bex-api's GitHub App integration (docs/github-integration.md):
+// Package github is bex-api's GitHub App integration (docs/ADR026-github-integration.md):
 // a small client that signs the app JWT, mints short-lived installation tokens,
 // and lists an installation's repositories — plus the workspace-connection
 // service verbs over the control-plane store. The operator never imports this;

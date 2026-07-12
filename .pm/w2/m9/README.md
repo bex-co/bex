@@ -22,7 +22,7 @@ The t005 live loop passes against a real **private** GitHub repo on a real clust
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w2` 2026-07-11; second half of [docs/render-parity.md](../../../docs/render-parity.md) row "Git connections (GitHub / GitLab app)".
+- **Source:** `/pm-brainstorm for w2` 2026-07-11; second half of [docs/ADR018-render-parity.md](../../../docs/ADR018-render-parity.md) row "Git connections (GitHub / GitLab app)".
 - **Goal linkage:** pillar 4 (deploy-from-chat / push-to-deploy) — completes the "a later git push redeploys" promise for private repos, hands-free.
 - **Expected outcome:** private repos are first-class deploy sources; push-to-deploy needs no per-repo webhook or shared-secret handout — the GitHub App delivers signed pushes for every installed repo.
 - **Why now:** direct sequel to w2/m8 (tokens/webhooks are useless without a connection); split from m8 to keep each milestone in the few-hours band per the end-to-end-milestones rule. Render parity task included: feature dev touching REST/GraphQL/MCP semantics (`autoDeploy`, webhook) + dashboard UI.

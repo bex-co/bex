@@ -21,7 +21,7 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 
 ## Why this shape
 
-- **Render parity.** bex-api is Render-compatible ([bex-api.md](bex-api.md)); a Render-targeting client expects `srv-…`, `tea-…`. Matching the prefixes is free compatibility.
+- **Render parity.** bex-api is Render-compatible ([ADR006-bex-api.md](ADR006-bex-api.md)); a Render-targeting client expects `srv-…`, `tea-…`. Matching the prefixes is free compatibility.
 - **DNS-/k8s-name safe → hyphen, not underscore.** bex ids flow into URLs, hostnames, and Kubernetes object names. A hyphen is legal in a DNS-1123 label; an **underscore is not** (RFC 952/1123 forbid `_` in hostnames, and k8s object names are DNS-1123). This is the decisive reason bex does **not** use Stripe's `tea_…` form — however nice underscores are for double-click-to-select, an underscore id cannot be a hostname or a k8s name. The guard test asserts every minted id is a valid DNS-1123 label, so this can't regress.
 - **Typed + greppable.** The prefix says what an id refers to at a glance and in logs (`grep srv-`), and lets an adapter route or reject by kind (`id.KindOf`).
 - **xid, not UUID.** [xid](https://github.com/rs/xid) is k-sortable (embeds a timestamp, so ids sort by creation time — friendly to Postgres b-tree locality), non-guessable, URL-safe (lowercase base32-hex, no padding), and 20 chars (vs UUID's 36 with hyphens). A random UUID is none of typed, sortable, or Render-shaped.
@@ -30,7 +30,7 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 
 An **id** and a **name** are different things and must not be conflated:
 
-- **ids** (`tea-…`/`srv-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([postgresql-management.md](postgresql-management.md) §4).
+- **ids** (`tea-…`/`srv-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
 - **names** (a workspace's name, an app's name) are **user-chosen DNS labels** (`[a-z0-9-]`, ≤30 chars) that become part of a CR name (`<workspace>-<app>`). They're human-facing and mutable.
 
 Render's own workspace names are freeform; bex constrains them to DNS labels because they land in CR/host names. That divergence is noted where it's enforced (`internal/workspaces`, `internal/store/api.go`).
@@ -48,7 +48,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 ## Known deviations (deliberate, documented)
 
 - **Managed datastores use the name as the id, not `dpg-<xid>`/`red-<xid>`.** `internal/postgres` exposes a `Database`'s user-chosen name as its id, and `internal/keyvalue` does the same for a `KeyValue` (both CRs are name-keyed). Render uses `dpg-…` / `red-…`. This is a conscious deviation — bex datastores are named CRs with no separate opaque key — recorded here rather than silently diverging, and applied uniformly so the two sibling datastore surfaces stay consistent (minting a `red-` id for key-value alone would split them). Revisit if datastores ever need rename-stable references.
-- **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([auth.md](auth.md)); their id format is Hydra's, outside this convention by design.
+- **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([ADR012-auth.md](ADR012-auth.md)); their id format is Hydra's, outside this convention by design.
 
 ## Alternatives considered
 

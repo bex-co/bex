@@ -15,7 +15,7 @@
 
 ## Definition of done
 
-On the prod-shaped cluster: from a tenant pod, a connection to `169.254.169.254` (cloud metadata) and to a node's public IP on `:10250` / a nodePort is **blocked**, while egress to a real external host (e.g. `https://example.com`) still **succeeds**; `scripts/verify-tenant-isolation.sh` proves the extended reachability matrix (metadata + node DENY probes added) and exits 0; the metadata/SSRF and node-path threat is written up in `docs/tenant-isolation.md`.
+On the prod-shaped cluster: from a tenant pod, a connection to `169.254.169.254` (cloud metadata) and to a node's public IP on `:10250` / a nodePort is **blocked**, while egress to a real external host (e.g. `https://example.com`) still **succeeds**; `scripts/verify-tenant-isolation.sh` proves the extended reachability matrix (metadata + node DENY probes added) and exits 0; the metadata/SSRF and node-path threat is written up in `docs/ADR022-tenant-isolation.md`.
 
 ## Source + Goal linkage
 

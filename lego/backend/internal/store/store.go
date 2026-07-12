@@ -30,9 +30,9 @@ import (
 )
 
 // Typed resource ids ("tea-…"/"srv-…"/"cdm-…") are minted through the one id
-// package (docs/identifiers.md) — never hand-concatenated here, so the format
+// package (docs/ADR020-identifiers.md) — never hand-concatenated here, so the format
 // and its DNS-safety stay guarded in one place. A rename never breaks a
-// reference because ids, not names, are the keys (docs/postgresql-management.md §4).
+// reference because ids, not names, are the keys (docs/ADR009-postgresql-management.md §4).
 
 // MaxReplicas is the shared upper bound on an App's replica count, enforced by
 // both the create path (store/api.go) and the apps scale verb so the two can't
@@ -76,7 +76,7 @@ type App struct {
 }
 
 // Deploy status vocabulary — Render's deploy status enum, the subset bex can
-// honor today (docs/deployment.md health gating). build_in_progress/
+// honor today (docs/ADR004-deployment.md health gating). build_in_progress/
 // build_failed are reserved for w1/m5 (build-from-git); deactivated/canceled
 // are deferred (w2/m5's README).
 const (

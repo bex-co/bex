@@ -4,7 +4,7 @@
 # them (the local overlay excludes this: disposable cluster, no object-storage
 # creds). The CronJob's S3 Secret is created out-of-band from .env, and the
 # `bao-snapshot` OpenBao role it uses is set up by scripts/bao-k8s-auth.sh — see
-# docs/openbao-backup-restore.md.
+# docs/ADR015-openbao-backup-restore.md.
 # sync-wave "2": after OpenBao (wave 1) is up, so k8s-auth login can succeed.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

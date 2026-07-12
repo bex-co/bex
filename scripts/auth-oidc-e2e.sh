@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end social-login check (docs/auth.md § Social login, w4/003): drives
+# End-to-end social-login check (docs/ADR012-auth.md § Social login, w4/003): drives
 # "Sign in with an OIDC provider" through the SAME machinery prod uses — the
 # Kratos `oidc` method, configured by a SECOND `--config` file merged over the
 # main config (exactly how scripts/auth-secrets.sh injects the GitHub provider
@@ -12,7 +12,7 @@
 # The provider is Dex (dexidp.io), a throwaway stand-in OIDC IdP — GitHub can't
 # redirect to localhost, and pinning the *mechanism* (not GitHub's servers) is
 # what a local check can prove. The GitHub-specific bits (`provider: github`,
-# `scope: [user:email]`) are config-only and documented in docs/auth.md; every
+# `scope: [user:email]`) are config-only and documented in docs/ADR012-auth.md; every
 # other moving part — two-file config merge, the mapper, session issuance, the
 # provider button Ory Elements renders from the flow's oidc node — is real here.
 #
@@ -273,4 +273,4 @@ print('  ✓ identity has an oidc (federated) credential:', methods)
 echo
 echo "✓ w4/003 end-to-end: Kratos oidc method (two-file config merge + base64"
 echo "  mapper) -> provider login -> callback -> first-party session. The GitHub"
-echo "  provider is the same wiring with provider:github (docs/auth.md)."
+echo "  provider is the same wiring with provider:github (docs/ADR012-auth.md)."

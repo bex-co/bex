@@ -25,7 +25,7 @@ export interface UseLogHistoryResult {
 
 /**
  * Reads one App's historical logs from bex-api's `logs(resource, type, text,
- * limit)` query, in Render's `LogEntry` shape (docs/observability.md).
+ * limit)` query, in Render's `LogEntry` shape (docs/ADR010-observability.md).
  * Presentation only — the same shared Core read the REST/MCP adapters use.
  *
  * `type=all` and an empty `text` are sent as absent args (the whole, unfiltered

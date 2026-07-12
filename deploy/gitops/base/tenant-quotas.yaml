@@ -4,7 +4,7 @@
 # explicit requests/limits (e.g. hand-applied App CRs without spec.tier).
 #
 # Sizing is a generous first cut — tighten once real usage data lands via
-# BEX_PROM_URL (docs/usage-metering.md).
+# BEX_PROM_URL (docs/ADR023-usage-metering.md).
 #
 # Build Jobs run in bex-system (BEX_BUILD_NAMESPACE) — NOT subject to this
 # quota; their limits are set directly in the Job spec (lego/operator/internal/build/build.go).

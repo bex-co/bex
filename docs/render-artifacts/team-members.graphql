@@ -55,4 +55,4 @@ query usersAndPendingForTeam($ownerId: String!) {
 # Vocabulary: Render uses THREE words for the same entity -- "workspace" (UI),
 # "team" (GraphQL: owner.team, id prefix "tea-"), and "owner" (the resource
 # parent, = user | team). bex's model type `workspace` is that entity; its
-# five member roles + capability split match Render's exactly (docs/auth.md).
+# five member roles + capability split match Render's exactly (docs/ADR012-auth.md).

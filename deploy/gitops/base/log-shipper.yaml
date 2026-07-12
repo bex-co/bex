@@ -2,7 +2,7 @@
 # One replica per node discovers pods via the Kubernetes API, keeps only tenant
 # App pods (label app.bex.co/app), labels each stream namespace/app/pod/container
 # — exactly the labels bex-api's LogQL selects on
-# ({namespace=, app=, container="app"}, see NewLokiSource / docs/observability.md)
+# ({namespace=, app=, container="app"}, see NewLokiSource / docs/ADR010-observability.md)
 # — and pushes to Loki's /loki/api/v1/push.
 #
 # Shipper choice — Grafana Alloy, not Promtail: Promtail reached end-of-life

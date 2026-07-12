@@ -1,4 +1,4 @@
-# bex platform authorization model (docs/auth.md) — the human-readable source.
+# bex platform authorization model (docs/ADR012-auth.md) — the human-readable source.
 # The applied artifact is model.json (OpenFGA's wire format, same directory);
 # when you edit this file, regenerate it:  fga model transform --file model.fga
 # scripts/authz-model.sh applies model.json idempotently; scripts/

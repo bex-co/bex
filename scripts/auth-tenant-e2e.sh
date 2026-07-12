@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tenant-isolation E2E (w1/m9, docs/auth.md#authorization) — proves the
+# Tenant-isolation E2E (w1/m9, docs/ADR012-auth.md#authorization) — proves the
 # control-plane store + enforced OpenFGA isolate tenants at the API layer, on
 # the CAPD mock cluster's Ory + bex-db substrate:
 #   1. Two Kratos identities sign up (API registration flow) → each's first

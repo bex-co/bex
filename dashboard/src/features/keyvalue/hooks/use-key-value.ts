@@ -17,7 +17,7 @@ export interface UseKeyValueResult {
  * row is still provisioning (or not yet loaded) so the header converges to
  * Available on its own, then stops — mirrors the list page's gated poll and
  * databases' `useDatabase`. Connection info is NOT fetched here — it's revealed
- * on demand from the detail page (docs/keyvalue-management.md).
+ * on demand from the detail page (docs/ADR021-keyvalue-management.md).
  */
 export function useKeyValue(id: string): UseKeyValueResult {
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(

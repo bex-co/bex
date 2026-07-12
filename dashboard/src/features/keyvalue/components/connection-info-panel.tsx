@@ -16,7 +16,7 @@ import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
 /**
  * Render's "Connections" panel for a Key Value store. The connection strings
  * are fetched ONLY when the user clicks Reveal — never on mount
- * (docs/keyvalue-management.md: the password lives inside the `redis://` URI
+ * (docs/ADR021-keyvalue-management.md: the password lives inside the `redis://` URI
  * itself, so the whole string is the sensitive field; nothing is fetched or
  * rendered until the user asks). Until then this shows just the button; after,
  * each string gets its own copy button. Unlike databases' panel there is no

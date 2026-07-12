@@ -14,7 +14,7 @@ export interface LogLine {
 
 // The type filter, matching Render's Logs dropdown (All / Application / Request).
 // bex-api sources application logs only: `request` (and `build`) resolve to an
-// empty page per its contract (docs/observability.md), never faked. `all` is the
+// empty page per its contract (docs/ADR010-observability.md), never faked. `all` is the
 // no-filter sentinel — sent as an absent `type` arg.
 export const LOG_TYPE_ALL = "all";
 export const LOG_TYPE_APP = "app";

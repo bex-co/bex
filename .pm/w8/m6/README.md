@@ -22,7 +22,7 @@ A user can pick a past month on the dashboard Usage page and see that month's re
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm more milestones for w8` 2026-07-10 — REST (`docs/usage-metering.md`) and MCP `get_usage` already accept `period`; `lego/backend/internal/usage/graphql.go`'s `usage` query doesn't, and the docs say so explicitly ("period always defaults to the current calendar month; use REST `?period=` for historical queries"). The dashboard's `UsagePage` (`dashboard/src/features/usage/components/usage-page.tsx`) has no month picker or trend view — current month only.
+- **Source:** `/pm-brainstorm more milestones for w8` 2026-07-10 — REST (`docs/ADR023-usage-metering.md`) and MCP `get_usage` already accept `period`; `lego/backend/internal/usage/graphql.go`'s `usage` query doesn't, and the docs say so explicitly ("period always defaults to the current calendar month; use REST `?period=` for historical queries"). The dashboard's `UsagePage` (`dashboard/src/features/usage/components/usage-page.tsx`) has no month picker or trend view — current month only.
 - **Goal linkage:** `GOAL.md` item 5 (usage metering); pillar 1 (API-first — GraphQL shouldn't be able to do less than REST/MCP for the same core verb); Render-parity dashboard surface.
 - **Expected outcome:** any client, including the dashboard, can see a past month's usage without falling back to curl; the three API surfaces are capability-symmetric.
 - **Why now:** m1 has been rolling up real data since 2026-07-09 — there's now enough history to make a trend view meaningful, and the GraphQL/REST asymmetry only gets more entrenched (more client code built against the smaller GraphQL surface) the longer it's left unfixed.

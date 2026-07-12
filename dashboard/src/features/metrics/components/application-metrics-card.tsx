@@ -33,7 +33,7 @@ interface ApplicationMetricsCardProps {
  * Render's "Application Metrics" card: Memory, CPU, Total Instances as
  * stepped history charts over the selected range — one line per instance
  * (cAdvisor via Prometheus, or a single current point on the metrics-server
- * fallback; docs/observability.md).
+ * fallback; docs/ADR010-observability.md).
  *
  * Percentage/Total is computed client-side from two already-fetched series
  * (the raw metric + its _limit counterpart, aggregated to one max value) —

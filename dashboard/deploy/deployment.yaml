@@ -45,7 +45,7 @@ spec:
           env:
             - name: PORT
               value: "3000"
-            # OAuth2 consent acceptor (docs/auth.md §7, w4/m9): SSR-only env for
+            # OAuth2 consent acceptor (docs/ADR012-auth.md §7, w4/m9): SSR-only env for
             # the /auth/consent server route — Hydra's urls.consent points here.
             # Runtime env (not a VITE_ build ARG) because only the Node server
             # reads it; it must never reach the client bundle.

@@ -251,7 +251,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	// Stamp both the tenant label (ownerId scoping — pgView/ListPostgres read
 	// this) and the workspace label (so the database controller can propagate
 	// it to CNPG pod metadata for same-workspace NetworkPolicy selectors,
-	// docs/tenant-isolation.md), mirroring the App CR dual-stamp
+	// docs/ADR022-tenant-isolation.md), mirroring the App CR dual-stamp
 	// (store/reconciler.go's stampLabels). Skip when the store is off (no resolver).
 	if tenantID, ok := s.Tenant(ctx); ok {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}

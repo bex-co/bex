@@ -38,7 +38,7 @@ What "mostly Go" means concretely:
 - Deps stay as they are (we don't rewrite the Python OpenSandbox server or the charts — we _consume_ them). "Mostly Go" = **our** code is Go; we talk to deps over their APIs/CRDs.
 - Keep the Node MVP as the executable spec/reference until the Go control plane reaches parity. _(Done — the Node MVP is gone; `lego/` is all Go and the control plane is built.)_
 
-**Two pieces inside "the control plane."** As bex goes multi-tenant, split it: a thin **operator** (CR reconciler, no DB — exists today) and a **control-plane service** backed by **Postgres** as the product's _source of truth_ (tenants / apps / domains + business logic) that projects rows into `App` CRs. Business logic lives in the control plane; the operator stays mechanical. Postgres is the durable truth; **etcd becomes a rebuildable projection** of it. Full design: [`control-plane.md`](control-plane.md).
+**Two pieces inside "the control plane."** As bex goes multi-tenant, split it: a thin **operator** (CR reconciler, no DB — exists today) and a **control-plane service** backed by **Postgres** as the product's _source of truth_ (tenants / apps / domains + business logic) that projects rows into `App` CRs. Business logic lives in the control plane; the operator stays mechanical. Postgres is the durable truth; **etcd becomes a rebuildable projection** of it. Full design: [`ADR003-control-plane.md`](ADR003-control-plane.md).
 
 This also reinforces the GitOps answer below: a Go, k8s-native control plane is itself just more Deployments + CRDs in the same declarative substrate.
 
@@ -102,5 +102,5 @@ This converts the imperative MVP setup into reproducible, pinned Git state and g
 
 1. Scaffold `deploy/gitops/` — **done** (see that dir).
 2. Containerize the (Go) gateway so it can be an Argo `Application` like everything else.
-3. Begin the Go control plane: `App` CRD + controller + activator (kubebuilder), reusing the Node MVP as the spec — **done except the activator** (`lego/types` + `lego/operator` + `lego/backend/internal/store`; the wake activator is still roadmap item 2 in [vision.md](vision.md)).
+3. Begin the Go control plane: `App` CRD + controller + activator (kubebuilder), reusing the Node MVP as the spec — **done except the activator** (`lego/types` + `lego/operator` + `lego/backend/internal/store`; the wake activator is still roadmap item 2 in [ADR008-vision.md](ADR008-vision.md)).
 4. For k8s-mode pause/resume: move off OrbStack k8s to a containerd-CRI cluster (kind/k3s locally, Hetzner for real).

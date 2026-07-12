@@ -5,7 +5,7 @@ import type {
 } from "@ory/elements-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 
-/** Ory Kratos public API base URL, reachable from the browser (docs/auth.md). */
+/** Ory Kratos public API base URL, reachable from the browser (docs/ADR012-auth.md). */
 export const KRATOS_PUBLIC_URL =
   import.meta.env.VITE_KRATOS_PUBLIC_URL || "https://auth.bex.co";
 

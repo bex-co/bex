@@ -527,7 +527,7 @@ type MonthToDateBandwidth struct {
 
 // MonthToDateBandwidth returns the App's month-to-date bandwidth usage. The query
 // is real (increase() over the elapsed month); a short-retention Prometheus just
-// under-counts (see observability.md).
+// under-counts (see ADR010-observability.md).
 func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthToDateBandwidth, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return MonthToDateBandwidth{}, err

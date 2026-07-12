@@ -14,7 +14,7 @@
 
 ## Definition of done
 
-REST + GraphQL return resource metrics (CPU/memory percentage-or-total, instance count) and request metrics (count, p50/p90/p99 latency, status codes, outbound bytes) for an App over a chosen time range, with status/host/path filters; verified end-to-end against the mock cluster with metrics-server present; `make test` green; documented in `docs/bex-api.md` + `docs/observability.md`.
+REST + GraphQL return resource metrics (CPU/memory percentage-or-total, instance count) and request metrics (count, p50/p90/p99 latency, status codes, outbound bytes) for an App over a chosen time range, with status/host/path filters; verified end-to-end against the mock cluster with metrics-server present; `make test` green; documented in `docs/ADR006-bex-api.md` + `docs/ADR010-observability.md`.
 
 ## Source + Goal linkage
 

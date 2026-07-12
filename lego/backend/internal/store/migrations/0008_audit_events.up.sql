@@ -1,7 +1,7 @@
 -- w4/m10: audit log — one row per authorized WRITE-verb attempt (allowed or
 -- denied), captured at the one interception point every verb funnels through
 -- (core.Base.Authorize/AuthorizeOn, internal/core/audit.go). Read verbs are
--- out of scope by default (volume) — see docs/bex-api.md § Audit log.
+-- out of scope by default (volume) — see docs/ADR006-bex-api.md § Audit log.
 --
 -- workspace_id is the OpenFGA object's tenant component ("tea-…", or
 -- "default" for the store-off/bootstrap path) — the workspace the event is

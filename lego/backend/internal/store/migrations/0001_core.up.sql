@@ -1,11 +1,11 @@
--- Core source-of-truth entities (docs/control-plane.md §Schema sketch):
+-- Core source-of-truth entities (docs/ADR003-control-plane.md §Schema sketch):
 -- tenants own apps; apps own domains. The control plane projects apps rows
 -- (+ their domains) into App CRs; the operator executes them.
 --
 -- IDs are Render-style typed opaque strings ("tea-", "srv-", "cdm-" + xid,
 -- e.g. "srv-c185th5c2rvvnhbfiltg"), generated in Go (store.go newID) — typed,
 -- k-sortable, non-guessable, and safe to expose in URLs/hostnames (same
--- reasoning as docs/postgresql-management.md §4). No server-side default:
+-- reasoning as docs/ADR009-postgresql-management.md §4). No server-side default:
 -- the application is the only writer.
 
 CREATE TABLE tenants (

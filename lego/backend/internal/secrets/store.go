@@ -35,12 +35,12 @@ import (
 // store.go is the OpenBao KV v2 implementation of core.SecretKV: a versioned,
 // policy-scoped map store the env-vars/secret-files feature and the env-groups
 // feature share. It authenticates as the bex-api ServiceAccount via the Kubernetes
-// auth method (docs/secrets.md §5) and speaks KV v2's split data/ + metadata/
-// paths under the "tenants/" mount, tenant-prefixed per docs/secrets.md §4.
+// auth method (docs/ADR013-secrets.md §5) and speaks KV v2's split data/ + metadata/
+// paths under the "tenants/" mount, tenant-prefixed per docs/ADR013-secrets.md §4.
 
 const (
 	baoRole      = "bex-api" // scripts/bao-k8s-auth.sh role bound to the bex-api SA
-	baoMount     = "tenants" // KV v2 mount (docs/secrets.md §4)
+	baoMount     = "tenants" // KV v2 mount (docs/ADR013-secrets.md §4)
 	baoTenant    = "default" // single tenant until w1/m2 (mirrors authz DefaultWorkspace)
 	baoJWTPath   = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	baoRenewSkew = 30 * time.Second // re-login this long before the lease expires
@@ -48,7 +48,7 @@ const (
 
 // openBaoStore implements core.SecretKV over OpenBao's KV v2 engine,
 // authenticating as the bex-api ServiceAccount via the Kubernetes auth method
-// (docs/secrets.md §5): it logs in with its projected SA token, caches the
+// (docs/ADR013-secrets.md §5): it logs in with its projected SA token, caches the
 // returned client token until just before its lease expires, and re-authenticates
 // on demand (including when a still-cached token is rejected). Scoped by policy to
 // tenants/* only.
@@ -87,7 +87,7 @@ func NewOpenBaoStore(addr string) core.SecretKV {
 
 // dataURL / metadataURL are KV v2's split paths: values live under data/, whole-
 // path deletion + listing under metadata/. path is the caller's logical key (e.g.
-// "services/web/env"); the mount + tenant prefix (docs/secrets.md §4) are added here.
+// "services/web/env"); the mount + tenant prefix (docs/ADR013-secrets.md §4) are added here.
 func (s *openBaoStore) dataURL(path string) string {
 	return fmt.Sprintf("%s/v1/%s/data/%s/%s", s.addr, s.mount, s.tenant, path)
 }

@@ -21,7 +21,7 @@ A Go workspace (`go.work`) of three modules. The dependency arrows point **one w
 
 `types/` is a struct definition, not an API surface — it's the shape both layers read and write, so it's the only thing they share. That boundary is compiler-enforced: `operator/go.mod` carries none of the backend's deps (graphql/mcp), so the operator physically cannot compile against backend code.
 
-> The Postgres **source of truth** (the "control plane" — tenants/apps/domains projected into App CRs) is **built into `backend/`** as `internal/store/`, opt-in: the api binary runs it when `BEX_CP_DB_URI` is set ([`../docs/control-plane.md`](../docs/control-plane.md)). Unset (today's prod default), `backend/` serves bex-api alone.
+> The Postgres **source of truth** (the "control plane" — tenants/apps/domains projected into App CRs) is **built into `backend/`** as `internal/store/`, opt-in: the api binary runs it when `BEX_CP_DB_URI` is set ([`../docs/ADR003-control-plane.md`](../docs/ADR003-control-plane.md)). Unset (today's prod default), `backend/` serves bex-api alone.
 
 ## One image, two binaries
 
@@ -55,6 +55,6 @@ cd lego/backend && go build ./... && go test ./...
 ## Where to read next
 
 - Per-module rules: [`operator/CLAUDE.md`](operator/CLAUDE.md) · [`backend/CLAUDE.md`](backend/CLAUDE.md) · [`backend/internal/api/CLAUDE.md`](backend/internal/api/CLAUDE.md).
-- The Render-compatible API design — one Core, three adapters: [`../docs/bex-api.md`](../docs/bex-api.md).
-- The intent-vs-mechanism boundary (planned control plane): [`../docs/control-plane.md`](../docs/control-plane.md).
-- The whole-system map: [`../docs/architecture.md`](../docs/architecture.md).
+- The Render-compatible API design — one Core, three adapters: [`../docs/ADR006-bex-api.md`](../docs/ADR006-bex-api.md).
+- The intent-vs-mechanism boundary (planned control plane): [`../docs/ADR003-control-plane.md`](../docs/ADR003-control-plane.md).
+- The whole-system map: [`../docs/ADR002-architecture.md`](../docs/ADR002-architecture.md).

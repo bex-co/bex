@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prod (or mock-cluster) smoke for GitHub social login (docs/auth.md § Social
+# Prod (or mock-cluster) smoke for GitHub social login (docs/ADR012-auth.md § Social
 # login, w4/003). Read-only: it inspects the live cluster + public Kratos and
 # reports whether the `oidc` method is wired end to end, without mutating
 # anything. Complements scripts/auth-oidc-e2e.sh (which proves the *mechanism*

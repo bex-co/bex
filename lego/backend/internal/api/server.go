@@ -99,7 +99,7 @@ type Server struct {
 	// GitHubWebhookSecret is the GitHub App's webhook HMAC key
 	// (BEX_GITHUB_WEBHOOK_SECRET) — a second accepted key on the same endpoint so
 	// app-signed pushes redeploy hands-free. The endpoint 503s only when both
-	// this and WebhookSecret are empty (docs/github-integration.md).
+	// this and WebhookSecret are empty (docs/ADR026-github-integration.md).
 	GitHubWebhookSecret string
 
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
@@ -135,7 +135,7 @@ type Deps struct {
 	APIKeys              apikeys.APIKeyStore
 	Store                apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
-	// feature and the env-groups feature read/write through (docs/secrets.md). One
+	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
 	Secrets core.SecretKV
 	// DeployStore, when set (the control-plane store is wired), backs the
@@ -182,7 +182,7 @@ type Deps struct {
 	// retention loop started in cmd/api/main.go, same as Usage. nil => the
 	// verb reports core.ErrAuditUnavailable (503).
 	Audit *audit.Service
-	// GitHub App integration (docs/github-integration.md). GitHubClient is the
+	// GitHub App integration (docs/ADR026-github-integration.md). GitHubClient is the
 	// GitHub REST client (nil when BEX_GITHUB_APP_* unset); GitHubStore is the
 	// git_connections store (nil when BEX_CP_DB_URI unset). Either nil => the
 	// git-connect verbs report core.ErrGitHubUnavailable. DashboardURL is where
@@ -200,7 +200,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// transport in use, it simply never gets a Get/Set call.
 	selections := core.NewWorkspaceSelections()
 	// The GitHub-connect service is also the apps deploy path's clone-token seam
-	// (docs/github-integration.md), so build it once and share it. Always
+	// (docs/ADR026-github-integration.md), so build it once and share it. Always
 	// non-nil; its verbs 503 until BEX_GITHUB_APP_* + the store are wired.
 	gh := &github.Service{
 		Base:         base,

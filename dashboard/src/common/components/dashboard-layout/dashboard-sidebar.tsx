@@ -15,7 +15,7 @@ import {
 import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
 
 // The dashboard's live resources (Services + Databases + Key Value + Usage) plus
-// account settings. Each is a client of bex-api's GraphQL (see docs/bex-api.md).
+// account settings. Each is a client of bex-api's GraphQL (see docs/ADR006-bex-api.md).
 const NAV_ITEMS = [
   { labelKey: "common.navServices", to: "/", icon: LayoutGrid },
   { labelKey: "common.navDatabases", to: "/databases", icon: Database },

@@ -66,7 +66,7 @@ type AppSpec struct {
 	// RunAt requests a one-off run of a cron_job now (verb-as-timestamp, like
 	// RestartedAt): when it changes, the operator creates a single Job from the
 	// cron's template. Empty = never requested; re-setting the same value is a
-	// no-op. Ignored for non-cron types. See docs/bex-api.md (cron run trigger).
+	// no-op. Ignored for non-cron types. See docs/ADR006-bex-api.md (cron run trigger).
 	// +optional
 	RunAt string `json:"runAt,omitempty"`
 
@@ -100,7 +100,7 @@ type AppSpec struct {
 	// git-context fetch authenticates. Empty means an unauthenticated (public)
 	// clone — today's behavior, unchanged. The operator is GitHub-unaware: it
 	// only mounts the Secret; bex-api mints and refreshes the token
-	// (docs/github-integration.md). An absent/expired Secret fails the build
+	// (docs/ADR026-github-integration.md). An absent/expired Secret fails the build
 	// with a clear condition (no silent public-clone fallback).
 	// +optional
 	CloneSecret string `json:"cloneSecret,omitempty"`
@@ -124,7 +124,7 @@ type AppSpec struct {
 
 	// Env are plain (literal) environment variables set on the App's container,
 	// in the order given. These carry non-secret configuration only — secret
-	// material is delivered out-of-band via EnvFromSecret (docs/secrets.md), never
+	// material is delivered out-of-band via EnvFromSecret (docs/ADR013-secrets.md), never
 	// inlined here where it would sit in plaintext in etcd. The operator-owned PORT
 	// always wins: a user Env entry named PORT is ignored, so it can never shadow
 	// the injected value.
@@ -133,14 +133,14 @@ type AppSpec struct {
 
 	// EnvFromSecret names a Secret in the App's namespace whose keys are injected
 	// into the container as environment variables (envFrom). This is where the
-	// env-vars API (docs/secrets.md) materializes a service's OpenBao-backed
+	// env-vars API (docs/ADR013-secrets.md) materializes a service's OpenBao-backed
 	// credentials — a per-app "<name>-env" Secret projected from the source of
 	// truth. PORT still wins over any colliding key.
 	// +optional
 	EnvFromSecret string `json:"envFromSecret,omitempty"`
 
 	// EnvFromSecrets names additional Secrets injected via envFrom, one per linked
-	// environment group (docs/secrets.md — environment groups: a "<evg-id>-env"
+	// environment group (docs/ADR013-secrets.md — environment groups: a "<evg-id>-env"
 	// Secret the env-groups API materializes and shares across services). These are
 	// wired BEFORE EnvFromSecret, so a service's own env var wins over a linked
 	// group's on a key collision; the operator-owned PORT still wins over all. Each
@@ -151,7 +151,7 @@ type AppSpec struct {
 
 	// FilesFromSecrets names Secrets whose keys are projected as files under
 	// /etc/secrets (one file per key) via a single projected volume: the service's
-	// own secret files ("<name>-files", docs/secrets.md — secret files) plus each
+	// own secret files ("<name>-files", docs/ADR013-secrets.md — secret files) plus each
 	// linked environment group's files ("<evg-id>-files"). All sources merge into
 	// the one /etc/secrets mount; each is optional, so an absent source contributes
 	// no files rather than failing the mount. Empty => no /etc/secrets volume.
@@ -177,14 +177,14 @@ type AppSpec struct {
 	// e.g. RFC3339 now): the operator copies it to the pod template annotation
 	// "app.bex.co/restarted-at"; the changed template rolls new pods with no gap.
 	// Empty = never requested; re-setting the same value is a no-op.
-	// See docs/restart-suspend-and-resume.md.
+	// See docs/ADR007-restart-suspend-and-resume.md.
 	// +optional
 	RestartedAt string `json:"restartedAt,omitempty"`
 
 	// Suspended parks the App without losing anything: the kubernetes runtime
 	// scales the Deployment to 0 (Service, Ingress, TLS and Replicas are all
 	// kept, so resume just scales back); the opensandbox runtime pauses the
-	// sandbox. Phase becomes Hibernated. See docs/restart-suspend-and-resume.md.
+	// sandbox. Phase becomes Hibernated. See docs/ADR007-restart-suspend-and-resume.md.
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
 
@@ -197,7 +197,7 @@ type AppSpec struct {
 
 	// Tier is the plan/size; the operator sets the pod's resources (requests==limits)
 	// from it. Empty => no resource constraints (best-effort); the control plane sets
-	// a tier explicitly. Resource ladder lives in docs/control-plane.md.
+	// a tier explicitly. Resource ladder lives in docs/ADR003-control-plane.md.
 	// +optional
 	// +kubebuilder:validation:Enum=free;starter;standard;pro;pro-plus;pro-max;pro-ultra
 	Tier string `json:"tier,omitempty"`

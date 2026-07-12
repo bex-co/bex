@@ -44,7 +44,7 @@ type Service struct {
 	// — the same value the operator computes app URLs from. The custom-domain DNS
 	// instructions need it to name the CNAME/ALIAS target `<app>.<BaseDomain>` the
 	// tenant points their record at. Empty falls back to deriving the platform host
-	// from the App's status URLs (docs/custom-domain.md).
+	// from the App's status URLs (docs/ADR005-custom-domain.md).
 	BaseDomain string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
 	// the bex.co/app-id label). Suspend/Resume write the row first — the row owns
@@ -60,7 +60,7 @@ type Service struct {
 	// GitHub, when set (the GitHub App + control-plane store are wired), mints a
 	// fresh installation token and writes the <app>-clone Secret on every deploy
 	// trigger whose repo belongs to the workspace's connection, so private repos
-	// clone (docs/github-integration.md). nil => public-clone only, unchanged.
+	// clone (docs/ADR026-github-integration.md). nil => public-clone only, unchanged.
 	GitHub CloneTokenSource
 }
 
@@ -347,7 +347,7 @@ type CreateRequest struct {
 
 // Create writes the App CR for a new service, or updates it in place when one
 // of the same name already exists — the same verb "deploy this" rides (Deploy
-// maps a repo + bex.yml onto a CreateRequest, docs/bex-api.md). Repeating the
+// maps a repo + bex.yml onto a CreateRequest, docs/ADR006-bex-api.md). Repeating the
 // call for an existing service is a redeploy, not a duplicate: the spec fields
 // the request carries are re-applied and spec.restartedAt is bumped, so a
 // repo-backed App re-runs its build-from-git. Intent only — the operator
@@ -439,7 +439,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 // (or a hand-applied App with no row) deletes the CR directly, the same split
 // suspend/resume follow. The operator's ownerRefs cascade everything it derived
 // (Deployment/Service/Ingress/CronJob/NetworkPolicy); the one orphan left is the
-// cert-manager TLS Secret (documented in docs/bex-api.md). Unknown id =>
+// cert-manager TLS Secret (documented in docs/ADR006-bex-api.md). Unknown id =>
 // core.ErrNotFound; unauthorized => core.ErrForbidden.
 func (s *Service) Delete(ctx context.Context, name string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {

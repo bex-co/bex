@@ -73,7 +73,7 @@ var (
 	// ErrGitHubUnavailable is returned by the git-connect verbs when the GitHub
 	// App is not configured (BEX_GITHUB_APP_* unset) or the control-plane store
 	// isn't wired (BEX_CP_DB_URI unset) — adapters surface it as 503
-	// (docs/github-integration.md).
+	// (docs/ADR026-github-integration.md).
 	ErrGitHubUnavailable = errors.New("github integration not configured")
 )
 

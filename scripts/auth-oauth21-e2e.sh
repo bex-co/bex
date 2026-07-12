@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end OAuth 2.1 provider check (docs/auth.md, w4/m9): drives the full
+# End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9): drives the full
 # agent story against REAL components — real Hydra, real Kratos with the native
 # `oauth2_provider` bridge (Kratos accepts the login challenge itself; no custom
 # login provider), the dashboard's real headless consent route, and the real

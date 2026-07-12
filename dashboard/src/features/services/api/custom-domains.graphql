@@ -1,5 +1,5 @@
 # bex-api's custom-domains surface, Render dashboard-shaped (backend/internal/apps
-# domains.go + graphql.go, docs/bex-api.md). A service's custom domains are a thin
+# domains.go + graphql.go, docs/ADR006-bex-api.md). A service's custom domains are a thin
 # veneer over App.spec.hosts[]; the operator reconciles Traefik + cert-manager per
 # domain. bex-api uses the hostname as the opaque id (id == name).
 # `verificationStatus` is "verified"/"pending" (TLS cert issued?); `serverStatus`

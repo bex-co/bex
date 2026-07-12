@@ -2,7 +2,7 @@
 # Deploy in one call: give an agent the repo + this file via the MCP `deploy`
 # tool (or POST it to /v1/services). The operator builds from git (Dockerfile
 # here), runs it, and returns a live https URL. A signed git push then
-# redeploys (POST /v1/webhooks/git). See docs/bex-api.md.
+# redeploys (POST /v1/webhooks/git). See docs/ADR006-bex-api.md.
 apps:
   - name: hello-go
     repo: https://github.com/bex-co/bex # replace with your fork/checkout

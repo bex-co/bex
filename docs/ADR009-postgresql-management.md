@@ -1,6 +1,6 @@
 # ADR: managed PostgreSQL for tenants (CNPG, plans, internal/external URLs)
 
-**Status:** accepted and implemented — the `Database` CRD (`lego/types/v1alpha1/database_types.go`), the CNPG-projecting controller (`lego/operator/internal/controller/database_controller.go`), the `postgres` tier family (`lego/types/tiers/tiers.yaml`), and the bex-api surface (`lego/backend/internal/postgres/`, [bex-api.md](bex-api.md#managed-postgres-render-v1postgres-compatible)) all ship. The CloudNativePG (CNPG) operator and the control-plane's own DB `bex-db` run on the cluster. Grounded in a live study of Render Postgres (create → connect → delete driven through the dashboard).
+**Status:** accepted and implemented — the `Database` CRD (`lego/types/v1alpha1/database_types.go`), the CNPG-projecting controller (`lego/operator/internal/controller/database_controller.go`), the `postgres` tier family (`lego/types/tiers/tiers.yaml`), and the bex-api surface (`lego/backend/internal/postgres/`, [ADR006-bex-api.md](ADR006-bex-api.md#managed-postgres-render-v1postgres-compatible)) all ship. The CloudNativePG (CNPG) operator and the control-plane's own DB `bex-db` run on the cluster. Grounded in a live study of Render Postgres (create → connect → delete driven through the dashboard).
 
 ## Context
 
@@ -107,18 +107,18 @@ Smallest possible first cut: internal-URL-only (connect from an in-cluster App),
 
 ## Advanced: data protection, lifecycle, access (w1/m17)
 
-Built on the same CNPG-is-the-executor principle — every advanced capability maps to a CNPG mechanism the operator projects and bex-api drives (three adapters: REST/GraphQL/MCP, see [bex-api.md](bex-api.md#managed-postgres-render-v1postgres-compatible)). **HA / failover / read replicas stay out** (deferred to `w1/013` — they need a ≥3-node pool and a replica topology).
+Built on the same CNPG-is-the-executor principle — every advanced capability maps to a CNPG mechanism the operator projects and bex-api drives (three adapters: REST/GraphQL/MCP, see [ADR006-bex-api.md](ADR006-bex-api.md#managed-postgres-render-v1postgres-compatible)). **HA / failover / read replicas stay out** (deferred to `w1/013` — they need a ≥3-node pool and a replica topology).
 
 ### Backups + point-in-time recovery
 
-- **Durability is a plan axis** (`lego/types/tiers` `postgres[].backup`): Free is ephemeral (no backups, as on Render); `basic-*` opt in. When a backed-up plan runs and the operator's backup store is configured (`BEX_DB_BACKUP_DESTINATION` / `BEX_DB_BACKUP_ENDPOINT` / `BEX_DB_BACKUP_S3_SECRET`), the controller projects `spec.backup.barmanObjectStore` (continuous WAL archiving → object storage, gzip, `retentionPolicy: 30d`) plus a daily `ScheduledBackup`. WAL archiving is what makes PITR possible; the base backup pins the window. The object store is the **same Wasabi/S3 bucket + credential pattern** as the etcd/OpenBao runbooks ([etcd-backup-restore.md](etcd-backup-restore.md)) — a per-namespace Secret with `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`. CNPG scopes each cluster's backups under `serverName` (the cluster name), so one bucket fans out to every tenant DB.
+- **Durability is a plan axis** (`lego/types/tiers` `postgres[].backup`): Free is ephemeral (no backups, as on Render); `basic-*` opt in. When a backed-up plan runs and the operator's backup store is configured (`BEX_DB_BACKUP_DESTINATION` / `BEX_DB_BACKUP_ENDPOINT` / `BEX_DB_BACKUP_S3_SECRET`), the controller projects `spec.backup.barmanObjectStore` (continuous WAL archiving → object storage, gzip, `retentionPolicy: 30d`) plus a daily `ScheduledBackup`. WAL archiving is what makes PITR possible; the base backup pins the window. The object store is the **same Wasabi/S3 bucket + credential pattern** as the etcd/OpenBao runbooks ([ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)) — a per-namespace Secret with `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`. CNPG scopes each cluster's backups under `serverName` (the cluster name), so one bucket fans out to every tenant DB.
 - **`recovery-info`** reports whether recovery is available (`Status.BackupsEnabled`), the restorable window (earliest = CNPG `firstRecoverabilityPoint`, latest ≈ now via the continuous WAL), and the backup list. A no-backup plan returns `{enabled:false}`, never an error.
 - **`recover` always restores to a NEW `Database`** (never in place — matching Render): bex-api creates a Database with `spec.recovery{sourceDatabase, targetTime}`, which the controller bootstraps via CNPG `bootstrap.recovery` + an `externalClusters` entry reading the source's `serverName` from the shared store. The source instance is untouched.
 - **`exports`** trigger/list on-demand snapshots. bex's export is a **physical CNPG on-demand `Backup`** (a restorable base-backup snapshot to object storage), a conscious divergence from Render's logical `pg_dump` — honest, restorable, and reusing the same store rather than a bespoke dump pipeline.
 
 ### Lifecycle (suspend / resume / restart)
 
-Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Database` CR the operator converges (see [restart-suspend-and-resume.md](restart-suspend-and-resume.md)):
+Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Database` CR the operator converges (see [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md)):
 
 - **suspend / resume** → `spec.suspended`, mapped to CNPG **hibernation** (`cnpg.io/hibernation=on`/removed). Postgres can't scale-to-zero, but hibernation stops compute and keeps the PVC (data), credentials, and any external route, preserving the sleep=free promise; a suspended DB settles `Ready`/`Suspended` immediately rather than waiting on ready instances.
 - **restart** → `spec.restartedAt` (verb-as-timestamp), stamped onto CNPG's `kubectl.kubernetes.io/restartedAt` annotation for a rolling restart of the primary.

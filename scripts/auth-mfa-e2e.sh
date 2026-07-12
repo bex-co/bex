@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E for second-factor MFA (w4/m11, docs/auth.md § MFA) against the current
+# E2E for second-factor MFA (w4/m11, docs/ADR012-auth.md § MFA) against the current
 # kubeconfig cluster's Ory Kratos — the whole TOTP + recovery-code lifecycle,
 # no browser (WebAuthn ceremonies can't be scripted over curl; that path is the
 # manual check in t002). Everything here is Kratos-native self-service; there is

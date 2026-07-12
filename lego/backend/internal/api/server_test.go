@@ -461,7 +461,7 @@ func gqlSession(t *testing.T, h http.Handler, cookie, query string) (code int, d
 // cookie, not a bearer token) reaches the api-key GraphQL verbs through the same
 // Authorize gate as any other caller — no bearer-only special-casing — and that
 // the resolved session identity is checked as "user:<kratos-id>", the same tuple
-// shape a bearer subject gets (docs/auth.md's Authorization section).
+// shape a bearer subject gets (docs/ADR012-auth.md's Authorization section).
 func TestAPIKeys_SessionCaller(t *testing.T) {
 	const sessionCookie = "ory_kratos_session=live" // fakeKratos => identity "identity-1"
 	kratos := fakeKratos(t)

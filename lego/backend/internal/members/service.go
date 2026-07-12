@@ -24,7 +24,7 @@ limitations under the License.
 // workspace, not the caller's own: managing members is an admin acting ON a
 // workspace it administers. The rest/graphql/mcp files are thin fragments over
 // this Service; Render's role enum is UPPERCASE on the wire, lowercase as the
-// FGA relation / stored role (docs/auth.md), converted at the view boundary.
+// FGA relation / stored role (docs/ADR012-auth.md), converted at the view boundary.
 package members
 
 import (
@@ -42,7 +42,7 @@ import (
 )
 
 // Roles is Render's workspace role ladder — the five FGA relations a member may
-// hold (docs/auth.md, deploy/gitops/authz/model.fga). Stored lowercase in
+// hold (docs/ADR012-auth.md, deploy/gitops/authz/model.fga). Stored lowercase in
 // tenant_members.role and written as the OpenFGA relation verbatim; surfaced
 // UPPERCASE on the wire (Render's enum).
 var Roles = []string{"viewer", "contributor", "developer", "admin", "billing"}
@@ -121,7 +121,7 @@ type Mailer interface {
 // MemberView is the neutral projection of an accepted member. Subject is the
 // OpenFGA user (Kratos identity id or Hydra client id); bex has no per-member
 // email/name store yet, so unlike Render's members[].user.email this surfaces the
-// subject (parity drift, docs/render-parity.md). Role is UPPERCASE (Render enum).
+// subject (parity drift, docs/ADR018-render-parity.md). Role is UPPERCASE (Render enum).
 type MemberView struct {
 	Subject   string `json:"subject"`
 	Role      string `json:"role"`

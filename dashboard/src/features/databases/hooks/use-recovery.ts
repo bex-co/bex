@@ -47,7 +47,7 @@ export interface RecoverInput {
  * history, and drives restore-to-new-instance + create-export. Recovery info is
  * `errorPolicy: all` so a no-backup plan (which returns `enabled:false`, not an
  * error) still renders. Restore always creates a NEW database — the source is
- * untouched (docs/postgresql-management.md).
+ * untouched (docs/ADR009-postgresql-management.md).
  */
 export function useRecovery(id: string) {
   const { t } = useTranslations();

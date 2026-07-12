@@ -13,7 +13,7 @@
 #   HYDRA_OIDC_PAIRWISE_SALT  hydra pairwise subject salt    (>= 8 chars)
 #   OPENFGA_PRESHARED_KEY     openfga API preshared key      (>= 16 chars)
 #
-# Optional (Sign in with GitHub via Kratos oidc — docs/auth.md § Social login).
+# Optional (Sign in with GitHub via Kratos oidc — docs/ADR012-auth.md § Social login).
 # When BOTH are set, the kratos Secret gains an `oidc.yaml` fragment enabling the
 # GitHub provider; unset ⇒ the fragment is written disabled (a valid no-op), so
 # flipping social login on is purely `.env` + a re-run, no git change:
@@ -67,7 +67,7 @@ require OPENFGA_PRESHARED_KEY 16
 # provider when both BEX_GITHUB_OIDC_* are set, else a valid `enabled: false` no-op
 # so the mounted file always exists and Kratos never crashloops on a missing
 # --config target. The Jsonnet claims→traits mapper is inlined via base64:// so
-# no extra file mount is needed (docs/auth.md § Social login).
+# no extra file mount is needed (docs/ADR012-auth.md § Social login).
 oidc_fragment() {
   if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
     local mapper

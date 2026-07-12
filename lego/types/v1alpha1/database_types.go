@@ -23,7 +23,7 @@ import (
 // DatabaseSpec is the desired state of a managed PostgreSQL — the Render-style
 // "add a Postgres" unit. The operator projects it to a CloudNativePG Cluster in
 // the same namespace; the plan sets resources/storage. See
-// docs/postgresql-management.md.
+// docs/ADR009-postgresql-management.md.
 type DatabaseSpec struct {
 	// Plan selects the resource allocation (compute + storage + availability).
 	// MVP plans are single-instance and fit one node.
@@ -45,14 +45,14 @@ type DatabaseSpec struct {
 	// Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
 	// database at "<name>.<BEX_DB_DOMAIN>" via a Traefik TCP/SNI route (TLS
 	// passthrough — Postgres terminates its own TLS). Default: in-cluster only.
-	// External connections use sslmode=require. See docs/postgresql-management.md.
+	// External connections use sslmode=require. See docs/ADR009-postgresql-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
 
 	// Suspended hibernates the CNPG cluster (cnpg.io/hibernation=on): compute is
 	// stopped but the PVC is kept (data survives) — Render's Postgres suspend, the
 	// sibling of App/KeyValue suspend. Default: running. See
-	// docs/restart-suspend-and-resume.md.
+	// docs/ADR007-restart-suspend-and-resume.md.
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
 
@@ -89,7 +89,7 @@ type DatabaseSpec struct {
 	// object-store backups to a point in time (PITR) into a NEW instance, instead
 	// of initializing an empty database (CNPG bootstrap.recovery). Immutable after
 	// first provision. Recovery requires the controller's backup store to be
-	// configured. See docs/postgresql-management.md.
+	// configured. See docs/ADR009-postgresql-management.md.
 	// +optional
 	Recovery *DatabaseRecovery `json:"recovery,omitempty"`
 }

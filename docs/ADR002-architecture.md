@@ -40,7 +40,7 @@ flowchart TB
 - The **operator** depends on the **apiserver** — it's a **client** of it: it watches `App` CRs and writes Deployments; it **never talks to pods directly**. (Plus the node it runs on.)
 - Both **machines** depend on **Cluster API** — it provisions them.
 
-Note the direction: "operator _creates_ pod" becomes **`pod → operator`**, and "CAPI _provisions_ machine" becomes **`machine → CAPI`** — in a dependency graph the created/managed thing points at what it depends on, i.e. the arrow is the reverse of the "who-makes-what" flow. The outer box = the **cluster**; a _machine_ is a server (Hetzner) or Docker container (local). Swap `CAPD`→`CAPH` and the picture is identical. (For a request/response view of a deploy, see the request-flow diagram in [`control-plane.md`](control-plane.md).)
+Note the direction: "operator _creates_ pod" becomes **`pod → operator`**, and "CAPI _provisions_ machine" becomes **`machine → CAPI`** — in a dependency graph the created/managed thing points at what it depends on, i.e. the arrow is the reverse of the "who-makes-what" flow. The outer box = the **cluster**; a _machine_ is a server (Hetzner) or Docker container (local). Swap `CAPD`→`CAPH` and the picture is identical. (For a request/response view of a deploy, see the request-flow diagram in [`ADR003-control-plane.md`](ADR003-control-plane.md).)
 
 - **One self-managed cluster** (since the w1/m19.1 pivot). The app cluster runs the bex operator, your Apps, **and Cluster API itself** — after `clusterctl move`, the CAPI controllers run as pods on the control-plane nodes and the cluster reconciles its own machines. A disposable **bootstrap cluster** (`bex-bootstrap`, single-node k3s from Terraform) exists only during initial bring-up or disaster recovery: it births the app cluster, hands CAPI over, and is destroyed (definition retained). `BEX OPERATOR`, Cluster API and `bex-zot` are **pods / containers** — no extra machines. On Hetzner the machines are the cluster **nodes**; swap `CAPD`→`CAPH` and the picture is identical. (Locally, the kind cluster stays as a persistent management cluster — the mock never pivots.)
 - **machines = nodes** of the app cluster — Docker containers under CAPD locally, Hetzner servers under CAPH. **Add/remove a machine** = scale the worker pool; the operator bin-packs pods onto the nodes.
@@ -71,14 +71,14 @@ The layer boundary survives the pivot unchanged: bex still never provisions, bex
 
 ### Control plane (source of truth) vs. operator (mechanism)
 
-The `bex` layer itself splits in two — keep them distinct (full design: [`control-plane.md`](control-plane.md)):
+The `bex` layer itself splits in two — keep them distinct (full design: [`ADR003-control-plane.md`](ADR003-control-plane.md)):
 
 - **operator** _(today)_ — a k8s controller that reconciles `App` CRs into `Deployment`/`Service`/`Ingress` (+TLS). **No database**; idempotent; mechanical.
 - **control plane** _(built, opt-in — not yet the prod default)_ — a **Postgres-backed** service holding the product's **source of truth** (tenants / apps / domains / plans + business logic), living inside bex-api (`lego/backend/internal/store/`, enabled by `BEX_CP_DB_URI`). It projects rows into `App` CRs; the operator executes them.
 
 Business/product logic belongs in the **control plane**; the operator stays a thin, CR-driven reconciler. The **`App` CR is the contract** between them.
 
-**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in the single app node's etcd (local disk, no HA) and Apps are imperative (not in git), so a node _rebuild_ loses it. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [etcd-backup-restore.md](etcd-backup-restore.md)).
+**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in the single app node's etcd (local disk, no HA) and Apps are imperative (not in git), so a node _rebuild_ loses it. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)).
 
 ## `infra/` vs `deploy/` (both hold YAML — different jobs)
 
@@ -119,7 +119,7 @@ The shape the 2026-07 rebuild established (w1/m19 + m19.1). Everything below is 
 | --- | --- | --- | --- |
 | control plane | `node-role.kubernetes.io/control-plane` | Kubernetes itself + mgmt-plane exemptions (CCM, cilium-operator, etcd-backup, CAPI controllers) | target **3** (etcd quorum + safe rolls) |
 | `bex-platform` | `bex.co/platform` taint, `bex.co/pool: platform` label | the platform stack: Traefik, Ory, OpenBao, CNPG, observability, Argo, bex itself | min 2 |
-| tenant (`bex-tenant-0`) | untainted | **user Apps only** — tenant code never shares a kernel with platform credentials ([tenant-isolation.md](tenant-isolation.md)) | min 1, autoscaler-elastic |
+| tenant (`bex-tenant-0`) | untainted | **user Apps only** — tenant code never shares a kernel with platform credentials ([ADR022-tenant-isolation.md](ADR022-tenant-isolation.md)) | min 1, autoscaler-elastic |
 
 **Network** — CAPH owns network `bex` (`10.10.0.0/16`); every machine is attached at creation, so there is zero out-of-band network state. kubeadm advertises each machine's **private IP** (a placeholder `advertiseAddress` rewritten by `preKubeadmCommands` — the accepted CABPK pattern, since kubeadm has no per-machine templating): the `kubernetes` Service endpoint, etcd peer traffic, and apiserver→kubelet all ride the private net. Both LBs target nodes by private IP; Cilium WireGuard encrypts east-west (`devices` pinned to the private NIC — auto-detection needs node IPs the CCM hasn't set yet at bring-up).
 
@@ -142,8 +142,8 @@ The shape the 2026-07 rebuild established (w1/m19 + m19.1). Everything below is 
 lego/            ALL Go — workspace of three modules (one image, two binaries; lego/README.md):
   types/           the App/Database CRD contract (app.bex.co/v1alpha1); leaf
   operator/        mechanism: cmd/manager · internal/{build,runtime,controller} · config/ (+ planned gateway/allocator)
-  backend/         bex-api: cmd/api · internal/{apps,logs,metrics,apikeys,postgres,secrets,store,…} — REST/GraphQL/MCP + the opt-in control plane (docs/control-plane.md)
-dashboard/       Render-style human UI (TanStack Start + Ory Kratos, docs/auth.md §5): deploy/ is its own GitOps-deployed kustomize base, at dashboard.<base-domain>
+  backend/         bex-api: cmd/api · internal/{apps,logs,metrics,apikeys,postgres,secrets,store,…} — REST/GraphQL/MCP + the opt-in control plane (docs/ADR003-control-plane.md)
+dashboard/       Render-style human UI (TanStack Start + Ory Kratos, docs/ADR012-auth.md §5): deploy/ is its own GitOps-deployed kustomize base, at dashboard.<base-domain>
 infra/           bex-infra: terraform/ clusterapi/{base,overlays/{local-capd,hetzner-caph}} local/
 deploy/          GitOps: gitops/{bootstrap,base,overlays/{local,staging,prod},charts,authz} + opensandbox/ server configs
 examples/        sample user apps (whoami-app.yaml, hello-go/)

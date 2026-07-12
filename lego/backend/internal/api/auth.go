@@ -30,7 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// auth.go is the shared auth gate every HTTP surface sits behind (docs/auth.md):
+// auth.go is the shared auth gate every HTTP surface sits behind (docs/ADR012-auth.md):
 // a bearer token is introspected at Hydra's admin endpoint; otherwise an Ory
 // session (cookie or X-Session-Token) is checked via Kratos' whoami. It attaches
 // the resolved core.Identity to the request context, which the feature services'

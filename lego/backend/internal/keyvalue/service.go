@@ -22,7 +22,7 @@ limitations under the License.
 //
 // It is the datastore sibling of internal/postgres: the KeyValue's user-chosen
 // name is its id (name-as-id), the same deliberate deviation managed databases
-// take (docs/identifiers.md § Known deviations) — a named CR with no separate
+// take (docs/ADR020-identifiers.md § Known deviations) — a named CR with no separate
 // opaque key. Keeping both datastore surfaces name-keyed is what makes them
 // uniform for clients.
 package keyvalue
@@ -55,7 +55,7 @@ type Service struct {
 // KeyValueView is the Render-shaped "key-value" object. Fields bex cannot back
 // yet (Render's maxmemoryPolicy / persistenceMode / ipAllowList) are omitted
 // rather than faked — the object stays a safe superset a Render client can read
-// (docs/render-parity.md § Key Value records the omissions).
+// (docs/ADR018-render-parity.md § Key Value records the omissions).
 type KeyValueView struct {
 	ID        string `json:"id"` // the KeyValue name (name-as-id, postgres sibling)
 	Name      string `json:"name"`
@@ -228,7 +228,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	// Stamp both the tenant label (ownerId scoping — kvView/ListKeyValues read
 	// this) and the workspace label (same-workspace NetworkPolicy selectors,
-	// docs/tenant-isolation.md — this is also what lets a tenant's own App
+	// docs/ADR022-tenant-isolation.md — this is also what lets a tenant's own App
 	// reach its own KeyValue instance), mirroring postgres.CreatePostgres.
 	// Skip when the store is off (no resolver).
 	if tenantID, ok := s.Tenant(ctx); ok {

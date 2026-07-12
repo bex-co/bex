@@ -10,7 +10,7 @@
 # (attached live: node → 10.0.1.2), and the CCM is network-aware (HCLOUD_NETWORK=bex,
 # HCLOUD_NETWORK_ROUTES_ENABLED=false — LB uses the private net, route-controller stays
 # OFF so it can't fight Cilium tunnel-mode routing). The LB→node hop rides 10.0.0.0/16;
-# the LB's public IP is unchanged. See app-cluster.yml (CCM) + docs/infra-credentials.md.
+# the LB's public IP is unchanged. See app-cluster.yml (CCM) + docs/ADR019-infra-credentials.md.
 hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)

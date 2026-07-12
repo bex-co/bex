@@ -34,7 +34,7 @@ const loggingLink = new ApolloLink((operation, forward) => {
 
 /**
  * Create an Apollo client for server-side rendering. Forwards the incoming
- * request cookie to bex-api as a Bearer token (docs/bex-api.md's auth model)
+ * request cookie to bex-api as a Bearer token (docs/ADR006-bex-api.md's auth model)
  * so authenticated queries work on the server.
  *
  * TODO: nothing sets the "bex-dashboard-token" cookie yet — there's no login

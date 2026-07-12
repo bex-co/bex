@@ -47,7 +47,7 @@ type AuditStore interface {
 // audited — deliberately: viewing the audit trail is manage-tier, and a
 // write-relation authorize call is exactly what core.Base records regardless
 // of which verb triggers it. This is documented behavior, not a
-// read-verb-leaked-into-the-log bug (docs/bex-api.md § Audit log)).
+// read-verb-leaked-into-the-log bug (docs/ADR006-bex-api.md § Audit log)).
 type Service struct {
 	*core.Base
 	Store AuditStore

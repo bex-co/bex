@@ -1,6 +1,6 @@
 # w8 · m2 — Usage API: month-to-date usage over REST · GraphQL · MCP
 
-**Worker:** worker8 **Goal:** m1's recorded usage becomes a workspace-scoped product surface: one core `Usage` verb (OpenFGA-authorized) with three thin adapters — a GraphQL dashboard query (companion style, like the existing `monthToDateBandwidth`), `GET /v1/usage` REST, and an MCP `get_usage` tool so agents can reason about their own consumption. One core, thin adapters — the `docs/bex-api.md` pattern. **Status:** DONE 2026-07-09
+**Worker:** worker8 **Goal:** m1's recorded usage becomes a workspace-scoped product surface: one core `Usage` verb (OpenFGA-authorized) with three thin adapters — a GraphQL dashboard query (companion style, like the existing `monthToDateBandwidth`), `GET /v1/usage` REST, and an MCP `get_usage` tool so agents can reason about their own consumption. One core, thin adapters — the `docs/ADR006-bex-api.md` pattern. **Status:** DONE 2026-07-09
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | GraphQL adapter: dashboard `usage` query alongside the `monthToDateBandwidth` companion                          | 30m | t001             | — **DONE** |
 | t003 | REST adapter: `GET /v1/usage?ownerId=…&period=…` (documented bex extension — see parity note)                    | 30m | t001             | — **DONE** |
 | t004 | MCP `get_usage` tool (per-feature MCP registration pattern)                                                      | 30m | t001             | — **DONE** |
-| t005 | Docs: `docs/usage-metering.md` + CLAUDE.md docs index + `docs/render-parity.md` bex-extras row                   | 30m | t002, t003, t004 | — **DONE** |
+| t005 | Docs: `docs/ADR023-usage-metering.md` + CLAUDE.md docs index + `docs/ADR018-render-parity.md` bex-extras row                   | 30m | t002, t003, t004 | — **DONE** |
 | t006 | Render parity: same fields/semantics/errors across REST · GraphQL · MCP; declared drift only                     | 30m | t005             | — **DONE** |
 | t007 | Simplify: `/simplify` over the code this milestone changed                                                       | 30m | t006             | — **DONE** |
 | t008 | Test coverage: adapter-consistency + authz-denial tests                                                          | 45m | t006             | — **DONE** |
@@ -18,7 +18,7 @@
 
 ## Definition of done
 
-`GET /v1/usage`, the GraphQL `usage` query, and MCP `get_usage` all return the same month-to-date quantities (instance-seconds by tier · egress bytes · build seconds) for the caller's workspace; a caller from another workspace is denied once OpenFGA is enforced; the surface is documented in `docs/usage-metering.md` and listed in `docs/render-parity.md`.
+`GET /v1/usage`, the GraphQL `usage` query, and MCP `get_usage` all return the same month-to-date quantities (instance-seconds by tier · egress bytes · build seconds) for the caller's workspace; a caller from another workspace is denied once OpenFGA is enforced; the surface is documented in `docs/ADR023-usage-metering.md` and listed in `docs/ADR018-render-parity.md`.
 
 ## Source + Goal linkage
 

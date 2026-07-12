@@ -21,7 +21,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_SSR_API_URL
 ENV VITE_SSR_API_URL=$VITE_SSR_API_URL
 
-# Build arg for Ory Kratos public API (required at build time — docs/auth.md)
+# Build arg for Ory Kratos public API (required at build time — docs/ADR012-auth.md)
 ARG VITE_KRATOS_PUBLIC_URL
 ENV VITE_KRATOS_PUBLIC_URL=$VITE_KRATOS_PUBLIC_URL
 

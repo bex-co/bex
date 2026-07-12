@@ -1,5 +1,5 @@
 // bex-native projections of bex-api's workspace membership surface
-// (backend/internal/members — w4/m12; docs/auth.md role matrix). Roles are
+// (backend/internal/members — w4/m12; docs/ADR012-auth.md role matrix). Roles are
 // Render's UPPERCASE enum on the wire; the ladder order matches the FGA model.
 
 export const ROLES = [

@@ -26,7 +26,7 @@ import (
 // rest.go is the usage REST fragment. GET /v1/usage returns the calling
 // workspace's month-to-date usage in a bex-native JSON envelope. This is a
 // deliberate bex extension — Render's public REST API has no usage/billing
-// endpoints; see docs/usage-metering.md and docs/render-parity.md
+// endpoints; see docs/ADR023-usage-metering.md and docs/ADR018-render-parity.md
 // § bex ahead of Render.
 
 // usageRow is one (kind, tier, total) entry in the REST/JSON response.

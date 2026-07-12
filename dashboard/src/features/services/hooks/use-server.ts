@@ -21,7 +21,7 @@ export interface UseServerResult {
  * Reads bex-api's `server(id)` query (Render's dashboard name for a single
  * service) and maps the Render-shaped `Service` onto a normalized ServiceView.
  * Presentation only — the same shared Core read the `services` list uses
- * (docs/bex-api.md); mirrors `useServices` for one App.
+ * (docs/ADR006-bex-api.md); mirrors `useServices` for one App.
  */
 export function useServer(id: string): UseServerResult {
   const { data, loading, error, refetch } = useQuery(ServerDocument, {

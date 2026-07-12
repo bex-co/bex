@@ -34,7 +34,7 @@ type WorkspaceSelectionReader interface {
 // and every workspace-scoped list tool's (list_services, list_postgres_instances)
 // read side. It lives in the kernel — not the workspaces feature — so those
 // other features can read a selection without importing workspaces (features
-// never import each other; docs/bex-api.md). One process-wide instance, shared
+// never import each other; docs/ADR006-bex-api.md). One process-wide instance, shared
 // across every MCP session; keyed by the MCP session id ("" for stdio, which
 // has exactly one session, matching render-mcp-server's own convention).
 // Selection is held in memory only, never persisted — a server restart clears

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unit tests for the OpenBao prod-wiring scripts (docs/secrets.md, w1/m10):
+# Unit tests for the OpenBao prod-wiring scripts (docs/ADR013-secrets.md, w1/m10):
 #   1. bao-init.sh's set_env_var — the in-file .env editor that writes the
 #      Shamir unseal keys + root token. A regression here (dropping a value,
 #      echoing it, clobbering an unrelated key, or failing to replace) is

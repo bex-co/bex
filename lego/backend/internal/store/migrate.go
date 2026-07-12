@@ -18,7 +18,7 @@ limitations under the License.
 // truth for the product's business entities (tenants, apps, domains + their
 // mappings to Ory and Metronome) and the minimal API over them. It projects `apps` rows into App CRs
 // (app.bex.co/v1alpha1) for the operator to execute — policy/intent lives
-// here, mechanism stays in the operator (docs/control-plane.md).
+// here, mechanism stays in the operator (docs/ADR003-control-plane.md).
 package store
 
 import (

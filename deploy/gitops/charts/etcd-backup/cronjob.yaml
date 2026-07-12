@@ -3,7 +3,7 @@
 # Why: App state lives only in the single control-plane node's etcd (local disk,
 # no HA) — a node rebuild loses every App CR. Until the control-plane Postgres is
 # the source of truth, this ships a daily `etcdctl snapshot save` off-node.
-# Restore runbook: docs/etcd-backup-restore.md.
+# Restore runbook: docs/ADR011-etcd-backup-restore.md.
 #
 # Wiring:
 #  - Runs on the control-plane node (nodeSelector + toleration) with hostNetwork

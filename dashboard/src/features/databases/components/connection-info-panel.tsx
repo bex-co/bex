@@ -21,7 +21,7 @@ import type { ConnectionInfoView } from "@/features/databases/types";
 
 /**
  * Render's "Connections" panel. The connection strings + password are fetched
- * ONLY when the user clicks Reveal — never on mount (docs/bex-api.md §Managed
+ * ONLY when the user clicks Reveal — never on mount (docs/ADR006-bex-api.md §Managed
  * Postgres: the password is the one sensitive field, surfaced on demand). Until
  * then this shows just the button; after, each string gets a copy button and the
  * password is masked behind a show/hide toggle.

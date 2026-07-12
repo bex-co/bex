@@ -12,7 +12,7 @@ name: app-cluster (CAPH)
 #
 # Prereq: the app cluster exists and a CP node is SSH-reachable (initial
 # bring-up / DR bootstrap happens elsewhere: infra.yml + a temporary mgmt
-# cluster, then clusterctl move — docs/architecture.md).
+# cluster, then clusterctl move — docs/ADR002-architecture.md).
 # Secrets: HCLOUD_TOKEN, BEX_SSH_PRIVATE_KEY (to read admin.conf off a CP node).
 
 on:
@@ -133,7 +133,7 @@ jobs:
       # owns pod routing (tunnel mode), so CCM-programmed pod-CIDR routes are redundant
       # and can fight it. NOTE: CAPH attaches nodes born after hcloudNetwork.enabled=true
       # to the network automatically; the pre-existing single node was attached out-of-band
-      # (hcloud API attach_to_network + netplan apply → 10.0.1.2). See docs/infra-credentials.md.
+      # (hcloud API attach_to_network + netplan apply → 10.0.1.2). See docs/ADR019-infra-credentials.md.
       # Scheduling (w1/m19 t003): CCM is bootstrap-critical — it initializes nodes
       # (clears the cloud-provider taint), so it cannot wait for a worker pool to be
       # Ready. It already tolerates the control-plane taint by default; pinning it

@@ -80,7 +80,7 @@ const (
 
 // BackupStore is the object-store target CNPG's barmanObjectStore writes to
 // (Wasabi/S3-compatible), reusing the etcd/OpenBao backup credential pattern
-// (docs/etcd-backup-restore.md). All three fields must be set for the controller
+// (docs/ADR011-etcd-backup-restore.md). All three fields must be set for the controller
 // to project backups; otherwise no plan gets them (recovery/PITR unavailable).
 type BackupStore struct {
 	// DestinationPath is the S3 URL prefix, e.g. "s3://bex-tfstate/postgres".
@@ -101,7 +101,7 @@ func (b BackupStore) configured() bool {
 
 // normalizeIdent turns an App/DB name into a valid unquoted PostgreSQL
 // identifier: lowercase, hyphens -> underscores. So a client never has to
-// double-quote the db/role name (docs/postgresql-management.md §4).
+// double-quote the db/role name (docs/ADR009-postgresql-management.md §4).
 func normalizeIdent(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, "-", "_"))
 }

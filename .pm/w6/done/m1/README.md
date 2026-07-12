@@ -24,7 +24,7 @@ On a cluster with `BEX_CP_DB_URI` + enforced OpenFGA: an identity that already h
 ## Source + Goal linkage
 
 - **Source:** deep-research report [`w6/RESEARCH-workspaces.md`](../RESEARCH-workspaces.md) (findings 1–4, 9; open question 1), user request 2026-07-08 (Render `/new/workspace` + entire workspace lifecycle parity, composed with existing authn/authz/database).
-- **Goal linkage:** GOAL.md #5 (multi-tenant); docs/vision.md pillar 1 (Render parity). Gap vs board: w1/m9 mints exactly one workspace per identity and has no user-initiated create/rename/delete or multi-workspace; w4/m12 covers members/roles, not the workspace object's own lifecycle.
+- **Goal linkage:** GOAL.md #5 (multi-tenant); docs/ADR008-vision.md pillar 1 (Render parity). Gap vs board: w1/m9 mints exactly one workspace per identity and has no user-initiated create/rename/delete or multi-workspace; w4/m12 covers members/roles, not the workspace object's own lifecycle.
 - **Expected outcome:** the tenancy substrate becomes a user-facing product object — multiple workspaces per user with Render's plan limits enforced server-side, and a safe delete path that doesn't strand Apps, CNPG clusters, or OpenBao secrets.
 - **Why now:** w1/m9 is in flight; designing lifecycle verbs against its tuple/row model while it lands avoids forking the tenancy write path (same rationale that gates w4/m12). m2 (owners API) and m3 (dashboard UX) both build on these verbs.
 - **Render parity task included:** yes — feature work on a tenant-facing surface; parity here notably includes _not_ adding REST mutations (research finding 9).

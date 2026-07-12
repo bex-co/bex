@@ -23,7 +23,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm for w6` ("more for w6") 2026-07-09, tracing `w6/m1/t001`'s unmet acceptance criteria (its task file requires producing `docs/render-artifacts/workspace-lifecycle.md`; confirmed absent via `ls docs/render-artifacts/`, despite the task being marked done) and `w6/m3`'s own "Follow-ups" section (live-cluster rerun + codegen diff, both explicitly flagged as not done, verified against a stub only).
-- **Goal linkage:** Render-parity for the workspace lifecycle dashboard surface (`docs/vision.md` pillar 1); closes residual risk `w6/m3` itself flagged as "narrow but real."
+- **Goal linkage:** Render-parity for the workspace lifecycle dashboard surface (`docs/ADR008-vision.md` pillar 1); closes residual risk `w6/m3` itself flagged as "narrow but real."
 - **Expected outcome:** bex's workspace delete/rename UX becomes a verified clone of Render's rather than a best-guess design; the dashboard's workspace GraphQL layer is proven against a live schema instead of a hand-authored guess.
 - **Why now:** both gaps are small and already precisely identified — cheap to close now, before `w4/m12` (members) and other `w5` follow-ups build further UI on top of an unverified foundation.
 - **Render parity: included** (standing task) — this milestone's entire purpose is Render-UX verification.

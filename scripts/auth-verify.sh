@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # E2E verify of the auth substrate (Ory Kratos + Hydra backed by CNPG Postgres,
-# docs/auth.md) against the current kubeconfig cluster:
+# docs/ADR012-auth.md) against the current kubeconfig cluster:
 #   1. Kratos admin API: create an identity, read it back.
 #   2. Hydra: register an OAuth2 client, complete a client_credentials flow,
 #      introspect the token (active: true).

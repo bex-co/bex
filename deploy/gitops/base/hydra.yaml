@@ -1,5 +1,5 @@
 # Ory Hydra — the platform OAuth2/OIDC provider (token issuance + introspection;
-# see docs/auth.md). Pinned upstream chart; values are vendored in this repo, so
+# see docs/ADR012-auth.md). Pinned upstream chart; values are vendored in this repo, so
 # this is a multi-source Application: the Helm repo provides the chart, the git
 # source (ref: values) provides base/values/hydra.values.yaml.
 # sync-wave 3: after the CNPG operator (1) and hydra-db (2). Runtime secrets

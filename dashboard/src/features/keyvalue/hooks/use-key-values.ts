@@ -18,7 +18,7 @@ export interface UseKeyValuesResult {
 /**
  * Reads bex-api's `keyValues` query and maps each Render-shaped `KeyValue` onto
  * a normalized KeyValueView. Presentation only — the list is the operator's real
- * KeyValue CRs (docs/keyvalue-management.md); mirrors `useDatabases`.
+ * KeyValue CRs (docs/ADR021-keyvalue-management.md); mirrors `useDatabases`.
  */
 export function useKeyValues(): UseKeyValuesResult {
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(

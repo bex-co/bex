@@ -313,7 +313,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		"createKeyValue", map[string]any{"n": "ds-kv"}, dsID)
 
 	// The KeyValue CR itself carries the workspace label the same-workspace
-	// NetworkPolicy selector matches on (docs/tenant-isolation.md) — the label
+	// NetworkPolicy selector matches on (docs/ADR022-tenant-isolation.md) — the label
 	// t002 stamps is what lets dsID's own App reach its own Valkey instance.
 	var kv appv1alpha1.KeyValue
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ds-kv"}, &kv); err != nil {

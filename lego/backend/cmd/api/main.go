@@ -94,7 +94,7 @@ func main() {
 	base := &core.Base{Client: cl, Namespace: envOr("BEX_API_NAMESPACE", "default")}
 
 	deps := api.Deps{
-		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/custom-domain.md);
+		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain:    os.Getenv("BEX_BASE_DOMAIN"),
 		PodLogs:       logs.NewPodLogSource(cs),
@@ -106,7 +106,7 @@ func main() {
 	}
 	// Durable log history, wired only when BEX_LOKI_URL is set: QueryLogs/Logs
 	// then read Loki (history survives pod restarts) instead of live pod logs.
-	// Unset => the pod-log path runs byte-identical to before (docs/observability.md).
+	// Unset => the pod-log path runs byte-identical to before (docs/ADR010-observability.md).
 	// The SSE live tail stays on pod logs either way.
 	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
 		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
@@ -124,7 +124,7 @@ func main() {
 		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
 		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
 	}
-	// Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's admin API,
+	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key
 	// store (stdio mode without a Hydra URL) keeps the api-key verbs answering
 	// ErrAPIKeysUnavailable instead of dialing nowhere.
@@ -132,13 +132,13 @@ func main() {
 	if hydraAdminURL != "" {
 		deps.APIKeys = apikeys.NewHydraAPIKeys(hydraAdminURL)
 	}
-	// Tenant secrets (docs/secrets.md): the env-vars API stores values in OpenBao
+	// Tenant secrets (docs/ADR013-secrets.md): the env-vars API stores values in OpenBao
 	// KV v2, wired only when BEX_OPENBAO_URL is set — else the env-vars verbs 503
 	// and the rest of the API is byte-for-byte unchanged.
 	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
 		deps.Secrets = secrets.NewOpenBaoStore(bao)
 	}
-	// GitHub App integration (docs/github-integration.md): private-repo deploys +
+	// GitHub App integration (docs/ADR026-github-integration.md): private-repo deploys +
 	// zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
 	// are set (and the key parses) — else the git-connect verbs 503. The store
 	// half (git_connections) is wired inside the BEX_CP_DB_URI block below.
@@ -155,7 +155,7 @@ func main() {
 	if kratosAdmin := os.Getenv("BEX_KRATOS_ADMIN_URL"); kratosAdmin != "" {
 		deps.Identities = workspaces.NewKratosIdentities(kratosAdmin)
 	}
-	// Authorization (docs/auth.md): unset => authz disabled (every verb allowed,
+	// Authorization (docs/ADR012-auth.md): unset => authz disabled (every verb allowed,
 	// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
 	// wired in stdio mode: that transport's trust boundary is the subprocess itself
 	// (no auth gate, so no identity — a wired checker would deny all).
@@ -261,7 +261,7 @@ func main() {
 		// rows up every hour (needs Prometheus; skipped without it) and compacts
 		// months older than the hot window into usage_monthly daily. The hot
 		// window is BEX_USAGE_RETENTION_MONTHS calendar months (current month
-		// included; default 3, minimum 1) — docs/usage-metering.md.
+		// included; default 3, minimum 1) — docs/ADR023-usage-metering.md.
 		usageSvc := usage.NewService(base, st, promURL, nil)
 		if v := os.Getenv("BEX_USAGE_RETENTION_MONTHS"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
@@ -314,7 +314,7 @@ func main() {
 		deps.Mailer = m
 	}
 	deps.InviteBaseURL = os.Getenv("BEX_DASHBOARD_URL")
-	// The GitHub install callback (docs/github-integration.md) redirects the
+	// The GitHub install callback (docs/ADR026-github-integration.md) redirects the
 	// browser back to the dashboard settings page on success.
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 
@@ -322,7 +322,7 @@ func main() {
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
-	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/auth.md): the Hydra
+	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md): the Hydra
 	// public issuer + this API's canonical resource URI. Both unset => no
 	// metadata endpoint, no audience check — behavior identical to before.
 	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
@@ -330,7 +330,7 @@ func main() {
 	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
 	// The GitHub App's app-wide webhook signs pushes with its own secret — a
 	// second accepted key so installed repos redeploy hands-free
-	// (docs/github-integration.md).
+	// (docs/ADR026-github-integration.md).
 	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP

@@ -32,7 +32,7 @@ import (
 )
 
 // loki.go is the durable-history backend: a LogHistorySource backed by Loki's
-// query_range API (docs/observability.md). The domain depends only on the
+// query_range API (docs/ADR010-observability.md). The domain depends only on the
 // injected LogHistorySource; the transport here is thin and the tricky parts —
 // the LogQL builder and the stream-response parser — are pure and unit-tested,
 // exactly like metrics' Prometheus source. Loki owns metrics? no: Prometheus
@@ -41,7 +41,7 @@ import (
 // lokiLookback is the default lower time bound for a query that carries none:
 // the point of durable history is a real window, so an unbounded "recent logs"
 // read still reaches back across restarts. Matches the shipped retention
-// (docs/observability.md) so a bare query can surface anything still stored.
+// (docs/ADR010-observability.md) so a bare query can surface anything still stored.
 const lokiLookback = 7 * 24 * time.Hour
 
 // NewLokiSource returns the production LogHistorySource, backed by a Loki

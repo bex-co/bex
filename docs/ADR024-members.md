@@ -1,10 +1,10 @@
 # Workspace members & roles (w4/m12)
 
-The one multi-tenant IAM surface [w1/m9](control-plane.md) left out: invite a teammate by email, assign one of Render's five roles, list members, change a role, and remove a member — over Core verbs that write `tenant_members` rows and OpenFGA `workspace:<id>` tuples together, with a dashboard **Settings → Team** page. It turns the role matrix OpenFGA has modelled since m4 ([auth.md](auth.md), `deploy/gitops/authz/model.fga`) from a static model into a populated one: a workspace stops being a single-person silo.
+The one multi-tenant IAM surface [w1/m9](ADR003-control-plane.md) left out: invite a teammate by email, assign one of Render's five roles, list members, change a role, and remove a member — over Core verbs that write `tenant_members` rows and OpenFGA `workspace:<id>` tuples together, with a dashboard **Settings → Team** page. It turns the role matrix OpenFGA has modelled since m4 ([ADR012-auth.md](ADR012-auth.md), `deploy/gitops/authz/model.fga`) from a static model into a populated one: a workspace stops being a single-person silo.
 
 ## The shape
 
-One feature package, three thin adapters, Render-consistent — the same rule the rest of bex-api follows ([bex-api.md](bex-api.md)):
+One feature package, three thin adapters, Render-consistent — the same rule the rest of bex-api follows ([ADR006-bex-api.md](ADR006-bex-api.md)):
 
 - **`lego/backend/internal/members`** — the Core verbs (`service.go`): `List`, `Invite`, `ChangeRole`, `Remove`, `ListInvites`, `RevokeInvite`. Every verb targets an **explicit workspace id** and gates on _that_ workspace (`AuthorizeOn(rel, workspace:<id>)`), like the workspace-lifecycle verbs — managing members is an admin acting **on** a workspace it administers, not on its own default workspace.
 - **`rest.go` / `graphql.go` / `mcp.go`** — the fragments. REST under `/v1/workspaces/{id}/members` + `/invites` (a bex extension — Render manages members only via its dashboard GraphQL); GraphQL `workspaceMembers` / `workspaceInvites` + the four mutations (the dashboard Team page's client); MCP six tools (an agent seats teammates the same way a human does).
@@ -15,7 +15,7 @@ One feature package, three thin adapters, Render-consistent — the same rule th
 
 The five Render roles, verified live (`docs/render-artifacts/team-members.graphql`) and already the FGA relations in `model.fga`:
 
-| role | can, per the matrix ([auth.md](auth.md)) |
+| role | can, per the matrix ([ADR012-auth.md](ADR012-auth.md)) |
 | --- | --- |
 | `viewer` | read-only resource lists/details/metrics; **not** logs or sensitive fields |
 | `contributor` | + logs, restart/suspend/resume; **not** create/delete or sensitive fields |
@@ -43,7 +43,7 @@ Invites expire (Render's 7 days). Delivery is best-effort: a flaky relay is logg
 
 ## Enforcement (the definition of done)
 
-On a cluster with OpenFGA enforced: an admin invites an email → the recipient gets the mail (Mailpit locally), signs up, and lands in the workspace at the assigned role; the [auth.md](auth.md) role matrix is observably enforced per role (a viewer reads but 403s on suspend / member management; a developer mutates resources but not org settings; an admin manages members); removing a member revokes their access; the last admin cannot remove or demote themselves.
+On a cluster with OpenFGA enforced: an admin invites an email → the recipient gets the mail (Mailpit locally), signs up, and lands in the workspace at the assigned role; the [ADR012-auth.md](ADR012-auth.md) role matrix is observably enforced per role (a viewer reads but 403s on suspend / member management; a developer mutates resources but not org settings; an admin manages members); removing a member revokes their access; the last admin cannot remove or demote themselves.
 
 ## Known divergence from Render
 

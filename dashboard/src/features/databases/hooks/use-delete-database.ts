@@ -13,7 +13,7 @@ export interface UseDeleteDatabaseResult {
 
 /**
  * Wires the delete action to bex-api's `deleteDatabase`, which cascades the CNPG
- * Cluster + PVC + Secret + external route (docs/bex-api.md §Managed Postgres).
+ * Cluster + PVC + Secret + external route (docs/ADR006-bex-api.md §Managed Postgres).
  * Destructive and irreversible, so callers gate it behind a typed confirm.
  */
 export function useDeleteDatabase(): UseDeleteDatabaseResult {

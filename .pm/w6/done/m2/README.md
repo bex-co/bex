@@ -23,7 +23,7 @@ With two workspaces and an API key: `GET /v1/owners` returns both, Render-shaped
 ## Source + Goal linkage
 
 - **Source:** deep-research report [`w6/RESEARCH-workspaces.md`](../RESEARCH-workspaces.md) (findings 7–10 + MCP tool shapes; open questions 2–3); supersedes inbox note `w2/002.md` (workspace MCP tools, which was blocked on real workspaces).
-- **Goal linkage:** docs/vision.md pillar 1 (Render-compatible API) and pillar 3 (MCP/agent-native); GOAL.md #5 (multi-tenant).
+- **Goal linkage:** docs/ADR008-vision.md pillar 1 (Render-compatible API) and pillar 3 (MCP/agent-native); GOAL.md #5 (multi-tenant).
 - **Expected outcome:** Render-targeting clients and agents (including Render's own MCP client conventions) can enumerate and scope to bex workspaces without translation; `ownerId` appears wherever Render puts it.
 - **Why now:** m1's verbs make multiple workspaces exist; without list/select surfaces, agents and API users are trapped in their default workspace — and w2's deploy-from-chat milestones consume `select_workspace`.
 - **Render parity task included:** yes — this milestone is precisely an API-compatibility surface.

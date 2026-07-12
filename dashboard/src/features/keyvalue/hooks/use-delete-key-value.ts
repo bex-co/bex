@@ -14,7 +14,7 @@ export interface UseDeleteKeyValueResult {
 /**
  * Wires the delete action to bex-api's `deleteKeyValue`, which cascades the
  * Valkey StatefulSet + PVC + Secret + external route
- * (docs/keyvalue-management.md). Destructive and irreversible, so callers gate
+ * (docs/ADR021-keyvalue-management.md). Destructive and irreversible, so callers gate
  * it behind a typed confirm. Mirrors databases' `useDeleteDatabase`.
  */
 export function useDeleteKeyValue(): UseDeleteKeyValueResult {

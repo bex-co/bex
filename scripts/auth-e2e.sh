@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E for bex-api auth (docs/auth.md, docs/bex-api.md#auth) against the current
+# E2E for bex-api auth (docs/ADR012-auth.md, docs/ADR006-bex-api.md#auth) against the current
 # kubeconfig cluster's Ory substrate — no shared static token exists:
 #   1. Seed the bootstrap OAuth2 client; exchange it for a bearer token.
 #   2. The token authenticates REST + GraphQL; garbage/missing tokens get 401.
@@ -135,7 +135,7 @@ request DELETE "/v1/api-keys/$key_id" "$boot_token" "";          assert_code 204
 [ -z "$(token_for "$key_id" "$key_secret")" ] || fail "revoked key still mints tokens"
 echo "    ok: revoked key can no longer mint tokens"
 
-# --- act 5: authorization (docs/auth.md#authorization) -------------------------
+# --- act 5: authorization (docs/ADR012-auth.md#authorization) -------------------------
 echo "==> enabling authorization (OpenFGA)"
 OPENFGA=127.0.0.1:24446
 kubectl -n "$NS" port-forward service/openfga 24446:8080 >/dev/null 2>&1 &

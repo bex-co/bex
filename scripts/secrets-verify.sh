@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E for the tenant env-vars feature (docs/secrets.md, w4/m6) against the current
+# E2E for the tenant env-vars feature (docs/ADR013-secrets.md, w4/m6) against the current
 # kubeconfig cluster's OpenBao (m5) + Ory substrate. Proves the whole path:
 #
 #   1. POSITIVE: an authenticated caller PUTs env-vars on a service; the value

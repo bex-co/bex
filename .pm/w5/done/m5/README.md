@@ -46,7 +46,7 @@ bex's Overview panel therefore renders a bex-shaped superset — Status/Phase/UR
 - URL param contract: `/web/srv-…/logs?t=app&r=14d` — `t` = log source (`app` = application logs; also build/system), `r` = time range (`14d`). Mirror these as query params on bex's logs route so deep-links carry source + range.
 - Toolbar (left→right): **[Application logs ▾]** source filter · **[🔍 Search logs]** searchbox · **[🕐 Last 14 days ▾]** time-range picker · **[⤢ Maximize]** · **[⋯ Options]**.
 - Row anatomy: a **level icon** (red ✕ for errors — error rows get a pink row background), a **timestamp** (`12:07:54 PM`), a clickable **instance/deploy tag** (`[fhgtt]`), then the **message** (URLs auto-linked). Date separators (`Jun 26`) break the stream by day.
-- Live-tail affordance: a floating **"Return to Bottom"** button when scrolled up. Maps to bex's live-tail Logs API (`docs/observability.md`).
+- Live-tail affordance: a floating **"Return to Bottom"** button when scrolled up. Maps to bex's live-tail Logs API (`docs/ADR010-observability.md`).
 
 ## Definition of done
 
@@ -58,7 +58,7 @@ bex's Overview panel therefore renders a bex-shaped superset — Status/Phase/UR
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". `server(id)` query per `docs/bex-api.md` (mirrors Render's dashboard GraphQL `server(id)`). Service IA + logs contract captured live from Render (see the Render reference above).
-- **Goal linkage:** `docs/vision.md` dashboard pillar + pillar-1 API-first (`server(id)` already exposed). Establishes the per-service IA — matching Render's service-detail shape — that logs (m6) and later pages slot into.
+- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". `server(id)` query per `docs/ADR006-bex-api.md` (mirrors Render's dashboard GraphQL `server(id)`). Service IA + logs contract captured live from Render (see the Render reference above).
+- **Goal linkage:** `docs/ADR008-vision.md` dashboard pillar + pillar-1 API-first (`server(id)` already exposed). Establishes the per-service IA — matching Render's service-detail shape — that logs (m6) and later pages slot into.
 - **Expected outcome:** the Render service-detail experience — a real drill-down from the services list into an overview, controllable from the header, with a Render-shaped service nav that logs slots into.
 - **Why now:** once the list is real (m4), the drill-down is the natural sequel; building the nav shell now, before logs (m6), means logs lands as a nav item rather than another bare route.

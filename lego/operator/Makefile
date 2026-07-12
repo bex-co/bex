@@ -102,7 +102,7 @@ lint: golangci-lint ## Run golangci-lint over both modules (operator + backend);
 	exit $$rc
 
 .PHONY: lint-backend
-lint-backend: golangci-lint ## Run golangci-lint over the backend module only (enforces the id convention, docs/identifiers.md)
+lint-backend: golangci-lint ## Run golangci-lint over the backend module only (enforces the id convention, docs/ADR020-identifiers.md)
 	cd ../backend && "$(GOLANGCI_LINT)" run
 
 .PHONY: lint-fix

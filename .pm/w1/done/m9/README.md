@@ -20,6 +20,6 @@ On a cluster with `BEX_CP_DB_URI` set: two identities sign up → two tenant row
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm for w1` (2026-07-08); w1/m2 deferrals (t004's "tenant_members write path is a later onboarding task"; m2's OpenFGA note that the `workspace:default` placeholder is replaced "when the control plane grows real workspaces"); 2026-07-08 docs-vs-code audit (prod `BEX_OPENFGA_URL` deliberately commented out pending this work).
-- **Goal linkage:** vision roadmap #1 (Postgres control plane — the tenants half); multi-tenancy per docs/control-plane.md. Auth stays bought (Kratos/Hydra/OpenFGA; only mapping keys in Postgres) — DO_NOT_DO-compliant.
+- **Goal linkage:** vision roadmap #1 (Postgres control plane — the tenants half); multi-tenancy per docs/ADR003-control-plane.md. Auth stays bought (Kratos/Hydra/OpenFGA; only mapping keys in Postgres) — DO_NOT_DO-compliant.
 - **Expected outcome:** prod authz stops being allow-all; tenants are isolated at the API layer; the OpenFGA model's "(w1/m2)" placeholder comment is retired.
 - **Why now:** m2 is one acceptance task from done, and this is the sole blocker for enforced authz in prod — a standing security gap, not a nice-to-have.

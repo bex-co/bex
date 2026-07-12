@@ -8,14 +8,14 @@
 | ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
 | t001 | Auth middleware: Hydra token introspection + `BEX_AUTH_MODE` flag — **DONE**         | 30m | — (w4/m1)  |
 | t002 | Kratos session validation for the GraphQL dashboard surface — **DONE**               | 30m | t001       |
-| t003 | Env plumbing + update `docs/bex-api.md` and `CLAUDE.md` env table — **DONE**         | 25m | t001       |
+| t003 | Env plumbing + update `docs/ADR006-bex-api.md` and `CLAUDE.md` env table — **DONE**         | 25m | t001       |
 | t004 | E2E acceptance: Hydra token → REST + GraphQL succeed; bad token → 401 — **DONE**     | 25m | t002, t003 |
 | t005 | Simplify — run `/simplify` over the code this milestone changed — **DONE**           | 20m | t004       |
 | t006 | Test coverage — meaningful tests for the behavior this milestone shipped — **DONE**  | 30m | t004       |
 
 ## E2E invocation (t004)
 
-On the local mock cluster (`bash scripts/mock-cluster.sh`, auth substrate deployed per docs/auth.md, App CRD installed via `cd operator && make install`):
+On the local mock cluster (`bash scripts/mock-cluster.sh`, auth substrate deployed per docs/ADR012-auth.md, App CRD installed via `cd operator && make install`):
 
 ```
 KUBECONFIG=$PWD/infra/local/bex.kubeconfig bash scripts/auth-e2e.sh

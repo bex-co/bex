@@ -29,7 +29,7 @@ import (
 // dashboard API); naming follows Render's kebab-case noun style. The callback is
 // GitHub's post-install "Setup URL" redirect target — it carries the dashboard
 // session (no bearer), and its installation_id is validated server-side before
-// anything is recorded (docs/github-integration.md).
+// anything is recorded (docs/ADR026-github-integration.md).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/git/connect", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := s.StartConnect(r.Context())

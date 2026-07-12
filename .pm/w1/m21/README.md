@@ -20,7 +20,7 @@
 - A repo with a static build (e.g. a Vite/CRA `dist/`) deploys as a `static_site`: bex builds it and serves `publishPath` from an object-store/CDN origin — **no Deployment/Service** for the served content.
 - `/routes` redirects/rewrites and `/headers` custom response headers apply on the served responses (verifiable with `curl -I` and a redirect check).
 - REST/GraphQL/MCP create/read/update the static site + its routes/headers with Render-identical shape; the dashboard exposes create + publishPath + routes + headers.
-- `docs/render-parity.md` static-site rows (build→CDN, redirects/rewrites, headers) move gap → ✅ with evidence.
+- `docs/ADR018-render-parity.md` static-site rows (build→CDN, redirects/rewrites, headers) move gap → ✅ with evidence.
 
 ## Source + Goal linkage
 

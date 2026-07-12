@@ -22,7 +22,7 @@ import (
 )
 
 // GitConnection is a row of `git_connections`: the GitHub App installation a
-// workspace has connected (docs/github-integration.md). One per workspace — the
+// workspace has connected (docs/ADR026-github-integration.md). One per workspace — the
 // workspace id is the primary key, so recording again upserts.
 type GitConnection struct {
 	WorkspaceID    string    `json:"workspaceId"`

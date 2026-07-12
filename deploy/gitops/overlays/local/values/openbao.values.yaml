@@ -6,7 +6,7 @@
 # Pin to the control-plane node: OpenBao's `service_registration "kubernetes"`
 # stanza calls the apiserver directly, and worker-node pods can't reach it
 # under this CAPD cluster's OrbStack/Calico setup (same quirk documented in
-# docs/auth.md and scripts/mock-cluster.sh's coredns patch) — a worker-scheduled
+# docs/ADR012-auth.md and scripts/mock-cluster.sh's coredns patch) — a worker-scheduled
 # pod comes up Running but hangs on its first request forever, never
 # responding, because that call blocks before the HTTP handler can serve
 # anything. Not needed in prod (real clusters don't have this networking gap).

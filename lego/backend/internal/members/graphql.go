@@ -27,7 +27,7 @@ import (
 // (docs/render-artifacts/team-members.graphql): members[].role (UPPERCASE enum),
 // pendingInvites{ id, email, role, expiresAt }. bex flattens Render's
 // owner.team.members nesting (bex has no polymorphic `owner`) into
-// workspace-scoped queries — recorded as parity shape drift (docs/render-parity.md).
+// workspace-scoped queries — recorded as parity shape drift (docs/ADR018-render-parity.md).
 
 var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceMember",

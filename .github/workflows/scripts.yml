@@ -2,7 +2,7 @@ name: scripts (test)
 
 # Pure-bash unit tests for the prod-wiring scripts — no cluster, no kubectl, no
 # curl. Currently: scripts/bao-init.test.sh (bao-init.sh's .env editor + the
-# env-template / gh-secrets.sh wiring, docs/secrets.md). Add script tests here
+# env-template / gh-secrets.sh wiring, docs/ADR013-secrets.md). Add script tests here
 # as they appear.
 on:
   pull_request:

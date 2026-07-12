@@ -3,7 +3,7 @@
 #
 # Post-pivot there is no mgmt cluster: discover a CP node by its CAPH label
 # through the hcloud API and SSH-fetch /etc/kubernetes/admin.conf (key-only
-# :22 — the recorded auth-only baseline, docs/infra-credentials.md). The
+# :22 — the recorded auth-only baseline, docs/ADR019-infra-credentials.md). The
 # admin.conf already points at the kube-api LB, so no rewriting is needed.
 #
 # Usage:  HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <output-path>

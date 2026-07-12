@@ -9,7 +9,7 @@
 | t001 | Remove static mode: ory-only auth gate, no `BEX_API_TOKEN`/`BEX_AUTH_MODE` — **DONE** | 30m | — (w4/m2)  |
 | t002 | API-key verbs in Core + REST `/v1/api-keys` + GraphQL + MCP parity — **DONE**      | 45m | t001       |
 | t003 | Bootstrap client seeding: script + deploy.yml step + `.env`/gh-secrets — **DONE**  | 30m | t001       |
-| t004 | Manifests + docs cutover (deployment env, bex-api.md, auth.md, CLAUDE.md) — **DONE** | 25m | t002, t003 |
+| t004 | Manifests + docs cutover (deployment env, ADR006-bex-api.md, ADR012-auth.md, CLAUDE.md) — **DONE** | 25m | t002, t003 |
 | t005 | E2E: bootstrap client mints key → key calls API → revoke kills it — **DONE**       | 30m | t004       |
 | t006 | Simplify — run `/simplify` over the code this milestone changed — **DONE**         | 20m | t005       |
 | t007 | Test coverage — meaningful tests for the behavior this milestone shipped — **DONE** | 30m | t005       |
@@ -20,7 +20,7 @@ bex-api refuses to start without `BEX_HYDRA_ADMIN_URL` and accepts no shared sec
 
 ## E2E invocation (t005)
 
-On the local mock cluster (auth substrate per docs/auth.md, App CRD via `cd operator && make install`):
+On the local mock cluster (auth substrate per docs/ADR012-auth.md, App CRD via `cd operator && make install`):
 
 ```
 KUBECONFIG=$PWD/infra/local/bex.kubeconfig bash scripts/auth-e2e.sh

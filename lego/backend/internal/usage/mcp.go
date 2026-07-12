@@ -25,7 +25,7 @@ import (
 // mcp.go is the usage MCP fragment. get_usage gives an MCP agent direct
 // insight into its own workspace's month-to-date resource consumption —
 // pillar 3 ("agents as operators"): an agent that deploys should be able to
-// check what it consumes (docs/vision.md).
+// check what it consumes (docs/ADR008-vision.md).
 
 type getUsageArgs struct {
 	Period string `json:"period,omitempty" jsonschema:"calendar month as YYYY-MM; defaults to the current month"`

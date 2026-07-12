@@ -3,7 +3,7 @@ interface Config {
   /**
    * bex-api's REST/SSE base — `apiUrl` with the `/graphql` suffix removed.
    * bex-api serves GraphQL and the REST logs stream from the same origin
-   * (docs/bex-api.md), so the one deployment fact (where the API lives) stays
+   * (docs/ADR006-bex-api.md), so the one deployment fact (where the API lives) stays
    * here rather than being re-derived inside a feature. Consumed by the SSE
    * live-log tail (`features/logs`).
    */

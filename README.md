@@ -9,8 +9,8 @@ Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.on
 ## Why bex
 
 - **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
-- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/bex-api.md](docs/bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/render-parity.md](docs/render-parity.md)).
-- **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/vision.md](docs/vision.md).
+- **Drop-in familiar.** `bex.yml` is `render.yaml`-shaped, and `bex-api` speaks Render's REST and GraphQL, verified against Render's OpenAPI spec ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)). How far the compatibility actually goes — every Render capability × REST/GraphQL/MCP/UI, with evidence — is the parity ledger ([docs/ADR018-render-parity.md](docs/ADR018-render-parity.md)).
+- **Built for agents.** Every action is an API call or a Kubernetes CR; state is machine-readable (`phase` / `revision` / `url`). No dashboard-only actions. See the mission and roadmap in [docs/ADR008-vision.md](docs/ADR008-vision.md).
 
 ## Quickstart: local mock (machines = Docker containers)
 
@@ -29,7 +29,7 @@ for n in $(kubectl get nodes -o name | sed 's|node/||'); do
   docker cp /tmp/bex-op.tar "$n":/op.tar && docker exec "$n" ctr -n k8s.io images import /op.tar
 done
 ( cd lego/operator && make deploy IMG=bex-operator:dev )   # ns bex-system, BEX_RUNTIME=kubernetes
-# local CAPD only: pin the operator to the control-plane node (see docs/deployment.md)
+# local CAPD only: pin the operator to the control-plane node (see docs/ADR004-deployment.md)
 kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
  '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
   "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}'
@@ -72,19 +72,19 @@ spec:
 | Suspend / resume / restart | ✅ |
 | REST API (Render-compatible) | ✅ lifecycle verbs, logs, metrics, env vars, API keys — create-service / deploys planned |
 | GraphQL (Render dashboard-compatible) | ✅ |
-| MCP server | ✅ `/mcp` + stdio, OAuth 2.1 ([docs/bex-api.md](docs/bex-api.md), connect recipe: [docs/connect-an-agent.md](docs/connect-an-agent.md)) |
-| Managed Postgres | ✅ Render `/v1/postgres`-compatible ([docs/postgresql-management.md](docs/postgresql-management.md)) |
-| Auth (API keys, sessions, roles) | ✅ Ory Hydra/Kratos + OpenFGA ([docs/auth.md](docs/auth.md)) |
+| MCP server | ✅ `/mcp` + stdio, OAuth 2.1 ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md), connect recipe: [docs/ADR025-connect-an-agent.md](docs/ADR025-connect-an-agent.md)) |
+| Managed Postgres | ✅ Render `/v1/postgres`-compatible ([docs/ADR009-postgresql-management.md](docs/ADR009-postgresql-management.md)) |
+| Auth (API keys, sessions, roles) | ✅ Ory Hydra/Kratos + OpenFGA ([docs/ADR012-auth.md](docs/ADR012-auth.md)) |
 | Elastic machines | ✅ manual scale — autoscaler planned |
-| Postgres control plane (tenants) | ✅ built, opt-in — not yet the prod default ([docs/control-plane.md](docs/control-plane.md)) |
+| Postgres control plane (tenants) | ✅ built, opt-in — not yet the prod default ([docs/ADR003-control-plane.md](docs/ADR003-control-plane.md)) |
 
 ## AI-native
 
-Today: a Render-compatible REST + GraphQL + **MCP** API ([docs/bex-api.md](docs/bex-api.md)) an agent can drive end-to-end with its own revocable API key, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: deploy-from-chat (repo → URL in one call) and E2B-compatible sandboxes. The thesis and roadmap live in [docs/vision.md](docs/vision.md).
+Today: a Render-compatible REST + GraphQL + **MCP** API ([docs/ADR006-bex-api.md](docs/ADR006-bex-api.md)) an agent can drive end-to-end with its own revocable API key, and structured state on the App CR (`status.phase`, `status.revision`, `status.url`) that agents read without scraping. Next: deploy-from-chat (repo → URL in one call) and E2B-compatible sandboxes. The thesis and roadmap live in [docs/ADR008-vision.md](docs/ADR008-vision.md).
 
 ## Architecture
 
-Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the **Postgres control plane** is the intent layer (tenants/apps/domains) that writes those CRs — built into bex-api as an opt-in, [docs/control-plane.md](docs/control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/architecture.md](docs/architecture.md).
+Two clusters: the **app cluster** runs the bex operator and your Apps; the **infra cluster** runs Cluster API, which provisions the app cluster's machines (Docker containers locally via CAPD, Hetzner servers via CAPH — same manifests, different overlay). The **operator** is the mechanism (reconciles `App` CRs into Deployment/Service/Ingress); the **Postgres control plane** is the intent layer (tenants/apps/domains) that writes those CRs — built into bex-api as an opt-in, [docs/ADR003-control-plane.md](docs/ADR003-control-plane.md). Two runtimes via `BEX_RUNTIME`: `kubernetes` (elastic, multi-machine) and `opensandbox` (single host, real pause/resume). Full map with diagrams: [docs/ADR002-architecture.md](docs/ADR002-architecture.md).
 
 ## Layout
 
@@ -111,7 +111,7 @@ scripts/         mock-cluster.sh · app-apply.sh · domain-add.sh · deploy-samp
 
 ## Status & roadmap
 
-Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, the full REST/GraphQL/MCP surface (lifecycle, logs, metrics, env vars, API keys, managed Postgres), auth (Hydra/Kratos/OpenFGA), the opt-in Postgres control plane, the dashboard, and a live Hetzner deployment. Tracked next — control plane on-by-default + tenant onboarding, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds: [docs/vision.md](docs/vision.md#roadmap).
+Working and verified: App CRD + reconcile, kubernetes runtime (App → Deployment → pods on machines), local CAPD mock with add/remove machine, opensandbox runtime with real pause/resume, custom domains + TLS, the full REST/GraphQL/MCP surface (lifecycle, logs, metrics, env vars, API keys, managed Postgres), auth (Hydra/Kratos/OpenFGA), the opt-in Postgres control plane, the dashboard, and a live Hetzner deployment. Tracked next — control plane on-by-default + tenant onboarding, wake activator + HMAC webhook, autoscaler wiring, in-cluster builds: [docs/ADR008-vision.md](docs/ADR008-vision.md#roadmap).
 
 ## Contributing
 

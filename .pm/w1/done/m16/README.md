@@ -20,7 +20,7 @@ A tenant can create an environment group, add vars + secret files to it, and lin
 
 ## Source + Goal linkage
 
-- **Source:** inbox note `w1/010` (m13 audit), the two ✖ rows in `docs/render-parity.md` ("Secret files", "Environment groups", → w1/m16).
+- **Source:** inbox note `w1/010` (m13 audit), the two ✖ rows in `docs/ADR018-render-parity.md` ("Secret files", "Environment groups", → w1/m16).
 - **Goal linkage:** pillar 1 (Render parity — configuration).
 - **Expected outcome:** shared config stops being copy-paste per service; secret files (certs, service-account JSON) become possible.
 - **Why now:** env-vars parity shipped (w4/m6); these are the adjacent config surfaces the audit flagged, and both reuse the OpenBao path already in place — cheapest parity wins in the config area.

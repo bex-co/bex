@@ -30,7 +30,7 @@ import (
 
 // DefaultAuditPageSize/MaxAuditPageSize bound ListAuditEvents' page (Render's
 // GET .../audit-logs defaults to 20, caps at 1000 — bex caps lower pending
-// real volume data, a documented divergence, docs/render-parity.md).
+// real volume data, a documented divergence, docs/ADR018-render-parity.md).
 const (
 	DefaultAuditPageSize = 20
 	MaxAuditPageSize     = 200

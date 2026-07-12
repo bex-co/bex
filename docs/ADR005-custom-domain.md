@@ -47,5 +47,5 @@ A **verify** verb re-checks a domain's DNS/cert state now and returns its fresh 
 
 - **Pending window**: between "CNAME added" and "certs issued" (typically < 1 min after DNS resolves) the domain serves a mismatched cert. Every platform has this.
 - **Renewal depends on the CNAME staying put.** If the customer deletes or repoints it, renewal fails and the domain goes dark within ~90 days — looking like _our_ outage. Per-domain cert health belongs in monitoring / the future control plane.
-- **Ownership verification**: today `bex.yml` is trusted input (single tenant). Multi-tenant custom domains need a verify-before-route state machine (pending → verifying → active, owned-by-tenant) — that is control-plane work (see [control-plane.md](control-plane.md), the domains table), not operator work.
+- **Ownership verification**: today `bex.yml` is trusted input (single tenant). Multi-tenant custom domains need a verify-before-route state machine (pending → verifying → active, owned-by-tenant) — that is control-plane work (see [ADR003-control-plane.md](ADR003-control-plane.md), the domains table), not operator work.
 - Never probe a hostname before its DNS record exists — you'll poison resolver negative caches for up to an hour. Check with `dig @1.1.1.1` / `curl --resolve`.

@@ -11,7 +11,7 @@
 | t003 | Authorization model in git + idempotent store/model apply script — **DONE** | 40m | t002       |
 | t004 | `Checker` seam in bex-api Core + enforcement in the three adapters — **DONE** | 45m | t003       |
 | t005 | Seed tuples at deploy (bootstrap → admin) + E2E allow/deny on mock — **DONE** | 35m | t004       |
-| t006 | Docs: authorization section in `docs/auth.md` + env tables — **DONE** | 25m | t005       |
+| t006 | Docs: authorization section in `docs/ADR012-auth.md` + env tables — **DONE** | 25m | t005       |
 | t007 | Simplify — run `/simplify` over the code this milestone changed — **DONE** | 20m | t006       |
 | t008 | Test coverage — meaningful tests for the behavior this milestone shipped — **DONE** | 30m | t006       |
 
@@ -28,7 +28,7 @@ On the local mock cluster: OpenFGA pods healthy against `openfga-db`; the checke
 
 ## E2E invocation (t005)
 
-On the local mock cluster (auth substrate + OpenFGA deployed per docs/auth.md, App CRD via `cd operator && make install`):
+On the local mock cluster (auth substrate + OpenFGA deployed per docs/ADR012-auth.md, App CRD via `cd operator && make install`):
 
 ```
 KUBECONFIG=$PWD/infra/local/bex.kubeconfig bash scripts/auth-e2e.sh

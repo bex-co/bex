@@ -68,7 +68,7 @@ type PodLogStream func(ctx context.Context, namespace, pod, container string) (i
 // server-side and returning entries oldest-first, capped at q.Limit — the same
 // shape parseLogLine yields, so the adapters render either backend identically.
 // It supersedes the live pod-log read for QueryLogs/Logs when wired (production
-// keeps PodLogsFollow on pod logs for the tail; see docs/observability.md). nil =>
+// keeps PodLogsFollow on pod logs for the tail; see docs/ADR010-observability.md). nil =>
 // those verbs read live pod logs (the byte-identical default). Injected from
 // BEX_LOKI_URL via NewLokiSource, like PodLogSource keeps the clientset out of the
 // domain.

@@ -1,6 +1,6 @@
 # bex-api's managed Key Value (Valkey) surface, Render dashboard-shaped
-# (backend/internal/keyvalue/graphql.go, docs/bex-api.md §Managed Key Value,
-# docs/keyvalue-management.md). Render's dashboard GraphQL noun is `keyValue`,
+# (backend/internal/keyvalue/graphql.go, docs/ADR006-bex-api.md §Managed Key Value,
+# docs/ADR021-keyvalue-management.md). Render's dashboard GraphQL noun is `keyValue`,
 # matching bex's own KeyValue CRD (the postgres feature's `database` noun is the
 # sibling precedent). `status` is Render's keyValueStatus enum
 # (available/unavailable/creating); `suspended` is the string enum shared with
@@ -37,7 +37,7 @@ query KeyValue($id: String!) {
 }
 
 # The one place the connection strings (which embed the password) are surfaced
-# (docs/keyvalue-management.md): fetched on demand from the detail page's
+# (docs/ADR021-keyvalue-management.md): fetched on demand from the detail page's
 # "Reveal", never in the bulk list and never on page load. Returns the
 # Render-shaped `KeyValueConnectionInfo` — no standalone password field, unlike
 # Postgres, since Valkey's password lives inside the `redis://` URI itself.

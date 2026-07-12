@@ -3,7 +3,7 @@
 # etcd, so a node rebuild without this loses every user deployment (the local
 # overlay excludes it: disposable cluster, no object-storage creds). The
 # CronJob's S3 Secret is created out-of-band from .env — see
-# docs/etcd-backup-restore.md.
+# docs/ADR011-etcd-backup-restore.md.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

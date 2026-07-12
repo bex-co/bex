@@ -1,5 +1,5 @@
 # bex-api's env-vars surface, Render dashboard-shaped (backend/internal/secrets +
-# apps/graphql.go, docs/bex-api.md#env-vars). Env vars nest under the service:
+# apps/graphql.go, docs/ADR006-bex-api.md#env-vars). Env vars nest under the service:
 # `envVarKeys` lists keys only (each with an id == key); a value is fetched per
 # key via `envVar(key)` ("Show secret"), never in the bulk list. Mutations are
 # top-level and return a success boolean (bex's own names — Render's dashboard

@@ -11,7 +11,7 @@
 | t003 | Optional public route (Traefik TCP/SNI, mirroring `BEX_DB_DOMAIN`) — **DONE** (`BEX_KV_DOMAIN` + `IngressRouteTCP` SNI route; connection-info Secret with `uri`/`externalUri`; generalized shared `ingressRouteTCPSpec`) | 30m | t002         |
 | t004 | Simplify — `/simplify` over the CRD + reconciler — **DONE** (4 agents → shared `deleteTraefikRoute` + `guaranteedResources` + `growOnlyStorage`, inlined the KV route wrapper; lint debt 19→15, all new code clean) | 20m | t003         |
 | t005 | Test coverage — envtest for the `KeyValue` reconciler — **DONE** (`keyvalue_test.go`: tier→compute+storage, headless Service, stable-password Secret, owner-ref cascade, pure-fn route) | 30m | t003         |
-| t006 | Closeout — **DONE** (`make test` green incl. reconciler envtest; parity ledger + `docs/keyvalue-management.md` + `BEX_KV_DOMAIN` documented; tasks → `done/`) | 10m | t005         |
+| t006 | Closeout — **DONE** (`make test` green incl. reconciler envtest; parity ledger + `docs/ADR021-keyvalue-management.md` + `BEX_KV_DOMAIN` documented; tasks → `done/`) | 10m | t005         |
 
 ## Definition of done
 
@@ -19,7 +19,7 @@ A `KeyValue` CR reconciles to a running Valkey instance reachable at an internal
 
 ## Source + Goal linkage
 
-- **Source:** inbox note `w1/007` (from `/pm-brainstorm for w2` 2026-07-08), surfaced as a ✖ row in `docs/render-parity.md` (Key Value store, → w1/m14).
+- **Source:** inbox note `w1/007` (from `/pm-brainstorm for w2` 2026-07-08), surfaced as a ✖ row in `docs/ADR018-render-parity.md` (Key Value store, → w1/m14).
 - **Goal linkage:** pillar 1 (Render parity) — Key Value is a first-class Render datastore product bex lacks entirely.
 - **Expected outcome:** a tenant (via CR today, API later) can provision a managed Valkey the same way they provision managed Postgres.
 - **Why now:** the parity audit (m13) ranked Key Value as the largest missing datastore; the mechanism must exist before any REST/GraphQL/MCP/dashboard surface can be built (the same CR-first ordering `Database` followed).

@@ -5,7 +5,7 @@
 //   • POST /graphql             — the reads the dashboard fires (services, server,
 //                                 logs, managed-Postgres databases, managed
 //                                 Key Value stores, and safe empties for the rest)
-//   • GET  /v1/logs/subscribe   — the SSE live-log tail (docs/observability.md)
+//   • GET  /v1/logs/subscribe   — the SSE live-log tail (docs/ADR010-observability.md)
 //   • GET  /sessions/whoami     — Kratos session check, so the auth guard passes
 // CORS is wide-open (echoes the Origin, allows credentials) and there is NO auth —
 // it is a DEV TOOL, never a real backend. Full-fidelity local bex needs the mock
@@ -154,7 +154,7 @@ function instancesFor(resource) {
 }
 
 // The platform host a custom domain CNAMEs to: <service>.onbex.co, mirroring the
-// backend's `<app>.<BEX_BASE_DOMAIN>` target (docs/custom-domain.md).
+// backend's `<app>.<BEX_BASE_DOMAIN>` target (docs/ADR005-custom-domain.md).
 function platformHostFor(serviceId) {
   return `${serviceId}.onbex.co`;
 }

@@ -2,7 +2,7 @@
 -- deploy poll-loop (list_deploys/get_deploy/POST .../deploys). One open
 -- (status='update_in_progress') row at a time per app; the reconciler's
 -- write-back hook closes it to 'live' or 'update_failed' from the projected
--- App CR's observed status (docs/deployment.md health gating).
+-- App CR's observed status (docs/ADR004-deployment.md health gating).
 --
 -- commit is carried for forward-compatibility with w1/m5 (build-from-git
 -- commit tracking) — always '' until that lands; the deploys feature omits it

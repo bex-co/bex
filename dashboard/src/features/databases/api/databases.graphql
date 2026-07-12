@@ -1,5 +1,5 @@
 # bex-api's managed-Postgres surface, Render dashboard-shaped
-# (backend/internal/postgres/graphql.go, docs/bex-api.md §Managed Postgres).
+# (backend/internal/postgres/graphql.go, docs/ADR006-bex-api.md §Managed Postgres).
 # Render's dashboard GraphQL noun is `database` (its REST noun is `postgres`);
 # bex mirrors that split. `status` is Render's databaseStatus enum
 # (available/unavailable/creating); `suspended` is the string enum shared with
@@ -45,7 +45,7 @@ query Database($id: String!) {
   }
 }
 
-# The one place the DB password is surfaced (docs/bex-api.md §Managed Postgres):
+# The one place the DB password is surfaced (docs/ADR006-bex-api.md §Managed Postgres):
 # fetched on demand from the detail page's "Reveal", never in the bulk list and
 # never on page load. Returns the Render-shaped `PostgresConnectionInfo`.
 query DatabaseConnectionInfo($id: String!) {

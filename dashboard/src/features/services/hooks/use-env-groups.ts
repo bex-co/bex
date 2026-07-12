@@ -13,7 +13,7 @@ import type { EnvGroupsQuery } from "@/graphql/definitions";
 import type { EnvGroupView } from "@/features/services/types";
 
 // bex-api's env-groups GraphQL: a group is a reusable bundle of env vars + secret
-// files (docs/bex-api.md) that can be linked to many services. The list is
+// files (docs/ADR006-bex-api.md) that can be linked to many services. The list is
 // service-independent (`envGroups`); linking/unlinking attaches a group to a
 // specific service. Every link/unlink rolls the affected service's pods, so the
 // toast says the service is redeploying.

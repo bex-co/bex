@@ -41,7 +41,7 @@ for i in $(seq 0 $((count - 1))); do
   # (canonical; keeps existing Apps' TLS secret stable), domains[1:] -> spec.hosts
   # (extra hosts, e.g. customers' custom domains), envVars[] {key,value} ->
   # spec.env[] {name,value} (literal config only — secrets go through the env-vars
-  # API, docs/secrets.md), everything else 1:1; drop null/absent fields so
+  # API, docs/ADR013-secrets.md), everything else 1:1; drop null/absent fields so
   # operator defaults apply.
   cr="$(yq -o=yaml "
     .apps[$i] as \$a |

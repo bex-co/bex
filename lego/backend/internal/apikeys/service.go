@@ -33,7 +33,7 @@ import (
 )
 
 // APIKey is a machine credential: an OAuth2 client in the platform's Hydra
-// (docs/auth.md). Secret is populated exactly once — on create — and never
+// (docs/ADR012-auth.md). Secret is populated exactly once — on create — and never
 // returned by list. CreatedBy/LastUsedAt are hygiene metadata (w4/m13): who
 // minted the key, and when a token for it was last introspected.
 type APIKey struct {

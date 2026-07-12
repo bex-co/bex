@@ -4,7 +4,7 @@
 # other high-risk capabilities at the kubelet (w7/m2/t001). warn+audit at
 # restricted surfaces how far tenant images are from the stricter tier without
 # enforcing it; tenant images may legitimately run as root (see
-# docs/tenant-isolation.md §mechanism-choice: restricted deliberately deferred).
+# docs/ADR022-tenant-isolation.md §mechanism-choice: restricted deliberately deferred).
 apiVersion: v1
 kind: Namespace
 metadata:

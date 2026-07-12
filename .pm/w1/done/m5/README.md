@@ -21,7 +21,7 @@ Setting `App.spec.repo` builds the image in-cluster (Dockerfile or CNB), pushes 
 - **Host-based MVP exists** (`lego/operator/internal/build/build.go`): `Build()` clones the repo, runs `docker build` (Dockerfile) or `pack build` (CNB) via `exec.Command`, and pushes to `BEX_REGISTRY`. This proved the full git-clone → build → push → run flow but shells out to host tools — impossible on containerd app nodes. Comment in the file explicitly calls out "an in-cluster BuildKit/kpack Job is the productionization."
 - **Zot already deployed**: `deploy/gitops/base/zot.yaml` → `zot-0` StatefulSet in-cluster; nodes already pull from it (`BEX_REGISTRY` points there).
 - **t001**: replace `exec.Command("docker", ...)` / `exec.Command("pack", ...)` in `build.go` with dispatching a Kubernetes Job that runs `moby/buildkit` or `kpack`. The `Build()` function signature can stay; only the backend changes.
-- **t003 overtaken (2026-07-08)**: the HMAC push-to-deploy webhook shipped in bex-api via w2's deploy-from-chat work (`lego/backend/internal/apps/webhook.go`, `POST /v1/webhooks/git`, `BEX_WEBHOOK_SECRET`; docs/deploy-from-chat.md) — in the backend, as an API surface, exactly where it belongs (operator is mechanism-only). t003 reduces to verifying it satisfies m5's acceptance and closing.
+- **t003 overtaken (2026-07-08)**: the HMAC push-to-deploy webhook shipped in bex-api via w2's deploy-from-chat work (`lego/backend/internal/apps/webhook.go`, `POST /v1/webhooks/git`, `BEX_WEBHOOK_SECRET`; docs/ADR017-deploy-from-chat.md) — in the backend, as an API surface, exactly where it belongs (operator is mechanism-only). t003 reduces to verifying it satisfies m5's acceptance and closing.
 
 ## Source + Goal linkage
 

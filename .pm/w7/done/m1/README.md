@@ -6,7 +6,7 @@
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | ADR `docs/tenant-isolation.md`: threat model + namespace-tier mechanism choice                             | 45m | —          | — **DONE** |
+| t001 | ADR `docs/ADR022-tenant-isolation.md`: threat model + namespace-tier mechanism choice                             | 45m | —          | — **DONE** |
 | t002 | Workspace identity labels: projector stamps App CRs, operator propagates to pods                           | 45m | t001       | — **DONE** |
 | t003 | Tenant NetworkPolicies: default-deny + Traefik / same-workspace / own-datastore / internet allows          | 60m | t002       | — **DONE** |
 | t004 | Platform-side lockdown: deny apps+build namespaces at bex-system · bex-registry · OpenBao · monitoring     | 45m | t001       | — **DONE** |

@@ -1,6 +1,6 @@
 # w4 · m12 — Workspace members & roles (Render team surface)
 
-**Worker:** worker4 **Goal:** The one multi-tenant IAM surface w1/m9 leaves out: invite a teammate by email, assign Render's roles (viewer/contributor/developer/admin/billing — already mapped in `deploy/gitops/authz/model.fga`), list and remove members — over Core verbs writing OpenFGA tuples + `tenant_members` rows, with a dashboard Team page. **Status:** **DONE** 2026-07-09 — `internal/members` (+ `internal/mailer`) across REST·GraphQL·MCP·UI, invites redeemed on first login, last-admin refusal; unit/integration-tested (backend + dashboard), lint clean. Live-cluster E2E (t005) covered by unit/integration tests, not a live run in-session ([docs/members.md](../../../docs/members.md)).
+**Worker:** worker4 **Goal:** The one multi-tenant IAM surface w1/m9 leaves out: invite a teammate by email, assign Render's roles (viewer/contributor/developer/admin/billing — already mapped in `deploy/gitops/authz/model.fga`), list and remove members — over Core verbs writing OpenFGA tuples + `tenant_members` rows, with a dashboard Team page. **Status:** **DONE** 2026-07-09 — `internal/members` (+ `internal/mailer`) across REST·GraphQL·MCP·UI, invites redeemed on first login, last-admin refusal; unit/integration-tested (backend + dashboard), lint clean. Live-cluster E2E (t005) covered by unit/integration tests, not a live run in-session ([docs/ADR024-members.md](../../../docs/ADR024-members.md)).
 
 ## Tasks (in order)
 
@@ -18,11 +18,11 @@
 
 ## Definition of done
 
-On a cluster with enforced OpenFGA: an admin invites an email → the recipient gets the mail (Mailpit locally), signs up, and lands in the workspace with the assigned role; the docs/auth.md role matrix is observably enforced per role (viewer reads, contributor/developer mutate what the matrix says, admin manages members); removing a member 403s them immediately; the last admin cannot remove or demote themselves; membership state lives in `tenant_members` + FGA tuples, written atomically by one Core verb set.
+On a cluster with enforced OpenFGA: an admin invites an email → the recipient gets the mail (Mailpit locally), signs up, and lands in the workspace with the assigned role; the docs/ADR012-auth.md role matrix is observably enforced per role (viewer reads, contributor/developer mutate what the matrix says, admin manages members); removing a member 403s them immediately; the last admin cannot remove or demote themselves; membership state lives in `tenant_members` + FGA tuples, written atomically by one Core verb set.
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm tasks for w4` 2026-07-08; the gap between w1/m9 (single-member tenant mint) and docs/auth.md's already-mapped Render role matrix; Render's workspace Members settings.
+- **Source:** `/pm-brainstorm tasks for w4` 2026-07-08; the gap between w1/m9 (single-member tenant mint) and docs/ADR012-auth.md's already-mapped Render role matrix; Render's workspace Members settings.
 - **Goal linkage:** roadmap #5 (multi-tenant); pillar 1 (Render workspace parity).
 - **Expected outcome:** a workspace stops being a single-person silo — the role matrix OpenFGA has modeled since m4 finally has a way to be populated.
 - **Why now:** queued deliberately **behind** w1/m9 and w4/m7 — designing the invite/role writes now, against m9's tuple model while it's being built, avoids two teams inventing two membership write paths.

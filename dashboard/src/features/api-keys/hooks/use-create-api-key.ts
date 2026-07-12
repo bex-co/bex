@@ -13,7 +13,7 @@ export interface UseCreateApiKeyResult {
 
 /**
  * Wires the mint dialog to bex-api's `createApiKey`. `fetchPolicy: "no-cache"`
- * is deliberate: the secret is returned exactly once by design (docs/auth.md),
+ * is deliberate: the secret is returned exactly once by design (docs/ADR012-auth.md),
  * and Apollo's normalized cache would otherwise key the response under
  * `ApiKey:<id>` and hold the secret there indefinitely — reachable by any later
  * cache read even after the mint dialog dismisses it. no-cache means the

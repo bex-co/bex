@@ -32,7 +32,7 @@ export interface InviteMemberDialogProps {
 
 /**
  * The invite flow (w4/m12/t004): an email and a role. On success the recipient
- * is emailed and joins the workspace on their first login (docs/auth.md); the
+ * is emailed and joins the workspace on their first login (docs/ADR012-auth.md); the
  * dialog closes and the pending-invite list refreshes.
  */
 export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialogProps) {

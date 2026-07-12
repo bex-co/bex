@@ -80,7 +80,7 @@ const COLUMN_COUNT = 4;
  * Verified/Certificate status, an "Add Custom Domain" dialog, a per-row delete, and
  * — for each domain — the DNS record to create (CNAME/ALIAS → the app's platform
  * host) with copy buttons and a "Re-check" action. All over bex-api's custom-domains
- * GraphQL (docs/bex-api.md), a veneer over App.spec.hosts[].
+ * GraphQL (docs/ADR006-bex-api.md), a veneer over App.spec.hosts[].
  */
 export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();

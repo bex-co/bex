@@ -1,5 +1,5 @@
 # bex-api's workspace members & roles surface (backend/internal/members —
-# w4/m12; docs/auth.md role matrix). The Team page lists a workspace's members
+# w4/m12; docs/ADR012-auth.md role matrix). The Team page lists a workspace's members
 # and their roles, invites teammates by email, changes roles, and removes
 # members. Roles are Render's UPPERCASE enum on the wire
 # (VIEWER/CONTRIBUTOR/DEVELOPER/ADMIN/BILLING). `workspaces` names the caller's

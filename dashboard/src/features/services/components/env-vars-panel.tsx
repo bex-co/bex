@@ -36,7 +36,7 @@ const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 /**
  * The service Environment tab (Render dashboard shape): lists a service's env-var
  * keys, reveals a value on demand, and adds/updates/deletes variables — all over
- * bex-api's env-vars GraphQL (docs/bex-api.md#env-vars). Values are fetched per
+ * bex-api's env-vars GraphQL (docs/ADR006-bex-api.md#env-vars). Values are fetched per
  * key, never in the list.
  */
 export function EnvVarsPanel({ serviceId }: { serviceId: string }) {

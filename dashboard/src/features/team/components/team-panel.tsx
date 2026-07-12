@@ -32,7 +32,7 @@ import { InviteMemberDialog } from "@/features/team/components/invite-member-dia
 /**
  * Settings → Team (w4/m12): the workspace's members and their roles, plus (for
  * an admin) invite / role-change / remove and the pending-invite list. The
- * docs/auth.md role matrix is enforced server-side; this surface reflects it —
+ * docs/ADR012-auth.md role matrix is enforced server-side; this surface reflects it —
  * a non-admin sees a read-only list (the invite/role/remove controls hide when
  * the admin-only invites query is forbidden).
  */

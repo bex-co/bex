@@ -10,7 +10,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { EnvVarKey } from "@/features/services/types";
 
-// bex-api's env-vars GraphQL is Render dashboard-shaped (docs/bex-api.md#env-vars):
+// bex-api's env-vars GraphQL is Render dashboard-shaped (docs/ADR006-bex-api.md#env-vars):
 // env vars nest under the service, `envVarKeys` lists keys only (values fetched
 // per key via `envVar(key)`, "Show secret"), and every write rolls the pods —
 // there is no separate deploy step, so the toast says the service is redeploying.

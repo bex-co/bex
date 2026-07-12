@@ -118,4 +118,4 @@ The `MonthToDate` verb checks `can_view` on the caller's workspace. A caller wit
 
 ## Pre-declared drift from Render
 
-Render's public REST API and GraphQL surface have no usage or billing endpoints (billing is dashboard-only; verified against Render's OpenAPI spec 2026-07-09 — no `/usage`, `/billing`, or equivalent exists). This surface is therefore a bex extension. See [docs/render-parity.md](render-parity.md) § bex ahead of Render.
+Render's public REST API and GraphQL surface have no usage or billing endpoints (billing is dashboard-only; verified against Render's OpenAPI spec 2026-07-09 — no `/usage`, `/billing`, or equivalent exists). This surface is therefore a bex extension. See [docs/ADR018-render-parity.md](ADR018-render-parity.md) § bex ahead of Render.

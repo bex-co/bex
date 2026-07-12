@@ -22,7 +22,7 @@ interface LogViewerProps {
 
 /**
  * The service page's Logs tab: bex-api's historical `logs(...)` query plus an
- * SSE live tail (docs/observability.md), laid out like Render's Logs viewer
+ * SSE live tail (docs/ADR010-observability.md), laid out like Render's Logs viewer
  * (filter bar + line list). Owns the filter state; the data layer (history hook
  * + live hook) is presentation-free.
  */

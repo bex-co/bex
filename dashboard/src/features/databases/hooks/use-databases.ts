@@ -19,7 +19,7 @@ export interface UseDatabasesResult {
 /**
  * Reads bex-api's `databases` query and maps each Render-shaped `Database` onto
  * a normalized DatabaseView. Presentation only — the list is the operator's real
- * Database CRs (docs/bex-api.md §Managed Postgres); mirrors `useServices`.
+ * Database CRs (docs/ADR006-bex-api.md §Managed Postgres); mirrors `useServices`.
  * Scoped to the switcher's selected workspace (w6/m3) — see useServices.
  */
 export function useDatabases(): UseDatabasesResult {

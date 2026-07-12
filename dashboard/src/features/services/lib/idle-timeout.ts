@@ -1,5 +1,5 @@
 // Idle-timeout (auto-sleep window) helpers for the Settings control — a bex
-// extension over Render (`spec.idleTTLSeconds`; docs/deployment.md, w1/m4.5).
+// extension over Render (`spec.idleTTLSeconds`; docs/ADR004-deployment.md, w1/m4.5).
 
 /**
  * Preset windows offered in the Settings select, in seconds. 0 is the platform

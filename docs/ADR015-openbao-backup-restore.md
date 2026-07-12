@@ -1,6 +1,6 @@
 # OpenBao backup & restore
 
-**Why this exists:** OpenBao ([secrets.md](secrets.md)) holds every tenant credential in integrated Raft storage on a single PVC (`replicas: 1` — no quorum peer to heal from). Unlike the platform's other state, these secrets are **not** reproducible from git: a lost PVC = lost tenant credentials, permanently. A nightly Raft snapshot shipped off-cluster is the recovery story — the mirror of [etcd-backup-restore.md](etcd-backup-restore.md) for the secret store.
+**Why this exists:** OpenBao ([ADR013-secrets.md](ADR013-secrets.md)) holds every tenant credential in integrated Raft storage on a single PVC (`replicas: 1` — no quorum peer to heal from). Unlike the platform's other state, these secrets are **not** reproducible from git: a lost PVC = lost tenant credentials, permanently. A nightly Raft snapshot shipped off-cluster is the recovery story — the mirror of [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) for the secret store.
 
 Raft's `snapshot save` takes a point-in-time, internally-consistent copy of the **already-encrypted** store while OpenBao keeps serving — no seal, no downtime.
 

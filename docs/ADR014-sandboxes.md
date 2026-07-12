@@ -4,18 +4,18 @@
 
 ## Context
 
-bex is an AI-native PaaS: agents are first-class users ([vision.md](vision.md)). Pillar 5 is **hosted execution environments for agents** — an agent spawns a sandbox, runs code in it, the sandbox auto-hibernates when idle ("sleep = free"), and wakes on next use. The compatibility play mirrors Render for the App API: speak **E2B's** shapes so existing agent tooling and habits transfer instead of restarting from zero.
+bex is an AI-native PaaS: agents are first-class users ([ADR008-vision.md](ADR008-vision.md)). Pillar 5 is **hosted execution environments for agents** — an agent spawns a sandbox, runs code in it, the sandbox auto-hibernates when idle ("sleep = free"), and wakes on next use. The compatibility play mirrors Render for the App API: speak **E2B's** shapes so existing agent tooling and habits transfer instead of restarting from zero.
 
 The mechanism that makes "sleep = free" viable — sub-second wake — **already exists and is inherited**, it is not ours to invent:
 
-- `lego/operator/internal/runtime/opensandbox.go` is a client for the OpenSandbox Lifecycle API (`BEX_OPENSANDBOX_URL`) exposing `Create` / `Pause` / `Resume` / `Delete` / `Endpoint`. `Pause`/`Resume` are **real snapshots** (~80 ms wake, [restart-suspend-and-resume.md](restart-suspend-and-resume.md)). A per-sandbox **exec daemon** ships in the runtime (`execd_image = opensandbox/execd:v1.0.16`, `deploy/opensandbox/sandbox.toml`) — an exec channel is a real but currently unwired capability. The opensandbox controller also ships pre-warmed `pools` and `sandboxsnapshots`.
+- `lego/operator/internal/runtime/opensandbox.go` is a client for the OpenSandbox Lifecycle API (`BEX_OPENSANDBOX_URL`) exposing `Create` / `Pause` / `Resume` / `Delete` / `Endpoint`. `Pause`/`Resume` are **real snapshots** (~80 ms wake, [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md)). A per-sandbox **exec daemon** ships in the runtime (`execd_image = opensandbox/execd:v1.0.16`, `deploy/opensandbox/sandbox.toml`) — an exec channel is a real but currently unwired capability. The opensandbox controller also ships pre-warmed `pools` and `sandboxsnapshots`.
 - This is the same class of mechanism E2B and Modal use to hit millisecond starts: **restore, don't boot**. E2B restores a Firecracker microVM memory snapshot (`MAP_PRIVATE` on-demand page faults + copy-on-write; template = Dockerfile→snapshot; ~5–30 ms resume, ~150 ms full restore). Modal uses gVisor `runsc` checkpoint/restore (CRIU) plus a lazy content-addressed image filesystem. bex gets this behavior **through opensandbox** rather than reimplementing it.
 - Crucially, **E2B's `autoPause` + connect-resumes semantics are exactly this milestone's idle-hibernate** — so the work is orchestration, not new mechanism.
 
 What is net-new is everything around that mechanism: a sandbox API distinct from the App CR, E2B-shaped surfaces, an idle tracker + wake-on-connect, an agent-facing exec surface, and an MCP spawn verb. Two constraints shape the design:
 
 - **Architectural gap.** bex-api's feature services (`lego/backend/internal/*/service.go`, over the `internal/core` kernel) only patch App CR spec; they have **no opensandbox client** — the client lives in the operator binary. And that client's `imageEntrypoint` shells out to `docker inspect` (host-local), unusable from an in-cluster pod unless bypassed.
-- **Runtime limit.** Real snapshot pause/resume works today only on the **Docker-runtime** opensandbox server (:8077); the k8s-runtime path is blocked on OrbStack (cri-dockerd, not containerd-CRI — [go-and-gitops.md](go-and-gitops.md)).
+- **Runtime limit.** Real snapshot pause/resume works today only on the **Docker-runtime** opensandbox server (:8077); the k8s-runtime path is blocked on OrbStack (cri-dockerd, not containerd-CRI — [ADR001-go-and-gitops.md](ADR001-go-and-gitops.md)).
 
 ## Decision
 
@@ -23,7 +23,7 @@ Serve sandboxes as a **direct, synchronous gateway in bex-api over the opensandb
 
 ### D0 — Sandboxes are sessions, not services (the carve-out)
 
-The App architecture rule (product action → **App CR contract** → operator converges; the operator exposes no API — [restart-suspend-and-resume.md](restart-suspend-and-resume.md), [control-plane.md](control-plane.md)) governs **durable, declarative desired-state**. A sandbox is the opposite: an **interactive, ephemeral session** — created synchronously, exec'd against as a live stream, spawned and killed by the dozen. Forcing it through async CR reconcile fights its nature. Sandboxes are therefore **deliberately exempt** from the CR-contract rule; this ADR records that exemption so it reads as a decision, not drift.
+The App architecture rule (product action → **App CR contract** → operator converges; the operator exposes no API — [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md), [ADR003-control-plane.md](ADR003-control-plane.md)) governs **durable, declarative desired-state**. A sandbox is the opposite: an **interactive, ephemeral session** — created synchronously, exec'd against as a live stream, spawned and killed by the dozen. Forcing it through async CR reconcile fights its nature. Sandboxes are therefore **deliberately exempt** from the CR-contract rule; this ADR records that exemption so it reads as a decision, not drift.
 
 |  | **App** (services) | **Sandbox** (sessions) |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ The App architecture rule (product action → **App CR contract** → operator c
 
 ### D1 — A direct synchronous sandbox service in bex-api; no CRD
 
-Add a sandbox feature package in `lego/backend/internal/` that owns an **opensandbox client** (`BEX_OPENSANDBOX_URL`, the same endpoint the operator uses). bex-api becomes the **sandbox gateway**: control plane (create/pause/resume/kill), data-plane front (exec/connect proxy), auth (the existing bex-api credentials — API keys / OAuth2 or Kratos sessions, [auth.md](auth.md)), and activity observation, all in one place. No `Sandbox` CRD and no operator involvement — the operator keeps reconciling Apps only.
+Add a sandbox feature package in `lego/backend/internal/` that owns an **opensandbox client** (`BEX_OPENSANDBOX_URL`, the same endpoint the operator uses). bex-api becomes the **sandbox gateway**: control plane (create/pause/resume/kill), data-plane front (exec/connect proxy), auth (the existing bex-api credentials — API keys / OAuth2 or Kratos sessions, [ADR012-auth.md](ADR012-auth.md)), and activity observation, all in one place. No `Sandbox` CRD and no operator involvement — the operator keeps reconciling Apps only.
 
 ```mermaid
 graph LR
@@ -74,7 +74,7 @@ Claude Code / any agent drives sandboxes **from outside** via MCP tools — `spa
 
 ### D4 — Idle-hibernate = gateway-observed autoPause
 
-The gateway tracks per-sandbox **last-activity** (every connect/exec resets it). A background sweeper pauses sandboxes past their idle window (opensandbox `Pause`); the next connect/exec on a paused sandbox **resumes first** (opensandbox `Resume`) — wake-on-connect. This reuses the `spec.idleTTLSeconds` semantics (declared but unread today, per [restart-suspend-and-resume.md](restart-suspend-and-resume.md)) and maps 1:1 to E2B's `autoPause`. Idle state is **soft** — the sweeper's timers are rebuildable by listing opensandbox sandboxes on startup, since the opensandbox store is the source of truth.
+The gateway tracks per-sandbox **last-activity** (every connect/exec resets it). A background sweeper pauses sandboxes past their idle window (opensandbox `Pause`); the next connect/exec on a paused sandbox **resumes first** (opensandbox `Resume`) — wake-on-connect. This reuses the `spec.idleTTLSeconds` semantics (declared but unread today, per [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md)) and maps 1:1 to E2B's `autoPause`. Idle state is **soft** — the sweeper's timers are rebuildable by listing opensandbox sandboxes on startup, since the opensandbox store is the source of truth.
 
 ### D5 — Cold-start/wake is inherited, not invented
 
@@ -95,7 +95,7 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 - **Concurrent-running cap → LRU evict-to-pause.** When admitting a create/resume would exceed node capacity, proactively `Pause` the least-recently-used _running_ sandbox to make room (evict before its idle window). This is the overcommit: running-set ≤ capacity, existing-set ≫ capacity.
 - **Per-tenant quota by tier.** Mirror E2B/Modal plan limits (max concurrent sandboxes + max timeout) by reusing the existing `Tier` ladder that already maps to resources for Apps.
 - **Warm-pool bounds.** `min_ready`/`max_ready`; keep the pool as _paused_ snapshots so it doesn't burn RAM while idle-warm (opensandbox `pools`).
-- **Node-level elasticity (deferred).** Unschedulable sandboxes → pressure → autoscaler adds a machine; empty nodes → scale down — the same bin-pack + idle-evict loop Apps use ([architecture.md](architecture.md), "node-aware but provision-unaware"). **This does not hold yet:** the Docker-runtime opensandbox is **single-host** (:8077), so today's capacity control is the single-host subset (concurrent cap + evict + quota); cross-node scheduling waits on the k8s-runtime snapshot path (containerd-CRI cluster).
+- **Node-level elasticity (deferred).** Unschedulable sandboxes → pressure → autoscaler adds a machine; empty nodes → scale down — the same bin-pack + idle-evict loop Apps use ([ADR002-architecture.md](ADR002-architecture.md), "node-aware but provision-unaware"). **This does not hold yet:** the Docker-runtime opensandbox is **single-host** (:8077), so today's capacity control is the single-host subset (concurrent cap + evict + quota); cross-node scheduling waits on the k8s-runtime snapshot path (containerd-CRI cluster).
 
 ### D7 — State model & durability (a ladder, mostly deferred above pause/resume)
 
@@ -112,8 +112,8 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 The stance: **a sandbox is an ephemeral session** (D0). Its in-sandbox state is faithfully preserved **across pause/resume** and **deliberately destroyed on `kill`** — that is the contract, not a bug. Everything more durable is an explicit, deferred layer:
 
 - **Persistence beyond a sandbox → volumes.** To keep data across `kill` or share it across sandboxes, mount an opensandbox volume (bex's counterpart to E2B `volumeMounts`); the rootfs is never the durable store. **Deferred**, aligned with t004's out-of-scope.
-- **Per-user ownership keys on the resolved caller identity.** Reconnect works off the sandbox id + `metadata.owner`; bex-api now resolves a real caller (OAuth2 `client_id` or Kratos identity, `api.IdentityFrom` — [auth.md](auth.md)), so the gateway stamps that identity as the owner on `Create` and scopes list/connect to it. Full multi-tenant isolation (quotas, cross-tenant guarantees) still matures with the control plane, but ownership is no longer a single shared token.
-- **No durability beyond the host.** All sandboxes and snapshots live on the single opensandbox host's sqlite + disk — host loss loses them, the same no-HA gap [architecture.md](architecture.md) flags for App state in single-node etcd. HA/replication waits on a multi-node runtime.
+- **Per-user ownership keys on the resolved caller identity.** Reconnect works off the sandbox id + `metadata.owner`; bex-api now resolves a real caller (OAuth2 `client_id` or Kratos identity, `api.IdentityFrom` — [ADR012-auth.md](ADR012-auth.md)), so the gateway stamps that identity as the owner on `Create` and scopes list/connect to it. Full multi-tenant isolation (quotas, cross-tenant guarantees) still matures with the control plane, but ownership is no longer a single shared token.
+- **No durability beyond the host.** All sandboxes and snapshots live on the single opensandbox host's sqlite + disk — host loss loses them, the same no-HA gap [ADR002-architecture.md](ADR002-architecture.md) flags for App state in single-node etcd. HA/replication waits on a multi-node runtime.
 
 ## Alternatives considered
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E for durable logs (docs/observability.md, w3/m5) against the current
+# E2E for durable logs (docs/ADR010-observability.md, w3/m5) against the current
 # kubeconfig cluster's Loki (deploy/gitops/base/loki.yaml) + log-shipper. Proves
 # the milestone's whole point — logs survive a pod restart — over the real
 # surfaces:

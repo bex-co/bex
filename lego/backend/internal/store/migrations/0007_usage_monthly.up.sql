@@ -2,7 +2,7 @@
 --
 -- usage_hourly grows without bound (one row per service × kind × tier ×
 -- hour). Months older than the hot window (BEX_USAGE_RETENTION_MONTHS,
--- default 3, docs/usage-metering.md) are compacted into this table — a
+-- default 3, docs/ADR023-usage-metering.md) are compacted into this table — a
 -- lossless SUM per calendar month — and the hourly rows purged, so the
 -- control-plane store's size stays predictable as tenants and time grow.
 --

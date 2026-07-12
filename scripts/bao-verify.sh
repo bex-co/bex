@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E verify of the OpenBao substrate (docs/secrets.md) against the current
+# E2E verify of the OpenBao substrate (docs/ADR013-secrets.md) against the current
 # kubeconfig cluster:
 #   1. init/unseal is idempotent — re-running bao-init.sh changes nothing.
 #   2. KV v2 write/read under tenants/.

@@ -2,7 +2,7 @@
 
 The **platform substrate** as declarative, version-pinned state, reconciled by Argo CD.
 
-> **GitOps the platform; never GitOps the per-deploy user workloads** (those are bex's product runtime — webhook → build → deploy). And cluster/node _creation_ lives in [`infra/`](../../infra/), not here (engine vs. desired-infra — see [docs/architecture.md](../../docs/architecture.md)).
+> **GitOps the platform; never GitOps the per-deploy user workloads** (those are bex's product runtime — webhook → build → deploy). And cluster/node _creation_ lives in [`infra/`](../../infra/), not here (engine vs. desired-infra — see [docs/ADR002-architecture.md](../../docs/ADR002-architecture.md)).
 
 ## Layout (base + overlays)
 

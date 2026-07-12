@@ -129,7 +129,7 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 }
 
 // CompactUsage folds every usage_hourly row with window_start < before into
-// usage_monthly and purges it (docs/usage-metering.md § Retention). A single
+// usage_monthly and purges it (docs/ADR023-usage-metering.md § Retention). A single
 // statement, so purge and aggregate are atomic and a re-run is a no-op; the
 // additive ON CONFLICT means a straggler row compacted on a later pass adds
 // to its month rather than overwriting it.

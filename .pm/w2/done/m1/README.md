@@ -38,4 +38,4 @@ Built as a third adapter in `operator/internal/api/`, no new domain logic outsid
 
 ## Source
 
-`docs/vision.md` pillar 3 (MCP server); `docs/bex-api.md` "one Core, thin adapters"; Render's official MCP server `render-oss/render-mcp-server` (tool names: `list_services`, `get_service`, `list_logs`, `list_deploys`, `get_metrics`, …).
+`docs/ADR008-vision.md` pillar 3 (MCP server); `docs/ADR006-bex-api.md` "one Core, thin adapters"; Render's official MCP server `render-oss/render-mcp-server` (tool names: `list_services`, `get_service`, `list_logs`, `list_deploys`, `get_metrics`, …).

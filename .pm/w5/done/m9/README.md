@@ -20,7 +20,7 @@ An MCP agent runs `SELECT`s against a managed database via `query_render_postgre
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w2` 2026-07-08 (reassigned to w5 as m9 on 2026-07-08 — the original `w2/m6` label collided with w5's already-done m6); `docs/bex-api.md` ("Render's `query_render_postgres` … omitted, not faked — a deferred capability"); `render-oss/render-mcp-server`.
+- **Source:** `/pm-brainstorm for w2` 2026-07-08 (reassigned to w5 as m9 on 2026-07-08 — the original `w2/m6` label collided with w5's already-done m6); `docs/ADR006-bex-api.md` ("Render's `query_render_postgres` … omitted, not faked — a deferred capability"); `render-oss/render-mcp-server`.
 - **Goal linkage:** pillar 3 (agents operate bex natively) — inspecting the database is a top agent debugging move.
 - **Expected outcome:** the last Render-official Postgres MCP tool exists; Render-trained agents can debug their data on bex without connection-string plumbing.
 - **Why now:** the blocker cited at deferral time (live in-cluster connectivity from the API layer) no longer holds — `connection-info` already reads CNPG secrets and bex-api runs in-cluster next to the databases. Small, independent, and closes a named ✖ before w1/m13's parity matrix files it.

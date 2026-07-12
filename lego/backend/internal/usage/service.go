@@ -19,7 +19,7 @@ limitations under the License.
 // into durable usage_hourly rows (internal/store), keyed per workspace. The
 // Service exposes month-to-date aggregates as REST/GraphQL/MCP adapters (m2)
 // and bounds usage_hourly's growth by compacting months older than the hot
-// window into usage_monthly aggregates daily (m4, docs/usage-metering.md).
+// window into usage_monthly aggregates daily (m4, docs/ADR023-usage-metering.md).
 // The loop needs BEX_CP_DB_URI (store); metering additionally needs
 // BEX_PROM_URL (Prometheus) — with the store absent the package is a no-op
 // and the rest of bex-api is byte-for-byte unchanged.

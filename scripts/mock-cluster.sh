@@ -56,7 +56,7 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s || true
 # Keep cluster DNS on the control-plane node: worker-node pods can't reach the
-# apiserver / cross-node services under OrbStack+Calico (docs/deployment.md), so
+# apiserver / cross-node services under OrbStack+Calico (docs/ADR004-deployment.md), so
 # coredns scheduled onto a worker silently kills DNS for the whole cluster.
 KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy coredns --type merge -p \
   '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},

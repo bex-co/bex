@@ -23,7 +23,7 @@ import (
 // KeyValueSpec is the desired state of a managed Valkey (Redis-compatible)
 // key-value store — the Render-style "add a Key Value" unit. The operator
 // projects it to a single-instance Valkey StatefulSet in the same namespace; the
-// plan sets resources/storage. See docs/keyvalue-management.md.
+// plan sets resources/storage. See docs/ADR021-keyvalue-management.md.
 type KeyValueSpec struct {
 	// Plan selects the resource allocation (compute + storage). MVP plans are
 	// single-instance and fit one node. Names follow Render's Key Value product
@@ -46,7 +46,7 @@ type KeyValueSpec struct {
 	// Public, when true and the controller's BEX_KV_DOMAIN is set, exposes the
 	// store at "<name>.<BEX_KV_DOMAIN>" via a Traefik TCP/SNI route (TLS
 	// passthrough — Valkey terminates its own TLS for direct-TLS clients). Default:
-	// in-cluster only. See docs/keyvalue-management.md.
+	// in-cluster only. See docs/ADR021-keyvalue-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
 

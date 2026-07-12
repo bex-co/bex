@@ -24,7 +24,7 @@ patches:
         namespace: argocd
       $patch: delete
   # Auth DBs: shrink to CAPD scale — 1Gi on local-path (no hcloud-volumes here;
-  # the CAPD cluster needs the local-path provisioner installed, see docs/auth.md).
+  # the CAPD cluster needs the local-path provisioner installed, see docs/ADR012-auth.md).
   - patch: |-
       apiVersion: argoproj.io/v1alpha1
       kind: Application

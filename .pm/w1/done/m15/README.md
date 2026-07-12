@@ -21,7 +21,7 @@ A user can create a `background_worker` (runs without an HTTP port/ingress — n
 
 ## Source + Goal linkage
 
-- **Source:** inbox note `w1/009` (m13 audit), the ✖ "Static site · background worker · cron job" row in `docs/render-parity.md` (→ w1/m15). Static-site half split out to `w1/012`.
+- **Source:** inbox note `w1/009` (m13 audit), the ✖ "Static site · background worker · cron job" row in `docs/ADR018-render-parity.md` (→ w1/m15). Static-site half split out to `w1/012`.
 - **Goal linkage:** pillar 1 (Render parity — service-type breadth).
 - **Expected outcome:** bex covers the two most common non-web Render service types; `render.yaml`/`bex.yml` with `type: worker`/`cron` deploy correctly.
 - **Why now:** the audit flagged bex serves only web/private services; background_worker is a near-free win (drop the Service/Ingress) and cron unlocks scheduled workloads without the off-roadmap exec surface.

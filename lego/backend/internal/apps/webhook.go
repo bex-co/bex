@@ -45,7 +45,7 @@ const maxWebhookBody = 1 << 20 // 1 MiB — push payloads are small; cap to boun
 // GitWebhook is the HMAC-verified push endpoint. It accepts two independent
 // HMAC keys: Secret (the shared BEX_WEBHOOK_SECRET, manual per-repo webhooks) and
 // GitHubSecret (BEX_GITHUB_WEBHOOK_SECRET, the GitHub App's app-wide webhook, so
-// installed repos redeploy with zero per-repo config — docs/github-integration.md).
+// installed repos redeploy with zero per-repo config — docs/ADR026-github-integration.md).
 // A delivery is accepted if it verifies under EITHER key; the endpoint 503s only
 // when BOTH are empty (never accept unsigned pushes).
 type GitWebhook struct {

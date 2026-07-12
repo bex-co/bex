@@ -13,7 +13,7 @@ export interface UseInviteMemberResult {
 
 /**
  * Wires the invite dialog to bex-api's `inviteWorkspaceMember`. On success the
- * recipient is emailed and joins on their first login (docs/auth.md); the
+ * recipient is emailed and joins on their first login (docs/ADR012-auth.md); the
  * caller refetches the pending-invite list.
  */
 export function useInviteMember(workspaceId: string): UseInviteMemberResult {

@@ -22,7 +22,7 @@
 - A failover/promote verb triggers a CNPG switchover and the reported primary changes; connections continue against the primary service.
 - Read-replica endpoints/URLs are issued (internal `-ro` service + external Traefik SNI hostname where `BEX_DB_DOMAIN` is set), separate from the primary URL.
 - REST/GraphQL/MCP expose `enableHighAvailability`, failover/promote, and replica URLs with Render-identical shape; `highAvailabilityEnabled` reports the real state (no longer hardcoded `false`); the dashboard shows the HA toggle, failover action, and replica connection info.
-- `docs/render-parity.md` + `docs/postgresql-management.md` updated.
+- `docs/ADR018-render-parity.md` + `docs/ADR009-postgresql-management.md` updated.
 
 ## Source + Goal linkage
 

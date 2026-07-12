@@ -8,7 +8,7 @@
 #       set, that single off-cluster endpoint is the list. Otherwise every
 #       OpenBao pod is port-forwarded directly — the `openbao` Service
 #       round-robins across sealed+unsealed members, so per-pod is the only
-#       reliable target in HA (docs/secrets.md §3). Pods are visited in ordinal
+#       reliable target in HA (docs/ADR013-secrets.md §3). Pods are visited in ordinal
 #       order so openbao-0 leads init. Launches background port-forwards whose
 #       PIDs land in the global `BAO_PF_PIDS` for the caller's cleanup trap.
 #

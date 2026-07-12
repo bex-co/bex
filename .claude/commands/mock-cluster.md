@@ -17,7 +17,7 @@ Otherwise, run the full bring-up:
    - `docker save bex-operator:dev -o /tmp/bex-op.tar`
    - For each node in `kubectl get nodes -o name`: `docker cp /tmp/bex-op.tar <node>:/op.tar && docker exec <node> ctr -n k8s.io images import /op.tar`
 4. `( cd operator && make deploy IMG=bex-operator:dev )` — deploys to ns `bex-system` with `BEX_RUNTIME=kubernetes`.
-5. Local-CAPD-only fix — pin the operator to the control-plane node (OrbStack/Calico can't route cross-node pod→apiserver; see docs/deployment.md):
+5. Local-CAPD-only fix — pin the operator to the control-plane node (OrbStack/Calico can't route cross-node pod→apiserver; see docs/ADR004-deployment.md):
    ```
    kubectl -n bex-system patch deploy bex-controller-manager --type merge -p \
     '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},

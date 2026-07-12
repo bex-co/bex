@@ -34,7 +34,7 @@ Side-by-side with Render's live metrics page (`dashboard.render.com/web/srv-…/
 
 ## Out of scope (documented deviations, not gaps to close here)
 
-- **Host/Path filters** — the backend accepts them but cannot apply them (Traefik service-level counters carry no host/path labels; recorded in docs/observability.md). Rendering dead controls would fake capability.
+- **Host/Path filters** — the backend accepts them but cannot apply them (Traefik service-level counters carry no host/path labels; recorded in docs/ADR010-observability.md). Rendering dead controls would fake capability.
 - **Event timeline / "Filter events"** — Render overlays deploy events on charts; bex has no events feed yet (separate milestone if pursued).
 - **"Manage scaling" / "Limit → plan" link targets** — bex has no scaling/plan pages; labels render as text.
 - **Metrics streaming integrations** (Render's footer upsell).

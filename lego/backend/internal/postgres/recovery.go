@@ -226,7 +226,7 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]BackupView, e
 // CreateExport triggers an on-demand export: a CNPG on-demand Backup of the
 // cluster to object storage — a discrete, restorable snapshot. (bex's export is
 // a physical base-backup snapshot, not Render's logical pg_dump: a documented
-// divergence — see docs/postgresql-management.md.) Requires backups enabled.
+// divergence — see docs/ADR009-postgresql-management.md.) Requires backups enabled.
 func (s *Service) CreateExport(ctx context.Context, name string) (BackupView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return BackupView{}, err

@@ -14,7 +14,7 @@ export interface UseChangeRoleResult {
 
 /**
  * Wires a member row's role dropdown to bex-api's `changeWorkspaceMemberRole`.
- * The last-admin refusal is enforced server-side (docs/auth.md): demoting the
+ * The last-admin refusal is enforced server-side (docs/ADR012-auth.md): demoting the
  * only admin returns a bad-request the UI surfaces as a toast.
  */
 export function useChangeRole(workspaceId: string): UseChangeRoleResult {

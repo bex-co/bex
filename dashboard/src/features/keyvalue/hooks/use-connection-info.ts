@@ -20,7 +20,7 @@ export interface UseConnectionInfoResult {
  * password-bearing URI never lands in the Apollo cache or on the wire until the
  * user clicks Reveal. `network-only` so a reveal is always fresh; `errorPolicy:
  * none` so an authz/not-provisioned error surfaces to the panel
- * (docs/keyvalue-management.md: connection-info 404s until the Secret exists).
+ * (docs/ADR021-keyvalue-management.md: connection-info 404s until the Secret exists).
  * Mirrors databases' `useConnectionInfo`.
  */
 export function useConnectionInfo(id: string): UseConnectionInfoResult {

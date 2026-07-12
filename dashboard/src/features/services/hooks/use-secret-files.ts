@@ -10,7 +10,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { SecretFileName } from "@/features/services/types";
 
-// bex-api's secret-files GraphQL mirrors the env-vars shape (docs/bex-api.md):
+// bex-api's secret-files GraphQL mirrors the env-vars shape (docs/ADR006-bex-api.md):
 // secret files nest under the service, `secretFileNames` lists names only (a
 // file's content is fetched per name via `secretFile(name)`, "Show"), and every
 // write rolls the pods — there is no separate deploy step, so the toast says the

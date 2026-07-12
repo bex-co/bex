@@ -1,6 +1,6 @@
 # Sealed Secrets — infra credentials encrypted at rest
 
-**Why this exists:** bex's _tenant_ secrets already have a home — OpenBao ([secrets.md](secrets.md)). But bex's own _platform_ credentials (the Hetzner API token, the Argo repo deploy key, the GHCR pull secret, the etcd-/openbao-backup S3 keys) are static, bex-operated, and today applied **imperatively** from CI secrets (`kubectl create secret …` in the deploy workflows). That works, but it means the cluster's secret state is not fully described by git: re-creating the cluster requires re-running CI with the right GitHub Actions secrets, and there is no versioned, reviewable record of _which_ secrets exist. Sealed Secrets closes that gap — encrypt each credential with the cluster controller's public key into a **SealedSecret** manifest that is safe to commit, and let Argo reconcile it like any other resource.
+**Why this exists:** bex's _tenant_ secrets already have a home — OpenBao ([ADR013-secrets.md](ADR013-secrets.md)). But bex's own _platform_ credentials (the Hetzner API token, the Argo repo deploy key, the GHCR pull secret, the etcd-/openbao-backup S3 keys) are static, bex-operated, and today applied **imperatively** from CI secrets (`kubectl create secret …` in the deploy workflows). That works, but it means the cluster's secret state is not fully described by git: re-creating the cluster requires re-running CI with the right GitHub Actions secrets, and there is no versioned, reviewable record of _which_ secrets exist. Sealed Secrets closes that gap — encrypt each credential with the cluster controller's public key into a **SealedSecret** manifest that is safe to commit, and let Argo reconcile it like any other resource.
 
 ```mermaid
 graph LR
@@ -18,7 +18,7 @@ Two standard ways to keep encrypted secrets in a GitOps repo:
 - **SOPS (age/KMS)** encrypts the values in an otherwise-normal YAML; Argo needs a decrypting plugin (`ksops`/`argocd-vault-plugin`) and the age private key mounted into the repo-server. Powerful, but it adds a plugin to the Argo install and puts the decryption key in the repo-server's namespace.
 - **Sealed Secrets** (Bitnami) runs a controller that owns an asymmetric key pair. `kubeseal` encrypts with the **public** key (fetchable by anyone); only the controller's **private** key — which never leaves the cluster — decrypts, and only into the exact `namespace/name` the secret was sealed for (default "strict" scope). No Argo plugin, no key material in git or in the repo-server.
 
-Sealed Secrets wins here for the same reason integrated-Raft won for OpenBao ([secrets.md §2](secrets.md)): fewer moving parts, self-contained, nothing extra bolted onto Argo. The controller is `deploy/gitops/base/sealed-secrets.yaml` (chart `2.19.1`, controller v0.38.4), installed into `kube-system` as name `sealed-secrets` so `kubeseal`'s default controller lookup resolves without flags.
+Sealed Secrets wins here for the same reason integrated-Raft won for OpenBao ([ADR013-secrets.md §2](ADR013-secrets.md)): fewer moving parts, self-contained, nothing extra bolted onto Argo. The controller is `deploy/gitops/base/sealed-secrets.yaml` (chart `2.19.1`, controller v0.38.4), installed into `kube-system` as name `sealed-secrets` so `kubeseal`'s default controller lookup resolves without flags.
 
 ## What gets sealed
 
@@ -29,10 +29,10 @@ The static, bex-operated credentials the deploy workflows currently create imper
 | Hetzner API token | `default/hetzner` | CAPH (app-cluster.yml) |
 | Hetzner API token | `kube-system/hcloud` | Hetzner CCM + CSI (app-cluster.yml) |
 | Argo repo deploy key | `argocd/bex-repo` | Argo CD (clone the private repo) |
-| etcd backup S3 creds | `kube-system/etcd-backup-s3` | etcd-backup CronJob ([etcd-backup-restore.md](etcd-backup-restore.md)) |
-| OpenBao backup S3 | `secrets/openbao-backup-s3` | openbao-backup CronJob ([openbao-backup-restore.md](openbao-backup-restore.md)) |
+| etcd backup S3 creds | `kube-system/etcd-backup-s3` | etcd-backup CronJob ([ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)) |
+| OpenBao backup S3 | `secrets/openbao-backup-s3` | openbao-backup CronJob ([ADR015-openbao-backup-restore.md](ADR015-openbao-backup-restore.md)) |
 
-> Not sealed here: the Ory/OpenFGA auth secrets and the OpenBao unseal keys. Those are composed at deploy time from generated CNPG credentials (`scripts/auth-secrets.sh`) or are the master-unseal material that by design lives only in `.env` ([secrets.md §3](secrets.md)) — sealing them buys nothing.
+> Not sealed here: the Ory/OpenFGA auth secrets and the OpenBao unseal keys. Those are composed at deploy time from generated CNPG credentials (`scripts/auth-secrets.sh`) or are the master-unseal material that by design lives only in `.env` ([ADR013-secrets.md §3](ADR013-secrets.md)) — sealing them buys nothing.
 
 ## Sealing a credential
 

@@ -32,7 +32,7 @@ import (
 // limit — routed through the same Core.QueryLogs the REST adapter uses. The
 // structured request-log filters Render also accepts (level, instance, host,
 // statusCode, method, path, direction) are omitted here, exactly as in REST,
-// because bex sources application logs only (docs/observability.md). Omitting a
+// because bex sources application logs only (docs/ADR010-observability.md). Omitting a
 // filter bex can't serve keeps the tool a safe subset rather than a fake one.
 
 // listLogsArgs mirrors Render's list_logs. Repeatable filters are arrays (Render

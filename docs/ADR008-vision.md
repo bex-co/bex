@@ -22,10 +22,10 @@ Render compatibility is part of the same thesis: agents (and their toolchains) a
 
 | # | Pillar | Status |
 | --- | --- | --- |
-| 1 | **Render-compatible REST + GraphQL** — `bex-api` serves Render's `/v1/services` shapes (verified against Render's OpenAPI spec) and its dashboard GraphQL ([bex-api.md](bex-api.md)) | ✅ shipped |
+| 1 | **Render-compatible REST + GraphQL** — `bex-api` serves Render's `/v1/services` shapes (verified against Render's OpenAPI spec) and its dashboard GraphQL ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
 | 2 | **Agent-readable state** — `App` CR `status.phase` / `status.revision` / `status.url`; `kubectl get apps.app.bex.co` is the dashboard. Treated as a stable contract | ✅ shipped |
-| 3 | **MCP server** — the bex-api verbs (list / get / restart / suspend / resume / plan-change / logs / metrics / env-vars / api-keys) exposed over MCP (`/mcp` + a stdio mode); by design just another thin adapter over the same core ([bex-api.md](bex-api.md)) | ✅ shipped |
-| 4 | **Deploy-from-chat** — one API call takes a repo + `bex.yml` to a live URL, so "deploy this" is a single agent action (needs the control plane, [control-plane.md](control-plane.md)) | 🔜 planned |
+| 3 | **MCP server** — the bex-api verbs (list / get / restart / suspend / resume / plan-change / logs / metrics / env-vars / api-keys) exposed over MCP (`/mcp` + a stdio mode); by design just another thin adapter over the same core ([ADR006-bex-api.md](ADR006-bex-api.md)) | ✅ shipped |
+| 4 | **Deploy-from-chat** — one API call takes a repo + `bex.yml` to a live URL, so "deploy this" is a single agent action (needs the control plane, [ADR003-control-plane.md](ADR003-control-plane.md)) | 🔜 planned |
 | 5 | **E2B-compatible sandboxes** — the opensandbox runtime's real pause/resume as hosted execution environments for agents, with idle sandboxes hibernated ("sleep = free") | 🔜 planned |
 
 Pillars 1–3 mean an agent can already operate bex today natively — MCP, `curl`, or `kubectl`. Pillars 4–5 close the loop from "operate" to "create".
@@ -34,7 +34,7 @@ Pillars 1–3 mean an agent can already operate bex today natively — MCP, `cur
 
 Roughly ordered — de-risk the live system, then the source-of-truth control plane, then the elastic/cost machinery:
 
-1. **Postgres control plane** — ✅ built (opt-in via `BEX_CP_DB_URI`, not yet the prod default; [control-plane.md](control-plane.md)). Remaining: flip it on in prod, tenant onboarding.
+1. **Postgres control plane** — ✅ built (opt-in via `BEX_CP_DB_URI`, not yet the prod default; [ADR003-control-plane.md](ADR003-control-plane.md)). Remaining: flip it on in prod, tenant onboarding.
 2. **Wake activator + HMAC webhook** — push-to-deploy from Git hosting, and wake-on-request for hibernated apps.
 3. **Cluster Autoscaler wiring** — add/remove machines reactively instead of manually.
 4. **In-cluster builds** — BuildKit/kpack Jobs so build-from-git images are pullable by cluster nodes.
@@ -45,4 +45,4 @@ Roughly ordered — de-risk the live system, then the source-of-truth control pl
 - **Multi-cloud abstraction layers** — bex targets Cluster API providers (Hetzner first, Docker for local dev), not a lowest-common-denominator cloud API.
 - **A closed SaaS** — the hosted offering, when it exists, runs the same code in this repo.
 
-(Managed databases used to be a non-goal; that changed — bex now ships Render-compatible managed Postgres, [postgresql-management.md](postgresql-management.md).)
+(Managed databases used to be a non-goal; that changed — bex now ships Render-compatible managed Postgres, [ADR009-postgresql-management.md](ADR009-postgresql-management.md).)

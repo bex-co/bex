@@ -1,5 +1,5 @@
 # OpenFGA — the platform authorization service (Zanzibar-style ReBAC; decides
-# what an authenticated identity may touch — docs/auth.md). Pinned upstream
+# what an authenticated identity may touch — docs/ADR012-auth.md). Pinned upstream
 # chart; values vendored in this repo (multi-source, like kratos.yaml).
 # Cluster-internal ONLY: bex-api is the sole intended caller, so there is no
 # ingress and the API requires a preshared key. sync-wave 3: after the CNPG

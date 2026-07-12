@@ -31,7 +31,7 @@ rules:
     verbs: ["get"]
   # read the CNPG-generated "<db>-app" Secret to assemble connection strings;
   # create/update the per-app "<app>-env" Secret the env-vars API materializes
-  # from OpenBao (docs/secrets.md) so the Deployment can consume it via envFrom.
+  # from OpenBao (docs/ADR013-secrets.md) so the Deployment can consume it via envFrom.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "create", "update", "patch"]

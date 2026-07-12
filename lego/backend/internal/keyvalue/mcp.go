@@ -27,7 +27,7 @@ import (
 // get_key_value / create_key_value, keyed on Render's `keyValueId`. Render's MCP
 // server exposes no delete/suspend/resume KV tools, so bex mirrors that exactly —
 // those lifecycle verbs live on REST + GraphQL only (a deliberate match, noted in
-// docs/render-parity.md, not a gap). Every tool delegates to the same Service
+// docs/ADR018-render-parity.md, not a gap). Every tool delegates to the same Service
 // method REST and GraphQL call, so the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on

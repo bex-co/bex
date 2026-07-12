@@ -33,4 +33,4 @@ Create a tenant + app via the API → an `App` CR appears (labeled `app.kubernet
 
 ## Source
 
-Converted from `.tmp/005-control-plane-service.md`; data flow / schema / one-Postgres / tiers in [docs/control-plane.md](../../../docs/control-plane.md) (planned); the bought-auth boundary and mapping-keys rule in [docs/auth.md](../../../docs/auth.md); the authz model in `deploy/gitops/authz/model.fga`.
+Converted from `.tmp/005-control-plane-service.md`; data flow / schema / one-Postgres / tiers in [docs/ADR003-control-plane.md](../../../docs/ADR003-control-plane.md) (planned); the bought-auth boundary and mapping-keys rule in [docs/ADR012-auth.md](../../../docs/ADR012-auth.md); the authz model in `deploy/gitops/authz/model.fga`.

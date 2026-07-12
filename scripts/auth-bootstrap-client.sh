@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Seed the platform's bootstrap OAuth2 client, `bex-bootstrap` — the first API
-# key (docs/auth.md). bex-api has no shared static token: every caller holds an
+# key (docs/ADR012-auth.md). bex-api has no shared static token: every caller holds an
 # OAuth2 client, and this is the client the platform operator + CI use to reach
 # the API (and to mint further keys via /v1/api-keys). Idempotent: re-running
 # resets the client to the configured secret/grants.

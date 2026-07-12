@@ -54,7 +54,7 @@ export interface UseMetricsResult {
 /**
  * Reads one bex-api metric for one App via GraphQL, polling by default so the
  * page reflects a live cluster. Mirrors the REST/MCP adapters' shared Core
- * read (docs/observability.md) — this hook is presentation only.
+ * read (docs/ADR010-observability.md) — this hook is presentation only.
  *
  * The GraphQL query shape mirrors Render's dashboard MetricsQueryInput
  * (captured live): a filters array carrying the RESOURCE entry, rather than a

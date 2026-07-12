@@ -1,6 +1,6 @@
 # w2 — AI-native surface (worker2)
 
-**Worker:** worker2 The vision's differentiator (`docs/vision.md` pillars 3–5), owned by no workstream today. w1 builds the platform/control-plane; w2 makes it _native_ for agents. Ordered by dependency: MCP first (thin adapter, no new backend), then deploy-from-chat (needs w1's control plane + in-cluster builds), then hosted sandboxes.
+**Worker:** worker2 The vision's differentiator (`docs/ADR008-vision.md` pillars 3–5), owned by no workstream today. w1 builds the platform/control-plane; w2 makes it _native_ for agents. Ordered by dependency: MCP first (thin adapter, no new backend), then deploy-from-chat (needs w1's control plane + in-cluster builds), then hosted sandboxes.
 
 ## Milestones
 
@@ -20,6 +20,6 @@
 - `002.md` — Workspace MCP tools (`list_workspaces`/`select_workspace`/`get_selected_workspace`) — superseded by `w6/m2` (t005) 2026-07-08; retire to `done/` when w6/m2 closes
 
 > `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`.
-> `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/connect-an-agent.md`) — moved to `done/`.
+> `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/ADR025-connect-an-agent.md`) — moved to `done/`.
 
-> **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/sandboxes.md (ADR, status: proposed) for a future explicit re-open.
+> **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/ADR014-sandboxes.md (ADR, status: proposed) for a future explicit re-open.

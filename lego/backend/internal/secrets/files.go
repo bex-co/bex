@@ -188,7 +188,7 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 // Secret and ensures the App mounts it, rolling the pods. When the set empties the
 // Secret is deleted and the reference removed, so no empty /etc/secrets mount
 // lingers. The operator merges this Secret with any linked env-group file Secrets
-// into the single /etc/secrets projected volume (docs/secrets.md).
+// into the single /etc/secrets projected volume (docs/ADR013-secrets.md).
 func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
 	name := filesSecretName(a.Name)
 	base := client.MergeFrom(a.DeepCopy())

@@ -43,7 +43,7 @@ spec:
               value: ":8090"
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
-            # Auth (docs/auth.md): OAuth2 API keys introspected at Hydra's
+            # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.
             - name: BEX_HYDRA_ADMIN_URL # required; the binary refuses to start without it
@@ -56,7 +56,7 @@ spec:
             # unset omits those fields from the owners/members responses.
             - name: BEX_KRATOS_ADMIN_URL
               value: http://kratos-admin.auth.svc:4434
-            # OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/auth.md):
+            # OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md):
             # issuer = Hydra's public URL; resource = this API's canonical URI.
             # Drives the RFC 9728 metadata endpoint, the 401 WWW-Authenticate
             # resource_metadata hint, and the token-audience check.
@@ -73,7 +73,7 @@ spec:
               # dev server (Vite) hit the deployed API — fine while dev-stage,
               # drop it when real tenants have sessions worth riding.
               value: https://dashboard.bex.co,http://localhost:5173
-            # Authorization (docs/auth.md#authorization): BEX_OPENFGA_URL is the
+            # Authorization (docs/ADR012-auth.md#authorization): BEX_OPENFGA_URL is the
             # enforcement flip — every verb then requires a tenant permission, and
             # identities without tuples get 403. On since w1/m9: a human's first
             # login mints a workspace (tenant onboarding), and minted API keys get
@@ -88,7 +88,7 @@ spec:
                   name: bex-openfga
                   key: token
                   optional: true
-            # Tenant secrets (docs/secrets.md): the env-vars API stores values in
+            # Tenant secrets (docs/ADR013-secrets.md): the env-vars API stores values in
             # OpenBao KV v2, reached cluster-internally. bex-api authenticates as
             # its own ServiceAccount via OpenBao's Kubernetes auth (role bex-api,
             # scripts/bao-k8s-auth.sh). Unset => the env-vars verbs 503; everything
@@ -109,7 +109,7 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
-            # GitHub App integration (docs/github-integration.md): private-repo
+            # GitHub App integration (docs/ADR026-github-integration.md): private-repo
             # deploys + zero-config push-to-deploy. Created out-of-band by
             # scripts/github-app-secret.sh (reads .env). optional:true so bex-api
             # still starts on a cluster with no GitHub App configured — the

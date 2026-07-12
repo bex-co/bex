@@ -395,7 +395,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
 
-	// Reconcile the per-App NetworkPolicy (docs/tenant-isolation.md). Only when
+	// Reconcile the per-App NetworkPolicy (docs/ADR022-tenant-isolation.md). Only when
 	// the App carries a workspace label — legacy/hand-applied Apps run without
 	// a policy (consistent with prior behavior). Workers get a policy too: they
 	// need egress to same-workspace services even though they expose no port.
@@ -959,7 +959,7 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 // environment group's "<evg-id>-env" Secret (spec.envFromSecrets) FIRST, then the
 // service's own "<name>-env" Secret (spec.envFromSecret) LAST. Kubernetes applies
 // envFrom sources in order and the last wins on a key collision, so a service's own
-// variable overrides a linked group's — matching Render (docs/secrets.md). The
+// variable overrides a linked group's — matching Render (docs/ADR013-secrets.md). The
 // group sources are marked optional so a briefly-absent group Secret can't wedge
 // the pod; the service's own set keeps its original (non-optional) shape. Empty
 // spec => no envFrom, unchanged behavior.
@@ -995,7 +995,7 @@ const (
 )
 
 // secretFileMounts projects spec.filesFromSecrets into one read-only /etc/secrets
-// volume + mount (docs/secrets.md — secret files): each named Secret's keys become
+// volume + mount (docs/ADR013-secrets.md — secret files): each named Secret's keys become
 // files "/etc/secrets/<key>". A service's own files ("<name>-files") and each
 // linked group's files ("<evg-id>-files") merge into the single projected volume,
 // each source optional so an absent one contributes no files rather than failing
@@ -1057,7 +1057,7 @@ func tlsSecretName(appName string, i int, host string) string {
 // tenantSecCtx returns the hardening SecurityContext stamped on every tenant
 // container: no privilege escalation, all capabilities dropped, RuntimeDefault
 // seccomp. runAsNonRoot is deliberately absent — tenant images may run as root
-// (PSS baseline only, not restricted; see docs/tenant-isolation.md).
+// (PSS baseline only, not restricted; see docs/ADR022-tenant-isolation.md).
 func tenantSecCtx() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		AllowPrivilegeEscalation: ptr(false),
@@ -1090,7 +1090,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 }
 
 // reconcileNetworkPolicy creates or updates the per-App NetworkPolicy that
-// enforces tenant isolation (docs/tenant-isolation.md §per-app-networkpolicy).
+// enforces tenant isolation (docs/ADR022-tenant-isolation.md §per-app-networkpolicy).
 // The policy is skipped for Apps without the workspace label (legacy/hand-applied
 // Apps) — they communicate freely, consistent with prior behavior.
 //

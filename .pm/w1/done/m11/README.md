@@ -1,6 +1,6 @@
 # w1 · m11 — Render custom-domains API over `App.spec.hosts[]`
 
-**Worker:** worker1 **Goal:** Expose Render's custom-domains surface as a thin bex-api layer over the existing `App.spec.host`/`spec.hosts[]` (the operator already reconciles Traefik + cert-manager per docs/custom-domain.md), with three-adapter parity. **Status:** done
+**Worker:** worker1 **Goal:** Expose Render's custom-domains surface as a thin bex-api layer over the existing `App.spec.host`/`spec.hosts[]` (the operator already reconciles Traefik + cert-manager per docs/ADR005-custom-domain.md), with three-adapter parity. **Status:** done
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@ Add a domain via REST → it appears in `spec.hosts[]` → the operator converge
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox `w1/003` (2026-07-08, originally from `/pm-brainstorm more milestones for w5`); mechanism in docs/custom-domain.md.
+- **Source:** promoted from inbox `w1/003` (2026-07-08, originally from `/pm-brainstorm more milestones for w5`); mechanism in docs/ADR005-custom-domain.md.
 - **Goal linkage:** Render parity, pillar-1 API-first (API must exist before any dashboard surface).
 - **Expected outcome:** unblocks the paired dashboard note `w5/004` (custom-domains section in service Settings).
 - **Why now:** the mechanism is fully shipped (operator + Traefik + cert-manager); only the API veneer is missing, and the w5 UI half is queued behind it.

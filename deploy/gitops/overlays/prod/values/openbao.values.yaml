@@ -5,7 +5,7 @@
 #
 # Quorum, not single-node: base runs server.ha.replicas: 1 (single-node raft,
 # fine for the disposable CAPD mock cluster). Prod bumps to 3 so the cluster
-# keeps quorum through one node going down (docs/secrets.md §2 consequences).
+# keeps quorum through one node going down (docs/ADR013-secrets.md §2 consequences).
 # No storageClass override here, deliberately: prod uses the cluster's default
 # provisioner (hcloud-volumes under CAPH), unlike the local overlay's local-path
 # pin — overriding it here would point prod at a StorageClass it doesn't have.
@@ -15,7 +15,7 @@ server:
   # design — with the chart default (OrderedReady) the StatefulSet would wait
   # forever for openbao-0 to go Ready and never create openbao-1/2, so quorum
   # could never form. Parallel brings all three up sealed so bao-init.sh can
-  # unseal them (docs/secrets.md).
+  # unseal them (docs/ADR013-secrets.md).
   podManagementPolicy: Parallel
   ha:
     replicas: 3

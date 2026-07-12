@@ -26,14 +26,14 @@ import (
 )
 
 // rest.go mounts Render's owner-scoped audit-logs path
-// (GET /owners/{ownerId}/audit-logs, docs/render-parity.md "Audit logs" row) —
+// (GET /owners/{ownerId}/audit-logs, docs/ADR018-render-parity.md "Audit logs" row) —
 // NOT a bex-own /v1/audit-events noun (t003's explicit instruction). Render's
 // dashboard documents each entry as Timestamp/Actor/Event/Status/Metadata
 // columns (render.com/docs/audit-logs); its exact JSON field names weren't
 // resolvable from public docs at authoring time (api-docs.render.com's
 // reference page lists only the query parameters), so the field names below
 // are bex's best-effort rendering of that vocabulary — divergence tracked by
-// t007/docs/render-parity.md, not silently assumed byte-identical.
+// t007/docs/ADR018-render-parity.md, not silently assumed byte-identical.
 //
 // renderAuditLog renders one Event in that vocabulary. status is "success"/
 // "denied" (bex's outcome is binary allow/deny, not Render's success/error —

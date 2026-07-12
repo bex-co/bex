@@ -18,7 +18,7 @@ hydra:
     ttl:
       # Access-token lifetime, tuned down from Hydra's 1h default (w4/m13). API
       # keys use the client_credentials grant, which has no refresh token, and
-      # bex lets any caller re-mint a token freely (docs/auth.md) — so a short
+      # bex lets any caller re-mint a token freely (docs/ADR012-auth.md) — so a short
       # window bounds a leaked/stale access token's blast radius without costing
       # callers anything but a cheap re-mint. 15m balances that against
       # introspection load (bex-api caches positive introspections ≤30s, so the

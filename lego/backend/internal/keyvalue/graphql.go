@@ -26,7 +26,7 @@ import (
 // current "Key Value" product branding (the same way the postgres feature's
 // GraphQL noun "database" matches its Database CRD). If a live Render dashboard
 // capture ever shows a legacy "redis" noun, that is a rename follow-up recorded
-// in docs/render-parity.md, not a silent divergence.
+// in docs/ADR018-render-parity.md, not a silent divergence.
 var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValue",
 	Fields: graphql.Fields{

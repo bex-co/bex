@@ -28,4 +28,4 @@
 
 - `006.md` — Account session management (Kratos `/sessions` list + sign-out-everywhere card in Settings→Security) — sub-hour; ride alongside m11 ← `/pm-brainstorm for w4` 2026-07-09
 - `007.md` — Audit Log dashboard placement: Render's actual IA has no in-app table (CSV-export-only, under Compliance, not Team-adjacent) — revisit if Settings ever gets a Compliance/Security grouping ← m14 t007 2026-07-11
-> `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/auth.md §10); notes moved to `done/`.
+> `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/ADR012-auth.md §10); notes moved to `done/`.

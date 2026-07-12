@@ -17,4 +17,4 @@
 - `002.md` — Request/HTTP logs + structured log filters (level · status · method · path · instance) — from the w1/m13 parity audit; request logs likely ride m5's pipeline
 - `003.md` — Log Streams: forward logs to external observability tools (Render parity) — park until m5's shipper exists
 
-> `001.md` (v0 observability backend strategy → docs/observability.md) done — the doc shipped and is indexed; moved to `done/001.md` 2026-07-09.
+> `001.md` (v0 observability backend strategy → docs/ADR010-observability.md) done — the doc shipped and is indexed; moved to `done/001.md` 2026-07-09.

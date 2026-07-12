@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Enable OpenBao's Kubernetes auth method and scope the bex-api ServiceAccount
-# to tenants/* (docs/secrets.md#5), idempotently — the same out-of-band deploy
+# to tenants/* (docs/ADR013-secrets.md#5), idempotently — the same out-of-band deploy
 # step pattern as authz-model.sh:
 #   1. ensure the `kubernetes` auth method is enabled and configured
 #      (kubernetes_host is the only field OpenBao requires explicitly; the
@@ -13,7 +13,7 @@
 #   4. write the `snapshot` policy (read on sys/storage/raft/snapshot only) and
 #      the `bao-snapshot` role, binding ServiceAccount bao-snapshot (ns secrets)
 #      — the identity the nightly openbao-backup CronJob uses (w1/m7 t006,
-#      docs/openbao-backup-restore.md).
+#      docs/ADR015-openbao-backup-restore.md).
 #
 # These are cluster-wide raft-replicated writes, so they need only one
 # unsealed endpoint — the leader, resolved by bao-endpoints.sh (shared with

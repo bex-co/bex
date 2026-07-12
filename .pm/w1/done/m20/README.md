@@ -24,7 +24,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note `w1/008` (from the `docs/render-parity.md` audit, m13, 2026-07-08); moved to `w1/done/008.md` on promotion.
+- **Source:** inbox note `w1/008` (from the `docs/ADR018-render-parity.md` audit, m13, 2026-07-08); moved to `w1/done/008.md` on promotion.
 - **Goal linkage:** pillar 1 (Render parity) + elastic substrate (w1/m3, w1/m4).
 - **Expected outcome:** services auto-scale on load without operator intervention, matching Render's Scaling tab (Pro+).
 - **Why now:** the gating dependency is satisfied — w1/m3 landed node elasticity (2026-07-11) for replica scale-ups to land on, and m19's rebuild explicitly names this note as unblocked. The metric→replica reconciler is new per-service work (m3 is aggregate/node-level and never touches `spec.replicas`).

@@ -6,7 +6,7 @@
 
 | id   | title                                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's documented rate-limit contract into docs/bex-api.md                                | 30m | —          | — **DONE** |
+| t001 | Capture Render's documented rate-limit contract into docs/ADR006-bex-api.md                                | 30m | —          | — **DONE** |
 | t002 | Per-caller token-bucket middleware at the shared mux (REST + GraphQL + MCP)                          | 60m | t001       | — **DONE** |
 | t003 | Request caps: body-size limit, log/metrics query-range bounds, SSE connection cap                    | 45m | t002       | — **DONE** |
 | t004 | Env knobs for limits, documented + mirrored in `.env.example` / `.env.template`                      | 30m | t002       | — **DONE** |
@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-A caller exceeding the configured rate gets a Render-shaped **429 + `Retry-After`** on REST, GraphQL, and MCP alike while an under-limit caller is unaffected; two distinct API keys don't share a bucket; oversized bodies and unbounded log/metrics ranges are refused with clear errors; the limits are env-tunable and documented in docs/bex-api.md + the CLAUDE.md env table, with `.env.example`/`.env.template` in sync.
+A caller exceeding the configured rate gets a Render-shaped **429 + `Retry-After`** on REST, GraphQL, and MCP alike while an under-limit caller is unaffected; two distinct API keys don't share a bucket; oversized bodies and unbounded log/metrics ranges are refused with clear errors; the limits are env-tunable and documented in docs/ADR006-bex-api.md + the CLAUDE.md env table, with `.env.example`/`.env.template` in sync.
 
 ## Source + Goal linkage
 

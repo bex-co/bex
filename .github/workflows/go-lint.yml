@@ -1,7 +1,7 @@
 name: go lint (backend)
 
 # Enforces the backend module's golangci-lint config (lego/backend/.golangci.yml).
-# Its job today is the resource-id convention (docs/identifiers.md): depguard
+# Its job today is the resource-id convention (docs/ADR020-identifiers.md): depguard
 # forbids importing github.com/rs/xid outside internal/id, so a hand-rolled id
 # ("tea-" + xid.New()…, bypassing id.New) fails CI. Fix locally with:
 #   cd lego/operator && make lint-backend

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Out-of-band init/unseal of OpenBao (docs/secrets.md#3), idempotent, plus the
-# tenants/ KV v2 mount (docs/secrets.md#4).
+# Out-of-band init/unseal of OpenBao (docs/ADR013-secrets.md#3), idempotent, plus the
+# tenants/ KV v2 mount (docs/ADR013-secrets.md#4).
 #
 # First run: initializes OpenBao (5 Shamir shares / 3 threshold — the OpenBao
 # default), then writes BAO_UNSEAL_KEY_1/2/3 + BAO_ROOT_TOKEN into .env
 # (gitignored — never printed to stdout/logs, same convention as
 # auth-secrets.sh). Every run after that reads those same keys back out of
 # .env and unseals — including after a pod restart, which always comes back
-# sealed (no auto-unseal, by design: docs/secrets.md#3).
+# sealed (no auto-unseal, by design: docs/ADR013-secrets.md#3).
 #
 # HA (server.ha.replicas >= 2, prod): init runs ONCE on the ordinal-first pod
 # (the raft leader that forms the cluster); unseal runs on EVERY pod. Shamir
@@ -79,13 +79,13 @@ main() {
     # the unseal keys + root token into .env. Refuse to do it implicitly — e.g.
     # from deploy.yml, where .env lives on an ephemeral runner and would be
     # discarded, permanently sealing the store on the next restart. Gate it
-    # behind an explicit opt-in (docs/secrets.md "Prod deploy path").
+    # behind an explicit opt-in (docs/ADR013-secrets.md "Prod deploy path").
     if [ "${BAO_ALLOW_INIT:-}" != "1" ]; then
       echo "error: $leader is not initialized and BAO_ALLOW_INIT != 1 — refusing to auto-init." >&2
       echo "  A first init writes the unseal keys + root token to .env only; losing them (e.g. on" >&2
       echo "  an ephemeral CI runner) bricks the store. Run the one-time manual init instead:" >&2
       echo "    BAO_ALLOW_INIT=1 bash scripts/bao-init.sh   (against the prod kubeconfig)" >&2
-      echo "  then push the keys with scripts/gh-secrets.sh (docs/secrets.md)." >&2
+      echo "  then push the keys with scripts/gh-secrets.sh (docs/ADR013-secrets.md)." >&2
       exit 1
     fi
     echo "==> initializing (5 shares / 3 threshold)"

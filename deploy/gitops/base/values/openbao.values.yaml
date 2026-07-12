@@ -1,11 +1,11 @@
 # OpenBao — the platform tenant-credential secret store (versioned KV v2 at
-# tenants/, docs/secrets.md). Pinned upstream chart; values vendored in this
+# tenants/, docs/ADR013-secrets.md). Pinned upstream chart; values vendored in this
 # repo (multi-source, like kratos.yaml/openfga.yaml). Cluster-internal ONLY:
 # bex-api is the sole intended caller via the Kubernetes auth method
-# (docs/secrets.md#5) — no ingress.
+# (docs/ADR013-secrets.md#5) — no ingress.
 #
 # Unlike Kratos/Hydra/OpenFGA, OpenBao owns its storage directly (integrated
-# Raft, docs/secrets.md#2) instead of a CNPG cluster — no DSN Secret to
+# Raft, docs/ADR013-secrets.md#2) instead of a CNPG cluster — no DSN Secret to
 # compose. Init/unseal is out-of-band (scripts/bao-init.sh): unseal keys +
 # root token live only in .env, never in git (same rule as the Ory secrets).
 
@@ -18,7 +18,7 @@ ui:
 server:
   ha:
     enabled: true
-    replicas: 1 # single-node raft locally; prod bumps to 3 for quorum (docs/secrets.md consequences)
+    replicas: 1 # single-node raft locally; prod bumps to 3 for quorum (docs/ADR013-secrets.md consequences)
     raft:
       enabled: true
       config: |
@@ -46,4 +46,4 @@ server:
   # server.authDelegator.enabled defaults to true in the chart — grants
   # OpenBao's own ServiceAccount the TokenReview permission the Kubernetes
   # auth method needs to validate a caller's projected SA token
-  # (docs/secrets.md#5); nothing to override here.
+  # (docs/ADR013-secrets.md#5); nothing to override here.

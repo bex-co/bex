@@ -312,7 +312,7 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 // TestRecordDeployClosesFailedOnGateTimeout covers a deploy that never gates
 // healthy and never reaches PhaseFailed either — a bad image stuck
 // ImagePullBackOff, which the App CR's own phase machine polls PhaseDeploying
-// forever (app_controller.go). Health gating (docs/deployment.md) still needs
+// forever (app_controller.go). Health gating (docs/ADR004-deployment.md) still needs
 // to report failure eventually, so DeployGateTimeout is the fallback: a
 // deploy open longer than it closes update_failed even with the CR still
 // mid-rollout.

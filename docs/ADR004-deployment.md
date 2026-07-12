@@ -2,7 +2,7 @@
 
 > **Status: the manual runbook for the prebuilt-image path.** The **`App` CR is the only interface**: you never touch the Deployment; the operator rewrites it. This laptop-build-and-import runbook is for pushing a **prebuilt image** by hand (`spec.image`).
 >
-> **Build-from-git is now in-cluster (w1/m5).** Setting `spec.repo` on an `App` makes the operator dispatch a **rootless BuildKit Job** that clones the repo, builds its Dockerfile, and pushes `<registry>/<name>:gen-<generation>` to the in-cluster registry (Zot) — no docker daemon, no laptop, no `ctr` import; steps ①–③ below collapse into the platform. A signed git push then redeploys ([deploy-from-chat.md](deploy-from-chat.md), the `POST /v1/webhooks/git` webhook, gated on `spec.autoDeploy`). See **[In-cluster builds](#in-cluster-builds-buildkit--zot)** below. Cloud Native Buildpacks (`spec.builder: buildpack`) are not yet in-cluster — use a Dockerfile until kpack lands.
+> **Build-from-git is now in-cluster (w1/m5).** Setting `spec.repo` on an `App` makes the operator dispatch a **rootless BuildKit Job** that clones the repo, builds its Dockerfile, and pushes `<registry>/<name>:gen-<generation>` to the in-cluster registry (Zot) — no docker daemon, no laptop, no `ctr` import; steps ①–③ below collapse into the platform. A signed git push then redeploys ([ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md), the `POST /v1/webhooks/git` webhook, gated on `spec.autoDeploy`). See **[In-cluster builds](#in-cluster-builds-buildkit--zot)** below. Cloud Native Buildpacks (`spec.builder: buildpack`) are not yet in-cluster — use a Dockerfile until kpack lands.
 
 The examples below use a placeholder App `my-app` (container port 3000); substitute your App's name, port, and host. Three places are involved — keep them straight:
 
@@ -128,7 +128,7 @@ apps:
       - www.customer.com # rest -> App.spec.hosts (each gets its own TLS cert)
 ```
 
-`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([bex-api.md](bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([secrets.md](secrets.md#product-usage-w4m6-the-env-vars-api)).
+`envVars` are **literal, non-secret** configuration: they map to `App.spec.env` and are set on the container in order, with the operator-owned `PORT` always appended last so a user variable can never shadow it. `PORT` aside, an App received no configuration at all before this. **Credentials** (a database URL, an API key) don't belong in `bex.yml` — set them through the env-vars API ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)), which stores them in OpenBao and materializes a `<name>-env` Secret consumed via `App.spec.envFromSecret` ([ADR013-secrets.md](ADR013-secrets.md#product-usage-w4m6-the-env-vars-api)).
 
 Like render.yaml, **the service `type` decides exposure** — a `web` service is public by definition and its platform hostname is mandatory (there is no opt-out flag); `private` services are reachable only in-cluster at `<name>.<namespace>.svc:<port>`.
 
@@ -138,7 +138,7 @@ Apply it from the bex repo — this renders each `.apps[]` entry into an App CR 
 scripts/app-apply.sh <project-dir | path/to/bex.yml>
 ```
 
-Changing `domains[0]` and re-applying is how an App moves to a real domain: the operator rewrites the Ingress to the new host and cert-manager issues a fresh certificate for it (DNS for the host must already point at the edge, or sit behind a proxy such as Cloudflare that forwards HTTP to it — otherwise the ACME HTTP-01 challenge cannot pass). Additional entries serve the App at extra hostnames — typically customers' custom domains CNAME'd to the platform hostname; see [custom-domain.md](custom-domain.md) for that flow (edge registration + per-host cert isolation).
+Changing `domains[0]` and re-applying is how an App moves to a real domain: the operator rewrites the Ingress to the new host and cert-manager issues a fresh certificate for it (DNS for the host must already point at the edge, or sit behind a proxy such as Cloudflare that forwards HTTP to it — otherwise the ACME HTTP-01 challenge cannot pass). Additional entries serve the App at extra hostnames — typically customers' custom domains CNAME'd to the platform hostname; see [ADR005-custom-domain.md](ADR005-custom-domain.md) for that flow (edge registration + per-host cert isolation).
 
 ## In-cluster builds (BuildKit → Zot)
 
@@ -153,7 +153,7 @@ The tag is the App's **generation**, so any spec change — including a webhook 
 
 ## Gotchas
 
-- **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/control-plane.md`](control-plane.md) for the planned Postgres source of truth.
+- **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/ADR003-control-plane.md`](ADR003-control-plane.md) for the planned Postgres source of truth.
 - **Monorepo support is Dockerfile-only** — `App.spec.rootDir` (set via REST/GraphQL/MCP too, e.g. `rootDir: "services/api"`) scopes the BuildKit build context to that subdirectory (`context=<repo>.git#<branch>:<rootDir>`) and scopes the git-push auto-deploy webhook so a push whose diff touches only files outside `rootDir` doesn't trigger a redeploy. It only works with `spec.builder: auto`/`dockerfile` — CNB (`spec.builder: buildpack`) is still not in-cluster (needs kpack), so `rootDir` has no effect there yet.
 - **The edge IP is the node IP** (traefik on hostNetwork) — the `*.sslip.io` host is tied to it and changes if the node is replaced.
 - **Server IPs drift** — reread them from `hcloud`/the kubeconfig rather than trusting old notes; the kubeconfig's API endpoint is also distinct from the node IP.

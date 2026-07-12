@@ -19,7 +19,7 @@ export interface UseConnectionInfoResult {
  * Connections panel). Deliberately NOT a `useQuery` — nothing fires on mount, so
  * the password never lands in the Apollo cache or on the wire until the user
  * clicks Reveal. `network-only` so a reveal is always fresh; `errorPolicy:none`
- * so an authz/not-provisioned error surfaces to the panel (docs/bex-api.md:
+ * so an authz/not-provisioned error surfaces to the panel (docs/ADR006-bex-api.md:
  * connection-info requires the sensitive-read scope and 404s until CNPG has
  * generated the Secret).
  */

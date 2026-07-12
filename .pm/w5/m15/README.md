@@ -22,7 +22,7 @@ From the dashboard alone (no API calls by hand): a user creates a web service fr
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w2` 2026-07-11 (the user's parity target was literally `dashboard.render.com/web/new`); flips the create-service **UI ✖** cell in [docs/render-parity.md](../../../docs/render-parity.md) and retires its "API-first, no dashboard create wizard" divergence note.
+- **Source:** `/pm-brainstorm for w2` 2026-07-11 (the user's parity target was literally `dashboard.render.com/web/new`); flips the create-service **UI ✖** cell in [docs/ADR018-render-parity.md](../../../docs/ADR018-render-parity.md) and retires its "API-first, no dashboard create wizard" divergence note.
 - **Goal linkage:** Render parity for the human surface; completes the deploy story w2/m8–m9 builds for agents so humans get the same power.
 - **Expected outcome:** service creation stops being API/MCP-only; the dashboard covers Render's core "new web service" journey end to end.
 - **Why now:** w2/m8 (repo list) and w2/m9 (private clones + push-to-deploy) make a wizard genuinely useful for the first time; sequencing it right behind them ships the whole arc while the APIs are fresh. Render parity task included: user-facing UI feature compared against Render's live flow.

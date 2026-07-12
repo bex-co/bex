@@ -56,7 +56,7 @@ jobs:
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
 
-      # --- 1b. build + push the dashboard image (docs/auth.md §5) ---
+      # --- 1b. build + push the dashboard image (docs/ADR012-auth.md §5) ---
       # VITE_* are Vite build-time values baked into the JS bundle — the SSR
       # ones use in-cluster Service DNS (the dashboard's own pod reaches
       # Kratos/bex-api directly, not back out through the public ingress).
@@ -160,7 +160,7 @@ jobs:
       - name: apply prod app-of-apps
         run: kubectl apply -f deploy/gitops/bootstrap/prod.yaml
 
-      # --- 4b. auth substrate secrets (docs/auth.md) — out-of-band of GitOps ---
+      # --- 4b. auth substrate secrets (docs/ADR012-auth.md) — out-of-band of GitOps ---
       # Argo creates the CNPG Clusters (auth-dbs, sync-wave 2); once CNPG has
       # generated their DB credentials, auth-secrets.sh composes the DSNs and
       # writes the auth/kratos + auth/hydra Secrets that the kratos/hydra
@@ -174,7 +174,7 @@ jobs:
           HYDRA_SECRETS_COOKIE: ${{ secrets.HYDRA_SECRETS_COOKIE }}
           HYDRA_OIDC_PAIRWISE_SALT: ${{ secrets.HYDRA_OIDC_PAIRWISE_SALT }}
           OPENFGA_PRESHARED_KEY: ${{ secrets.OPENFGA_PRESHARED_KEY }}
-          # Optional social login (docs/auth.md § Social login) — unset secrets
+          # Optional social login (docs/ADR012-auth.md § Social login) — unset secrets
           # resolve empty, so auth-secrets.sh writes the oidc.yaml fragment disabled.
           BEX_GITHUB_OIDC_CLIENT_ID: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_ID }}
           BEX_GITHUB_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GITHUB_OIDC_CLIENT_SECRET }}
@@ -186,7 +186,7 @@ jobs:
           bash scripts/auth-secrets.sh
 
       # --- 4c. bootstrap API key --------------------------------------------
-      # bex-api has no shared static token (docs/bex-api.md#auth): seed the
+      # bex-api has no shared static token (docs/ADR006-bex-api.md#auth): seed the
       # `bex-bootstrap` OAuth2 client once Hydra is Ready. Idempotent.
       # continue-on-error: the client was seeded in a prior deploy; if the
       # kubelet TLS cert on a cluster node is expired (exec/port-forward both
@@ -207,7 +207,7 @@ jobs:
             [ "$i" -lt 3 ] && { echo "attempt $i failed, retrying in 15s..."; sleep 15; }
           done
 
-      # --- 4d. authorization model + seed tuples (docs/auth.md) ---------------
+      # --- 4d. authorization model + seed tuples (docs/ADR012-auth.md) ---------------
       # Idempotent: store `bex` ensured, deploy/gitops/authz/model.json written
       # only when changed, bootstrap tuples tolerated as already-present.
       # continue-on-error: same kubelet-TLS caveat as 4c above; model changes
@@ -248,8 +248,8 @@ jobs:
           }
           bash scripts/authz-model.sh
 
-      # --- 4e. OpenBao init/unseal + Kubernetes auth (docs/secrets.md) --------
-      # OpenBao ships sealed by design (no auto-unseal, docs/secrets.md §3):
+      # --- 4e. OpenBao init/unseal + Kubernetes auth (docs/ADR013-secrets.md) --------
+      # OpenBao ships sealed by design (no auto-unseal, docs/ADR013-secrets.md §3):
       # without this step the env-vars verbs 503 in prod even though bex-api
       # already points at the store (BEX_OPENBAO_URL in the api Deployment).
       # Idempotent — safe on every deploy: a re-run detects "already

@@ -1,4 +1,4 @@
-# The bex dashboard: Render-style human-facing UI (docs/architecture.md),
+# The bex dashboard: Render-style human-facing UI (docs/ADR002-architecture.md),
 # deployed straight from dashboard/deploy (kustomize) into its own namespace.
 # Image pinning: same digest write-back as bex.yaml (w1/m7 t002). The :latest below
 # is the bootstrap value; the deploy workflow rewrites it to the immutable

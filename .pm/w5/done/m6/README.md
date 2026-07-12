@@ -17,7 +17,7 @@
 
 - The service page's **Logs tab** shows historical App logs for the service from bex-api's `logs(resource, type, text, limit)` query, rendered in Render's `LogEntry` shape (`timestamp`, `message`, `type`, `instance`); a text filter narrows the results.
 - With live-tail enabled, new lines append in real time from `GET /v1/logs/subscribe` (SSE) authenticated by the Kratos session; the viewer supports pause/resume, autoscroll, and a capped in-memory buffer.
-- The layout matches the Render Logs reference captured in t001 (filter bar + live toggle + line list); the SSE-vs-WebSocket divergence (bex's deliberate choice, `docs/bex-api.md`) is documented in the data-layer code, not hidden.
+- The layout matches the Render Logs reference captured in t001 (filter bar + live toggle + line list); the SSE-vs-WebSocket divergence (bex's deliberate choice, `docs/ADR006-bex-api.md`) is documented in the data-layer code, not hidden.
 - Disconnect/reconnect, empty (no logs), and error states are handled explicitly.
 - Filters Render exposes that bex-api can't honor over raw pod logs (`level`, `statusCode`, `method`, and `type=request`/`build` → empty) are omitted or shown empty per bex-api's contract, not faked.
 - `yarn lint && yarn typecheck && yarn test && yarn build` all pass; a live-tail screenshot is captured to `.playwright-mcp/`.
@@ -57,15 +57,15 @@ service Logs tab). Information architecture, top → bottom:
 | Time range ("Last hour", …) | GraphQL `logs()` takes no `start`/`end` (REST does; GraphQL does not) | **Omitted** — no time-range dropdown on the GraphQL panel |
 | Level (info/warn/error) | not parsed from raw stdout | **Omitted** |
 | Status code / Method / Path / Host | request-log filters, no backend | **Omitted** |
-| Instance filter, direction | not wired (`docs/observability.md`) | **Omitted** |
+| Instance filter, direction | not wired (`docs/ADR010-observability.md`) | **Omitted** |
 
 The one deliberate transport divergence: bex live-tails over **SSE** (`GET /v1/logs/subscribe`)
 where Render upgrades to a **WebSocket** — same "stream new lines live" contract, no extra
-dependency (`docs/bex-api.md`, `docs/observability.md`). Documented in the data-layer hook.
+dependency (`docs/ADR006-bex-api.md`, `docs/ADR010-observability.md`). Documented in the data-layer hook.
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". Backend live per `docs/observability.md` / `docs/bex-api.md`: GraphQL `logs(...)` + REST `GET /v1/logs` and SSE `GET /v1/logs/subscribe` (Render logs-API compatible; bex sources application logs only).
-- **Goal linkage:** `docs/vision.md` dashboard pillar + `GOAL.md` #2 (obs) — logs are the other half of Render-parity observability alongside metrics (shipped w3/m3); pillar-1 API-first (logs already exposed via REST/GraphQL/MCP).
+- **Source:** `/pm-brainstorm for w5 to work on dashboard` (2026-07-06) + user directive "all apis and uis should be consistent with render.com". Backend live per `docs/ADR010-observability.md` / `docs/ADR006-bex-api.md`: GraphQL `logs(...)` + REST `GET /v1/logs` and SSE `GET /v1/logs/subscribe` (Render logs-API compatible; bex sources application logs only).
+- **Goal linkage:** `docs/ADR008-vision.md` dashboard pillar + `GOAL.md` #2 (obs) — logs are the other half of Render-parity observability alongside metrics (shipped w3/m3); pillar-1 API-first (logs already exposed via REST/GraphQL/MCP).
 - **Expected outcome:** operators tail their App's logs in the dashboard, Render-style, without `kubectl` — completing the metrics + logs obs pair.
 - **Why now:** the tab shell lands in m5, so logs slots in as a tab rather than a bare route; SSE live-tail is the one genuinely new client capability (a stream, not another Apollo query), worth isolating in its own milestone so its integration risk doesn't leak into the simpler query pages.

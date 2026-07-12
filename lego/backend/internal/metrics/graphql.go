@@ -25,7 +25,7 @@ import (
 )
 
 // graphql.go is the metrics GraphQL fragment. This shape is Render's *dashboard*
-// GraphQL contract, captured live (docs/observability.md): `metrics(query:
+// GraphQL contract, captured live (docs/ADR010-observability.md): `metrics(query:
 // MetricsQueryInput!)`, filters as an array, an uppercase `name` enum, and values
 // as `{time, value}` (not `{timestamp, value}` — that field name is REST-only).
 

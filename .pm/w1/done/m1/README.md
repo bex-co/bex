@@ -1,6 +1,6 @@
 # w1 · m1 — Reliability: fix config drift + back up etcd
 
-**Worker:** worker1 **Goal:** Make the currently-live single-node deployment correct and recoverable — the operator must propagate operator-level config changes to running Apps, and App state in etcd must survive a node rebuild. **Status:** done (2026-07-05; prod activation of the backup needs merge + the `etcd-backup-s3` Secret, see docs/etcd-backup-restore.md)
+**Worker:** worker1 **Goal:** Make the currently-live single-node deployment correct and recoverable — the operator must propagate operator-level config changes to running Apps, and App state in etcd must survive a node rebuild. **Status:** done (2026-07-05; prod activation of the backup needs merge + the `etcd-backup-s3` Secret, see docs/ADR011-etcd-backup-restore.md)
 
 ## Tasks (in order)
 

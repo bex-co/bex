@@ -37,7 +37,7 @@ const (
 )
 
 // Checker is the feature services' seam to the authorization service
-// (docs/auth.md): may `subject` act with `relation` on `object`? OpenFGA in
+// (docs/ADR012-auth.md): may `subject` act with `relation` on `object`? OpenFGA in
 // production (internal/authz), a fake in tests. nil Base.Authz => every verb is
 // allowed — the single-operator mode bex ran in before authorization existed.
 type Checker interface {

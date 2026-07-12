@@ -21,7 +21,7 @@ A managed Postgres instance supports backups + point-in-time recovery (restore t
 
 ## Source + Goal linkage
 
-- **Source:** inbox note `w1/011` (m13 audit), the ✖ "Managed Postgres" advanced rows in `docs/render-parity.md` (→ w1/m17). HA/replicas split to `w1/013`.
+- **Source:** inbox note `w1/011` (m13 audit), the ✖ "Managed Postgres" advanced rows in `docs/ADR018-render-parity.md` (→ w1/m17). HA/replicas split to `w1/013`.
 - **Goal linkage:** pillar 1 (Render parity — managed data).
 - **Expected outcome:** "managed Postgres" becomes credible — a user can recover from mistakes (PITR), pause a DB, lock down access, and pool connections, as on Render.
 - **Why now:** the audit ranked data-protection as the top managed-Postgres gap; the connection-info shape already stubs the pooler fields and the etcd/OpenBao backup runbooks are the object-storage precedent to reuse.

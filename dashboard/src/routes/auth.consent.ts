@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Headless OAuth2 consent endpoint (docs/auth.md, w4/m9): Hydra's
+// Headless OAuth2 consent endpoint (docs/ADR012-auth.md, w4/m9): Hydra's
 // `urls.consent` points here. Server-only — no component, no UI; the handler
 // auto-accepts trusted/remembered consent requests and bounces the browser
 // back to Hydra. The dynamic import keeps the Hydra-admin logic (and its

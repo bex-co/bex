@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create the Kubernetes Secret bex-api consumes for the GitHub App integration
-# (docs/github-integration.md), out-of-band of GitOps (no secret material in git
+# (docs/ADR026-github-integration.md), out-of-band of GitOps (no secret material in git
 # or Argo-managed manifests — repo rule; the private key is a credential).
 #
 # Reads the repo-local .env (gitignored — never commit or print it). Keys:

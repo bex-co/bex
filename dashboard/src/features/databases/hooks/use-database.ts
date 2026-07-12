@@ -21,7 +21,7 @@ export interface UseDatabaseResult {
  * Available on its own, then stops — an idle, settled DB won't change, so
  * refetching it forever is waste. Mirrors the list page's gated poll. Connection
  * info is NOT fetched here — it's revealed on demand from the detail page
- * (docs/bex-api.md §Managed Postgres: the password is surfaced only on request).
+ * (docs/ADR006-bex-api.md §Managed Postgres: the password is surfaced only on request).
  */
 export function useDatabase(id: string): UseDatabaseResult {
   const { data, loading, error, startPolling, stopPolling, refetch } = useQuery(

@@ -21,7 +21,7 @@ On dashboard.bex.co, a service's Settings tab has a danger zone; typing the serv
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm new milestones` 2026-07-09 — gap analysis against `docs/render-parity.md`'s "Delete service" row (UI ✖, only `w2/m4` as owner, which is backend-only per its own README); `GOAL.md` item 1 names Delete explicitly ("Suspend. Delete. Create.").
+- **Source:** `/pm-brainstorm new milestones` 2026-07-09 — gap analysis against `docs/ADR018-render-parity.md`'s "Delete service" row (UI ✖, only `w2/m4` as owner, which is backend-only per its own README); `GOAL.md` item 1 names Delete explicitly ("Suspend. Delete. Create.").
 - **Goal linkage:** V0 roadmap item 1 (Create/Suspend/Delete — the last unbuilt verb of the three); pillar 1 (Render dashboard parity).
 - **Expected outcome:** service deletion becomes possible without `kubectl`/`curl`/MCP — the last resource type (services) catches up to databases/workspaces, which already have this pattern.
 - **Why now:** w2/m4 shipped the backend verb 2026-07-09 (`deleteService` lives in `lego/backend/internal/apps/graphql.go`; the milestone moved to `.pm/w2/done/m4`) — the gate this milestone was created behind is open, and only the UI half is missing before the verb goes backend-then-forgotten. _(Updated 2026-07-11 board review; originally written when w2/m4 was still upcoming.)_

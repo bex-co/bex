@@ -1,12 +1,12 @@
 # w4 · m5 — Platform secrets: OpenBao on the cluster (+ ADR)
 
-**Worker:** worker4 **Goal:** a versioned, policy-scoped secret store for _tenant_ credentials runs on the cluster as platform infrastructure (mirroring the w4/m1 Ory playbook: ADR → pinned Argo chart → out-of-band bootstrap → verify script), with the bex-api ServiceAccount able to read/write only `tenants/*` — ready for the product wiring in m6. Distinct from w1/m7 t003 (platform deploy secrets at rest in git). **Status:** done (2026-07-07; E2E-verified on the local mock cluster — init/unseal idempotency, KV v2 write/read, scoped `bex-api` SA login via the Kubernetes auth method, and restart durability. Note: OpenBao's pod needs pinning to the control-plane node on this CAPD cluster — `service_registration "kubernetes"` calls the apiserver directly, and worker nodes can't reach it here, so a worker-scheduled pod comes up `Running` but hangs on every request forever; see docs/secrets.md's local-CAPD quirks.)
+**Worker:** worker4 **Goal:** a versioned, policy-scoped secret store for _tenant_ credentials runs on the cluster as platform infrastructure (mirroring the w4/m1 Ory playbook: ADR → pinned Argo chart → out-of-band bootstrap → verify script), with the bex-api ServiceAccount able to read/write only `tenants/*` — ready for the product wiring in m6. Distinct from w1/m7 t003 (platform deploy secrets at rest in git). **Status:** done (2026-07-07; E2E-verified on the local mock cluster — init/unseal idempotency, KV v2 write/read, scoped `bex-api` SA login via the Kubernetes auth method, and restart durability. Note: OpenBao's pod needs pinning to the control-plane node on this CAPD cluster — `service_registration "kubernetes"` calls the apiserver directly, and worker nodes can't reach it here, so a worker-scheduled pod comes up `Running` but hangs on every request forever; see docs/ADR013-secrets.md's local-CAPD quirks.)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                            | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | ADR `docs/secrets.md`: OpenBao for tenant credentials — alternatives, storage backend, unseal strategy — **DONE** | 35m | —          |
+| t001 | ADR `docs/ADR013-secrets.md`: OpenBao for tenant credentials — alternatives, storage backend, unseal strategy — **DONE** | 35m | —          |
 | t002 | Argo Application for OpenBao (pinned chart, base values + local overlay) — **DONE**                              | 35m | t001       |
 | t003 | `scripts/bao-init.sh` — out-of-band init/unseal via `.env` + KV v2 mount `tenants/` — **DONE**                    | 40m | t002       |
 | t004 | Kubernetes auth method: role + policy for the bex-api ServiceAccount scoped to `tenants/*` — **DONE**             | 30m | t003       |

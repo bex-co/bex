@@ -1,6 +1,6 @@
 # bex-api — the control-plane seed (REST + GraphQL + MCP)
 
-The product API of the bex control plane (see [control-plane.md](control-plane.md)): an authenticated HTTP service that turns product actions into **App CR spec patches**. It contains no mechanism — it writes intent; the operator converges it. It exposes the lifecycle verbs from [restart-suspend-and-resume.md](restart-suspend-and-resume.md) plus logs, metrics, API keys, env vars, and managed Postgres — and, opt-in (`BEX_CP_DB_URI`), the Postgres source-of-truth store itself.
+The product API of the bex control plane (see [ADR003-control-plane.md](ADR003-control-plane.md)): an authenticated HTTP service that turns product actions into **App CR spec patches**. It contains no mechanism — it writes intent; the operator converges it. It exposes the lifecycle verbs from [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md) plus logs, metrics, API keys, env vars, and managed Postgres — and, opt-in (`BEX_CP_DB_URI`), the Postgres source-of-truth store itself.
 
 ## One core, three adapters
 
@@ -19,7 +19,7 @@ Each verb has exactly one implementation, in its feature package's `Service` (`l
 
 ## Auth
 
-Every route except `GET /healthz` requires real, per-client credentials from the auth substrate ([auth.md](auth.md)) — **there is no shared static token**:
+Every route except `GET /healthz` requires real, per-client credentials from the auth substrate ([ADR012-auth.md](ADR012-auth.md)) — **there is no shared static token**:
 
 - **API keys (machines)** — an API key _is_ an OAuth2 client (`client_credentials` grant). Exchange it for a short-lived bearer token, then call the API:
 
@@ -31,13 +31,13 @@ Every route except `GET /healthz` requires real, per-client credentials from the
 
   Tokens are introspected at Hydra's admin API (`BEX_HYDRA_ADMIN_URL`, cluster-internal, required — the binary refuses to start without it; positive results cached ≤ 30s). Keys are managed through the API itself: `POST /v1/api-keys` (the secret is returned exactly once), `GET /v1/api-keys`, `DELETE /v1/api-keys/{id}` — with GraphQL (`apiKeys`, `createApiKey`, `revokeApiKey`) and MCP (`create_api_key`, `list_api_keys`, `revoke_api_key`) parity. "API key" means the Hydra clients bex minted (stamped `bex.co/api-key` metadata): list hides and revoke refuses everything else, so platform clients can't be revoked through this endpoint. The **first** key, `bex-bootstrap`, is deliberately such a platform client — seeded and rotated only by [scripts/auth-bootstrap-client.sh](../scripts/auth-bootstrap-client.sh) (CI runs it on every deploy; secret from `.env`'s `BEX_BOOTSTRAP_CLIENT_SECRET`).
 
-  **Dashboard surface (w4/m8):** a logged-in human mints/lists/revokes keys from Settings → API Keys (`dashboard/src/features/api-keys/`) over this same GraphQL adapter — no separate REST surface for the UI. The list is workspace-shared, not "my keys" (see [auth.md](auth.md#authorization-openfga) — keys carry no per-user owner), and the secret is shown exactly once at creation, matching the CLI/API contract above.
+  **Dashboard surface (w4/m8):** a logged-in human mints/lists/revokes keys from Settings → API Keys (`dashboard/src/features/api-keys/`) over this same GraphQL adapter — no separate REST surface for the UI. The list is workspace-shared, not "my keys" (see [ADR012-auth.md](ADR012-auth.md#authorization-openfga) — keys carry no per-user owner), and the secret is shown exactly once at creation, matching the CLI/API contract above.
 
 - **Sessions (humans)** — with no bearer present, an Ory session (cookie or `X-Session-Token`) is validated via Kratos' `whoami` (`BEX_KRATOS_URL` — optional; unset disables sessions). A present bearer is authoritative: an inactive token is 401 with no session fallthrough.
 
 Ory unreachable ⇒ 503 (fail closed; operational recovery goes through kubectl, not this API). The resolved caller (OAuth2 `client_id` or Kratos identity id) is attached to the request context (`api.IdentityFrom`) — the tenant-scoping hook. `BEX_API_CORS_ORIGIN` optionally enables CORS for browser frontends — a comma-separated origin allowlist; the matched request `Origin` is echoed back (credentialed CORS forbids `*`). Prod sets it to `https://dashboard.bex.co,http://localhost:5173` (`lego/operator/config/api/deployment.yaml`) so both the deployed dashboard and a local dashboard dev server (Vite's default port) can call the deployed API; a locally-run bex-api still needs its own `BEX_API_CORS_ORIGIN=http://localhost:5173` since it's a separate deployment. The response carries `Access-Control-Allow-Credentials: true` — required for the dashboard's Kratos-session cookie (or an `X-Session-Token`) to be readable cross-origin at all.
 
-**Authorization** ([auth.md#authorization-openfga](auth.md)): with `BEX_OPENFGA_URL` set, every Core verb additionally checks the caller's permission against OpenFGA (mapped to Render's workspace-role matrix (viewer/contributor/developer/admin/billing — docs/auth.md), on the caller's workspace — `workspace:tea-<id>`, resolved from the control-plane store) — denial is **403**, OpenFGA unreachable is **503**. On in prod since w1/m9 (tenant onboarding: a human's first login mints a workspace, and minted API keys are bound to their tenant); unset ⇒ all authenticated callers may do everything, the pre-authorization behavior used when the store is off (dev, store-off).
+**Authorization** ([ADR012-auth.md#authorization-openfga](ADR012-auth.md)): with `BEX_OPENFGA_URL` set, every Core verb additionally checks the caller's permission against OpenFGA (mapped to Render's workspace-role matrix (viewer/contributor/developer/admin/billing — docs/ADR012-auth.md), on the caller's workspace — `workspace:tea-<id>`, resolved from the control-plane store) — denial is **403**, OpenFGA unreachable is **503**. On in prod since w1/m9 (tenant onboarding: a human's first login mints a workspace, and minted API keys are bound to their tenant); unset ⇒ all authenticated callers may do everything, the pre-authorization behavior used when the store is off (dev, store-off).
 
 ## REST (Render public-API compatible)
 
@@ -82,7 +82,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 ### Deploy-from-chat (pillar 4)
 
-"Deploy this" is **one call, no bespoke endpoint** — it rides the same create surface (ADR: [deploy-from-chat.md](deploy-from-chat.md)). Over MCP the `deploy` tool takes a `{repo, bexYaml}` (`bexYaml` is the project's render.yaml-shaped `bex.yml`); it parses the manifest, maps its fields onto a `CreateRequest` (the same mapping `scripts/app-apply.sh` uses), and calls `Create`. `create_web_service` is the equivalent with structured args (a `repo` or `image`). A later push closes the loop through the webhook below.
+"Deploy this" is **one call, no bespoke endpoint** — it rides the same create surface (ADR: [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md)). Over MCP the `deploy` tool takes a `{repo, bexYaml}` (`bexYaml` is the project's render.yaml-shaped `bex.yml`); it parses the manifest, maps its fields onto a `CreateRequest` (the same mapping `scripts/app-apply.sh` uses), and calls `Create`. `create_web_service` is the equivalent with structured args (a `repo` or `image`). A later push closes the loop through the webhook below.
 
 ### Deploy history + trigger (w2/m5, Render `/deploys` compatible)
 
@@ -129,7 +129,7 @@ mutation {
 
 ## Managed Postgres (Render `/v1/postgres` compatible)
 
-CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (see [postgresql-management.md](postgresql-management.md)):
+CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (see [ADR009-postgresql-management.md](ADR009-postgresql-management.md)):
 
 | method + path | effect | status |
 | --- | --- | --- |
@@ -158,11 +158,11 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/postgres/my-db/connection-info
 ```
 
-**Lifecycle, recovery & access** (w1/m17): `suspend`/`resume` hibernate the CNPG cluster (`cnpg.io/hibernation` — compute stops, PVC kept), `restart` bounces the primary; backups (`spec.backup.barmanObjectStore` + a daily `ScheduledBackup` on backed-up plans) enable `recovery-info` (PITR window) and `recover`, which restores to a **new** `Database` via CNPG `bootstrap.recovery` — the source is never touched; `exports` trigger/list on-demand snapshots (bex's export is a physical base-backup snapshot, a documented divergence from Render's logical `pg_dump`); the external endpoint's `ip-allow-list` gates the public SNI route via a Traefik `ipAllowList` middleware (the internal `-rw` path is never gated); `users` provision additional CNPG managed login roles; and the pooler strings are backed by a PgBouncer `Pooler`. Still deferred: `failover`/HA + read replicas (→ `w1/013`), and Postgres runtime observability (`processes`/`top-queries`/`sizes`). See [postgresql-management.md](postgresql-management.md).
+**Lifecycle, recovery & access** (w1/m17): `suspend`/`resume` hibernate the CNPG cluster (`cnpg.io/hibernation` — compute stops, PVC kept), `restart` bounces the primary; backups (`spec.backup.barmanObjectStore` + a daily `ScheduledBackup` on backed-up plans) enable `recovery-info` (PITR window) and `recover`, which restores to a **new** `Database` via CNPG `bootstrap.recovery` — the source is never touched; `exports` trigger/list on-demand snapshots (bex's export is a physical base-backup snapshot, a documented divergence from Render's logical `pg_dump`); the external endpoint's `ip-allow-list` gates the public SNI route via a Traefik `ipAllowList` middleware (the internal `-rw` path is never gated); `users` provision additional CNPG managed login roles; and the pooler strings are backed by a PgBouncer `Pooler`. Still deferred: `failover`/HA + read replicas (→ `w1/013`), and Postgres runtime observability (`processes`/`top-queries`/`sizes`). See [ADR009-postgresql-management.md](ADR009-postgresql-management.md).
 
 ## Managed Key Value (Render `/v1/key-value` compatible)
 
-CRUD + connection-info + suspend/resume for the `KeyValue` CR, shaped to Render's Key Value API — the datastore sibling of managed Postgres, one engine down (Valkey, see [keyvalue-management.md](keyvalue-management.md)):
+CRUD + connection-info + suspend/resume for the `KeyValue` CR, shaped to Render's Key Value API — the datastore sibling of managed Postgres, one engine down (Valkey, see [ADR021-keyvalue-management.md](ADR021-keyvalue-management.md)):
 
 | method | purpose | status |
 | --- | --- | --- |
@@ -175,7 +175,7 @@ CRUD + connection-info + suspend/resume for the `KeyValue` CR, shaped to Render'
 
 `connection-info` mirrors Render's `keyValueConnectionInfo` (`internalConnectionString` `redis://…`, `externalConnectionString` `rediss://…` when public, `cliCommand`) — read from the operator-generated Secret at request time, authed. Unlike Postgres there is no standalone `password` field: the password lives inside the connection strings (Valkey's `redis://:<password>@host` form), matching Render.
 
-**Noun, mirroring Render + the CRD:** REST `/v1/key-value`; GraphQL `keyValue*` (`keyValues` / `keyValue(id)` / `keyValueConnectionInfo(id)` queries, `createKeyValue` / `deleteKeyValue` / `suspendKeyValue` / `resumeKeyValue` mutations, plus the bex-extension `keyValueInstanceTypes` plan-picker read) — matching bex's own `KeyValue` CRD and Render's current "Key Value" product name. **MCP** (Render official-server names): `list_key_value_instances`, `get_key_value` (`{keyValueId}`), `create_key_value` — Render's exact three-tool set; Render's MCP server has no KV delete/suspend tools, so bex mirrors that (those verbs are REST + GraphQL only), never adding drift. The store's id is its name (name-as-id, the documented datastore deviation — [identifiers.md](identifiers.md)). Divergences vs Render, all conscious: the internal URL always mints a password (Render leaves it unauthenticated by default — bex is stricter); `maxmemoryPolicy`/`persistenceMode`/`ipAllowList` are omitted rather than faked (the CR can't back them yet). Dashboard surface: w5/m12 (`/keyvalue` list, `/keyvalue/new` create, `/keyvalue/$id` detail with connection-info reveal + suspend/resume).
+**Noun, mirroring Render + the CRD:** REST `/v1/key-value`; GraphQL `keyValue*` (`keyValues` / `keyValue(id)` / `keyValueConnectionInfo(id)` queries, `createKeyValue` / `deleteKeyValue` / `suspendKeyValue` / `resumeKeyValue` mutations, plus the bex-extension `keyValueInstanceTypes` plan-picker read) — matching bex's own `KeyValue` CRD and Render's current "Key Value" product name. **MCP** (Render official-server names): `list_key_value_instances`, `get_key_value` (`{keyValueId}`), `create_key_value` — Render's exact three-tool set; Render's MCP server has no KV delete/suspend tools, so bex mirrors that (those verbs are REST + GraphQL only), never adding drift. The store's id is its name (name-as-id, the documented datastore deviation — [ADR020-identifiers.md](ADR020-identifiers.md)). Divergences vs Render, all conscious: the internal URL always mints a password (Render leaves it unauthenticated by default — bex is stricter); `maxmemoryPolicy`/`persistenceMode`/`ipAllowList` are omitted rather than faked (the CR can't back them yet). Dashboard surface: w5/m12 (`/keyvalue` list, `/keyvalue/new` create, `/keyvalue/$id` detail with connection-info reveal + suspend/resume).
 
 ## MCP (Render official-server compatible)
 
@@ -217,7 +217,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 
 ## Logs — REST + GraphQL (Render logs-API compatible)
 
-MCP `list_logs` is the agent surface; the same `Core` logs read is also a Render-shaped **REST** and **GraphQL** query. Full design in [observability.md](observability.md).
+MCP `list_logs` is the agent surface; the same `Core` logs read is also a Render-shaped **REST** and **GraphQL** query. Full design in [ADR010-observability.md](ADR010-observability.md).
 
 | method + path            | effect                                          |
 | ------------------------ | ----------------------------------------------- |
@@ -228,7 +228,7 @@ Query params (verified against `render-public-api-1.json`): `resource` (App id, 
 
 `GET /v1/logs/subscribe` streams over **SSE** where Render upgrades to a **WebSocket** (bex's choice: no dependency, curl-friendly, same "stream new lines live" contract).
 
-**Durable history (backend swap, shapes unchanged).** With `BEX_LOKI_URL` set, the historical query (`GET /v1/logs`, `logs(...)`, MCP `list_logs`) reads a Loki store fed by a log-shipper DaemonSet instead of the kubelet's pod-log ring buffer — so logs **survive a pod restart** and the time range is a real bounded search. This is purely a `QueryLogs` backend swap: the params, envelope, log object, labels, and limit semantics are all identical either way, and with `BEX_LOKI_URL` unset the response is byte-identical to the pod-log path. The live tail (`/subscribe`) always follows pod logs. Full design + retention window in [observability.md](observability.md).
+**Durable history (backend swap, shapes unchanged).** With `BEX_LOKI_URL` set, the historical query (`GET /v1/logs`, `logs(...)`, MCP `list_logs`) reads a Loki store fed by a log-shipper DaemonSet instead of the kubelet's pod-log ring buffer — so logs **survive a pod restart** and the time range is a real bounded search. This is purely a `QueryLogs` backend swap: the params, envelope, log object, labels, and limit semantics are all identical either way, and with `BEX_LOKI_URL` unset the response is byte-identical to the pod-log path. The live tail (`/subscribe`) always follows pod logs. Full design + retention window in [ADR010-observability.md](ADR010-observability.md).
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs?resource=eden-cms-v2&type=app"
@@ -237,7 +237,7 @@ curl -N -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/logs/subscribe?
 
 ## Metrics — REST + GraphQL (Render metrics-API compatible)
 
-Resource and request metrics through the same `Core.Metrics` verb, shaped to Render's metrics endpoints. Full design in [observability.md](observability.md).
+Resource and request metrics through the same `Core.Metrics` verb, shaped to Render's metrics endpoints. Full design in [ADR010-observability.md](ADR010-observability.md).
 
 | method + path | metric |
 | --- | --- |
@@ -259,7 +259,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://api.bex.co/v1/metrics/http-laten
 
 ## Env vars — tenant secrets (Render `env-vars` compatible)
 
-A service's environment variables — the credentials an agent's app needs (a database URL, a third-party API key) — are set through all three surfaces. Values live in **OpenBao** (the tenant secret store, [secrets.md](secrets.md)), _not_ in the App CR: the CR only carries a `spec.envFromSecret` reference to the per-app `<name>-env` Secret bex-api materializes from OpenBao. This is the first end-to-end tenant-credential path — before it, an App received no configuration beyond `PORT`. The feature is its own package, `lego/backend/internal/secrets`.
+A service's environment variables — the credentials an agent's app needs (a database URL, a third-party API key) — are set through all three surfaces. Values live in **OpenBao** (the tenant secret store, [ADR013-secrets.md](ADR013-secrets.md)), _not_ in the App CR: the CR only carries a `spec.envFromSecret` reference to the per-app `<name>-env` Secret bex-api materializes from OpenBao. This is the first end-to-end tenant-credential path — before it, an App received no configuration beyond `PORT`. The feature is its own package, `lego/backend/internal/secrets`.
 
 All five of Render's env-var **REST** endpoints, verified against Render's public OpenAPI (the `{envVar, cursor}` list envelope, the bare `{key, value}` single object, the replace-all body):
 
@@ -299,7 +299,7 @@ Every authenticated **write** verb, and every authz **denial** on one, leaves ex
 
 Persistence is the control-plane store (`audit_events`, `lego/backend/internal/store/audit.go`), opt-in via `BEX_CP_DB_URI` like every other store-backed feature — `*store.PGStore` structurally satisfies `core.AuditSink`, wired directly onto `core.Base.Audit` in `cmd/api/main.go`. Store-less mode is a no-op sink (`core.NoopAuditSink`): nothing errors, nothing is recorded. A sink error is logged and swallowed — an audit-store outage never fails the write it's recording. Rows older than `BEX_AUDIT_RETENTION_DAYS` (default 90) are purged by a daily sweep (`internal/audit.Service.Run`, the same loop shape as usage's retention compaction, w8/m4).
 
-The read surface (`lego/backend/internal/audit`) is admin-scoped (`can_manage` — the same bar workspace rename/delete uses) and modeled on Render's `GET /owners/{ownerId}/audit-logs` (docs/render-parity.md "Audit logs" row): `GET /v1/owners/{ownerId}/audit-logs` (query `startTime`/`endTime`/`cursor`/`limit`, Render's vocabulary; `direction` is accepted and ignored — bex always returns newest-first) and the GraphQL `auditLogs(ownerId, startTime, endTime, cursor, limit)` query, both delegating to the one `Service.List` verb. `ownerId` must be the caller's own workspace — `AuthorizeOn` checks the named object directly, so naming another workspace by id is `ErrForbidden`, not a leak of its trail. Store-less reads are 503 (`core.ErrAuditUnavailable`), non-admin reads are 403. Render's exact JSON field names for an audit-log entry weren't resolvable from public docs at authoring time (only the query parameters are documented at api-docs.render.com); the response fields (`id`/`timestamp`/`actor`/`actorMethod`/`action`/`status`/`resource`) are bex's best-effort rendering of Render's documented dashboard columns (Timestamp/Actor/Event/Status/Metadata) — a tracked, not silent, divergence. `status` is `"success"`/`"denied"` (bex's outcome is a binary allow/deny, not Render's success/error). MCP and the dashboard UI are out of scope for this milestone.
+The read surface (`lego/backend/internal/audit`) is admin-scoped (`can_manage` — the same bar workspace rename/delete uses) and modeled on Render's `GET /owners/{ownerId}/audit-logs` (docs/ADR018-render-parity.md "Audit logs" row): `GET /v1/owners/{ownerId}/audit-logs` (query `startTime`/`endTime`/`cursor`/`limit`, Render's vocabulary; `direction` is accepted and ignored — bex always returns newest-first) and the GraphQL `auditLogs(ownerId, startTime, endTime, cursor, limit)` query, both delegating to the one `Service.List` verb. `ownerId` must be the caller's own workspace — `AuthorizeOn` checks the named object directly, so naming another workspace by id is `ErrForbidden`, not a leak of its trail. Store-less reads are 503 (`core.ErrAuditUnavailable`), non-admin reads are 403. Render's exact JSON field names for an audit-log entry weren't resolvable from public docs at authoring time (only the query parameters are documented at api-docs.render.com); the response fields (`id`/`timestamp`/`actor`/`actorMethod`/`action`/`status`/`resource`) are bex's best-effort rendering of Render's documented dashboard columns (Timestamp/Actor/Event/Status/Metadata) — a tracked, not silent, divergence. `status` is `"success"`/`"denied"` (bex's outcome is a binary allow/deny, not Render's success/error). MCP and the dashboard UI are out of scope for this milestone.
 
 ## Deploy
 
@@ -337,4 +337,4 @@ All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (
 
 ## Scope
 
-Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [control-plane.md](control-plane.md)). Not yet: rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [ADR003-control-plane.md](ADR003-control-plane.md)). Not yet: rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

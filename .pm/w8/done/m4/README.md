@@ -6,7 +6,7 @@
 
 | id   | title                                                                                                          | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design + document the retention policy (hot-window months kept hourly; older compacted) in `docs/usage-metering.md` | 30m | —          | — **DONE** |
+| t001 | Design + document the retention policy (hot-window months kept hourly; older compacted) in `docs/ADR023-usage-metering.md` | 30m | —          | — **DONE** |
 | t002 | `usage_monthly` table migration + monthly-aggregation SQL                                                        | 35m | t001       | — **DONE** |
 | t003 | Compaction routine: aggregate hourly rows older than the hot window into `usage_monthly`, then purge them — idempotent, safe to re-run | 45m | t002       | — **DONE** |
 | t004 | Wire compaction into a periodic loop (daily tick, reusing `usage.Service`'s cadence pattern) with an env knob for the hot-window length, mirrored in `.env.example`/`.env.template` | 35m | t003       | — **DONE** |
@@ -26,4 +26,4 @@ After the hot window passes, hourly detail for old months is compacted into mont
 - **Goal linkage:** `GOAL.md` item 5 (usage metering); platform-hardening theme shared with `w3/m6` (silent operational rot in unwatched control-plane state — here, unbounded table growth instead of unwatched backups).
 - **Expected outcome:** `usage_hourly` stops growing without bound; the control-plane store's size stays predictable as tenant/service count and time both grow.
 - **Why now:** m1/m2 shipped 2026-07-09 — the table is still small. Every month of delay is more uncompacted backlog to migrate later.
-- **Render parity task omitted:** Render has no comparable usage/billing API surface to compare against (bex's own extension, per `docs/render-parity.md` § bex ahead of Render); this is a pure storage/operations concern with no REST/GraphQL/MCP/UI surface-consistency question to check.
+- **Render parity task omitted:** Render has no comparable usage/billing API surface to compare against (bex's own extension, per `docs/ADR018-render-parity.md` § bex ahead of Render); this is a pure storage/operations concern with no REST/GraphQL/MCP/UI surface-consistency question to check.

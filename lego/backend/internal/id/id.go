@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package id is the one place bex mints and validates typed resource ids
-// (docs/identifiers.md — the ADR). A bex id is "<prefix>-<20-char xid>", e.g.
+// (docs/ADR020-identifiers.md — the ADR). A bex id is "<prefix>-<20-char xid>", e.g.
 // "srv-c185th5c2rvvnhbfiltg": a short greppable type prefix, a hyphen, then an
 // xid (k-sortable, non-guessable). The separator is a HYPHEN, never an
 // underscore — ids must be safe to drop into DNS labels, hostnames, and

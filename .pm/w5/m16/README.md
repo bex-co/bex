@@ -22,7 +22,7 @@ Settings tab shows a working instance-count stepper for web/worker services (hid
 
 ## Source + Goal linkage
 
-- **Source:** promotes inbox note `w5/004` (unblocked as of `w2/m12`'s completion 2026-07-08; confirmed via `docs/render-parity.md` row 25 — REST/GraphQL/MCP ✅✅✅, dashboard ✖).
+- **Source:** promotes inbox note `w5/004` (unblocked as of `w2/m12`'s completion 2026-07-08; confirmed via `docs/ADR018-render-parity.md` row 25 — REST/GraphQL/MCP ✅✅✅, dashboard ✖).
 - **Goal linkage:** Render parity — closes the dashboard's last gap on an otherwise fully-shipped verb.
 - **Expected outcome:** manual scaling reachable from the dashboard, not just REST/GraphQL/MCP.
 - **Why now:** the backend has sat done and unused from the dashboard since 2026-07-08; this is the cheapest kind of parity gap to close (API-first work already paid for).

@@ -3,7 +3,7 @@
 # pre-restart history from Loki's query_range API instead of the kubelet ring
 # buffer, so a crash-looping App's logs survive the restart that prompted the
 # investigation. bex-api points at it with
-# BEX_LOKI_URL=http://loki.monitoring.svc:3100 (docs/observability.md). Without
+# BEX_LOKI_URL=http://loki.monitoring.svc:3100 (docs/ADR010-observability.md). Without
 # this, QueryLogs falls back to live pod logs (no history) — byte-identical to
 # the pre-Loki behavior. The live SSE tail always reads pod logs, never Loki.
 #
@@ -14,7 +14,7 @@
 # container so bex-api can select on the App's namespace+name.
 #
 # Retention is 7 days (168h) — Render's Hobby-tier searchable window
-# (docs/observability.md); paid Render tiers reach 14/30 days, a knob to raise
+# (docs/ADR010-observability.md); paid Render tiers reach 14/30 days, a knob to raise
 # here (limits_config.retention_period) alongside the PVC. Like prometheus.yaml's
 # PV and etcd/OpenBao's Raft volumes, this is a single-node volume: a node loss
 # loses the history it holds (noted, not solved — same caveat as those).

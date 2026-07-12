@@ -47,7 +47,7 @@ type DomainView struct {
 //   - apex      → ALIAS  @             -> <app>.<base-domain>
 //
 // (bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather
-// than a bare A-record IP — the edge is Cloudflare-proxied, docs/custom-domain.md.)
+// than a bare A-record IP — the edge is Cloudflare-proxied, docs/ADR005-custom-domain.md.)
 type DNSRecordView struct {
 	Type  string // "CNAME" (subdomain) or "ALIAS" (apex)
 	Name  string // the record host to create: the subdomain label(s), or "@" for apex
@@ -191,7 +191,7 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 // VerifyDomain re-checks a custom domain's DNS/cert state now and returns its
 // fresh view — bex's analogue of Render's POST …/custom-domains/{id}/verify. bex
 // verification is automatic (cert-manager continuously reconciles the per-host TLS
-// secret, docs/custom-domain.md), so there is no verification job to trigger and
+// secret, docs/ADR005-custom-domain.md), so there is no verification job to trigger and
 // "verify" is a read at read altitude: it re-evaluates the TLS-secret/serving state
 // and reports the current status, giving the dashboard a "Verify / re-check" action
 // that refreshes a pending row without a mutation. Delegating to GetDomain keeps it

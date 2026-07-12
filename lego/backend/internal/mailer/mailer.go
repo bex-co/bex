@@ -17,7 +17,7 @@ limitations under the License.
 // Package mailer is the bex-api SMTP sender — the transport behind the members
 // feature's invite emails (and any future bex-sent mail). It is deliberately
 // provider-agnostic: point it at the same SMTP relay Kratos's courier uses
-// (SendGrid in prod, Mailpit locally, docs/auth.md §Email) via BEX_SMTP_ADDR, so
+// (SendGrid in prod, Mailpit locally, docs/ADR012-auth.md §Email) via BEX_SMTP_ADDR, so
 // a self-hoster configures one relay, not two. Auth is optional (Mailpit needs
 // none); when a username is set, PLAIN auth over the connection is used.
 package mailer

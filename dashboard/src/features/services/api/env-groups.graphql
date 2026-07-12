@@ -1,4 +1,4 @@
-# bex-api's environment-groups surface (backend/internal/envgroups, docs/bex-api.md):
+# bex-api's environment-groups surface (backend/internal/envgroups, docs/ADR006-bex-api.md):
 # a named, reusable set of env vars + secret files linkable to many services. Reads
 # are keys/names-only (no secret values); mutations return a success boolean (except
 # createEnvGroup, which returns the new group). Types are EnvGroupVar/EnvGroupSecretFile

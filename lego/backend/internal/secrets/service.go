@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package secrets is the tenant env-vars + secret-files feature: a service's
 // environment variables and mounted secret files, both stored in OpenBao
-// (docs/secrets.md) and materialized into per-app Kubernetes Secrets the App
+// (docs/ADR013-secrets.md) and materialized into per-app Kubernetes Secrets the App
 // consumes — env vars via envFrom ("<name>-env"), files via a projected
 // /etc/secrets volume ("<name>-files"). The Service gates + guards; the OpenBao KV
 // v2 store is the injected core.SecretKV seam (shared with the env-groups
@@ -58,7 +58,7 @@ type Service struct {
 	Store core.SecretKV
 }
 
-// envPath is a service's env-map key in the store (docs/secrets.md §4 layout,
+// envPath is a service's env-map key in the store (docs/ADR013-secrets.md §4 layout,
 // minus the mount/tenant prefix the store prepends).
 func envPath(service string) string { return "services/" + service + "/env" }
 
@@ -124,7 +124,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
 		if !core.ValidEnvKey(key) {
-			// Names only in the error — never the value (docs/secrets.md, t005).
+			// Names only in the error — never the value (docs/ADR013-secrets.md, t005).
 			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
 		env[key] = v.Value
@@ -250,7 +250,7 @@ func envSecretName(service string) string { return service + "-env" }
 // rolls the pods so the values take effect, given the App already fetched by the
 // caller (so the write path reads the App once). OpenBao stays the source of
 // truth; this Secret is a derived copy that lives in etcd (the accepted trade-off
-// in docs/secrets.md — OpenBao buys durability/versioning/audit/policy, not
+// in docs/ADR013-secrets.md — OpenBao buys durability/versioning/audit/policy, not
 // etcd-avoidance). Pointing spec.envFromSecret at the Secret wires envFrom into
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.

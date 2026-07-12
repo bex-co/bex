@@ -82,7 +82,7 @@ func TestNewPanicsOnUnregisteredKind(t *testing.T) {
 	_ = New(Kind{})
 }
 
-// TestUnderscoreFormIsRejected pins the ADR decision (docs/identifiers.md): the
+// TestUnderscoreFormIsRejected pins the ADR decision (docs/ADR020-identifiers.md): the
 // Stripe-style "tea_…" form is NOT a valid bex id. If someone switches the
 // separator to an underscore, New's output stops matching WellFormed and this
 // test — plus TestNewIsWellFormedAndDNSSafe — fails loudly.

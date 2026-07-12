@@ -1,8 +1,8 @@
 # bex dashboard
 
-A Render-style dashboard for bex — the human-facing client of [`bex-api`](../docs/bex-api.md)'s GraphQL adapter (`docs/bex-api.md` calls it "Render dashboard compatible"). Scaffolded from a mature TanStack Start + Apollo + shadcn/Radix app, stripped down to an empty shell with one sample route.
+A Render-style dashboard for bex — the human-facing client of [`bex-api`](../docs/ADR006-bex-api.md)'s GraphQL adapter (`docs/ADR006-bex-api.md` calls it "Render dashboard compatible"). Scaffolded from a mature TanStack Start + Apollo + shadcn/Radix app, stripped down to an empty shell with one sample route.
 
-Per [`docs/vision.md`](../docs/vision.md) pillar 1 ("API-first — no dashboard-only features, ever"), this app is a pure client of actions already exposed via bex-api's REST/GraphQL/MCP surfaces — it never grows capabilities the API doesn't already have.
+Per [`docs/ADR008-vision.md`](../docs/ADR008-vision.md) pillar 1 ("API-first — no dashboard-only features, ever"), this app is a pure client of actions already exposed via bex-api's REST/GraphQL/MCP surfaces — it never grows capabilities the API doesn't already have.
 
 ## Stack
 
@@ -14,14 +14,14 @@ Per [`docs/vision.md`](../docs/vision.md) pillar 1 ("API-first — no dashboard-
 
 ## Authentication
 
-Auth is [Ory Kratos](../docs/auth.md) (`auth.bex.co` in prod) — a self-service, session-cookie identity API, not a custom backend. This dashboard doesn't hand-roll login/registration forms: `@ory/elements-react`'s `<Login>`/`<Registration>`/`<Recovery>`/`<Settings>` components render whatever fields/methods Kratos's flow actually returns, inside this app's own two-column page shell (`src/features/auth/components/auth-page-shell`) so it still looks like part of the dashboard rather than a bolted-on auth vendor's UI.
+Auth is [Ory Kratos](../docs/ADR012-auth.md) (`auth.bex.co` in prod) — a self-service, session-cookie identity API, not a custom backend. This dashboard doesn't hand-roll login/registration forms: `@ory/elements-react`'s `<Login>`/`<Registration>`/`<Recovery>`/`<Settings>` components render whatever fields/methods Kratos's flow actually returns, inside this app's own two-column page shell (`src/features/auth/components/auth-page-shell`) so it still looks like part of the dashboard rather than a bolted-on auth vendor's UI.
 
 - `src/common/lib/ory/` — Kratos config (`config.ts`) and the `@ory/client-fetch` `FrontendApi` factory (`frontend.ts`), SSR-cookie-aware (see `common/server-fn/session.ts`).
 - `src/common/hooks/use-ory-flow.ts` — client-side flow management that keeps the flow id out of the address bar: mints flows via AJAX (Kratos's `/self-service/*/browser` endpoints return JSON to `Accept: application/json` callers instead of 303-redirecting with `?flow=`), holds them in React state + per-tab `sessionStorage` (so a mid-form reload — or recovery's email → code hop — resumes the same flow), and consumes-then-strips any inbound `?flow=` (recovery/verification email links, OIDC round trips, stale bookmarks; a dead id silently self-heals into a fresh flow).
 - `src/routes/auth.{login,sign-up,forgot-password,reset-password,logout}.tsx`, `src/routes/settings.tsx` — the pages themselves.
 - Root route's `beforeLoad` calls Kratos's `sessions/whoami` once per navigation and passes the session down via router context (`common/lib/auth/auth.ts`'s `requireAuth` guards routes on it).
 
-**Local dev** (against the local mock cluster's Kratos, `docs/auth.md` §5): Traefik/`auth.bex.local` isn't reachable from a laptop-run dev server, so reach Kratos directly via a port-forward instead:
+**Local dev** (against the local mock cluster's Kratos, `docs/ADR012-auth.md` §5): Traefik/`auth.bex.local` isn't reachable from a laptop-run dev server, so reach Kratos directly via a port-forward instead:
 
 ```sh
 kubectl -n auth port-forward service/kratos-public 4433:80
@@ -42,7 +42,7 @@ You're then registering/logging in against **real prod identities** and seeing y
 
 ## Deployment
 
-`deploy/` is this app's own kustomize base (Deployment + Service + Ingress at `dashboard.bex.co`, namespace `dashboard`) — see [`docs/auth.md` §5](../docs/auth.md) for the full mechanics (CI build/push, Argo Application, the SSR-vs-browser Kratos/bex-api URL split, a real `runAsNonRoot` gotcha this surfaced). Locally (no Argo on the mock cluster):
+`deploy/` is this app's own kustomize base (Deployment + Service + Ingress at `dashboard.bex.co`, namespace `dashboard`) — see [`docs/ADR012-auth.md` §5](../docs/ADR012-auth.md) for the full mechanics (CI build/push, Argo Application, the SSR-vs-browser Kratos/bex-api URL split, a real `runAsNonRoot` gotcha this surfaced). Locally (no Argo on the mock cluster):
 
 ```sh
 docker build --build-arg VITE_KRATOS_PUBLIC_URL=http://localhost:4433 \

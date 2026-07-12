@@ -1,7 +1,7 @@
 # CloudNativePG — the Postgres operator. Manages the bex control-plane database
 # (see bex-postgres.yaml). Chosen over a plain StatefulSet / Bitnami chart for
 # operator-managed lifecycle, smooth path to HA, and built-in backups to S3
-# (Wasabi) for the "source of truth" durability story (docs/control-plane.md).
+# (Wasabi) for the "source of truth" durability story (docs/ADR003-control-plane.md).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

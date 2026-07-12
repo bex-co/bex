@@ -11,7 +11,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { CustomDomainView } from "@/features/services/types";
 
 // bex-api's custom-domains GraphQL is a thin veneer over App.spec.hosts[]
-// (docs/bex-api.md): the operator reconciles Traefik + cert-manager per host, so
+// (docs/ADR006-bex-api.md): the operator reconciles Traefik + cert-manager per host, so
 // an add/delete converges asynchronously — the toast says the change is
 // propagating rather than implying an instant apply. The hostname is the opaque
 // id (id === name), and verification/serving status is read live from TLS state.

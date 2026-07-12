@@ -25,7 +25,7 @@ limitations under the License.
 // Dockerfile builds (spec.builder auto|dockerfile) are supported here. Cloud
 // Native Buildpacks (spec.builder buildpack) need a k8s-native builder (kpack) —
 // not yet deployed — so they report a clear error rather than silently shelling
-// out to `pack` (impossible on containerd). See docs/deployment.md.
+// out to `pack` (impossible on containerd). See docs/ADR004-deployment.md.
 package build
 
 import (

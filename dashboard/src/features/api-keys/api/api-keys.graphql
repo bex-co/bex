@@ -1,4 +1,4 @@
-# bex-api's API-key surface (backend/internal/apikeys/graphql.go, docs/auth.md).
+# bex-api's API-key surface (backend/internal/apikeys/graphql.go, docs/ADR012-auth.md).
 # Keys are workspace-shared machine credentials (Hydra OAuth2 clients), not
 # per-user — the list query never requests `secret` (the server always resolves
 # it empty for `apiKeys` anyway, but the dashboard doesn't even ask): the only

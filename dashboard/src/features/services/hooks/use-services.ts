@@ -16,7 +16,7 @@ export interface UseServicesResult {
 /**
  * Reads bex-api's `services` query and maps each Render-shaped `Service` onto a
  * normalized ServiceView. Presentation only — the list is the operator's real
- * Apps (docs/bex-api.md); this mirrors the metrics hook's shared-Core read.
+ * Apps (docs/ADR006-bex-api.md); this mirrors the metrics hook's shared-Core read.
  * Scoped to the switcher's selected workspace (w6/m3): skipped until the
  * selection resolves to an id, so this never fires the fetch-then-refetch
  * pair a still-null ownerId would cause — `loading` stays true for that same
