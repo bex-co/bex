@@ -1,17 +1,17 @@
 # w7 · m7 — Least-privilege platform RBAC (operator + bex-api secret scoping)
 
-**Worker:** worker7 **Goal:** The operator and bex-api hold only the Kubernetes permissions they actually use — no cluster-wide unrestricted Secret read — so a compromised platform pod can no longer read every credential in `bex-system`/`secrets`/`monitoring`, with a CI guard that fails on any reintroduced over-broad grant. **Status:** todo
+**Worker:** worker7 **Goal:** The operator and bex-api hold only the Kubernetes permissions they actually use — no cluster-wide unrestricted Secret read — so a compromised platform pod can no longer read every credential in `bex-system`/`secrets`/`monitoring`, with a CI guard that fails on any reintroduced over-broad grant. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Scope the operator's `secrets` access — namespace-scoped Role(s) / narrowed verbs instead of a cluster-wide grant | 45m | —          |
-| t002 | Audit + scope the bex-api ServiceAccount RBAC; narrow any over-broad grants                                | 45m | —          |
-| t003 | CI guard that fails on any reintroduced cluster-wide unrestricted secrets read                             | 30m | t001, t002 |
-| t004 | Simplify — `/simplify` over the code/manifests this milestone changed                                     | 20m | t003       |
-| t005 | Test coverage — meaningful tests for the scoped RBAC + CI guard                                            | 30m | t003       |
-| t006 | Closeout — DoD verified, milestone moved to `done/`                                                        | 15m | t005       |
+| t001 | Scope the operator's `secrets` access — namespace-scoped Role(s) / narrowed verbs instead of a cluster-wide grant | 45m | —          | — **DONE** |
+| t002 | Audit + scope the bex-api ServiceAccount RBAC; narrow any over-broad grants                                | 45m | —          | — **DONE** |
+| t003 | CI guard that fails on any reintroduced cluster-wide unrestricted secrets read                             | 30m | t001, t002 | — **DONE** |
+| t004 | Simplify — `/simplify` over the code/manifests this milestone changed                                     | 20m | t003       | — **DONE** |
+| t005 | Test coverage — meaningful tests for the scoped RBAC + CI guard                                            | 30m | t003       | — **DONE** |
+| t006 | Closeout — DoD verified, milestone moved to `done/`                                                        | 15m | t005       | — **DONE** |
 
 ## Definition of done
 

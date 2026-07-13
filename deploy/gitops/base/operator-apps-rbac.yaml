@@ -1,0 +1,48 @@
+# Operator's namespace-scoped secrets access for the tenant apps namespace (w7/m7,
+# RBAC least-privilege audit). The manager-role ClusterRole deliberately omits
+# secrets — it only holds cluster-wide grants for resources that genuinely span all
+# namespaces (CRDs, Deployments, Services, Ingresses, …). Scoping secrets here means
+# a compromised operator pod cannot read platform credentials (Kratos/Hydra in auth,
+# OpenBao in secrets, CNPG creds in bex-system, the GitHub App key) — only the
+# tenant apps namespace it actually serves.
+#
+# What the operator needs in the apps namespace:
+#   database_controller: get/list/watch — reads CNPG-generated "<db>-app" secrets to
+#     surface the connection secret name in Database.status.secretName.
+#   keyvalue_controller: get/list/watch/create/update/patch/delete — owns the Valkey
+#     credentials Secret (<kv-name>) whose data the StatefulSet reads via env ref.
+#   app_controller: get/create/update/patch — copyCloneSecret reads the git-clone
+#     credential Secret that bex-api wrote, then copies it to the build namespace when
+#     BEX_BUILD_NAMESPACE differs from the app namespace.
+#
+# This file lives in deploy/gitops (not lego/operator/config/rbac) because
+# config/default's kustomize namePrefix+namespace transform would rewrite any
+# namespace field to "bex-system", breaking the Role's target namespace. Same caveat
+# as bex-api-apps-rbac.yaml: if a non-default apps namespace is used, duplicate this
+# Role+RoleBinding there. For deployments using BEX_BUILD_NAMESPACE (a separate build
+# namespace), add a second RoleBinding for that namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-operator-apps
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-operator-apps
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-operator-apps
+subjects:
+  # The operator ServiceAccount lives in bex-system (rendered from config/rbac with
+  # the bex- namePrefix); a RoleBinding may reference a ServiceAccount in another ns.
+  - kind: ServiceAccount
+    name: bex-controller-manager
+    namespace: bex-system

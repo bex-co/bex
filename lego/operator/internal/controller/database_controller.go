@@ -319,7 +319,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
 // upsertOwned creates-or-updates an owned unstructured object (gvk/name in the
 // owner's namespace), applying spec and stamping an owner reference so the

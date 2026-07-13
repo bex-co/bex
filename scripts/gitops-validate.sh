@@ -49,6 +49,21 @@ if [ -f "$POL" ]; then
   [ "$cnt" -eq 0 ] || { echo "FAIL: a platform NetworkPolicy allow-lists the tenant apps namespace (default)" >&2; fail=1; }
 fi
 
+# RBAC least-privilege guard (w7/m7, docs/ADR028-security-review.md): the operator
+# (bex-manager-role) and bex-api (bex-api-role) must NOT grant cluster-wide secrets
+# read. Secrets access is scoped to the apps namespace via namespace-scoped Roles in
+# deploy/gitops/base/*-apps-rbac.yaml. A regression that re-broadens either
+# ClusterRole to include "secrets" get/list/watch/* fails CI before it can merge.
+# Checks the source ClusterRole files directly (no kustomize needed — the prefixed
+# names in the rendered output cannot add rules not present in the source).
+for rbac_file in lego/operator/config/rbac/role.yaml lego/operator/config/api/rbac.yaml; do
+  if yq -N '. | select(.kind=="ClusterRole") | .rules[]? | select(.resources[]? == "secrets") | .verbs[]?' "$rbac_file" 2>/dev/null \
+      | grep -qE '^(get|list|watch|\*)$'; then
+    echo "FAIL: $rbac_file ClusterRole grants cluster-wide secrets read — scope to a namespace Role in deploy/gitops/base/*-apps-rbac.yaml" >&2
+    fail=1
+  fi
+done
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

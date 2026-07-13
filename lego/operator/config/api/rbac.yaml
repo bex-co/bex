@@ -30,6 +30,14 @@ rules:
   - apiGroups: ["app.bex.co"]
     resources: ["databases/status"]
     verbs: ["get"]
+  # keyvalue service (bex-api/internal/keyvalue) creates, deletes, lists, and reads
+  # KeyValue CRs exactly as the app and database services do for App/Database CRs.
+  - apiGroups: ["app.bex.co"]
+    resources: ["keyvalues"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["app.bex.co"]
+    resources: ["keyvalues/status"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
