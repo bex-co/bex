@@ -48,6 +48,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
+	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -221,10 +222,21 @@ func main() {
 		// secrets and managed Databases/KeyValue stores live outside the tenant
 		// row's FK cascade, so Delete runs these after the row is gone. Order
 		// doesn't matter — each purger only touches its own resource type.
+		//
+		// apps.WorkspacePurger (w6/m11, live-verification finding): an App
+		// created through the public REST/GraphQL/MCP surface carries
+		// core.LabelTenant only, never store.LabelManagedBy, so the row-backed
+		// cascade + reconciler prune that tears down *row-backed* Apps on
+		// workspace delete never sees it — it would otherwise survive forever,
+		// still running and permanently unreachable (its tenant is gone, so
+		// core.Base's tenant gate forbids everyone, including its creator).
+		// Redundant-but-harmless for row-backed Apps the reconciler already
+		// pruned (delete of an already-gone object is a no-op).
 		deps.WorkspacePurgers = []workspaces.WorkspacePurger{
 			&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
 			&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 			&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
+			&apps.WorkspacePurger{Service: &apps.Service{Base: base}},
 		}
 
 		// Workspace members & roles (w4/m12): the team surface writes through the

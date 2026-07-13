@@ -54,6 +54,43 @@ const WORKSPACES = [
 // (w6/m3 DoD) is reachable offline without a real control-plane store.
 const HOBBY_WORKSPACE_CAP = 5;
 
+// Workspace members (w6/m10: enriched userId + email). Three rows exercise
+// every identity tier member-row.tsx falls through (email || userId || subject):
+// a fully-enriched admin, a fully-enriched developer, and a viewer whose Kratos
+// email lookup missed (userId still resolved, email empty — the "honest omit"
+// degradation w6/m10's backend contract guarantees, not an error). ownerId +
+// byOwner (below) scope these to a workspace, same as SERVICES/DATABASES; the
+// second workspace seeds none, mirroring how it seeds no services/databases.
+const WORKSPACE_MEMBERS = [
+  {
+    __typename: "WorkspaceMember",
+    subject: "11111111-1111-4111-8111-111111111111",
+    userId: "own-localmember0001",
+    email: "owner@acme-hq.example",
+    role: "ADMIN",
+    createdAt: "2026-06-01T09:00:00Z",
+    ownerId: WORKSPACE_DEFAULT,
+  },
+  {
+    __typename: "WorkspaceMember",
+    subject: "22222222-2222-4222-8222-222222222222",
+    userId: "own-localmember0002",
+    email: "dev@acme-hq.example",
+    role: "DEVELOPER",
+    createdAt: "2026-06-05T09:00:00Z",
+    ownerId: WORKSPACE_DEFAULT,
+  },
+  {
+    __typename: "WorkspaceMember",
+    subject: "33333333-3333-4333-8333-333333333333",
+    userId: "own-localmember0003",
+    email: "",
+    role: "VIEWER",
+    createdAt: "2026-06-10T09:00:00Z",
+    ownerId: WORKSPACE_DEFAULT,
+  },
+];
+
 // One sample App, Render-shaped (matches the dashboard's Service selection set).
 // ownerId scopes it to the default workspace — a stub-only field, harmless if
 // it leaks into a response the dashboard didn't select it in.
@@ -655,6 +692,15 @@ function resolveGraphQL({ operationName, variables = {} }) {
       WORKSPACES.splice(WORKSPACES.indexOf(w), 1);
       return { deleteWorkspace: w.id };
     }
+    // Team page (w6/m10: userId + email enrichment) — read-only offline; the
+    // member-mutation verbs (invite/change-role/remove) aren't stubbed (a
+    // deliberate scope cut, w6/m11/t004: they fall through to the default `{}`
+    // response, which the dashboard's mutation hooks treat as a no-op rather
+    // than an error). WorkspaceInvites likewise falls through to `{}` — an
+    // empty invites list with no error, so the page still renders read-write
+    // controls (`canManage` only goes false on an actual GraphQL error).
+    case "WorkspaceMembers":
+      return { workspaceMembers: byOwner(WORKSPACE_MEMBERS, variables.workspaceId) };
 
     // Managed Postgres (w5/m8) — an interactive in-memory store.
     case "Databases":

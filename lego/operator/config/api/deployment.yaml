@@ -55,7 +55,7 @@ spec:
             # member's email/MFA needs the admin API, not a session. Optional;
             # unset omits those fields from the owners/members responses.
             - name: BEX_KRATOS_ADMIN_URL
-              value: http://kratos-admin.auth.svc:4434
+              value: http://kratos-admin.auth.svc:80
             # OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md):
             # issuer = Hydra's public URL; resource = this API's canonical URI.
             # Drives the RFC 9728 metadata endpoint, the 401 WWW-Authenticate
