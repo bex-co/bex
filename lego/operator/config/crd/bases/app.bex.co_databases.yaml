@@ -55,6 +55,20 @@ spec:
               the same namespace; the plan sets resources/storage. See
               docs/ADR009-postgresql-management.md.
             properties:
+              failoverAt:
+                description: |-
+                  FailoverAt, when bumped to a fresh RFC3339 timestamp, requests a CNPG
+                  switchover (promote a standby to primary). Only meaningful when
+                  HighAvailability is true. Verb-as-timestamp pattern, like RestartedAt.
+                  Maps to Render's POST /v1/postgres/{id}/failover.
+                type: string
+              highAvailability:
+                description: |-
+                  HighAvailability, when true, provisions a replicated CNPG cluster (primary +
+                  standby with pod anti-affinity) for this database. Render's
+                  enableHighAvailability. Independent of ReadReplicas — a DB can have read
+                  replicas without HA. See docs/render-artifacts/postgres-ha.md.
+                type: boolean
               ipAllowList:
                 description: |-
                   IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
@@ -87,6 +101,31 @@ spec:
                   passthrough — Postgres terminates its own TLS). Default: in-cluster only.
                   External connections use sslmode=require. See docs/ADR009-postgresql-management.md.
                 type: boolean
+              readReplicas:
+                description: |-
+                  ReadReplicas declares named read-only replica endpoints backed by the CNPG
+                  read-only service. Each entry yields its own internal host and, when Public
+                  is true and BEX_DB_DOMAIN is set, its own external SNI hostname. Independent
+                  of the HA toggle — Render's readReplicas: [{name}] field.
+                  See docs/render-artifacts/postgres-ha.md.
+                items:
+                  description: |-
+                    DatabaseReadReplica declares one named read-only replica endpoint for a Database.
+                    Each entry maps to a CNPG read-only service connection, addressable by its own
+                    SNI hostname when the Database is Public. Render's readReplicas item shape.
+                  properties:
+                    name:
+                      description: |-
+                        Name is the replica's label, used to build its external SNI hostname
+                        (<db>-<name>.<BEX_DB_DOMAIN>) and in the status readReplicaStatuses array.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               recovery:
                 description: |-
                   Recovery, when set, provisions this Database by restoring another Database's
@@ -237,15 +276,32 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              currentPrimary:
+                description: |-
+                  CurrentPrimary is the CNPG pod name currently serving as primary, surfaced
+                  as an observability aid after a failover. Empty until HA is active.
+                  bex extension (Render reports HA state but not the pod name).
+                type: string
               externalHost:
                 description: |-
                   ExternalHost is the public SNI hostname when Public is set (empty otherwise).
                   The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=require
                   (credentials from SecretName). DNS for the host must point at the edge.
                 type: string
+              highAvailabilityEnabled:
+                description: |-
+                  HighAvailabilityEnabled reports whether a replicated CNPG cluster (≥2 ready
+                  instances) is active. Render's highAvailabilityEnabled read field; reflects
+                  the cluster's real state, not just spec.highAvailability.
+                type: boolean
               host:
                 description: Host is the in-cluster read-write hostname (CNPG "<cluster>-rw"
                   Service).
+                type: string
+              lastFailoverAt:
+                description: |-
+                  LastFailoverAt records the spec.failoverAt value the controller last acted
+                  on, so the controller only triggers a switchover once per request.
                 type: string
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation the controller
@@ -275,6 +331,35 @@ spec:
                 description: Port the database listens on.
                 format: int32
                 type: integer
+              readReplicaStatuses:
+                description: |-
+                  ReadReplicaStatuses has one entry per spec.readReplicas entry with the
+                  resolved internal + external connection hosts for that named replica.
+                items:
+                  description: |-
+                    DatabaseReadReplicaStatus reports the resolved connection URLs for one named
+                    read replica declared in spec.readReplicas.
+                  properties:
+                    externalHost:
+                      description: |-
+                        ExternalHost is the per-replica public SNI hostname
+                        ("<db>-<name>.<BEX_DB_DOMAIN>") when the Database is Public.
+                      type: string
+                    internalHost:
+                      description: |-
+                        InternalHost is the in-cluster read-only hostname (CNPG "<cluster>-ro" Service,
+                        load-balances across standbys). Shared across all named replicas of the same DB.
+                      type: string
+                    name:
+                      description: Name matches the spec.readReplicas entry name.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               secretName:
                 description: |-
                   SecretName is the CNPG-generated Secret holding the app credentials and the

@@ -76,3 +76,18 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 		d.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }
+
+// Failover requests a CNPG planned switchover (spec.failoverAt = now). The
+// operator reads instanceNames from CNPG status and patches targetPrimary to
+// promote a standby. Only meaningful when highAvailability is enabled; the
+// operator is a no-op if there is no ready standby. Mirrors Render's
+// POST /v1/postgres/{id}/failover → 202 (fire-and-forget intent write).
+func (s *Service) Failover(ctx context.Context, name string) error {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return err
+	}
+	_, err := s.patchDatabase(ctx, name, func(d *appv1alpha1.Database) {
+		d.Spec.FailoverAt = s.Now().UTC().Format(time.RFC3339)
+	})
+	return err
+}

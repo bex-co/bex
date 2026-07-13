@@ -573,6 +573,77 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't load the pooled connection strings.",
     description: "Toast when revealing pooled strings fails",
   },
+  // --- HA panel (w1/m22) ---
+  "databases.haTitle": {
+    message: "High Availability",
+    description: "HA panel card title",
+  },
+  "databases.haDescription": {
+    message:
+      "Replicated cluster with automatic failover. When enabled, a standby is always ready to take over.",
+    description: "HA panel card description",
+  },
+  "databases.haStatus": {
+    message: "Status",
+    description: "HA panel status row label",
+  },
+  "databases.haEnabled": {
+    message: "Enabled",
+    description: "HA panel status value when HA is active",
+  },
+  "databases.haDisabled": {
+    message: "Disabled",
+    description: "HA panel status value when HA is off",
+  },
+  "databases.haFailover": {
+    message: "Trigger failover",
+    description: "HA panel button to initiate a planned switchover",
+  },
+  "databases.haFailoverConfirmTitle": {
+    message: "Trigger failover on {name}?",
+    description: "Failover-confirmation dialog title",
+  },
+  "databases.haFailoverConfirmBody": {
+    message:
+      "This promotes a standby to primary. Connections drop briefly during the switchover. The database stays available — no data is lost.",
+    description: "Failover-confirmation dialog body",
+  },
+  "databases.haFailoverCancel": {
+    message: "Cancel",
+    description: "Failover-confirmation dialog cancel button",
+  },
+  "databases.haFailoverConfirm": {
+    message: "Trigger failover",
+    description: "Failover-confirmation dialog confirm button",
+  },
+  "databases.haFailoverSuccess": {
+    message: "Failover triggered on {name}.",
+    description: "Toast after a failover request is accepted",
+  },
+  "databases.haFailoverError": {
+    message: "Couldn't trigger failover on {name}. Please try again.",
+    description: "Toast when a failover request fails",
+  },
+  "databases.haReadReplicas": {
+    message: "Read replicas",
+    description: "HA panel section heading for named read replicas",
+  },
+  "databases.haReadReplicasEmpty": {
+    message: "No named read replicas.",
+    description: "HA panel empty state for read replicas",
+  },
+  "databases.haReplicaInternal": {
+    message: "Internal",
+    description: "HA panel replica connection label (in-cluster host)",
+  },
+  "databases.haReplicaExternal": {
+    message: "External",
+    description: "HA panel replica connection label (public SNI host)",
+  },
+  "databases.haNotEnabled": {
+    message: "High availability is not enabled for this database.",
+    description: "HA panel state when HA is off and there are no replicas",
+  },
 };
 
 export default enDatabases;

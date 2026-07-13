@@ -38,6 +38,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DatabaseUser })},
 		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DiskSizeGB })},
 		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
+		"readReplicas":            &graphql.Field{Type: graphql.NewList(readReplicaViewGQLType), Resolve: gqlutil.Field(func(v PostgresView) any { return v.ReadReplicas })},
 		"suspended":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Suspended })},
 		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.CreatedAt })},
 		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ExternalHost })},
@@ -46,6 +47,39 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"poolerEnabled":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.PoolerEnabled })},
 		"backupsEnabled":          &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.BackupsEnabled })},
 		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.OwnerID })},
+	},
+})
+
+// readReplicaConnectionInfoGQLType is the host-only connection info for one
+// named read replica as surfaced in the postgres view. Passwords are omitted;
+// use databaseConnectionInfo for credentials.
+var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ReadReplicaConnectionInfo",
+	Fields: graphql.Fields{
+		"internalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaConnectionInfo) any { return v.InternalHost })},
+		"externalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaConnectionInfo) any { return v.ExternalHost })},
+	},
+})
+
+// readReplicaViewGQLType is one named read replica entry in a postgres object.
+// Render's readReplicas: [{name, connectionInfo}].
+var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ReadReplicaView",
+	Fields: graphql.Fields{
+		"name":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaView) any { return v.Name })},
+		"connectionInfo": &graphql.Field{Type: readReplicaConnectionInfoGQLType, Resolve: gqlutil.Field(func(v ReadReplicaView) any { return v.ConnectionInfo })},
+	},
+})
+
+// replicaConnectionStringsGQLType is one entry in databaseConnectionInfo's
+// readReplicaConnectionStrings — the full connection strings (with password)
+// for a named read replica.
+var replicaConnectionStringsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ReplicaConnectionStrings",
+	Fields: graphql.Fields{
+		"name":                     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.Name })},
+		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.InternalConnectionString })},
+		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionString })},
 	},
 })
 
@@ -110,9 +144,10 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"password":                     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.Password })},
 		"internalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
 		"externalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
-		"internalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString })},
-		"externalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString })},
-		"psqlCommand":                  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
+		"internalConnectionPoolString":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString })},
+		"externalConnectionPoolString":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString })},
+		"psqlCommand":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
+		"readReplicaConnectionStrings":   &graphql.Field{Type: graphql.NewList(replicaConnectionStringsGQLType), Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings })},
 	},
 })
 
@@ -185,11 +220,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createDatabase": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan":       &graphql.ArgumentConfig{Type: graphql.String},
-				"version":    &graphql.ArgumentConfig{Type: graphql.String},
-				"diskSizeGB": &graphql.ArgumentConfig{Type: graphql.Int},
-				"public":     &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"name":                   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan":                   &graphql.ArgumentConfig{Type: graphql.String},
+				"version":                &graphql.ArgumentConfig{Type: graphql.String},
+				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
+				"public":                 &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				req := CreatePostgresRequest{Name: p.Args["name"].(string)}
@@ -205,6 +241,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["public"].(bool); ok {
 					req.Public = v
 				}
+				if v, ok := p.Args["enableHighAvailability"].(bool); ok {
+					req.EnableHighAvailability = v
+				}
 				return s.CreatePostgres(p.Context, req)
 			},
 		},
@@ -213,6 +252,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeletePostgres(p.Context, p.Args["id"].(string))
+				return err == nil, err
+			},
+		},
+
+		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
+		"failoverDatabase": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.Failover(p.Context, p.Args["id"].(string))
 				return err == nil, err
 			},
 		},

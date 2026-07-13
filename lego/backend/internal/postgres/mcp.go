@@ -40,11 +40,12 @@ type postgresArgs struct {
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
-	Name       string `json:"name" jsonschema:"the database name"`
-	Plan       string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
-	Version    string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
-	DiskSizeGB int32  `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
-	Public     bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	Name                   string `json:"name" jsonschema:"the database name"`
+	Plan                   string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
+	Version                string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
+	DiskSizeGB             int32  `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	Public                 bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	EnableHighAvailability bool   `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
 }
 
 // listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
@@ -92,14 +93,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB and public are optional.",
+		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public and enableHighAvailability are optional.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
-			Name:       in.Name,
-			Plan:       in.Plan,
-			Version:    in.Version,
-			DiskSizeGB: in.DiskSizeGB,
-			Public:     in.Public,
+			Name:                   in.Name,
+			Plan:                   in.Plan,
+			Version:                in.Version,
+			DiskSizeGB:             in.DiskSizeGB,
+			Public:                 in.Public,
+			EnableHighAvailability: in.EnableHighAvailability,
 		})
 		if err != nil {
 			return nil, PostgresView{}, err
@@ -123,10 +125,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerAccessMCP(srv)
 }
 
-// registerLifecycleMCP adds suspend/resume/restart — bex extensions over
-// Render's MCP (which has no Postgres lifecycle tools), named like the
-// service lifecycle tools.
+// registerLifecycleMCP adds suspend/resume/restart/failover — bex extensions
+// over Render's MCP (which has no Postgres lifecycle tools), named like the
+// service lifecycle tools. failover_postgres mirrors Render's REST failover.
 func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "failover_postgres",
+		Description: "Trigger a planned failover (CNPG switchover) on an HA-enabled managed Postgres database. Promotes a standby to primary. Mirrors Render's POST /postgres/{id}/failover.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, struct{ Accepted bool `json:"accepted"` }, error) {
+		err := s.Failover(ctx, in.PostgresID)
+		return nil, struct{ Accepted bool `json:"accepted"` }{Accepted: err == nil}, err
+	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_postgres",
 		Description: "Suspend a managed Postgres database (hibernate: stop compute, keep the data volume). bex extension over Render's MCP.",

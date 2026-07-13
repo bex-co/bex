@@ -119,7 +119,7 @@ func resolvePlan(spec appv1alpha1.DatabaseSpec) (tiers.PostgresTier, int32) {
 }
 
 // clusterParams bundles the inputs the CNPG Cluster projection needs beyond the
-// plan — kept as a struct so the growing set (backup, recovery, users) stays
+// plan — kept as a struct so the growing set (backup, recovery, users, HA) stays
 // readable and the projection remains a pure, unit-testable function.
 type clusterParams struct {
 	plan      tiers.PostgresTier
@@ -137,6 +137,9 @@ type clusterParams struct {
 	recovery *appv1alpha1.DatabaseRecovery
 	// users are additional managed login roles (spec.managed.roles).
 	users []appv1alpha1.DatabaseUser
+	// highAvailability, when true, provisions a replicated cluster (≥2 instances,
+	// primary + standby) with pod anti-affinity. Render's enableHighAvailability.
+	highAvailability bool
 }
 
 // barmanObjectStore builds a CNPG barmanObjectStore config pointing at the S3
@@ -182,9 +185,15 @@ func managedRoles(users []appv1alpha1.DatabaseUser) []any {
 // (no client) so the plan->Cluster projection is unit-testable. When p.recovery
 // is set (with a backup store), the cluster bootstraps by restoring a source
 // Database's object-store backups — a NEW instance, never in place.
+// When p.highAvailability is true, instances is raised to at least 2 and pod
+// anti-affinity is set to spread the primary and standby across nodes.
 func cnpgClusterSpec(p clusterParams) map[string]any {
+	instances := int64(p.plan.Instances)
+	if p.highAvailability && instances < 2 {
+		instances = 2
+	}
 	spec := map[string]any{
-		"instances": int64(p.plan.Instances),
+		"instances": instances,
 		"storage": map[string]any{
 			"size":         fmt.Sprintf("%dGi", p.storageGB),
 			"storageClass": dbStorageClass,
@@ -193,6 +202,14 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"requests": map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
 			"limits":   map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
 		},
+	}
+	// Pod anti-affinity: spread primary and standbys across nodes so a single
+	// node failure doesn't take out all instances.
+	if p.highAvailability {
+		spec["affinity"] = map[string]any{
+			"enablePodAntiAffinity": true,
+			"topologyKey":           "kubernetes.io/hostname",
+		}
 	}
 	if p.version != "" {
 		spec["imageName"] = "ghcr.io/cloudnative-pg/postgresql:" + p.version
@@ -318,6 +335,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
@@ -390,6 +408,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			plan: plan, storageGB: storageGB, version: db.Spec.Version,
 			dbname: dbname, owner: owner, store: store,
 			recovery: db.Spec.Recovery, users: db.Spec.Users,
+			highAvailability: db.Spec.HighAvailability,
 		})
 		// Propagate the workspace label to CNPG-managed pods via inheritedMetadata
 		// so same-workspace NetworkPolicy selectors can reach the database.
@@ -454,12 +473,18 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	// Ready when CNPG reports enough ready instances.
-	ready := int64(0)
-	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err == nil {
-		ready, _, _ = unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
+	// Desired cluster size: the plan default, raised to 2 for HA so the ready-gate
+	// waits for the standby to come up before reporting the cluster as Ready.
+	desiredInstances := int64(plan.Instances)
+	if db.Spec.HighAvailability && desiredInstances < 2 {
+		desiredInstances = 2
 	}
-	if ready >= int64(plan.Instances) {
+
+	// Read CNPG cluster status: readyInstances, currentPrimary, instanceNames
+	// (needed for HA reporting and the failover trigger).
+	ready := r.readClusterStatus(ctx, &db, cluster)
+
+	if ready >= desiredInstances {
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Provisioned",
@@ -502,19 +527,97 @@ func setLifecycleAnnotations(cluster *unstructured.Unstructured, suspended bool,
 	cluster.SetAnnotations(anns)
 }
 
+// readClusterStatus reads the CNPG cluster's status, updates HA-related Database
+// status fields (CurrentPrimary, HighAvailabilityEnabled, LastFailoverAt) and
+// triggers a switchover if spec.failoverAt has advanced. Returns readyInstances.
+func (r *DatabaseReconciler) readClusterStatus(
+	ctx context.Context,
+	db *appv1alpha1.Database,
+	cluster *unstructured.Unstructured,
+) int64 {
+	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil {
+		db.Status.HighAvailabilityEnabled = false
+		return 0
+	}
+	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
+	if cp, found, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimary"); found {
+		db.Status.CurrentPrimary = cp
+	}
+	// Trigger a CNPG switchover when spec.failoverAt has advanced and HA is on.
+	// Patches cluster.status.targetPrimary to a non-primary instance so CNPG
+	// promotes it (the planned-switchover path — docs/render-artifacts/postgres-ha.md).
+	if db.Spec.HighAvailability && db.Spec.FailoverAt != "" && db.Spec.FailoverAt != db.Status.LastFailoverAt {
+		r.triggerCNPGSwitchover(ctx, cluster)
+		db.Status.LastFailoverAt = db.Spec.FailoverAt
+	}
+	// HighAvailabilityEnabled: HA is on in spec AND the cluster has ≥2 ready instances.
+	db.Status.HighAvailabilityEnabled = db.Spec.HighAvailability && ready >= 2
+	return ready
+}
+
+// triggerCNPGSwitchover patches cluster.status.targetPrimary to a non-primary
+// instance to initiate a CNPG planned switchover. A no-op when no ready
+// standby exists; failures are logged but do not block the reconcile loop.
+func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster *unstructured.Unstructured) {
+	log := logf.FromContext(ctx)
+	currentPrimary, _, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimary")
+	instanceNames, _, _ := unstructured.NestedStringSlice(cluster.Object, "status", "instanceNames")
+	var target string
+	for _, inst := range instanceNames {
+		if inst != currentPrimary {
+			target = inst
+			break
+		}
+	}
+	if target == "" {
+		return
+	}
+	clusterPatch := cluster.DeepCopy()
+	if setErr := unstructured.SetNestedField(clusterPatch.Object, target, "status", "targetPrimary"); setErr == nil {
+		if patchErr := r.Status().Patch(ctx, clusterPatch, client.MergeFrom(cluster)); patchErr != nil {
+			log.Info("failover: status patch failed (may not have a ready replica yet)", "err", patchErr)
+		}
+	}
+}
+
 // reconcileExternalRoutes projects the public SNI endpoints when the Database is
-// Public and a DBDomain is set: the read-write route (<name>.<domain>) and, when
-// pooling is on, a pooled route (<name>-pool.<domain>), both gated by an
-// ipAllowList middleware when spec.ipAllowList is non-empty. Everything is
-// removed when the Database is private (or no domain). Sets the external status
-// hosts. The internal -rw path is never gated.
+// Public and a DBDomain is set: the read-write route (<name>.<domain>), an
+// optional pooled route (<name>-pool.<domain>), and one per-replica route
+// (<name>-ro-<replicaName>.<domain>) per spec.readReplicas entry. All routes are
+// gated by an ipAllowList middleware when spec.ipAllowList is non-empty.
+// The internal -rw path is never gated. InternalHost for replicas is always set.
+// Removes routes for replicas no longer in spec, and all routes when private.
 func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *appv1alpha1.Database) error {
 	mwName := db.Name + "-allow"
 	public := db.Spec.Public && r.DBDomain != ""
 
+	// Collect replica names currently in spec for cleanup diff.
+	specReplicaNames := make(map[string]bool, len(db.Spec.ReadReplicas))
+	for _, rep := range db.Spec.ReadReplicas {
+		specReplicaNames[rep.Name] = true
+	}
+
+	// Delete routes for replicas that have been removed from spec.
+	for _, prev := range db.Status.ReadReplicaStatuses {
+		if !specReplicaNames[prev.Name] {
+			if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, db.Name+"-ro-"+prev.Name); err != nil {
+				return err
+			}
+		}
+	}
+
 	if !public {
 		db.Status.ExternalHost = ""
 		db.Status.PoolerExternalHost = ""
+		// Clear external hosts from replica statuses; keep internal hosts.
+		roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
+		newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
+		for _, rep := range db.Spec.ReadReplicas {
+			newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
+				Name: rep.Name, InternalHost: roInternal,
+			})
+		}
+		db.Status.ReadReplicaStatuses = newStatuses
 		for _, name := range []string{db.Name + "-pg", db.Name + "-pool"} {
 			if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, name); err != nil {
 				return err
@@ -523,7 +626,7 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 		return deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName)
 	}
 
-	// IP allowlist: a middleware referenced by both routes when CIDRs are set.
+	// IP allowlist: a middleware referenced by all routes when CIDRs are set.
 	var middlewares []any
 	if len(db.Spec.IPAllowList) > 0 {
 		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(db.Spec.IPAllowList)); err != nil {
@@ -557,6 +660,22 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 		}
 		db.Status.PoolerExternalHost = ""
 	}
+
+	// Per-named-replica public routes: <name>-ro-<replicaName>.<domain> → CNPG -ro service.
+	// InternalHost is the shared CNPG -ro service (load-balances across standbys).
+	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
+	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
+	for _, rep := range db.Spec.ReadReplicas {
+		roHost := fmt.Sprintf("%s-ro-%s.%s", db.Name, rep.Name, r.DBDomain)
+		routeName := db.Name + "-ro-" + rep.Name
+		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, routeName, routeSpec(roHost, db.Name+"-ro")); err != nil {
+			return err
+		}
+		newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
+			Name: rep.Name, InternalHost: roInternal, ExternalHost: roHost,
+		})
+	}
+	db.Status.ReadReplicaStatuses = newStatuses
 	return nil
 }
 

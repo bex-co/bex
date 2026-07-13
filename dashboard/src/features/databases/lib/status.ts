@@ -63,6 +63,17 @@ export function toDatabaseDetailView(
     databaseName: d.databaseName ?? null,
     databaseUser: d.databaseUser ?? null,
     highAvailabilityEnabled: d.highAvailabilityEnabled ?? false,
+    readReplicas: (d.readReplicas ?? [])
+      .filter((r): r is NonNullable<typeof r> => r != null && r.name != null)
+      .map((r) => ({
+        name: r.name!,
+        connectionInfo: r.connectionInfo
+          ? {
+              internalHost: r.connectionInfo.internalHost ?? null,
+              externalHost: r.connectionInfo.externalHost ?? null,
+            }
+          : null,
+      })),
     externalHost: d.externalHost ?? null,
   };
 }

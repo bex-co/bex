@@ -23,6 +23,18 @@ export interface DatabaseView {
   suspended: string;
 }
 
+/** Host-only connection info for one named read replica (no password). */
+export interface ReadReplicaConnectionInfo {
+  internalHost: string | null;
+  externalHost: string | null;
+}
+
+/** One named read replica as returned in the database detail view. */
+export interface ReadReplicaView {
+  name: string;
+  connectionInfo: ReadReplicaConnectionInfo | null;
+}
+
 /** The extra fields the detail query reads beyond the list projection. */
 export interface DatabaseDetailView extends DatabaseView {
   /** Normalized (unquoted-identifier) database name. */
@@ -30,8 +42,17 @@ export interface DatabaseDetailView extends DatabaseView {
   /** Owner role, `<db>_user`. */
   databaseUser: string | null;
   highAvailabilityEnabled: boolean;
+  /** Named read replicas, each with host-only connection info (no password). */
+  readReplicas: ReadReplicaView[];
   /** SNI host for the external endpoint, or null when private. */
   externalHost: string | null;
+}
+
+/** Full connection strings (with password) for one named read replica. */
+export interface ReplicaConnectionStrings {
+  name: string;
+  internalConnectionString: string | null;
+  externalConnectionString: string | null;
 }
 
 /** The connection strings + password, fetched on demand (never in the list). */
@@ -40,6 +61,8 @@ export interface ConnectionInfoView {
   internalConnectionString: string;
   externalConnectionString: string;
   psqlCommand: string;
+  /** Per-replica full connection strings (populated when readReplicas exist). */
+  readReplicaConnectionStrings: ReplicaConnectionStrings[];
 }
 
 /** One catalog plan as the create dialog's picker consumes it. */

@@ -92,6 +92,40 @@ type DatabaseSpec struct {
 	// configured. See docs/ADR009-postgresql-management.md.
 	// +optional
 	Recovery *DatabaseRecovery `json:"recovery,omitempty"`
+
+	// HighAvailability, when true, provisions a replicated CNPG cluster (primary +
+	// standby with pod anti-affinity) for this database. Render's
+	// enableHighAvailability. Independent of ReadReplicas — a DB can have read
+	// replicas without HA. See docs/render-artifacts/postgres-ha.md.
+	// +optional
+	HighAvailability bool `json:"highAvailability,omitempty"`
+
+	// ReadReplicas declares named read-only replica endpoints backed by the CNPG
+	// read-only service. Each entry yields its own internal host and, when Public
+	// is true and BEX_DB_DOMAIN is set, its own external SNI hostname. Independent
+	// of the HA toggle — Render's readReplicas: [{name}] field.
+	// See docs/render-artifacts/postgres-ha.md.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	ReadReplicas []DatabaseReadReplica `json:"readReplicas,omitempty"`
+
+	// FailoverAt, when bumped to a fresh RFC3339 timestamp, requests a CNPG
+	// switchover (promote a standby to primary). Only meaningful when
+	// HighAvailability is true. Verb-as-timestamp pattern, like RestartedAt.
+	// Maps to Render's POST /v1/postgres/{id}/failover.
+	// +optional
+	FailoverAt string `json:"failoverAt,omitempty"`
+}
+
+// DatabaseReadReplica declares one named read-only replica endpoint for a Database.
+// Each entry maps to a CNPG read-only service connection, addressable by its own
+// SNI hostname when the Database is Public. Render's readReplicas item shape.
+type DatabaseReadReplica struct {
+	// Name is the replica's label, used to build its external SNI hostname
+	// (<db>-<name>.<BEX_DB_DOMAIN>) and in the status readReplicaStatuses array.
+	// +required
+	Name string `json:"name"`
 }
 
 // DatabaseUser is an additional managed PostgreSQL login role on a Database.
@@ -176,6 +210,30 @@ type DatabaseStatus struct {
 	// +optional
 	BackupsEnabled bool `json:"backupsEnabled,omitempty"`
 
+	// HighAvailabilityEnabled reports whether a replicated CNPG cluster (≥2 ready
+	// instances) is active. Render's highAvailabilityEnabled read field; reflects
+	// the cluster's real state, not just spec.highAvailability.
+	// +optional
+	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled,omitempty"`
+
+	// ReadReplicaStatuses has one entry per spec.readReplicas entry with the
+	// resolved internal + external connection hosts for that named replica.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	ReadReplicaStatuses []DatabaseReadReplicaStatus `json:"readReplicaStatuses,omitempty"`
+
+	// CurrentPrimary is the CNPG pod name currently serving as primary, surfaced
+	// as an observability aid after a failover. Empty until HA is active.
+	// bex extension (Render reports HA state but not the pod name).
+	// +optional
+	CurrentPrimary string `json:"currentPrimary,omitempty"`
+
+	// LastFailoverAt records the spec.failoverAt value the controller last acted
+	// on, so the controller only triggers a switchover once per request.
+	// +optional
+	LastFailoverAt string `json:"lastFailoverAt,omitempty"`
+
 	// ObservedGeneration is the .metadata.generation the controller last reconciled.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
@@ -185,6 +243,22 @@ type DatabaseStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// DatabaseReadReplicaStatus reports the resolved connection URLs for one named
+// read replica declared in spec.readReplicas.
+type DatabaseReadReplicaStatus struct {
+	// Name matches the spec.readReplicas entry name.
+	// +required
+	Name string `json:"name"`
+	// InternalHost is the in-cluster read-only hostname (CNPG "<cluster>-ro" Service,
+	// load-balances across standbys). Shared across all named replicas of the same DB.
+	// +optional
+	InternalHost string `json:"internalHost,omitempty"`
+	// ExternalHost is the per-replica public SNI hostname
+	// ("<db>-<name>.<BEX_DB_DOMAIN>") when the Database is Public.
+	// +optional
+	ExternalHost string `json:"externalHost,omitempty"`
 }
 
 // +kubebuilder:object:root=true

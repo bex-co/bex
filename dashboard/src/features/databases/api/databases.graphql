@@ -35,6 +35,13 @@ query Database($id: String!) {
     databaseUser
     diskSizeGB
     highAvailabilityEnabled
+    readReplicas {
+      name
+      connectionInfo {
+        internalHost
+        externalHost
+      }
+    }
     suspended
     createdAt
     externalHost
@@ -56,6 +63,11 @@ query DatabaseConnectionInfo($id: String!) {
     internalConnectionPoolString
     externalConnectionPoolString
     psqlCommand
+    readReplicaConnectionStrings {
+      name
+      internalConnectionString
+      externalConnectionString
+    }
   }
 }
 
@@ -90,6 +102,10 @@ query DatabaseUsers($id: String!) {
 
 query DatabaseIpAllowList($id: String!) {
   databaseIpAllowList(id: $id)
+}
+
+mutation FailoverDatabase($id: String!) {
+  failoverDatabase(id: $id)
 }
 
 mutation SuspendDatabase($id: String!) {

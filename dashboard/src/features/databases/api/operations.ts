@@ -100,6 +100,17 @@ export const DatabasePooledConnectionDocument = gql`
   }
 ` as unknown as TypedDocumentNode<DatabasePooledConnectionQuery, IdVars>;
 
+// --- HA mutations ---
+
+export interface FailoverDatabaseMutation {
+  failoverDatabase: boolean | null;
+}
+export const FailoverDatabaseDocument = gql`
+  mutation FailoverDatabase($id: String!) {
+    failoverDatabase(id: $id)
+  }
+` as unknown as TypedDocumentNode<FailoverDatabaseMutation, IdVars>;
+
 // --- lifecycle mutations ---
 
 interface LifecycleResult {

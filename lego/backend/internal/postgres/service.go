@@ -56,9 +56,16 @@ type PostgresView struct {
 	DatabaseUser string `json:"databaseUser"`
 	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
 
-	HighAvailabilityEnabled bool   `json:"highAvailabilityEnabled"`
-	Suspended               string `json:"suspended"` // string enum, like services
-	CreatedAt               string `json:"createdAt,omitempty"`
+	// HighAvailabilityEnabled reflects the operator's observed state (≥2 ready
+	// instances). Render's highAvailabilityEnabled read field.
+	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled"`
+	// ReadReplicas is the named replica array — each with its host info.
+	// Password is not included here; use PostgresConnectionInfo for credentials.
+	// Render's readReplicas: [{name, connectionInfo}].
+	ReadReplicas []ReadReplicaView `json:"readReplicas,omitempty"`
+
+	Suspended string `json:"suspended"` // string enum, like services
+	CreatedAt string `json:"createdAt,omitempty"`
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
@@ -82,6 +89,27 @@ type PostgresView struct {
 	OwnerID string `json:"ownerId,omitempty"`
 }
 
+// ReadReplicaView is one named read replica as returned in the Render-shaped
+// postgres object. Maps to Render's readReplicas[{name, connectionInfo}].
+// Passwords are not included; use PostgresConnectionInfo for credentials.
+type ReadReplicaView struct {
+	Name           string                     `json:"name"`
+	ConnectionInfo *ReadReplicaConnectionInfo `json:"connectionInfo,omitempty"`
+}
+
+// ReadReplicaConnectionInfo holds the internal (and optionally external)
+// read-only connection string hosts for a named read replica. The full strings
+// (with password) are only available through PostgresConnectionInfo.
+type ReadReplicaConnectionInfo struct {
+	InternalHost string `json:"internalHost,omitempty"`
+	ExternalHost string `json:"externalHost,omitempty"`
+}
+
+// ReadReplicaInput is one item in CreatePostgresRequest.ReadReplicas.
+type ReadReplicaInput struct {
+	Name string `json:"name"`
+}
+
 // PostgresConnectionInfo mirrors Render's postgresConnectionInfo schema.
 type PostgresConnectionInfo struct {
 	Password                 string `json:"password"`
@@ -92,6 +120,18 @@ type PostgresConnectionInfo struct {
 	InternalConnectionPoolString string `json:"internalConnectionPoolString,omitempty"`
 	ExternalConnectionPoolString string `json:"externalConnectionPoolString,omitempty"`
 	PSQLCommand                  string `json:"psqlCommand"`
+	// ReadReplicaConnectionStrings has one entry per spec.readReplicas, keyed by
+	// replica name. Each is the full internal (and optionally external) connection
+	// string including the password, for callers that need to query standbys.
+	ReadReplicaConnectionStrings []ReplicaConnectionStrings `json:"readReplicaConnectionStrings,omitempty"`
+}
+
+// ReplicaConnectionStrings is the full internal + optional external read-only
+// connection string for one named replica (including password).
+type ReplicaConnectionStrings struct {
+	Name                     string `json:"name"`
+	InternalConnectionString string `json:"internalConnectionString,omitempty"`
+	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
 }
 
 // CreatePostgresRequest is the POST /v1/postgres body (bex subset of Render's).
@@ -105,6 +145,14 @@ type CreatePostgresRequest struct {
 	IPAllowList []string `json:"ipAllowList,omitempty"`
 	// Pooler optionally provisions a PgBouncer pooler at create.
 	Pooler bool `json:"pooler,omitempty"`
+	// EnableHighAvailability provisions a replicated CNPG cluster (primary +
+	// standby with pod anti-affinity). Render's enableHighAvailability create field.
+	// Independent of ReadReplicas.
+	EnableHighAvailability bool `json:"enableHighAvailability,omitempty"`
+	// ReadReplicas is the named replica array — each entry gets its own
+	// addressable read-only connection URL. Render's readReplicas: [{name}].
+	// Independent of EnableHighAvailability.
+	ReadReplicas []ReadReplicaInput `json:"readReplicas,omitempty"`
 }
 
 // pgIdent mirrors the operator's normalizeIdent: a valid unquoted PostgreSQL
@@ -129,6 +177,17 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		created = d.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
 	dbn := pgIdent(d.Name)
+	replicas := make([]ReadReplicaView, 0, len(d.Status.ReadReplicaStatuses))
+	for _, rs := range d.Status.ReadReplicaStatuses {
+		rv := ReadReplicaView{Name: rs.Name}
+		if rs.InternalHost != "" || rs.ExternalHost != "" {
+			rv.ConnectionInfo = &ReadReplicaConnectionInfo{
+				InternalHost: rs.InternalHost,
+				ExternalHost: rs.ExternalHost,
+			}
+		}
+		replicas = append(replicas, rv)
+	}
 	return PostgresView{
 		ID:                      d.Name,
 		Name:                    d.Name,
@@ -138,7 +197,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		DatabaseName:            dbn,
 		DatabaseUser:            dbn + "_user",
 		DiskSizeGB:              d.Spec.StorageGB,
-		HighAvailabilityEnabled: false, // single-instance MVP (HA => w1/013)
+		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
+		ReadReplicas:            replicas,
 		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
 		CreatedAt:               created,
 		ExternalHost:            d.Status.ExternalHost,
@@ -240,15 +300,21 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return PostgresView{}, err
 	}
+	crReplicas := make([]appv1alpha1.DatabaseReadReplica, 0, len(req.ReadReplicas))
+	for _, r := range req.ReadReplicas {
+		crReplicas = append(crReplicas, appv1alpha1.DatabaseReadReplica{Name: r.Name})
+	}
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
-			Plan:        req.Plan,
-			Version:     req.Version,
-			StorageGB:   req.DiskSizeGB,
-			Public:      req.Public,
-			IPAllowList: req.IPAllowList,
-			Pooler:      req.Pooler,
+			Plan:             req.Plan,
+			Version:          req.Version,
+			StorageGB:        req.DiskSizeGB,
+			Public:           req.Public,
+			IPAllowList:      req.IPAllowList,
+			Pooler:           req.Pooler,
+			HighAvailability: req.EnableHighAvailability,
+			ReadReplicas:     crReplicas,
 		},
 	}
 	// Stamp both the tenant label (ownerId scoping — pgView/ListPostgres read
@@ -321,6 +387,24 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.ExternalConnectionPoolString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
 			user, pass, d.Status.PoolerExternalHost, dbn)
+	}
+	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
+	if len(d.Status.ReadReplicaStatuses) > 0 {
+		rcs := make([]ReplicaConnectionStrings, 0, len(d.Status.ReadReplicaStatuses))
+		for _, rs := range d.Status.ReadReplicaStatuses {
+			rc := ReplicaConnectionStrings{Name: rs.Name}
+			if rs.InternalHost != "" {
+				rc.InternalConnectionString = fmt.Sprintf(
+					"postgresql://%s:%s@%s:5432/%s", user, pass, rs.InternalHost, dbn)
+			}
+			if rs.ExternalHost != "" {
+				rc.ExternalConnectionString = fmt.Sprintf(
+					"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
+					user, pass, rs.ExternalHost, dbn)
+			}
+			rcs = append(rcs, rc)
+		}
+		info.ReadReplicaConnectionStrings = rcs
 	}
 	return info, nil
 }

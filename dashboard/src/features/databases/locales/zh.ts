@@ -562,6 +562,76 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法加载连接池字符串。",
     description: "Toast when revealing pooled strings fails",
   },
+  // --- HA panel (w1/m22) ---
+  "databases.haTitle": {
+    message: "高可用",
+    description: "HA panel card title",
+  },
+  "databases.haDescription": {
+    message: "具备自动故障切换的复制集群。启用后，备节点随时准备接管主节点。",
+    description: "HA panel card description",
+  },
+  "databases.haStatus": {
+    message: "状态",
+    description: "HA panel status row label",
+  },
+  "databases.haEnabled": {
+    message: "已启用",
+    description: "HA panel status value when HA is active",
+  },
+  "databases.haDisabled": {
+    message: "未启用",
+    description: "HA panel status value when HA is off",
+  },
+  "databases.haFailover": {
+    message: "触发故障切换",
+    description: "HA panel button to initiate a planned switchover",
+  },
+  "databases.haFailoverConfirmTitle": {
+    message: "触发 {name} 的故障切换？",
+    description: "Failover-confirmation dialog title",
+  },
+  "databases.haFailoverConfirmBody": {
+    message:
+      "这将把备节点提升��主节点。切换期间连接会短暂中断，数据库保持可用，不会丢失数据。",
+    description: "Failover-confirmation dialog body",
+  },
+  "databases.haFailoverCancel": {
+    message: "取消",
+    description: "Failover-confirmation dialog cancel button",
+  },
+  "databases.haFailoverConfirm": {
+    message: "触发故障切换",
+    description: "Failover-confirmation dialog confirm button",
+  },
+  "databases.haFailoverSuccess": {
+    message: "已触发 {name} 的故障切换。",
+    description: "Toast after a failover request is accepted",
+  },
+  "databases.haFailoverError": {
+    message: "无法触发 {name} 的故障切换，请重试。",
+    description: "Toast when a failover request fails",
+  },
+  "databases.haReadReplicas": {
+    message: "只读副本",
+    description: "HA panel section heading for named read replicas",
+  },
+  "databases.haReadReplicasEmpty": {
+    message: "暂无命名只读副本。",
+    description: "HA panel empty state for read replicas",
+  },
+  "databases.haReplicaInternal": {
+    message: "内部",
+    description: "HA panel replica connection label (in-cluster host)",
+  },
+  "databases.haReplicaExternal": {
+    message: "外部",
+    description: "HA panel replica connection label (public SNI host)",
+  },
+  "databases.haNotEnabled": {
+    message: "该数据库未启用高可用。",
+    description: "HA panel state when HA is off and there are no replicas",
+  },
 };
 
 export default zhDatabases;

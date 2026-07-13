@@ -83,12 +83,23 @@ export type Database = {
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   name: Maybe<Scalars['String']['output']>;
   ownerId: Maybe<Scalars['String']['output']>;
+  readReplicas: Maybe<Array<Maybe<ReadReplicaView>>>;
   plan: Maybe<Scalars['String']['output']>;
   poolerEnabled: Maybe<Scalars['Boolean']['output']>;
   public: Maybe<Scalars['Boolean']['output']>;
   status: Maybe<Scalars['String']['output']>;
   suspended: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['String']['output']>;
+};
+
+export type ReadReplicaConnectionInfo = {
+  externalHost: Maybe<Scalars['String']['output']>;
+  internalHost: Maybe<Scalars['String']['output']>;
+};
+
+export type ReadReplicaView = {
+  connectionInfo: Maybe<ReadReplicaConnectionInfo>;
+  name: Maybe<Scalars['String']['output']>;
 };
 
 export type DatabaseBackup = {
@@ -1071,7 +1082,7 @@ export type DatabaseQueryVariables = Exact<{
 }>;
 
 
-export type DatabaseQuery = { database: { __typename: 'Database', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, databaseName: string | null, databaseUser: string | null, diskSizeGB: number | null, highAvailabilityEnabled: boolean | null, suspended: string | null, createdAt: string | null, externalHost: string | null, public: boolean | null, poolerEnabled: boolean | null, backupsEnabled: boolean | null, ipAllowList: Array<string | null> | null } | null };
+export type DatabaseQuery = { database: { __typename: 'Database', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, databaseName: string | null, databaseUser: string | null, diskSizeGB: number | null, highAvailabilityEnabled: boolean | null, readReplicas: Array<{ __typename: 'ReadReplicaView', name: string | null, connectionInfo: { __typename: 'ReadReplicaConnectionInfo', internalHost: string | null, externalHost: string | null } | null } | null> | null, suspended: string | null, createdAt: string | null, externalHost: string | null, public: boolean | null, poolerEnabled: boolean | null, backupsEnabled: boolean | null, ipAllowList: Array<string | null> | null } | null };
 
 export type DatabaseConnectionInfoQueryVariables = Exact<{
   id: Scalars['String']['input'];

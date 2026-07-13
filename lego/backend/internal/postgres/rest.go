@@ -85,10 +85,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, http.StatusOK, info)
 		})
 
-		// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart}) ---
+		// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart))
+		mux.HandleFunc("POST "+base+"/{id}/failover", func(w http.ResponseWriter, r *http.Request) {
+			// Render: 202 Accepted, no response body.
+			if err := s.Failover(r.Context(), r.PathValue("id")); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusAccepted)
+		})
 
 		// --- recovery / exports (Render: recovery-info, recover, exports) ---
 		recoveryInfo := func(w http.ResponseWriter, r *http.Request) {

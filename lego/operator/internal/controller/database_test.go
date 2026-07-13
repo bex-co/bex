@@ -220,6 +220,36 @@ func TestIPAllowListMiddlewareSpec(t *testing.T) {
 	}
 }
 
+func TestCnpgClusterSpecHA(t *testing.T) {
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+
+	// HA off => instances stays at plan default (1 for free).
+	noHA := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", highAvailability: false})
+	if noHA["instances"] != int64(1) {
+		t.Errorf("HA off: instances = %v, want 1", noHA["instances"])
+	}
+	if _, has := noHA["affinity"]; has {
+		t.Error("HA off: affinity must not be set")
+	}
+
+	// HA on => instances raised to 2 and anti-affinity set.
+	ha := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", highAvailability: true})
+	if ha["instances"] != int64(2) {
+		t.Errorf("HA on: instances = %v, want 2", ha["instances"])
+	}
+	aff := ha["affinity"].(map[string]any)
+	if aff["enablePodAntiAffinity"] != true || aff["topologyKey"] != "kubernetes.io/hostname" {
+		t.Errorf("HA on: affinity = %v, want enablePodAntiAffinity=true topologyKey=kubernetes.io/hostname", aff)
+	}
+
+	// HA on a plan that already has >1 instances keeps the higher count.
+	bigPlan, bigGB := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
+	bigHA := cnpgClusterSpec(clusterParams{plan: bigPlan, storageGB: bigGB, dbname: "d", owner: "d_user", highAvailability: true})
+	if bigHA["instances"].(int64) < 2 {
+		t.Errorf("HA on basic-1gb: instances = %v, want >= 2", bigHA["instances"])
+	}
+}
+
 func TestSetLifecycleAnnotations(t *testing.T) {
 	// Suspend + restart set both annotations.
 	c := &unstructured.Unstructured{}

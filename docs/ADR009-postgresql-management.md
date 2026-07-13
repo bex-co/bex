@@ -107,7 +107,7 @@ Smallest possible first cut: internal-URL-only (connect from an in-cluster App),
 
 ## Advanced: data protection, lifecycle, access (w1/m17)
 
-Built on the same CNPG-is-the-executor principle — every advanced capability maps to a CNPG mechanism the operator projects and bex-api drives (three adapters: REST/GraphQL/MCP, see [ADR006-bex-api.md](ADR006-bex-api.md#managed-postgres-render-v1postgres-compatible)). **HA / failover / read replicas stay out** (deferred to `w1/013` — they need a ≥3-node pool and a replica topology).
+Built on the same CNPG-is-the-executor principle — every advanced capability maps to a CNPG mechanism the operator projects and bex-api drives (three adapters: REST/GraphQL/MCP, see [ADR006-bex-api.md](ADR006-bex-api.md#managed-postgres-render-v1postgres-compatible)).
 
 ### Backups + point-in-time recovery
 
@@ -129,9 +129,31 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 - **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<name>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, via a `<name>-pool.<domain>` SNI route). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
 - **Postgres users** (`spec.users`) are additional managed login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<db>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The owner role (`<db>_user`) stays CNPG-managed.
 
+## HA · failover · read replicas (w1/m22)
+
+Shipped 2026-07-12. All three Render fields verified against the live API ([render-artifacts/postgres-ha.md](render-artifacts/postgres-ha.md)):
+
+### High availability
+
+- `spec.highAvailability` (Render's `enableHighAvailability`) provisions a replicated CNPG cluster. When `true`, the operator raises `spec.instances` to `max(plan.Instances, 2)` and adds pod anti-affinity (`enablePodAntiAffinity: true, topologyKey: kubernetes.io/hostname`) so primary and standby land on different nodes. The ready-gate waits for both instances before reporting `Ready`.
+- `status.highAvailabilityEnabled` (Render's read field) is `true` only when HA is on _and_ ≥2 instances are actually ready — it reflects the operator's observed state, not just the spec intent.
+- Independent of `readReplicas`: a DB can have read replicas without HA and vice versa (Render's documented independence).
+
+### Failover
+
+- `spec.failoverAt` (verb-as-timestamp, like `restartedAt`) triggers a CNPG **planned switchover**: the operator reads the cluster's `status.instanceNames`, finds a non-primary instance, and patches `cluster.status.targetPrimary` to it. CNPG then fences the old primary and promotes the target. The operator records the timestamp in `status.lastFailoverAt` so it only acts once per request.
+- API surfaces: REST `POST /v1/postgres/{id}/failover → 202` (no body, matching Render exactly); GraphQL `failoverDatabase(id) → Boolean`; MCP `failover_postgres`. All three write `spec.failoverAt` through `Failover()` in `lifecycle.go`.
+- Requires `// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch`.
+
+### Named read replicas
+
+- `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. Each entry gets its own Traefik `IngressRouteTCP` routing to the CNPG `-ro` service (which load-balances across standbys). Naming is `<db>-ro-<name>.<BEX_DB_DOMAIN>` for the external SNI hostname; the internal host is the shared CNPG `-ro` service.
+- `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. Route cleanup: when a replica is removed from spec, the operator finds it in the previous `status.readReplicaStatuses` and deletes its Traefik route.
+- Connection strings (with password) are in `connection-info` as `readReplicaConnectionStrings: [{name, internalConnectionString, externalConnectionString}]` — host-only info (without password) is also in the view.
+
 ## Consequences
 
-- Deferred to post-MVP: **Pro/HA** (`instances:3` needs a ≥3-node worker pool; you have one node) → `w1/013`, storage autoscaling, the Accelerated tier, and metering/billing. Backups + PITR + lifecycle + access shipped in **w1/m17**.
+- Deferred: storage autoscaling, the Accelerated tier, metering/billing. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**.
 - **`bex-db` (the control plane's own DB) should go `instances:3` + backups before you depend on it** — today it's `instances:1`, 5Gi, no backup config; losing it loses every tenant mapping. Higher priority than any single tenant DB.
 - The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds a `<name>-pool.<domain>` SNI hostname.
 

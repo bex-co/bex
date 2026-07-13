@@ -45,6 +45,7 @@ export function useConnectionInfo(id: string): UseConnectionInfoResult {
         internalConnectionString: ci?.internalConnectionString ?? "",
         externalConnectionString: ci?.externalConnectionString ?? "",
         psqlCommand: ci?.psqlCommand ?? "",
+        readReplicaConnectionStrings: [],
       });
     } catch (e) {
       setError(e as Error);
