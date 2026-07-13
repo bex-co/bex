@@ -58,25 +58,35 @@ mutation DeleteService($id: String!) {
   deleteService(id: $id)
 }
 
-# The create wizard's submit (w5/m15): exactly one of repo (build-from-git) or
-# image must be set; branch/rootDir/autoDeploy apply to git sources only.
+# The create wizard's submit (w5/m15, extended in w5/m17): exactly one of repo
+# (build-from-git) or image must be set; branch/rootDir/autoDeploy apply to git
+# sources only. type selects the service kind (web_service default); schedule and
+# command are cron_job-only; publishPath is static_site-only.
 mutation CreateService(
   $name: String!
+  $type: String
   $repo: String
   $image: String
   $branch: String
   $rootDir: String
   $plan: String
   $autoDeploy: Boolean
+  $schedule: String
+  $command: String
+  $publishPath: String
 ) {
   createService(
     name: $name
+    type: $type
     repo: $repo
     image: $image
     branch: $branch
     rootDir: $rootDir
     plan: $plan
     autoDeploy: $autoDeploy
+    schedule: $schedule
+    command: $command
+    publishPath: $publishPath
   ) {
     id
     name

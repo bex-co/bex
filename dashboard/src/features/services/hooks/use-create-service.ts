@@ -6,12 +6,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface CreateServiceInput {
   name: string;
+  type?: string;
   repo?: string;
   image?: string;
   branch?: string;
   rootDir?: string;
   plan?: string;
   autoDeploy?: boolean;
+  schedule?: string;
+  command?: string;
+  publishPath?: string;
 }
 
 export interface UseCreateServiceResult {
@@ -29,12 +33,16 @@ export function useCreateService(): UseCreateServiceResult {
         const res = await mutate({
           variables: {
             name: input.name,
+            type: input.type,
             repo: input.repo,
             image: input.image,
             branch: input.branch,
             rootDir: input.rootDir,
             plan: input.plan,
             autoDeploy: input.autoDeploy,
+            schedule: input.schedule,
+            command: input.command,
+            publishPath: input.publishPath,
           },
         });
         const id = res.data?.createService?.id ?? input.name;

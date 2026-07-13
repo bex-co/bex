@@ -1482,6 +1482,74 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "更新实例数量失败。",
     description: "Toast shown after scaleService fails",
   },
+  "services.createTypePickerTitle": {
+    message: "服务类型",
+    description: "Label above the service type picker in the create wizard",
+  },
+  "services.createTypeWebDesc": {
+    message: "在公共 URL 上公开您的服务",
+    description: "Description shown under the Web Service type card in the create wizard",
+  },
+  "services.createTypePrivateDesc": {
+    message: "仅在平台网络内部可访问",
+    description: "Description shown under the Private Service type card",
+  },
+  "services.createTypeWorkerDesc": {
+    message: "无端口或 URL 的后台处理进程",
+    description: "Description shown under the Background Worker type card",
+  },
+  "services.createTypeCronDesc": {
+    message: "按定时计划运行命令",
+    description: "Description shown under the Cron Job type card",
+  },
+  "services.createTypeStaticDesc": {
+    message: "从对象存储构建并托管静态站点",
+    description: "Description shown under the Static Site type card",
+  },
+  "services.createFieldSchedule": {
+    message: "计划表达式",
+    description: "Label for the cron schedule field in the create wizard",
+  },
+  "services.createFieldSchedulePlaceholder": {
+    message: "0 0 * * *",
+    description: "Placeholder for the cron schedule field",
+  },
+  "services.createFieldScheduleHint": {
+    message: "5 字段 crontab 表达式（分 时 日 月 周）。",
+    description: "Hint text under the schedule field",
+  },
+  "services.createFieldScheduleError": {
+    message: "请输入有效的 5 字段 cron 表达式，例如 0 0 * * *。",
+    description: "Validation error for an invalid cron expression",
+  },
+  "services.createFieldCommand": {
+    message: "命令",
+    description: "Label for the command field in the create wizard",
+  },
+  "services.createFieldCommandPlaceholder": {
+    message: "python script.py",
+    description: "Placeholder for the command field",
+  },
+  "services.createFieldCommandHint": {
+    message: "覆盖镜像的默认入口点。",
+    description: "Hint text under the command field",
+  },
+  "services.createFieldPublishPath": {
+    message: "发布目录",
+    description: "Label for the publish directory field in the create wizard",
+  },
+  "services.createFieldPublishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory field",
+  },
+  "services.createFieldPublishPathHint": {
+    message: "作为站点根目录的构建输出目录（如 dist、build、public）。",
+    description: "Hint text under the publish directory field",
+  },
+  "services.createNoPublicUrlNote": {
+    message: "此服务类型没有公共 URL。",
+    description: "Note shown for private/worker types that don't produce a public URL",
+  },
 };
 
 export default zhServices;

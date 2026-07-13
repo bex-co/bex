@@ -222,8 +222,8 @@ describe("NewServicePage", () => {
   describe("plan picker", () => {
     it("renders a card per catalog tier, defaulting to the first", async () => {
       renderPage();
-      const radiogroup = await screen.findByRole("radiogroup");
-      expect(radiogroup).toBeInTheDocument();
+      // Page now has two radiogroups: type picker and plan picker.
+      await screen.findAllByRole("radiogroup");
       expect(screen.getByText("Free")).toBeInTheDocument();
       expect(screen.getByText("Starter")).toBeInTheDocument();
       expect(
@@ -264,6 +264,163 @@ describe("NewServicePage", () => {
       expect(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("service type picker", () => {
+    it("renders all five service types", async () => {
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      expect(screen.getByRole("radio", { name: /Web Service/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Private Service/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Background Worker/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Cron Job/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Static Site/i })).toBeInTheDocument();
+    });
+
+    it("defaults to Web Service selected", async () => {
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      expect(
+        screen.getByRole("radio", { name: /Web Service/i }),
+      ).toHaveAttribute("aria-checked", "true");
+    });
+  });
+
+  describe("per-type conditional fields", () => {
+    it("shows schedule and command fields for cron job", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
+      expect(screen.getByLabelText("Command")).toBeInTheDocument();
+    });
+
+    it("shows publish directory for static site and hides plan picker", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Static Site/i }));
+      expect(screen.getByLabelText("Publish Directory")).toBeInTheDocument();
+      expect(screen.queryByText("Free")).not.toBeInTheDocument();
+    });
+
+    it("shows no-public-url note for private service", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Private Service/i }));
+      expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
+    });
+
+    it("shows no-public-url note for background worker", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Background Worker/i }));
+      expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
+    });
+
+    it("hides schedule, command, and publish-path for web service (default)", async () => {
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      expect(screen.queryByLabelText("Schedule")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Command")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Publish Directory")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("cron job validation", () => {
+    it("keeps Deploy disabled when schedule is empty for cron job", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeDisabled();
+    });
+
+    it("keeps Deploy disabled and shows error when schedule has fewer than 5 fields", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.type(screen.getByLabelText("Schedule"), "* * *");
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeDisabled();
+      expect(screen.getByText(/valid 5-field cron expression/i)).toBeInTheDocument();
+    });
+
+    it("enables Deploy when schedule is a valid 5-field cron expression", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeEnabled();
+    });
+
+    it("submits with type=cron_job, schedule, command but no publishPath", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
+      await user.type(screen.getByLabelText("Command"), "python job.py");
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job",
+          schedule: "0 0 * * *",
+          command: "python job.py",
+        }),
+      );
+      const callArg = create.mock.calls[0][0] as Record<string, unknown>;
+      expect(callArg.publishPath).toBeUndefined();
+    });
+
+    it("submits with type=static_site and publishPath but no schedule or command", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Static Site/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.type(screen.getByLabelText("Publish Directory"), "dist");
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "static_site",
+          publishPath: "dist",
+        }),
+      );
+      const callArg = create.mock.calls[0][0] as Record<string, unknown>;
+      expect(callArg.schedule).toBeUndefined();
+      expect(callArg.command).toBeUndefined();
+    });
+
+    it("submits type=web_service by default with no schedule, command, or publishPath", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "web_service" }),
+      );
+      const callArg = create.mock.calls[0][0] as Record<string, unknown>;
+      expect(callArg.schedule).toBeUndefined();
+      expect(callArg.publishPath).toBeUndefined();
     });
   });
 });

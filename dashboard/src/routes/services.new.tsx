@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Box, Loader2 } from "lucide-react";
+import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -38,6 +38,12 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 
 type SourceTab = "github" | "git" | "image";
+type ServiceType =
+  | "web_service"
+  | "private_service"
+  | "background_worker"
+  | "cron_job"
+  | "static_site";
 
 export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
@@ -49,6 +55,10 @@ export const Route = createFileRoute("/services/new")({
 
 function isValidGitUrl(url: string): boolean {
   return /^(https?:\/\/|git@|git:\/\/)/.test(url.trim());
+}
+
+function isValidCronExpression(s: string): boolean {
+  return s.trim().split(/\s+/).length === 5;
 }
 
 /**
@@ -97,6 +107,82 @@ function ServicePlanPicker({
   );
 }
 
+const SERVICE_TYPE_DEFS: {
+  type: ServiceType;
+  icon: React.ReactNode;
+  labelKey: string;
+  descKey: string;
+}[] = [
+  {
+    type: "web_service",
+    icon: <Globe className="size-4" />,
+    labelKey: "services.typeWeb",
+    descKey: "services.createTypeWebDesc",
+  },
+  {
+    type: "private_service",
+    icon: <Lock className="size-4" />,
+    labelKey: "services.typePrivate",
+    descKey: "services.createTypePrivateDesc",
+  },
+  {
+    type: "background_worker",
+    icon: <Cpu className="size-4" />,
+    labelKey: "services.typeWorker",
+    descKey: "services.createTypeWorkerDesc",
+  },
+  {
+    type: "cron_job",
+    icon: <Clock className="size-4" />,
+    labelKey: "services.typeCron",
+    descKey: "services.createTypeCronDesc",
+  },
+  {
+    type: "static_site",
+    icon: <Layers className="size-4" />,
+    labelKey: "services.typeStatic",
+    descKey: "services.createTypeStaticDesc",
+  },
+];
+
+function ServiceTypePicker({
+  value,
+  onChange,
+}: {
+  value: ServiceType;
+  onChange: (type: ServiceType) => void;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {SERVICE_TYPE_DEFS.map(({ type, icon, labelKey, descKey }) => {
+        const selected = type === value;
+        return (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(type)}
+            className={cn(
+              "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
+              selected
+                ? "border-primary ring-1 ring-primary"
+                : "border-border hover:border-muted-foreground/50",
+            )}
+          >
+            <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
+            <div>
+              <div className="text-sm font-medium">{t(labelKey)}</div>
+              <div className="text-xs text-muted-foreground">{t(descKey)}</div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -105,6 +191,7 @@ export function NewServicePage() {
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
 
+  const [serviceType, setServiceType] = useState<ServiceType>("web_service");
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
   const [repoSearch, setRepoSearch] = useState("");
@@ -116,9 +203,21 @@ export function NewServicePage() {
   const [rootDir, setRootDir] = useState("");
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [autoDeploy, setAutoDeploy] = useState(true);
+  const [schedule, setSchedule] = useState("");
+  const [command, setCommand] = useState("");
+  const [publishPath, setPublishPath] = useState("");
+
+  const isCronType = serviceType === "cron_job";
+  const isStaticType = serviceType === "static_site";
+  const showNoUrlNote =
+    serviceType === "private_service" || serviceType === "background_worker";
+  const showPlan = !isStaticType;
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
   const isGitSource = tab === "github" || tab === "git";
+
+  const scheduleError =
+    isCronType && schedule.trim() !== "" && !isValidCronExpression(schedule);
 
   // Auto-fill name + branch from source when user hasn't manually typed a name.
   // `nameEdited` resets to false when the name is cleared (onChange uses
@@ -145,7 +244,12 @@ export function NewServicePage() {
     (tab === "git" && isValidGitUrl(gitUrl)) ||
     (tab === "image" && imageVal.trim().length > 0);
 
-  const canSubmit = nameValid && sourceValid && plan !== "" && !busy;
+  const canSubmit =
+    nameValid &&
+    sourceValid &&
+    !busy &&
+    (isStaticType || plan !== "") &&
+    (!isCronType || (schedule.trim() !== "" && !scheduleError));
 
   const filteredRepos = useMemo(
     () =>
@@ -175,12 +279,16 @@ export function NewServicePage() {
 
     const id = await create({
       name,
+      type: serviceType,
       repo,
       image,
       branch: branchVal,
       rootDir: rootDir || undefined,
-      plan: plan || undefined,
+      plan: showPlan ? plan || undefined : undefined,
       autoDeploy: isGitSource ? autoDeploy : undefined,
+      schedule: isCronType ? schedule.trim() || undefined : undefined,
+      command: isCronType ? command.trim() || undefined : undefined,
+      publishPath: isStaticType ? publishPath.trim() || undefined : undefined,
     });
     if (id) {
       void navigate({ to: "/services/$serviceId", params: { serviceId: id } });
@@ -199,6 +307,12 @@ export function NewServicePage() {
               <CardDescription>{t("services.createDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Service type picker */}
+              <div className="space-y-3">
+                <Label>{t("services.createTypePickerTitle")}</Label>
+                <ServiceTypePicker value={serviceType} onChange={setServiceType} />
+              </div>
+
               {/* Source picker */}
               <div className="space-y-3">
                 <Label>{t("services.createSourceTitle")}</Label>
@@ -411,14 +525,91 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
-                <div className="space-y-2">
-                  <Label>{t("services.createFieldPlan")}</Label>
-                  <ServicePlanPicker
-                    instanceTypes={instanceTypes}
-                    value={plan}
-                    onChange={setPlanOverride}
-                  />
-                </div>
+                {/* Cron-specific fields */}
+                {isCronType ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="svc-schedule">
+                        {t("services.createFieldSchedule")}
+                      </Label>
+                      <Input
+                        id="svc-schedule"
+                        value={schedule}
+                        onChange={(e) => setSchedule(e.target.value)}
+                        placeholder={t(
+                          "services.createFieldSchedulePlaceholder",
+                        )}
+                        autoComplete="off"
+                        aria-invalid={scheduleError}
+                      />
+                      {scheduleError ? (
+                        <p className="text-sm text-destructive">
+                          {t("services.createFieldScheduleError")}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {t("services.createFieldScheduleHint")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="svc-command">
+                        {t("services.createFieldCommand")}
+                      </Label>
+                      <Input
+                        id="svc-command"
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        placeholder={t(
+                          "services.createFieldCommandPlaceholder",
+                        )}
+                        autoComplete="off"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t("services.createFieldCommandHint")}
+                      </p>
+                    </div>
+                  </>
+                ) : null}
+
+                {/* Static site publish directory */}
+                {isStaticType ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="svc-publish-path">
+                      {t("services.createFieldPublishPath")}
+                    </Label>
+                    <Input
+                      id="svc-publish-path"
+                      value={publishPath}
+                      onChange={(e) => setPublishPath(e.target.value)}
+                      placeholder={t(
+                        "services.createFieldPublishPathPlaceholder",
+                      )}
+                      autoComplete="off"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t("services.createFieldPublishPathHint")}
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* No public URL note for private / worker types */}
+                {showNoUrlNote ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("services.createNoPublicUrlNote")}
+                  </p>
+                ) : null}
+
+                {showPlan ? (
+                  <div className="space-y-2">
+                    <Label>{t("services.createFieldPlan")}</Label>
+                    <ServicePlanPicker
+                      instanceTypes={instanceTypes}
+                      value={plan}
+                      onChange={setPlanOverride}
+                    />
+                  </div>
+                ) : null}
 
                 {isGitSource ? (
                   <div className="flex items-center justify-between rounded-md border p-3">

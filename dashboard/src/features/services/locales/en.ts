@@ -1501,6 +1501,74 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Failed to update instance count.",
     description: "Toast shown after scaleService fails",
   },
+  "services.createTypePickerTitle": {
+    message: "Service Type",
+    description: "Label above the service type picker in the create wizard",
+  },
+  "services.createTypeWebDesc": {
+    message: "Expose your service on a public URL",
+    description: "Description shown under the Web Service type card in the create wizard",
+  },
+  "services.createTypePrivateDesc": {
+    message: "Accessible only within the platform network",
+    description: "Description shown under the Private Service type card",
+  },
+  "services.createTypeWorkerDesc": {
+    message: "Run background processing with no port or URL",
+    description: "Description shown under the Background Worker type card",
+  },
+  "services.createTypeCronDesc": {
+    message: "Run a command on a recurring schedule",
+    description: "Description shown under the Cron Job type card",
+  },
+  "services.createTypeStaticDesc": {
+    message: "Build and serve a static site from object storage",
+    description: "Description shown under the Static Site type card",
+  },
+  "services.createFieldSchedule": {
+    message: "Schedule",
+    description: "Label for the cron schedule field in the create wizard",
+  },
+  "services.createFieldSchedulePlaceholder": {
+    message: "0 0 * * *",
+    description: "Placeholder for the cron schedule field",
+  },
+  "services.createFieldScheduleHint": {
+    message: "A 5-field crontab expression (minute hour day month weekday).",
+    description: "Hint text under the schedule field",
+  },
+  "services.createFieldScheduleError": {
+    message: "Enter a valid 5-field cron expression, e.g. 0 0 * * *.",
+    description: "Validation error for an invalid cron expression",
+  },
+  "services.createFieldCommand": {
+    message: "Command",
+    description: "Label for the command field in the create wizard",
+  },
+  "services.createFieldCommandPlaceholder": {
+    message: "python script.py",
+    description: "Placeholder for the command field",
+  },
+  "services.createFieldCommandHint": {
+    message: "Overrides the image's default entry point.",
+    description: "Hint text under the command field",
+  },
+  "services.createFieldPublishPath": {
+    message: "Publish Directory",
+    description: "Label for the publish directory field in the create wizard",
+  },
+  "services.createFieldPublishPathPlaceholder": {
+    message: "dist",
+    description: "Placeholder for the publish directory field",
+  },
+  "services.createFieldPublishPathHint": {
+    message: "The built output directory to serve as the site root (e.g. dist, build, public).",
+    description: "Hint text under the publish directory field",
+  },
+  "services.createNoPublicUrlNote": {
+    message: "This service type has no public URL.",
+    description: "Note shown for private/worker types that don't produce a public URL",
+  },
 };
 
 export default enServices;
