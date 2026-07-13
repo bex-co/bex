@@ -80,6 +80,10 @@ type Service struct {
 	// https://dashboard.bex.co). Empty => the email carries instructions without a
 	// deep link (acceptance is by email match regardless).
 	InviteBaseURL string
+	// Identities resolves a member's email from the identity provider — the same
+	// enrichment the owners API performs (w6/m2). Nil (BEX_KRATOS_ADMIN_URL
+	// unset) => Email omitted (honest subset); List still succeeds.
+	Identities EmailLookup
 }
 
 // MembersStore is the slice of the source of truth this feature writes through —
@@ -97,6 +101,21 @@ type MembersStore interface {
 	ListInvites(ctx context.Context, tenantID string) ([]store.Invite, error)
 	GetInvite(ctx context.Context, tenantID, id string) (store.Invite, error)
 	DeleteInvite(ctx context.Context, tenantID, id string) error
+	// OwnerIDForSubject resolves a subject's stable opaque "own-" id, minting one
+	// on first sight — the same identity enrichment the owners API performs
+	// (workspaces.WorkspaceStore, w6/m7). *store.PGStore already satisfies it.
+	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
+}
+
+// EmailLookup resolves a subject's email from the identity provider (Kratos
+// admin API) — the members-package seam for the same enrichment
+// workspaces.IdentityReader performs for the owners API (named return type
+// differs across packages, so this feature keeps its own narrow interface;
+// the composition root adapts workspaces.IdentityReader to it). Nil
+// (BEX_KRATOS_ADMIN_URL unset) or a lookup miss => Email omitted (honest
+// subset) — List still succeeds.
+type EmailLookup interface {
+	LookupEmail(ctx context.Context, subject string) (string, bool)
 }
 
 // RoleGranter writes a member's OpenFGA role tuple on a workspace (the authz
@@ -119,11 +138,17 @@ type Mailer interface {
 }
 
 // MemberView is the neutral projection of an accepted member. Subject is the
-// OpenFGA user (Kratos identity id or Hydra client id); bex has no per-member
-// email/name store yet, so unlike Render's members[].user.email this surfaces the
-// subject (parity drift, docs/ADR018-render-parity.md). Role is UPPERCASE (Render enum).
+// OpenFGA user (Kratos identity id or Hydra client id) — kept as the mutation
+// key (ChangeRole/Remove take `subject`; a bex-native contract, not Render's
+// `userId` surface, docs/render-artifacts/owners-api.md). UserID is the same
+// opaque "own-" id the owners API reports as `userId` (w6/m7); Email is
+// resolved via Identities, same as the owners API — both honest-omit
+// (""/unset) when the identity reader is nil or a lookup misses (w6/m10).
+// Role is UPPERCASE (Render enum).
 type MemberView struct {
 	Subject   string `json:"subject"`
+	UserID    string `json:"userId"`
+	Email     string `json:"email"`
 	Role      string `json:"role"`
 	CreatedAt string `json:"createdAt"`
 }
@@ -187,7 +212,21 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 	}
 	out := make([]MemberView, 0, len(ms))
 	for _, m := range ms {
-		out = append(out, memberView(m))
+		mv := memberView(m)
+		// Resolve the opaque own- id (minted on first sight) — the same
+		// enrichment workspaces.Service.ListMembers performs for the owners API.
+		// A store error surfaces to the caller (5xx) rather than a silent blank.
+		ownID, err := s.Store.OwnerIDForSubject(ctx, m.Subject)
+		if err != nil {
+			return nil, err
+		}
+		mv.UserID = ownID
+		if s.Identities != nil {
+			if email, ok := s.Identities.LookupEmail(ctx, m.Subject); ok {
+				mv.Email = email
+			}
+		}
+		out = append(out, mv)
 	}
 	return out, nil
 }

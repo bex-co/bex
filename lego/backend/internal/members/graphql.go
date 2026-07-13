@@ -33,6 +33,8 @@ var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceMember",
 	Fields: graphql.Fields{
 		"subject":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Subject })},
+		"userId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.UserID })},
+		"email":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Email })},
 		"role":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Role })},
 		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.CreatedAt })},
 	},

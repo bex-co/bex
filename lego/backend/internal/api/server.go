@@ -243,12 +243,30 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Revoker:       d.MembersRevoker,
 			Mailer:        d.Mailer,
 			InviteBaseURL: d.InviteBaseURL,
+			Identities:    identityEmailLookup{d.Identities},
 		},
 		GitHub:  gh,
 		Onboard: d.Onboard,
 		Usage:   d.Usage,
 		Audit:   d.Audit,
 	}
+}
+
+// identityEmailLookup adapts workspaces.IdentityReader to members.EmailLookup
+// (the two packages can't share the interface directly — IdentityReader.Lookup
+// returns workspaces.IdentityAttrs, a type members doesn't import). A nil
+// Identities (BEX_KRATOS_ADMIN_URL unset) degrades to an honest miss rather
+// than panicking on a nil interface call.
+type identityEmailLookup struct {
+	Identities workspaces.IdentityReader
+}
+
+func (a identityEmailLookup) LookupEmail(ctx context.Context, subject string) (string, bool) {
+	if a.Identities == nil {
+		return "", false
+	}
+	attrs, ok := a.Identities.Lookup(ctx, subject)
+	return attrs.Email, ok
 }
 
 // Feature registration contracts. A feature implements the fragments it has; the

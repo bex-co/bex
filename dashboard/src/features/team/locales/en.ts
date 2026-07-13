@@ -80,7 +80,7 @@ const enTeam: Record<string, TranslationEntry> = {
     description: "Remove-member confirmation dialog title",
   },
   "team.removeConfirm": {
-    message: "{subject} will lose access to this workspace immediately.",
+    message: "{identity} will lose access to this workspace immediately.",
     description: "Remove-member confirmation dialog body",
   },
   "team.removeCancel": {
@@ -124,7 +124,8 @@ const enTeam: Record<string, TranslationEntry> = {
     description: "Team panel generic error title",
   },
   "team.errorBody": {
-    message: "Something went wrong loading this workspace's members. Try again.",
+    message:
+      "Something went wrong loading this workspace's members. Try again.",
     description: "Team panel generic error body",
   },
   "team.role.VIEWER": {

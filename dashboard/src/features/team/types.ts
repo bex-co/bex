@@ -12,10 +12,15 @@ export const ROLES = [
 
 export type Role = (typeof ROLES)[number];
 
-/** An accepted member. bex keys membership by identity subject (no per-member
- *  email store yet), so `subject` is what we show — Render shows name+email. */
+/** An accepted member. `subject` is the raw identity id — kept as the mutation
+ *  key (role change / remove), a bex-native contract distinct from Render's
+ *  `userId` surface (docs/render-artifacts/owners-api.md). `userId` is the
+ *  opaque own- id and `email` the resolved identity email (w6/m10) — both may
+ *  be empty when the identity provider is unwired or the lookup misses. */
 export interface MemberView {
   subject: string;
+  userId: string;
+  email: string;
   role: Role;
   createdAt: string | null;
 }

@@ -34,9 +34,11 @@ export interface MemberRowProps {
 }
 
 /**
- * One accepted-member row: the subject, a role dropdown (admin only), and a
- * remove action gated behind a confirmation. bex keys membership by identity
- * subject (no per-member email store yet), so the subject is what we show.
+ * One accepted-member row: the member's email as primary identity (falling
+ * back to their opaque userId when email is unresolvable — never blank), a
+ * role dropdown (admin only), and a remove action gated behind a
+ * confirmation. The raw subject stays the mutation key but is demoted to a
+ * muted secondary line (w6/m10).
  */
 export function MemberRow({
   member,
@@ -48,16 +50,26 @@ export function MemberRow({
 }: MemberRowProps) {
   const { t } = useTranslations();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const identity = member.email || member.userId || member.subject;
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-xs break-all">{member.subject}</TableCell>
+      <TableCell className="break-all">
+        <div>{identity}</div>
+        {identity !== member.subject ? (
+          <div className="font-mono text-xs text-muted-foreground">
+            {member.subject}
+          </div>
+        ) : null}
+      </TableCell>
       <TableCell>
         {canManage ? (
           <Select
             value={member.role}
             disabled={changing}
-            onValueChange={(value) => onChangeRole(member.subject, value as Role)}
+            onValueChange={(value) =>
+              onChangeRole(member.subject, value as Role)
+            }
           >
             <SelectTrigger size="sm" className="w-[150px]">
               <SelectValue />
@@ -95,7 +107,7 @@ export function MemberRow({
               <AlertDialogHeader>
                 <AlertDialogTitle>{t("team.removeTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t("team.removeConfirm", { subject: member.subject })}
+                  {t("team.removeConfirm", { identity })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

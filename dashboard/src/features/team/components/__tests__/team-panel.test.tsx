@@ -10,7 +10,13 @@ const teamState: {
   loading: boolean;
   error: Error | undefined;
   canManage: boolean;
-} = { members: [], invites: [], loading: false, error: undefined, canManage: true };
+} = {
+  members: [],
+  invites: [],
+  loading: false,
+  error: undefined,
+  canManage: true,
+};
 const refetch = vi.fn();
 
 vi.mock("@/features/team/hooks/use-current-workspace", () => ({
@@ -54,16 +60,81 @@ beforeEach(() => {
 describe("TeamPanel", () => {
   it("lists members with their roles (w4/m12/t004)", () => {
     teamState.members = [
-      { subject: "id-admin", role: "ADMIN", createdAt: null },
-      { subject: "id-bob", role: "VIEWER", createdAt: null },
+      {
+        subject: "id-admin",
+        userId: "own-1",
+        email: "admin@example.com",
+        role: "ADMIN",
+        createdAt: null,
+      },
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "",
+        role: "VIEWER",
+        createdAt: null,
+      },
     ];
     render(<TeamPanel />);
+    expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+    expect(screen.getByText("own-2")).toBeInTheDocument();
+  });
+
+  it("a member with a resolvable email shows the email, not the subject (w6/m10)", () => {
+    teamState.members = [
+      {
+        subject: "id-admin",
+        userId: "own-1",
+        email: "admin@example.com",
+        role: "ADMIN",
+        createdAt: null,
+      },
+    ];
+    render(<TeamPanel />);
+    expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+    // The raw subject is demoted to a secondary line, not the primary cell.
     expect(screen.getByText("id-admin")).toBeInTheDocument();
-    expect(screen.getByText("id-bob")).toBeInTheDocument();
+  });
+
+  it("a member without email falls back to the own- userId, never blank (w6/m10)", () => {
+    teamState.members = [
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
+    render(<TeamPanel />);
+    expect(screen.getByText("own-2")).toBeInTheDocument();
+    expect(screen.queryByText("admin@example.com")).not.toBeInTheDocument();
+  });
+
+  it("a member with neither email nor userId still shows the subject (fully degraded)", () => {
+    teamState.members = [
+      {
+        subject: "id-carol",
+        userId: "",
+        email: "",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
+    render(<TeamPanel />);
+    expect(screen.getByText("id-carol")).toBeInTheDocument();
   });
 
   it("an admin sees the invite dialog and per-member controls", () => {
-    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+    teamState.members = [
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
     render(<TeamPanel />);
     expect(screen.getByTestId("invite-dialog")).toBeInTheDocument();
     // The role dropdown (a combobox) and a remove button are present.
@@ -73,41 +144,72 @@ describe("TeamPanel", () => {
 
   it("a read-only (non-admin) caller sees no invite/role/remove controls", () => {
     teamState.canManage = false;
-    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+    teamState.members = [
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
     render(<TeamPanel />);
     expect(screen.queryByTestId("invite-dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove" }),
+    ).not.toBeInTheDocument();
     // ...but the role is still shown as text.
     expect(screen.getByText("Viewer")).toBeInTheDocument();
   });
 
   it("shows pending invites to an admin", () => {
     teamState.invites = [
-      { id: "inv-1", email: "carol@example.com", role: "DEVELOPER", expiresAt: null },
+      {
+        id: "inv-1",
+        email: "carol@example.com",
+        role: "DEVELOPER",
+        expiresAt: null,
+      },
     ];
     render(<TeamPanel />);
     expect(screen.getByText("Pending invites")).toBeInTheDocument();
     expect(screen.getByText("carol@example.com")).toBeInTheDocument();
   });
 
-  it("a confirmed remove calls removeMember and refetches on success", async () => {
-    teamState.members = [{ subject: "id-bob", role: "VIEWER", createdAt: null }];
+  it("a confirmed remove calls removeMember (keyed by subject) and refetches on success", async () => {
+    teamState.members = [
+      {
+        subject: "id-bob",
+        userId: "own-2",
+        email: "bob@example.com",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
     removeMember.mockResolvedValue(true);
     const user = userEvent.setup();
     render(<TeamPanel />);
 
     await user.click(screen.getByRole("button", { name: "Remove" }));
     const dialog = await screen.findByRole("alertdialog");
+    // The confirm dialog interpolates the display identity (email), not the raw subject.
+    expect(within(dialog).getByText(/bob@example.com/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
 
+    // Mutation keying is unchanged by the enrichment (t001's verdict): still subject.
     expect(removeMember).toHaveBeenCalledWith("id-bob");
     expect(refetch).toHaveBeenCalled();
   });
 
   it("revoking a pending invite calls revokeInvite", async () => {
     teamState.invites = [
-      { id: "inv-1", email: "carol@example.com", role: "DEVELOPER", expiresAt: null },
+      {
+        id: "inv-1",
+        email: "carol@example.com",
+        role: "DEVELOPER",
+        expiresAt: null,
+      },
     ];
     revokeInvite.mockResolvedValue(true);
     const user = userEvent.setup();

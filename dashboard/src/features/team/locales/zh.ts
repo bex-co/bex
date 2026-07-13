@@ -79,7 +79,7 @@ const zhTeam: Record<string, TranslationEntry> = {
     description: "Remove-member confirmation dialog title",
   },
   "team.removeConfirm": {
-    message: "{subject} 将立即失去对此工作区的访问权限。",
+    message: "{identity} 将立即失去对此工作区的访问权限。",
     description: "Remove-member confirmation dialog body",
   },
   "team.removeCancel": {

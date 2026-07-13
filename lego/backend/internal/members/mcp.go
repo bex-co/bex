@@ -68,7 +68,7 @@ type okResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_members",
-		Description: "List a workspace's members and their roles. bex extension over Render's MCP.",
+		Description: "List a workspace's members, their roles, opaque userId (own-…), and email (when the identity provider is configured). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in workspaceArg) (*mcp.CallToolResult, listMembersResult, error) {
 		ms, err := s.List(ctx, in.WorkspaceID)
 		return nil, listMembersResult{Members: ms}, err

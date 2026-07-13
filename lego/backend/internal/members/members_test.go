@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -32,10 +34,12 @@ import (
 
 // fakeStore is an in-memory MembersStore mirroring PGStore's error taxonomy.
 type fakeStore struct {
-	tenant  store.Tenant
-	members map[string]store.TenantMember // subject -> row
-	invites map[string]store.Invite       // id -> row
-	nextInv int
+	tenant   store.Tenant
+	members  map[string]store.TenantMember // subject -> row
+	invites  map[string]store.Invite       // id -> row
+	nextInv  int
+	ownerIDs map[string]string // subject -> own- id, mint-on-first-sight
+	ownIDErr error             // when set, OwnerIDForSubject fails every call
 }
 
 func newFakeStore(plan string) *fakeStore {
@@ -44,6 +48,31 @@ func newFakeStore(plan string) *fakeStore {
 		members: map[string]store.TenantMember{},
 		invites: map[string]store.Invite{},
 	}
+}
+
+// OwnerIDForSubject mints a stable, well-formed own- id per subject (matches
+// the PGStore's get-or-create semantics for tests).
+func (f *fakeStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+	if f.ownIDErr != nil {
+		return "", f.ownIDErr
+	}
+	if f.ownerIDs == nil {
+		f.ownerIDs = map[string]string{}
+	}
+	if id, ok := f.ownerIDs[subject]; ok {
+		return id, nil
+	}
+	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+	f.ownerIDs[subject] = id
+	return id, nil
+}
+
+// fakeEmailLookup is a minimal EmailLookup — subject -> email, miss on absence.
+type fakeEmailLookup map[string]string
+
+func (f fakeEmailLookup) LookupEmail(_ context.Context, subject string) (string, bool) {
+	email, ok := f[subject]
+	return email, ok
 }
 
 func (f *fakeStore) seedMember(subject, role string) {
@@ -288,6 +317,101 @@ func TestListAllowsViewer(t *testing.T) {
 	}
 	if len(ms) != 1 || ms[0].Role != "ADMIN" {
 		t.Errorf("members = %+v", ms)
+	}
+}
+
+func TestListEnrichesUserIDAndEmail(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
+	s.Identities = fakeEmailLookup{"admin-1": "admin@example.com"}
+	ms, err := s.List(ctxWith("viewer-1"), "tea-1")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(ms) != 1 {
+		t.Fatalf("members = %+v", ms)
+	}
+	if ms[0].UserID == "" || !strings.HasPrefix(ms[0].UserID, "own-") {
+		t.Errorf("userId not minted: %q", ms[0].UserID)
+	}
+	if ms[0].Email != "admin@example.com" {
+		t.Errorf("email = %q, want admin@example.com", ms[0].Email)
+	}
+	// The own- id is stable across calls for the same subject.
+	ms2, err := s.List(ctxWith("viewer-1"), "tea-1")
+	if err != nil {
+		t.Fatalf("list #2: %v", err)
+	}
+	if ms2[0].UserID != ms[0].UserID {
+		t.Errorf("userId not stable: %q != %q", ms2[0].UserID, ms[0].UserID)
+	}
+}
+
+func TestListNilIdentitiesOmitsEmail(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
+	ms, err := s.List(ctxWith("viewer-1"), "tea-1")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(ms) != 1 || ms[0].Email != "" {
+		t.Errorf("members = %+v, want empty email (no identity reader)", ms)
+	}
+	if ms[0].UserID == "" {
+		t.Errorf("userId should still be minted with no identity reader: %+v", ms[0])
+	}
+}
+
+func TestListEmailLookupMissDegradesOnlyThatMember(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("admin-2", "admin")
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
+	s.Identities = fakeEmailLookup{"admin-1": "admin@example.com"} // admin-2 is a miss
+	ms, err := s.List(ctxWith("viewer-1"), "tea-1")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	byEmail := map[string]string{}
+	for _, m := range ms {
+		byEmail[m.Subject] = m.Email
+	}
+	if byEmail["admin-1"] != "admin@example.com" {
+		t.Errorf("admin-1 email = %q", byEmail["admin-1"])
+	}
+	if byEmail["admin-2"] != "" {
+		t.Errorf("admin-2 email = %q, want empty (lookup miss)", byEmail["admin-2"])
+	}
+}
+
+func TestListOwnerIDStoreErrorSurfaces(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.ownIDErr = errors.New("db unavailable")
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
+	if _, err := s.List(ctxWith("viewer-1"), "tea-1"); err == nil {
+		t.Fatal("list: want error from OwnerIDForSubject, got nil")
+	}
+}
+
+// TestListOwnerIDStoreErrorIsHTTP5xx confirms the store error reaches the
+// caller as a 5xx over REST, not a silently empty/200 member list — the
+// "own- id lookup fails loudly" half of t008's target cases.
+func TestListOwnerIDStoreErrorIsHTTP5xx(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.ownIDErr = errors.New("db unavailable")
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
+
+	mux := http.NewServeMux()
+	s.RegisterREST(mux)
+	req := httptest.NewRequest(http.MethodGet, "/v1/workspaces/tea-1/members", nil).WithContext(ctxWith("viewer-1"))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code < 500 || rec.Code >= 600 {
+		t.Fatalf("REST status = %d, want 5xx; body %s", rec.Code, rec.Body)
 	}
 }
 

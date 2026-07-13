@@ -15,6 +15,8 @@ function toMembers(
     .filter((m): m is NonNullable<typeof m> => !!m?.subject)
     .map((m) => ({
       subject: m.subject as string,
+      userId: m.userId ?? "",
+      email: m.email ?? "",
       role: (m.role as Role) ?? "VIEWER",
       createdAt: m.createdAt,
     }));

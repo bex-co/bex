@@ -9,6 +9,8 @@
 query WorkspaceMembers($workspaceId: String!) {
   workspaceMembers(workspaceId: $workspaceId) {
     subject
+    userId
+    email
     role
     createdAt
   }
