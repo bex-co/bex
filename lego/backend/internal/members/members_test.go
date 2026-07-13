@@ -330,6 +330,33 @@ func TestInviteEnforcesMemberCap(t *testing.T) {
 	}
 }
 
+// TestInvitePlanRefusalsNameThePlan pins the contract the dashboard's invite
+// dialog keys on (w6/m15/t001): it shows the inline "your plan can't take this
+// invite" alert + the change-plan CTA only when the refusal's message mentions
+// the plan (use-invite-member.ts). That is a substring match on this prose, so
+// rewording either guard to drop the word "plan" would silently demote the CTA
+// back to the generic toast — the dead end the milestone removed. If this test
+// fails, fix the dashboard's discriminator, don't just re-word the assertion.
+func TestInvitePlanRefusalsNameThePlan(t *testing.T) {
+	// The seat cap (Hobby is single-member).
+	capped := newFakeStore(store.PlanHobby)
+	capped.seedMember("admin-1", "admin")
+	_, err := svc(capped, newFakeGranter(), nil, nil).
+		Invite(ctxWith("admin-1"), "tea-1", "second@example.com", "developer")
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "plan") {
+		t.Fatalf("member-cap refusal must name the plan, got %v", err)
+	}
+
+	// The role gate (Pro doesn't offer viewer).
+	pro := newFakeStore(store.PlanPro)
+	pro.seedMember("admin-1", "admin")
+	_, err = svc(pro, newFakeGranter(), nil, nil).
+		Invite(ctxWith("admin-1"), "tea-1", "v@example.com", "viewer")
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "plan") {
+		t.Fatalf("role-gate refusal must name the plan, got %v", err)
+	}
+}
+
 func TestInviteRequiresAdmin(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	s := svc(st, newFakeGranter(), nil, denyChecker{})

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, UserPlus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowUpRight, Loader2, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -10,6 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/common/components/ui/dialog";
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -34,10 +40,15 @@ export interface InviteMemberDialogProps {
  * The invite flow (w4/m12/t004): an email and a role. On success the recipient
  * is emailed and joins the workspace on their first login (docs/ADR012-auth.md); the
  * dialog closes and the pending-invite list refreshes.
+ *
+ * A plan refusal (the Hobby member cap, or a role the plan doesn't offer) stays
+ * inline with an upgrade CTA that opens the change-plan dialog on workspace
+ * settings (w6/m15/t001) — the rejection used to be a toast with nowhere to go.
  */
 export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialogProps) {
   const { t } = useTranslations();
-  const { invite, busy } = useInviteMember(workspaceId);
+  const navigate = useNavigate();
+  const { invite, busy, planLimit } = useInviteMember(workspaceId);
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -52,6 +63,14 @@ export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialo
       setEmail("");
       setRole("DEVELOPER");
     }
+  }
+
+  // The CTA leaves the invite behind, so close the dialog rather than stranding
+  // it open behind the settings page. `plan=change` is what opens the plan
+  // dialog on arrival (routes/workspace.settings.tsx).
+  function handleUpgrade() {
+    setOpen(false);
+    void navigate({ to: "/workspace/settings", search: { plan: "change" } });
   }
 
   return (
@@ -96,6 +115,23 @@ export function InviteMemberDialog({ workspaceId, onInvited }: InviteMemberDialo
             </SelectContent>
           </Select>
         </div>
+        {planLimit ? (
+          <Alert variant="destructive">
+            <AlertTitle>{t("team.inviteErrorPlanTitle")}</AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-2">
+              <span>{planLimit}</span>
+              <Button
+                variant="link"
+                className="h-auto p-0"
+                onClick={handleUpgrade}
+              >
+                {t("team.inviteErrorPlanCta")}
+                <ArrowUpRight />
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={busy}>

@@ -39,6 +39,7 @@ type fakeStore struct {
 	mu       sync.Mutex
 	tenants  map[string]store.Tenant
 	members  map[string][]store.TenantMember // tenantID -> members
+	invites  map[string][]store.Invite       // tenantID -> outstanding invites (ChangePlan's seat/role guards)
 	ownerIDs map[string]string               // subject -> own- id (lazy)
 	apps     map[string]int                  // tenantID -> service count (ChangePlan's service-cap guard)
 }
@@ -142,6 +143,26 @@ func (f *fakeStore) ListTenantMembers(_ context.Context, id string) ([]store.Ten
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]store.TenantMember(nil), f.members[id]...), nil
+}
+
+// ListInvites returns a workspace's outstanding invites — PGStore's contract:
+// only unaccepted, unexpired rows, which is all the fake ever holds.
+func (f *fakeStore) ListInvites(_ context.Context, id string) ([]store.Invite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.Invite(nil), f.invites[id]...), nil
+}
+
+// invite records an outstanding invite on a workspace (the ChangePlan seat/role
+// guards' fixture).
+func (f *fakeStore) invite(tenantID, email, role string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.invites == nil {
+		f.invites = map[string][]store.Invite{}
+	}
+	f.invites[tenantID] = append(f.invites[tenantID],
+		store.Invite{TenantID: tenantID, Email: email, Role: role})
 }
 
 // OwnerIDForSubject mints a stable, well-formed own- id per subject (matches the
@@ -617,6 +638,64 @@ func TestChangePlan_DowngradeRefusedOverOutOfPlanRole(t *testing.T) {
 	st.members[w.ID][0] = store.TenantMember{TenantID: w.ID, Subject: "user-a", Role: "viewer"}
 	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("viewer on scale->pro: want ErrBadRequest, got %v", err)
+	}
+}
+
+// --- ChangePlan vs. pending invites (w6/m15/t003) ---------------------------
+//
+// A pending invite is a member-in-waiting: store.AcceptInvitesForEmail enforces
+// the workspace's plan at accept time, so a downgrade that counted only
+// tenant_members rows used to succeed and leave the invite silently
+// un-redeemable. The seat + role guards must see the invites, and the refusal
+// must name them so the admin knows what to revoke.
+
+func TestChangePlan_DowngradeRefusedOverMemberCapCountingPendingInvites(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro") // 1 member (the creator), under hobby's cap of 1
+	st.invite(w.ID, "carol@example.com", "developer")  // ...but a seat is already promised
+
+	_, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "hobby")
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("1 member + 1 pending invite -> hobby: want ErrBadRequest, got %v", err)
+	}
+	// The whole point of the guard is telling the admin WHICH invite to revoke.
+	if !strings.Contains(err.Error(), "carol@example.com") {
+		t.Fatalf("refusal must name the pending invite, got %q", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "pro" {
+		t.Fatalf("refused downgrade must not have been written: plan = %q", row.Plan)
+	}
+}
+
+func TestChangePlan_DowngradeRefusedOnInvitedRoleOutsidePlan(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "scale")
+	// Pro is unlimited-member, so the seat guard passes — only the ROLE is the
+	// problem: viewer exists on scale, not on pro.
+	st.invite(w.ID, "vic@example.com", "viewer")
+
+	_, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro")
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("pending viewer invite on scale->pro: want ErrBadRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "vic@example.com") {
+		t.Fatalf("refusal must name the pending invite, got %q", err)
+	}
+}
+
+func TestChangePlan_DowngradeAllowedWhenInvitesFitTheTargetPlan(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "scale")
+	st.invite(w.ID, "dev@example.com", "developer") // developer survives on pro, and pro has no member cap
+
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro"); err != nil {
+		t.Fatalf("an invite the target plan still allows must not block the downgrade: %v", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "pro" {
+		t.Fatalf("plan = %q, want pro", row.Plan)
 	}
 }
 

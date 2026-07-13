@@ -19,9 +19,6 @@ package apps
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -46,21 +43,11 @@ type WorkspacePurger struct {
 // PurgeWorkspace deletes every App CR labeled with the given tenant id
 // (core.LabelTenant). Safe to run alongside the row-backed cascade/reconciler
 // path: deleting an App the reconciler already pruned is a no-op (NotFound is
-// ignored), so this purger's only observable effect is catching the Apps that
-// path never reaches. Idempotent: no matching App is a no-op, not an error.
-// Never call s.Authorize/AuthorizeOn here — this runs as an internal system
-// operation after the deleting caller's own authorization already passed,
-// with no Identity in ctx to check against.
+// ignored by core.PurgeByTenant), so this purger's only observable effect is
+// catching the Apps that path never reaches. Idempotent: no matching App is a
+// no-op, not an error. Never call s.Authorize/AuthorizeOn here — this runs as
+// an internal system operation after the deleting caller's own authorization
+// already passed, with no Identity in ctx to check against.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
-	var list appv1alpha1.AppList
-	if err := p.Client.List(ctx, &list,
-		client.InNamespace(p.Namespace), client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
-		return err
-	}
-	for i := range list.Items {
-		if err := p.Client.Delete(ctx, &list.Items[i]); err != nil && client.IgnoreNotFound(err) != nil {
-			return err
-		}
-	}
-	return nil
+	return p.PurgeByTenant(ctx, &appv1alpha1.AppList{}, tenantID)
 }

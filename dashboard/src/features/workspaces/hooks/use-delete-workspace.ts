@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteWorkspaceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { graphQLErrorMessage } from "@/features/workspaces/lib/graphql-error";
+import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseDeleteWorkspaceResult {
   /** Fires deleteWorkspace; resolves true on success. */

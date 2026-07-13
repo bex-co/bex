@@ -519,9 +519,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// resolved tenant (store off / unbound).
 		if s.MaxServices > 0 && tenantID != "" {
 			var existing appv1alpha1.AppList
-			if listErr := s.Client.List(ctx, &existing,
-				client.InNamespace(s.Namespace),
-				client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
+			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
 				return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
 			}
 			if len(existing.Items) >= s.MaxServices {

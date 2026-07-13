@@ -19,9 +19,6 @@ package secrets
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -58,8 +55,7 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		return nil
 	}
 	var apps appv1alpha1.AppList
-	if err := p.Client.List(ctx, &apps,
-		client.InNamespace(p.Namespace), client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
+	if err := p.ListByTenant(ctx, &apps, tenantID); err != nil {
 		return err
 	}
 	for i := range apps.Items {

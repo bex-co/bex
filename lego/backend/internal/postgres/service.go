@@ -311,9 +311,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if s.MaxPostgres > 0 {
 		if tenantID, ok := s.Tenant(ctx); ok {
 			var existing appv1alpha1.DatabaseList
-			if listErr := s.Client.List(ctx, &existing,
-				client.InNamespace(s.Namespace),
-				client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
+			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
 				return PostgresView{}, fmt.Errorf("checking postgres cap: %w", listErr)
 			}
 			if len(existing.Items) >= s.MaxPostgres {

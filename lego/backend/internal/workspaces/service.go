@@ -88,6 +88,10 @@ type WorkspaceStore interface {
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
+	// ListInvites returns a workspace's OUTSTANDING invites (unaccepted,
+	// unexpired) — the seats ChangePlan's downgrade guards must count alongside
+	// the members, since each one becomes a member on its recipient's next login.
+	ListInvites(ctx context.Context, tenantID string) ([]store.Invite, error)
 	CountWorkspacesForSubjectPlan(ctx context.Context, subject, plan string) (int, error)
 	// CountAppsForTenant counts a workspace's services (all of them, including
 	// suspended) — ChangePlan's downgrade guard against the target plan's
@@ -444,6 +448,14 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 // MaxWorkspacesPerUser (e.g. a 6th Hobby workspace via downgrade, the same cap
 // Create enforces on creation) — or when any member holds a role the target
 // plan's AllowedRoles no longer offers (t004); each guard names the exact reason.
+//
+// The member-count and role guards count the workspace's OUTSTANDING INVITES as
+// well as its members (w6/m15/t003): a pending invite is a member-in-waiting —
+// store.AcceptInvitesForEmail enforces the workspace's plan at accept time, so a
+// downgrade that ignored them would leave those invites silently un-redeemable
+// (the invitee logs in and simply doesn't join) until someone upgrades again.
+// Refusing here instead means the admin learns what to revoke while they still
+// remember sending it.
 func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceView, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
 		return WorkspaceView{}, err
@@ -466,10 +478,22 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if err != nil {
 		return WorkspaceView{}, err
 	}
+	invites, err := s.Store.ListInvites(ctx, id)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
 	limits := store.LimitsFor(plan)
-	if limits.MaxMembers > 0 && len(members) > limits.MaxMembers {
-		return WorkspaceView{}, fmt.Errorf("%w: workspace has %d members, exceeds %s plan's limit of %d",
-			core.ErrBadRequest, len(members), plan, limits.MaxMembers)
+	if limits.MaxMembers > 0 && len(members)+len(invites) > limits.MaxMembers {
+		if len(invites) == 0 {
+			return WorkspaceView{}, fmt.Errorf("%w: workspace has %d member(s), exceeds %s plan's limit of %d",
+				core.ErrBadRequest, len(members), plan, limits.MaxMembers)
+		}
+		// An invite is a seat already promised, so it counts — and naming the
+		// invitees is the difference between "you're over the cap" and "revoke these".
+		return WorkspaceView{}, fmt.Errorf(
+			"%w: workspace has %d member(s) + %d pending invite(s) (%s), exceeds %s plan's limit of %d; revoke the invite(s) first",
+			core.ErrBadRequest, len(members), len(invites), strings.Join(inviteEmails(invites), ", "),
+			plan, limits.MaxMembers)
 	}
 	if limits.MaxServices > 0 {
 		n, err := s.Store.CountAppsForTenant(ctx, id)
@@ -490,6 +514,10 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 		return WorkspaceView{}, fmt.Errorf("%w: workspace has members with roles not allowed on %s (%s); downgrade first",
 			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
 	}
+	if blocked := invitedRolesOutsidePlan(invites, plan); len(blocked) > 0 {
+		return WorkspaceView{}, fmt.Errorf("%w: workspace has pending invites with roles not allowed on %s (%s); revoke them first",
+			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
+	}
 	nt, err := s.Store.UpdateTenantPlan(ctx, id, plan)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
@@ -508,6 +536,32 @@ func rolesOutsidePlan(members []store.TenantMember, plan string) []string {
 		}
 	}
 	return blocked
+}
+
+// invitedRolesOutsidePlan is rolesOutsidePlan for the seats not taken yet
+// (w6/m15/t003): the "email:role" pairs of pending invites whose role the
+// target plan doesn't offer. Such an invite would be refused at accept time by
+// store.AcceptInvitesForEmail's own plan check, so the downgrade would quietly
+// strand it — name it here instead. Invites are keyed by email (they have no
+// subject until redeemed), which is also the identity the admin revokes by.
+func invitedRolesOutsidePlan(invites []store.Invite, plan string) []string {
+	var blocked []string
+	for _, inv := range invites {
+		if !store.RoleAllowedOnPlan(plan, inv.Role) {
+			blocked = append(blocked, inv.Email+":"+inv.Role)
+		}
+	}
+	return blocked
+}
+
+// inviteEmails names the invitees a refusal is about — the identity an admin
+// revokes an invite by (an invite has no subject until it's redeemed).
+func inviteEmails(invites []store.Invite) []string {
+	emails := make([]string, 0, len(invites))
+	for _, inv := range invites {
+		emails = append(emails, inv.Email)
+	}
+	return emails
 }
 
 // guardPerUserWorkspaceCap refuses a plan (Create's target, or ChangePlan's)

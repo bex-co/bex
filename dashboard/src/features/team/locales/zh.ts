@@ -66,9 +66,15 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "无法邀请 {email}",
     description: "Toast after a failed invite",
   },
-  "team.inviteErrorPlan": {
-    message: "已达到当前套餐的成员上限——升级后可邀请更多成员。",
-    description: "Toast when the workspace plan's member cap blocks an invite",
+  "team.inviteErrorPlanTitle": {
+    message: "当前套餐无法接受此邀请",
+    description:
+      "Title of the inline alert when the workspace plan's member cap or role set blocks an invite",
+  },
+  "team.inviteErrorPlanCta": {
+    message: "更改套餐",
+    description:
+      "Link from the blocked-invite alert to the workspace settings plan section",
   },
   "team.remove": {
     message: "移除",

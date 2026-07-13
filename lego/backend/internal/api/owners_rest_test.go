@@ -47,7 +47,8 @@ type fakeWSStore struct {
 	mu       sync.Mutex
 	tenants  []store.Tenant
 	members  map[string][]store.TenantMember
-	ownerIDs map[string]string // subject -> own- id (lazy)
+	invites  map[string][]store.Invite // tenantID -> outstanding invites
+	ownerIDs map[string]string         // subject -> own- id (lazy)
 }
 
 func newFakeWSStore() *fakeWSStore { return &fakeWSStore{members: map[string][]store.TenantMember{}} }
@@ -97,6 +98,11 @@ func (f *fakeWSStore) ListTenantMembers(_ context.Context, id string) ([]store.T
 	defer f.mu.Unlock()
 	return append([]store.TenantMember(nil), f.members[id]...), nil
 }
+func (f *fakeWSStore) ListInvites(_ context.Context, id string) ([]store.Invite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.Invite(nil), f.invites[id]...), nil
+}
 func (f *fakeWSStore) CountWorkspacesForSubjectPlan(context.Context, string, string) (int, error) {
 	return 0, nil
 }
@@ -123,6 +129,17 @@ func (f *fakeWSStore) addMember(tenantID, subject, role string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.members[tenantID] = append(f.members[tenantID], store.TenantMember{TenantID: tenantID, Subject: subject, Role: role})
+}
+
+// addInvite records an outstanding invite — a seat ChangePlan's downgrade
+// guards must count even though nobody occupies it yet (w6/m15/t003).
+func (f *fakeWSStore) addInvite(tenantID, email, role string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.invites == nil {
+		f.invites = map[string][]store.Invite{}
+	}
+	f.invites[tenantID] = append(f.invites[tenantID], store.Invite{TenantID: tenantID, Email: email, Role: role})
 }
 
 // fakeMembershipChecker allows can_view/can_manage on a workspace only for its

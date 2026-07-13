@@ -67,9 +67,15 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Couldn't invite {email}",
     description: "Toast after a failed invite",
   },
-  "team.inviteErrorPlan": {
-    message: "Your plan's member limit is reached — upgrade to invite more.",
-    description: "Toast when the workspace plan's member cap blocks an invite",
+  "team.inviteErrorPlanTitle": {
+    message: "Your plan can't take this invite",
+    description:
+      "Title of the inline alert when the workspace plan's member cap or role set blocks an invite",
+  },
+  "team.inviteErrorPlanCta": {
+    message: "Change plan",
+    description:
+      "Link from the blocked-invite alert to the workspace settings plan section",
   },
   "team.remove": {
     message: "Remove",

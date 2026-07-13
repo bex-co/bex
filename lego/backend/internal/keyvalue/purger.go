@@ -19,9 +19,6 @@ package keyvalue
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -43,15 +40,5 @@ type WorkspacePurger struct {
 // after the deleting caller's own authorization already passed, with no
 // Identity in ctx to check against.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
-	var list appv1alpha1.KeyValueList
-	if err := p.Client.List(ctx, &list,
-		client.InNamespace(p.Namespace), client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
-		return err
-	}
-	for i := range list.Items {
-		if err := p.Client.Delete(ctx, &list.Items[i]); err != nil && client.IgnoreNotFound(err) != nil {
-			return err
-		}
-	}
-	return nil
+	return p.PurgeByTenant(ctx, &appv1alpha1.KeyValueList{}, tenantID)
 }

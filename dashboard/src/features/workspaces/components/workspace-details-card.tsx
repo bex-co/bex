@@ -34,6 +34,15 @@ function planLabelKey(plan: string): string {
 
 export interface WorkspaceDetailsCardProps {
   workspace: WorkspaceView;
+  /**
+   * Whether the change-plan dialog is open. Owned by the route, which keeps it
+   * in the URL (`/workspace/settings?plan=change`) — that's how the blocked-
+   * invite CTA opens it from another page (w6/m15/t001). Controlled rather than
+   * seeded at mount so the URL stays the single source of truth: closing the
+   * dialog clears the param instead of leaving it to re-open on the next visit.
+   */
+  changePlanOpen: boolean;
+  onChangePlanOpenChange: (open: boolean) => void;
 }
 
 /**
@@ -43,11 +52,14 @@ export interface WorkspaceDetailsCardProps {
  * w6"), and the id/created-at metadata Render's own settings page shows
  * alongside the name.
  */
-export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
+export function WorkspaceDetailsCard({
+  workspace,
+  changePlanOpen,
+  onChangePlanOpenChange,
+}: WorkspaceDetailsCardProps) {
   const { t } = useTranslations();
   const { rename, busy, error } = useRenameWorkspace();
   const { refetch } = useWorkspace();
-  const [changePlanOpen, setChangePlanOpen] = useState(false);
 
   const [name, setName] = useState(workspace.name);
 
@@ -114,7 +126,7 @@ export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
               <Button
                 variant="link"
                 className="h-auto p-0"
-                onClick={() => setChangePlanOpen(true)}
+                onClick={() => onChangePlanOpenChange(true)}
               >
                 {t("workspaces.changePlanTrigger")}
               </Button>
@@ -136,7 +148,7 @@ export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
       <ChangePlanDialog
         workspace={workspace}
         open={changePlanOpen}
-        onOpenChange={setChangePlanOpen}
+        onOpenChange={onChangePlanOpenChange}
         onChanged={() => void refetch()}
       />
     </Card>
