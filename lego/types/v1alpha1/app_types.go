@@ -194,9 +194,11 @@ type AppSpec struct {
 	// +optional
 	FilesFromSecrets []string `json:"filesFromSecrets,omitempty"`
 
-	// HealthCheckPath is the HTTP path intended for revision health checks.
-	// Declared for the bex.yml/Render contract; the operator does not read it
-	// yet — Running is gated on Deployment replica readiness instead.
+	// HealthCheckPath is the HTTP path the operator GETs to gate pod readiness
+	// (Render's health check — a 2xx/3xx makes a pod ready and routes traffic
+	// to it). Wired as the app container's ReadinessProbe; defaults to "/".
+	// Applies only to HTTP-serving service types (web/private) — workers and
+	// cron jobs expose no port, so the path is unused there.
 	// +optional
 	// +kubebuilder:default=/
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`

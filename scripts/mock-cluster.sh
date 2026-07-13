@@ -55,6 +55,11 @@ sed -i '' "s#server: https://[0-9.]*:6443#server: https://127.0.0.1:$LBPORT#" "$
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s || true
+# Worker nodes join carrying bex.co/pool=platform (set via kubelet --node-labels
+# in the CAPD worker template, infra/clusterapi/overlays/local-capd/cluster.yaml)
+# so the platform GitOps stack — nodeSelector-pinned to that label — schedules on
+# the mock instead of going Pending. No script-side labeling step needed: the
+# label rides node join, so `scale N` workers carry it too.
 # Keep cluster DNS on the control-plane node: worker-node pods can't reach the
 # apiserver / cross-node services under OrbStack+Calico (docs/ADR004-deployment.md), so
 # coredns scheduled onto a worker silently kills DNS for the whole cluster.

@@ -405,6 +405,21 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			Resources:       resourcesForTier(app.Spec.Tier),
 			SecurityContext: tenantSecCtx(),
 		}
+		// Health-gating: a non-worker service speaks HTTP, so gate pod
+		// readiness on GET spec.healthCheckPath — Render's health check. A
+		// 2xx/3xx (k8s' default success range) makes the pod ready and routes
+		// traffic; a failure pulls it out of the Service until it recovers.
+		// Empty defaults to "/", matching the CRD's +kubebuilder:default.
+		// Workers/cron/static_site have no HTTP port and diverge above.
+		if !worker {
+			path := app.Spec.HealthCheckPath
+			if path == "" {
+				path = "/"
+			}
+			container.ReadinessProbe = &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(port)},
+			}}
+		}
 		// Secret files: one projected /etc/secrets volume (the service's own
 		// "<name>-files" + each linked env group's files). Rebuilt every reconcile
 		// so a removed source drops out cleanly.

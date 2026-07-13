@@ -102,6 +102,12 @@ rules:
   - update
   - watch
 - apiGroups:
+  - postgresql.cnpg.io
+  resources:
+  - clusters/status
+  verbs:
+  - patch
+- apiGroups:
   - traefik.io
   resources:
   - ingressroutetcps

@@ -44,7 +44,7 @@ What the pipeline gets right — and the mistakes to avoid:
 
 ## Why a Postgres source of truth (the durability + product case)
 
-- **Durability.** Business data (who owns which app/domain) belongs in a real DB, backed up off-node. Today everything lives only in the single app node's **etcd** (`/var/lib/etcd`, local disk, no HA) — a node _reboot_ is fine, but a node _rebuild_ loses it, and the App is **not in git** (Apps are imperative by design). With Postgres as the truth, **etcd becomes a rebuildable projection**: lose the cluster, re-`project` from Postgres.
+- **Durability.** Business data (who owns which app/domain) belongs in a real DB, backed up off-node. Today everything lives only in **etcd** (and the App is **not in git** — Apps are imperative by design). The cluster runs a **single etcd member** for now (interim, while Hetzner quota is being raised — back to a 3-member quorum is a two-number revert); on prod its PV rides the `hcloud-volumes` default StorageClass, so a node _reboot_ or _rebuild_ keeps the volume, but with only one member there is no etcd HA — losing that member's data still loses the unquorumed state. With Postgres as the truth, **etcd becomes a rebuildable projection**: lose the cluster, re-`project` from Postgres.
 - **Multi-tenant / BYOD.** Tenants, custom domains, plans, quotas are **relational business data** with queries/joins/an API — not a fit for etcd (size-capped ~8 GB, no queries, no watch-as-a-database). A domain a tenant adds becomes a row → the control plane projects an `App`/Ingress → the operator + cert-manager issue TLS (Traefik routes new hosts with no reload — see [`docs/ADR002-architecture.md`](ADR002-architecture.md)).
 - **API/UI.** Users interact with rows through a product API, not `kubectl`.
 

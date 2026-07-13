@@ -403,6 +403,17 @@ spec:
           kubeletExtraArgs:
           - name: eviction-hard
             value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+          # Tag every worker bex.co/pool=platform so the platform GitOps stack
+          # (kratos/hydra/openfga/openbao, CNPG, prometheus/loki, operator/api/
+          # dashboard — all nodeSelector-pinned to this label) schedules on the
+          # mock instead of going Pending. Parity with the hetzner-caph overlay
+          # (w1/m19 t003), minus the taint: the charts' bex.co/platform
+          # toleration is a no-op on untainted nodes, so local/prod chart values
+          # stay identical. Set via kubelet --node-labels at join, so scaled-in
+          # workers (mock-cluster.sh scale N) carry it too. bex.co/ is a
+          # non-protected prefix, so NodeRestriction admission allows it.
+          - name: node-labels
+            value: bex.co/pool=platform
 ---
 apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster

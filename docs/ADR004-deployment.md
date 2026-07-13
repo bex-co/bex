@@ -85,7 +85,7 @@ kubectl patch app my-app --type merge \
   -p '{"spec":{"image":"my-app:<sha>"}}'
 ```
 
-This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the controller watches with `GenerationChangedPredicate`: only generation-changing updates are delivered to the reconciler (the reconcile itself is level-triggered and deliberately has no early-return — it re-applies desired state on every pass). The reconcile rewrites the owned Deployment's image; the default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap.
+This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the controller watches with `GenerationChangedPredicate`: only generation-changing updates are delivered to the reconciler (the reconcile itself is level-triggered and deliberately has no early-return — it re-applies desired state on every pass). The reconcile rewrites the owned Deployment's image; the default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap. A pod joins the Service's endpoints (and receives traffic) only once its **`ReadinessProbe`** passes — an HTTP `GET` of `spec.healthCheckPath` on the container port (a 2xx/3xx makes the pod ready; a failure keeps it out of rotation until it recovers). Empty `healthCheckPath` defaults to `/`. Workers and cron jobs expose no HTTP port, so they carry no probe.
 
 Preferred over a raw patch: declare the App in the project's `bex.yml` and apply that (see below) — same effect, but the spec lives in the app repo.
 
@@ -119,7 +119,8 @@ apps:
     image: my-app:<sha> # or repo: + branch: to build from git
     port: 3000
     replicas: 1
-    healthCheckPath: /
+    healthCheckPath: / # GET path the operator probes for pod readiness (2xx/3xx → ready); defaults to "/"
+
     envVars: # literal (non-secret) config -> App.spec.env (PORT is operator-owned)
       - key: LOG_LEVEL
         value: info

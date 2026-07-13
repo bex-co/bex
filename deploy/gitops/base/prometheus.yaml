@@ -115,10 +115,11 @@ spec:
         server:
           # Covers the dashboard's widest range preset (24h) with headroom;
           # cardinality is tiny (a handful of scrape jobs), so this is
-          # disk-bounded, not memory-bounded. The PV (cluster default
-          # StorageClass — hcloud-volumes on prod, local-path on the CAPD mock)
-          # keeps history across pod restarts — with emptyDir a reschedule silently
-          # wiped every chart.
+          # disk-bounded, not memory-bounded. The PV rides the cluster default
+          # StorageClass — hcloud-volumes on prod (a network volume, survives a
+          # node loss), local-path on the CAPD mock (node-local) — so history
+          # survives a pod restart (and a node loss on prod); with emptyDir a
+          # reschedule silently wiped every chart.
           retention: 3d
           persistentVolume:
             enabled: true

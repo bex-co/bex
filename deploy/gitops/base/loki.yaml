@@ -16,8 +16,11 @@
 # Retention is 7 days (168h) — Render's Hobby-tier searchable window
 # (docs/ADR010-observability.md); paid Render tiers reach 14/30 days, a knob to raise
 # here (limits_config.retention_period) alongside the PVC. Like prometheus.yaml's
-# PV and etcd/OpenBao's Raft volumes, this is a single-node volume: a node loss
-# loses the history it holds (noted, not solved — same caveat as those).
+# PV and etcd/OpenBao's Raft volumes, the PVC rides the cluster's default
+# StorageClass: hcloud-volumes on prod (a Hetzner Cloud Volume — a network volume
+# that survives a node rebuild/loss), local-path on the disposable CAPD mock
+# (node-local, so a node loss loses it there). History always survives a pod
+# restart; on prod it survives a node loss too.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -60,10 +63,12 @@ spec:
           pattern_ingester: { enabled: false }
         singleBinary:
           replicas: 1
-          # The user-facing durable window on one node: sized for 7d of tenant
-          # App logs at platform scale. local overlay shrinks this to CAPD scale.
-          # local-path StorageClass on both the CAPD mock and prod (cluster
-          # default), so history survives a pod restart — the whole point.
+          # The user-facing durable window: sized for 7d of tenant App logs at
+          # platform scale. local overlay shrinks this to CAPD scale. The PVC
+          # rides the cluster default StorageClass — hcloud-volumes on prod
+          # (network volume, survives a node loss), local-path on the CAPD mock
+          # (node-local) — so history survives a pod restart (and a node loss on
+          # prod), the whole point.
           persistence:
             enabled: true
             size: 20Gi

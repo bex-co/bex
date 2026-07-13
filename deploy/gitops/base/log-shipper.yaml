@@ -10,7 +10,7 @@
 # within Alloy the API-based `loki.source.kubernetes` is the simplest *static*
 # config — it reads the pod-log API directly, with no host-path mounts or
 # /var/log/pods file-glob templating a file-based tailer needs. The trade is a
-# little more apiserver read load, acceptable at single-node platform scale.
+# little more apiserver read load, acceptable at platform scale.
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app)

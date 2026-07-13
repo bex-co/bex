@@ -7,10 +7,11 @@
 #
 # LB targets nodes over their PRIVATE IPs (use-private-ip, enabled 2026-07-09). The
 # first attempt failed because the node wasn't on the `bex` network; it now is
-# (attached live: node → 10.0.1.2), and the CCM is network-aware (HCLOUD_NETWORK=bex,
-# HCLOUD_NETWORK_ROUTES_ENABLED=false — LB uses the private net, route-controller stays
-# OFF so it can't fight Cilium tunnel-mode routing). The LB→node hop rides 10.0.0.0/16;
-# the LB's public IP is unchanged. See app-cluster.yml (CCM) + docs/ADR019-infra-credentials.md.
+# (attached live on the bex `10.10.0.0/16` network), and the CCM is network-aware
+# (HCLOUD_NETWORK=bex, HCLOUD_NETWORK_ROUTES_ENABLED=false — LB uses the private
+# net, route-controller stays OFF so it can't fight Cilium tunnel-mode routing).
+# The LB→node hop rides that 10.10.0.0/16 private net; the LB's public IP is
+# unchanged. See app-cluster.yml (CCM) + docs/ADR019-infra-credentials.md.
 hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)

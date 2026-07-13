@@ -1,11 +1,12 @@
 # Traefik base values (vendored; multi-source Application, like openbao.values.yaml).
-# The DEFAULT edge for a single-node cluster (and the local mock): Traefik on
-# hostNetwork binding the node's public IP :80/:443 directly — the simplest,
-# cheapest edge, no Hetzner LB. The prod overlay layers overlays/prod/values/
-# traefik.values.yaml on top to swap this for a real Hetzner LoadBalancer with a
-# stable IP (w1/m7 t005). Argo merges valueFiles in order, later wins.
+# The DEFAULT edge for the local mock: Traefik on hostNetwork binding one node's
+# public IP :80/:443 directly — the simplest, cheapest edge, no Hetzner LB (the
+# pod lands on a bex.co/pool=platform node, pinned below). The prod overlay
+# layers overlays/prod/values/traefik.values.yaml on top to swap this for a real
+# Hetzner LoadBalancer with a stable IP (w1/m7 t005). Argo merges valueFiles in
+# order, later wins.
 deployment:
-  replicas: 1 # single app node today
+  replicas: 1 # one edge pod — it owns the hostNetwork node's public IP
   dnsPolicy: ClusterFirstWithHostNet # reach in-cluster API/DNS under hostNetwork
 # w1/m19 t003: platform pool
 nodeSelector:

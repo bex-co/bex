@@ -78,7 +78,7 @@ The `bex` layer itself splits in two — keep them distinct (full design: [`ADR0
 
 Business/product logic belongs in the **control plane**; the operator stays a thin, CR-driven reconciler. The **`App` CR is the contract** between them.
 
-**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in the single app node's etcd (local disk, no HA) and Apps are imperative (not in git), so a node _rebuild_ loses it. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)).
+**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in etcd (not in git — Apps are imperative), and the cluster runs a **single etcd member** for now (interim, while Hetzner quota is still being raised — the path back to a 3-member quorum is a two-number revert, not a rebuild); it is _not_ a single-node cluster, but with only one member there is no etcd HA, so losing that member's disk loses the state. The `hcloud-volumes` default StorageClass keeps the etcd PV across a node _restart_, but a full member loss still loses the unquorumed data. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)).
 
 ## `infra/` vs `deploy/` (both hold YAML — different jobs)
 

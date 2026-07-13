@@ -28,7 +28,7 @@
 - [x] **m20** — Per-service autoscaling (Render `PUT …/autoscaling`) (8 tasks) ← promoted from `008` 2026-07-11 (unblocked by m3 + m19) — done 2026-07-11, moved to `done/m20/`
 - [x] **m21** — Static sites (Render `static_site` type) (8 tasks) ← promoted from `012` 2026-07-11 (unlocks the CDN edge rules DO_NOT_DO parked until 012 lands); done 2026-07-12 (moved to `done/m21`)
 - [x] **m22** — Managed Postgres HA (Render `enableHighAvailability` + failover + read replicas) (9 tasks) ← promoted from `013` 2026-07-11 (unblocked by m17 + m19) — done 2026-07-12, moved to `done/m22/`
-- [ ] **m23** — Misc: small parity + hardening/dev-infra chores (7 tasks) ← groups `005`, `006`, `015`, `016` 2026-07-11 (each sub-hour)
+- [x] **m23** — Misc: small parity + hardening/dev-infra chores (7 tasks) ← groups `005`, `006`, `015`, `016` 2026-07-11 (each sub-hour) — done 2026-07-12, moved to `done/m23/` (healthCheckPath→ReadinessProbe wired + envtested; Dependabot triaged + safe batch, residuals in `018.md`; mock workers labeled `bex.co/pool=platform` via CAPD template; stale single-node/data-loss comments + dead `10.0.0.0/16` swept)
 - [ ] **m24** — Multi-service `bex.yml`: Blueprint-shaped stack deploys (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (revives the 2026-07-09 proposal; DO_NOT_DO routes `fromDatabase` spec work to w1; all ingredients — types m15, env groups m16, Postgres m17, KV m14 — now shipped)
 - [ ] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17, last open Postgres parity row)
 - [ ] **m26** — Harden the build-image pull path (Zot node access, retention, drift guards) (10 tasks) ← promoted from `017` 2026-07-12 (found live during a routine backfill: no git-built image was reliably pullable on prod; autoscaler-minted nodes fail today without this)
@@ -50,7 +50,7 @@
 
 ## Inbox
 
-_(empty — `017` promoted to `m26` 2026-07-12)_
+- `018.md` — Dependabot triage (w1/m23 t002): all 33 alerts npm-only; 2 criticals dev-only/unreachable, fixed anyway; safe batch applied (vitest/vite/js-cookie + resolutions); residuals — lodash (no fix), minimatch/picomatch (multi-major), srvx, @tanstack/start-server-core, vite 8.x — need breaking/parent upgrades
 
 > **Promoted 2026-07-12:** `017` (Zot node-pull path: DNS/TLS, NetworkPolicy drift, retention, generation churn, migration-ownership drift) → **m26**; note moved to `done/`.
 

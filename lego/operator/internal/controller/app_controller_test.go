@@ -177,6 +177,59 @@ var _ = Describe("App Controller", func() {
 		})
 	})
 
+	Context("health-check gating: spec.healthCheckPath → ReadinessProbe (kubernetes runtime)", func() {
+		ctx := context.Background()
+		reconcileN := func(nn types.NamespacedName) {
+			r := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes}
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		getDep := func(nn types.NamespacedName) *appsv1.Deployment {
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			return dep
+		}
+		// create + reconcile a service-shaped App, return its container.
+		appContainer := func(name string, spec appv1alpha1.AppSpec) corev1.Container {
+			nn := types.NamespacedName{Name: name, Namespace: "default"}
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}, Spec: spec}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN(nn)
+			c := getDep(nn).Spec.Template.Spec.Containers[0]
+			Expect(k8sClient.Delete(ctx, app)).To(Succeed()) // finalizer needs a reconcile to release
+			reconcileN(nn)
+			return c
+		}
+
+		It("sets an HTTP ReadinessProbe from an explicit healthCheckPath on the container port", func() {
+			c := appContainer("healthz-app", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, HealthCheckPath: "/healthz",
+			})
+			Expect(c.ReadinessProbe).NotTo(BeNil(), "an HTTP service must carry a readiness probe")
+			Expect(c.ReadinessProbe.HTTPGet).NotTo(BeNil())
+			Expect(c.ReadinessProbe.HTTPGet.Path).To(Equal("/healthz"))
+			Expect(c.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(3000)), "probe targets the app port")
+		})
+
+		It("defaults the probe path to \"/\" when healthCheckPath is unset", func() {
+			c := appContainer("default-health-app", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000,
+			})
+			Expect(c.ReadinessProbe).NotTo(BeNil())
+			Expect(c.ReadinessProbe.HTTPGet.Path).To(Equal("/"))
+			Expect(c.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(3000)))
+		})
+
+		It("omits the ReadinessProbe on a background_worker (no HTTP port)", func() {
+			c := appContainer("worker-no-probe", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker,
+			})
+			Expect(c.ReadinessProbe).To(BeNil(), "a worker exposes no HTTP port, so no readiness probe")
+		})
+	})
+
 	Context("When building an App from git in-cluster", func() {
 		const name = "gitbuild-app"
 		ctx := context.Background()
