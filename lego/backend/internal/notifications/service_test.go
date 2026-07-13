@@ -34,6 +34,13 @@ func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool
 	return tid, ok
 }
 
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case, same as apps_test.go's fake.
+func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
+}
+
 // fakeStore is an in-memory NotificationsStore.
 type fakeStore struct {
 	rows       map[[2]string]store.NotificationSettings // (tenant, subject) -> row
