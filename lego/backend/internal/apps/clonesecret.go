@@ -73,21 +73,7 @@ func cloneSecretName(app string) string { return app + "-clone" }
 // public-clone path, unchanged. A GitHub failure returns an error: a private
 // repo must fail loudly, never fall back to an unauthenticated clone.
 func (s *Service) ensureCloneSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	if s.GitHub == nil || a.Spec.Repo == "" {
-		return "", nil
-	}
-	token, ok, err := s.GitHub.CloneToken(ctx, s.deployWorkspace(ctx, a), a.Spec.Repo)
-	if err != nil {
-		return "", fmt.Errorf("minting github clone token for %s: %w", a.Spec.Repo, err)
-	}
-	if !ok {
-		return "", nil
-	}
-	name := cloneSecretName(a.Name)
-	if err := s.writeCloneSecret(ctx, a.Namespace, name, a.Name, token); err != nil {
-		return "", fmt.Errorf("writing clone secret %s/%s: %w", a.Namespace, name, err)
-	}
-	return name, nil
+	return s.mintCloneSecret(ctx, a.Namespace, a.Name, s.deployWorkspace(ctx, a), a.Spec.Repo)
 }
 
 // writeCloneSecret upserts the Opaque <app>-clone Secret holding the git token
@@ -116,4 +102,43 @@ func (s *Service) writeCloneSecret(ctx context.Context, namespace, name, app, to
 func (s *Service) deleteCloneSecret(ctx context.Context, namespace, app string) error {
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cloneSecretName(app), Namespace: namespace}}
 	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
+}
+
+// mintCloneSecret mints a token for workspaceID/repo, writes the <appName>-clone
+// Secret in namespace, and returns the Secret name. Used both by ensureCloneSecret
+// (App-object path) and by the reconciler bridge (param path).
+func (s *Service) mintCloneSecret(ctx context.Context, namespace, appName, workspaceID, repo string) (string, error) {
+	if s.GitHub == nil || repo == "" {
+		return "", nil
+	}
+	token, ok, err := s.GitHub.CloneToken(ctx, workspaceID, repo)
+	if err != nil {
+		return "", fmt.Errorf("minting github clone token for %s: %w", repo, err)
+	}
+	if !ok {
+		return "", nil
+	}
+	name := cloneSecretName(appName)
+	if err := s.writeCloneSecret(ctx, namespace, name, appName, token); err != nil {
+		return "", fmt.Errorf("writing clone secret %s/%s: %w", namespace, name, err)
+	}
+	return name, nil
+}
+
+// reconcilerBridge is the unexported store.CloneSecreter adapter backed by a
+// Service. It is returned by ReconcilerCloneSecreter so the reconciler can
+// mint clone Secrets without EnsureCloneSecret appearing as a public API verb
+// (which the TestAuthzGuardsEveryVerb sweep would then require to start with
+// s.Authorize — incorrect for an internal call).
+type reconcilerBridge struct{ svc *Service }
+
+func (b reconcilerBridge) EnsureCloneSecret(ctx context.Context, namespace, appName, workspaceID, repo string) (string, error) {
+	return b.svc.mintCloneSecret(ctx, namespace, appName, workspaceID, repo)
+}
+
+// ReconcilerCloneSecreter returns a store.CloneSecreter backed by this Service
+// for injection into the control-plane reconciler (w2/m11). It has no ctx and
+// no error return, so the TestAuthzGuardsEveryVerb sweep skips it.
+func (s *Service) ReconcilerCloneSecreter() reconcilerBridge {
+	return reconcilerBridge{s}
 }

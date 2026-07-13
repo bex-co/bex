@@ -67,12 +67,26 @@ type Service struct {
 	// trigger whose repo belongs to the workspace's connection, so private repos
 	// clone (docs/ADR026-github-integration.md). nil => public-clone only, unchanged.
 	GitHub CloneTokenSource
+	// Kick, when set (the reconciler is wired), schedules an immediate projection
+	// pass after a store-managed create/redeploy so intent reaches the cluster in
+	// milliseconds instead of on the next resync period. nil => no nudge (store off
+	// or tests).
+	Kick func()
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
-// to the methods the lifecycle verbs need, so the service can't grow into a
-// second store client and tests fake a single method. *store.PGStore satisfies it.
+// to the methods the create + lifecycle verbs need, so the service can't grow
+// into a second store client and tests fake a minimal set. *store.PGStore satisfies it.
 type IntentStore interface {
+	// CreateApp writes the app row and opens its first deploy row in one
+	// transaction — so every store-managed App has a deploy record from the
+	// moment the public-surface create returns (unified create path, w2/m11).
+	// ErrConflict if (tenant_id, name) already exists.
+	CreateApp(ctx context.Context, a store.App) (store.App, error)
+	// CreateDeploy opens a new deploy row (status update_in_progress) — called
+	// on redeploy of a store-managed App so the deploys API reflects the push.
+	// The reconciler's write-back closes it once the CR reaches Running/Failed.
+	CreateDeploy(ctx context.Context, appID, trigger, image string) (store.Deploy, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
 	// store-managed App's existence. The projector deletes the orphaned App CR
 	// on its next pass, so the row delete (not a bare CR delete) is what keeps
@@ -420,11 +434,13 @@ type CreateRequest struct {
 // repo-backed App re-runs its build-from-git. Intent only — the operator
 // converges the CR into a running service with a live URL.
 //
-// This writes the CR directly (the hand-applied path scripts/app-apply.sh
-// uses), not through a store row: the public surface has no tenant context, and
-// the row-backed, multi-tenant create is the internal control-plane API's job
-// (store/api.go POST /v1/apps). The projector never touches a CR it didn't
-// create (it lists only its own managed-by label), so the two coexist.
+// When the control-plane store is configured and the caller has a resolved
+// tenant, it writes a store row first (unified create path, w2/m11): the row
+// opens a deploy record so history is populated from the first create, and the
+// store labels (managed-by + app-id) are stamped on the CR so the projector
+// and lifecycle verbs recognise it as store-managed. Without the store, or when
+// no tenant resolves, the CR is written directly (the hand-applied path
+// scripts/app-apply.sh uses) — behaviour unchanged from before.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return AppView{}, err
@@ -446,13 +462,43 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		a.Name = req.Name
 		a.Namespace = s.Namespace
 		a.Spec = desired
-		// With the store on, stamp the caller's tenant so it can see/manage what
-		// it just created — GetApp's tenant gate and List's tenant filter both key
-		// off this label, and a label-less CR would be invisible to its own owner.
+		// Resolve the caller's tenant; used both for the tenant label and the
+		// store row. Empty when the store is off or the caller is unbound.
+		tenantID := ""
 		if s.Workspace != nil {
-			if tenantID, ok := s.Tenant(ctx); ok {
-				a.Labels = map[string]string{core.LabelTenant: tenantID}
+			if t, ok := s.Tenant(ctx); ok {
+				tenantID = t
 			}
+		}
+		if tenantID != "" {
+			a.Labels = map[string]string{core.LabelTenant: tenantID}
+		}
+		// Write the store row when the store is on + a tenant is resolved, so the
+		// create populates deploy history and the projector recognises the CR as
+		// store-managed (unified create path, w2/m11).
+		if s.Store != nil && tenantID != "" {
+			row, err := s.Store.CreateApp(ctx, store.App{
+				TenantID: tenantID,
+				Name:     req.Name,
+				Repo:     req.Repo,
+				Image:    req.Image,
+				Branch:   desired.Branch,
+				Port:     desired.Port,
+				Replicas: desired.Replicas,
+				Tier:     desired.Tier,
+			})
+			if err != nil {
+				return AppView{}, fmt.Errorf("creating service record: %w", err)
+			}
+			// Stamp the managed-by + app-id labels so the projector's byID index
+			// finds this CR on its next pass (avoiding a duplicate create) and
+			// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
+			if a.Labels == nil {
+				a.Labels = map[string]string{}
+			}
+			a.Labels[store.LabelManagedBy] = store.ManagedByValue
+			a.Labels[store.LabelAppID] = row.ID
+			a.Labels[store.LabelWorkspace] = tenantID
 		}
 		// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 		// its first build authenticates. create-owned only: never set on a spec
@@ -467,6 +513,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if err := s.Client.Create(ctx, a); err != nil {
 			return AppView{}, err
 		}
+		if s.Kick != nil {
+			s.Kick()
+		}
 		return view(a), nil
 	case err != nil:
 		return AppView{}, err
@@ -477,6 +526,16 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// no other field changed.
 		base := client.MergeFrom(existing.DeepCopy())
 		applyCreateToSpec(&existing.Spec, desired)
+		// For store-managed apps, open a deploy row so the redeploy surfaces in
+		// the deploys API — the reconciler's write-back closes it when the CR
+		// converges to Running or fails to launch.
+		if s.Store != nil {
+			if id := existing.Labels[store.LabelAppID]; id != "" {
+				if _, err := s.Store.CreateDeploy(ctx, id, "api", existing.Spec.Image); err != nil {
+					return AppView{}, fmt.Errorf("recording redeploy: %w", err)
+				}
+			}
+		}
 		// Refresh the clone token so the rebuild starts with a token minted
 		// seconds ago. ensureCloneSecret reads the just-applied repo; it returns
 		// "" for an unconnected repo, so a hand-set cloneSecret pointing elsewhere
@@ -491,6 +550,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return AppView{}, err
+		}
+		if s.Kick != nil {
+			s.Kick()
 		}
 		return view(existing), nil
 	}

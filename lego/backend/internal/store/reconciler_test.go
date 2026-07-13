@@ -336,3 +336,62 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed via the gate timeout", deploys, err)
 	}
 }
+
+// fakeCloneSecreter records calls and returns a fixed secret name.
+type fakeCloneSecreter struct {
+	calls []struct{ namespace, appName, workspaceID, repo string }
+}
+
+func (f *fakeCloneSecreter) EnsureCloneSecret(_ context.Context, namespace, appName, workspaceID, repo string) (string, error) {
+	f.calls = append(f.calls, struct{ namespace, appName, workspaceID, repo string }{namespace, appName, workspaceID, repo})
+	return appName + "-clone", nil
+}
+
+func TestProjectAppCallsCloneSecreterForRepoApp(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	cs := &fakeCloneSecreter{}
+	rec.CloneSecrets = cs
+
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	_, _ = st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://github.com/acme/web", Branch: "main",
+		Port: 3000, Replicas: 1, Tier: "free",
+	})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	app := getApp(t, cl)
+	if app.Spec.CloneSecret != "acme-web-clone" {
+		t.Errorf("CloneSecret = %q, want acme-web-clone", app.Spec.CloneSecret)
+	}
+	if len(cs.calls) != 1 {
+		t.Fatalf("CloneSecreter called %d times, want 1", len(cs.calls))
+	}
+	if cs.calls[0].repo != "https://github.com/acme/web" {
+		t.Errorf("repo = %q", cs.calls[0].repo)
+	}
+}
+
+func TestProjectAppSkipsCloneSecreterForImageApp(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	cs := &fakeCloneSecreter{}
+	rec.CloneSecrets = cs
+
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	_, _ = st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Image: "nginx:1", Branch: "main",
+		Port: 80, Replicas: 1, Tier: "free",
+	})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	_ = getApp(t, cl)
+	if len(cs.calls) != 0 {
+		t.Errorf("CloneSecreter called for an image-backed App; should be skipped")
+	}
+}

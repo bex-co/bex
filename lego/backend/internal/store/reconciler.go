@@ -66,6 +66,17 @@ const (
 	defaultDeployGateTimeout = 3 * time.Minute
 )
 
+// CloneSecreter is called by the Reconciler when projecting a new App CR for
+// a repo-backed row: it mints a GitHub installation token, writes the
+// <app>-clone Secret, and returns the Secret name for spec.cloneSecret —
+// so private-repo builds from the first projected deploy authenticate without
+// a separate API call. apps.Service satisfies this; cmd/api injects it when
+// both the GitHub App and the control-plane store are wired. nil => public-clone
+// only (no authentication, unchanged behaviour).
+type CloneSecreter interface {
+	EnsureCloneSecret(ctx context.Context, namespace, appName, workspaceID, repo string) (string, error)
+}
+
 // Reconciler projects the source of truth into the cluster: each apps row
 // (+ its domains) becomes an App CR; rows deleted from Postgres get their CR
 // deleted; the CR's observed status (phase, url) is written back to the row.
@@ -80,6 +91,13 @@ type Reconciler struct {
 	// recordDeploy closes it as failed even though the CR's phase never
 	// reached Failed on its own (see defaultDeployGateTimeout).
 	DeployGateTimeout time.Duration
+	// CloneSecrets, when non-nil, is called for each new projected App CR
+	// whose row has a non-empty Repo, to mint and write the per-app
+	// clone-credential Secret. Useful for rows created via the internal CP
+	// API (store/api.go) where the public-surface create path hasn't already
+	// done so. Soft failure: a minting error is logged but the CR is still
+	// created (public repos don't need a secret).
+	CloneSecrets CloneSecreter
 
 	kick chan struct{}
 }
@@ -160,7 +178,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		seen[d.ID] = true
 		cur, ok := byID[d.ID]
 		if !ok {
-			if err := r.Client.Create(ctx, projectApp(d, r.Namespace)); err != nil {
+			if err := r.Client.Create(ctx, r.projectApp(ctx, d)); err != nil {
 				errs = append(errs, fmt.Errorf("create App %s/%s: %w", d.TenantName, d.Name, err))
 			}
 			continue
@@ -250,15 +268,26 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 	return changed
 }
 
-func projectApp(d DesiredApp, namespace string) *appv1alpha1.App {
+// projectApp builds the App CR for a desired row. When r.CloneSecrets is set
+// and the row has a Repo, it mints the clone Secret so the first build from a
+// private repo authenticates without a separate API trigger. Minting errors are
+// soft (logged, CR still created) so a GitHub outage never blocks projection.
+func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.App {
 	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      CRName(d.TenantName, d.Name),
-			Namespace: namespace,
+			Namespace: r.Namespace,
 		},
 		Spec: projectSpec(d),
 	}
 	stampLabels(a, d)
+	if r.CloneSecrets != nil && d.Repo != "" {
+		if secretName, err := r.CloneSecrets.EnsureCloneSecret(ctx, r.Namespace, a.Name, d.TenantID, d.Repo); err != nil {
+			log.Printf("controlplane: clone secret for %s: %v (proceeding without)", a.Name, err)
+		} else {
+			a.Spec.CloneSecret = secretName
+		}
+	}
 	return a
 }
 

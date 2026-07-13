@@ -1,6 +1,6 @@
 # w2 · m11 — Unify service creation through the control-plane store
 
-**Worker:** worker2 **Goal:** every create path (REST/GraphQL/MCP) produces a store-managed app, so private-repo builds always get a clone secret and deploy history always populates. **Status:** todo
+**Worker:** worker2 **Goal:** every create path (REST/GraphQL/MCP) produces a store-managed app, so private-repo builds always get a clone secret and deploy history always populates. **Status:** DONE 2026-07-12
 
 ## Tasks (in order)
 

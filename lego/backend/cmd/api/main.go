@@ -171,6 +171,11 @@ func main() {
 	// the single-writer wiring, and the cluster-internal tenant API on :8091. Built
 	// before NewServer so the store is wired into the apps service. DB-free in
 	// stdio mode.
+	//
+	// rec is hoisted outside the if-block so NewServer can wire the apps.Service
+	// as the reconciler's CloneSecreter (and vice-versa) after both are constructed
+	// (w2/m11): rec.Run is deferred until after NewServer for the same reason.
+	var rec *store.Reconciler
 	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
 		pool, err := pgxpool.New(ctx, dbURI)
@@ -188,7 +193,7 @@ func main() {
 		}
 
 		st := store.NewPGStore(pool)
-		rec := store.NewReconciler(cl, st, appsNS)
+		rec = store.NewReconciler(cl, st, appsNS)
 		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
 			v, err := time.ParseDuration(d)
 			if err != nil {
@@ -196,7 +201,8 @@ func main() {
 			}
 			rec.Resync = v
 		}
-		go rec.Run(ctx)
+		// rec.Run is started after NewServer below, so CloneSecrets is set before
+		// the first reconcile pass (w2/m11).
 		deps.Store = st       // single writer of intent: suspend/resume write the row first
 		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
 		deps.GitHubStore = st // git connections (w2/m8): connect/disconnect/list read+write git_connections
@@ -331,6 +337,18 @@ func main() {
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 
 	srv := api.NewServer(base, deps)
+	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
+	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
+	//   created via the internal CP API (store/api.go POST /v1/apps).
+	// - Kick on the apps.Service: after a store-managed create/redeploy the
+	//   projector runs immediately instead of waiting the next resync period.
+	// rec.Run is started here — after the wiring — so CloneSecrets is already
+	// set before the first reconcile pass runs.
+	if rec != nil {
+		rec.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
+		srv.Apps.Kick = rec.Kick
+		go rec.Run(ctx)
+	}
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")

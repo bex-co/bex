@@ -14,7 +14,7 @@
 - [x] **m8** — Connect GitHub: GitHub App connection + repo listing (REST/GraphQL/MCP/UI) (10 tasks; DONE 2026-07-12 — live DoD PASSED against the real `bex-co` GitHub App on the mock cluster; dashboard card re-landed after the codegen fix) ← from `/pm-brainstorm for w2` 2026-07-11 (parity row "Git connections" ◐)
 - [x] **m9** — Private-repo deploys + zero-config GitHub push-to-deploy (9 tasks; DONE 2026-07-12 — t005 live acceptance PASSED: private repo → live URL, hands-free push → rev-2, `autoDeploy:false` suppresses, tampered signature 401; follow-up `005.md` filed on store-path composition) ← from `/pm-brainstorm for w2` 2026-07-11, needs w2/m8; unblocks `w5/m15`
 - [ ] **m10** — Deploy cancel + rollback (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (the two ✖ Deploys rows m5 left; rollback target recorded per deploy); UI buttons ride `w5/007`
-- [ ] **m11** — Unify service creation through the control-plane store (9 tasks) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
+- [x] **m11** — Unify service creation through the control-plane store (9 tasks; DONE 2026-07-12 — all creates write store rows + mint clone secrets; deploy history populates for all surfaces) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
 
 ## Inbox
 

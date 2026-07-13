@@ -232,6 +232,98 @@ func TestStoreOffListAndGetIgnoreTenantLabelsUnchanged(t *testing.T) {
 	}
 }
 
+// --- Unified create path (w2/m11) ---
+
+// newTenantStoreService builds a Service with both a workspace resolver and a
+// recording store — the unified create path (store on + tenant resolved).
+func newTenantStoreService(ws core.WorkspaceResolver, st IntentStore, apps ...*appv1alpha1.App) (*Service, client.Client) {
+	objs := make([]client.Object, len(apps))
+	for i, a := range apps {
+		objs[i] = a
+	}
+	cl := fakeClient(objs...)
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Store: st}, cl
+}
+
+func TestCreateWritesStoreRowWhenStoreAndTenantResolved(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, rec)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+
+	if _, err := svc.create(ctx, CreateRequest{Name: "web", Image: "nginx:1"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// A store row must have been written.
+	if len(rec.appCreates) != 1 {
+		t.Fatalf("want 1 store row, got %d", len(rec.appCreates))
+	}
+	got := rec.appCreates[0]
+	if got.TenantID != "tea-a" || got.Name != "web" || got.Image != "nginx:1" {
+		t.Errorf("store row = %+v", got)
+	}
+	// CR must carry the three store labels (managed-by, app-id, tenant).
+	a := getApp(t, cl, "web")
+	if a.Labels[store.LabelManagedBy] != store.ManagedByValue {
+		t.Errorf("CR missing managed-by label: %v", a.Labels)
+	}
+	if a.Labels[store.LabelAppID] != "srv-test" {
+		t.Errorf("CR LabelAppID = %q, want srv-test", a.Labels[store.LabelAppID])
+	}
+	if a.Labels[core.LabelTenant] != "tea-a" {
+		t.Errorf("CR LabelTenant = %q, want tea-a", a.Labels[core.LabelTenant])
+	}
+}
+
+func TestCreateSkipsStoreRowWhenNoTenant(t *testing.T) {
+	// Store wired but caller not bound to a tenant — must fall back to direct CR.
+	rec := &recordingStore{}
+	svc, cl := newTenantStoreService(fakeWorkspace{}, rec) // empty map = no tenant
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound", Method: "oauth2"})
+
+	if _, err := svc.create(ctx, CreateRequest{Name: "bare", Image: "nginx:1"}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if len(rec.appCreates) != 0 {
+		t.Errorf("unbound caller must not write a store row, got %d", len(rec.appCreates))
+	}
+	// CR must still be created without store labels.
+	a := getApp(t, cl, "bare")
+	if a.Labels[store.LabelManagedBy] != "" {
+		t.Errorf("unbound create must not stamp managed-by: %v", a.Labels)
+	}
+}
+
+func TestRedeployStoreManagedAppWritesDeployRow(t *testing.T) {
+	rec := &recordingStore{}
+	// No workspace on the service (store-off-ish path for the tenant gate) —
+	// the key invariant here is that the store row is written when the app has
+	// LabelAppID, regardless of tenant resolution.
+	svc, _ := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.create(context.Background(), CreateRequest{Name: "web", Image: "nginx:2"}); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if len(rec.deployCalls) != 1 {
+		t.Fatalf("want 1 deploy row, got %d", len(rec.deployCalls))
+	}
+	d := rec.deployCalls[0]
+	if d.AppID != "srv-1" || d.Trigger != "api" {
+		t.Errorf("deploy row = %+v, want appID=srv-1 trigger=api", d)
+	}
+}
+
+func TestRedeployUnmanagedAppSkipsDeployRow(t *testing.T) {
+	rec := &recordingStore{}
+	svc, _ := newService(rec, sampleApp("hand"))
+
+	if _, err := svc.create(context.Background(), CreateRequest{Name: "hand", Image: "nginx:2"}); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if len(rec.deployCalls) != 0 {
+		t.Errorf("unmanaged app must not open a deploy row, got %d", len(rec.deployCalls))
+	}
+}
+
 // --- Single writer of intent (store-managed vs hand-applied) ---
 
 type recordingStore struct {
@@ -251,13 +343,33 @@ type recordingStore struct {
 		id      string
 		seconds int32
 	}
-	domainAdds  []struct{ id, host string }
-	domainRems  []struct{ id, host string }
-	deleteCalls []string
+	domainAdds   []struct{ id, host string }
+	domainRems   []struct{ id, host string }
+	deleteCalls  []string
+	appCreates   []store.App
+	deployCalls  []store.Deploy
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool
 	err              error
+}
+
+func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, error) {
+	if r.err != nil {
+		return store.App{}, r.err
+	}
+	a.ID = "srv-test"
+	r.appCreates = append(r.appCreates, a)
+	return a, nil
+}
+
+func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string) (store.Deploy, error) {
+	if r.err != nil {
+		return store.Deploy{}, r.err
+	}
+	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Status: store.DeployUpdateInProgress}
+	r.deployCalls = append(r.deployCalls, d)
+	return d, nil
 }
 
 func (r *recordingStore) DeleteApp(_ context.Context, id string) error {
