@@ -632,6 +632,119 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "该数据库未启用高可用。",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  // --- Insights panel (w2/m25) ---
+  "databases.insightsTitle": {
+    message: "洞察",
+    description: "Database insights panel card title",
+  },
+  "databases.insightsDescription": {
+    message: "进程、查询性能、存储及配置的实时内省。",
+    description: "Database insights panel card description",
+  },
+  "databases.insightsRefresh": {
+    message: "刷新洞察",
+    description: "Accessible label for the insights refresh button",
+  },
+  "databases.insightsUnavailable": {
+    message: "不可用 — 数据库可能仍在配置中。",
+    description: "Insights sub-section error state",
+  },
+  "databases.insightsSizeTitle": {
+    message: "存储",
+    description: "Insights panel — database/table sizes sub-section heading",
+  },
+  "databases.insightsProcessesTitle": {
+    message: "活跃进程",
+    description: "Insights panel — pg_stat_activity sub-section heading",
+  },
+  "databases.insightsNoProcesses": {
+    message: "没有活跃进程。",
+    description: "Insights processes empty state",
+  },
+  "databases.insightsTopQueriesTitle": {
+    message: "热门查询",
+    description: "Insights panel — pg_stat_statements sub-section heading",
+  },
+  "databases.insightsNoTopQueries": {
+    message: "暂无查询统计 — 此集群可能未启用 pg_stat_statements。",
+    description: "Insights top-queries empty state",
+  },
+  "databases.insightsTableScansTitle": {
+    message: "表扫描",
+    description: "Insights panel — pg_stat_user_tables sub-section heading",
+  },
+  "databases.insightsNoTableScans": {
+    message: "暂无用户表扫描统计。",
+    description: "Insights table-scans empty state",
+  },
+  "databases.insightsParamsTitle": {
+    message: "非默认参数",
+    description: "Insights panel — pg_settings sub-section heading",
+  },
+  "databases.insightsNoParams": {
+    message: "所有参数均为默认值。",
+    description: "Insights parameter-overrides empty state",
+  },
+  "databases.insightsColTable": {
+    message: "表",
+    description: "Insights table column header (table name)",
+  },
+  "databases.insightsColSize": {
+    message: "大小",
+    description: "Insights table column header (relation size)",
+  },
+  "databases.insightsColUser": {
+    message: "用户",
+    description: "Insights processes column header (pg role)",
+  },
+  "databases.insightsColState": {
+    message: "状态",
+    description: "Insights processes column header (active/idle/…)",
+  },
+  "databases.insightsColDuration": {
+    message: "持续时间",
+    description: "Insights processes column header (seconds since query start)",
+  },
+  "databases.insightsColQuery": {
+    message: "查询",
+    description: "Insights column header (SQL text, truncated)",
+  },
+  "databases.insightsColCalls": {
+    message: "调用次数",
+    description: "Insights top-queries column header (invocation count)",
+  },
+  "databases.insightsColTotalTime": {
+    message: "总耗时",
+    description: "Insights top-queries column header (total exec time)",
+  },
+  "databases.insightsColMeanTime": {
+    message: "平均耗时",
+    description: "Insights top-queries column header (mean exec time per call)",
+  },
+  "databases.insightsColSeqScans": {
+    message: "顺序扫描",
+    description: "Insights table-scans column header (sequential scan count)",
+  },
+  "databases.insightsColIdxScans": {
+    message: "索引扫描",
+    description: "Insights table-scans column header (index scan count)",
+  },
+  "databases.insightsColLiveRows": {
+    message: "活跃行数",
+    description: "Insights table-scans column header (estimated live row count)",
+  },
+  "databases.insightsColParam": {
+    message: "参数",
+    description: "Insights parameter-overrides column header (pg_settings.name)",
+  },
+  "databases.insightsColSetting": {
+    message: "值",
+    description: "Insights parameter-overrides column header (pg_settings.setting)",
+  },
+  "databases.insightsColSource": {
+    message: "来源",
+    description: "Insights parameter-overrides column header (pg_settings.source)",
+  },
 };
 
 export default zhDatabases;

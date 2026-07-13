@@ -123,6 +123,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerLifecycleMCP(srv)
 	s.registerRecoveryMCP(srv)
 	s.registerAccessMCP(srv)
+	s.registerInsightsMCP(srv)
 }
 
 // registerLifecycleMCP adds suspend/resume/restart/failover — bex extensions
@@ -276,6 +277,94 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 // deleteResult is the boolean-shaped output for delete_postgres_user.
 type deleteResult struct {
 	Deleted bool `json:"deleted"`
+}
+
+// --- MCP results for insights ---
+
+type processesResult struct {
+	Processes []ProcessView `json:"processes"`
+}
+
+type topQueriesResult struct {
+	Queries []TopQueryView `json:"queries"`
+}
+
+type tableScansResult struct {
+	TableScans []TableScanView `json:"tableScans"`
+}
+
+type parameterOverridesResult struct {
+	Overrides []ParameterOverrideView `json:"overrides"`
+}
+
+// setParameterOverridesArgs is the input for set_postgres_parameter_overrides.
+type setParameterOverridesArgs struct {
+	PostgresID string            `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
+	Parameters map[string]string `json:"parameters" jsonschema:"key-value pairs of postgresql.conf parameter names and their desired settings"`
+}
+
+// registerInsightsMCP adds the five observability tools (processes, top-queries,
+// sizes, table-scans, parameter-overrides) to the shared MCP server.
+func (s *Service) registerInsightsMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_processes",
+		Description: "List active backend processes for a managed Postgres database (pg_stat_activity snapshot). Includes each process's pid, user, application name, state, current query, wait event, and how long it has been running.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, processesResult, error) {
+		out, err := s.Processes(ctx, in.PostgresID)
+		if err != nil {
+			return nil, processesResult{}, err
+		}
+		return nil, processesResult{Processes: out}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_top_queries",
+		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. Returns an empty list when pg_stat_statements is not yet available.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, topQueriesResult, error) {
+		out, err := s.TopQueries(ctx, in.PostgresID)
+		if err != nil {
+			return nil, topQueriesResult{}, err
+		}
+		return nil, topQueriesResult{Queries: out}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_postgres_sizes",
+		Description: "Get the total database size and per-table sizes for a managed Postgres database. Returns the overall database size (bytes + human-readable) and up to 50 tables ordered by size descending.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, SizesView, error) {
+		v, err := s.Sizes(ctx, in.PostgresID)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_table_scans",
+		Description: "List sequential vs index scan stats per table for a managed Postgres database (pg_stat_user_tables). High sequential scan counts on large tables indicate missing indexes.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, tableScansResult, error) {
+		out, err := s.TableScans(ctx, in.PostgresID)
+		if err != nil {
+			return nil, tableScansResult{}, err
+		}
+		return nil, tableScansResult{TableScans: out}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_parameter_overrides",
+		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterOverridesResult, error) {
+		out, err := s.ParameterOverrides(ctx, in.PostgresID)
+		if err != nil {
+			return nil, parameterOverridesResult{}, err
+		}
+		return nil, parameterOverridesResult{Overrides: out}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_postgres_parameter_overrides",
+		Description: "Replace the postgresql.conf parameter overrides for a managed Postgres database. The parameters map (key=parameter name, value=setting string) is written to the Database CR; the operator projects it to the CNPG Cluster and performs a rolling restart if needed. shared_preload_libraries cannot be overridden.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setParameterOverridesArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.SetParameterOverrides(ctx, in.PostgresID, in.Parameters)
+		return nil, v, err
+	})
 }
 
 // resolveOwnerID is list_postgres_instances' ownerId-scoping precedence: an

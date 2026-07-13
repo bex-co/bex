@@ -99,3 +99,63 @@ export interface DatabaseStats {
   available: number;
   creating: number;
 }
+
+// --- Insights types (w2/m25) ---
+
+export interface ProcessView {
+  pid: number;
+  userName: string;
+  applicationName: string;
+  state: string;
+  query?: string | null;
+  waitEventType?: string | null;
+  waitEvent?: string | null;
+  durationSeconds: number;
+}
+
+export interface TopQueryView {
+  query: string;
+  calls: number;
+  totalTimeMs: number;
+  meanTimeMs: number;
+  rows: number;
+  sharedHitBlks: number;
+  sharedReadBlks: number;
+}
+
+export interface DatabaseSizeView {
+  name: string;
+  sizeBytes: number;
+  sizePretty: string;
+}
+
+export interface TableSizeView {
+  schema: string;
+  name: string;
+  sizeBytes: number;
+  sizePretty: string;
+}
+
+export interface DatabaseSizesView {
+  database: DatabaseSizeView;
+  tables: TableSizeView[];
+}
+
+export interface TableScanView {
+  schema: string;
+  name: string;
+  seqScans: number;
+  seqScanRows: number;
+  indexScans: number;
+  indexScanRows: number;
+  liveRows: number;
+  deadRows: number;
+}
+
+export interface ParameterOverrideView {
+  name: string;
+  setting: string;
+  unit?: string | null;
+  source: string;
+  description?: string | null;
+}

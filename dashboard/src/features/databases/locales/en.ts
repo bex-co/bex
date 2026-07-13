@@ -644,6 +644,122 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "High availability is not enabled for this database.",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  // --- Insights panel (w2/m25) ---
+  "databases.insightsTitle": {
+    message: "Insights",
+    description: "Database insights panel card title",
+  },
+  "databases.insightsDescription": {
+    message:
+      "Live introspection into processes, query performance, storage, and configuration.",
+    description: "Database insights panel card description",
+  },
+  "databases.insightsRefresh": {
+    message: "Refresh insights",
+    description: "Accessible label for the insights refresh button",
+  },
+  "databases.insightsUnavailable": {
+    message: "Unavailable — the database may still be provisioning.",
+    description: "Insights sub-section error state",
+  },
+  "databases.insightsSizeTitle": {
+    message: "Storage",
+    description: "Insights panel — database/table sizes sub-section heading",
+  },
+  "databases.insightsProcessesTitle": {
+    message: "Active processes",
+    description: "Insights panel — pg_stat_activity sub-section heading",
+  },
+  "databases.insightsNoProcesses": {
+    message: "No active processes.",
+    description: "Insights processes empty state",
+  },
+  "databases.insightsTopQueriesTitle": {
+    message: "Top queries",
+    description: "Insights panel — pg_stat_statements sub-section heading",
+  },
+  "databases.insightsNoTopQueries": {
+    message:
+      "No query stats yet — pg_stat_statements may not be enabled on this cluster.",
+    description: "Insights top-queries empty state",
+  },
+  "databases.insightsTableScansTitle": {
+    message: "Table scans",
+    description: "Insights panel — pg_stat_user_tables sub-section heading",
+  },
+  "databases.insightsNoTableScans": {
+    message: "No user tables with scan stats yet.",
+    description: "Insights table-scans empty state",
+  },
+  "databases.insightsParamsTitle": {
+    message: "Non-default parameters",
+    description: "Insights panel — pg_settings sub-section heading",
+  },
+  "databases.insightsNoParams": {
+    message: "All parameters are at their defaults.",
+    description: "Insights parameter-overrides empty state",
+  },
+  // Table column headers shared across insight sub-sections
+  "databases.insightsColTable": {
+    message: "Table",
+    description: "Insights table column header (table name)",
+  },
+  "databases.insightsColSize": {
+    message: "Size",
+    description: "Insights table column header (relation size)",
+  },
+  "databases.insightsColUser": {
+    message: "User",
+    description: "Insights processes column header (pg role)",
+  },
+  "databases.insightsColState": {
+    message: "State",
+    description: "Insights processes column header (active/idle/…)",
+  },
+  "databases.insightsColDuration": {
+    message: "Duration",
+    description: "Insights processes column header (seconds since query start)",
+  },
+  "databases.insightsColQuery": {
+    message: "Query",
+    description: "Insights column header (SQL text, truncated)",
+  },
+  "databases.insightsColCalls": {
+    message: "Calls",
+    description: "Insights top-queries column header (invocation count)",
+  },
+  "databases.insightsColTotalTime": {
+    message: "Total time",
+    description: "Insights top-queries column header (total exec time)",
+  },
+  "databases.insightsColMeanTime": {
+    message: "Mean time",
+    description: "Insights top-queries column header (mean exec time per call)",
+  },
+  "databases.insightsColSeqScans": {
+    message: "Seq scans",
+    description: "Insights table-scans column header (sequential scan count)",
+  },
+  "databases.insightsColIdxScans": {
+    message: "Index scans",
+    description: "Insights table-scans column header (index scan count)",
+  },
+  "databases.insightsColLiveRows": {
+    message: "Live rows",
+    description: "Insights table-scans column header (estimated live row count)",
+  },
+  "databases.insightsColParam": {
+    message: "Parameter",
+    description: "Insights parameter-overrides column header (pg_settings.name)",
+  },
+  "databases.insightsColSetting": {
+    message: "Setting",
+    description: "Insights parameter-overrides column header (pg_settings.setting)",
+  },
+  "databases.insightsColSource": {
+    message: "Source",
+    description: "Insights parameter-overrides column header (pg_settings.source)",
+  },
 };
 
 export default enDatabases;

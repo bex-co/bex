@@ -215,3 +215,76 @@ mutation CreateDatabase(
 mutation DeleteDatabase($id: String!) {
   deleteDatabase(id: $id)
 }
+
+# --- Postgres observability (w2/m25) ---
+
+query DatabaseProcesses($id: String!) {
+  databaseProcesses(id: $id) {
+    pid
+    userName
+    applicationName
+    state
+    query
+    waitEventType
+    waitEvent
+    durationSeconds
+  }
+}
+
+query DatabaseTopQueries($id: String!) {
+  databaseTopQueries(id: $id) {
+    query
+    calls
+    totalTimeMs
+    meanTimeMs
+    rows
+    sharedHitBlks
+    sharedReadBlks
+  }
+}
+
+query DatabaseSizes($id: String!) {
+  databaseSizes(id: $id) {
+    database {
+      name
+      sizeBytes
+      sizePretty
+    }
+    tables {
+      schema
+      name
+      sizeBytes
+      sizePretty
+    }
+  }
+}
+
+query DatabaseTableScans($id: String!) {
+  databaseTableScans(id: $id) {
+    schema
+    name
+    seqScans
+    seqScanRows
+    indexScans
+    indexScanRows
+    liveRows
+    deadRows
+  }
+}
+
+query DatabaseParameterOverrides($id: String!) {
+  databaseParameterOverrides(id: $id) {
+    name
+    setting
+    unit
+    source
+    description
+  }
+}
+
+mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {
+  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {
+    id
+    name
+  }
+}

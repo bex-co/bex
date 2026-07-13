@@ -116,6 +116,15 @@ type DatabaseSpec struct {
 	// Maps to Render's POST /v1/postgres/{id}/failover.
 	// +optional
 	FailoverAt string `json:"failoverAt,omitempty"`
+
+	// Parameters are non-default PostgreSQL configuration parameters projected
+	// to the CNPG Cluster's spec.postgresql.parameters (postgresql.conf).
+	// Key is the parameter name (e.g. "log_min_duration_statement"), value is
+	// the string setting. Changes take effect on the next CNPG reconcile;
+	// parameters requiring a restart trigger a rolling restart.
+	// shared_preload_libraries is always overridden to include pg_stat_statements.
+	// +optional
+	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
 // DatabaseReadReplica declares one named read-only replica endpoint for a Database.

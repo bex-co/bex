@@ -193,5 +193,62 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			w.WriteHeader(http.StatusNoContent)
 		})
+
+		// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
+		mux.HandleFunc("GET "+base+"/{id}/processes", func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.Processes(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("GET "+base+"/{id}/top-queries", func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.TopQueries(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("GET "+base+"/{id}/sizes", func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.Sizes(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("GET "+base+"/{id}/table-scans", func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.TableScans(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
+			out, err := s.ParameterOverrides(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, out)
+		})
+		mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Parameters map[string]string `json:"parameters"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				return
+			}
+			pg, err := s.SetParameterOverrides(r.Context(), r.PathValue("id"), req.Parameters)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, pg)
+		})
 	}
 }

@@ -140,6 +140,10 @@ type clusterParams struct {
 	// highAvailability, when true, provisions a replicated cluster (≥2 instances,
 	// primary + standby) with pod anti-affinity. Render's enableHighAvailability.
 	highAvailability bool
+	// parameters are additional postgresql.conf key-value overrides from
+	// Database.spec.parameters. Merged on top of the built-in defaults;
+	// shared_preload_libraries is always forced to include pg_stat_statements.
+	parameters map[string]string
 }
 
 // barmanObjectStore builds a CNPG barmanObjectStore config pointing at the S3
@@ -228,9 +232,28 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		}}
 	} else {
 		spec["bootstrap"] = map[string]any{
-			"initdb": map[string]any{"database": p.dbname, "owner": p.owner},
+			"initdb": map[string]any{
+				"database": p.dbname,
+				"owner":    p.owner,
+				// Create pg_stat_statements so top-queries introspection works
+				// without a manual CREATE EXTENSION after provisioning.
+				"postInitSQL": []any{"CREATE EXTENSION IF NOT EXISTS pg_stat_statements"},
+			},
 		}
 	}
+	// Always load pg_stat_statements so the insights endpoints have it available.
+	// Merge user-supplied parameters on top; shared_preload_libraries is forced
+	// to include pg_stat_statements regardless of any user value.
+	pgParams := map[string]any{
+		"shared_preload_libraries": "pg_stat_statements",
+		"pg_stat_statements.track": "all",
+	}
+	for k, v := range p.parameters {
+		if k != "shared_preload_libraries" {
+			pgParams[k] = v
+		}
+	}
+	spec["postgresql"] = map[string]any{"parameters": pgParams}
 	// Durability: continuous WAL archiving + base backups to object storage —
 	// when the plan opts in and a store is configured.
 	if p.plan.Backup && p.store != nil {
@@ -409,6 +432,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			dbname: dbname, owner: owner, store: store,
 			recovery: db.Spec.Recovery, users: db.Spec.Users,
 			highAvailability: db.Spec.HighAvailability,
+			parameters: db.Spec.Parameters,
 		})
 		// Propagate the workspace label to CNPG-managed pods via inheritedMetadata
 		// so same-workspace NetworkPolicy selectors can reach the database.

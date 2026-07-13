@@ -151,6 +151,97 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// parameterInputGQLType is the {name, value} input pair for
+// setDatabaseParameterOverrides (GraphQL has no built-in map type).
+var parameterInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "ParameterInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+// --- insights GQL types ---
+
+var processViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseProcess",
+	Fields: graphql.Fields{
+		"pid":             &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v ProcessView) any { return v.PID })},
+		"userName":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.UserName })},
+		"applicationName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.ApplicationName })},
+		"state":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.State })},
+		"query":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.Query })},
+		"waitEventType":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.WaitEventType })},
+		"waitEvent":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.WaitEvent })},
+		"durationSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v ProcessView) any { return v.DurationSeconds })},
+	},
+})
+
+var topQueryViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseTopQuery",
+	Fields: graphql.Fields{
+		"query":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Query })},
+		"calls":          &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Calls })},
+		"totalTimeMs":    &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.TotalTimeMs })},
+		"meanTimeMs":     &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.MeanTimeMs })},
+		"rows":           &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Rows })},
+		"sharedHitBlks":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.SharedHitBlks })},
+		"sharedReadBlks": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.SharedReadBlks })},
+	},
+})
+
+var databaseSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseSizeInfo",
+	Fields: graphql.Fields{
+		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.Name })},
+		"sizeBytes":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.SizeBytes })},
+		"sizePretty": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.SizePretty })},
+	},
+})
+
+var tableSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "TableSizeInfo",
+	Fields: graphql.Fields{
+		"schema":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.Schema })},
+		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.Name })},
+		"sizeBytes":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.SizeBytes })},
+		"sizePretty": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.SizePretty })},
+	},
+})
+
+var sizesViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseSizes",
+	Fields: graphql.Fields{
+		"database": &graphql.Field{Type: databaseSizeViewGQLType, Resolve: gqlutil.Field(func(v SizesView) any { return v.Database })},
+		"tables":   &graphql.Field{Type: graphql.NewList(tableSizeViewGQLType), Resolve: gqlutil.Field(func(v SizesView) any { return v.Tables })},
+	},
+})
+
+var tableScanViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseTableScan",
+	Fields: graphql.Fields{
+		"schema":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableScanView) any { return v.Schema })},
+		"name":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableScanView) any { return v.Name })},
+		"seqScans":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.SeqScans })},
+		"seqScanRows":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.SeqScanRows })},
+		"indexScans":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.IndexScans })},
+		"indexScanRows": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.IndexScanRows })},
+		"liveRows":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.LiveRows })},
+		"deadRows":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.DeadRows })},
+	},
+})
+
+var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseParameterOverride",
+	Fields: graphql.Fields{
+		"name":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Name })},
+		"setting":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Setting })},
+		"unit":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Unit })},
+		"source":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Source })},
+		"description": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Description })},
+	},
+})
+
 // GraphQLQuery returns the database read fields (Render dashboard nouns).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
@@ -209,6 +300,42 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.GetIPAllowList(p.Context, p.Args["id"].(string))
+			},
+		},
+		// --- insights (m25) ---
+		"databaseProcesses": &graphql.Field{
+			Type: graphql.NewList(processViewGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Processes(p.Context, p.Args["id"].(string))
+			},
+		},
+		"databaseTopQueries": &graphql.Field{
+			Type: graphql.NewList(topQueryViewGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.TopQueries(p.Context, p.Args["id"].(string))
+			},
+		},
+		"databaseSizes": &graphql.Field{
+			Type: sizesViewGQLType,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Sizes(p.Context, p.Args["id"].(string))
+			},
+		},
+		"databaseTableScans": &graphql.Field{
+			Type: graphql.NewList(tableScanViewGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.TableScans(p.Context, p.Args["id"].(string))
+			},
+		},
+		"databaseParameterOverrides": &graphql.Field{
+			Type: graphql.NewList(parameterOverrideViewGQLType),
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ParameterOverrides(p.Context, p.Args["id"].(string))
 			},
 		},
 	}
@@ -351,6 +478,29 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteUser(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 				return err == nil, err
+			},
+		},
+
+		// --- insights (m25): parameter overrides write ---
+		"setDatabaseParameterOverrides": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// parameters is a list of {name, value} pairs (GraphQL has no map type).
+				"parameters": &graphql.ArgumentConfig{Type: graphql.NewList(parameterInputGQLType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				items, _ := p.Args["parameters"].([]any)
+				params := make(map[string]string, len(items))
+				for _, item := range items {
+					m, _ := item.(map[string]any)
+					k, _ := m["name"].(string)
+					v, _ := m["value"].(string)
+					if k != "" {
+						params[k] = v
+					}
+				}
+				return s.SetParameterOverrides(p.Context, p.Args["id"].(string), params)
 			},
 		},
 	}

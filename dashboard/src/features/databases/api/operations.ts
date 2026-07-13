@@ -267,3 +267,170 @@ export const DeleteDatabaseUserDocument = gql`
   DeleteDatabaseUserMutation,
   CreateDatabaseUserVars
 >;
+
+// --- Insights (w2/m25) ---
+
+export interface ProcessView {
+  pid: number | null;
+  userName: string | null;
+  applicationName: string | null;
+  state: string | null;
+  query?: string | null;
+  waitEventType?: string | null;
+  waitEvent?: string | null;
+  durationSeconds: number | null;
+}
+export interface DatabaseProcessesQuery {
+  databaseProcesses: ProcessView[] | null;
+}
+export const DatabaseProcessesDocument = gql`
+  query DatabaseProcesses($id: String!) {
+    databaseProcesses(id: $id) {
+      pid
+      userName
+      applicationName
+      state
+      query
+      waitEventType
+      waitEvent
+      durationSeconds
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseProcessesQuery, IdVars>;
+
+export interface TopQueryView {
+  query: string | null;
+  calls: number | null;
+  totalTimeMs: number | null;
+  meanTimeMs: number | null;
+  rows: number | null;
+  sharedHitBlks: number | null;
+  sharedReadBlks: number | null;
+}
+export interface DatabaseTopQueriesQuery {
+  databaseTopQueries: TopQueryView[] | null;
+}
+export const DatabaseTopQueriesDocument = gql`
+  query DatabaseTopQueries($id: String!) {
+    databaseTopQueries(id: $id) {
+      query
+      calls
+      totalTimeMs
+      meanTimeMs
+      rows
+      sharedHitBlks
+      sharedReadBlks
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseTopQueriesQuery, IdVars>;
+
+export interface DBSizeInfo {
+  name: string | null;
+  sizeBytes: number | null;
+  sizePretty: string | null;
+}
+export interface TableSizeInfo {
+  schema: string | null;
+  name: string | null;
+  sizeBytes: number | null;
+  sizePretty: string | null;
+}
+export interface DatabaseSizesQuery {
+  databaseSizes: {
+    database: DBSizeInfo | null;
+    tables: TableSizeInfo[] | null;
+  } | null;
+}
+export const DatabaseSizesDocument = gql`
+  query DatabaseSizes($id: String!) {
+    databaseSizes(id: $id) {
+      database {
+        name
+        sizeBytes
+        sizePretty
+      }
+      tables {
+        schema
+        name
+        sizeBytes
+        sizePretty
+      }
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseSizesQuery, IdVars>;
+
+export interface TableScanView {
+  schema: string | null;
+  name: string | null;
+  seqScans: number | null;
+  seqScanRows: number | null;
+  indexScans: number | null;
+  indexScanRows: number | null;
+  liveRows: number | null;
+  deadRows: number | null;
+}
+export interface DatabaseTableScansQuery {
+  databaseTableScans: TableScanView[] | null;
+}
+export const DatabaseTableScansDocument = gql`
+  query DatabaseTableScans($id: String!) {
+    databaseTableScans(id: $id) {
+      schema
+      name
+      seqScans
+      seqScanRows
+      indexScans
+      indexScanRows
+      liveRows
+      deadRows
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseTableScansQuery, IdVars>;
+
+export interface ParameterOverrideView {
+  name: string | null;
+  setting: string | null;
+  unit?: string | null;
+  source: string | null;
+  description?: string | null;
+}
+export interface DatabaseParameterOverridesQuery {
+  databaseParameterOverrides: ParameterOverrideView[] | null;
+}
+export const DatabaseParameterOverridesDocument = gql`
+  query DatabaseParameterOverrides($id: String!) {
+    databaseParameterOverrides(id: $id) {
+      name
+      setting
+      unit
+      source
+      description
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseParameterOverridesQuery, IdVars>;
+
+export interface ParameterInput {
+  name: string;
+  value: string;
+}
+export interface SetDatabaseParameterOverridesVars {
+  id: string;
+  parameters: ParameterInput[] | null;
+}
+export interface SetDatabaseParameterOverridesMutation {
+  setDatabaseParameterOverrides: {
+    id: string | null;
+    name: string | null;
+  } | null;
+}
+export const SetDatabaseParameterOverridesDocument = gql`
+  mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {
+    setDatabaseParameterOverrides(id: $id, parameters: $parameters) {
+      id
+      name
+    }
+  }
+` as unknown as TypedDocumentNode<
+  SetDatabaseParameterOverridesMutation,
+  SetDatabaseParameterOverridesVars
+>;
