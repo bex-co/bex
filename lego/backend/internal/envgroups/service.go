@@ -354,7 +354,7 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 	if err != nil {
 		return err
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
 // service that no longer exists (a deleted service simply drops from the group).
 func (s *Service) detach(ctx context.Context, gid, service string) error {
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
 		return nil // a since-deleted service just drops from the group
 	}
@@ -412,7 +412,7 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 func (s *Service) rollLinked(ctx context.Context, links []string) error {
 	stamp := s.now()
 	for _, svc := range links {
-		a, err := s.GetApp(ctx, svc)
+		a, err := s.GetApp(ctx, core.RelCanCreate, svc)
 		if errors.Is(err, core.ErrNotFound) {
 			continue // a since-deleted linked service is skipped
 		}

@@ -16,7 +16,11 @@ limitations under the License.
 
 package core
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
 
 // WorkspaceSelectionReader is the read-only view of WorkspaceSelections — what
 // apps/postgres hold. They only ever need to read a session's selection, never
@@ -69,4 +73,27 @@ func (s *WorkspaceSelections) Set(sessionID, ownerID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.byID[sessionID] = ownerID
+}
+
+// SelectedWorkspace is the ownerId precedence EVERY workspace-scoped MCP tool
+// shares — list_services, list_postgres_instances, and (w6/m14) the create
+// tools: an explicit ownerId argument wins; otherwise the calling session's
+// select_workspace selection; with neither, "" (the caller's default
+// workspace). It lives here, beside the selection store, because three features
+// had grown a private copy of it (apps/postgres/keyvalue) and a fourth was
+// about to — a precedence rule that drifts per feature is exactly how one
+// surface silently stops honoring a selection.
+//
+// A nil session (stdio has exactly one session, keyed "") or an unwired
+// selection store degrades to "": the caller's default workspace, never another
+// caller's selection.
+func SelectedWorkspace(sel WorkspaceSelectionReader, req *mcp.CallToolRequest, arg string) string {
+	if arg != "" {
+		return arg
+	}
+	if sel == nil || req == nil || req.Session == nil {
+		return ""
+	}
+	id, _ := sel.Get(req.Session.ID())
+	return id
 }

@@ -144,10 +144,10 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"password":                     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.Password })},
 		"internalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
 		"externalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
-		"internalConnectionPoolString":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString })},
-		"externalConnectionPoolString":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString })},
-		"psqlCommand":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
-		"readReplicaConnectionStrings":   &graphql.Field{Type: graphql.NewList(replicaConnectionStringsGQLType), Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings })},
+		"internalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString })},
+		"externalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString })},
+		"psqlCommand":                  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
+		"readReplicaConnectionStrings": &graphql.Field{Type: graphql.NewList(replicaConnectionStringsGQLType), Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings })},
 	},
 })
 
@@ -347,7 +347,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createDatabase": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":                   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// ownerId is the workspace to create IN (w6/m14) — the write-side
+				// twin of the databases list filter; optional, defaulting to the
+				// caller's default workspace, forbidden for a non-member.
+				"ownerId":                &graphql.ArgumentConfig{Type: graphql.String},
 				"plan":                   &graphql.ArgumentConfig{Type: graphql.String},
 				"version":                &graphql.ArgumentConfig{Type: graphql.String},
 				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
@@ -355,7 +359,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				req := CreatePostgresRequest{Name: p.Args["name"].(string)}
+				ownerID, _ := p.Args["ownerId"].(string)
+				req := CreatePostgresRequest{Name: p.Args["name"].(string), OwnerID: ownerID}
 				if v, ok := p.Args["plan"].(string); ok {
 					req.Plan = v
 				}

@@ -3,14 +3,6 @@ import { render, screen, within } from "@testing-library/react";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 
-vi.mock("@/features/team/hooks/use-current-workspace", () => ({
-  useCurrentWorkspace: () => ({
-    workspace: { id: "tea-1", name: "acme", plan: "pro", role: "ADMIN" },
-    loading: false,
-    error: undefined,
-  }),
-}));
-
 const loadMore = vi.fn();
 const auditState: UseAuditLogResult = {
   events: [],

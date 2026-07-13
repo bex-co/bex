@@ -932,3 +932,80 @@ func TestAcceptInviteRespectsPlanLimits(t *testing.T) {
 		t.Errorf("self re-invite on a full Hobby workspace = %d (%v), want 1 (role change, no new seat)", len(accepted), err)
 	}
 }
+
+// TestDefaultWorkspaceIsTheOldestMembership is w6/m14's t001 against a real
+// database: with two memberships, the bare join returned an arbitrary row (the
+// w6/m11 field bug — a caller's "current workspace" could differ call to call).
+// The default workspace is now the OLDEST membership, stably.
+func TestDefaultWorkspaceIsTheOldestMembership(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	// Two workspaces for one subject. CreateWorkspace writes the tenant + the
+	// owner's membership in one transaction, so "older workspace" == "older
+	// membership" here — the ordinary case (a second workspace created later).
+	older, err := s.CreateWorkspace(ctx, "older", PlanHobby, "dana")
+	if err != nil {
+		t.Fatalf("create older: %v", err)
+	}
+	newer, err := s.CreateWorkspace(ctx, "newer", PlanHobby, "dana")
+	if err != nil {
+		t.Fatalf("create newer: %v", err)
+	}
+
+	// Repeated calls must all give the SAME answer — the point of the ORDER BY.
+	// (Without it this passed or failed on Postgres' whim, which is exactly how
+	// it shipped and then misbehaved in production.)
+	for i := range 10 {
+		got, err := s.TenantForIdentity(ctx, "dana")
+		if err != nil {
+			t.Fatalf("TenantForIdentity (call %d): %v", i, err)
+		}
+		if got.ID != older.ID {
+			t.Fatalf("call %d: default workspace = %s (%s), want the OLDEST membership %s (%s)",
+				i, got.Name, got.ID, older.Name, older.ID)
+		}
+	}
+
+	// IsMember answers for BOTH workspaces — the gate that lets a caller name
+	// the newer one explicitly (ownerId) even though it is not their default.
+	for _, w := range []Tenant{older, newer} {
+		member, err := s.IsMember(ctx, "dana", w.ID)
+		if err != nil {
+			t.Fatalf("IsMember(%s): %v", w.Name, err)
+		}
+		if !member {
+			t.Errorf("IsMember(dana, %s) = false, want true", w.Name)
+		}
+	}
+	// A workspace she does not belong to, and one that does not exist at all:
+	// both false, no error — "you may not act there", not a leak of existence.
+	stranger, err := s.CreateWorkspace(ctx, "stranger", PlanHobby, "eve")
+	if err != nil {
+		t.Fatalf("create stranger: %v", err)
+	}
+	for _, id := range []string{stranger.ID, "tea-does-not-exist"} {
+		member, err := s.IsMember(ctx, "dana", id)
+		if err != nil {
+			t.Errorf("IsMember(dana, %s): %v", id, err)
+		}
+		if member {
+			t.Errorf("IsMember(dana, %s) = true, want false", id)
+		}
+	}
+}

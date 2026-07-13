@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the MCP fragment for managed Postgres. Tool names track Render's
@@ -40,6 +42,7 @@ type postgresArgs struct {
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
+	OwnerID                string `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Name                   string `json:"name" jsonschema:"the database name"`
 	Plan                   string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
 	Version                string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
@@ -73,7 +76,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_postgres_instances",
 		Description: "List all managed Postgres databases in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
-		list, err := s.ListPostgres(ctx, s.resolveOwnerID(req, in.OwnerID))
+		list, err := s.ListPostgres(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		if err != nil {
 			return nil, listPostgresResult{}, err
 		}
@@ -94,8 +97,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public and enableHighAvailability are optional.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
+			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
 			Name:                   in.Name,
 			Plan:                   in.Plan,
 			Version:                in.Version,
@@ -133,9 +137,13 @@ func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "failover_postgres",
 		Description: "Trigger a planned failover (CNPG switchover) on an HA-enabled managed Postgres database. Promotes a standby to primary. Mirrors Render's POST /postgres/{id}/failover.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, struct{ Accepted bool `json:"accepted"` }, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, struct {
+		Accepted bool `json:"accepted"`
+	}, error) {
 		err := s.Failover(ctx, in.PostgresID)
-		return nil, struct{ Accepted bool `json:"accepted"` }{Accepted: err == nil}, err
+		return nil, struct {
+			Accepted bool `json:"accepted"`
+		}{Accepted: err == nil}, err
 	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_postgres",
@@ -365,19 +373,4 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		v, err := s.SetParameterOverrides(ctx, in.PostgresID, in.Parameters)
 		return nil, v, err
 	})
-}
-
-// resolveOwnerID is list_postgres_instances' ownerId-scoping precedence: an
-// explicit argument wins; otherwise fall back to the calling MCP session's
-// selected workspace (select_workspace, w6/m2/t005); with neither, ""
-// (unscoped) — mirrors apps.Service.resolveOwnerID.
-func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
-	if arg != "" {
-		return arg
-	}
-	if s.Selections == nil || req == nil || req.Session == nil {
-		return ""
-	}
-	id, _ := s.Selections.Get(req.Session.ID())
-	return id
 }

@@ -87,7 +87,7 @@ func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, err
 	if strings.TrimSpace(sql) == "" {
 		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
 	}
-	_, sec, err := s.loadAppSecret(ctx, dbID)
+	_, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
 		return QueryResult{}, err // core.ErrNotFound for an unknown/unprovisioned db
 	}

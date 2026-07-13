@@ -462,7 +462,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createService": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// ownerId is the workspace to create IN (w6/m14) — the write-side
+				// twin of the services list filter above, and the same optional
+				// contract REST's create body has: omitted => the caller's default
+				// workspace; a workspace they don't belong to => forbidden.
+				"ownerId":    &graphql.ArgumentConfig{Type: graphql.String},
 				"type":       &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
 				"schedule":   &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
 				"command":    &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
@@ -481,6 +486,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
+					OwnerID:     gqlStr(p.Args, "ownerId"),
 					Name:        p.Args["name"].(string),
 					Type:        gqlStr(p.Args, "type"),
 					Schedule:    gqlStr(p.Args, "schedule"),

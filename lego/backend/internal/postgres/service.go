@@ -140,6 +140,11 @@ type ReplicaConnectionStrings struct {
 
 // CreatePostgresRequest is the POST /v1/postgres body (bex subset of Render's).
 type CreatePostgresRequest struct {
+	// OwnerID is the workspace to create IN — Render's `ownerId` (w6/m14). Empty
+	// means the caller's default workspace; a workspace the caller is not a
+	// member of is core.ErrForbidden, never a create in the wrong one. Bound to
+	// the context by the verb, before its authorization check.
+	OwnerID    string `json:"ownerId,omitempty"`
 	Name       string `json:"name"`
 	Plan       string `json:"plan,omitempty"`
 	Version    string `json:"version,omitempty"`
@@ -214,13 +219,21 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 }
 
-func (s *Service) fetchDatabase(ctx context.Context, name string) (*appv1alpha1.Database, error) {
+func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
 	var d appv1alpha1.Database
 	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, &d)
 	if apierrors.IsNotFound(err) {
 		return nil, core.ErrNotFound
 	}
 	if err != nil {
+		return nil, err
+	}
+	// The workspace gate every fetch-by-name needs (core.Base.AuthorizeLabeled —
+	// the same rule apps' shared GetApp applies). Without it this was a bare Get:
+	// any authenticated caller who knew a Database's name read it — connection
+	// string included — from any workspace. relation is the one the calling verb
+	// authorized, so a viewer of the owning workspace still cannot delete it.
+	if err := s.AuthorizeLabeled(ctx, relation, d.Labels); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -230,8 +243,8 @@ func (s *Service) fetchDatabase(ctx context.Context, name string) (*appv1alpha1.
 // (username/password/dbname/uri) — the credential path both connection-info and
 // the read-only query verb share. Returns core.ErrNotFound when the Database or
 // its Secret isn't provisioned yet.
-func (s *Service) loadAppSecret(ctx context.Context, name string) (*appv1alpha1.Database, *corev1.Secret, error) {
-	d, err := s.fetchDatabase(ctx, name)
+func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*appv1alpha1.Database, *corev1.Secret, error) {
+	d, err := s.fetchDatabase(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,7 +298,7 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return PostgresView{}, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -295,6 +308,7 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return PostgresView{}, err
 	}
@@ -355,7 +369,7 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -369,7 +383,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return PostgresConnectionInfo{}, err
 	}
-	d, sec, err := s.loadAppSecret(ctx, name)
+	d, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return PostgresConnectionInfo{}, err
 	}
@@ -442,8 +456,8 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 
 // patchDatabase fetches the Database and merge-patches it — the spec-intent
 // writer the operator converges (the App/KeyValue lifecycle discipline).
-func (s *Service) patchDatabase(ctx context.Context, name string, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, name)
+func (s *Service) patchDatabase(ctx context.Context, relation, name string, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, relation, name)
 	if err != nil {
 		return PostgresView{}, err
 	}

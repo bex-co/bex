@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
@@ -40,6 +42,7 @@ type keyValueArgs struct {
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
+	OwnerID     string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Name        string   `json:"name" jsonschema:"the key-value store name"`
 	Plan        string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
 	Version     string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
@@ -65,7 +68,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_key_value_instances",
 		Description: "List all managed key-value (Valkey/Redis) stores in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
-		list, err := s.ListKeyValues(ctx, s.resolveOwnerID(req, in.OwnerID))
+		list, err := s.ListKeyValues(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		if err != nil {
 			return nil, listKeyValueResult{}, err
 		}
@@ -86,8 +89,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public and ipAllowList are optional.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
+			OwnerID:     core.SelectedWorkspace(s.Selections, req, in.OwnerID),
 			Name:        in.Name,
 			Plan:        in.Plan,
 			Version:     in.Version,
@@ -100,19 +104,4 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, v, nil
 	})
-}
-
-// resolveOwnerID is list_key_value_instances' ownerId-scoping precedence: an
-// explicit argument wins; otherwise fall back to the calling MCP session's
-// selected workspace (select_workspace, w6/m2/t005); with neither, ""
-// (unscoped) — mirrors apps.Service.resolveOwnerID / postgres.Service.resolveOwnerID.
-func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
-	if arg != "" {
-		return arg
-	}
-	if s.Selections == nil || req == nil || req.Session == nil {
-		return ""
-	}
-	id, _ := s.Selections.Get(req.Session.ID())
-	return id
 }

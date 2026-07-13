@@ -22,7 +22,7 @@ import {
   PanelTableSkeleton,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCurrentWorkspace } from "@/features/team/hooks/use-current-workspace";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useTeam } from "@/features/team/hooks/use-team";
 import { useChangeRole } from "@/features/team/hooks/use-change-role";
 import { useRemoveMember } from "@/features/team/hooks/use-remove-member";
@@ -35,11 +35,17 @@ import { InviteMemberDialog } from "@/features/team/components/invite-member-dia
  * docs/ADR012-auth.md role matrix is enforced server-side; this surface reflects it —
  * a non-admin sees a read-only list (the invite/role/remove controls hide when
  * the admin-only invites query is forbidden).
+ *
+ * The workspace managed here is the *switcher's* selection (WorkspaceProvider,
+ * w6/m14) — the same fix the audit log got (use-audit-log.ts). It used to come
+ * from `useCurrentWorkspace()`, which ran its own `workspaces` query and always
+ * returned `workspaces[0]` (the account's original auto-provisioned workspace),
+ * so after a switch this page kept managing the wrong workspace's members.
  */
 export function TeamPanel() {
   const { t } = useTranslations();
-  const { workspace, loading: workspaceLoading } = useCurrentWorkspace();
-  const workspaceId = workspace?.id ?? null;
+  const { currentWorkspaceId: workspaceId, loading: workspaceLoading } =
+    useWorkspace();
   const { members, invites, loading, error, canManage, refetch } = useTeam(workspaceId);
   const { changeRole, changing } = useChangeRole(workspaceId ?? "");
   const { removeMember, revokeInvite, removing } = useRemoveMember(workspaceId ?? "");

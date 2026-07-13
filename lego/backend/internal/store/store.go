@@ -156,11 +156,27 @@ type Store interface {
 	// path enforces (w6/m1): a Hobby workspace is capped at 25 apps.
 	GetTenant(ctx context.Context, id string) (Tenant, error)
 	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
-	// TenantForIdentity returns the tenant a subject (Kratos identity id or
-	// Hydra client id) is a member of via tenant_members, or ErrNotFound — the
-	// workspace a caller resolves to (w1/m9). One lookup serves both human and
-	// machine callers since tenant_members.subject covers both kinds of id.
+	// TenantForIdentity returns the subject's DEFAULT workspace (w6/m14): the
+	// tenant of its OLDEST membership in tenant_members, or ErrNotFound. One
+	// lookup serves both human (Kratos identity id) and machine (Hydra client
+	// id) callers since tenant_members.subject covers both kinds of id.
+	//
+	// The default-workspace contract: a subject may belong to several
+	// workspaces (w6/m1 multi-workspace, w4/m12 invites), so this is the
+	// implicit resolution used when a caller names no workspace — deterministic
+	// by membership created_at (tenant id as the tie-break), never an arbitrary
+	// row of the join. Oldest-first makes it the workspace the caller has had
+	// longest, which for a human is the personal tenant minted on first login,
+	// matching Render ("passing a user id returns that user's default
+	// workspace"). A caller that wants another of its workspaces names it
+	// explicitly (REST ownerId / GraphQL ownerId / MCP select_workspace →
+	// core.WithWorkspace), which is membership-checked at core.Base.
 	TenantForIdentity(ctx context.Context, subject string) (Tenant, error)
+	// IsMember reports whether a subject belongs to a workspace — the check
+	// core.Base runs before honoring an explicit workspace override, so naming
+	// a workspace the caller is not a member of is refused (ErrForbidden)
+	// rather than silently redirected to the caller's own (w6/m14).
+	IsMember(ctx context.Context, subject, tenantID string) (bool, error)
 	// CreateTenantWithMember mints a personal tenant for an identity on first
 	// login: a tenant row owned by the identity plus an admin membership. It is
 	// idempotent and race-safe — concurrent first logins for the same identity
@@ -314,15 +330,41 @@ func scanTenant(row pgx.Row) (Tenant, error) {
 	return t, err
 }
 
+// TenantForIdentity resolves the subject's default workspace — see the Store
+// interface for the contract. ORDER BY m.created_at is what makes it a
+// *default* rather than an arbitrary row: the bare join returned whichever
+// membership Postgres happened to yield first, so a caller with two workspaces
+// could resolve to a different one call to call (w6/m11 hit this live). The
+// tenant id is the tie-break for two memberships written in the same instant
+// (the same-transaction case: a workspace create inserts tenant + membership
+// together), so the answer is stable even then.
 func (s *PGStore) TenantForIdentity(ctx context.Context, subject string) (Tenant, error) {
 	t, err := scanTenant(s.Pool.QueryRow(ctx, `
 		SELECT t.id, t.name, t.plan, t.created_at FROM tenants t
 		JOIN tenant_members m ON m.tenant_id = t.id
-		WHERE m.subject = $1`, subject))
+		WHERE m.subject = $1
+		ORDER BY m.created_at, t.id
+		LIMIT 1`, subject))
 	if err != nil {
 		return Tenant{}, classify("tenant", err)
 	}
 	return t, nil
+}
+
+// IsMember reports whether the subject belongs to the workspace — the
+// membership gate for an explicitly named workspace (w6/m14). A plain existence
+// check, so it answers false (not ErrNotFound) for a non-member and for a
+// workspace id that does not exist at all: both are "you may not act there".
+func (s *PGStore) IsMember(ctx context.Context, subject, tenantID string) (bool, error) {
+	var exists bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM tenant_members WHERE subject = $1 AND tenant_id = $2)`,
+		subject, tenantID,
+	).Scan(&exists)
+	if err != nil {
+		return false, classify("workspace", err)
+	}
+	return exists, nil
 }
 
 // CreateTenantWithMember mints a personal tenant for an identity in one

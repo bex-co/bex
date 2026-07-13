@@ -55,6 +55,14 @@ func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool
 	return tid, ok
 }
 
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case every pre-w6/m14 test is written
+// against. Multi-membership callers use a richer fake (see the m14 tests).
+func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
+}
+
 func ctxAs(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
@@ -128,5 +136,32 @@ func TestListKeyValues_OwnerIDFilterIsolatesTenants(t *testing.T) {
 	}
 	if len(list) != 1 || list[0].ID != "kv-a" {
 		t.Fatalf("ListKeyValues(tea-a) = %+v, want exactly kv-a", list)
+	}
+}
+
+// --- w6/m14: the fetch-by-name workspace gate (same hole as postgres') ---
+
+func ownedKeyValue(name, tenantID string) *appv1alpha1.KeyValue {
+	kv := sampleKeyValue(name)
+	kv.Labels = map[string]string{core.LabelTenant: tenantID}
+	return kv
+}
+
+// fetchKeyValue was a bare client.Get: any authenticated caller who knew the
+// name read the store — KeyValueConnectionInfo rides the same fetch, so that
+// leaked another workspace's Valkey credentials.
+func TestGetKeyValue_CrossTenantByNameIsForbidden(t *testing.T) {
+	svc, _ := newService(ownedKeyValue("acme-kv", "tea-acme"))
+	svc.Workspace = fakeWorkspace{"mallory": "tea-evil"}
+	svc.Authz = &fakeChecker{allow: true}
+
+	if _, err := svc.GetKeyValue(ctxAs("mallory"), "acme-kv"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("GetKeyValue on another workspace's store: got %v, want ErrForbidden", err)
+	}
+	if _, err := svc.KeyValueConnectionInfo(ctxAs("mallory"), "acme-kv"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("KeyValueConnectionInfo on another workspace's store: got %v, want ErrForbidden — this leaks credentials", err)
+	}
+	if err := svc.DeleteKeyValue(ctxAs("mallory"), "acme-kv"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("DeleteKeyValue on another workspace's store: got %v, want ErrForbidden", err)
 	}
 }

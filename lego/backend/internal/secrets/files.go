@@ -60,7 +60,7 @@ func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]Secret
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	if _, err := s.GetApp(ctx, service); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
 		return nil, err
 	}
 	files, err := s.Store.Get(ctx, filesPath(service))
@@ -84,7 +84,7 @@ func (s *Service) GetSecretFile(ctx context.Context, service, name string) (Secr
 	if s.Store == nil {
 		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
-	if _, err := s.GetApp(ctx, service); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
 		return SecretFileView{}, err
 	}
 	files, err := s.Store.Get(ctx, filesPath(service))
@@ -114,7 +114,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		// Name only in the error — never the content.
 		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -141,7 +141,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}

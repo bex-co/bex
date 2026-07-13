@@ -383,7 +383,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -399,7 +399,15 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 // first canonical (spec.host); only a web_service is additionally exposed at the
 // platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
-	Name string
+	// OwnerID is the workspace to create the service IN — Render's `ownerId`
+	// (w6/m14). Empty means the caller's default workspace (their oldest
+	// membership), so a single-workspace client never has to say it; a workspace
+	// the caller is not a member of is core.ErrForbidden, never a create that
+	// silently lands somewhere else. All three surfaces fill it (REST body,
+	// GraphQL arg, the MCP session's selected workspace), so the workspace a
+	// create targets is decided in exactly one place: Create.
+	OwnerID string
+	Name    string
 	// Type is the Render serviceType: web_service (default), private_service,
 	// background_worker, cron_job. Empty defaults to web_service.
 	Type string
@@ -452,7 +460,14 @@ type CreateRequest struct {
 // and lifecycle verbs recognise it as store-managed. Without the store, or when
 // no tenant resolves, the CR is written directly (the hand-applied path
 // scripts/app-apply.sh uses) — behaviour unchanged from before.
+// req.OwnerID names the workspace to create in. It is bound to the context
+// BEFORE the authorization check, which is what makes it safe: Authorize then
+// checks can_create against THAT workspace (403 for a caller who is not a
+// member of it), and the same resolution flows through s.Tenant below into the
+// App's tenant label and its store row — so a create can never be authorized
+// against one workspace and land in another.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}
@@ -466,24 +481,35 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
-	existing, err := s.GetApp(ctx, req.Name)
+	// The workspace this create acts in: the one named by req.OwnerID (already
+	// membership-checked by Create's Authorize) or the caller's default. Empty
+	// when the store is off or the caller is unbound. Resolved BEFORE the
+	// existence probe, because it is what makes that probe workspace-correct.
+	tenantID, _ := s.Tenant(ctx)
+
+	existing, err := s.GetApp(ctx, core.RelCanCreate, req.Name)
+	// An App name is unique across the namespace, but a create targets ONE
+	// workspace — so a name already taken by a DIFFERENT workspace is a conflict,
+	// not an update. Without this, a caller who belongs to both workspaces would
+	// silently redeploy the other workspace's service while believing they had
+	// created one in the workspace they named (GetApp serves an App from any
+	// workspace the caller has the relation in — which is right for reaching a
+	// service by name, and wrong for claiming a name).
+	if err == nil && tenantID != "" && existing.Labels[core.LabelTenant] != tenantID {
+		return AppView{}, fmt.Errorf("%w: the name %q is already taken by another workspace", core.ErrConflict, req.Name)
+	}
 	switch {
 	case errors.Is(err, core.ErrNotFound):
 		a := &appv1alpha1.App{}
 		a.Name = req.Name
 		a.Namespace = s.Namespace
 		a.Spec = desired
-		// Resolve the caller's tenant; used both for the tenant label and the
-		// store row. Empty when the store is off or the caller is unbound.
-		tenantID := ""
-		if s.Workspace != nil {
-			if t, ok := s.Tenant(ctx); ok {
-				tenantID = t
-			}
-		}
 		// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
-		// service is refused across all three surfaces. Skipped when cap is 0
-		// (unlimited) or the caller has no resolved tenant (store off / unbound).
+		// service is refused across all three surfaces. Counted against tenantID —
+		// the workspace this create TARGETS (w6/m14's ownerId), not whichever one
+		// the caller happens to resolve to, so naming a workspace charges its cap
+		// and not another's. Skipped when cap is 0 (unlimited) or the caller has no
+		// resolved tenant (store off / unbound).
 		if s.MaxServices > 0 && tenantID != "" {
 			var existing appv1alpha1.AppList
 			if listErr := s.Client.List(ctx, &existing,
@@ -602,7 +628,7 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(name)); err != nil {
 		return err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -805,7 +831,7 @@ func normalizeTierOrPlan(v string) (string, error) {
 // caller is the HMAC-verified git webhook, whose signature check is the
 // authorization (there is no OpenFGA identity on a git-host callback).
 func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -829,7 +855,7 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }
@@ -843,14 +869,14 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (AppView, err
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return AppView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
-	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.RunAt = s.Now().UTC().Format(time.RFC3339Nano)
 	})
 }
@@ -887,7 +913,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
-	return s.writeThroughStore(ctx, name,
+	return s.writeThroughStore(ctx, core.RelCanOperate, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
 }
@@ -912,7 +938,7 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	if replicas < 1 || replicas > store.MaxReplicas {
 		return AppView{}, fmt.Errorf("%w: numInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
 	}
-	return s.writeThroughStore(ctx, name,
+	return s.writeThroughStore(ctx, core.RelCanOperate, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
 		func(a *appv1alpha1.App) { a.Spec.Replicas = replicas })
 }
@@ -937,7 +963,7 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 	if seconds < 0 || seconds > MaxIdleTTLSeconds {
 		return AppView{}, fmt.Errorf("%w: idleTTLSeconds must be 0-%d", core.ErrBadRequest, MaxIdleTTLSeconds)
 	}
-	return s.writeThroughStore(ctx, name,
+	return s.writeThroughStore(ctx, core.RelCanOperate, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppIdleTTL(ctx, id, seconds) },
 		func(a *appv1alpha1.App) { a.Spec.IdleTTLSeconds = seconds })
 }
@@ -953,7 +979,7 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -988,7 +1014,7 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 			return AppView{}, fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
 		}
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1020,7 +1046,7 @@ func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) 
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, name, func(a *appv1alpha1.App) {
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.AutoDeploy = enabled
 	})
 }
@@ -1028,7 +1054,7 @@ func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) 
 // setSuspended flips suspension with the row as the single writer of intent.
 // Restart needs no row write: spec.restartedAt is not projection-owned.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (AppView, error) {
-	return s.writeThroughStore(ctx, name,
+	return s.writeThroughStore(ctx, core.RelCanOperate, name,
 		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
 		func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
 }
@@ -1040,14 +1066,17 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // the change converge immediately; if the row write fails, the CR is left
 // untouched (the row is already wrong, so retrying is safe). Unmanaged
 // (bare-CR) Apps skip the row entirely and go straight to the CR patch. One
-// GetApp serves both: it is the shared fetch (gated by the caller's tenant,
-// see core.Base.GetApp) and the row write's source for the store's app-id.
+// GetApp serves both: it is the shared fetch (gated on `relation` in the App's
+// own workspace, see core.Base.GetApp) and the row write's source for the
+// store's app-id. relation is the one the calling verb authorized — passed
+// through rather than assumed, so the fetch's gate can never be weaker than the
+// verb's own.
 func (s *Service) writeThroughStore(
-	ctx context.Context, name string,
+	ctx context.Context, relation, name string,
 	writeRow func(ctx context.Context, id string) error,
 	mutate func(*appv1alpha1.App),
 ) (AppView, error) {
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, relation, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1061,11 +1090,12 @@ func (s *Service) writeThroughStore(
 	return s.patchFetched(ctx, a, mutate)
 }
 
-// patch fetches the App by name (gated by the caller's tenant, see
-// core.Base.GetApp) then applies mutate. Restart/redeploy's single-fetch shape;
-// writeThroughStore instead reuses the App it already fetched via patchFetched.
-func (s *Service) patch(ctx context.Context, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
-	a, err := s.GetApp(ctx, name)
+// patch fetches the App by name (gated on `relation` in the App's own
+// workspace, see core.Base.GetApp) then applies mutate. Restart/redeploy's
+// single-fetch shape; writeThroughStore instead reuses the App it already
+// fetched via patchFetched. relation is the one the calling verb authorized.
+func (s *Service) patch(ctx context.Context, relation, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
+	a, err := s.GetApp(ctx, relation, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1163,7 +1193,7 @@ func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteVie
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,7 +1214,7 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 	if err := validateRoutes(routes); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1202,7 +1232,7 @@ func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderV
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1221,7 +1251,7 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 	if err := validateHeaders(headers); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1244,7 +1274,7 @@ func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) 
 	if strings.TrimSpace(publishPath) == "" {
 		return AppView{}, fmt.Errorf("%w: publishPath must not be empty", core.ErrBadRequest)
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1299,7 +1329,7 @@ func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingV
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return AutoscalingView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}
@@ -1332,7 +1362,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
 		return AutoscalingView{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}
@@ -1358,7 +1388,7 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return err
 	}

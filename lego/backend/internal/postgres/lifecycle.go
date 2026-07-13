@@ -53,7 +53,7 @@ func (s *Service) Resume(ctx context.Context, name string) (PostgresView, error)
 // wake). A no-op write is skipped so an idempotent suspend/resume doesn't bump
 // the generation needlessly.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -72,7 +72,7 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabase(ctx, name, func(d *appv1alpha1.Database) {
+	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		d.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }
@@ -86,7 +86,7 @@ func (s *Service) Failover(ctx context.Context, name string) error {
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return err
 	}
-	_, err := s.patchDatabase(ctx, name, func(d *appv1alpha1.Database) {
+	_, err := s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		d.Spec.FailoverAt = s.Now().UTC().Format(time.RFC3339)
 	})
 	return err

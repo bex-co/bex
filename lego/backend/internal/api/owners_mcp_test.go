@@ -23,6 +23,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -148,4 +150,66 @@ func appWithOwnerLabel(name, ownerID string) *appv1alpha1.App {
 	a := sampleApp(name)
 	a.Labels = map[string]string{core.LabelTenant: ownerID}
 	return a
+}
+
+// TestMCP_CreateLandsInTheSelectedWorkspace is w6/m14's MCP leg: an agent that
+// has called select_workspace(B) must have its CREATES land in B too — not just
+// its lists scoped to it. Before m14 the create tools ignored the session
+// selection entirely and the new service landed in whichever workspace the
+// membership join happened to resolve, which for an agent working in B is the
+// one place it must not go.
+func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
+	st := newFakeWSStore()
+	first := mustCreate(t, st, "first", "hobby", "client-1")
+	second := mustCreate(t, st, "second", "hobby", "client-1")
+
+	cl := fakeClient()
+	base := &core.Base{Client: cl, Namespace: "default", Workspace: &apiFakeResolver{store: st}}
+	srv := NewServer(base, Deps{WorkspaceStore: st})
+	cs := mcpSessionAs(t, srv, "client-1")
+
+	// With no selection, a create lands in the caller's DEFAULT workspace (the
+	// oldest membership — `first`).
+	callTool[struct{ ID string }](t, cs, "create_web_service",
+		map[string]any{"name": "before", "image": "nginx"})
+	if got := appTenant(t, cl, "before"); got != first.ID {
+		t.Errorf("unselected create landed in %q, want the default workspace %q", got, first.ID)
+	}
+
+	// select_workspace(second), then create: it must land in `second`.
+	callTool[struct {
+		Selected struct{ ID string }
+	}](t, cs, "select_workspace", map[string]any{"ownerID": second.ID})
+
+	callTool[struct{ ID string }](t, cs, "create_web_service",
+		map[string]any{"name": "after", "image": "nginx"})
+	if got := appTenant(t, cl, "after"); got != second.ID {
+		t.Errorf("create after select_workspace landed in %q, want the SELECTED workspace %q", got, second.ID)
+	}
+
+	// An explicit ownerId still wins over the session selection (the same
+	// precedence list_services uses).
+	callTool[struct{ ID string }](t, cs, "create_web_service",
+		map[string]any{"name": "explicit", "image": "nginx", "ownerId": first.ID})
+	if got := appTenant(t, cl, "explicit"); got != first.ID {
+		t.Errorf("explicit ownerId landed in %q, want %q — an argument must beat the session selection", got, first.ID)
+	}
+
+	// A workspace client-1 is not a member of: tool error, nothing created.
+	callToolError(t, cs, "create_web_service",
+		map[string]any{"name": "stranger", "image": "nginx", "ownerId": "tea-not-mine"})
+	var a appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "stranger"}, &a); err == nil {
+		t.Errorf("a create into a non-member workspace wrote an App (%q) — it must be refused", a.Labels[core.LabelTenant])
+	}
+}
+
+// appTenant reads back the tenant label the create stamped on the App CR.
+func appTenant(t *testing.T, cl client.Client, name string) string {
+	t.Helper()
+	var a appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a); err != nil {
+		t.Fatalf("reading back App %s: %v", name, err)
+	}
+	return a.Labels[core.LabelTenant]
 }

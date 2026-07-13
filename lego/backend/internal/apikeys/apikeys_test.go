@@ -85,6 +85,14 @@ func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool
 	return tid, ok
 }
 
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case every pre-w6/m14 test is written
+// against. Multi-membership callers use a richer fake (see the m14 tests).
+func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
+}
+
 // fakeBinder is the in-memory apikeys.KeyBinder for the Binding seam's tests —
 // records bind/unbind calls and can be told to fail the next N binds, the way
 // tests simulate an OpenFGA write failure during key mint (t002/t006: no

@@ -162,8 +162,8 @@ ORDER BY name`
 
 // runInsight dials the database and executes sql inside the standard read-only
 // envelope (same safety rails as Query). The caller maps rows to its typed view.
-func (s *Service) runInsight(ctx context.Context, dbID, sql string) (QueryResult, error) {
-	_, sec, err := s.loadAppSecret(ctx, dbID)
+func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (QueryResult, error) {
+	_, sec, err := s.loadAppSecret(ctx, relation, dbID)
 	if err != nil {
 		return QueryResult{}, err
 	}
@@ -231,7 +231,7 @@ func (s *Service) Processes(ctx context.Context, dbID string) ([]ProcessView, er
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return nil, err
 	}
-	res, err := s.runInsight(ctx, dbID, sqlProcesses)
+	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlProcesses)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return nil, err
 	}
-	res, err := s.runInsight(ctx, dbID, sqlTopQueries)
+	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlTopQueries)
 	if err != nil {
 		// pg_stat_statements not installed → fall through to empty list.
 		return []TopQueryView{}, nil
@@ -292,7 +292,7 @@ func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return SizesView{}, err
 	}
-	dbRes, err := s.runInsight(ctx, dbID, sqlDatabaseSize)
+	dbRes, err := s.runInsight(ctx, core.RelCanView, dbID, sqlDatabaseSize)
 	if err != nil {
 		return SizesView{}, err
 	}
@@ -305,7 +305,7 @@ func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
 			SizePretty: strVal(r[2]),
 		}
 	}
-	tblRes, err := s.runInsight(ctx, dbID, sqlTableSizes)
+	tblRes, err := s.runInsight(ctx, core.RelCanView, dbID, sqlTableSizes)
 	if err != nil {
 		return SizesView{}, err
 	}
@@ -329,7 +329,7 @@ func (s *Service) TableScans(ctx context.Context, dbID string) ([]TableScanView,
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	res, err := s.runInsight(ctx, dbID, sqlTableScans)
+	res, err := s.runInsight(ctx, core.RelCanView, dbID, sqlTableScans)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +357,7 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	res, err := s.runInsight(ctx, dbID, sqlParameterOverrides)
+	res, err := s.runInsight(ctx, core.RelCanView, dbID, sqlParameterOverrides)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params
 	}
 	// Guard the required extension.
 	delete(params, "shared_preload_libraries")
-	return s.patchDatabase(ctx, dbID, func(d *appv1alpha1.Database) {
+	return s.patchDatabase(ctx, core.RelCanOperate, dbID, func(d *appv1alpha1.Database) {
 		if len(params) == 0 {
 			d.Spec.Parameters = nil
 		} else {
@@ -405,7 +405,7 @@ func (s *Service) GetParameterSpec(ctx context.Context, dbID string) (map[string
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	d, err := s.fetchDatabase(ctx, dbID)
+	d, err := s.fetchDatabase(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err
 	}
@@ -418,4 +418,3 @@ func (s *Service) GetParameterSpec(ctx context.Context, dbID string) (map[string
 	}
 	return out, nil
 }
-

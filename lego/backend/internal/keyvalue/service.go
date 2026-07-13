@@ -97,6 +97,11 @@ type KeyValueConnectionInfo struct {
 
 // CreateKeyValueRequest is the POST /v1/key-value body (bex subset of Render's).
 type CreateKeyValueRequest struct {
+	// OwnerID is the workspace to create IN — Render's `ownerId` (w6/m14). Empty
+	// means the caller's default workspace; a workspace the caller is not a
+	// member of is core.ErrForbidden, never a create in the wrong one. Bound to
+	// the context by the verb, before its authorization check.
+	OwnerID   string `json:"ownerId,omitempty"`
 	Name      string `json:"name"`
 	Plan      string `json:"plan,omitempty"`
 	Version   string `json:"version,omitempty"`
@@ -138,13 +143,20 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 }
 
-func (s *Service) fetchKeyValue(ctx context.Context, name string) (*appv1alpha1.KeyValue, error) {
+func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
 	var kv appv1alpha1.KeyValue
 	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, &kv)
 	if apierrors.IsNotFound(err) {
 		return nil, core.ErrNotFound
 	}
 	if err != nil {
+		return nil, err
+	}
+	// The workspace gate every fetch-by-name needs (core.Base.AuthorizeLabeled — the
+	// same rule apps' shared GetApp applies). Without it this was a bare Get: any
+	// authenticated caller who knew a KeyValue's name read it, connection string
+	// included, from any workspace.
+	if err := s.AuthorizeLabeled(ctx, relation, kv.Labels); err != nil {
 		return nil, err
 	}
 	return &kv, nil
@@ -154,8 +166,8 @@ func (s *Service) fetchKeyValue(ctx context.Context, name string) (*appv1alpha1.
 // (username/password/host/port/uri, and externalUri when public) — the path the
 // connection-info verb reads. Returns core.ErrNotFound when the KeyValue or its
 // Secret isn't provisioned yet.
-func (s *Service) loadSecret(ctx context.Context, name string) (*appv1alpha1.KeyValue, *corev1.Secret, error) {
-	kv, err := s.fetchKeyValue(ctx, name)
+func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, *corev1.Secret, error) {
+	kv, err := s.fetchKeyValue(ctx, relation, name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -207,7 +219,7 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return KeyValueView{}, err
 	}
-	kv, err := s.fetchKeyValue(ctx, name)
+	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -217,6 +229,7 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
 // projects to a single-instance Valkey StatefulSet + Service + Secret).
 func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest) (KeyValueView, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return KeyValueView{}, err
 	}
@@ -275,7 +288,7 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
-	kv, err := s.fetchKeyValue(ctx, name)
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
@@ -303,7 +316,7 @@ func (s *Service) Resume(ctx context.Context, name string) (KeyValueView, error)
 // from zero). The spec is the single writer of intent — the same discipline the
 // App lifecycle verbs follow.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, name)
+	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -322,7 +335,7 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, er
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	kv, err := s.fetchKeyValue(ctx, name)
+	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +353,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	if err := core.ValidateCIDRs(cidrs); err != nil {
 		return KeyValueView{}, err
 	}
-	kv, err := s.fetchKeyValue(ctx, name)
+	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -362,7 +375,7 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
-	_, sec, err := s.loadSecret(ctx, name)
+	_, sec, err := s.loadSecret(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return KeyValueConnectionInfo{}, err
 	}

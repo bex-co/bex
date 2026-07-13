@@ -21,6 +21,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -98,6 +100,7 @@ type autoDeployArgs struct {
 // repo/image is required. Render's runtime/buildCommand/startCommand/region are
 // omitted — bex builds via Dockerfile/CNB auto-detection, one region.
 type createWebServiceArgs struct {
+	OwnerID    string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Name       string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
 	Type       string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
@@ -119,6 +122,7 @@ type envVarArg struct {
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
+		OwnerID:    a.OwnerID,
 		Name:       a.Name,
 		Type:       a.Type,
 		Repo:       a.Repo,
@@ -137,6 +141,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
+	OwnerID    string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Name       string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule   string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
 	Command    string      `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
@@ -151,6 +156,7 @@ type createCronJobArgs struct {
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
+		OwnerID:    a.OwnerID,
 		Name:       a.Name,
 		Type:       appv1alpha1.TypeCronJob,
 		Schedule:   a.Schedule,
@@ -178,6 +184,7 @@ func toEnvVars(in []envVarArg) []appv1alpha1.EnvVar {
 // deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
 // is create_web_service with a manifest — one agent call takes code to a URL.
 type deployArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace to deploy into (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
 	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml (render.yaml-shaped manifest) describing the service"`
@@ -219,6 +226,7 @@ type staticHeaderArg struct {
 // object-store origin (no running container). publishPath is required; routes and
 // headers are the optional edge rules.
 type createStaticSiteArgs struct {
+	OwnerID     string            `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Name        string            `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
 	Repo        string            `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
 	Image       string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
@@ -233,6 +241,7 @@ type createStaticSiteArgs struct {
 
 func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
+		OwnerID:     a.OwnerID,
 		Name:        a.Name,
 		Type:        appv1alpha1.TypeStaticSite,
 		Repo:        a.Repo,
@@ -311,7 +320,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_services",
 		Description: "List all services (bex Apps) in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
-		apps, err := s.List(ctx, s.resolveOwnerID(req, in.OwnerID))
+		apps, err := s.List(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		if err != nil {
 			return nil, listServicesResult{}, err
 		}
@@ -326,7 +335,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
 		Description: "Create (or update) a web service from a repo or a prebuilt image and get back the service to poll until its url is live. Calling it again for the same name redeploys it. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -337,7 +347,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_cron_job",
 		Description: "Create (or update) a cron job that runs a repo/image's command on a schedule, and get back the service. Calling it again for the same name redeploys it. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -348,7 +359,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_static_site",
 		Description: "Create (or update) a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. Calling it again for the same name republishes it. Tracks Render's MCP tool.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
+		in.OwnerID = core.SelectedWorkspace(s.Selections, req, in.OwnerID)
 		app, err := s.Create(ctx, in.toCreateRequest())
 		if err != nil {
 			return nil, renderService{}, err
@@ -375,8 +387,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
 		Description: "Deploy a project from a git repo and its bex.yml in one call — takes code to a live https URL. Calling it again for the same service redeploys it. bex extension (pillar 4, deploy-from-chat).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.Deploy(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML})
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Deploy(ctx, DeployRequest{
+			OwnerID:  core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			Repo:     in.Repo,
+			Branch:   in.Branch,
+			Manifest: in.BexYAML,
+		})
 		if err != nil {
 			return nil, renderService{}, err
 		}
@@ -611,20 +628,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, toRenderService(app), nil
 	})
-}
-
-// resolveOwnerID is list_services' ownerId-scoping precedence: an explicit
-// argument wins; otherwise fall back to the calling MCP session's selected
-// workspace (select_workspace, w6/m2/t005); with neither, "" (unscoped).
-func (s *Service) resolveOwnerID(req *mcp.CallToolRequest, arg string) string {
-	if arg != "" {
-		return arg
-	}
-	if s.Selections == nil || req == nil || req.Session == nil {
-		return ""
-	}
-	id, _ := s.Selections.Get(req.Session.ID())
-	return id
 }
 
 // serviceTool adapts a single-service verb (Get/Restart/Suspend/Resume) into an

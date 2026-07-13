@@ -17,6 +17,19 @@ flowchart LR
 
 Each verb has exactly one implementation, in its feature package's `Service` (`lego/backend/internal/{apps,logs,metrics,apikeys,postgres,keyvalue,secrets}/service.go`, all embedding the shared kernel `internal/core/base.go`). Each feature ships its own thin adapter fragments — `rest.go`, `graphql.go`, `mcp.go` beside the service — that are pure presentation calling identical `Service` methods, composed by `internal/api/server.go`. So the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 
+## Which workspace a request acts in (w6/m14)
+
+A caller belongs to **many** workspaces (w6/m1 create, w4/m12 invites), so every request has to answer "which one am I acting in?" before it can be authorized or its writes stamped. There is exactly one answer, resolved in one place — `core.Base.resolveWorkspace` — and all three surfaces feed it the same way:
+
+- **Named**: the caller says which workspace. REST reads `ownerId` (Render's field: the create body; the list query param), GraphQL an `ownerId` argument, MCP an explicit `ownerId` tool argument or, failing that, the session's `select_workspace` selection (`core.SelectedWorkspace` — the one precedence helper all three features share: explicit > session > default). The adapters do not interpret it; they set it on the request (`core.WithWorkspace`) and the verb resolves it.
+- **Not named**: the caller's **default** workspace — the **oldest** membership (`store.TenantForIdentity`, `ORDER BY m.created_at, t.id`). Deterministic by construction: a bare join returned an arbitrary row, which is how a multi-workspace caller's "current workspace" could change between two identical calls (w6/m11, live).
+
+A named workspace is honored **only after** `WorkspaceResolver.IsMember` confirms the caller belongs to it. A non-member naming a workspace gets `ErrForbidden` (403) on every surface — never a silent fall-back to their own, which is the confused-deputy shape where a caller asks for B, is served A, and their create lands in the wrong workspace. An unreachable membership store fails closed the same way (`ErrAuthzUnavailable`), for the same reason.
+
+**Render deviation (deliberate):** Render _requires_ `ownerId` on create; bex keeps it **optional**, defaulting to the caller's default workspace, so single-workspace clients need not say it. Everything else — field name, 403 semantics — matches ([ADR018-render-parity.md](ADR018-render-parity.md) row "Create service").
+
+**Reaching a resource in another of your workspaces.** A service is addressed by name, and the name already implies its workspace (the `bex.co/tenant` label), so `core.Base.GetApp` authorizes the calling verb's **relation against the App's own workspace** — Render's model, where permissions come from the resource's owner. That is what lets an owner read a service in their second workspace without a 403 (the m11 bug: the gate compared the App to whichever single workspace the join had picked). It is _not_ mere membership: roles are per-workspace, so an admin of A who is only a **viewer** of B still cannot delete B's service by naming it — `can_create` does not hold for them in B. Membership alone would have been a cross-workspace privilege escalation; `TestMultiWorkspaceTargetingE2E` pins both halves against a live Postgres + OpenFGA.
+
 ## Auth
 
 Every route except `GET /healthz` requires real, per-client credentials from the auth substrate ([ADR012-auth.md](ADR012-auth.md)) — **there is no shared static token**:

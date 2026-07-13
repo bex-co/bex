@@ -332,7 +332,7 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	if _, err := s.GetApp(ctx, name); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewLogs, name); err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	if tail <= 0 {
@@ -360,7 +360,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	if _, err := s.GetApp(ctx, q.App); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewLogs, q.App); err != nil {
 		return nil, err
 	}
 	q = q.normalized()
@@ -413,7 +413,7 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		// as "this service has no such values".
 		return nil, fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
 	}
-	app, err := s.GetApp(ctx, q.App)
+	app, err := s.GetApp(ctx, core.RelCanViewLogs, q.App)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if s.PodLogsFollow == nil {
 		return core.ErrLogsUnavailable
 	}
-	if _, err := s.GetApp(ctx, q.App); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewLogs, q.App); err != nil {
 		return err
 	}
 	q = q.normalized()

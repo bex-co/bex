@@ -8,8 +8,12 @@
 # returns the same shape as the list (unlike Database, whose detail query adds
 # databaseName/databaseUser/highAvailabilityEnabled).
 
-query KeyValues {
-  keyValues {
+# ownerId scopes the list to one workspace (w6/m4/t002's REST/GraphQL filter) —
+# the dashboard's workspace switcher (w6/m3) passes the selected workspace's id;
+# omitted, bex-api falls back to the caller's default workspace. Mirrors the
+# `services`/`databases` list queries.
+query KeyValues($ownerId: String) {
+  keyValues(ownerId: $ownerId) {
     id
     name
     plan
@@ -69,8 +73,12 @@ query KeyValueIpAllowList($id: String!) {
   keyValueIpAllowList(id: $id)
 }
 
+# `ownerId` (w6/m14) names the workspace to create the store in — the switcher's
+# selection, mirroring the `keyValues` list query. Omitted => the caller's default
+# (oldest) workspace; a workspace the caller isn't a member of => forbidden.
 mutation CreateKeyValue(
   $name: String!
+  $ownerId: String
   $plan: String
   $version: String
   $storageGB: Int
@@ -78,6 +86,7 @@ mutation CreateKeyValue(
 ) {
   createKeyValue(
     name: $name
+    ownerId: $ownerId
     plan: $plan
     version: $version
     storageGB: $storageGB

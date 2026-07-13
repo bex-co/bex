@@ -44,6 +44,9 @@ import (
 type TenantStore interface {
 	TenantForIdentity(ctx context.Context, subject string) (store.Tenant, error)
 	TenantForOwner(ctx context.Context, identityID string) (store.Tenant, error)
+	// IsMember backs the resolver's membership gate: may this caller act in a
+	// workspace it NAMED (w6/m14), or one an App it named belongs to?
+	IsMember(ctx context.Context, subject, tenantID string) (bool, error)
 	CreateTenantWithMember(ctx context.Context, identityID, plan string) (store.Tenant, error)
 	BindClient(ctx context.Context, clientID, tenantID string) error
 	UnbindClient(ctx context.Context, clientID string) error
@@ -71,6 +74,13 @@ type tenantService struct {
 	store   TenantStore
 	granter store.MembershipGranter // nil => skip FGA tuple writes
 	cache   *core.TTLCache[string]
+	// members caches "subject X belongs to workspace Y" separately from cache's
+	// "subject X's default workspace is Z" (w6/m14). Two maps, not one: a
+	// TTLCache resets WHOLESALE at core.CacheMax, and membership multiplies the
+	// key space by the number of workspaces each caller touches — sharing one
+	// map would let membership churn evict every caller's default-workspace
+	// resolution, sending them all back to Postgres.
+	members *core.TTLCache[string]
 }
 
 // NewTenantService wires the store-backed resolver + onboarding mint. granter
@@ -80,7 +90,7 @@ func NewTenantService(s TenantStore, granter store.MembershipGranter) *tenantSer
 	if s == nil {
 		return nil
 	}
-	return &tenantService{store: s, granter: granter, cache: core.NewTTLCache[string]()}
+	return &tenantService{store: s, granter: granter, cache: core.NewTTLCache[string](), members: core.NewTTLCache[string]()}
 }
 
 // cacheKey namespaces the resolver cache by auth method so a Kratos identity id
@@ -221,6 +231,35 @@ func (t *tenantService) Tenant(ctx context.Context, id core.Identity) (string, b
 	}
 	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
 	return tenant.ID, true
+}
+
+// IsMember reports whether the caller belongs to a NAMED workspace — the gate
+// core.Base runs before honoring an explicit workspace (REST/GraphQL ownerId, an
+// MCP session's select_workspace) or reaching an App that lives in another of
+// the caller's workspaces (w6/m14). It answers from tenant_members, the source
+// of truth, NOT from the resolver cache: the cache holds the caller's ONE
+// default workspace, which says nothing about the others they belong to.
+//
+// Positives are cached (a membership is stable, and a request can consult this
+// several times — Authorize, then GetApp); negatives never are, so a fresh
+// invite or binding takes effect immediately, matching Tenant's own contract. A
+// store error is surfaced, not swallowed as "not a member": core.Base fails the
+// request closed (ErrAuthzUnavailable) rather than mistaking an outage for a
+// refusal — and, critically, rather than silently falling back to the caller's
+// own workspace, which would land a write in the wrong one.
+func (t *tenantService) IsMember(ctx context.Context, id core.Identity, tenantID string) (bool, error) {
+	key := cacheKey(id.Method, id.Subject) + ":" + tenantID
+	if _, ok := t.members.Get(key); ok {
+		return true, nil
+	}
+	member, err := t.store.IsMember(ctx, id.Subject, tenantID)
+	if err != nil {
+		return false, err
+	}
+	if member {
+		t.members.Put(key, tenantID, time.Now().Add(core.PositiveTTL))
+	}
+	return member, nil
 }
 
 // InvalidateTenant evicts subject's cached tenant resolution under both

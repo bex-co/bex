@@ -321,7 +321,7 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if s.Store == nil {
 		return nil, core.ErrEventsUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanView, service)
 	if err != nil {
 		return nil, err
 	}

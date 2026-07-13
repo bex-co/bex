@@ -107,15 +107,35 @@ func (m *memStore) CountAppsForTenant(_ context.Context, tenantID string) (int, 
 	return n, nil
 }
 
+// TenantForIdentity mirrors PGStore's default-workspace contract (w6/m14): the
+// OLDEST membership, deterministically. The fake has no membership timestamp,
+// but tenant ids are xid-based and therefore lexicographically ordered by
+// creation, so the smallest id is the oldest tenant the subject belongs to —
+// enough to make the fake's answer stable instead of map-iteration-random.
 func (m *memStore) TenantForIdentity(_ context.Context, subject string) (Tenant, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	oldest := ""
 	for k := range m.members {
-		if k.subject == subject {
-			return m.tenants[k.tenant], nil
+		if k.subject == subject && (oldest == "" || k.tenant < oldest) {
+			oldest = k.tenant
 		}
 	}
-	return Tenant{}, fmt.Errorf("tenant: %w", ErrNotFound)
+	if oldest == "" {
+		return Tenant{}, fmt.Errorf("tenant: %w", ErrNotFound)
+	}
+	return m.tenants[oldest], nil
+}
+
+func (m *memStore) IsMember(_ context.Context, subject, tenantID string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for k := range m.members {
+		if k.subject == subject && k.tenant == tenantID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *memStore) CreateTenantWithMember(_ context.Context, identityID, plan string) (Tenant, error) {

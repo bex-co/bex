@@ -51,7 +51,7 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, er
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	if err := core.ValidateCIDRs(cidrs); err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabase(ctx, name, func(d *appv1alpha1.Database) {
+	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		if len(cidrs) == 0 {
 			d.Spec.IPAllowList = nil
 		} else {
@@ -100,7 +100,7 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if !pgRoleName.MatchString(role) {
 		return CreateUserResult{}, fmt.Errorf("%w: role must match %s", core.ErrBadRequest, pgRoleName.String())
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return CreateUserResult{}, err
 	}
@@ -163,7 +163,7 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}

@@ -39,6 +39,14 @@ func (f fakeWorkspace) Tenant(_ context.Context, id Identity) (string, bool) {
 	return tid, ok
 }
 
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case every pre-w6/m14 test is written
+// against. Multi-membership callers use a richer fake (see the m14 tests).
+func (f fakeWorkspace) IsMember(_ context.Context, id Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
+}
+
 // fakeAllowChecker allows everything but records the object each Check saw —
 // what the tests assert the workspace resolution produced.
 type fakeAllowChecker struct{ lastObject string }
@@ -111,7 +119,7 @@ func TestGetAppCrossTenantIsForbidden(t *testing.T) {
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.GetApp(ctx, "web"); !errors.Is(err, ErrForbidden) {
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
 		t.Errorf("cross-tenant GetApp: got %v, want ErrForbidden", err)
 	}
 }
@@ -121,7 +129,7 @@ func TestGetAppSameTenantSucceeds(t *testing.T) {
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.GetApp(ctx, "web"); err != nil {
+	if _, err := b.GetApp(ctx, RelCanView, "web"); err != nil {
 		t.Errorf("same-tenant GetApp: %v", err)
 	}
 }
@@ -132,7 +140,7 @@ func TestGetAppNoIdentitySkipsTenantGate(t *testing.T) {
 	cl := fakeAppClient(sampleApp("web", "tea-a"))
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 
-	if _, err := b.GetApp(context.Background(), "web"); err != nil {
+	if _, err := b.GetApp(context.Background(), RelCanView, "web"); err != nil {
 		t.Errorf("no-identity GetApp: %v", err)
 	}
 }
@@ -145,7 +153,7 @@ func TestGetAppStoreOffIgnoresLabelsUnchanged(t *testing.T) {
 	b := &Base{Client: cl, Namespace: "default"}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.GetApp(ctx, "web"); err != nil {
+	if _, err := b.GetApp(ctx, RelCanView, "web"); err != nil {
 		t.Errorf("store-off GetApp: %v", err)
 	}
 }
@@ -158,7 +166,7 @@ func TestGetAppUnlabeledAppIsForbiddenToEveryTenant(t *testing.T) {
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.GetApp(ctx, "web"); !errors.Is(err, ErrForbidden) {
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
 		t.Errorf("unlabeled App GetApp: got %v, want ErrForbidden", err)
 	}
 }

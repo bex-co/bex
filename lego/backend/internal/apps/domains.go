@@ -157,7 +157,7 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	app, err := s.GetApp(ctx, appName)
+	app, err := s.GetApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return DomainView{}, err
 	}
-	app, err := s.GetApp(ctx, appName)
+	app, err := s.GetApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return DomainView{}, err
 	}
@@ -270,7 +270,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 	if hostname == "" {
 		return DomainView{}, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
 	}
-	app, err := s.GetApp(ctx, appName)
+	app, err := s.GetApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, err
 	}
@@ -312,7 +312,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(appName)); err != nil {
 		return err
 	}
-	app, err := s.GetApp(ctx, appName)
+	app, err := s.GetApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return err
 	}

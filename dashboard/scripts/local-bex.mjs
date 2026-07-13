@@ -375,6 +375,89 @@ const KEY_VALUES = [
   }),
 ];
 
+// Workspace audit trail (w4/m10 surface, w6/m14 workspace scoping) — the shape
+// of internal/audit/graphql.go's AuditLog type. Every event is tagged with the
+// workspace that owns it, and the two workspaces' events are deliberately
+// UNMISTAKABLE from each other ("alpha-*" resources in acme-hq, "bravo-*" in
+// acme-staging): the whole point of the Settings → Security & Compliance audit
+// table is that it follows the switcher, so a stub that seeded look-alike rows
+// would make the one bug it must catch (the table pinned to workspaces[0])
+// invisible. Newest-first, like the real keyset-paged store.
+function auditEvent(ownerId, n, over = {}) {
+  return {
+    __typename: "AuditLog",
+    id: `aud-${ownerId.slice(4, 12)}-${String(n).padStart(4, "0")}`,
+    timestamp: new Date(
+      Date.UTC(2026, 6, 10, 12, 0, 0) - n * 3600_000,
+    ).toISOString(),
+    actor: "dev@localhost",
+    actorMethod: "session",
+    action: "update",
+    status: "success",
+    resource: "",
+    ownerId,
+    ...over,
+  };
+}
+
+const AUDIT_EVENTS = [
+  // acme-hq (WORKSPACE_DEFAULT) — every resource says "alpha".
+  auditEvent(WORKSPACE_DEFAULT, 1, {
+    action: "deploy",
+    resource: "alpha-web/srv-alpha0001",
+  }),
+  auditEvent(WORKSPACE_DEFAULT, 2, {
+    action: "update_env",
+    resource: "alpha-web/srv-alpha0001",
+  }),
+  auditEvent(WORKSPACE_DEFAULT, 3, {
+    action: "delete",
+    resource: "alpha-cache/kv-alpha0002",
+    status: "denied",
+    actor: "viewer@alpha.example",
+  }),
+  auditEvent(WORKSPACE_DEFAULT, 4, {
+    action: "create",
+    resource: "alpha-db/dbs-alpha0003",
+    actorMethod: "api_key",
+    actor: "key-alpha-ci",
+  }),
+  auditEvent(WORKSPACE_DEFAULT, 5, {
+    action: "suspend",
+    resource: "alpha-worker/srv-alpha0004",
+  }),
+  // acme-staging (WORKSPACE_SECOND) — every resource says "bravo".
+  auditEvent(WORKSPACE_SECOND, 1, {
+    action: "restart",
+    resource: "bravo-api/srv-bravo0001",
+  }),
+  auditEvent(WORKSPACE_SECOND, 2, {
+    action: "rotate_key",
+    resource: "bravo-api/srv-bravo0001",
+    actorMethod: "api_key",
+    actor: "key-bravo-bot",
+  }),
+  auditEvent(WORKSPACE_SECOND, 3, {
+    action: "scale",
+    resource: "bravo-batch/srv-bravo0002",
+    status: "denied",
+    actor: "intern@bravo.example",
+  }),
+];
+
+// Newest-first, workspace-scoped, keyset-paged past `cursor` (the last returned
+// event's id), honoring `limit` — the contract internal/store/audit.go exposes.
+function auditLogsFor({ ownerId, cursor, limit }) {
+  let rows = byOwner(AUDIT_EVENTS, ownerId).sort((a, b) =>
+    b.timestamp.localeCompare(a.timestamp),
+  );
+  if (cursor) {
+    const i = rows.findIndex((e) => e.id === cursor);
+    rows = i >= 0 ? rows.slice(i + 1) : rows;
+  }
+  return rows.slice(0, limit ?? 20);
+}
+
 // A pool of realistic-looking app log messages the generator draws from.
 const MESSAGES = [
   'level=info msg="GET /api/health 200" duration=1.2ms',
@@ -702,6 +785,20 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "WorkspaceMembers":
       return { workspaceMembers: byOwner(WORKSPACE_MEMBERS, variables.workspaceId) };
 
+    // Settings → Security & Compliance → Audit Log (w4/m14 UI over w4/m10's
+    // surface). Admin-scoped in the real API (RelCanManage; a non-admin gets
+    // `forbidden` and the whole section hides) — the stub has no auth, so it
+    // always answers as an admin, which is what makes the card visible offline.
+    // Scoped by ownerId, so switching workspaces MUST swap alpha rows for bravo.
+    case "AuditLogs":
+      return {
+        auditLogs: auditLogsFor({
+          ownerId: variables.ownerId,
+          cursor: variables.cursor,
+          limit: variables.limit,
+        }),
+      };
+
     // Managed Postgres (w5/m8) — an interactive in-memory store.
     case "Databases":
       return { databases: byOwner(DATABASES, variables.ownerId) };
@@ -844,6 +941,82 @@ const server = createServer((req, res) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  // Kratos settings flow — the /settings page's Ory Elements <Settings> form.
+  // Without it, useOryFlow's AJAX createBrowserSettingsFlow 404s and the hook
+  // falls back to `bootstrapViaKratos`, a full-page navigation to this very URL
+  // — which used to land the browser on the stub's 404 JSON, taking the whole
+  // Settings page (Team, API Keys, Security & Compliance) down with it. A
+  // minimal browser-type SettingsFlow keeps the user on the page; the form
+  // itself is inert offline (no submit handler is stubbed), which is fine —
+  // the cards below it are what the offline loop is for.
+  if (
+    url.pathname === "/self-service/settings/browser" ||
+    url.pathname === "/self-service/settings/flows"
+  ) {
+    const now = Date.now();
+    return json(res, 200, {
+      id: url.searchParams.get("id") || "local-dev-settings-flow",
+      type: "browser",
+      expires_at: new Date(now + 3600_000).toISOString(),
+      issued_at: new Date(now).toISOString(),
+      request_url: `http://localhost:${PORT}${req.url}`,
+      state: "show_form",
+      identity: {
+        id: "local-dev-user",
+        schema_id: "default",
+        traits: { email: "dev@localhost" },
+      },
+      ui: {
+        action: `http://localhost:${PORT}/self-service/settings?flow=local-dev-settings-flow`,
+        method: "POST",
+        messages: [],
+        nodes: [
+          {
+            type: "input",
+            group: "default",
+            attributes: {
+              name: "csrf_token",
+              type: "hidden",
+              value: "local-dev-csrf",
+              required: true,
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: {},
+          },
+          {
+            type: "input",
+            group: "profile",
+            attributes: {
+              name: "traits.email",
+              type: "email",
+              value: "dev@localhost",
+              required: true,
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070002, text: "E-Mail", type: "info" } },
+          },
+          {
+            type: "input",
+            group: "profile",
+            attributes: {
+              name: "method",
+              type: "submit",
+              value: "profile",
+              disabled: false,
+              node_type: "input",
+            },
+            messages: [],
+            meta: { label: { id: 1070003, text: "Save", type: "info" } },
+          },
+        ],
+      },
+    });
   }
 
   // Kratos session check — return a fixed active session so the auth guard passes.

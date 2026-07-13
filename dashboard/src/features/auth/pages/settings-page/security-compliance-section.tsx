@@ -1,5 +1,4 @@
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCurrentWorkspace } from "@/features/team/hooks/use-current-workspace";
 import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
@@ -15,11 +14,14 @@ import { SettingsSection } from "@/features/auth/pages/settings-page/settings-se
  * This is the intended home for the planned session-management (w4/006) and MFA
  * (m11) cards: those are visible to all members, so once either lands the
  * section renders unconditionally and this audit-only gate becomes moot.
+ *
+ * The workspace comes from `useAuditLog` itself, which reads the switcher's
+ * selection (w6/m14 t006) — this section used to pass `useCurrentWorkspace()`'s
+ * `workspaces[0]`, which pinned the table to the account's original workspace.
  */
 export function SecurityComplianceSection() {
   const { t } = useTranslations();
-  const { workspace } = useCurrentWorkspace();
-  const audit = useAuditLog(workspace?.id ?? null);
+  const audit = useAuditLog();
 
   // Only the admin-gated Audit Log lives here today; hide the whole section
   // (heading included) when it's forbidden so a non-admin sees nothing.

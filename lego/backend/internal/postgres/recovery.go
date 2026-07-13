@@ -93,7 +93,7 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return RecoveryInfoView{}, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return RecoveryInfoView{}, err
 	}
@@ -173,7 +173,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 			return PostgresView{}, fmt.Errorf("%w: targetTime must be an RFC3339 timestamp", core.ErrBadRequest)
 		}
 	}
-	src, err := s.fetchDatabase(ctx, name)
+	src, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -217,7 +217,7 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]BackupView, e
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	if _, err := s.fetchDatabase(ctx, name); err != nil {
+	if _, err := s.fetchDatabase(ctx, core.RelCanView, name); err != nil {
 		return nil, err
 	}
 	return s.listBackups(ctx, name, true), nil
@@ -231,7 +231,7 @@ func (s *Service) CreateExport(ctx context.Context, name string) (BackupView, er
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return BackupView{}, err
 	}
-	d, err := s.fetchDatabase(ctx, name)
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return BackupView{}, err
 	}

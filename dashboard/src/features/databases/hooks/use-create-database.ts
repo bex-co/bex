@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** The create form's collected values (Render's create-form subset bex serves). */
 export interface CreateDatabaseInput {
@@ -26,19 +27,31 @@ export interface UseCreateDatabaseResult {
  * provisions the CNPG cluster, so the toast says the DB is being created rather
  * than implying it's instantly ready — the list/detail poll it to Available.
  * Empty optional fields are omitted so the operator applies its own defaults.
+ *
+ * Scoped to the switcher's selected workspace (w6/m14): `ownerId` names the
+ * workspace the database is created in, mirroring `useDatabases`'s list read.
+ * A create is refused (never sent with a null ownerId, which the backend would
+ * silently route to the caller's default workspace) until the workspace list
+ * resolves — the list hooks' `skip` in mutation form.
  */
 export function useCreateDatabase(): UseCreateDatabaseResult {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(CreateDatabaseDocument);
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
     async (input: CreateDatabaseInput) => {
+      if (currentWorkspaceId == null) {
+        toast.error(t("databases.createError", { name: input.name }));
+        return null;
+      }
       setBusy(true);
       try {
         const res = await mutate({
           variables: {
             name: input.name,
+            ownerId: currentWorkspaceId,
             plan: input.plan || undefined,
             version: input.version || undefined,
             diskSizeGB: input.diskSizeGB > 0 ? input.diskSizeGB : undefined,
@@ -55,7 +68,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { create, busy };

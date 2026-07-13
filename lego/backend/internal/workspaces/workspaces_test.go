@@ -207,6 +207,21 @@ func (r *fakeResolver) Tenant(ctx context.Context, id core.Identity) (string, bo
 	return ts[0].ID, true
 }
 
+// IsMember answers from the same membership list, so a caller with several
+// workspaces is a member of all of them — not just the first (w6/m14).
+func (r *fakeResolver) IsMember(ctx context.Context, id core.Identity, tenantID string) (bool, error) {
+	ts, err := r.store.ListTenantsForSubject(ctx, id.Subject)
+	if err != nil {
+		return false, err
+	}
+	for _, t := range ts {
+		if t.ID == tenantID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // fakeGranter records grants and can be told to fail (to exercise the
 // compensating rollback).
 type fakeGranter struct {

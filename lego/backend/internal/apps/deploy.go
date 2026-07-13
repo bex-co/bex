@@ -37,6 +37,12 @@ import (
 // an agent that already knows the checkout it is deploying need not duplicate it
 // in the file.
 type DeployRequest struct {
+	// OwnerID is the workspace to deploy INTO — the same optional, membership-checked
+	// `ownerId` contract Create has (w6/m14). Empty means the caller's default
+	// workspace. Deploy creates a service, so an agent that selected a workspace
+	// (MCP select_workspace) must land its deploy there, not in whichever workspace
+	// the caller happens to resolve to.
+	OwnerID  string
 	Repo     string
 	Branch   string
 	Manifest string
@@ -76,6 +82,7 @@ type bexEnvVar struct {
 // live URL through the Render-shaped create surface. Repeating it for the same
 // service redeploys (Create's update-in-place), not a duplicate.
 func (s *Service) Deploy(ctx context.Context, req DeployRequest) (AppView, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}

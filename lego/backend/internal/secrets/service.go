@@ -72,7 +72,7 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	if _, err := s.GetApp(ctx, service); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
 		return nil, err // ErrNotFound for unknown services, exactly like Get
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
@@ -91,7 +91,7 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
-	if _, err := s.GetApp(ctx, service); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
 		return EnvVarView{}, err
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
@@ -116,7 +116,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	a, err := s.GetApp(ctx, service) // one App read: existence check + patch base
+	a, err := s.GetApp(ctx, core.RelCanCreate, service) // one App read: existence check + patch base
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (En
 	if !core.ValidEnvKey(key) {
 		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -179,7 +179,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}

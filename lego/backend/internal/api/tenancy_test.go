@@ -60,6 +60,12 @@ func (f *fakeTenantStore) TenantForIdentity(_ context.Context, subject string) (
 	return f.tenants[tid], nil
 }
 
+func (f *fakeTenantStore) IsMember(_ context.Context, subject, tenantID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.members[subject] == tenantID, nil
+}
+
 func (f *fakeTenantStore) TenantForOwner(_ context.Context, identityID string) (store.Tenant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

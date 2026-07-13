@@ -75,6 +75,10 @@ func (s staticTenant) Tenant(_ context.Context, _ core.Identity) (string, bool) 
 	return s.id, true
 }
 
+func (s staticTenant) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
+	return tenantID == s.id, nil
+}
+
 // svcWithTenant builds a Service with a workspace resolver so MonthToDate can
 // resolve the caller's tenant without a real control-plane store.
 func svcWithTenant(st *memUsageStore, tenant string) *Service {

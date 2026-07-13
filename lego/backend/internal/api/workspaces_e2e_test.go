@@ -18,6 +18,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -51,6 +52,14 @@ type fakeWorkspace map[string]string
 func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
 	tid, ok := f[id.Subject]
 	return tid, ok
+}
+
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case every pre-w6/m14 test is written
+// against. Multi-membership callers use a richer fake (see the m14 tests).
+func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
 }
 
 // TestWorkspaceLifecycleE2E proves the w6/m1 definition of done end-to-end
@@ -239,13 +248,17 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	}
 
 	// (6) REST /v1/owners stays free of mutations (Render parity: owners is
-	// read-only; m1 adds no REST at all).
+	// read-only). 404 (no such route) and 405 (the path exists, this method does
+	// not) both prove it — which one Go's mux returns depends on whether ANY
+	// method is registered for the path, and w6/m7's read API registered GET, so
+	// it became 405. The assertion is "not routed to a mutation", not a
+	// particular refusal code.
 	restMux := srv.restHandler()
 	for _, method := range []string{"POST", "PATCH", "DELETE"} {
 		rr := httptest.NewRecorder()
 		restMux.ServeHTTP(rr, httptest.NewRequest(method, "/v1/owners", nil))
-		if rr.Code != 404 {
-			t.Errorf("%s /v1/owners = %d, want 404 (no mutation route)", method, rr.Code)
+		if rr.Code != http.StatusNotFound && rr.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s /v1/owners = %d, want 404 or 405 (no mutation route)", method, rr.Code)
 		}
 	}
 

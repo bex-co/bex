@@ -58,6 +58,14 @@ func (f fakeWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool
 	return tid, ok
 }
 
+// IsMember: a map-backed caller belongs to exactly the one workspace it
+// resolves to — the single-membership case every pre-w6/m14 test is written
+// against. Multi-membership callers use a richer fake (see the m14 tests).
+func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	tid, ok := f[id.Subject]
+	return ok && tid == tenantID, nil
+}
+
 func ctxAs(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
@@ -136,5 +144,84 @@ func TestListPostgres_OwnerIDFilterIsolatesTenants(t *testing.T) {
 	}
 	if len(list) != 1 || list[0].ID != "db-a" {
 		t.Fatalf("ListPostgres(tea-a) = %+v, want exactly db-a", list)
+	}
+}
+
+// --- w6/m14: the fetch-by-name workspace gate ---
+
+// twoWorkspaces is a multi-workspace caller: subject -> workspaces, oldest first.
+type twoWorkspaces map[string][]string
+
+func (w twoWorkspaces) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	ws := w[id.Subject]
+	if len(ws) == 0 {
+		return "", false
+	}
+	return ws[0], true
+}
+
+func (w twoWorkspaces) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	for _, t := range w[id.Subject] {
+		if t == tenantID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func ownedDatabase(name, tenantID string) *appv1alpha1.Database {
+	d := sampleDatabase(name)
+	d.Labels = map[string]string{core.LabelTenant: tenantID}
+	return d
+}
+
+// TestGetPostgres_CrossTenantByNameIsForbidden closes a real hole (found by the
+// w6/m14 review): fetchDatabase was a bare client.Get, so ANY authenticated
+// caller who knew a Database's name could read it — and PostgresConnectionInfo
+// rides the same fetch, so that included another workspace's credentials. Lists
+// were scoped; get-by-name was not.
+func TestGetPostgres_CrossTenantByNameIsForbidden(t *testing.T) {
+	svc, _ := newService(ownedDatabase("acme-db", "tea-acme"))
+	svc.Workspace = fakeWorkspace{"mallory": "tea-evil"}
+	svc.Authz = &fakeChecker{allow: true} // a normal member of her OWN workspace
+
+	if _, err := svc.GetPostgres(ctxAs("mallory"), "acme-db"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("GetPostgres on another workspace's database: got %v, want ErrForbidden", err)
+	}
+	if _, err := svc.PostgresConnectionInfo(ctxAs("mallory"), "acme-db"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("PostgresConnectionInfo on another workspace's database: got %v, want ErrForbidden — this leaks credentials", err)
+	}
+	if err := svc.DeletePostgres(ctxAs("mallory"), "acme-db"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("DeletePostgres on another workspace's database: got %v, want ErrForbidden", err)
+	}
+}
+
+// The owner still reaches their own database — including one in their SECOND
+// workspace, which implicit resolution does not pick (the m11 shape, for CRs
+// other than Apps).
+func TestGetPostgres_OwnersOtherWorkspaceIsReachable(t *testing.T) {
+	svc, _ := newService(ownedDatabase("db-b", "tea-2"))
+	svc.Workspace = twoWorkspaces{"dana": {"tea-1", "tea-2"}} // default = tea-1
+	svc.Authz = &fakeChecker{allow: true}
+
+	v, err := svc.GetPostgres(ctxAs("dana"), "db-b")
+	if err != nil {
+		t.Fatalf("GetPostgres on her own database in her second workspace: %v", err)
+	}
+	if v.OwnerID != "tea-2" {
+		t.Errorf("ownerId = %q, want tea-2", v.OwnerID)
+	}
+}
+
+// ...but a role does not leak across workspaces: a caller who lacks can_create
+// in the owning workspace cannot delete its database, however privileged they
+// are in their own.
+func TestDeletePostgres_RoleDoesNotLeakAcrossWorkspaces(t *testing.T) {
+	svc, _ := newService(ownedDatabase("db-b", "tea-2"))
+	svc.Workspace = twoWorkspaces{"dana": {"tea-1", "tea-2"}}
+	svc.Authz = &fakeChecker{deny: core.WorkspaceObject("tea-2")} // not allowed to act in tea-2
+
+	if err := svc.DeletePostgres(ctxAs("dana"), "db-b"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("DeletePostgres in a workspace where she lacks the relation: got %v, want ErrForbidden", err)
 	}
 }

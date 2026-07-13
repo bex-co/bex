@@ -210,7 +210,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	if _, err := s.GetApp(ctx, q.App); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanView, q.App); err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	q = q.normalized(s.Now())
@@ -531,7 +531,7 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return MonthToDateBandwidth{}, err
 	}
-	if _, err := s.GetApp(ctx, app); err != nil {
+	if _, err := s.GetApp(ctx, core.RelCanView, app); err != nil {
 		return MonthToDateBandwidth{}, err
 	}
 	if s.MonthToDateBandwidthSource == nil {
@@ -569,7 +569,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	a, err := s.GetApp(ctx, q.App)
+	a, err := s.GetApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err
 	}

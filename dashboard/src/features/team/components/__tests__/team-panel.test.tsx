@@ -19,26 +19,38 @@ const teamState: {
 };
 const refetch = vi.fn();
 
-vi.mock("@/features/team/hooks/use-current-workspace", () => ({
-  useCurrentWorkspace: () => ({
-    workspace: { id: "tea-1", name: "acme", plan: "pro", role: "ADMIN" },
-    loading: false,
-    error: undefined,
-  }),
+// The panel manages the *switcher's* workspace (WorkspaceProvider), not a
+// workspace it resolves itself — see the workspace-scoping cases below.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId, loading: false }),
 }));
+
+const useTeamSpy = vi.fn();
 vi.mock("@/features/team/hooks/use-team", () => ({
-  useTeam: () => ({ ...teamState, refetch }),
+  useTeam: (workspaceId: string | null) => {
+    useTeamSpy(workspaceId);
+    return { ...teamState, refetch };
+  },
 }));
 
 const changeRole = vi.fn();
+const useChangeRoleSpy = vi.fn();
 vi.mock("@/features/team/hooks/use-change-role", () => ({
-  useChangeRole: () => ({ changeRole, changing: null }),
+  useChangeRole: (workspaceId: string) => {
+    useChangeRoleSpy(workspaceId);
+    return { changeRole, changing: null };
+  },
 }));
 
 const removeMember = vi.fn();
 const revokeInvite = vi.fn();
+const useRemoveMemberSpy = vi.fn();
 vi.mock("@/features/team/hooks/use-remove-member", () => ({
-  useRemoveMember: () => ({ removeMember, revokeInvite, removing: null }),
+  useRemoveMember: (workspaceId: string) => {
+    useRemoveMemberSpy(workspaceId);
+    return { removeMember, revokeInvite, removing: null };
+  },
 }));
 
 vi.mock("@/features/team/components/invite-member-dialog", () => ({
@@ -51,11 +63,21 @@ beforeEach(() => {
   teamState.loading = false;
   teamState.error = undefined;
   teamState.canManage = true;
+  currentWorkspaceId = "tea-1";
   refetch.mockReset();
   changeRole.mockReset();
   removeMember.mockReset();
   revokeInvite.mockReset();
+  useTeamSpy.mockReset();
+  useChangeRoleSpy.mockReset();
+  useRemoveMemberSpy.mockReset();
 });
+
+/** The workspace id the panel most recently drove its team hooks with. */
+function lastWorkspaceId(spy: typeof useTeamSpy): unknown {
+  const calls = spy.mock.calls;
+  return calls[calls.length - 1]?.[0];
+}
 
 describe("TeamPanel", () => {
   it("lists members with their roles (w4/m12/t004)", () => {
@@ -223,5 +245,41 @@ describe("TeamPanel", () => {
     teamState.error = new Error("boom");
     render(<TeamPanel />);
     expect(screen.getByText("Couldn't load the team")).toBeInTheDocument();
+  });
+
+  // w6/m14 — the bug: the panel read `useCurrentWorkspace()` (its own
+  // `workspaces` query, always `workspaces[0]` — the account's original
+  // auto-provisioned workspace), so after switching it kept managing the wrong
+  // workspace's members. The owner must be the switcher's selection, the same
+  // fix the audit log got (use-audit-log.ts).
+  describe("workspace scoping (w6/m14 regression)", () => {
+    it("manages the switcher's selected workspace, not the account's first", () => {
+      currentWorkspaceId = "tea-2";
+      render(<TeamPanel />);
+
+      expect(lastWorkspaceId(useTeamSpy)).toBe("tea-2");
+      expect(lastWorkspaceId(useChangeRoleSpy)).toBe("tea-2");
+      expect(lastWorkspaceId(useRemoveMemberSpy)).toBe("tea-2");
+    });
+
+    it("re-reads the members of the new workspace after a switch", () => {
+      const { rerender } = render(<TeamPanel />);
+      expect(lastWorkspaceId(useTeamSpy)).toBe("tea-1");
+
+      // The switcher moves to the other workspace.
+      currentWorkspaceId = "tea-2";
+      rerender(<TeamPanel />);
+
+      expect(lastWorkspaceId(useTeamSpy)).toBe("tea-2");
+      expect(lastWorkspaceId(useRemoveMemberSpy)).toBe("tea-2");
+    });
+
+    it("passes no workspace (and hides the invite dialog) until the selection resolves", () => {
+      currentWorkspaceId = null;
+      render(<TeamPanel />);
+
+      expect(lastWorkspaceId(useTeamSpy)).toBeNull();
+      expect(screen.queryByTestId("invite-dialog")).not.toBeInTheDocument();
+    });
   });
 });

@@ -148,7 +148,7 @@ func (s *Service) List(ctx context.Context, service string) ([]DeployView, error
 	if s.Store == nil {
 		return nil, core.ErrDeploysUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanView, service)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanView, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -213,7 +213,7 @@ func (s *Service) Trigger(ctx context.Context, service string) (DeployView, erro
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -259,7 +259,7 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -315,7 +315,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
-	a, err := s.GetApp(ctx, service)
+	a, err := s.GetApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
 	}

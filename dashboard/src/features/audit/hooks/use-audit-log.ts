@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client/react";
-import {
-  AuditLogsDocument,
-  type AuditLogsQuery,
-} from "@/graphql/definitions";
+import { AuditLogsDocument, type AuditLogsQuery } from "@/graphql/definitions";
 import type { AuditEvent } from "@/features/audit/types";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 const PAGE_SIZE = 20;
 
@@ -48,48 +46,89 @@ export interface UseAuditLogResult {
   loadMore: () => void;
 }
 
+/** The `loadMore`-appended pages, tagged with the workspace they were read for. */
+interface AppendedPages {
+  workspaceId: string | null;
+  events: AuditEvent[];
+  /** Size of the most recently appended page (null ⇒ none appended yet). */
+  lastPageSize: number | null;
+  error: Error | undefined;
+}
+
+const NO_APPENDED: AppendedPages = {
+  workspaceId: null,
+  events: [],
+  lastPageSize: null,
+  error: undefined,
+};
+
 /**
- * Reads a workspace's audit trail (`auditLogs`) newest-first, admin-only
- * (RelCanManage). A 403 sets `forbidden` — mirrors use-team.ts's canManage
- * pattern: hide the panel, don't show an error. A 503
- * (`core.ErrAuditUnavailable`, control-plane store not wired) sets
+ * Reads the *switcher's currently-selected* workspace's audit trail
+ * (`auditLogs`) newest-first, admin-only (RelCanManage). A 403 sets `forbidden`
+ * — mirrors use-team.ts's canManage pattern: hide the panel, don't show an
+ * error. A 503 (`core.ErrAuditUnavailable`, control-plane store not wired) sets
  * `unavailable`, a distinct state from a generic `error`.
+ *
+ * Workspace-scoped exactly like useServices/useDatabases (w6/m14 t006): the
+ * owner comes from WorkspaceProvider, not from a private `workspaces` query —
+ * an earlier version resolved it via `useCurrentWorkspace()`, which always
+ * returns `workspaces[0]` (the account's original auto-provisioned workspace),
+ * so the table stayed pinned to that workspace no matter what the switcher
+ * said. Skipped until the selection resolves, so a still-null owner never fires
+ * the fetch-then-refetch pair; `loading` stays true for that window.
  *
  * `auditLogs` is a bare list with no Apollo pagination field policy, so
  * `loadMore` re-queries imperatively past the last-loaded event's id (the
  * surface's keyset cursor, internal/store/audit.go) and appends the result
  * itself rather than relying on cache merging. `hasMore` tracks whether the
- * most recently fetched page (initial or appended) came back full-sized.
+ * most recently fetched page (initial or appended) came back full-sized. Those
+ * appended pages carry the workspace they were read for, so switching drops
+ * them (and any in-flight page that lands late) instead of stacking one
+ * workspace's history under another's first page.
  */
-export function useAuditLog(workspaceId: string | null): UseAuditLogResult {
+export function useAuditLog(): UseAuditLogResult {
   const client = useApolloClient();
-  const skip = !workspaceId;
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
 
   const { data, loading, error } = useQuery(AuditLogsDocument, {
-    variables: { ownerId: workspaceId ?? "", limit: PAGE_SIZE },
-    skip,
+    variables: { ownerId: currentWorkspaceId ?? "", limit: PAGE_SIZE },
+    skip: !resolved,
     fetchPolicy: "network-only",
     errorPolicy: "all",
   });
   const firstPage = useMemo(() => toEvents(data?.auditLogs), [data]);
 
-  const [morePages, setMorePages] = useState<AuditEvent[]>([]);
-  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  const [appended, setAppended] = useState<AppendedPages>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<Error | undefined>();
 
-  const events = useMemo(() => [...firstPage, ...morePages], [firstPage, morePages]);
-  const hasMore = lastPageSize === null ? firstPage.length === PAGE_SIZE : lastPageSize === PAGE_SIZE;
+  // Derived, not reset in an effect: pages read for another workspace are
+  // ignored the instant the switcher moves, with no extra render pass showing
+  // the previous workspace's tail.
+  const scoped =
+    appended.workspaceId === currentWorkspaceId ? appended : NO_APPENDED;
+
+  const events = useMemo(
+    () => [...firstPage, ...scoped.events],
+    [firstPage, scoped.events],
+  );
+  const hasMore =
+    scoped.lastPageSize === null
+      ? firstPage.length === PAGE_SIZE
+      : scoped.lastPageSize === PAGE_SIZE;
 
   async function loadMore() {
-    if (!workspaceId || loadingMore || events.length === 0) return;
+    if (!currentWorkspaceId || loadingMore || events.length === 0) return;
+    const ownerId = currentWorkspaceId;
     setLoadingMore(true);
-    setLoadMoreError(undefined);
+    setAppended((prev) =>
+      prev.workspaceId === ownerId ? { ...prev, error: undefined } : prev,
+    );
     try {
       const cursor = events[events.length - 1].id;
       const result = await client.query({
         query: AuditLogsDocument,
-        variables: { ownerId: workspaceId, cursor, limit: PAGE_SIZE },
+        variables: { ownerId, cursor, limit: PAGE_SIZE },
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });
@@ -98,23 +137,34 @@ export function useAuditLog(workspaceId: string | null): UseAuditLogResult {
       // an id already loaded. Bounded to the current tail, not the full
       // history, so a click's cost doesn't grow as a user pages deeper in.
       const seenTail = new Set(events.slice(-PAGE_SIZE).map((e) => e.id));
-      setMorePages((prev) => [...prev, ...page.filter((e) => !seenTail.has(e.id))]);
-      setLastPageSize(page.length);
-      setLoadMoreError(result.error);
+      setAppended((prev) => {
+        const base = prev.workspaceId === ownerId ? prev.events : [];
+        return {
+          workspaceId: ownerId,
+          events: [...base, ...page.filter((e) => !seenTail.has(e.id))],
+          lastPageSize: page.length,
+          error: result.error,
+        };
+      });
     } catch (err) {
-      setLoadMoreError(err instanceof Error ? err : new Error(String(err)));
+      const failure = err instanceof Error ? err : new Error(String(err));
+      setAppended((prev) => ({
+        ...(prev.workspaceId === ownerId ? prev : NO_APPENDED),
+        workspaceId: ownerId,
+        error: failure,
+      }));
     } finally {
       setLoadingMore(false);
     }
   }
 
-  const kind = classify(error ?? loadMoreError);
+  const kind = classify(error ?? scoped.error);
 
   return {
     events,
-    loading: loading && events.length === 0,
+    loading: !resolved || (loading && events.length === 0),
     loadingMore,
-    error: kind === "error" ? (error ?? loadMoreError) : undefined,
+    error: kind === "error" ? (error ?? scoped.error) : undefined,
     forbidden: kind === "forbidden",
     unavailable: kind === "unavailable",
     hasMore,

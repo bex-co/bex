@@ -32,11 +32,3 @@ export interface InviteView {
   role: Role;
   expiresAt: string | null;
 }
-
-/** A workspace the caller belongs to, with their role in it. */
-export interface WorkspaceView {
-  id: string;
-  name: string;
-  plan: string | null;
-  role: Role | null;
-}

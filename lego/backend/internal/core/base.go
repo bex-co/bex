@@ -99,8 +99,17 @@ const LabelWorkspace = "app.bex.co/workspace"
 // default workspace (bootstrap is seeded admin there; a tuple-less key 403s).
 // A nil Base.Workspace means the store is off: every caller stays on
 // workspace:default, the legacy single-tenant mode (byte-identical to before).
+//
+// Tenant answers the caller's DEFAULT workspace — the oldest membership
+// (store.TenantForIdentity), deterministic since w6/m14 — used when the caller
+// names no workspace. IsMember answers "may this caller act in THAT workspace",
+// the gate for a workspace the caller DID name (core.WithWorkspace) and for an
+// App that belongs to one of the caller's other workspaces (GetApp): a caller
+// belongs to many workspaces, so neither an override nor a cross-workspace App
+// can be honored on the strength of the default resolution alone.
 type WorkspaceResolver interface {
 	Tenant(ctx context.Context, id Identity) (tenantID string, ok bool)
+	IsMember(ctx context.Context, id Identity, tenantID string) (bool, error)
 }
 
 // Render's suspended enum (a string, NOT a bool) — shared by the service and
@@ -157,8 +166,15 @@ func (b *Base) Now() time.Time {
 // itself (docs/... every verb calls Authorize/AuthorizeOn exactly once, per
 // CLAUDE.md), so it's resolved here rather than threaded through 80+ call
 // sites — a write-relation verb can't opt out of being recorded.
+// A caller who NAMES a workspace (core.WithWorkspace — REST/GraphQL ownerId, an
+// MCP session's select_workspace) is checked against THAT workspace instead of
+// their default one, but only once they are shown to be a member of it: naming a
+// workspace the caller does not belong to is ErrForbidden, never a silent
+// fall-back to their own (that fall-back is the confused-deputy shape — the
+// caller asks for B, gets served A, and a write lands in the wrong workspace).
 func (b *Base) Authorize(ctx context.Context, relation string) error {
-	return b.authorizeAndAudit(ctx, relation, b.callerWorkspace(ctx), "", callerVerb(verbFrameSkip))
+	object, err := b.callerWorkspace(ctx)
+	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
 }
 
 // AuthorizeTarget is Authorize for a verb that acts on ONE named resource: the
@@ -174,22 +190,64 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 // Pass a resource NAME, never a value: Target is on the redacted-by-structure
 // side of the audit contract (core.AuditEvent).
 func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) error {
-	return b.authorizeAndAudit(ctx, relation, b.callerWorkspace(ctx), target, callerVerb(verbFrameSkip))
+	object, err := b.callerWorkspace(ctx)
+	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), err)
 }
 
-// callerWorkspace is the OpenFGA object of the caller's OWN workspace:
-// workspace:tea-<id> when the resolver finds a tenant, workspace:default
+// callerWorkspace is the OpenFGA object of the workspace the caller is acting
+// in: workspace:tea-<id> for the workspace they NAMED (once membership-checked)
+// or, naming none, for the one the resolver resolves them to; workspace:default
 // otherwise (store off, or an unbound machine caller that 403s there unless it
-// is the seeded bootstrap).
-func (b *Base) callerWorkspace(ctx context.Context) string {
-	if b.Workspace != nil {
-		if id, ok := IdentityFrom(ctx); ok {
-			if tenantID, found := b.Workspace.Tenant(ctx, id); found {
-				return "workspace:" + tenantID
-			}
-		}
+// is the seeded bootstrap). The error is the membership refusal — returned
+// alongside the object the caller ASKED for, so the denial is audited against
+// the workspace they tried to reach rather than the one they came from.
+func (b *Base) callerWorkspace(ctx context.Context) (string, error) {
+	tenantID, err := b.resolveWorkspace(ctx)
+	if err != nil {
+		named, _ := WorkspaceFrom(ctx)
+		return WorkspaceObject(named), err
 	}
-	return DefaultWorkspace
+	if tenantID == "" {
+		return DefaultWorkspace, nil
+	}
+	return WorkspaceObject(tenantID), nil
+}
+
+// resolveWorkspace is the ONE place a request's effective workspace is decided
+// (w6/m14) — every gate on Base (Authorize, Tenant, GetApp) reads it, so the
+// three surfaces cannot drift on which workspace a request acts in:
+//
+//   - the caller NAMED one (core.WithWorkspace): honored once IsMember confirms
+//     they belong to it; a non-member is ErrForbidden and an unreachable
+//     membership store is ErrAuthzUnavailable — fail closed either way, never a
+//     fall-back to the caller's own workspace.
+//   - the caller named none: their default workspace (the resolver's oldest
+//     membership — deterministic since w6/m14's TenantForIdentity ORDER BY).
+//
+// "" (no error) means no workspace resolves — the store is off, the caller has
+// no identity, or it is an unbound machine key / the bootstrap — which leaves
+// the caller on workspace:default, exactly as before.
+func (b *Base) resolveWorkspace(ctx context.Context) (string, error) {
+	if b.Workspace == nil {
+		return "", nil // store off: one workspace, nothing to resolve or override
+	}
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return "", nil
+	}
+	tenantID, _ := b.Workspace.Tenant(ctx, id)
+	named, ok := WorkspaceFrom(ctx)
+	if !ok || named == tenantID {
+		// Named none, or named the one they'd get anyway (the dashboard sends the
+		// switcher's workspace on every create, which for most callers IS their
+		// default). No membership round-trip: the default workspace is DERIVED from
+		// tenant_members, so resolving to it already proves the membership.
+		return tenantID, nil
+	}
+	if err := b.requireMember(ctx, id, named); err != nil {
+		return "", err
+	}
+	return named, nil
 }
 
 // AuthorizeOn gates a verb on the caller's permission against a specific object
@@ -200,15 +258,21 @@ func (b *Base) callerWorkspace(ctx context.Context) string {
 // for the RelCanManage/RelCanCreate/RelCanOperate/RelCanManageKeys verbs that
 // call this directly). Same audit interception as Authorize.
 func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
-	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip))
+	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), nil)
 }
 
 // authorizeAndAudit runs the OpenFGA check and, for write relations only,
 // records the outcome (audit.go) — the one place Authorize, AuthorizeTarget and
 // AuthorizeOn funnel through, so a verb is recorded exactly once regardless of
-// which entry point it calls.
-func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string) error {
-	err := b.checkAuthz(ctx, relation, object)
+// which entry point it calls. resolveErr is a refusal that happened BEFORE the
+// check (the caller named a workspace they are not a member of): it short-circuits
+// the check but is still audited, so a cross-workspace attempt leaves the same
+// denial trail an OpenFGA "no" does.
+func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string, resolveErr error) error {
+	err := resolveErr
+	if err == nil {
+		err = b.checkAuthz(ctx, relation, object)
+	}
 	if writeRelations[relation] {
 		b.emit(ctx, verb, object, target, err)
 	}
@@ -238,34 +302,56 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 	return nil
 }
 
-// Tenant returns the caller's tenant id via the workspace resolver. ok=false
-// when there is no resolver (store off) or the caller has no tenant; callers
-// that filter to the caller's workspace check b.Workspace != nil first to
-// distinguish "store off (no filter)" from "store on (filter, maybe empty)".
+// Tenant returns the workspace this request acts in: the one the caller named
+// (core.WithWorkspace), else their default (resolveWorkspace). It is what a
+// create stamps its new resource with, so naming a workspace is what puts a new
+// service in it. ok=false when there is no resolver (store off), the caller has
+// no tenant, or the named workspace is refused; callers that filter to the
+// caller's workspace check b.Workspace != nil first to distinguish "store off
+// (no filter)" from "store on (filter, maybe empty)".
+//
+// A refused override cannot reach a verb's body: every verb calls Authorize
+// first (CLAUDE.md), which fails the request with the same ErrForbidden — so
+// ok=false here means "no workspace", never "a workspace you may not use".
 func (b *Base) Tenant(ctx context.Context) (string, bool) {
-	if b.Workspace == nil {
+	tenantID, err := b.resolveWorkspace(ctx)
+	if err != nil || tenantID == "" {
 		return "", false
 	}
-	id, ok := IdentityFrom(ctx)
-	if !ok {
-		return "", false
-	}
-	return b.Workspace.Tenant(ctx, id)
+	return tenantID, true
 }
 
-// GetApp fetches one App by name, mapping absence to ErrNotFound. Shared by the
-// apps/logs/metrics/secrets services — each needs "does this App exist / read
-// its status" without reimplementing the not-found mapping. With the
-// control-plane store on (Workspace resolver wired), it also gates the App
-// against the caller's tenant: a name that resolves to another tenant's App is
-// ErrForbidden, not a leak through the shared fetch every feature uses (a
-// cross-tenant caller who knows an App name must not read its logs, metrics,
-// or secrets just because apps.Service alone learned to check). ErrForbidden,
-// not ErrNotFound, matches the existing convention — "not yours," not "doesn't
-// exist," so a cross-tenant caller can't probe existence by name. A no-identity
-// caller (the git webhook's HMAC-authenticated redeploy, which carries no
-// core.Identity) skips the gate — it has no workspace to check against.
-func (b *Base) GetApp(ctx context.Context, name string) (*appv1alpha1.App, error) {
+// GetApp fetches one App by name, mapping absence to ErrNotFound, and gates it
+// on `relation` — the SAME relation the calling verb just authorized. Shared by
+// the apps/logs/metrics/secrets/deploys/events/envgroups services — each needs
+// "does this App exist / read its status" without reimplementing the not-found
+// mapping, and each inherits the cross-workspace gate from this one fetch (a
+// caller who knows an App name must not read its logs, metrics, or secrets just
+// because apps.Service alone learned to check).
+//
+// The gate authorizes against the App's OWN workspace, not the caller's default
+// one (w6/m14) — Render's model, where a resource's permissions come from the
+// owner it belongs to. That matters because a caller belongs to MANY workspaces
+// and may hold a different role in each:
+//
+//   - The App is in the workspace the request acts in (named, or the caller's
+//     default) => allowed; the verb's own Authorize already checked `relation`
+//     there. This is the ordinary path.
+//   - The App is in ANOTHER of the caller's workspaces => allowed only if
+//     `relation` also holds THERE. Before w6/m14 this was a flat ErrForbidden,
+//     which 403'd an owner reading their own App whenever the implicit
+//     resolution happened to pick their other workspace (w6/m11, live). Checking
+//     the relation — rather than mere membership — is what makes lifting that
+//     403 safe: an admin of A who is only a viewer of B still cannot delete B's
+//     App by naming it, because can_create does not hold for them in B.
+//   - The App is in a workspace the caller has no relation on => ErrForbidden,
+//     not ErrNotFound, matching the existing convention — "not yours," not
+//     "doesn't exist," so a cross-tenant caller can't probe existence by name.
+//
+// A no-identity caller (the git webhook's HMAC-authenticated redeploy, which
+// carries no core.Identity) and the store-off mode skip the gate — neither has a
+// workspace to check against, byte-identical to before.
+func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
 	var a appv1alpha1.App
 	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &a)
 	if apierrors.IsNotFound(err) {
@@ -274,14 +360,80 @@ func (b *Base) GetApp(ctx context.Context, name string) (*appv1alpha1.App, error
 	if err != nil {
 		return nil, err
 	}
-	if b.Workspace != nil {
-		if id, ok := IdentityFrom(ctx); ok {
-			if tenantID, found := b.Workspace.Tenant(ctx, id); found && a.Labels[LabelTenant] != tenantID {
-				return nil, ErrForbidden
-			}
-		}
+	if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
+		return nil, err
 	}
 	return &a, nil
+}
+
+// AuthorizeLabeled is the cross-workspace gate for any tenant-labeled resource
+// the caller reached BY NAME — an App (GetApp, above), a Database, a KeyValue.
+// It is the one rule, in one place, so a feature cannot fetch its own CRs
+// through a bare client.Get and quietly skip the workspace check that the App's
+// shared fetch has always applied (postgres/keyvalue did exactly that until
+// w6/m14: `GET /v1/postgres/{name}` authorized can_view against the CALLER's
+// workspace and then returned whatever Database bore that name — another
+// workspace's connection string included).
+//
+// The rule, given the resource's labels and the relation the calling verb just
+// authorized:
+//
+//   - No workspace resolves (store off, the HMAC webhook's identity-less
+//     redeploy, an unbound machine key, the bootstrap) => no gate, as before.
+//   - The resource is in the workspace the request acts in => allowed; the verb's
+//     own Authorize already checked `relation` there.
+//   - The resource is in ANOTHER of the caller's workspaces => allowed only if
+//     `relation` also holds THERE (checkWorkspaceAccess). This is what lets an
+//     owner reach their second workspace's resources without a 403 (w6/m11) while
+//     an admin of A who is merely a viewer of B still cannot delete B's.
+//   - The resource carries no workspace at all (a hand-applied CR) => ErrForbidden
+//     for any store-resolved caller: it belongs to no one, so it is nobody's.
+func (b *Base) AuthorizeLabeled(ctx context.Context, relation string, labels map[string]string) error {
+	acting, err := b.resolveWorkspace(ctx)
+	if err != nil {
+		return err
+	}
+	if acting == "" {
+		return nil
+	}
+	owner := labels[LabelTenant]
+	if owner == acting {
+		return nil
+	}
+	if owner == "" {
+		return ErrForbidden
+	}
+	return b.checkWorkspaceAccess(ctx, relation, owner)
+}
+
+// checkWorkspaceAccess is the two-gate test for acting in a workspace that is
+// not the one the request resolved to: the caller must BE a member of it (the
+// store, the source of truth) and must hold `relation` there (OpenFGA, the role
+// model). Both, not either: with authorization off (nil Authz) the membership
+// row is the only isolation left, and with the store's answer alone an admin of
+// one workspace would inherit admin's verbs in every workspace they were merely
+// invited to.
+func (b *Base) checkWorkspaceAccess(ctx context.Context, relation, tenantID string) error {
+	id, _ := IdentityFrom(ctx) // present: only a resolved workspace reaches here
+	if err := b.requireMember(ctx, id, tenantID); err != nil {
+		return err
+	}
+	return b.checkAuthz(ctx, relation, WorkspaceObject(tenantID))
+}
+
+// requireMember is the membership gate, and the ONE place its fail-closed
+// contract lives: a non-member is ErrForbidden; an unreachable membership store
+// is ErrAuthzUnavailable, never "not a member" and never a fall-back to the
+// caller's own workspace (an outage must not silently re-route a write).
+func (b *Base) requireMember(ctx context.Context, id Identity, tenantID string) error {
+	member, err := b.Workspace.IsMember(ctx, id, tenantID)
+	if err != nil {
+		return fmt.Errorf("%w: workspace membership: %v", ErrAuthzUnavailable, err)
+	}
+	if !member {
+		return ErrForbidden
+	}
+	return nil
 }
 
 // AppPods lists an App's replica pods (the controller's app.bex.co/app label) —

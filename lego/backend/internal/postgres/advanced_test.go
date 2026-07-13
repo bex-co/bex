@@ -186,7 +186,7 @@ func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 
 func TestRecoverRejectsBadInput(t *testing.T) {
 	svc, cl := newService()
-	seedDatabaseSpec(t, cl, "nb-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)   // no backups
+	seedDatabaseSpec(t, cl, "nb-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false) // no backups
 	seedDatabaseSpec(t, cl, "ok-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
 	ctx := context.Background()
 

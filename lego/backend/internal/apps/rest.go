@@ -65,9 +65,15 @@ type scaleRequest struct {
 // object/envVars, plan + numInstances + healthCheckPath nested under
 // serviceDetails, type used to pick private_service). bex reads the Render
 // fields it can honor and adds a few extensions; the Render fields it can't yet
-// honor (ownerId, region, autoDeploy, runtime build/start commands) are ignored,
-// a safe superset. One of repo/image is required.
+// honor (region, runtime build/start commands) are ignored, a safe superset. One
+// of repo/image is required.
 type createServiceRequest struct {
+	// OwnerID is the workspace to create the service IN (Render's `ownerId`,
+	// w6/m14). Render requires it; bex keeps it OPTIONAL — omitted, the service
+	// lands in the caller's default workspace (their oldest membership), which
+	// keeps every single-workspace client working unchanged. Naming a workspace
+	// the caller is not a member of is 403, never a silent create somewhere else.
+	OwnerID string `json:"ownerId"`
 	// Render fields.
 	Type           string             `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
 	Schedule       string             `json:"schedule"` // cron expression, required when type is cron_job
@@ -157,6 +163,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
 	return CreateRequest{
+		OwnerID:         r.OwnerID,
 		Name:            r.Name,
 		Type:            r.Type,
 		Schedule:        schedule,
@@ -331,7 +338,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// create handles POST /v1/services — create-or-update a service from a
 	// Render-shaped body; deploy-from-chat rides this with a repo (no bespoke
-	// deploy endpoint). Render returns 201 Created on success.
+	// deploy endpoint). Render returns 201 Created on success. `ownerId` names the
+	// workspace to create in (w6/m14) — carried on CreateRequest, membership-checked
+	// by the verb: a non-member gets 403, not a service in the wrong workspace.
 	create := func(w http.ResponseWriter, r *http.Request) {
 		var req createServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

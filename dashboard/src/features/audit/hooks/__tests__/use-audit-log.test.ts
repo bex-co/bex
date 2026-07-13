@@ -8,9 +8,35 @@ vi.mock("@apollo/client/react", () => ({
   useApolloClient: () => ({ query: mockClientQuery }),
 }));
 
+// The hook's owner is the switcher's selection (WorkspaceProvider), not a
+// workspace it resolves itself — see the workspace-switch cases below.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId }),
+}));
+
 import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
 
-function rawEvent(id: string, overrides: Partial<Record<string, unknown>> = {}) {
+/** The `ownerId` the hook most recently asked Apollo to query with. */
+function lastOwnerId(): unknown {
+  const calls = mockUseQuery.mock.calls;
+  const [, options] = calls[calls.length - 1] as [
+    unknown,
+    { variables: { ownerId: string }; skip: boolean },
+  ];
+  return options.variables.ownerId;
+}
+
+function lastSkip(): boolean {
+  const calls = mockUseQuery.mock.calls;
+  const [, options] = calls[calls.length - 1] as [unknown, { skip: boolean }];
+  return options.skip;
+}
+
+function rawEvent(
+  id: string,
+  overrides: Partial<Record<string, unknown>> = {},
+) {
   return {
     __typename: "AuditLog" as const,
     id,
@@ -31,6 +57,7 @@ function page(n: number, prefix = "ev") {
 beforeEach(() => {
   mockUseQuery.mockReset();
   mockClientQuery.mockReset();
+  currentWorkspaceId = "tea-1";
 });
 
 describe("useAuditLog", () => {
@@ -41,10 +68,13 @@ describe("useAuditLog", () => {
       error: undefined,
     });
 
-    const { result } = renderHook(() => useAuditLog("tea-1"));
+    const { result } = renderHook(() => useAuditLog());
 
     expect(result.current.events).toHaveLength(3);
-    expect(result.current.events[0]).toMatchObject({ id: "ev-0", status: "success" });
+    expect(result.current.events[0]).toMatchObject({
+      id: "ev-0",
+      status: "success",
+    });
     expect(result.current.forbidden).toBe(false);
     expect(result.current.unavailable).toBe(false);
     expect(result.current.error).toBeUndefined();
@@ -63,7 +93,7 @@ describe("useAuditLog", () => {
       data: { auditLogs: [rawEvent("ev-19"), ...page(4, "ev2")] },
     });
 
-    const { result } = renderHook(() => useAuditLog("tea-1"));
+    const { result } = renderHook(() => useAuditLog());
     expect(result.current.hasMore).toBe(true);
 
     act(() => {
@@ -74,7 +104,9 @@ describe("useAuditLog", () => {
     const ids = result.current.events.map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
     expect(mockClientQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ variables: expect.objectContaining({ cursor: "ev-19" }) }),
+      expect.objectContaining({
+        variables: expect.objectContaining({ cursor: "ev-19" }),
+      }),
     );
     // The appended page (4 items, after dedup) is short of PAGE_SIZE.
     expect(result.current.hasMore).toBe(false);
@@ -87,7 +119,7 @@ describe("useAuditLog", () => {
       error: new Error("forbidden"),
     });
 
-    const { result } = renderHook(() => useAuditLog("tea-1"));
+    const { result } = renderHook(() => useAuditLog());
 
     expect(result.current.forbidden).toBe(true);
     expect(result.current.unavailable).toBe(false);
@@ -101,7 +133,7 @@ describe("useAuditLog", () => {
       error: new Error("audit log store not configured"),
     });
 
-    const { result } = renderHook(() => useAuditLog("tea-1"));
+    const { result } = renderHook(() => useAuditLog());
 
     expect(result.current.unavailable).toBe(true);
     expect(result.current.forbidden).toBe(false);
@@ -115,10 +147,88 @@ describe("useAuditLog", () => {
       error: new Error("boom"),
     });
 
-    const { result } = renderHook(() => useAuditLog("tea-1"));
+    const { result } = renderHook(() => useAuditLog());
 
     expect(result.current.error).toBeInstanceOf(Error);
     expect(result.current.forbidden).toBe(false);
     expect(result.current.unavailable).toBe(false);
+  });
+
+  // w6/m14 t006 — the bug: the panel read `useCurrentWorkspace()` (always
+  // `workspaces[0]`, the account's original auto-provisioned workspace), so the
+  // table showed that workspace's events no matter what the switcher said, even
+  // across a hard reload. The owner must now be the switcher's selection.
+  describe("workspace scoping (w6/m14 t006 regression)", () => {
+    it("queries the switcher's selected workspace, not the account's first", () => {
+      mockUseQuery.mockReturnValue({
+        data: undefined,
+        loading: true,
+        error: undefined,
+      });
+      currentWorkspaceId = "tea-2";
+
+      renderHook(() => useAuditLog());
+
+      expect(lastOwnerId()).toBe("tea-2");
+      expect(lastSkip()).toBe(false);
+    });
+
+    it("re-queries with the new ownerId after a workspace switch", () => {
+      mockUseQuery.mockReturnValue({
+        data: { auditLogs: page(1) },
+        loading: false,
+        error: undefined,
+      });
+
+      const { rerender } = renderHook(() => useAuditLog());
+      expect(lastOwnerId()).toBe("tea-1");
+
+      // The switcher moves to the other workspace.
+      currentWorkspaceId = "tea-2";
+      rerender();
+
+      expect(lastOwnerId()).toBe("tea-2");
+      expect(lastSkip()).toBe(false);
+    });
+
+    it("drops the previous workspace's appended pages on a switch", async () => {
+      mockUseQuery.mockReturnValue({
+        data: { auditLogs: page(20) },
+        loading: false,
+        error: undefined,
+      });
+      mockClientQuery.mockResolvedValue({
+        data: { auditLogs: page(4, "ev2") },
+      });
+
+      const { result, rerender } = renderHook(() => useAuditLog());
+      act(() => {
+        result.current.loadMore();
+      });
+      await waitFor(() => expect(result.current.events).toHaveLength(24));
+
+      currentWorkspaceId = "tea-2";
+      rerender();
+
+      // tea-1's paged-in tail must not stack under tea-2's first page.
+      expect(result.current.events).toHaveLength(20);
+      expect(lastOwnerId()).toBe("tea-2");
+    });
+
+    it("skips the query until the switcher's selection resolves", () => {
+      mockUseQuery.mockReturnValue({
+        data: undefined,
+        loading: false,
+        error: undefined,
+      });
+      currentWorkspaceId = null;
+
+      const { result } = renderHook(() => useAuditLog());
+
+      expect(lastSkip()).toBe(true);
+      // Mirrors useServices: no flash of the empty state before the id lands.
+      expect(result.current.loading).toBe(true);
+      expect(result.current.events).toHaveLength(0);
+    });
   });
 });
