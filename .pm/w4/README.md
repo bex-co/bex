@@ -21,6 +21,8 @@
 - [x] **m14** — Audit log in the dashboard: Settings → Audit Log panel over the m10 API (10 tasks) ← user request 2026-07-11, needs m10 (done) — done 2026-07-11 (`yarn test`/`yarn lint` green; IA-placement drift vs Render found in parity check, filed as `007`), moved to `done/m14/`
 - [x] **m15** — Settings → Security & Compliance grouping (move Audit Log) (6 tasks) ← promoted from `007` 2026-07-12 (user resolved the IA-placement decision as "yes, move it"), coordinates with `006` (session mgmt) + m11 (MFA) on the same Settings→Security surface — done 2026-07-12 (real-app verified: Audit Log card renders inside the Security & Compliance region; `yarn test` 613 green), moved to `done/m15/`
 - [x] **m16** — OAuth consent screen for third-party agent clients (9 tasks) ← from `/pm-brainstorm more for w4` 2026-07-12 (ADR012 §7 "consent UI is future work" + ADR025's operator-blessing dead end), follow-on to m9; anti-goal tension (DO_NOT_DO "headless consent acceptor") resolved by user acceptance 2026-07-12 — done 2026-07-12 (`scripts/auth-oauth21-e2e.sh` exit 0 over 12 legs: unblessed DCR client → consent page → approve → working `/mcp` token, deny → `access_denied`, remembered re-authorize skips the page, trusted client still headless; `yarn test` 675 green; a login-path gap found on the way filed as `010`), moved to `done/m16/`
+- [ ] **m17** — Login-flow correctness: signed-in OAuth authorize + aal2 step-up altitude (8 tasks) ← promoted from `010` (+ `009` folded in) 2026-07-12, follow-on to m16; fixes the ADR025 signed-in connect path
+- [ ] **m18** — Account access control: connected agents + active sessions (8 tasks) ← from `/pm-brainstorm for w4` 2026-07-12, m16 follow-on (remembered consent shipped with no revocation surface); folds `006`; independent of m17 (do m17 first — live user-facing break)
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
@@ -28,7 +30,6 @@
 
 ## Inbox
 
-- `006.md` — Account session management (Kratos `/sessions` list + sign-out-everywhere card in Settings→Security) — sub-hour; ride alongside m11 ← `/pm-brainstorm for w4` 2026-07-09
-- `009.md` — Lift aal2 step-up detection into the session fetch (m11 t005 altitude follow-up: surface `session_aal2_required` from `fetchSession`, redirect with explicit `aal=aal2`) — sub-hour ← `/pm-brainstorm more for w4` 2026-07-12
-- `010.md` — A signed-in browser hitting the OAuth login page gets no flow from Kratos (200 `null` on `createBrowserLoginFlow` with a `login_challenge` + live session) — verify in a real browser first; would dead-end "connect an agent while already signed in" ← found in m16 t004, 2026-07-12
-> `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/ADR012-auth.md §10); `007.md` (Audit Log IA placement) promoted to **m15** 2026-07-12; notes moved to `done/`.
+_(empty)_
+
+> `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/ADR012-auth.md §10); `007.md` (Audit Log IA placement) promoted to **m15** 2026-07-12; `010.md` promoted to **m17** with `009.md` folded in as its aal2-altitude task, and `006.md` (session management) folded into **m18** as its active-sessions task, 2026-07-12 — notes moved to `done/`.
