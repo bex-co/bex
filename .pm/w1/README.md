@@ -31,6 +31,7 @@
 - [ ] **m23** — Misc: small parity + hardening/dev-infra chores (7 tasks) ← groups `005`, `006`, `015`, `016` 2026-07-11 (each sub-hour)
 - [ ] **m24** — Multi-service `bex.yml`: Blueprint-shaped stack deploys (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (revives the 2026-07-09 proposal; DO_NOT_DO routes `fromDatabase` spec work to w1; all ingredients — types m15, env groups m16, Postgres m17, KV m14 — now shipped)
 - [ ] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17, last open Postgres parity row)
+- [ ] **m26** — Harden the build-image pull path (Zot node access, retention, drift guards) (10 tasks) ← promoted from `017` 2026-07-12 (found live during a routine backfill: no git-built image was reliably pullable on prod; autoscaler-minted nodes fail today without this)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
@@ -49,7 +50,9 @@
 
 ## Inbox
 
-- `017.md` — Prod nodes can't pull from Zot out of the box (found 2026-07-12: node containerd/DNS config belongs in the CAPH machine template; Cilium node-pull policy fixed in gitops pending ship; Zot filled by a 44-generation runaway rebuild — needs retention + the loop's root cause)
+_(empty — `017` promoted to `m26` 2026-07-12)_
+
+> **Promoted 2026-07-12:** `017` (Zot node-pull path: DNS/TLS, NetworkPolicy drift, retention, generation churn, migration-ownership drift) → **m26**; note moved to `done/`.
 
 > **Promoted 2026-07-11 (`/pm group them into milestones`):** `008`→**m20** (per-service autoscaling), `012`→**m21** (static sites), `013`→**m22** (Postgres HA); the four sub-hour notes `005`+`006`+`015`+`016`→**m23** (misc chores milestone — each below milestone size individually, grouped per the sizing rule). All seven notes moved to `done/`.
 > **Promoted 2026-07-08:** `007`→**m14**, `009`→**m15**, `010`→**m16**, `011`→**m17** (notes moved to `done/`); `008` kept as a note (gated on m3). See the m13 note above. **Promoted 2026-07-10:** `014` (prod KCP unmanageable, m7 aftermath) → **m19** via `docs/rearchitecture.md` (since absorbed into ADR002-architecture.md); note moved to `done/`.
