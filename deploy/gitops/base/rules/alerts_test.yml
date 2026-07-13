@@ -1,0 +1,114 @@
+# promtool unit tests for the non-obvious alert expressions (w3/m6/t007).
+# Trivial existence/threshold rules (NodeNotReady, BexApiDown, CertificateNotReady)
+# are not tested here — a test would just restate `== 0`; see the milestone notes.
+# Run: promtool test rules alerts_test.yml  (with alerting_rules.yml alongside).
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # BackupCronJobStale: age math must fire at >26h, NOT at 25h.
+  - name: backup staleness age math
+    interval: 1m
+    input_series:
+      # promtool's clock starts at t=0, so at eval_time 30m time()=1800s and the
+      # age is 1800 - <series value>. Pin each series so the age lands exactly on
+      # one side of the 26h (93600s) threshold.
+      # etcd-backup: age = 1800 - (-88200) = 90000s = exactly 25h -> NOT fire.
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="etcd-backup", namespace="kube-system"}'
+        values: "-88200x60"
+      # openbao-backup: age = 1800 - (-95400) = 97200s = exactly 27h -> fire.
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="openbao-backup", namespace="secrets"}'
+        values: "-95400x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BackupCronJobStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              cronjob: openbao-backup
+              namespace: secrets
+            exp_annotations:
+              summary: "Backup secrets/openbao-backup has not succeeded in >26h"
+              description: "The nightly openbao-backup last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md"
+
+  # TraefikHigh5xxRate: a tiny denominator (1 request total) must NOT fire even at
+  # 100% 5xx — the traffic floor guards against alerting on noise.
+  - name: 5xx ratio ignores tiny denominators
+    interval: 1m
+    input_series:
+      # 1 fresh 5xx per ~2h => rate well under the 0.1 req/s floor.
+      - series: 'traefik_service_requests_total{code="500", service="web@kubernetes"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraefikHigh5xxRate
+        exp_alerts: []
+
+  # TraefikHigh5xxRate: real 5xx spike over the floor SHOULD fire after 10m.
+  - name: 5xx ratio fires on a real spike
+    interval: 1m
+    input_series:
+      - series: 'traefik_service_requests_total{code="500", service="web@kubernetes"}'
+        values: "0+60x30" # 60 req/min == 1 req/s of 5xx
+      - series: 'traefik_service_requests_total{code="200", service="web@kubernetes"}'
+        values: "0+60x30" # 60 req/min == 1 req/s of 2xx => 50% 5xx, 2 req/s total
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TraefikHigh5xxRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Traefik is serving >5% 5xx responses"
+              description: "Over 5% of edge requests have been 5xx for >10m (with meaningful traffic). Debug: kubectl -n traefik logs deploy/traefik; check upstream service health and recent deploys."
+
+  # PlatformPodCrashLooping: must respect for: 10m — a reason that clears at 8m
+  # never fires; one that persists past 10m does.
+  - name: crashloop respects the 10m for-duration
+    interval: 1m
+    input_series:
+      # persists the whole window => fires at/after 10m
+      - series: 'kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff", namespace="bex-system", pod="bex-api-abc", container="api"}'
+        values: "1x30"
+      # clears at minute 8 => never satisfies for: 10m
+      - series: 'kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff", namespace="argocd", pod="argocd-repo-xyz", container="repo-server"}'
+        values: "1x8 0x22"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: PlatformPodCrashLooping
+        exp_alerts: [] # not yet 10m for either
+      - eval_time: 12m
+        alertname: PlatformPodCrashLooping
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-system
+              pod: bex-api-abc
+              container: api
+            exp_annotations:
+              summary: "bex-system/bex-api-abc (api) is CrashLoopBackOff"
+              description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n bex-system describe pod bex-api-abc; kubectl -n bex-system logs bex-api-abc -c api --previous"
+
+  # OpenBaoSealed: per-member — a sealed follower (gauge 0) fires even while the
+  # leader is unsealed (gauge 1). Proves the alert is NOT masked by a healthy
+  # member (the reason it reads per-pod telemetry, not the round-robin Service).
+  - name: openbao sealed is per-member
+    interval: 1m
+    input_series:
+      - series: 'vault_core_unsealed{namespace="secrets", pod="openbao-0"}'
+        values: "1x10" # leader unsealed
+      - series: 'vault_core_unsealed{namespace="secrets", pod="openbao-1"}'
+        values: "0x10" # follower sealed
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: OpenBaoSealed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: secrets
+              pod: openbao-1
+            exp_annotations:
+              summary: "OpenBao member openbao-1 is SEALED"
+              description: "An OpenBao raft member has been sealed for >5m, which 503s the tenant env-vars API. Unseal: scripts/bao-init.sh (unseal path); runbook docs/ADR013-secrets.md. Debug: kubectl -n secrets get pods; kubectl -n secrets exec openbao-1 -- bao status"

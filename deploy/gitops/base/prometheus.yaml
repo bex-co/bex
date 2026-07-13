@@ -1,4 +1,6 @@
-# Prometheus — the metrics-history backend. bex-api's request metrics
+# Prometheus — the metrics-history backend AND bex's platform-alerting brain.
+#
+# Metrics history: bex-api's request metrics
 # (GET /v1/metrics/{http-requests,http-latency,bandwidth}, via
 # NewPrometheusRequestSource) query Traefik's per-service counters
 # (traefik_service_requests_total / _request_duration_seconds_bucket /
@@ -9,11 +11,29 @@
 # Without this, request metrics return 503 and resource metrics fall back to
 # metrics-server's single-point snapshot.
 #
-# Server-only (no alertmanager/pushgateway/exporters), days-scale retention on a
-# small PV — this exists solely to feed bex-api's metric range queries (the
-# dashboard's presets reach back 24h, so retention must comfortably cover that
-# and survive a pod restart). bex-api points at it with
-# BEX_PROM_URL=http://prometheus-server.monitoring.
+# Platform alerting (w3/m6): Alertmanager is now enabled with one email receiver
+# on bex's existing SendGrid relay, plus a small high-signal rule pack over
+# platform and bex-specific invariants (serverFiles.alerting_rules.yml below).
+# The chart auto-wires the server → bundled Alertmanager (cm.yaml injects the
+# `alerting:` block whenever alertmanager.enabled), so we only declare rule_files
+# here. The SendGrid API key is delivered OUT-OF-BAND — Secret `alertmanager-smtp`
+# (key `smtp-password`) in the `monitoring` namespace, never in git
+# (docs/ADR010-observability.md, same custody rule as the etcd/openbao-backup S3
+# creds). Until it exists the Alertmanager pod stays in ContainerCreating — a
+# deliberate one-time bootstrap step, like unsealing OpenBao. The LOCAL overlay
+# disables Alertmanager (alertmanager.enabled=false) so the disposable CAPD
+# cluster — which has no SMTP cred, exactly as it has no backup S3 creds — doesn't
+# carry a permanently-pending pod; the server still evaluates the rules (visible
+# in the Prometheus UI), and scripts/alerts-verify.sh stands up its own throwaway
+# AM with a capture-webhook receiver (no real email sent).
+#
+# Exporter posture (was "server-only, no exporters"): still deliberately minimal.
+# Enabled: Alertmanager (paging) + kube-state-metrics (object-state series the
+# rule pack needs: kube_pod/deployment/node/cronjob/statefulset_*). Still OFF:
+# pushgateway and node-exporter — the rules need no host-level series (PVC usage
+# comes from the kubelet /metrics endpoint scraped below; node readiness comes
+# from kube-state-metrics). Days-scale retention on a small PV; bex-api points at
+# the server with BEX_PROM_URL=http://prometheus-server.monitoring.
 #
 # NOTE: the Traefik scrape target below matches pods labelled
 # app.kubernetes.io/name=traefik on port 9100 (the metrics entrypoint). If the
@@ -36,16 +56,69 @@ spec:
       releaseName: prometheus
       values: |
         fullnameOverride: prometheus
-        alertmanager: { enabled: false }
         prometheus-pushgateway: { enabled: false }
-        kube-state-metrics: { enabled: false }
         prometheus-node-exporter: { enabled: false }
+        # Object-state series for the rule pack (pods/deployments/nodes/cronjobs/
+        # statefulsets). The only exporter this milestone adds. Platform pool
+        # (w1/m19), like the server.
+        kube-state-metrics:
+          enabled: true
+          nodeSelector:
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+        # Single-replica Alertmanager: the paging fan-out. No persistence — the
+        # silence/notification log is ephemeral by design here (minimal footprint;
+        # a restart at worst re-notifies once). One email receiver on the SendGrid
+        # relay bex already runs (the w4/m12 invite / Kratos-courier relay,
+        # smtp.sendgrid.net:587 STARTTLS, docs/ADR012-auth.md §Email) — no new
+        # credential to mint. The SendGrid API key is read from a file mounted off
+        # the out-of-band Secret `alertmanager-smtp` (key `smtp-password`), so no
+        # credential ever lands in git; `to`/`from` are non-secret and committed.
+        alertmanager:
+          enabled: true
+          replicaCount: 1
+          persistence:
+            enabled: false
+          nodeSelector:
+            bex.co/pool: platform
+          tolerations:
+            - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          extraSecretMounts:
+            - name: smtp-password
+              secretName: alertmanager-smtp
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
+          config:
+            global:
+              resolve_timeout: 5m
+              # SendGrid on 587/STARTTLS (465 is blocked from Hetzner — ADR012 §11).
+              smtp_smarthost: smtp.sendgrid.net:587
+              smtp_from: no-reply@bex.co
+              smtp_auth_username: apikey # SendGrid's literal SMTP username; key is the password
+              smtp_auth_password_file: /etc/alertmanager/secrets/smtp-password
+              smtp_require_tls: true
+            route:
+              receiver: platform
+              group_by: [alertname, namespace]
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 4h
+            receivers:
+              - name: platform
+                email_configs:
+                  - to: platform-alerts@bex.co # adjust to the on-call inbox; non-secret
+                    send_resolved: true
         server:
           # Covers the dashboard's widest range preset (24h) with headroom;
-          # cardinality is tiny (two scrape jobs), so this is disk-bounded, not
-          # memory-bounded. The PV (cluster default StorageClass, local-path on
-          # both the CAPD mock and prod) keeps history across pod restarts —
-          # with emptyDir a reschedule silently wiped every chart.
+          # cardinality is tiny (a handful of scrape jobs), so this is
+          # disk-bounded, not memory-bounded. The PV (cluster default
+          # StorageClass — hcloud-volumes on prod, local-path on the CAPD mock)
+          # keeps history across pod restarts — with emptyDir a reschedule silently
+          # wiped every chart.
           retention: 3d
           persistentVolume:
             enabled: true
@@ -58,10 +131,13 @@ spec:
             bex.co/pool: platform
           tolerations:
             - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
-        # Two scrape jobs only: Traefik's metrics entrypoint (per-service request
-        # counters) and the kubelets' cAdvisor endpoint (per-container cpu/memory).
         serverFiles:
+          # Server config: rule files + scrape jobs. The `alerting:` block
+          # (server → Alertmanager discovery) is injected by the chart because
+          # alertmanager.enabled — do NOT also set it here (it would duplicate).
           prometheus.yml:
+            rule_files:
+              - /etc/config/alerting_rules.yml # the alerting_rules.yml key below
             scrape_configs:
               - job_name: traefik
                 scrape_interval: 15s # fine-grained so request-metric rates resolve quickly
@@ -114,6 +190,267 @@ spec:
                   - source_labels: [container]
                     regex: ""
                     action: drop
+              # kube-state-metrics: object-state series (Deployment/Pod/Node/
+              # CronJob/StatefulSet status) that back the rule pack. Its Service is
+              # a stable ClusterIP — a static target is enough.
+              - job_name: kube-state-metrics
+                scrape_interval: 60s # every consuming alert is for: 5m+ — 60s is plenty
+                static_configs:
+                  - targets: [prometheus-kube-state-metrics.monitoring.svc:8080]
+              # kubelet /metrics (NOT cadvisor): only kubelet_volume_stats_* — the
+              # PVC used/capacity bytes behind the PersistentVolumeFillingUp alert.
+              # Same apiserver-proxy pattern as cadvisor; metric_relabel keeps just
+              # those two series so this stays near-zero cardinality. 60s: the whole
+              # kubelet /metrics payload is fetched per scrape (keep runs after), and
+              # the only consumer is a for:15m alert over slow-moving disk usage.
+              - job_name: kubernetes-kubelet
+                scrape_interval: 60s
+                scheme: https
+                kubernetes_sd_configs:
+                  - role: node
+                tls_config:
+                  ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                authorization:
+                  credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                relabel_configs:
+                  - target_label: __address__
+                    replacement: kubernetes.default.svc:443
+                  - source_labels: [__meta_kubernetes_node_name]
+                    regex: (.+)
+                    target_label: __metrics_path__
+                    replacement: /api/v1/nodes/${1}/proxy/metrics
+                  - source_labels: [__meta_kubernetes_node_name]
+                    target_label: node
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: kubelet_volume_stats_(used|capacity)_bytes
+                    action: keep
+              # cert-manager controller metrics (:9402) — certmanager_certificate_*
+              # for the CertificateNotReady / CertificateExpiringSoon alerts. Pod SD
+              # scoped to the controller pod (webhook/cainjector don't serve these).
+              - job_name: cert-manager
+                scrape_interval: 60s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [cert-manager]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                    action: keep
+                    regex: cert-manager
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+                    action: keep
+                    regex: controller
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9402
+              # OpenBao PER-POD telemetry (:8200 /v1/sys/metrics) — seal state for
+              # the OpenBaoSealed alert. Per-pod (not the round-robin Service) so a
+              # single sealed raft follower is visible; sealed members still serve
+              # /v1/sys/metrics (unauthenticated_metrics_access, set in
+              # openbao.values.yaml) reporting vault_core_unsealed=0. The pod label
+              # lets the alert name the sealed member.
+              - job_name: openbao
+                scrape_interval: 30s
+                metrics_path: /v1/sys/metrics
+                params:
+                  format: [prometheus]
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [secrets]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                    action: keep
+                    regex: openbao
+                  - source_labels: [__meta_kubernetes_pod_label_component]
+                    action: keep
+                    regex: server
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:8200
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  # keep only the seal gauge (OpenBao keeps Vault's metric name; match
+                  # a bao_ prefix too in case a future release rebrands it)
+                  - source_labels: [__name__]
+                    regex: (vault|bao)_core_unsealed
+                    action: keep
+          # ── Alerting rules ──────────────────────────────────────────────────
+          # Small, high-signal pack: every alert carries a one-line description
+          # with the kubectl command to start debugging. Two groups: `platform`
+          # (generic health) and `bex` (bex's own promises). This block is the
+          # single source of truth — scripts/gitops-validate.sh extracts it and
+          # runs `promtool check rules` + `promtool test rules` against it (unit
+          # tests in deploy/gitops/base/rules/alerts_test.yml).
+          alerting_rules.yml:
+            groups:
+              - name: platform
+                rules:
+                  # NB: the platform-namespace allowlist is repeated verbatim in the
+                  # next rule (PromQL has no variables) — keep both `namespace=~`
+                  # lists in sync when a platform namespace is added.
+                  - alert: PlatformPodCrashLooping
+                    expr: |
+                      max by (namespace, pod, container) (
+                        kube_pod_container_status_waiting_reason{
+                          reason="CrashLoopBackOff",
+                          namespace=~"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard"
+                        }
+                      ) > 0
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is CrashLoopBackOff"
+                      description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}; kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} -c {{ $labels.container }} --previous"
+
+                  - alert: PlatformDeploymentNotReady
+                    expr: |
+                      (
+                        kube_deployment_spec_replicas{
+                          namespace=~"bex-system|argocd|traefik|auth|secrets|monitoring|cert-manager|cnpg-system|kube-system|bex-registry|opensandbox-system|dashboard"
+                        }
+                        - on (namespace, deployment)
+                        kube_deployment_status_replicas_available
+                      ) > 0
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has unavailable replicas"
+                      description: "A platform Deployment has had fewer available than desired replicas for >10m (bad image / crash / unschedulable). Debug: kubectl -n {{ $labels.namespace }} rollout status deploy/{{ $labels.deployment }}; kubectl -n {{ $labels.namespace }} get pods"
+
+                  # Control-plane node NotReady is a PAGE: the CP pool is a single
+                  # node until the quota lift reverts the m19.1 TEMP knobs to 3 CP
+                  # nodes, so it's the highest blast radius on the cluster. Worker
+                  # nodes are warn (the autoscaler/other workers absorb one loss).
+                  - alert: ControlPlaneNodeNotReady
+                    expr: |
+                      kube_node_status_condition{condition="Ready",status="true"} == 0
+                      and on (node) kube_node_role{role="control-plane"}
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Control-plane node {{ $labels.node }} is NotReady"
+                      description: "A control-plane node has been NotReady for >5m — highest blast radius while the CP pool is one node. Debug: kubectl describe node {{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }}"
+
+                  - alert: NodeNotReady
+                    expr: |
+                      kube_node_status_condition{condition="Ready",status="true"} == 0
+                      unless on (node) kube_node_role{role="control-plane"}
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Node {{ $labels.node }} is NotReady"
+                      description: "A worker node has been NotReady for >5m. Debug: kubectl describe node {{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }}"
+
+                  - alert: PersistentVolumeFillingUp
+                    expr: |
+                      kubelet_volume_stats_used_bytes
+                      / kubelet_volume_stats_capacity_bytes
+                      > 0.85
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+                      description: "A platform PVC (etcd/Loki/OpenBao/Prometheus PVs — hcloud-csi on prod, local-path on the mock) is >85% full. Debug: kubectl -n {{ $labels.namespace }} get pvc {{ $labels.persistentvolumeclaim }}; grow the volume or prune data."
+
+                  - alert: CertificateNotReady
+                    expr: certmanager_certificate_ready_status{condition="True"} == 0
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} is not Ready"
+                      description: "cert-manager Certificate has been not-Ready for >15m (issuance/renewal failing). Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}; kubectl -n {{ $labels.namespace }} get certificaterequest,order,challenge"
+
+                  - alert: CertificateExpiringSoon
+                    expr: |
+                      (certmanager_certificate_expiration_timestamp_seconds - time()) < (14 * 24 * 3600)
+                    for: 1h
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in <14d"
+                      description: "A cert-manager Certificate expires in under 14 days and has not renewed. Debug: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}"
+
+              - name: bex
+                rules:
+                  - alert: BackupCronJobStale
+                    expr: |
+                      (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup"}) > (26 * 3600)
+                    for: 0m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
+                      description: "The nightly {{ $labels.cronjob }} last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md"
+
+                  # Per-MEMBER seal detection off the openbao per-pod telemetry
+                  # scrape (vault_core_unsealed=0 ⇒ sealed). Not the round-robin
+                  # Service or readiness: the chart's readiness probe keeps a sealed
+                  # member in rotation (sealedcode 2xx), so a Service/readiness check
+                  # would miss a sealed follower — this fires on ANY member sealed.
+                  - alert: OpenBaoSealed
+                    expr: |
+                      min by (namespace, pod) (
+                        {__name__=~"(vault|bao)_core_unsealed", namespace="secrets"}
+                      ) == 0
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "OpenBao member {{ $labels.pod }} is SEALED"
+                      description: "An OpenBao raft member has been sealed for >5m, which 503s the tenant env-vars API. Unseal: scripts/bao-init.sh (unseal path); runbook docs/ADR013-secrets.md. Debug: kubectl -n secrets get pods; kubectl -n secrets exec {{ $labels.pod }} -- bao status"
+
+                  - alert: BexApiDown
+                    expr: kube_deployment_status_replicas_available{namespace="bex-system", deployment="bex-api"} == 0
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "bex-api has no available replicas"
+                      description: "The bex-api control-plane surface (REST/GraphQL/MCP) has had zero available replicas for >5m. Debug: kubectl -n bex-system rollout status deploy/bex-api; kubectl -n bex-system logs deploy/bex-api"
+
+                  # Stranded node-local images: App images are node-local ctr imports
+                  # (no registry — zot is empty), so a tenant-node replacement or an
+                  # autoscaler scale-down strands them and App pods sit in
+                  # ImagePullBackOff/ErrImageNeverPull. A PLATFORM defect of the
+                  # node-local-image design, not tenant paging — hence severity warn.
+                  - alert: StrandedNodeLocalImages
+                    expr: |
+                      max by (namespace, pod, container) (
+                        kube_pod_container_status_waiting_reason{
+                          reason=~"ImagePullBackOff|ErrImageNeverPull",
+                          namespace="default"
+                        }
+                      ) > 0
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "App {{ $labels.namespace }}/{{ $labels.pod }} can't pull its node-local image"
+                      description: "An App pod has been ImagePullBackOff/ErrImageNeverPull for >10m — a node-local image was stranded by node replacement or scale-down (no registry to re-pull from). Re-import: the /deploy-app-from-local runbook. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}"
+
+                  - alert: TraefikHigh5xxRate
+                    expr: |
+                      (
+                        sum(rate(traefik_service_requests_total{code=~"5.."}[5m]))
+                        / sum(rate(traefik_service_requests_total[5m]))
+                      ) > 0.05
+                      and
+                      sum(rate(traefik_service_requests_total[5m])) > 0.1
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Traefik is serving >5% 5xx responses"
+                      description: "Over 5% of edge requests have been 5xx for >10m (with meaningful traffic). Debug: kubectl -n traefik logs deploy/traefik; check upstream service health and recent deploys."
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

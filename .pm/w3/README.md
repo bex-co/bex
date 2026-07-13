@@ -10,7 +10,7 @@
 - [x] **m4** — Resource-metrics history: Prometheus-backed CPU/memory/instances (6 tasks) ← from brainstorm 2026-07-06 (Render metrics-page parity)
 - [x] **m4.5** — Metrics page parity: application charts, limits, network filters (6 tasks) ← from user request 2026-07-07, side-by-side gap check of Render's live metrics page vs dashboard.bex.co after m4
 - [ ] **m5** — Durable logs: Loki-backed history behind the same API (9 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (w3/001's explicit v0 deferral)
-- [ ] **m6** — Platform alerting: Alertmanager + rules for bex's own health (8 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (alertmanager disabled; backup CronJobs unwatched)
+- [x] **m6** — Platform alerting: Alertmanager + rules for bex's own health (8 tasks) ← from `/pm-brainstorm for w3` 2026-07-09 (alertmanager disabled; backup CronJobs unwatched)
 - [ ] **m7** — Service events feed (`GET /v1/services/{id}/events`) (8 tasks) ← from `/pm-brainstorm more` 2026-07-12 — composes w2/m5 deploy objects + w4/m10 audit log (both done); Events-tab UI rides `w5/007`
 - [ ] **m8** — Request/HTTP logs + structured filters over the Loki pipeline (9 tasks) ← promoted from `002` 2026-07-12 (its gate — the m5 log-backend decision — is settled; gated on m5 closeout)
 - [ ] **m9** — Deploy notifications: email on deploy success/failure (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (unblocked by w2/m5 deploy events + w4/m7 SMTP courier, both done)

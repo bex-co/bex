@@ -66,6 +66,22 @@ patches:
         path: /spec/source/helm/parameters
         value:
           - { name: singleBinary.persistence.size, value: 2Gi }
+  # Prometheus: disable Alertmanager locally — the disposable CAPD cluster has no
+  # SMTP cred (the `alertmanager-smtp` Secret is out-of-band, prod-only),
+  # exactly as it has no backup S3 creds, so we drop the workload rather than let
+  # it sit permanently pending on a missing secret mount (mirrors the
+  # $patch:delete of the backup Applications above). kube-state-metrics stays on,
+  # so the server still evaluates the rule pack (visible in the Prometheus UI).
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: prometheus
+    patch: |-
+      - op: add
+        path: /spec/source/helm/parameters
+        value:
+          - { name: alertmanager.enabled, value: "false" }
   # Kratos/Hydra: layer the local values files (hosts, plain HTTP, dev mode)
   # over the base values — Argo merges valueFiles in order, later wins.
   - target:

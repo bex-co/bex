@@ -33,5 +33,10 @@ jobs:
         run: |
           curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_amd64.tar.gz \
             | sudo tar -xz -C /usr/local/bin fga
+      - name: install promtool # alerting-rule check + unit tests (w3/m6); matches the pinned chart appVersion
+        run: |
+          curl -fsSL https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz \
+            | tar -xz -C /tmp prometheus-2.55.1.linux-amd64/promtool
+          sudo install /tmp/prometheus-2.55.1.linux-amd64/promtool /usr/local/bin/promtool
       - name: validate
         run: bash scripts/gitops-validate.sh

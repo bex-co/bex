@@ -5,8 +5,11 @@
 #   2. helm template of the pinned Ory charts against the vendored values files
 #      (catches values that drift from the chart's schema), for both the base
 #      values and the base+local layering the local overlay declares.
+#   3. promtool check + unit-test of the platform alerting rules embedded in
+#      prometheus.yaml (w3/m6), against deploy/gitops/base/rules/alerts_test.yml.
 # Run locally before pushing gitops changes; CI runs it via .github/workflows/gitops.yml.
-# Requires: kubectl (built-in kustomize), helm, yq v4.
+# Requires: kubectl (built-in kustomize), helm, yq v4. Optional: fga, promtool
+# (steps skipped with a WARN when absent; CI installs both).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -104,6 +107,25 @@ if command -v fga >/dev/null 2>&1; then
   fi
 else
   echo "WARN: fga CLI not installed — skipping model.fga <-> model.json drift check" >&2
+fi
+
+# Platform alerting rules (w3/m6): the rule pack is the single source of truth
+# embedded in prometheus.yaml's Helm values (serverFiles.alerting_rules.yml).
+# Extract it and run promtool check + unit tests (deploy/gitops/base/rules/) so a
+# broken expression or regressed age-math/ratio fails CI, not prod.
+if command -v promtool >/dev/null 2>&1; then
+  echo "==> promtool check + test rules (extracted from prometheus.yaml)"
+  # helm `values:` is a block-scalar string — from_yaml re-parses it in-process so
+  # we can pull the rule groups out in a single yq (no second pipe stage).
+  yq '.spec.source.helm.values | from_yaml | {"groups": .serverFiles."alerting_rules.yml".groups}' \
+    deploy/gitops/base/prometheus.yaml >"$tmp/alerting_rules.yml"
+  cp deploy/gitops/base/rules/alerts_test.yml "$tmp/alerts_test.yml"
+  # Run inside $tmp so the test file's `rule_files: [alerting_rules.yml]` resolves
+  # to the freshly-extracted pack (promtool resolves rule_files from the CWD).
+  ( cd "$tmp" && promtool check rules alerting_rules.yml && promtool test rules alerts_test.yml ) \
+    || { echo "FAIL: alerting rules do not check/test clean — see deploy/gitops/base/prometheus.yaml + rules/alerts_test.yml" >&2; fail=1; }
+else
+  echo "WARN: promtool not installed — skipping alerting-rule check/test (docs/ADR010-observability.md)" >&2
 fi
 
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }
