@@ -16,17 +16,15 @@
 - [x] **m10** — Deploy cancel + rollback (9 tasks; DONE 2026-07-12 — REST/GraphQL/MCP `Cancel`/`Rollback` on all surfaces, `0011_deploy_rollback_target` migration, parity matrix refreshed, full test suite + lint green; live acceptance scenarios coded but not run against the mock cluster this session — its DB credential had drifted) ← from `/pm-brainstorm more` 2026-07-12 (the two ✖ Deploys rows m5 left; rollback target recorded per deploy); UI buttons ride `w5/007`
 - [x] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks; DONE 2026-07-12 — REST/GraphQL/MCP + dashboard InsightsPanel; `pg_stat_statements` enabled in CNPG spec; parameter-overrides write path through operator; parity row closed) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17); moved to `done/m25/`
 - [x] **m11** — Unify service creation through the control-plane store (9 tasks; DONE 2026-07-12 — all creates write store rows + mint clone secrets; deploy history populates for all surfaces) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
-- [ ] **m13** — Health check path: full-surface parity (PATCH · GraphQL · MCP · dashboard) (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-12 (docs/ADR018-render-parity.md line 21 gap; folds `w5/009`)
+- [x] **m13** — Health check path: full-surface parity (PATCH · GraphQL · MCP · dashboard) (9 tasks; DONE 2026-07-13 — MCP `set_health_check_path` tool + `healthCheckPath` on `create_web_service`; GraphQL `createService(healthCheckPath:)` arg; fixed `GetApp` relation arg in `SetHealthCheckPath`; dedicated test suite; ADR018 row closed) ← from `/pm-brainstorm more milestones to work on` 2026-07-12 (docs/ADR018-render-parity.md line 21 gap; folds `w5/009`)
 - [x] **m27** — Close the control-plane disaster-recovery gaps (10 tasks; DONE 2026-07-12 — bex-db barmanObjectStore backup config + ScheduledBackup; BexDbBackupStale alert + CNPG scrape; ADR031 consolidated backup/restore policy; ADR011/ADR015 stale warnings updated; gitops-validate.sh structural guard; restore drill procedures documented — operational drills require live cluster execution post-deploy) ← from `/pm-brainstorm more` 2026-07-12 (highest-severity unaddressed gap: bex-db had zero backup)
 
 ## Inbox
 
 _(empty — 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`)_
+
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 
-> `002.md` retired to `done/` after w6/m2 closed (line repaired 2026-07-12 — a stale "none open" bullet sat here while `005.md` was open).
-> `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`.
-> `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/ADR025-connect-an-agent.md`) — moved to `done/`.
-> `005.md` promoted to **m11** (unify service creation) 2026-07-12 — moved to `done/`.
+> `002.md` retired to `done/` after w6/m2 closed (line repaired 2026-07-12 — a stale "none open" bullet sat here while `005.md` was open). `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`. `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/ADR025-connect-an-agent.md`) — moved to `done/`. `005.md` promoted to **m11** (unify service creation) 2026-07-12 — moved to `done/`.
 
 > **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/ADR014-sandboxes.md (ADR, status: proposed) for a future explicit re-open.

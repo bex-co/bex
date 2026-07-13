@@ -94,6 +94,12 @@ type autoDeployArgs struct {
 	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
 }
 
+// healthCheckPathArgs is set_health_check_path's input.
+type healthCheckPathArgs struct {
+	ServiceID       string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with / or be empty to restore the platform default /"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -109,9 +115,10 @@ type createWebServiceArgs struct {
 	RootDir    string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	Port       int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
-	Replicas   int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	AutoDeploy      string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	HealthCheckPath string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
+	Port            int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Replicas        int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -131,9 +138,10 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		RootDir:    a.RootDir,
 		Plan:       a.Plan,
 		Env:        toEnvVars(a.EnvVars),
-		AutoDeploy: parseYesNo(a.AutoDeploy),
-		Port:       a.Port,
-		Replicas:   a.Replicas,
+		AutoDeploy:      parseYesNo(a.AutoDeploy),
+		HealthCheckPath: a.HealthCheckPath,
+		Port:            a.Port,
+		Replicas:        a.Replicas,
 	}
 }
 
@@ -508,6 +516,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_health_check_path",
+		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath → ReadinessProbe). A 2xx/3xx response marks the pod ready. Pass an empty string to restore the platform default /. Has no effect on cron_job or background_worker services.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath)
 		if err != nil {
 			return nil, renderService{}, err
 		}

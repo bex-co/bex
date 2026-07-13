@@ -1052,7 +1052,7 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return AppView{}, err
 	}
-	a, err := s.GetApp(ctx, name)
+	a, err := s.GetApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
