@@ -60,8 +60,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // i18next's resource-swap/subscriber-notify cost on every route change;
     // run alongside the (independent) session fetch rather than after it.
     if (i18n.language !== language) await i18n.changeLanguage(language);
+    // `aal2Required` rides along with the session: it is the same whoami call's
+    // other answer (a live session that owes a second factor), and `requireAuth`
+    // needs it to redirect to the step-up (w4/m17).
+    const { session, aal2Required } = await sessionPromise;
     return {
-      session: await sessionPromise,
+      session,
+      aal2Required,
       language,
     };
   },

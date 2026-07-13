@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import type { ConsentView } from "@/common/server-fn/hydra-consent";
 
 // The page is a pure render of the loader data the route's GET handler produced
@@ -75,6 +75,30 @@ describe("ConsentPage", () => {
       "approve",
       "deny",
     ]);
+  });
+
+  it("still carries the pressed button's decision once the form is submitting", () => {
+    // The pressed button IS the decision — it carries `name="decision"`, and the
+    // browser reads the entry list only *after* the submit handler returns,
+    // excluding any control disabled by then. So disabling the buttons on submit
+    // (to guard a double-click) drops the submitter's own field: the POST lands
+    // with a challenge, a CSRF token, and no decision at all — a 400 for every
+    // real browser, while a scripted client that posts the three fields itself
+    // sails through untouched. Found in a real browser (w4/m17 t001).
+    routeData.consent = view();
+
+    const { container } = render(<ConsentPage />);
+    const form = container.querySelector("form")!;
+    const approve = container.querySelector<HTMLButtonElement>(
+      'button[value="approve"]',
+    )!;
+    fireEvent.submit(form, { submitter: approve });
+
+    // What the browser would actually send, with the form in its submitting state.
+    const sent = new FormData(form, approve);
+    expect(sent.get("decision")).toBe("approve");
+    expect(sent.get("consent_challenge")).toBe("challenge-1");
+    expect(sent.get("csrf_token")).toBe("csrf-token-1");
   });
 
   it("surfaces a failed decision instead of silently re-asking", () => {

@@ -14,6 +14,7 @@ export default function LoginPage() {
   const flow = useOryFlow("login", search.flow, {
     returnTo: search.next || "/",
     loginChallenge: search.login_challenge,
+    aal: search.aal,
   });
   const { t } = useTranslations();
   const authFeatures = useAuthFeatures();

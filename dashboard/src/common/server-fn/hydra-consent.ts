@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentRequest } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
+import type { SessionState } from "@/common/server-fn/session";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -73,10 +74,12 @@ function hydraAdmin(): OAuth2Api | null {
   return new OAuth2Api(new Configuration({ basePath: admin }));
 }
 
-/** The Kratos session behind this request's cookies, or null. */
-async function sessionFor(request: Request) {
+/** What Kratos says about this request's cookies: the session, or why not. */
+async function sessionFor(request: Request): Promise<SessionState> {
   const cookie = request.headers.get("cookie");
-  return cookie ? fetchSession(cookie) : null;
+  return cookie
+    ? fetchSession(cookie)
+    : { session: null, aal2Required: false };
 }
 
 /**
@@ -179,11 +182,19 @@ async function rejectConsent(
   return redirect_to;
 }
 
-/** Where an unauthenticated consent redirect goes: log in, then come back. */
-function loginFirst(url: URL, challenge: string): Response {
+/**
+ * Where a consent redirect with no usable session goes: log in, then come back.
+ * A session owing a second factor is not a sign-in — it is a step-up, and the
+ * login page is told so outright (`aal=aal2`, w4/m17), exactly as `requireAuth`
+ * does for the routed pages. Without that, the login page would refuse to mint a
+ * first-factor flow (`session_already_available`), send the user back here, and
+ * this would bounce them straight to login again.
+ */
+function loginFirst(url: URL, challenge: string, aal2Required: boolean): Response {
   const back = `/auth/consent?consent_challenge=${encodeURIComponent(challenge)}`;
   const login = new URL("/auth/login", url.origin);
   login.searchParams.set("next", back);
+  if (aal2Required) login.searchParams.set("aal", "aal2");
   return Response.redirect(login.toString(), 302);
 }
 
@@ -235,8 +246,8 @@ export async function handleConsent(
 
   // A third party is asking — only the human whose login minted this challenge
   // may answer it.
-  const session = await sessionFor(request);
-  if (!session) return loginFirst(url, consentChallenge);
+  const { session, aal2Required } = await sessionFor(request);
+  if (!session) return loginFirst(url, consentChallenge, aal2Required);
   if (consent.subject && consent.subject !== session.identity?.id) {
     return new Response(
       "consent refused: this browser's session belongs to a different user than the one that signed in for this authorization — sign out and start over",
@@ -290,7 +301,7 @@ export async function handleConsentDecision(
     return new Response("consent provider not configured", { status: 503 });
   }
 
-  const session = await sessionFor(request);
+  const { session } = await sessionFor(request);
   if (!session) return refuse("consent refused: no session");
   if (!csrfTokenMatches(csrfToken, consentChallenge, session.id)) {
     return refuse("consent refused: bad csrf token");

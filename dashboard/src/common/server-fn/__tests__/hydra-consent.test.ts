@@ -54,6 +54,8 @@ function mockUpstreams(opts: {
   rejectOk?: boolean;
   sessionBody?: unknown;
   sessionOk?: boolean;
+  /** Overrides the whoami status — e.g. 403, a live session owing a second factor. */
+  sessionStatus?: number;
 }) {
   const calls: { url: string; init?: RequestInit }[] = [];
   vi.stubGlobal(
@@ -62,7 +64,7 @@ function mockUpstreams(opts: {
       calls.push({ url, init });
       if (url.includes("/sessions/whoami")) {
         return new Response(JSON.stringify(opts.sessionBody ?? session()), {
-          status: opts.sessionOk === false ? 401 : 200,
+          status: opts.sessionStatus ?? (opts.sessionOk === false ? 401 : 200),
         });
       }
       if (url.includes("/consent/accept")) {
@@ -206,6 +208,27 @@ describe("handleConsent (GET)", () => {
     const location = (res as Response).headers.get("Location")!;
     expect(location).toContain("/auth/login");
     expect(new URL(location).searchParams.get("next")).toBe(
+      `/auth/consent?consent_challenge=${CHALLENGE}`,
+    );
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("sends a browser owing a second factor to the step-up, not to a sign-in form", async () => {
+    // Under `highest_available` (docs/ADR012-auth.md § MFA) this browser holds a live
+    // aal1 session that whoami 403s. A plain login bounce would strand it: the
+    // login page can't mint a first-factor flow against a live session, would send
+    // it back here, and this would bounce it to login again. Name the step-up (w4/m17).
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      sessionStatus: 403,
+      sessionBody: { error: { id: "session_aal2_required" } },
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    const search = new URL(
+      (res as Response).headers.get("Location")!,
+    ).searchParams;
+    expect(search.get("aal")).toBe("aal2");
+    expect(search.get("next")).toBe(
       `/auth/consent?consent_challenge=${CHALLENGE}`,
     );
     expect(accepts(calls)).toHaveLength(0);

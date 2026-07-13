@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { cn } from "@/common/lib/utils/utils.ts";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
 const route = getRouteApi("/auth/consent");
@@ -144,8 +145,23 @@ export default function ConsentPage() {
           <form
             method="post"
             action="/auth/consent"
-            className="flex w-full gap-3"
-            onSubmit={() => setSubmitting(true)}
+            // The decision rides on the submit button that was pressed, and the
+            // browser builds this form's entry list *after* this handler returns
+            // — so the buttons must NOT be `disabled` while submitting: React's
+            // synchronous re-render would disable the submitter before the entry
+            // list is built, a disabled control is excluded from it, and the POST
+            // would arrive with no `decision` at all (a 400 for every real
+            // browser, invisible to a scripted client that posts the fields
+            // itself). Guard the double-submit without touching the controls.
+            className={cn(
+              "flex w-full gap-3",
+              submitting && "pointer-events-none opacity-70",
+            )}
+            aria-busy={submitting}
+            onSubmit={(event) => {
+              if (submitting) event.preventDefault();
+              setSubmitting(true);
+            }}
           >
             <input
               type="hidden"
@@ -159,7 +175,6 @@ export default function ConsentPage() {
               value="deny"
               variant="outline"
               className="flex-1"
-              disabled={submitting}
             >
               {t("auth.consentDeny")}
             </Button>
@@ -168,7 +183,6 @@ export default function ConsentPage() {
               name="decision"
               value="approve"
               className="flex-1"
-              disabled={submitting}
             >
               {t("auth.consentApprove")}
             </Button>

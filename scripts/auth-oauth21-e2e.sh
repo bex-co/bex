@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9 + w4/m16): drives
+# End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9 + m16 + m17): drives
 # the full agent story against REAL components — real Hydra, real Kratos with the
 # native `oauth2_provider` bridge (Kratos accepts the login challenge itself; no
 # custom login provider), the dashboard's real consent route, and the real bex-api
@@ -15,6 +15,11 @@
 #   * self-registered client with no blessing -> the signed-in human decides on
 #     the consent page: approve (-> working token), deny (-> access_denied), and
 #     a second authorization inside the remember window skips the page.
+#
+# Both login states, since w4/m17: legs 8-12 each drive a fresh browser (a clean
+# cookie jar), which keeps them independent — but it also means none of them ever
+# exercised the commonest path of all. Leg 13 reuses a jar that is already signed
+# in, the state that used to dead-end on the login page (see kratos_login).
 #
 # The consent page is a server-rendered HTML form posting back to /auth/consent,
 # so curl drives it exactly as a browser would — no Playwright, no framework-
@@ -65,7 +70,7 @@ wait_http() { # url [attempts]
   return 1
 }
 
-echo "-> 1/12 hydra (in-memory, DCR on, login/consent -> dashboard :$DASH_PORT)..."
+echo "-> 1/13 hydra (in-memory, DCR on, login/consent -> dashboard :$DASH_PORT)..."
 docker network create "$NET" >/dev/null 2>&1 || true
 docker rm -f "$HYDRA" >/dev/null 2>&1 || true
 docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
@@ -79,7 +84,7 @@ docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
   oryd/hydra:v2.2.0 serve all --dev >/dev/null
 wait_http "$HYDRA_ADM/health/ready"
 
-echo "-> 2/12 kratos (in-memory, native oauth2_provider -> hydra admin)..."
+echo "-> 2/13 kratos (in-memory, native oauth2_provider -> hydra admin)..."
 cat >"$TMP/identity.schema.json" <<'JSON'
 {
   "$id": "https://schemas.bex.co/e2e.schema.json",
@@ -147,7 +152,7 @@ docker run -d --name "$KRATOS" --network "$NET" --network-alias kratos \
   oryd/kratos:v1.3.1 serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier=false >/dev/null
 wait_http "$KRATOS_PUB/health/ready"
 
-echo "-> 3/12 bex-api (issuer + resource configured)..."
+echo "-> 3/13 bex-api (issuer + resource configured)..."
 if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
   (cd lego/backend && BEX_HYDRA_ADMIN_URL=$HYDRA_ADM BEX_KRATOS_URL=$KRATOS_PUB \
     BEX_OAUTH_ISSUER=$ISSUER BEX_OAUTH_RESOURCE=$RESOURCE \
@@ -156,7 +161,7 @@ if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
   wait_http "http://localhost:$API_PORT/healthz" 60
 fi
 
-echo "-> 4/12 dashboard dev server (consent route) on :$DASH_PORT..."
+echo "-> 4/13 dashboard dev server (consent route) on :$DASH_PORT..."
 if ! curl -sf -o /dev/null "$DASH/"; then
   (cd dashboard && VITE_KRATOS_PUBLIC_URL=$KRATOS_PUB VITE_API_URL=http://localhost:$API_PORT/graphql \
     HYDRA_ADMIN_URL=$HYDRA_ADM nohup yarn dev --port $DASH_PORT >"$TMP/dash.log" 2>&1 & echo $! >"$TMP/dash.pid")
@@ -164,7 +169,7 @@ if ! curl -sf -o /dev/null "$DASH/"; then
   wait_http "$DASH/auth/consent" 90 || true
 fi
 
-echo "-> 5/12 RFC 9728 discovery on bex-api..."
+echo "-> 5/13 RFC 9728 discovery on bex-api..."
 meta="$(curl -sf "http://localhost:$API_PORT/.well-known/oauth-protected-resource")"
 echo "$meta" | python3 -c "
 import sys, json
@@ -227,19 +232,36 @@ follow() { # url jar -> final url on stdout
 # (Kratos accepted the login challenge natively — the w4/m9 crux).
 #
 # A browser that already holds a Kratos session never sees a form: Kratos accepts
-# the challenge outright against that session and answers the same way, which is
-# what happens whenever a signed-in user connects a second agent. Both shapes hand
-# back `redirect_browser_to`, so both are handled here.
+# the challenge outright against that session — and answers this AJAX call with
+# HTTP 200 and a body of literally `null` (v1.3.1). No flow, no redirect, nothing
+# to render. The page must hand the challenge back to Kratos as a *browser*
+# request (no `Accept: application/json`), which 303s straight to Hydra's continue
+# URL; that is what `bootstrapViaKratos` in use-ory-flow.ts does, and what leg 13
+# exercises. Before w4/m17 the page rendered the null and sat on its skeleton
+# forever, so an already-signed-in user could not connect an agent at all.
+#
+# Records which of the three shapes Kratos answered with in $TMP/login_mode, so a
+# leg can assert the path it took rather than just its outcome.
 kratos_login() { # login_challenge jar -> continue url on stdout
-  local challenge="$1" jar="$2" flow action csrf submit cont
-  flow="$(curl -s -c "$jar" -b "$jar" -H 'Accept: application/json' \
-    "$KRATOS_PUB/self-service/login/browser?login_challenge=$challenge&return_to=$DASH/")"
+  local challenge="$1" jar="$2" flow action csrf submit cont url
+  url="$KRATOS_PUB/self-service/login/browser?login_challenge=$challenge&return_to=$DASH/"
+  flow="$(curl -s -c "$jar" -b "$jar" -H 'Accept: application/json' "$url")"
+
+  if [ "$(echo "$flow" | tr -d '[:space:]')" = "null" ]; then
+    echo signed-in-shortcircuit >"$TMP/login_mode"
+    cont="$(curl -s -o /dev/null -D - -c "$jar" -b "$jar" "$url" \
+      | grep -i '^location:' | tr -d '\r' | cut -d' ' -f2 | tail -1)"
+    [ -n "$cont" ] || { echo "error: Kratos did not redirect the browser-shaped login: $url" >&2; return 1; }
+    echo "$cont"; return 0
+  fi
+
   cont="$(echo "$flow" | python3 -c "
 import sys, json
 print((json.loads(sys.stdin.read() or 'null') or {}).get('redirect_browser_to', ''))
 ")"
-  if [ -n "$cont" ]; then echo "$cont"; return 0; fi
+  if [ -n "$cont" ]; then echo redirect-browser-to >"$TMP/login_mode"; echo "$cont"; return 0; fi
 
+  echo password-form >"$TMP/login_mode"
   action="$(echo "$flow" | python3 -c "import sys,json;print(json.load(sys.stdin)['ui']['action'])")"
   csrf="$(echo "$flow" | python3 -c "
 import sys, json
@@ -324,13 +346,13 @@ assert_bearer_works() { # access_token
   [ "$status" != "401" ] || { echo "error: /mcp still 401s with the granted token" >&2; return 1; }
 }
 
-echo "-> 6/12 DCR: three agents self-register public PKCE clients..."
+echo "-> 6/13 DCR: three agents self-register public PKCE clients..."
 TRUSTED_CLIENT="$(dcr 'claude-code-shaped agent (e2e)')"
 CONSENT_CLIENT="$(dcr 'unblessed agent (e2e)')"
 DENIED_CLIENT="$(dcr 'unwelcome agent (e2e)')"
 echo "  ✓ registered 3 clients at $REG_EP (none blessed yet)"
 
-echo "-> 7/12 operator blesses ONE client (skip_consent) + creates the test user..."
+echo "-> 7/13 operator blesses ONE client (skip_consent) + creates the test user..."
 # An operator marking an agent trusted is an admin action — the headless path.
 # The other two clients stay unblessed: since w4/m16 that is no longer a dead
 # end, it is the self-serve consent path.
@@ -344,7 +366,7 @@ curl -sf -X POST -H 'Content-Type: application/json' -d '{
 }' "$KRATOS_ADM/admin/identities" >/dev/null
 echo "  ✓ $TRUSTED_CLIENT trusted, identity created"
 
-echo "-> 8/12 trusted client: PKCE authorize -> login -> HEADLESS consent -> token -> Bearer..."
+echo "-> 8/13 trusted client: PKCE authorize -> login -> HEADLESS consent -> token -> Bearer..."
 JAR_TRUSTED="$TMP/trusted.jar"
 final="$(authorize "$TRUSTED_CLIENT" "state-trusted" "$JAR_TRUSTED")"
 expect_at "$CALLBACK" "$final" "trusted flow did not reach the agent callback (consent was not headless)"
@@ -353,7 +375,7 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$TRUSTED_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ consent auto-accepted headlessly -> token -> bex-api 200 (unchanged by m16)"
 
-echo "-> 9/12 unblessed client: authorize -> login -> the CONSENT PAGE renders..."
+echo "-> 9/13 unblessed client: authorize -> login -> the CONSENT PAGE renders..."
 JAR_USER="$TMP/user.jar"
 final="$(authorize "$CONSENT_CLIENT" "state-consent" "$JAR_USER")"
 expect_at "$DASH/auth/consent" "$final" "unblessed client did not reach the consent page"
@@ -361,7 +383,7 @@ grep -q 'unblessed agent (e2e)' "$TMP/page.html" || { echo "error: consent page 
 grep -q 'offline_access' "$TMP/page.html" || { echo "error: consent page does not list the requested scopes" >&2; exit 1; }
 echo "  ✓ the human sees a consent page naming the client and its scopes (no 403, no operator action)"
 
-echo "-> 10/12 the human approves -> code -> token -> bex-api..."
+echo "-> 10/13 the human approves -> code -> token -> bex-api..."
 final="$(consent_decide approve "$JAR_USER")"
 expect_at "$CALLBACK" "$final" "approve did not reach the agent callback"
 [ "$(qparam "$final" state)" = "state-consent" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
@@ -369,7 +391,7 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ user-consented token passes bex-api introspection + audience check, exactly like a blessed client's"
 
-echo "-> 11/12 a second agent asks; the human denies -> access_denied, no code..."
+echo "-> 11/13 a second agent asks; the human denies -> access_denied, no code..."
 # A fresh browser (jar) per authorization, deliberately: Kratos accepts each Hydra
 # login challenge without asking Hydra to remember the login, so every authorize
 # re-runs login anyway — and driving each leg from a clean browser keeps the legs
@@ -383,13 +405,36 @@ expect_at "$CALLBACK" "$final" "deny did not bounce the agent back to its redire
 [ -z "$(qparam "$final" code)" ] || { echo "error: a denied flow still delivered an authorization code: $final" >&2; exit 1; }
 echo "  ✓ Hydra rejected the request; the agent gets error=access_denied and no code"
 
-echo "-> 12/12 remembered consent: a fresh browser, same user+client -> no consent page..."
+echo "-> 12/13 remembered consent: a fresh browser, same user+client -> no consent page..."
 JAR_AGAIN="$TMP/again.jar"
 final="$(authorize "$CONSENT_CLIENT" "state-again" "$JAR_AGAIN")"
 expect_at "$CALLBACK" "$final" "the remembered grant re-prompted for consent"
 ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ inside the remember window the consent page is skipped -> token straight through"
+
+echo "-> 13/13 SIGNED-IN browser (reused jar): authorize again with no re-login..."
+# The most common connect-an-agent path (docs/ADR025-connect-an-agent.md) and the one
+# every leg above deliberately avoids: the user is *already signed into the
+# dashboard* when the agent asks. JAR_USER has held a live Kratos session since
+# leg 9, so this is the real thing, not a simulation of it.
+#
+# Hydra still re-runs the login redirect (Kratos accepts each challenge without
+# asking Hydra to remember the login), so the browser lands back on the login page
+# holding a session — the state that dead-ended before w4/m17. Assert the *path*,
+# not just the outcome: no password form may be submitted.
+: >"$TMP/login_mode" # a stale marker from an earlier leg must not pass this
+final="$(authorize "$CONSENT_CLIENT" "state-signedin" "$JAR_USER")"
+mode="$(cat "$TMP/login_mode")"
+[ "$mode" = "signed-in-shortcircuit" ] || {
+  echo "error: a signed-in browser should never re-authenticate; login took the '$mode' path" >&2
+  exit 1
+}
+expect_at "$CALLBACK" "$final" "the signed-in authorization did not reach the agent callback"
+[ "$(qparam "$final" state)" = "state-signedin" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
+ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
+assert_bearer_works "$ACCESS"
+echo "  ✓ already signed in -> no login form, no consent page -> token (this used to dead-end)"
 
 if [ -n "${HOLD:-}" ]; then
   echo
@@ -399,7 +444,7 @@ if [ -n "${HOLD:-}" ]; then
 fi
 
 echo
-echo "✓ w4/m9 + w4/m16 end-to-end: DCR -> PKCE -> dashboard-driven Kratos login"
-echo "  (native challenge accept) -> consent (headless for blessed clients, a real"
-echo "  user decision for everyone else: approve / deny / remembered) -> token ->"
-echo "  Bearer-authorized bex-api"
+echo "✓ w4/m9 + m16 + m17 end-to-end: DCR -> PKCE -> dashboard-driven Kratos login"
+echo "  (native challenge accept, from a signed-out AND an already-signed-in browser)"
+echo "  -> consent (headless for blessed clients, a real user decision for everyone"
+echo "  else: approve / deny / remembered) -> token -> Bearer-authorized bex-api"

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
+import { KRATOS_PUBLIC_URL } from "@/common/lib/ory/config";
 import { useOryFlow, clearStoredOryFlow } from "../use-ory-flow";
 
 const mockNavigate = vi.fn();
@@ -23,10 +24,38 @@ vi.mock("@/common/lib/ory/frontend", () => ({
 
 const LOGIN_KEY = "bex.ory-flow.login";
 
+/** Where the hook sends the browser when it hands a flow back to Kratos. */
+const kratosBrowserUrl = (params: Record<string, string>) =>
+  `${KRATOS_PUBLIC_URL}/self-service/login/browser?${new URLSearchParams(params)}`;
+
+const RETURN_TO_ROOT = new URL("/", window.location.origin).toString();
+
+/**
+ * Full-page navigations (`window.location.href = …`) are how the hook leaves for
+ * Kratos or Hydra; jsdom won't follow one, so stub location to make it readable.
+ */
+let realLocation: Location;
+function watchLocation() {
+  realLocation = window.location;
+  Object.defineProperty(window, "location", {
+    value: { ...realLocation, href: realLocation.href },
+    writable: true,
+    configurable: true,
+  });
+}
+
 describe("useOryFlow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
+    watchLocation();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      value: realLocation,
+      configurable: true,
+    });
   });
 
   it("creates a fresh flow via AJAX and never touches the URL", async () => {
@@ -144,11 +173,6 @@ describe("useOryFlow", () => {
         { status: 422 },
       ),
     });
-    const original = window.location;
-    Object.defineProperty(window, "location", {
-      value: { ...original, href: original.href },
-      writable: true,
-    });
 
     renderHook(() =>
       useOryFlow("login", undefined, { loginChallenge: "challenge-123" }),
@@ -157,7 +181,6 @@ describe("useOryFlow", () => {
     await waitFor(() =>
       expect(window.location.href).toBe("https://oauth.bex.co/continue"),
     );
-    Object.defineProperty(window, "location", { value: original });
   });
 
   it("degrades to the ordinary login page on a stale challenge", async () => {
@@ -181,7 +204,77 @@ describe("useOryFlow", () => {
     expect(secondCall.loginChallenge).toBeUndefined();
   });
 
-  // --- aal2 second-factor step-up (w4/m11 MFA) ---
+  // --- a signed-in browser continuing an OAuth2 authorization (w4/m17) ---
+
+  it("hands a satisfied login_challenge back to Kratos when it answers `200 null`", async () => {
+    // The most common connect-an-agent path: the user is already signed into
+    // the dashboard. Kratos (v1.3.1) accepts the login challenge against that
+    // session and answers the AJAX call with HTTP 200 and a body of literally
+    // `null` — no flow, no redirect, nothing to render. Re-asking as a *browser*
+    // is what moves the authorization on (Kratos 303s to Hydra's continue URL);
+    // rendering the null would leave the login page on its skeleton forever.
+    mockApi.createBrowserLoginFlow.mockResolvedValue(null);
+
+    const { result } = renderHook(() =>
+      useOryFlow("login", undefined, { loginChallenge: "challenge-123" }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.href).toBe(
+        kratosBrowserUrl({
+          return_to: RETURN_TO_ROOT,
+          login_challenge: "challenge-123",
+        }),
+      ),
+    );
+    expect(result.current).toBeNull(); // never rendered as a flow
+  });
+
+  it("hands the challenge back to Kratos when it refuses the flow outright", async () => {
+    // The same short-circuit, spelled as an error rather than a null body: a
+    // live session refuses a login flow. The challenge must ride along — bouncing
+    // to returnTo here would silently abandon the authorization.
+    mockApi.createBrowserLoginFlow.mockRejectedValue(sessionAlreadyAvailable());
+
+    renderHook(() =>
+      useOryFlow("login", undefined, {
+        returnTo: "/deploys",
+        loginChallenge: "challenge-123",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.href).toBe(
+        kratosBrowserUrl({
+          return_to: new URL("/deploys", window.location.origin).toString(),
+          login_challenge: "challenge-123",
+        }),
+      ),
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the login_challenge on the fallback bootstrap after an unknown failure", async () => {
+    // Any unhandled Kratos failure falls back to its redirect-based bootstrap.
+    // That bootstrap used to drop the challenge, quietly abandoning the
+    // authorization the user was in the middle of.
+    mockApi.createBrowserLoginFlow.mockRejectedValue(new Error("kratos is down"));
+
+    renderHook(() =>
+      useOryFlow("login", undefined, { loginChallenge: "challenge-123" }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.href).toBe(
+        kratosBrowserUrl({
+          return_to: RETURN_TO_ROOT,
+          login_challenge: "challenge-123",
+        }),
+      ),
+    );
+  });
+
+  // --- aal2 second-factor step-up (w4/m11 MFA, lifted in w4/m17) ---
 
   const sessionAlreadyAvailable = () => ({
     response: new Response(
@@ -191,49 +284,64 @@ describe("useOryFlow", () => {
   });
 
   it.each(["totp", "webauthn", "lookup_secret"])(
-    "mints an aal2 step-up flow and renders the %s challenge when a second factor is owed",
+    "renders the %s challenge directly when the guard says a second factor is owed",
     async (group) => {
-      // The auth guard bounced an aal1-session user here (whoami 403'd under
-      // `highest_available`), so the first-factor flow is refused and we must
-      // present the second-factor challenge instead of navigating away.
+      // `requireAuth` read `session_aal2_required` off the session fetch and sent
+      // the user here with `aal=aal2` — so the step-up flow is the *first* thing
+      // asked of Kratos. No trial first-factor flow, no probing (w4/m17).
       const stepUp = {
         id: "aal2-flow",
+        requested_aal: "aal2",
         ui: { nodes: [{ group, attributes: {} }] },
       };
-      mockApi.createBrowserLoginFlow
-        .mockRejectedValueOnce(sessionAlreadyAvailable())
-        .mockResolvedValueOnce(stepUp);
+      mockApi.createBrowserLoginFlow.mockResolvedValue(stepUp);
 
       const { result } = renderHook(() =>
-        useOryFlow("login", undefined, { returnTo: "/deploys" }),
+        useOryFlow("login", undefined, { returnTo: "/deploys", aal: "aal2" }),
       );
 
       await waitFor(() => expect(result.current).toBe(stepUp));
-      // the retry requested aal2...
-      expect(mockApi.createBrowserLoginFlow).toHaveBeenLastCalledWith(
+      expect(mockApi.createBrowserLoginFlow).toHaveBeenCalledTimes(1);
+      expect(mockApi.createBrowserLoginFlow).toHaveBeenCalledWith(
         expect.objectContaining({ aal: "aal2" }),
       );
-      // ...and we render the challenge rather than bouncing to returnTo.
+      // The challenge renders rather than bouncing to returnTo...
       expect(mockNavigate).not.toHaveBeenCalled();
-      // step-up flows are bound to the live session and never persisted.
+      // ...and step-up flows, bound to the live session, are never persisted.
       expect(window.sessionStorage.getItem(LOGIN_KEY)).toBeNull();
     },
   );
 
-  it("navigates on when the aal2 step-up flow carries no second factor", async () => {
-    // A fully-aal2 session (or an identity with no second factor) manually
-    // visiting /auth/login: the step-up flow has nothing to challenge, so we
-    // must send the user on rather than render an empty challenge card.
-    const emptyFlow = {
-      id: "aal2-empty",
-      ui: { nodes: [{ group: "default", attributes: {} }] },
+  it("ignores a stored first-factor flow when asked to step up", async () => {
+    window.sessionStorage.setItem(LOGIN_KEY, "stored-1"); // must not be resumed
+    const stepUp = {
+      id: "aal2-flow",
+      requested_aal: "aal2",
+      ui: { nodes: [{ group: "totp", attributes: {} }] },
     };
-    mockApi.createBrowserLoginFlow
-      .mockRejectedValueOnce(sessionAlreadyAvailable())
-      .mockResolvedValueOnce(emptyFlow);
+    mockApi.createBrowserLoginFlow.mockResolvedValue(stepUp);
 
     const { result } = renderHook(() =>
-      useOryFlow("login", undefined, { returnTo: "/home" }),
+      useOryFlow("login", undefined, { aal: "aal2" }),
+    );
+
+    await waitFor(() => expect(result.current).toBe(stepUp));
+    expect(mockApi.getLoginFlow).not.toHaveBeenCalled();
+  });
+
+  it("navigates on when the aal2 flow carries no second factor", async () => {
+    // An identity with no second factor, reached only by hand-typing
+    // `?aal=aal2`: Kratos still hands back a flow, but its only node is the CSRF
+    // token. Rendering that empty challenge card is worse than moving on.
+    const emptyFlow = {
+      id: "aal2-empty",
+      requested_aal: "aal2",
+      ui: { nodes: [{ group: "default", attributes: {} }] },
+    };
+    mockApi.createBrowserLoginFlow.mockResolvedValue(emptyFlow);
+
+    const { result } = renderHook(() =>
+      useOryFlow("login", undefined, { returnTo: "/home", aal: "aal2" }),
     );
 
     await waitFor(() =>
@@ -246,13 +354,39 @@ describe("useOryFlow", () => {
     expect(result.current).toBeNull();
   });
 
-  it("navigates on when the aal2 step-up itself is refused", async () => {
-    // Kratos rejects the aal2 request outright (e.g. no second factor to
-    // satisfy it) — the catch must fall through to navigating on, never leave
-    // the user stranded on a blank page.
+  it("falls back to a first-factor login when an aal2 step-up has no session", async () => {
+    // A stale `?aal=aal2` link (or a session that expired since the guard's
+    // whoami): Kratos answers `session_aal1_required` — there is nothing to step
+    // up, so this must become an ordinary sign-in, not a dead end.
+    const firstFactor = {
+      id: "plain-flow",
+      requested_aal: "aal1",
+      ui: { nodes: [] },
+    };
     mockApi.createBrowserLoginFlow
-      .mockRejectedValueOnce(sessionAlreadyAvailable())
-      .mockRejectedValueOnce(new Error("aal2 not possible"));
+      .mockRejectedValueOnce({
+        response: new Response(
+          JSON.stringify({ error: { id: "session_aal1_required" } }),
+          { status: 401 },
+        ),
+      })
+      .mockResolvedValueOnce(firstFactor);
+
+    const { result } = renderHook(() =>
+      useOryFlow("login", undefined, { aal: "aal2" }),
+    );
+
+    await waitFor(() => expect(result.current).toBe(firstFactor));
+    expect(mockApi.createBrowserLoginFlow).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ aal: "aal2" }),
+    );
+  });
+
+  it("navigates on — without probing for a step-up — when a session is already available", async () => {
+    // The altitude fix (w4/m17): the hook no longer mints a trial aal2 flow to
+    // find out whether a second factor is owed. The session fetch already knows;
+    // absent an `aal` param there is nothing left to prove, so just move on.
+    mockApi.createBrowserLoginFlow.mockRejectedValue(sessionAlreadyAvailable());
 
     renderHook(() => useOryFlow("login", undefined, { returnTo: "/x" }));
 
@@ -263,6 +397,7 @@ describe("useOryFlow", () => {
         replace: true,
       }),
     );
+    expect(mockApi.createBrowserLoginFlow).toHaveBeenCalledTimes(1);
   });
 
   it("does not attempt an aal2 step-up for non-login flows", async () => {

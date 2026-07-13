@@ -1,6 +1,7 @@
 import type { Session } from "@ory/client-fetch";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
+import { oryErrorInfo } from "@/common/lib/ory/errors";
 
 /**
  * The incoming request's Cookie header when rendering on the server; in the
@@ -18,16 +19,34 @@ const getRequestCookie = createIsomorphicFn()
   .client(() => undefined);
 
 /**
- * The Kratos session behind the current request, or null. Pass `cookie`
- * explicitly from a server route handler, which holds the `Request` itself
- * (`hydra-consent.ts`); omit it and the ambient request's Cookie header is used.
+ * What Kratos says about the browser behind this request. `session` is null
+ * whenever `whoami` refuses — but *why* it refused matters: under the
+ * `highest_available` AAL policy (docs/ADR012-auth.md § MFA) someone who signed in
+ * with a password but still owes a second factor holds a perfectly live aal1
+ * session that `whoami` nonetheless 403s, with `session_aal2_required`. That is a
+ * step-up, not a sign-in, and this call is the only place that can tell the two
+ * apart — so it says which it is, instead of leaving the login page to
+ * rediscover it by minting a trial flow (w4/m17).
  */
-export async function fetchSession(cookie?: string): Promise<Session | null> {
+export type SessionState = {
+  session: Session | null;
+  /** A live aal1 session owing its second factor: challenge, don't sign in. */
+  aal2Required: boolean;
+};
+
+/**
+ * The Kratos session behind the current request. Pass `cookie` explicitly from a
+ * server route handler, which holds the `Request` itself (`hydra-consent.ts`);
+ * omit it and the ambient request's Cookie header is used.
+ */
+export async function fetchSession(cookie?: string): Promise<SessionState> {
   try {
-    return await createFrontendApi(
+    const session = await createFrontendApi(
       cookie ?? (await getRequestCookie()),
     ).toSession();
-  } catch {
-    return null;
+    return { session, aal2Required: false };
+  } catch (err) {
+    const { id } = await oryErrorInfo(err);
+    return { session: null, aal2Required: id === "session_aal2_required" };
   }
 }

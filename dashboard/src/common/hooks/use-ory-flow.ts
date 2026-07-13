@@ -9,6 +9,7 @@ import type {
   FrontendApi,
 } from "@ory/client-fetch";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
+import { oryErrorInfo } from "@/common/lib/ory/errors";
 import { KRATOS_PUBLIC_URL } from "@/common/lib/ory/config";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 
@@ -24,14 +25,20 @@ type OryFlowMap = {
 const SECOND_FACTOR_GROUPS = new Set(["totp", "webauthn", "lookup_secret"]);
 
 /**
- * True when an aal2 step-up login flow actually presents a second-factor
- * challenge. Guards the step-up path: a session that is already aal2 (or an
- * identity with no second factor) yields a flow with no such node, and we must
- * not render an empty challenge card — the caller falls back to navigating on.
+ * A flow Kratos minted for aal2 that has nothing to challenge with: an identity
+ * with no second factor yields a "complete the second authentication challenge"
+ * flow whose only node is the CSRF token. That card would be empty, so the caller
+ * navigates on rather than render it. (Only a hand-typed `?aal=aal2` reaches this
+ * — the auth guard asks for a step-up solely when whoami says one is owed.)
+ *
+ * Keyed on the flow's own `requested_aal`, not on the `aal` we asked for: a
+ * step-up with no session behind it falls back to a first-factor flow, and that
+ * flow must not be judged by this rule.
  */
-function offersSecondFactor(flow: LoginFlow): boolean {
-  return (flow.ui?.nodes ?? []).some((node) =>
-    SECOND_FACTOR_GROUPS.has(node.group),
+function isEmptyStepUp(flow: LoginFlow): boolean {
+  return (
+    flow.requested_aal === "aal2" &&
+    !(flow.ui?.nodes ?? []).some((node) => SECOND_FACTOR_GROUPS.has(node.group))
   );
 }
 
@@ -84,6 +91,20 @@ function getFlow<K extends keyof OryFlowMap>(
 }
 
 /**
+ * How a flow can be asked for. `loginChallenge` (login/registration) links it to
+ * a Hydra OAuth2 authorization request, which Kratos's native `oauth2_provider`
+ * integration then accepts itself (docs/ADR012-auth.md, w4/m9); `aal: "aal2"`
+ * (login) asks for the second-factor challenge against the live session instead
+ * of a password form (§ MFA, w4/m11) — the caller passes it because the session
+ * fetch said a factor is owed, not on a hunch (w4/m17).
+ *
+ * A named bag, not positional args: the retry cascade below re-mints a flow with
+ * whichever one of these Kratos objected to dropped, and `{ ...ask, aal: undefined }`
+ * says which far better than counting `undefined`s into an argument list.
+ */
+type FlowAsk = { returnTo?: string; loginChallenge?: string; aal?: string };
+
+/**
  * Creates a fresh flow via AJAX. Kratos's `/self-service/{kind}/browser`
  * endpoints return the flow as JSON (no redirect) when called via fetch —
  * the same call opened as a link would 303 back to us with `?flow=` in the
@@ -91,21 +112,13 @@ function getFlow<K extends keyof OryFlowMap>(
  * still get set: auth and dashboard share a site (bex.co / localhost), so
  * the browser sends them on Ory Elements' subsequent form-submit fetches.
  *
- * `loginChallenge` (login/registration only) links the flow to a Hydra OAuth2
- * authorization request — Kratos's native `oauth2_provider` integration then
- * accepts the challenge itself on success (docs/ADR012-auth.md, w4/m9).
- *
- * `aal` (login only) requests a higher assurance level: `"aal2"` makes Kratos
- * return the second-factor step against the existing session (docs/ADR012-auth.md
- * § MFA, w4/m11) instead of a first-factor password form.
+ * Resolves to `null` when Kratos has no flow to give (see `bootstrapViaKratos`).
  */
 function createFlow<K extends keyof OryFlowMap>(
   api: FrontendApi,
   kind: K,
-  returnTo: string | undefined,
-  loginChallenge?: string,
-  aal?: string,
-): Promise<OryFlowMap[K]> {
+  { returnTo, loginChallenge, aal }: FlowAsk,
+): Promise<OryFlowMap[K] | null> {
   const req =
     kind === "login"
       ? api.createBrowserLoginFlow({ returnTo, loginChallenge, aal })
@@ -116,29 +129,35 @@ function createFlow<K extends keyof OryFlowMap>(
           : kind === "verification"
             ? api.createBrowserVerificationFlow({ returnTo })
             : api.createBrowserSettingsFlow({ returnTo });
-  return req as Promise<OryFlowMap[K]>;
+  return req as Promise<OryFlowMap[K] | null>;
 }
 
 /**
- * Extracts Kratos's machine-readable error id (e.g. `session_already_available`)
- * and, for `browser_location_change_required`, where to send the browser (how
- * Kratos answers an AJAX call whose flow must continue elsewhere — e.g. an
- * OAuth2 login challenge short-circuited by an existing session).
+ * Asks Kratos for the same flow again, but as a plain browser navigation — no
+ * `Accept: application/json` — so it may answer with a redirect instead of a flow
+ * body. Two things arrive here:
+ *
+ * - **The OAuth2 short-circuit (w4/m17).** A browser that already holds a session
+ *   Kratos can accept the login challenge against gets no flow at all over AJAX:
+ *   Kratos v1.3.1 answers `200` with a body of literally `null` — nothing to
+ *   render, and an AJAX call cannot be redirected. Asked as a browser, the very
+ *   same URL 303s straight to Hydra's continue URL and the authorization goes
+ *   through with no login UI. Rendering the `null` instead is what used to strand
+ *   an already-signed-in user on the login page's skeleton, forever.
+ * - **The escape hatch.** Any AJAX bootstrap we couldn't make sense of. Kratos
+ *   303s back here with `?flow=` appended, which the hook adopts and scrubs.
+ *
+ * Every param the AJAX call carried rides along: dropping the challenge here
+ * would silently abandon the authorization the user is in the middle of.
  */
-async function oryErrorInfo(
-  err: unknown,
-): Promise<{ id?: string; redirectBrowserTo?: string }> {
-  const response = (err as { response?: Response })?.response;
-  if (!response) return {};
-  try {
-    const body = (await response.clone().json()) as {
-      error?: { id?: string };
-      redirect_browser_to?: string;
-    };
-    return { id: body.error?.id, redirectBrowserTo: body.redirect_browser_to };
-  } catch {
-    return {};
-  }
+function bootstrapViaKratos(
+  kind: keyof OryFlowMap,
+  { returnTo, loginChallenge, aal }: FlowAsk,
+) {
+  const params = new URLSearchParams(returnTo ? { return_to: returnTo } : {});
+  if (loginChallenge) params.set("login_challenge", loginChallenge);
+  if (aal) params.set("aal", aal);
+  window.location.href = `${KRATOS_PUBLIC_URL}/self-service/${kind}/browser?${params}`;
 }
 
 /**
@@ -155,6 +174,10 @@ async function oryErrorInfo(
  *   clean URL and an intact back-button.
  * - Stored/inbound id turns out expired, used, or foreign → silently fall
  *   through to minting a fresh flow. A days-old bookmark just works.
+ * - Kratos declines to hand back a flow at all — because the browser's existing
+ *   session already answers the question being asked (an OAuth2 login challenge
+ *   it can accept outright) → `bootstrapViaKratos` re-asks as a browser, and
+ *   Kratos redirects the flow onward instead of describing it.
  *
  * `returnTo` must NOT be this page's own URL: Kratos short-circuits flow
  * creation when a valid session exists (`session_already_available`) and
@@ -165,12 +188,18 @@ export interface UseOryFlowOptions {
   returnTo?: string;
   /** Hydra OAuth2 challenge linking this flow to an authorization request (w4/m9). */
   loginChallenge?: string;
+  /**
+   * Assurance level to request (login only). `"aal2"` renders the second-factor
+   * challenge against the live session: the caller passes it because the session
+   * fetch reported `session_aal2_required` — this hook does not guess (w4/m17).
+   */
+  aal?: "aal2";
 }
 
 export function useOryFlow<K extends keyof OryFlowMap>(
   kind: K,
   flowIdFromUrl: string | undefined,
-  { returnTo = "/", loginChallenge }: UseOryFlowOptions = {},
+  { returnTo = "/", loginChallenge, aal }: UseOryFlowOptions = {},
 ): OryFlowMap[K] | null {
   const [flow, setFlow] = useState<OryFlowMap[K] | null>(null);
   const navigate = useNavigate();
@@ -194,14 +223,28 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     }
 
     const api = createFrontendApi();
-    const returnUrl = new URL(returnTo, window.location.origin).toString();
+    const ask: FlowAsk = {
+      returnTo: new URL(returnTo, window.location.origin).toString(),
+      loginChallenge,
+      aal,
+    };
+
+    // Already signed in with nothing more to prove — go where the user was
+    // headed. It goes in `href`, not `to`: returnTo is an arbitrary href and may
+    // carry a query string (`/auth/consent?consent_challenge=…`), which `to`
+    // would swallow into the pathname.
+    const goToReturnTo = () =>
+      void navigate({ to: "/", href: returnTo, replace: true });
+    const handBackToKratos = () => bootstrapViaKratos(kind, ask);
 
     async function load() {
-      // A login_challenge visit is an OAuth2 authorization in progress
-      // (docs/ADR012-auth.md, w4/m9): always mint a fresh flow bound to the challenge —
-      // a stored flow isn't linked to the Hydra request — and don't persist it
-      // (a later ordinary visit must not resume an OAuth-linked flow).
-      const knownId = loginChallenge ? null : readStoredFlowId(kind);
+      // Both a `login_challenge` (an OAuth2 authorization in progress,
+      // docs/ADR012-auth.md, w4/m9) and an `aal` step-up bind the flow to *this*
+      // visit — to Hydra's request, or to the live session. Neither may resume a
+      // stored flow, and neither is stored: a later ordinary visit must start
+      // its own first-factor flow.
+      const bound = Boolean(loginChallenge || aal);
+      const knownId = bound ? null : readStoredFlowId(kind);
       if (knownId) {
         try {
           const existing = await getFlow(api, kind, knownId);
@@ -213,78 +256,77 @@ export function useOryFlow<K extends keyof OryFlowMap>(
       }
 
       try {
-        let fresh: OryFlowMap[K];
+        let fresh: OryFlowMap[K] | null;
         try {
-          fresh = await createFlow(api, kind, returnUrl, loginChallenge);
+          fresh = await createFlow(api, kind, ask);
         } catch (err) {
           const { id, redirectBrowserTo } = await oryErrorInfo(err);
+          if (cancelled) return;
           if (id === "browser_location_change_required" && redirectBrowserTo) {
-            // OAuth2 short-circuit: an existing session satisfied the login
-            // challenge (Kratos accepted it) — continue the authorize flow.
+            // Kratos wants the browser elsewhere. Ory Elements' own submits are
+            // what usually provoke this; flow *creation* no longer does (v1.3.1
+            // answers the OAuth2 short-circuit with `200 null` instead — see
+            // bootstrapViaKratos). Honored anyway: if Kratos names a destination,
+            // going there is always right, and older versions do name one here.
             window.location.href = redirectBrowserTo;
             return;
           }
-          if (id === "self_service_flow_return_to_forbidden") {
+          if (id === "session_already_available") {
+            // A live session refuses a login flow. With an authorization riding
+            // on this visit, hand the challenge back to Kratos — it accepts it
+            // against that very session when asked as a browser (navigating to
+            // returnTo would abandon the authorization). Otherwise the user is
+            // simply signed in with nothing left to prove: any second factor owed
+            // would already have been asked for by `aal`, because the session
+            // fetch knows — this hook no longer probes for it (w4/m17).
+            if (loginChallenge) handBackToKratos();
+            else goToReturnTo();
+            return;
+          }
+          if (id === "session_aal1_required") {
+            // An `aal=aal2` step-up with no session behind it — a stale link, or
+            // a session that expired between the guard's whoami and this call.
+            // Nothing to step up: start an ordinary login.
+            fresh = await createFlow(api, kind, { ...ask, aal: undefined });
+          } else if (id === "self_service_flow_return_to_forbidden") {
             // Kratos rejects return_to values missing from its
             // allowed_return_urls (e.g. localhost dev against an environment
             // that doesn't allowlist it) — the flow itself still works
             // without one, so retry rather than fail the page.
-            fresh = await createFlow(api, kind, undefined, loginChallenge);
+            fresh = await createFlow(api, kind, { ...ask, returnTo: undefined });
           } else if (loginChallenge) {
             // Stale/invalid challenge (single-use, short TTL) — the challenge
             // is advisory, never load-bearing: degrade to the ordinary page.
-            fresh = await createFlow(api, kind, returnUrl);
+            fresh = await createFlow(api, kind, {
+              ...ask,
+              loginChallenge: undefined,
+            });
           } else {
             throw err;
           }
         }
         if (cancelled) return;
-        if (!loginChallenge) writeStoredFlowId(kind, fresh.id);
-        setFlow(fresh);
-      } catch (err) {
-        if (cancelled) return;
-        const { id: errorId } = await oryErrorInfo(err);
-        if (errorId === "session_already_available") {
-          // A session exists, so Kratos refuses a first-factor login flow.
-          // Under the `highest_available` AAL policy (docs/ADR012-auth.md § MFA) this
-          // is exactly the "authenticated with a password (aal1) but a second
-          // factor is still owed" case — the whoami that gates protected pages
-          // 403s until aal2, so the auth guard bounced the user here. Mint an
-          // aal2 step-up flow: Kratos returns the second-factor challenge
-          // against the live session and Ory Elements renders it. If that flow
-          // carries no second-factor node (session already aal2, or an
-          // identity with no second factor manually visiting /auth/login),
-          // there's nothing to challenge — go where the user was headed.
-          if (kind === "login") {
-            try {
-              const stepUp = await createFlow(
-                api,
-                kind,
-                returnUrl,
-                loginChallenge,
-                "aal2",
-              );
-              if (cancelled) return;
-              if (offersSecondFactor(stepUp as LoginFlow)) {
-                // Step-up flows are bound to the live session; never persist —
-                // a later fresh visit must start its own first-factor flow.
-                setFlow(stepUp);
-                return;
-              }
-            } catch {
-              // Kratos rejects the aal2 request (no second factor to satisfy
-              // it) — fall through to navigate on.
-            }
-          }
-          // Already signed in with nothing more to prove — go where the user was
-          // headed instead. It goes in `href`, not `to`: returnTo is an
-          // arbitrary href and may carry a query string
-          // (`/auth/consent?consent_challenge=…`), which `to` would swallow into
-          // the pathname.
-          void navigate({ to: "/", href: returnTo, replace: true });
+        if (!fresh) {
+          handBackToKratos(); // `200 null` — see bootstrapViaKratos (w4/m17)
           return;
         }
-        if (errorId === "session_inactive") {
+        if (isEmptyStepUp(fresh as LoginFlow)) {
+          goToReturnTo();
+          return;
+        }
+        if (!bound) writeStoredFlowId(kind, fresh.id);
+        setFlow(fresh);
+      } catch (err) {
+        // A *retry* failed (the first attempt's failures are all handled inline).
+        if (cancelled) return;
+        const { id } = await oryErrorInfo(err);
+        if (id === "session_already_available") {
+          // The stale-challenge retry, dropped back to an ordinary login flow,
+          // met the live session this browser holds: signed in, nothing to prove.
+          goToReturnTo();
+          return;
+        }
+        if (id === "session_inactive") {
           // Settings without a session — sign in first.
           void navigate({
             to: "/auth/login",
@@ -295,7 +337,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
         }
         // Unknown failure — fall back to Kratos's redirect-based bootstrap
         // (readds ?flow= for this one attempt, but keeps the page usable).
-        window.location.href = `${KRATOS_PUBLIC_URL}/self-service/${kind}/browser?return_to=${encodeURIComponent(returnUrl)}`;
+        handBackToKratos();
       }
     }
 
@@ -303,7 +345,7 @@ export function useOryFlow<K extends keyof OryFlowMap>(
     return () => {
       cancelled = true;
     };
-  }, [kind, flowIdFromUrl, returnTo, navigate, loginChallenge]);
+  }, [kind, flowIdFromUrl, returnTo, navigate, loginChallenge, aal]);
 
   return flow;
 }

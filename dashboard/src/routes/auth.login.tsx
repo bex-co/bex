@@ -12,6 +12,11 @@ export const Route = createFileRoute("/auth/login")({
       typeof search.login_challenge === "string"
         ? search.login_challenge
         : undefined,
+    // Second-factor step-up, as `requireAuth` (and the consent route) ask for it
+    // when the session fetch reports `session_aal2_required` (w4/m17). Only the
+    // one value we ever mint is honored — it goes straight to Kratos as a query
+    // param, so nothing else from the URL is passed on.
+    aal: search.aal === "aal2" ? ("aal2" as const) : undefined,
   }),
   head: () => ({
     meta: [{ title: "Sign in — bex" }],
