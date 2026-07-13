@@ -21,7 +21,7 @@
 - [x] **m15** — New-service create wizard (source picker · repo picker · deploy) (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (Render `/web/new` parity); done 2026-07-11, moved to `done/m15/`
 - [x] **m16** — Manual-scaling section in service Settings (9 tasks) ← promoted from `004` 2026-07-11, unblocked by `w2/m12` (backend scale API shipped 2026-07-08) — done 2026-07-12, moved to `done/m16/`
 - [x] **m17** — Create wizard: all service types (static site · cron job · background worker · private service) (8 tasks; DONE 2026-07-12 — type picker + per-type fields shipped, 14 new tests pass, Static-site UI ◐→✅ in parity ledger) ← from `/pm-brainstorm more for w5` 2026-07-12; pure UI, backend `createService` already accepts every field
-- [ ] **m18** — Cron-job Settings write path (Schedule + Command editable) (7 tasks) ← from `/pm-brainstorm more for w5` 2026-07-12; retires the w5/m11 read-only deferral, includes the missing GraphQL/MCP half (w5/m9 precedent)
+- [x] **m18** — Cron-job Settings write path (Schedule + Command editable) (7 tasks) ← from `/pm-brainstorm more for w5` 2026-07-12; retires the w5/m11 read-only deferral, includes the missing GraphQL/MCP half (w5/m9 precedent) — done 2026-07-12, moved to `done/m18/`
 
 ## Inbox
 

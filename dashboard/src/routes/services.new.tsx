@@ -34,6 +34,7 @@ import {
 import { useCreateService } from "@/features/services/hooks/use-create-service";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 
@@ -57,9 +58,6 @@ function isValidGitUrl(url: string): boolean {
   return /^(https?:\/\/|git@|git:\/\/)/.test(url.trim());
 }
 
-function isValidCronExpression(s: string): boolean {
-  return s.trim().split(/\s+/).length === 5;
-}
 
 /**
  * The service-creation plan picker for the create wizard — a radio-group of
@@ -217,7 +215,7 @@ export function NewServicePage() {
   const isGitSource = tab === "github" || tab === "git";
 
   const scheduleError =
-    isCronType && schedule.trim() !== "" && !isValidCronExpression(schedule);
+    isCronType && schedule.trim() !== "" && !isValidCron(schedule);
 
   // Auto-fill name + branch from source when user hasn't manually typed a name.
   // `nameEdited` resets to false when the name is cleared (onChange uses

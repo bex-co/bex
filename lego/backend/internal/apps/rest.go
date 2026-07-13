@@ -46,6 +46,12 @@ type patchServiceRequest struct {
 	// (spec.autoDeploy). "" => absent (leave unchanged); parseYesNo maps the rest
 	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
 	AutoDeploy string `json:"autoDeploy"`
+	// Schedule + Command are a cron_job's schedule expression and entrypoint
+	// override (w5/m18). Only honored when the target App is a cron_job
+	// (core.ErrBadRequest otherwise). Pointers so "absent" (leave unchanged) is
+	// distinct from an explicit ""; schedule must be a non-empty 5-field crontab.
+	Schedule *string `json:"schedule"`
+	Command  *string `json:"command"`
 }
 
 // scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
@@ -267,7 +273,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
-		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil {
+		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -295,6 +301,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if autoDeploy != nil {
 			if app, err = s.SetAutoDeploy(r.Context(), id, *autoDeploy); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.Schedule != nil || req.Command != nil {
+			if app, err = s.SetCronJob(r.Context(), id, req.Schedule, req.Command); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

@@ -81,6 +81,7 @@ export function ServiceSettingsPage() {
 
       {cron ? (
         <CronDeploySection
+          serviceId={serviceId}
           schedule={service?.schedule ?? null}
           command={service?.command ?? null}
         />

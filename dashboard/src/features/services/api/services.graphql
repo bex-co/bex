@@ -62,6 +62,16 @@ mutation DeleteService($id: String!) {
 # (build-from-git) or image must be set; branch/rootDir/autoDeploy apply to git
 # sources only. type selects the service kind (web_service default); schedule and
 # command are cron_job-only; publishPath is static_site-only.
+# updateCronJob: change a cron_job's schedule and/or command (w5/m18).
+# schedule is required; command is optional (empty clears the entrypoint override).
+mutation UpdateCronJob($id: String!, $schedule: String!, $command: String) {
+  updateCronJob(id: $id, schedule: $schedule, command: $command) {
+    id
+    schedule
+    command
+  }
+}
+
 mutation CreateService(
   $name: String!
   $type: String

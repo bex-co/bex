@@ -941,6 +941,49 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	})
 }
 
+// SetCronJob changes a cron_job's schedule and/or command (spec.schedule +
+// spec.command). Rejected for a non-cron service. Both args are optional — nil
+// means "keep existing," which lets REST PATCH update one field without
+// re-reading the other. A non-nil schedule must be a non-empty 5-field crontab;
+// a non-nil command of "" clears the entrypoint override. Direct CR patch, not
+// projection-owned (mirrors Builder/RootDir).
+func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command *string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	if schedule != nil {
+		trimmed := strings.TrimSpace(*schedule)
+		if trimmed == "" {
+			return AppView{}, fmt.Errorf("%w: schedule is required", core.ErrBadRequest)
+		}
+		if !validCronSchedule(trimmed) {
+			return AppView{}, fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
+		}
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return AppView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		if schedule != nil {
+			a.Spec.Schedule = strings.TrimSpace(*schedule)
+		}
+		if command != nil {
+			a.Spec.Command = strings.TrimSpace(*command)
+		}
+	})
+}
+
+// validCronSchedule reports whether s is a 5-field cron expression. Field
+// syntax is intentionally permissive — the k8s CronJob controller validates the
+// individual fields at convergence; bex only checks the field count here.
+func validCronSchedule(s string) bool {
+	return len(strings.Fields(s)) == 5
+}
+
 // SetAutoDeploy flips whether a signed git push to the tracked branch redeploys
 // this App (spec.autoDeploy, Render's Auto-Deploy toggle). A direct CR patch,
 // not projection-owned (mirrors Builder/RootDir), and no restartedAt bump —

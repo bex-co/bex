@@ -76,6 +76,16 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
+// updateCronJobArgs is update_cron_job's input — bex's functional implementation
+// of the verb Render ships as a non-functional stub. schedule is the 5-field
+// crontab expression (required); command is a pointer so nil means "keep the
+// existing override" and an empty string means "clear it."
+type updateCronJobArgs struct {
+	ServiceID string  `json:"serviceId" jsonschema:"the cron job id (bex App name), as returned by list_services"`
+	Schedule  string  `json:"schedule" jsonschema:"the new cron schedule (5-field crontab, e.g. '0 0 * * *'); required"`
+	Command   *string `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to keep the existing override, empty string to clear it"`
+}
+
 // autoDeployArgs is set_auto_deploy's input — Render's Auto-Deploy toggle.
 type autoDeployArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
@@ -350,6 +360,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "run_cron_job",
 		Description: "Trigger a one-off run of a cron job now (Render's cron run trigger). The run appears in the service's run history once it starts. bex extension over Render's MCP.",
 	}, s.serviceTool(s.TriggerCronRun))
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_cron_job",
+		Description: "Change a cron job's schedule and/or command. Render ships a non-functional stub for this tool; bex makes it real. schedule is the 5-field crontab expression (required); command overrides the image's entrypoint (optional — omit to keep the existing override, empty to clear it).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateCronJobArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetCronJob(ctx, in.ServiceID, &in.Schedule, in.Command)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",

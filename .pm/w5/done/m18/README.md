@@ -1,18 +1,18 @@
 # w5 · m18 — Cron-job Settings write path (Schedule + Command editable)
 
-**Worker:** worker5 **Goal:** Retire the w5/m11 deferral: a cron job's Schedule + Command become editable from the dashboard Settings tab, Render-consistent. REST `PATCH` already threads `schedule`/`command`, but GraphQL has no update mutation (verified 2026-07-12: none in `lego/backend/internal/apps/graphql.go`) — this milestone adds that small backend half here rather than a gated w2 note (the w5/m9 precedent), plus the MCP decision and the UI. **Status:** todo
+**Worker:** worker5 **Goal:** Retire the w5/m11 deferral: a cron job's Schedule + Command become editable from the dashboard Settings tab, Render-consistent. REST `PATCH` already threads `schedule`/`command`, but GraphQL has no update mutation (verified 2026-07-12: none in `lego/backend/internal/apps/graphql.go`) — this milestone adds that small backend half here rather than a gated w2 note (the w5/m9 precedent), plus the MCP decision and the UI. **Status:** DONE 2026-07-12 — all 4 surfaces (REST/GraphQL/MCP/UI) can update schedule+command; `update_cron_job` MCP stub made real; parity ledger cron caveat retired; 22 backend + 11 dashboard tests green.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                             | est | depends_on   |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | GraphQL mutation to update a cron job's `schedule`/`command`, delegating to the same core verb REST `PATCH` uses                     | 30m | —            |
-| t002 | MCP: make `update_cron_job` functional (Render ships a non-functional stub — the static-routes precedent) or document the omission   | 25m | t001         |
-| t003 | Dashboard: `cron-deploy-section` editable — edit-in-place Schedule + Command, cron validation, save + convergence messaging          | 35m | t001         |
-| t004 | Render parity — REST/GraphQL/MCP/UI consistency vs Render's cron Deploy section + OpenAPI `PATCH` shapes; ledger cron caveat retired | 25m | t002, t003   |
-| t005 | Simplify — `/simplify` over the code this milestone changed                                                                          | 15m | t004         |
-| t006 | Test coverage — mutation validation, non-cron 4xx, UI save/error states                                                              | 30m | t004         |
-| t007 | Closeout — DoD met → move milestone to `done/`                                                                                       | 10m | t006         |
+| t001 | GraphQL mutation to update a cron job's `schedule`/`command`, delegating to the same core verb REST `PATCH` uses                     | 30m | —            | — **DONE**
+| t002 | MCP: make `update_cron_job` functional (Render ships a non-functional stub — the static-routes precedent) or document the omission   | 25m | t001         | — **DONE**
+| t003 | Dashboard: `cron-deploy-section` editable — edit-in-place Schedule + Command, cron validation, save + convergence messaging          | 35m | t001         | — **DONE**
+| t004 | Render parity — REST/GraphQL/MCP/UI consistency vs Render's cron Deploy section + OpenAPI `PATCH` shapes; ledger cron caveat retired | 25m | t002, t003   | — **DONE**
+| t005 | Simplify — `/simplify` over the code this milestone changed                                                                          | 15m | t004         | — **DONE**
+| t006 | Test coverage — mutation validation, non-cron 4xx, UI save/error states                                                              | 30m | t004         | — **DONE**
+| t007 | Closeout — DoD met → move milestone to `done/`                                                                                       | 10m | t006         | — **DONE**
 
 ## Definition of done
 

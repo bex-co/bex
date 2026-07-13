@@ -972,8 +972,32 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Cron job Settings tab: Deploy section title (Render parity)",
   },
   "services.deployDescription": {
-    message: "How this cron job runs — read-only for now.",
+    message: "How this cron job runs.",
     description: "Cron job Settings tab: Deploy section description",
+  },
+  "services.deployEdit": {
+    message: "Edit cron settings",
+    description: "Cron job Deploy section: accessible label for the edit-pencil button",
+  },
+  "services.deploySave": {
+    message: "Save",
+    description: "Cron job Deploy section: save button",
+  },
+  "services.deployCancel": {
+    message: "Cancel",
+    description: "Cron job Deploy section: cancel edit button",
+  },
+  "services.deploySuccess": {
+    message: "Cron job settings saved.",
+    description: "Toast after updateCronJob succeeds",
+  },
+  "services.deployConverging": {
+    message: "The operator will apply the new schedule on its next reconcile pass.",
+    description: "Toast description after a cron job schedule change (async convergence)",
+  },
+  "services.deployError": {
+    message: "Couldn't save cron job settings. Please try again.",
+    description: "Toast after updateCronJob fails",
   },
   "services.deployScheduleLabel": {
     message: "Schedule",
@@ -983,9 +1007,29 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Runs this command on this schedule (5-field crontab).",
     description: "Cron job Settings tab: Deploy section schedule help text",
   },
+  "services.deploySchedulePlaceholder": {
+    message: "0 * * * *",
+    description: "Cron job Deploy section: schedule input placeholder",
+  },
+  "services.deployScheduleError": {
+    message: "Enter a valid 5-field cron expression, e.g. 0 * * * *.",
+    description: "Cron job Deploy section: schedule validation error",
+  },
+  "services.deployScheduleRequired": {
+    message: "Schedule is required.",
+    description: "Cron job Deploy section: schedule required validation error",
+  },
   "services.deployCommandLabel": {
     message: "Command",
     description: "Cron job Settings tab: Deploy section command field label",
+  },
+  "services.deployCommandPlaceholder": {
+    message: "e.g. python script.py",
+    description: "Cron job Deploy section: command input placeholder",
+  },
+  "services.deployCommandHint": {
+    message: "Overrides the image's default entry point. Leave blank to run the image's own command.",
+    description: "Cron job Deploy section: command field help text",
   },
   "services.deployCommandEmpty": {
     message: "Uses the image's own default command.",

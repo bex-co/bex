@@ -959,8 +959,32 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Cron job Settings tab: Deploy section title (Render parity)",
   },
   "services.deployDescription": {
-    message: "此定时任务的运行方式——目前为只读。",
+    message: "此定时任务的运行方式。",
     description: "Cron job Settings tab: Deploy section description",
+  },
+  "services.deployEdit": {
+    message: "编辑定时任务设置",
+    description: "Cron job Deploy section: accessible label for the edit-pencil button",
+  },
+  "services.deploySave": {
+    message: "保存",
+    description: "Cron job Deploy section: save button",
+  },
+  "services.deployCancel": {
+    message: "取消",
+    description: "Cron job Deploy section: cancel edit button",
+  },
+  "services.deploySuccess": {
+    message: "定时任务设置已保存。",
+    description: "Toast after updateCronJob succeeds",
+  },
+  "services.deployConverging": {
+    message: "操作器将在下一次协调时应用新计划。",
+    description: "Toast description after a cron job schedule change (async convergence)",
+  },
+  "services.deployError": {
+    message: "无法保存定时任务设置，请重试。",
+    description: "Toast after updateCronJob fails",
   },
   "services.deployScheduleLabel": {
     message: "计划",
@@ -970,9 +994,29 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "按此计划（5 段 crontab 表达式）运行该命令。",
     description: "Cron job Settings tab: Deploy section schedule help text",
   },
+  "services.deploySchedulePlaceholder": {
+    message: "0 * * * *",
+    description: "Cron job Deploy section: schedule input placeholder",
+  },
+  "services.deployScheduleError": {
+    message: "请输入有效的 5 段 cron 表达式，例如 0 * * * *。",
+    description: "Cron job Deploy section: schedule validation error",
+  },
+  "services.deployScheduleRequired": {
+    message: "计划表达式为必填项。",
+    description: "Cron job Deploy section: schedule required validation error",
+  },
   "services.deployCommandLabel": {
     message: "命令",
     description: "Cron job Settings tab: Deploy section command field label",
+  },
+  "services.deployCommandPlaceholder": {
+    message: "例如 python script.py",
+    description: "Cron job Deploy section: command input placeholder",
+  },
+  "services.deployCommandHint": {
+    message: "覆盖镜像的默认入口命令。留空则使用镜像自身的命令。",
+    description: "Cron job Deploy section: command field help text",
   },
   "services.deployCommandEmpty": {
     message: "使用镜像自身的默认命令。",

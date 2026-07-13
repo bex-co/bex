@@ -270,6 +270,14 @@ func gqlStr(args map[string]any, key string) string {
 	return ""
 }
 
+func gqlStrPtr(args map[string]any, key string) *string {
+	v, ok := args[key].(string)
+	if !ok {
+		return nil
+	}
+	return &v
+}
+
 func gqlInt(args map[string]any, key string) int {
 	if v, ok := args[key].(int); ok {
 		return v
@@ -501,6 +509,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.Delete(p.Context, p.Args["id"].(string))
 				return err == nil, err
+			},
+		},
+		// updateCronJob: change a cron_job's schedule and/or command (w5/m18).
+		// Rejected for a non-cron service (core.ErrBadRequest). schedule is
+		// required; command is optional (empty clears the image-entrypoint override).
+		"updateCronJob": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"schedule": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"command":  &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				sched := p.Args["schedule"].(string)
+				return s.SetCronJob(p.Context, p.Args["id"].(string), &sched, gqlStrPtr(p.Args, "command"))
 			},
 		},
 		// runCronJob: trigger a one-off run of a cron_job (Render's cron run verb);
