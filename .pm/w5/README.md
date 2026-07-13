@@ -20,9 +20,13 @@
 - [x] **m14** — Delete service: dashboard danger-zone action (8 tasks) ← from `/pm-brainstorm new milestones` 2026-07-09, unblocked — w2/m4 done 2026-07-09; done 2026-07-11, moved to `done/m14/`
 - [x] **m15** — New-service create wizard (source picker · repo picker · deploy) (9 tasks) ← from `/pm-brainstorm for w2` 2026-07-11 (Render `/web/new` parity); done 2026-07-11, moved to `done/m15/`
 - [x] **m16** — Manual-scaling section in service Settings (9 tasks) ← promoted from `004` 2026-07-11, unblocked by `w2/m12` (backend scale API shipped 2026-07-08) — done 2026-07-12, moved to `done/m16/`
+- [ ] **m17** — Create wizard: all service types (static site · cron job · background worker · private service) (8 tasks) ← from `/pm-brainstorm more for w5` 2026-07-12; pure UI, backend `createService` already accepts every field
+- [ ] **m18** — Cron-job Settings write path (Schedule + Command editable) (7 tasks) ← from `/pm-brainstorm more for w5` 2026-07-12; retires the w5/m11 read-only deferral, includes the missing GraphQL/MCP half (w5/m9 precedent)
 
 ## Inbox
 
-- `007.md` — Events tab + deploy list UI (Rollback/Cancel) — gated on `w3/m7` + `w2/m10` (backends materialized 2026-07-12)
+- `007.md` — Events tab + deploy list UI (Rollback/Cancel + Manual Deploy) — gated on `w3/m7` + `w2/m10` (backends materialized 2026-07-12); Manual Deploy scope added 2026-07-12, needs `w2/006`
+- `008.md` — Logs-tab structured filter UI — gated on `w3/m8`
+- `009.md` — Health Check Path field in service Settings — gated on `w1/m23/t001` (wire-or-drop decision first)
 
 > `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (ADR008-vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`.

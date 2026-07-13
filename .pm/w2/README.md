@@ -18,9 +18,10 @@
 
 ## Inbox
 
+- `006.md` — GraphQL `triggerDeploy` mutation (deploy-trigger is REST-only since w2/m5; unblocks the Manual Deploy button riding `w5/007`) ← from `/pm-brainstorm more for w5` 2026-07-12
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
-- _(none open — `002.md` retired to `done/` after w6/m2 closed; README line synced 2026-07-12, was stale)_
 
+> `002.md` retired to `done/` after w6/m2 closed (line repaired 2026-07-12 — a stale "none open" bullet sat here while `005.md` was open).
 > `003.md` promoted to `m7` (Key Value API surface) 2026-07-09 — moved to `done/`.
 > `004.md` — Agent-connect recipe: done 2026-07-11 (`docs/ADR025-connect-an-agent.md`) — moved to `done/`.
 > `005.md` promoted to **m11** (unify service creation) 2026-07-12 — moved to `done/`.
