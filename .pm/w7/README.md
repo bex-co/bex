@@ -14,6 +14,7 @@
 - [x] **m8** — Tenant registry authn/z (close the unauthenticated Zot hole) (8 tasks) ← from `/pm-brainstorm more for w7` 2026-07-12
 - [ ] **m9** — Per-workspace abuse limits (creation caps + build concurrency) (10 tasks) ← from `/pm-brainstorm more for w7` round 2, 2026-07-12; task breakdown materialized 2026-07-12 via `/pm-brainstorm more milestones to work on` (the milestone had been named in this README but never written to disk)
 - [ ] **m10** — Security hygiene: image CVE scanning in CI + HTTP hardening headers (7 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `001`, `002` (each sub-hour)
+- [ ] **m11** — Admission-time tenant-image signature verification (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`w6/006` shipped signing, verification was deferred and never picked back up — flagged three times across two workstreams)
 
 ## Inbox
 
