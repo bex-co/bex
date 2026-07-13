@@ -17,6 +17,11 @@ interface ServiceNavItem {
 const ITEMS: ServiceNavItem[] = [
   { labelKey: "services.navOverview", to: "/services/$serviceId", exact: true },
   {
+    labelKey: "services.navEvents",
+    to: "/services/$serviceId/events",
+    exact: false,
+  },
+  {
     labelKey: "services.navEnvironment",
     to: "/services/$serviceId/env",
     exact: false,

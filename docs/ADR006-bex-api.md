@@ -316,6 +316,8 @@ The bulk `PUT` is Render's **replace-set** (unlisted keys are removed); the sing
 
 **Deliberate divergence from Render:** Render's env-var writes are _not_ deployed automatically (you call a deploy afterward); bex has no separate deploy verb, so a write **rolls the pods immediately** — the value is live once the rollout completes. bex also omits Render's list **pagination** (`cursor`/`limit`) and `generateValue` (server-generated secrets) — the "omit what bex doesn't honor, stay a safe superset" rule. (Env **groups** and **secret files**, previously omitted, shipped in w1/m16 — see below.)
 
+**Create-time `envVars` vs the Environment tab (w5/m19):** `POST /v1/services`, `createService(envVars:)` (GraphQL), and `create_web_service`/`create_cron_job` (MCP) all accept `envVars: [{key, value}]` at create — consistent across surfaces. These land on **`spec.Env`** (literal Kubernetes pod env vars, baked into the Deployment) rather than the OpenBao-backed secret store that the Environment tab (`GET /v1/services/{id}/env-vars`) reads. On Render, create-time env vars appear in the Environment tab; bex's two-store model means they do not — they are in the running pod but invisible via the env-var read surface. Users who want env vars visible in the Environment tab should set them there after create. A future milestone can close this gap by having create-time vars also written to OpenBao; until then, this divergence is explicit rather than accidental.
+
 With `BEX_OPENBAO_URL` unset, bex-api has no secret store and these endpoints return **503** — the rest of the API unaffected.
 
 ```sh

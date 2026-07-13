@@ -65,6 +65,20 @@ vi.mock("@/features/services/hooks/use-scale-service", () => ({
   useScaleService: () => ({ scaleService: vi.fn(async () => true), busy: false }),
 }));
 
+// Health Check Path row (w5/m21) calls setHealthCheckPath via Apollo; mock it
+// so section-presence assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-health-check-path", () => ({
+  useHealthCheckPath: () => ({
+    setHealthCheckPath: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
+// CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
+vi.mock("@/features/services/hooks/use-cron-job", () => ({
+  useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
@@ -81,6 +95,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     schedule: null,
     command: null,
     runs: [],
+    healthCheckPath: null,
     ...overrides,
   };
 }

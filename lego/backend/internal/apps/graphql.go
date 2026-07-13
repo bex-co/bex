@@ -23,6 +23,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // graphql.go is the GraphQL fragment, matching the operation names Render's
@@ -83,8 +84,8 @@ var staticHeaderInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
-// gqlRouteInputs / gqlHeaderInputs parse a list argument of input objects
-// (graphql-go delivers each element as map[string]any) into the neutral views.
+// gqlRouteInputs / gqlHeaderInputs / gqlEnvVarInputs parse list arguments of
+// input objects (graphql-go delivers each element as map[string]any).
 func gqlRouteInputs(args map[string]any, key string) []StaticRouteView {
 	raw, ok := args[key].([]any)
 	if !ok {
@@ -121,6 +122,22 @@ func gqlHeaderInputs(args map[string]any, key string) []StaticHeaderView {
 			Name:  gqlStr(m, "name"),
 			Value: gqlStr(m, "value"),
 		})
+	}
+	return out
+}
+
+func gqlEnvVarInputs(args map[string]any, key string) []appv1alpha1.EnvVar {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]appv1alpha1.EnvVar, 0, len(raw))
+	for _, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		out = append(out, appv1alpha1.EnvVar{Name: gqlStr(m, "key"), Value: gqlStr(m, "value")})
 	}
 	return out
 }
@@ -196,7 +213,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
 		"branch":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
-		"autoDeploy": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		"autoDeploy":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
 		// autoscaling is the per-service autoscaling config (Render's Scaling tab).
 		// Null when spec.autoscaling is unset (autoscaling never configured).
 		"autoscaling": &graphql.Field{
@@ -479,6 +497,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"autoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"port":       &graphql.ArgumentConfig{Type: graphql.Int},
 				"replicas":   &graphql.ArgumentConfig{Type: graphql.Int},
+				// envVars sets literal (non-secret) environment variables at create time
+				// (Render parity, w5/m19): REST/MCP parity — those surfaces accepted
+				// envVars at create since w2/m2; GraphQL now reaches the same shape.
+				// envVars: reuses gqlutil.EnvVarInputType (shared with secrets.setEnvVars
+				// to avoid duplicate type names in the composed schema).
+				"envVars": &graphql.ArgumentConfig{Type: graphql.NewList(gqlutil.EnvVarInputType)},
 				// static_site create fields.
 				"publishPath": &graphql.ArgumentConfig{Type: graphql.String},
 				"routes":      &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
@@ -499,6 +523,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					AutoDeploy:  gqlBoolPtr(p.Args, "autoDeploy"),
 					Port:        int32(gqlInt(p.Args, "port")),
 					Replicas:    int32(gqlInt(p.Args, "replicas")),
+					Env:         gqlEnvVarInputs(p.Args, "envVars"),
 					PublishPath: gqlStr(p.Args, "publishPath"),
 					Routes:      gqlRouteInputs(p.Args, "routes"),
 					Headers:     gqlHeaderInputs(p.Args, "headers"),
@@ -587,6 +612,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
+			},
+		},
+		// setHealthCheckPath: the Settings → Health & Alerts health-check path
+		// (w5/009). Changes spec.healthCheckPath — the HTTP path the ReadinessProbe
+		// pings (w1/m23/t001). Rejected for cron_job/background_worker (no HTTP port).
+		"setHealthCheckPath": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"path": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetHealthCheckPath(p.Context, p.Args["id"].(string), p.Args["path"].(string))
 			},
 		},
 		// setAutoDeploy: the Settings → Build & Deploy Auto-Deploy toggle (w2/m9)

@@ -697,6 +697,36 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the idle timeout.",
     description: "Toast after setIdleTimeout fails",
   },
+  "services.settingsHealthChecksTitle": {
+    message: "Health Checks",
+    description: "Settings tab: Health Checks section card title",
+  },
+  "services.settingsHealthChecksDescription": {
+    message:
+      "Configure the HTTP path bex polls periodically to monitor your service.",
+    description: "Settings tab: Health Checks section card description",
+  },
+  "services.settingsHealthCheckPath": {
+    message: "Health Check Path",
+    description: "Settings tab: health-check path row label",
+  },
+  "services.settingsHealthCheckPathHint": {
+    message:
+      "Provide an HTTP endpoint path that bex polls periodically to monitor your service.",
+    description: "Settings tab: health-check path row hint text",
+  },
+  "services.settingsHealthCheckPathPlaceholder": {
+    message: "/",
+    description: "Settings tab: health-check path input placeholder",
+  },
+  "services.healthCheckPathSuccess": {
+    message: "Health check path updated.",
+    description: "Toast after setHealthCheckPath succeeds",
+  },
+  "services.healthCheckPathError": {
+    message: "Couldn't update the health check path.",
+    description: "Toast after setHealthCheckPath fails",
+  },
   "services.planPickerTitle": {
     message: "Pick an Instance Type",
     description: "Plan-picker page heading",
@@ -1612,6 +1642,138 @@ const enServices: Record<string, TranslationEntry> = {
   "services.createNoPublicUrlNote": {
     message: "This service type has no public URL.",
     description: "Note shown for private/worker types that don't produce a public URL",
+  },
+  "services.createFieldEnvVarsTitle": {
+    message: "Environment Variables",
+    description: "Section heading for env vars in the create wizard",
+  },
+  "services.createFieldEnvVarsAdd": {
+    message: "Add Variable",
+    description: "Button to add an env var row in the create wizard",
+  },
+  "services.createFieldEnvVarsRemove": {
+    message: "Remove",
+    description: "Button to remove an env var row in the create wizard",
+  },
+  "services.createFieldEnvVarsKey": {
+    message: "Key",
+    description: "Label for the env var key column in the create wizard",
+  },
+  "services.createFieldEnvVarsValue": {
+    message: "Value",
+    description: "Label for the env var value column in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyPlaceholder": {
+    message: "KEY_NAME",
+    description: "Placeholder for the env var key input in the create wizard",
+  },
+  "services.createFieldEnvVarsValuePlaceholder": {
+    message: "value",
+    description: "Placeholder for the env var value input in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyError": {
+    message: "Keys must start with a letter or underscore and contain only letters, digits, and underscores.",
+    description: "Error shown when an env var key is invalid in the create wizard",
+  },
+  "services.navEvents": {
+    message: "Events",
+    description: "Service-detail nav item (events tab)",
+  },
+  "services.eventsTitle": {
+    message: "Activity",
+    description: "Events tab card title",
+  },
+  "services.eventsEmpty": {
+    message: "No events yet.",
+    description: "Events tab empty state",
+  },
+  "services.eventsManualDeploy": {
+    message: "Manual Deploy",
+    description: "Button to trigger a new deploy",
+  },
+  "services.eventsManualDeployConfirmTitle": {
+    message: "Trigger a new deploy?",
+    description: "Manual deploy confirm dialog title",
+  },
+  "services.eventsManualDeployConfirmBody": {
+    message: "This will rebuild and redeploy the service from its current image or branch.",
+    description: "Manual deploy confirm dialog body",
+  },
+  "services.eventsCancelDeploy": {
+    message: "Cancel",
+    description: "Button to cancel an in-progress deploy",
+  },
+  "services.eventsCancelConfirmTitle": {
+    message: "Cancel this deploy?",
+    description: "Cancel deploy confirm dialog title",
+  },
+  "services.eventsCancelConfirmBody": {
+    message: "The in-progress deploy will be stopped. The last successful deploy remains live.",
+    description: "Cancel deploy confirm dialog body",
+  },
+  "services.eventsRollback": {
+    message: "Roll Back to This Deploy",
+    description: "Button to roll back to a specific deploy",
+  },
+  "services.eventsRollbackConfirmTitle": {
+    message: "Roll back to this deploy?",
+    description: "Rollback confirm dialog title",
+  },
+  "services.eventsRollbackConfirmBody": {
+    message: "The service will redeploy from the image used in this deploy.",
+    description: "Rollback confirm dialog body",
+  },
+  "services.eventsConfirmProceed": {
+    message: "Proceed",
+    description: "Confirm dialog proceed button",
+  },
+  "services.eventsConfirmCancel": {
+    message: "Go Back",
+    description: "Confirm dialog cancel button",
+  },
+  "services.triggerDeploySuccess": {
+    message: "Deploy triggered.",
+    description: "Toast after triggerDeploy succeeds",
+  },
+  "services.triggerDeployError": {
+    message: "Couldn't trigger deploy.",
+    description: "Toast after triggerDeploy fails",
+  },
+  "services.cancelDeploySuccess": {
+    message: "Deploy cancelled.",
+    description: "Toast after cancelDeploy succeeds",
+  },
+  "services.cancelDeployError": {
+    message: "Couldn't cancel deploy.",
+    description: "Toast after cancelDeploy fails",
+  },
+  "services.rollbackSuccess": {
+    message: "Rollback triggered.",
+    description: "Toast after rollbackService succeeds",
+  },
+  "services.rollbackError": {
+    message: "Couldn't roll back.",
+    description: "Toast after rollbackService fails",
+  },
+  "services.eventsStatusLive": {
+    message: "Live",
+    description: "Deploy status: live",
+  },
+  "services.eventsStatusInProgress": {
+    message: "In Progress",
+    description: "Deploy status: update_in_progress",
+  },
+  "services.eventsStatusFailed": {
+    message: "Failed",
+    description: "Deploy status: update_failed",
+  },
+  "services.eventsStatusCanceled": {
+    message: "Canceled",
+    description: "Deploy status: canceled",
+  },
+  "services.eventsRolledBackFrom": {
+    message: "Rolled back from {target}",
+    description: "Deploy row: provenance note when trigger=rollback",
   },
 };
 

@@ -1,0 +1,46 @@
+query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
+  serviceEvents(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    cursor
+    events {
+      id
+      type
+      timestamp
+      details {
+        status
+        image
+        trigger
+        rollbackTarget
+        message
+      }
+    }
+  }
+}
+
+mutation TriggerDeploy($id: String!) {
+  triggerDeploy(id: $id) {
+    id
+    status
+    createdAt
+    trigger
+    rollbackTarget
+    image
+  }
+}
+
+mutation CancelDeploy($serviceId: String!, $deployId: String!) {
+  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {
+    id
+    status
+  }
+}
+
+mutation RollbackService($serviceId: String!, $deployId: String!) {
+  rollbackService(serviceId: $serviceId, deployId: $deployId) {
+    id
+    status
+    createdAt
+    trigger
+    rollbackTarget
+    image
+  }
+}

@@ -65,6 +65,12 @@ export interface ServiceView {
    */
   autoDeploy: boolean | null;
   /**
+   * HTTP path the ReadinessProbe polls before routing traffic (`spec.healthCheckPath`,
+   * w1/m23/t001); null/empty means the platform default "/". Only applies to
+   * web_service and private_service; null when not selected (list query).
+   */
+  healthCheckPath: string | null;
+  /**
    * Built output directory a `static_site` serves (`spec.publishPath`, Render's
    * Publish Directory); null for other types / when not selected. Only the detail
    * `server` query selects it.

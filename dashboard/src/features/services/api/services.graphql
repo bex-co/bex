@@ -88,6 +88,7 @@ mutation CreateService(
   $schedule: String
   $command: String
   $publishPath: String
+  $envVars: [EnvVarInput]
 ) {
   createService(
     name: $name
@@ -102,6 +103,7 @@ mutation CreateService(
     schedule: $schedule
     command: $command
     publishPath: $publishPath
+    envVars: $envVars
   ) {
     id
     name

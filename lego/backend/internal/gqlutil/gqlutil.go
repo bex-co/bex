@@ -43,6 +43,18 @@ func IDArg() graphql.FieldConfigArgument {
 	}
 }
 
+// EnvVarInputType is the shared `{key, value}` input object used by both
+// the secrets feature's setEnvVars mutation and the apps feature's createService
+// mutation (w5/m19). Defined once here so the composed schema never has duplicate
+// type names — graphql-go rejects duplicates at schema-build time.
+var EnvVarInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "EnvVarInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"key":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.String},
+	},
+})
+
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,

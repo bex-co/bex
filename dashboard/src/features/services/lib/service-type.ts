@@ -35,3 +35,8 @@ export function isCron(s: ServiceView): boolean {
 export function isStaticSite(s: ServiceView): boolean {
   return s.type === "static_site";
 }
+
+/** True for a background_worker — no public URL, no health-check path. */
+export function isWorker(s: ServiceView): boolean {
+  return s.type === "background_worker";
+}

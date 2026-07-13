@@ -48,6 +48,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     branch: "branch" in s ? (s.branch ?? null) : null,
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
+    healthCheckPath: "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
     publishPath: "publishPath" in s ? (s.publishPath ?? null) : null,
     routes: "routes" in s ? toStaticRoutes(s.routes) : [],
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],

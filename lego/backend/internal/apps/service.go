@@ -183,6 +183,10 @@ type AppView struct {
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
 	AutoDeploy bool `json:"autoDeploy"`
+	// HealthCheckPath is the HTTP path the ReadinessProbe pings (spec.healthCheckPath,
+	// Render's healthCheckPath). Empty means the default "/". The Settings →
+	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
+	HealthCheckPath string `json:"healthCheckPath,omitempty"`
 	// PublishPath is the built output directory a static_site serves as its
 	// document root (spec.publishPath, Render's "Publish Directory"). Empty for
 	// every other type.
@@ -273,11 +277,12 @@ func view(a *appv1alpha1.App) AppView {
 		RootDir:        a.Spec.RootDir,
 		Repo:           a.Spec.Repo,
 		Branch:         a.Spec.Branch,
-		Autoscaling:    asView,
-		AutoDeploy:     a.Spec.AutoDeploy,
-		PublishPath:    a.Spec.PublishPath,
-		Routes:         staticRouteViews(a.Spec.Routes),
-		Headers:        staticHeaderViews(a.Spec.Headers),
+		Autoscaling:     asView,
+		AutoDeploy:      a.Spec.AutoDeploy,
+		HealthCheckPath: a.Spec.HealthCheckPath,
+		PublishPath:     a.Spec.PublishPath,
+		Routes:          staticRouteViews(a.Spec.Routes),
+		Headers:         staticHeaderViews(a.Spec.Headers),
 	}
 }
 
@@ -1036,6 +1041,34 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 // individual fields at convergence; bex only checks the field count here.
 func validCronSchedule(s string) bool {
 	return len(strings.Fields(s)) == 5
+}
+
+// SetHealthCheckPath changes spec.healthCheckPath — the HTTP path the operator
+// wires into the container's ReadinessProbe (w1/m23/t001). A direct CR patch,
+// not projection-owned (mirrors Builder/RootDir). An empty path resets to the
+// default "/". Rejected for service types that have no HTTP port (cron_job,
+// background_worker) since those never serve a health endpoint.
+func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path string) (AppView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return AppView{}, err
+	}
+	a, err := s.GetApp(ctx, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeBackgroundWorker {
+		return AppView{}, fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, a.Spec.Type)
+	}
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		trimmed = "/"
+	}
+	if !strings.HasPrefix(trimmed, "/") {
+		return AppView{}, fmt.Errorf("%w: health check path must start with /", core.ErrBadRequest)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.HealthCheckPath = trimmed
+	})
 }
 
 // SetAutoDeploy flips whether a signed git push to the tracked branch redeploys

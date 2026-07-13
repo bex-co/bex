@@ -5,6 +5,11 @@ import { CreateServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
+export interface EnvVarEntry {
+  key: string;
+  value: string;
+}
+
 export interface CreateServiceInput {
   name: string;
   type?: string;
@@ -17,6 +22,7 @@ export interface CreateServiceInput {
   schedule?: string;
   command?: string;
   publishPath?: string;
+  envVars?: EnvVarEntry[];
 }
 
 export interface UseCreateServiceResult {
@@ -58,6 +64,7 @@ export function useCreateService(): UseCreateServiceResult {
             schedule: input.schedule,
             command: input.command,
             publishPath: input.publishPath,
+            envVars: input.envVars?.length ? input.envVars : undefined,
           },
         });
         const id = res.data?.createService?.id ?? input.name;

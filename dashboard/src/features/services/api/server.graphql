@@ -28,6 +28,9 @@ query Server($id: String!) {
     rootDir
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
+    # empty means the default "/". Only applies to web_service/private_service.
+    healthCheckPath
     # cron_job fields (null/empty for other service types)
     schedule
     command

@@ -67,6 +67,9 @@ type renderService struct {
 	// AutoDeploy is Render's Auto-Deploy toggle: whether a signed git push
 	// redeploys this service (spec.autoDeploy).
 	AutoDeploy bool `json:"autoDeploy"`
+	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
+	// empty means the default "/". Render's healthCheckPath field.
+	HealthCheckPath string `json:"healthCheckPath,omitempty"`
 }
 
 // renderAutoscaling is Render's autoscaling sub-object shape (verified against
@@ -143,8 +146,9 @@ func toRenderService(a AppView) renderService {
 		RootDir:        a.RootDir,
 		Repo:           a.Repo,
 		Branch:         a.Branch,
-		Autoscaling:    ras,
-		AutoDeploy:     a.AutoDeploy,
+		Autoscaling:     ras,
+		AutoDeploy:      a.AutoDeploy,
+		HealthCheckPath: a.HealthCheckPath,
 	}
 }
 

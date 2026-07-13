@@ -1,0 +1,9 @@
+# setHealthCheckPath wires the ReadinessProbe path for web/private services (w1/m23/t001).
+# Only web_service and private_service support this — cron_job / background_worker /
+# static_site are rejected by the backend and should not show this control.
+mutation SetHealthCheckPath($id: String!, $path: String!) {
+  setHealthCheckPath(id: $id, path: $path) {
+    id
+    healthCheckPath
+  }
+}

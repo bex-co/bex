@@ -18,7 +18,8 @@ import { CronDeploySection } from "@/features/services/components/cron-deploy-se
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
-import { isCron, isStaticSite } from "@/features/services/lib/service-type";
+import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
+import { isCron, isStaticSite, isWorker } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -40,6 +41,7 @@ export function ServiceSettingsPage() {
   const { t } = useTranslations();
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
+  const worker = service ? isWorker(service) : false;
 
   return (
     <div className="space-y-6">
@@ -102,6 +104,26 @@ export function ServiceSettingsPage() {
               service={service}
               refetch={refetch}
             />
+          )}
+          {/* Health Checks: own section (Render parity — Render places this
+              under a dedicated "Health Checks" heading in Settings, separate
+              from the General card). Only web_service/private_service receive
+              HTTP traffic and can have a ReadinessProbe path. */}
+          {!worker && !staticSite && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
+                <CardDescription>
+                  {t("services.settingsHealthChecksDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HealthCheckPathRow
+                  serviceId={serviceId}
+                  healthCheckPath={service?.healthCheckPath}
+                />
+              </CardContent>
+            </Card>
           )}
           <CustomDomainsSection serviceId={serviceId} />
           <PlatformSubdomainSection url={service?.url ?? null} />

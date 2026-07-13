@@ -57,7 +57,7 @@ Single "Create Web Service" button at the bottom. On success, Render redirects t
 | Root directory field | ✅ Empty default; hidden for image source |
 | Instance type grid | ✅ Card radio-group from `instanceTypes` query |
 | Auto-deploy toggle | ✅ On by default; hidden for image source |
-| Env vars inline | ✖ Not in v1 — add env vars from the service settings tab post-create |
+| Env vars inline | ✅ Key-value editor in the Settings step (w5/m19); Render places this in an "Advanced" section; bex renders it inline at the bottom of Settings, after Auto Deploy |
 | Region picker | ✖ Not in v1 — bex operator picks the cluster's region automatically |
 | Runtime / Build / Start | ✖ Not in v1 — CNB builder auto-detects; advanced fields deferred |
 | Deploy button | ✅ `createService` mutation → redirect to `/services/$serviceId` |

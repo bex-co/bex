@@ -1153,3 +1153,49 @@ func TestServiceCapEnforcement(t *testing.T) {
 		t.Errorf("redeploy at cap: %v, want success (cap is new-service only)", err)
 	}
 }
+
+// TestGraphQLCreateServiceEnvVars: createService(envVars:) lands on spec.Env
+// identically to what REST produces from the same {key,value} pairs (w5/m20).
+// Note: create-time envVars land on spec.Env, NOT on the OpenBao-backed secret
+// store that the Environment tab reads — this is intentional and consistent
+// across REST/GraphQL/MCP. Users who need env vars to appear in the Environment
+// tab should add them there post-create (ADR006 §env-vars).
+func TestGraphQLCreateServiceEnvVars(t *testing.T) {
+	svc, cl := newService(nil)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{
+		Schema:  schema,
+		Context: context.Background(),
+		RequestString: `mutation {
+			createService(
+				name: "svc-with-env"
+				image: "ghcr.io/org/app:latest"
+				envVars: [
+					{key: "PORT", value: "8080"}
+					{key: "LOG_LEVEL", value: "debug"}
+				]
+			) { id }
+		}`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql createService: %v", res.Errors)
+	}
+
+	a := getApp(t, cl, "svc-with-env")
+	want := []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}, {Name: "LOG_LEVEL", Value: "debug"}}
+	if len(a.Spec.Env) != len(want) {
+		t.Fatalf("spec.Env len = %d, want %d", len(a.Spec.Env), len(want))
+	}
+	for i, w := range want {
+		if a.Spec.Env[i] != w {
+			t.Errorf("spec.Env[%d] = %+v, want %+v", i, a.Spec.Env[i], w)
+		}
+	}
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers } from "lucide-react";
+import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers, Plus, Trash2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -32,11 +32,15 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
+import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
+
+// A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
+const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 type SourceTab = "github" | "git" | "image";
 type ServiceType =
@@ -181,6 +185,94 @@ function ServiceTypePicker({
   );
 }
 
+/** Inline key-value editor for create-time env vars (Render parity, w5/m19). */
+function EnvVarEditor({
+  rows,
+  onChange,
+}: {
+  rows: EnvVarEntry[];
+  onChange: (rows: EnvVarEntry[]) => void;
+}) {
+  const { t } = useTranslations();
+
+  function addRow() {
+    onChange([...rows, { key: "", value: "" }]);
+  }
+
+  function removeRow(i: number) {
+    onChange(rows.filter((_, idx) => idx !== i));
+  }
+
+  function updateRow(i: number, field: keyof EnvVarEntry, val: string) {
+    onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{t("services.createFieldEnvVarsTitle")}</Label>
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>
+          <Plus className="size-3.5" />
+          {t("services.createFieldEnvVarsAdd")}
+        </Button>
+      </div>
+      {rows.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-0.5">
+            <span className="text-xs text-muted-foreground">
+              {t("services.createFieldEnvVarsKey")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t("services.createFieldEnvVarsValue")}
+            </span>
+            <span />
+          </div>
+          {rows.map((row, i) => {
+            const keyInvalid = row.key !== "" && !VALID_KEY.test(row.key);
+            return (
+              <div key={i} className="space-y-1">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <Input
+                    value={row.key}
+                    onChange={(e) => updateRow(i, "key", e.target.value)}
+                    placeholder={t("services.createFieldEnvVarsKeyPlaceholder")}
+                    aria-label={t("services.createFieldEnvVarsKey")}
+                    aria-invalid={keyInvalid}
+                    className="font-mono text-sm"
+                  />
+                  <Input
+                    value={row.value}
+                    onChange={(e) => updateRow(i, "value", e.target.value)}
+                    placeholder={t(
+                      "services.createFieldEnvVarsValuePlaceholder",
+                    )}
+                    aria-label={t("services.createFieldEnvVarsValue")}
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeRow(i)}
+                    aria-label={t("services.createFieldEnvVarsRemove")}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+                {keyInvalid && (
+                  <p className="text-xs text-destructive">
+                    {t("services.createFieldEnvVarsKeyError")}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -204,6 +296,7 @@ export function NewServicePage() {
   const [schedule, setSchedule] = useState("");
   const [command, setCommand] = useState("");
   const [publishPath, setPublishPath] = useState("");
+  const [envVars, setEnvVars] = useState<EnvVarEntry[]>([]);
 
   const isCronType = serviceType === "cron_job";
   const isStaticType = serviceType === "static_site";
@@ -242,10 +335,12 @@ export function NewServicePage() {
     (tab === "git" && isValidGitUrl(gitUrl)) ||
     (tab === "image" && imageVal.trim().length > 0);
 
+  const envVarsValid = envVars.every((r) => r.key === "" || VALID_KEY.test(r.key));
   const canSubmit =
     nameValid &&
     sourceValid &&
     !busy &&
+    envVarsValid &&
     (isStaticType || plan !== "") &&
     (!isCronType || (schedule.trim() !== "" && !scheduleError));
 
@@ -275,6 +370,9 @@ export function NewServicePage() {
       image = imageVal.trim();
     }
 
+    const validEnvVars = envVars.filter(
+      (r) => r.key.trim() !== "" && VALID_KEY.test(r.key.trim()),
+    );
     const id = await create({
       name,
       type: serviceType,
@@ -287,6 +385,7 @@ export function NewServicePage() {
       schedule: isCronType ? schedule.trim() || undefined : undefined,
       command: isCronType ? command.trim() || undefined : undefined,
       publishPath: isStaticType ? publishPath.trim() || undefined : undefined,
+      envVars: validEnvVars.length ? validEnvVars : undefined,
     });
     if (id) {
       void navigate({ to: "/services/$serviceId", params: { serviceId: id } });
@@ -626,6 +725,8 @@ export function NewServicePage() {
                     />
                   </div>
                 ) : null}
+
+                <EnvVarEditor rows={envVars} onChange={setEnvVars} />
               </div>
 
               <div className="flex justify-end gap-2">

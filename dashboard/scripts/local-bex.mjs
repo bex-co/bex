@@ -110,6 +110,7 @@ const SERVICE = {
   schedule: null,
   command: null,
   runs: [],
+  healthCheckPath: "/healthz",
   ownerId: WORKSPACE_DEFAULT,
 };
 
@@ -177,6 +178,42 @@ const CRON = {
 };
 
 const SERVICES = [SERVICE, WORKER, CRON];
+
+// Per-service deploy-event history (w5/m7). Seeded with a few realistic entries
+// for the web service; other services start empty. TriggerDeploy/Cancel/Rollback
+// prepend to the appropriate list so the Events tab reflects mutations.
+const EVENTS_BY_SERVICE = {
+  "eden-cms-v2": [
+    {
+      __typename: "ServiceEvent",
+      id: "dep-live-001",
+      type: "deploy",
+      timestamp: "2026-07-11T14:30:00Z",
+      details: {
+        __typename: "EventDetails",
+        status: "live",
+        image: "registry.example.com/eden-cms-v2:a1b2c3d",
+        trigger: "user",
+        rollbackTarget: null,
+        message: null,
+      },
+    },
+    {
+      __typename: "ServiceEvent",
+      id: "dep-failed-000",
+      type: "deploy",
+      timestamp: "2026-07-11T13:00:00Z",
+      details: {
+        __typename: "EventDetails",
+        status: "update_failed",
+        image: "registry.example.com/eden-cms-v2:bad0bad",
+        trigger: "push",
+        rollbackTarget: null,
+        message: null,
+      },
+    },
+  ],
+};
 
 // Look up one service by id, or null — the stub must NEVER fabricate a service for
 // an unknown id (the 2026-07-09 phantom-service bug: any id echoed eden-cms-v2).
@@ -927,6 +964,80 @@ function resolveGraphQL({ operationName, variables = {} }) {
       d.verificationStatus = "verified";
       d.serverStatus = "active";
       return { verifyCustomDomain: d };
+    }
+    // Service events (w5/m7): deploy-event feed per service. Cursor pagination
+    // is ignored by the stub — always returns the full list newest-first.
+    case "ServiceEvents": {
+      const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
+      return {
+        serviceEvents: {
+          __typename: "ServiceEventList",
+          cursor: null,
+          events: evts,
+        },
+      };
+    }
+    // TriggerDeploy: prepend a new in-progress event, simulate it going live.
+    case "TriggerDeploy": {
+      const svc = serviceById(variables.id);
+      const deploy = {
+        __typename: "Deploy",
+        id: `dep-stub-${Date.now().toString(36)}`,
+        status: "update_in_progress",
+        createdAt: new Date().toISOString(),
+        trigger: "user",
+        rollbackTarget: null,
+        image: svc ? `registry.example.com/${svc.id}:stub` : null,
+      };
+      const evts = (EVENTS_BY_SERVICE[variables.id] ??= []);
+      evts.unshift({
+        __typename: "ServiceEvent",
+        id: deploy.id,
+        type: "deploy",
+        timestamp: deploy.createdAt,
+        details: { __typename: "EventDetails", status: "update_in_progress", image: deploy.image, trigger: "user", rollbackTarget: null, message: null },
+      });
+      setTimeout(() => {
+        const e = evts.find((ev) => ev.id === deploy.id);
+        if (e) e.details.status = "live";
+        deploy.status = "live";
+      }, 5000);
+      return { triggerDeploy: deploy };
+    }
+    // CancelDeploy: flip the in-progress event to canceled.
+    case "CancelDeploy": {
+      const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
+      const e = evts.find((ev) => ev.id === variables.deployId);
+      if (e) e.details.status = "canceled";
+      return { cancelDeploy: { __typename: "Deploy", id: variables.deployId, status: "canceled" } };
+    }
+    // RollbackService: prepend a rollback-triggered deploy event.
+    case "RollbackService": {
+      const svc = serviceById(variables.serviceId);
+      const deploy = {
+        __typename: "Deploy",
+        id: `dep-rollback-${Date.now().toString(36)}`,
+        status: "live",
+        createdAt: new Date().toISOString(),
+        trigger: "rollback",
+        rollbackTarget: variables.deployId,
+        image: svc ? `registry.example.com/${svc.id}:rollback` : null,
+      };
+      const evts = (EVENTS_BY_SERVICE[variables.serviceId] ??= []);
+      evts.unshift({
+        __typename: "ServiceEvent",
+        id: deploy.id,
+        type: "deploy",
+        timestamp: deploy.createdAt,
+        details: { __typename: "EventDetails", status: "live", image: deploy.image, trigger: "rollback", rollbackTarget: variables.deployId, message: null },
+      });
+      return { rollbackService: deploy };
+    }
+    // SetHealthCheckPath: persist the new path on the in-memory service object.
+    case "SetHealthCheckPath": {
+      const svc = serviceById(variables.id);
+      if (svc) svc.healthCheckPath = variables.path || "/";
+      return { setHealthCheckPath: { __typename: "Service", id: variables.id, healthCheckPath: svc?.healthCheckPath ?? variables.path } };
     }
     default:
       return {};

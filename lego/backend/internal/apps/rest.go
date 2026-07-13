@@ -52,6 +52,9 @@ type patchServiceRequest struct {
 	// distinct from an explicit ""; schedule must be a non-empty 5-field crontab.
 	Schedule *string `json:"schedule"`
 	Command  *string `json:"command"`
+	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001 +
+	// w5/009). A pointer so "absent" is distinct from an explicit "" (reset to "/").
+	HealthCheckPath *string `json:"healthCheckPath"`
 }
 
 // scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
@@ -280,7 +283,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
-		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil {
+		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -314,6 +317,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.Schedule != nil || req.Command != nil {
 			if app, err = s.SetCronJob(r.Context(), id, req.Schedule, req.Command); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.HealthCheckPath != nil {
+			if app, err = s.SetHealthCheckPath(r.Context(), id, *req.HealthCheckPath); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

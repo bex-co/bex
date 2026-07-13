@@ -18,6 +18,8 @@ package secrets
 
 import (
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
 // graphql.go is the env-vars GraphQL mutation fragment. The *reads* are Render
@@ -28,16 +30,6 @@ import (
 // top-level (Render's dashboard mutation names weren't captured, so these are
 // bex's own) and return a success boolean; the full objects are on the REST
 // surface and the nested reads.
-
-// envVarInputGQLType is the setEnvVars input — Render's envVarInput ({key,
-// value}), value optional (empty string allowed).
-var envVarInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
-	Name: "EnvVarInput",
-	Fields: graphql.InputObjectConfigFieldMap{
-		"key":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"value": &graphql.InputObjectFieldConfig{Type: graphql.String},
-	},
-})
 
 // envVarsFromArgs maps the GraphQL envVars input list onto []EnvVarView.
 func envVarsFromArgs(raw []any) []EnvVarView {
@@ -70,7 +62,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
 				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"envVars":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(envVarInputGQLType)))},
+				"envVars":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType)))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				raw, _ := p.Args["envVars"].([]any)

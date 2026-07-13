@@ -688,6 +688,34 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新空闲超时。",
     description: "Toast after setIdleTimeout fails",
   },
+  "services.settingsHealthChecksTitle": {
+    message: "健康检查",
+    description: "Settings tab: Health Checks section card title",
+  },
+  "services.settingsHealthChecksDescription": {
+    message: "配置 bex 定期轮询以监控服务的 HTTP 路径。",
+    description: "Settings tab: Health Checks section card description",
+  },
+  "services.settingsHealthCheckPath": {
+    message: "健康检查路径",
+    description: "Settings tab: health-check path row label",
+  },
+  "services.settingsHealthCheckPathHint": {
+    message: "提供 bex 定期轮询以监控服务的 HTTP 路径。",
+    description: "Settings tab: health-check path row hint text",
+  },
+  "services.settingsHealthCheckPathPlaceholder": {
+    message: "/",
+    description: "Settings tab: health-check path input placeholder",
+  },
+  "services.healthCheckPathSuccess": {
+    message: "健康检查路径已更新。",
+    description: "Toast after setHealthCheckPath succeeds",
+  },
+  "services.healthCheckPathError": {
+    message: "无法更新健康检查路径。",
+    description: "Toast after setHealthCheckPath fails",
+  },
   "services.planPickerTitle": {
     message: "选择实例类型",
     description: "Plan-picker page heading",
@@ -1593,6 +1621,138 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createNoPublicUrlNote": {
     message: "此服务类型没有公共 URL。",
     description: "Note shown for private/worker types that don't produce a public URL",
+  },
+  "services.createFieldEnvVarsTitle": {
+    message: "环境变量",
+    description: "Section heading for env vars in the create wizard",
+  },
+  "services.createFieldEnvVarsAdd": {
+    message: "添加变量",
+    description: "Button to add an env var row in the create wizard",
+  },
+  "services.createFieldEnvVarsRemove": {
+    message: "删除",
+    description: "Button to remove an env var row in the create wizard",
+  },
+  "services.createFieldEnvVarsKey": {
+    message: "键名",
+    description: "Label for the env var key column in the create wizard",
+  },
+  "services.createFieldEnvVarsValue": {
+    message: "值",
+    description: "Label for the env var value column in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyPlaceholder": {
+    message: "KEY_NAME",
+    description: "Placeholder for the env var key input in the create wizard",
+  },
+  "services.createFieldEnvVarsValuePlaceholder": {
+    message: "值",
+    description: "Placeholder for the env var value input in the create wizard",
+  },
+  "services.createFieldEnvVarsKeyError": {
+    message: "键名必须以字母或下划线开头，只能包含字母、数字和下划线。",
+    description: "Error shown when an env var key is invalid in the create wizard",
+  },
+  "services.navEvents": {
+    message: "事件",
+    description: "Service-detail nav item (events tab)",
+  },
+  "services.eventsTitle": {
+    message: "活动",
+    description: "Events tab card title",
+  },
+  "services.eventsEmpty": {
+    message: "暂无事件。",
+    description: "Events tab empty state",
+  },
+  "services.eventsManualDeploy": {
+    message: "手动部署",
+    description: "Button to trigger a new deploy",
+  },
+  "services.eventsManualDeployConfirmTitle": {
+    message: "触发新的部署？",
+    description: "Manual deploy confirm dialog title",
+  },
+  "services.eventsManualDeployConfirmBody": {
+    message: "这将从当前镜像或分支重新构建并重新部署该服务。",
+    description: "Manual deploy confirm dialog body",
+  },
+  "services.eventsCancelDeploy": {
+    message: "取消",
+    description: "Button to cancel an in-progress deploy",
+  },
+  "services.eventsCancelConfirmTitle": {
+    message: "取消此次部署？",
+    description: "Cancel deploy confirm dialog title",
+  },
+  "services.eventsCancelConfirmBody": {
+    message: "正在进行的部署将被停止，最近成功的部署仍保持运行。",
+    description: "Cancel deploy confirm dialog body",
+  },
+  "services.eventsRollback": {
+    message: "回滚到此次部署",
+    description: "Button to roll back to a specific deploy",
+  },
+  "services.eventsRollbackConfirmTitle": {
+    message: "回滚到此次部署？",
+    description: "Rollback confirm dialog title",
+  },
+  "services.eventsRollbackConfirmBody": {
+    message: "服务将从此次部署使用的镜像重新部署。",
+    description: "Rollback confirm dialog body",
+  },
+  "services.eventsConfirmProceed": {
+    message: "继续",
+    description: "Confirm dialog proceed button",
+  },
+  "services.eventsConfirmCancel": {
+    message: "返回",
+    description: "Confirm dialog cancel button",
+  },
+  "services.triggerDeploySuccess": {
+    message: "部署已触发。",
+    description: "Toast after triggerDeploy succeeds",
+  },
+  "services.triggerDeployError": {
+    message: "无法触发部署。",
+    description: "Toast after triggerDeploy fails",
+  },
+  "services.cancelDeploySuccess": {
+    message: "部署已取消。",
+    description: "Toast after cancelDeploy succeeds",
+  },
+  "services.cancelDeployError": {
+    message: "无法取消部署。",
+    description: "Toast after cancelDeploy fails",
+  },
+  "services.rollbackSuccess": {
+    message: "回滚已触发。",
+    description: "Toast after rollbackService succeeds",
+  },
+  "services.rollbackError": {
+    message: "无法回滚。",
+    description: "Toast after rollbackService fails",
+  },
+  "services.eventsStatusLive": {
+    message: "运行中",
+    description: "Deploy status: live",
+  },
+  "services.eventsStatusInProgress": {
+    message: "进行中",
+    description: "Deploy status: update_in_progress",
+  },
+  "services.eventsStatusFailed": {
+    message: "失败",
+    description: "Deploy status: update_failed",
+  },
+  "services.eventsStatusCanceled": {
+    message: "已取消",
+    description: "Deploy status: canceled",
+  },
+  "services.eventsRolledBackFrom": {
+    message: "从 {target} 回滚",
+    description: "Deploy row: provenance note when trigger=rollback",
   },
 };
 
