@@ -8,7 +8,7 @@ import {
 import { config } from "@/config/config";
 import { apolloCacheConfig } from "./cache";
 
-import { getCookie } from "@tanstack/react-start/server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 const loggingLink = new ApolloLink((operation, forward) => {
   const start = Date.now();
@@ -34,18 +34,18 @@ const loggingLink = new ApolloLink((operation, forward) => {
 
 /**
  * Create an Apollo client for server-side rendering. Forwards the incoming
- * request cookie to bex-api as a Bearer token (docs/ADR006-bex-api.md's auth model)
- * so authenticated queries work on the server.
- *
- * TODO: nothing sets the "bex-dashboard-token" cookie yet — there's no login
- * flow in this scaffold. `token` will be undefined until real auth lands.
+ * request's Cookie header to bex-api so the ory_kratos_session cookie reaches
+ * Kratos whoami and authenticated SSR queries return real data on first paint
+ * (docs/ADR012-auth.md). When there is no session cookie the header is omitted
+ * and bex-api sees an unauthenticated request — no crash, correct public-route
+ * behavior.
  */
 export function createApolloSsrClient() {
-  const token = getCookie("bex-dashboard-token");
+  const cookieHeader = getRequestHeader("cookie");
   const httpLink = new HttpLink({
     uri: config.ssrApiUrl,
     fetch,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: cookieHeader ? { Cookie: cookieHeader } : {},
   });
   return new ApolloClient({
     ssrMode: true,

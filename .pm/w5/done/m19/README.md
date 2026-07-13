@@ -1,16 +1,19 @@
 # w5 · m19 — Fix dashboard SSR authentication: forward the real Kratos session cookie
 
-**Worker:** worker5 **Goal:** An authenticated dashboard page's SSR output contains real, correctly-scoped data — not an empty/unauthenticated shell that only self-corrects after client-side hydration. Today `factory.server.ts` sends a Bearer token from a cookie (`bex-dashboard-token`) that nothing in the app has ever set — dead scaffold code from `w5/m1` (2026-07-06), predating real Kratos auth — so every SSR-rendered authenticated GraphQL query gets an unauthenticated response. **Status:** todo
+**Worker:** worker5 **Goal:** An authenticated dashboard page's SSR output contains real, correctly-scoped data — not an empty/unauthenticated shell that only self-corrects after client-side hydration. Today `factory.server.ts` sends a Bearer token from a cookie (`bex-dashboard-token`) that nothing in the app has ever set — dead scaffold code from `w5/m1` (2026-07-06), predating real Kratos auth — so every SSR-rendered authenticated GraphQL query gets an unauthenticated response. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                    | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Root-cause confirmation: trace every SSR-rendered route/loader that depends on `getClient()` and confirm they're silently getting unauthenticated responses today | 20m | —          |
-| t002 | Fix `factory.server.ts`: forward the incoming request's session cookie (`ory_kratos_session` via the `Cookie` header) to bex-api instead of the dead `bex-dashboard-token` Bearer path | 30m | t001       |
-| t003 | Audit SSR-dependent auth-gate logic (e.g. `__root.tsx` loaders) for correctness now that SSR queries actually authenticate — fix any redirect/guard logic that was compensating for the broken path | 30m | t002       |
-| t004 | Confirm unauthenticated visitors still get correct public-route SSR behavior (no session ⇒ no `Cookie` forwarded, not a crash)             | 15m | t002       |
-| t005 | Acceptance: view-source (JS disabled) an authenticated page and confirm real data is present in the initial SSR HTML, not just post-hydration | 20m | t003, t004 |
+| t001 | Root-cause confirmation: trace every SSR-rendered route/loader that depends on `getClient()` and confirm they're silently getting unauthenticated responses today | 20m | — | — **DONE** |
+| t002 | Fix `factory.server.ts`: forward the incoming request's session cookie (`ory_kratos_session` via the `Cookie` header) to bex-api instead of the dead `bex-dashboard-token` Bearer path | 30m | t001 | — **DONE** |
+| t003 | Audit SSR-dependent auth-gate logic (e.g. `__root.tsx` loaders) for correctness now that SSR queries actually authenticate — fix any redirect/guard logic that was compensating for the broken path | 30m | t002 | — **DONE** |
+| t004 | Confirm unauthenticated visitors still get correct public-route SSR behavior (no session ⇒ no `Cookie` forwarded, not a crash)             | 15m | t002 | — **DONE** |
+| t005 | Acceptance: view-source (JS disabled) an authenticated page and confirm real data is present in the initial SSR HTML, not just post-hydration | 20m | t003, t004 | — **DONE** |
+| t006 | Simplify: /simplify over the code this milestone changed | 15m | t005 | — **DONE** |
+| t007 | Test coverage: SSR cookie forwarding + unauthenticated fallback | 25m | t005 | — **DONE** |
+| t008 | Closeout: verify DoD, mark done, move to done/ | 10m | t006, t007 | — **DONE** |
 
 ## Definition of done
 
