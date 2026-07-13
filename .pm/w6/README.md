@@ -14,6 +14,8 @@
 - [x] **m8** — Scope down bex-api's cluster-wide RBAC (7 tasks) ← promoted from `002` 2026-07-12 (`w6/m6`'s RBAC least-privilege audit top finding) — done 2026-07-12, shipped directly via `552130b` (ahead of its own task files); moved to `done/m8/`
 - [x] **m9** — Security hygiene chores (9 tasks) ← from `/pm-brainstorm` 2026-07-12, groups `003`, `004`, `005`, `007`, `008` (each sub-hour; `008` is an urgent pre-existing test break) — done 2026-07-12, shipped directly via `552130b` (ahead of its own task files); moved to `done/m9/`
 - [x] **m10** — Member identity: user{email} on the members surface (9 tasks) ← from `/pm-brainstorm for more w6` 2026-07-12 (ADR018 members-row ◐ shape divergence; reuses m7's `own-` ids + m2's Kratos-admin lookup, which the owners API already composes — the members CRUD surface + Team page never adopted it) — done 2026-07-12 (`userId`+`email` enrichment across REST/GraphQL/MCP/dashboard, verified via real-fragment tests + code-level wiring inspection — no live cluster available this session, see `done/m10/README.md`), moved to `done/m10/`
+- [ ] **m11** — Live-verification sweep: close the m4/m5/m10 residuals on the restored cluster (7 tasks) ← from `/pm-brainstorm more for w6` 2026-07-12 (the "not live-verified" residuals recorded in `done/m4`, `done/m5`, `done/m10`; unblocked by the local-cluster Calico/CNPG fix)
+- [ ] **m12** — Workspace plan change: upgrade · downgrade · plan-gated roles (9 tasks) ← from `/pm-brainstorm more for w6` 2026-07-12 (RESEARCH-workspaces.md findings 1/4/5; the last missing lifecycle verb — `workspaces` service has Create/Rename/Delete only)
 
 ## Inbox
 
