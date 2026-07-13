@@ -35,7 +35,12 @@ export default function LoginPage() {
             // See register-page: root's beforeLoad cached the (unauthenticated)
             // session on first load — refetch it before navigating.
             await router.invalidate();
-            void navigate({ to: search.next ? search.next : "/" });
+            // `next` goes in `href`, not `to`: it is an arbitrary href and may
+            // carry a query string (the OAuth consent bounce sends
+            // `/auth/consent?consent_challenge=…`), which `to` would swallow
+            // into the pathname. `href` wins over `to` when set, so `to` is
+            // just the no-`next` fallback.
+            void navigate({ to: "/", href: search.next });
           }}
         />
       ) : (

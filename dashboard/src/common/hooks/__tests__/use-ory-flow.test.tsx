@@ -100,7 +100,8 @@ describe("useOryFlow", () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/deploys",
+        to: "/",
+        href: "/deploys",
         replace: true,
       }),
     );
@@ -237,7 +238,8 @@ describe("useOryFlow", () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/home",
+        to: "/",
+        href: "/home",
         replace: true,
       }),
     );
@@ -255,7 +257,11 @@ describe("useOryFlow", () => {
     renderHook(() => useOryFlow("login", undefined, { returnTo: "/x" }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/x", replace: true }),
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/",
+        href: "/x",
+        replace: true,
+      }),
     );
   });
 
@@ -269,7 +275,11 @@ describe("useOryFlow", () => {
     renderHook(() => useOryFlow("settings", undefined, { returnTo: "/y" }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/y", replace: true }),
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/",
+        href: "/y",
+        replace: true,
+      }),
     );
     // only the single settings-flow attempt; no aal2 login retry.
     expect(mockApi.createBrowserLoginFlow).not.toHaveBeenCalled();

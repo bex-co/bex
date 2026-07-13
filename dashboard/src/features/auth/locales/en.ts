@@ -92,6 +92,64 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "bex is the open-source Render alternative.",
     description: "Auth hero feature bullet description",
   },
+  "auth.consentTitle": {
+    message: "Authorize access",
+    description: "OAuth2 consent page hero title",
+  },
+  "auth.consentSubtitle": {
+    message: "{client} is asking to act on your behalf in bex.",
+    description: "OAuth2 consent page hero subtitle, names the OAuth client",
+  },
+  "auth.consentScopesTitle": {
+    message: "It is requesting",
+    description: "Heading above the list of requested OAuth scopes",
+  },
+  "auth.consentScopeOpenid": {
+    message: "Confirm who you are",
+    description: "Human description of the openid scope",
+  },
+  "auth.consentScopeOfflineAccess": {
+    message: "Stay connected without asking you again (refresh token)",
+    description: "Human description of the offline_access scope",
+  },
+  "auth.consentScopeProfile": {
+    message: "Read your basic profile",
+    description: "Human description of the profile scope",
+  },
+  "auth.consentScopeEmail": {
+    message: "Read your email address",
+    description: "Human description of the email scope",
+  },
+  "auth.consentAudienceTitle": {
+    message: "Where the token works",
+    description: "Heading above the requested access-token audience",
+  },
+  "auth.consentRememberHint": {
+    message:
+      "Approving is remembered for an hour — after that this agent asks again.",
+    description: "Consent page footnote about the remember window",
+  },
+  "auth.consentApprove": {
+    message: "Approve",
+    description: "OAuth2 consent page approve button",
+  },
+  "auth.consentDeny": {
+    message: "Deny",
+    description: "OAuth2 consent page deny button",
+  },
+  "auth.consentFailed": {
+    message: "Something went wrong completing that. Try again.",
+    description: "Consent page error banner after a failed accept/reject",
+  },
+  "auth.consentExpiredTitle": {
+    message: "Authorization expired",
+    description: "Consent page heading when there is no live consent request",
+  },
+  "auth.consentExpiredSubtitle": {
+    message: "Start the connection again from the app that sent you here.",
+    description:
+      "Consent page subtext when there is no live consent request to decide",
+  },
 };
 
 export default enAuth;

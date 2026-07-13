@@ -276,9 +276,12 @@ export function useOryFlow<K extends keyof OryFlowMap>(
               // it) — fall through to navigate on.
             }
           }
-          // Already signed in with nothing more to prove — go where the user
-          // was headed instead.
-          void navigate({ to: returnTo, replace: true });
+          // Already signed in with nothing more to prove — go where the user was
+          // headed instead. It goes in `href`, not `to`: returnTo is an
+          // arbitrary href and may carry a query string
+          // (`/auth/consent?consent_challenge=…`), which `to` would swallow into
+          // the pathname.
+          void navigate({ to: "/", href: returnTo, replace: true });
           return;
         }
         if (errorId === "session_inactive") {

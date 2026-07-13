@@ -91,6 +91,63 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "bex 是开源的 Render 替代方案。",
     description: "Auth hero feature bullet description",
   },
+  "auth.consentTitle": {
+    message: "授权访问",
+    description: "OAuth2 consent page hero title",
+  },
+  "auth.consentSubtitle": {
+    message: "{client} 请求代表你在 bex 中执行操作。",
+    description: "OAuth2 consent page hero subtitle, names the OAuth client",
+  },
+  "auth.consentScopesTitle": {
+    message: "它请求的权限",
+    description: "Heading above the list of requested OAuth scopes",
+  },
+  "auth.consentScopeOpenid": {
+    message: "确认你的身份",
+    description: "Human description of the openid scope",
+  },
+  "auth.consentScopeOfflineAccess": {
+    message: "保持连接而无需再次询问（刷新令牌）",
+    description: "Human description of the offline_access scope",
+  },
+  "auth.consentScopeProfile": {
+    message: "读取你的基本资料",
+    description: "Human description of the profile scope",
+  },
+  "auth.consentScopeEmail": {
+    message: "读取你的邮箱地址",
+    description: "Human description of the email scope",
+  },
+  "auth.consentAudienceTitle": {
+    message: "令牌的适用范围",
+    description: "Heading above the requested access-token audience",
+  },
+  "auth.consentRememberHint": {
+    message: "同意后将记住一小时——此后该 agent 会再次询问。",
+    description: "Consent page footnote about the remember window",
+  },
+  "auth.consentApprove": {
+    message: "同意",
+    description: "OAuth2 consent page approve button",
+  },
+  "auth.consentDeny": {
+    message: "拒绝",
+    description: "OAuth2 consent page deny button",
+  },
+  "auth.consentFailed": {
+    message: "操作未能完成，请重试。",
+    description: "Consent page error banner after a failed accept/reject",
+  },
+  "auth.consentExpiredTitle": {
+    message: "授权已失效",
+    description: "Consent page heading when there is no live consent request",
+  },
+  "auth.consentExpiredSubtitle": {
+    message: "请从引导你到这里的应用重新发起连接。",
+    description:
+      "Consent page subtext when there is no live consent request to decide",
+  },
 };
 
 export default zhAuth;

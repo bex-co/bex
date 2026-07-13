@@ -80,7 +80,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_MAX_BODY_BYTES` | max non-GET request body size in bytes (default 2097152 = 2 MiB); `0` disables |
 | bex-api | `BEX_MAX_QUERY_HOURS` | max `startTime`..`endTime` window for REST log/metrics queries in hours (default 720 = 30 days); `0` disables |
 | bex-api | `BEX_MAX_SSE_CONNS` | max concurrent `GET /v1/logs/subscribe` SSE connections (default 100); `0` disables |
-| dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | headless OAuth2 consent acceptor at `/auth/consent` (docs/ADR012-auth.md §7); server-only (not `VITE_`), unset ⇒ consent 503 |
+| dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent at `/auth/consent` (docs/ADR012-auth.md §7): Hydra's admin API + the allowlist of clients that skip the consent screen (headless auto-accept); every other client gets the user-facing consent page (w4/m16). Server-only (not `VITE_`); `HYDRA_ADMIN_URL` unset ⇒ consent 503 |
 
 ## Docs index
 

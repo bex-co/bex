@@ -17,9 +17,16 @@ const getRequestCookie = createIsomorphicFn()
   )
   .client(() => undefined);
 
-export async function fetchSession(): Promise<Session | null> {
+/**
+ * The Kratos session behind the current request, or null. Pass `cookie`
+ * explicitly from a server route handler, which holds the `Request` itself
+ * (`hydra-consent.ts`); omit it and the ambient request's Cookie header is used.
+ */
+export async function fetchSession(cookie?: string): Promise<Session | null> {
   try {
-    return await createFrontendApi(await getRequestCookie()).toSession();
+    return await createFrontendApi(
+      cookie ?? (await getRequestCookie()),
+    ).toSession();
   } catch {
     return null;
   }
