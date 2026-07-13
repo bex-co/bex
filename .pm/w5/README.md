@@ -27,6 +27,5 @@
 
 - `007.md` — Events tab + deploy list UI (Rollback/Cancel + Manual Deploy) — gated on `w3/m7` + `w2/m10` (backends materialized 2026-07-12); Manual Deploy scope added 2026-07-12, needs `w2/006`
 - `008.md` — Logs-tab structured filter UI — gated on `w3/m8`
-- `009.md` — Health Check Path field in service Settings — gated on `w1/m23/t001` (wire-or-drop decision first)
 
-> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (ADR008-vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`.
+> `001.md` promoted to m8; `002.md` retired as superseded by open `w4/m8` (API keys in the dashboard) — both moved to `done/` 2026-07-08. `005.md` (ADR008-vision.md non-goal fix) done alongside m8 — moved to `done/` 2026-07-08. `003.md` promoted to `w1/m11.5` (custom-domains dashboard) on 2026-07-09 — moved to `done/`. `006.md` (post-add DNS/CNAME instructions) shipped in m10 — moved to `done/` 2026-07-09. `004.md` promoted to **m16** (manual-scaling settings) 2026-07-11 — moved to `done/`. `009.md` promoted to `w2/m13` (health check path full-surface parity) 2026-07-12 — moved to `done/`.

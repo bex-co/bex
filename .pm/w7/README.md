@@ -12,7 +12,7 @@
 - [x] **m6** — Custom domain collision + reserved-host guard (Render "already in use" parity) (7 tasks) ← from `/pm-brainstorm for w7` 2026-07-12
 - [x] **m7** — Least-privilege platform RBAC (operator + bex-api secret scoping) (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-12
 - [x] **m8** — Tenant registry authn/z (close the unauthenticated Zot hole) (8 tasks) ← from `/pm-brainstorm more for w7` 2026-07-12
-- [ ] **m9** — Per-workspace abuse limits (creation caps + build concurrency) (7 tasks) ← from `/pm-brainstorm more for w7` round 2, 2026-07-12
+- [ ] **m9** — Per-workspace abuse limits (creation caps + build concurrency) (10 tasks) ← from `/pm-brainstorm more for w7` round 2, 2026-07-12; task breakdown materialized 2026-07-12 via `/pm-brainstorm more milestones to work on` (the milestone had been named in this README but never written to disk)
 
 ## Inbox
 

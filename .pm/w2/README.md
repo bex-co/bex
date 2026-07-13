@@ -16,6 +16,7 @@
 - [x] **m10** — Deploy cancel + rollback (9 tasks; DONE 2026-07-12 — REST/GraphQL/MCP `Cancel`/`Rollback` on all surfaces, `0011_deploy_rollback_target` migration, parity matrix refreshed, full test suite + lint green; live acceptance scenarios coded but not run against the mock cluster this session — its DB credential had drifted) ← from `/pm-brainstorm more` 2026-07-12 (the two ✖ Deploys rows m5 left; rollback target recorded per deploy); UI buttons ride `w5/007`
 - [x] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks; DONE 2026-07-12 — REST/GraphQL/MCP + dashboard InsightsPanel; `pg_stat_statements` enabled in CNPG spec; parameter-overrides write path through operator; parity row closed) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17); moved to `done/m25/`
 - [x] **m11** — Unify service creation through the control-plane store (9 tasks; DONE 2026-07-12 — all creates write store rows + mint clone secrets; deploy history populates for all surfaces) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
+- [ ] **m13** — Health check path: full-surface parity (PATCH · GraphQL · MCP · dashboard) (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-12 (docs/ADR018-render-parity.md line 21 gap; folds `w5/009`)
 
 ## Inbox
 
