@@ -127,7 +127,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
 | Notifications (deploy/failure alerts) | ✖ | ✖ | ✖ | ✖ | Render `/notification-settings` + Integrations. Untracked, low — depends on first-class deploy/events (**w2/m5**). |
-| Outbound event webhooks | ✖ | ✖ | ✖ | ✖ | Render `/webhooks` (Render → you). bex has the _inbound_ git push webhook instead ([§ bex ahead](#bex-ahead-of-render)). Low, untracked. |
+| Outbound event webhooks | ✖ | ✖ | ✖ | ✖ | Render `/webhooks` (Render → you): thin `{type,timestamp,data}` payload, Standard-Webhooks HMAC-SHA256 signing (`webhook-id`/`webhook-timestamp`/`webhook-signature`), 8 retries with exponential backoff, auto-disable + email after repeated failure (verified live render.com/docs/webhooks 2026-07-12). bex has the _inbound_ git push webhook today ([§ bex ahead](#bex-ahead-of-render)). → **w3/m11** (2026-07-12; deliberate divergence: no plan-tier gating, since bex has no billing system — `w6` non-goal). |
 | Maintenance runs | — | — | — | — | Render `/maintenance`. Managed-infra scheduling — non-goal. |
 | Dedicated outbound IPs | — | — | — | — | Render `/dedicated-ips`. Infra/enterprise — non-goal. |
 | Workflows & tasks (Beta) | — | — | — | — | Render's orchestration product (`/workflows`, `/tasks`, `/task-runs` + SSE) — now a full surface (≥14 endpoints), not just a Beta. Non-goal for bex (off-roadmap orchestration, not a hosting primitive). |
@@ -174,7 +174,8 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Additional service types: background worker + cron job | `w1/m15` | done 2026-07-09 (static site split → `w1/012`) |
 | Static sites (`static_site`: build → object-store origin + redirects/rewrites/headers) | `w1/m21` | done 2026-07-11 (REST/GraphQL/MCP ✅, UI ◐; [ADR029-static-sites.md](ADR029-static-sites.md)) |
 | Request/HTTP logs + structured filters | `w3/m8` (promoted from `w3/002` 2026-07-12) | todo (gated on w3/m5 closeout) |
-| Projects & environments; registry creds; notifications; outbound webhooks; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |
+| Outbound event webhooks | `w3/m11` | todo (2026-07-12) |
+| Projects & environments; registry creds; notifications; PR previews; blueprint resource | untracked (low) | — (rationale inline above) |
 
 Deliberate non-goals (marked `—`): persistent disks, shell/SSH & one-off exec, SSO/SAML/SCIM, log/metric streams, maintenance, dedicated IPs, workflows — see the rationale in each row and [DO_NOT_DO.md](../.pm/DO_NOT_DO.md).
 
