@@ -40,6 +40,7 @@ type fakeStore struct {
 	tenants  map[string]store.Tenant
 	members  map[string][]store.TenantMember // tenantID -> members
 	ownerIDs map[string]string               // subject -> own- id (lazy)
+	apps     map[string]int                  // tenantID -> service count (ChangePlan's service-cap guard)
 }
 
 func newFakeStore() *fakeStore {
@@ -86,6 +87,26 @@ func (f *fakeStore) RenameTenant(_ context.Context, id, name string) (store.Tena
 	t.Name = name
 	f.tenants[id] = t
 	return t, nil
+}
+
+func (f *fakeStore) UpdateTenantPlan(_ context.Context, id, plan string) (store.Tenant, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.tenants[id]
+	if !ok {
+		return store.Tenant{}, fmt.Errorf("workspace: %w", store.ErrNotFound)
+	}
+	t.Plan = plan
+	f.tenants[id] = t
+	return t, nil
+}
+
+// CountAppsForTenant returns the fake service count seeded via f.apps (tests
+// set it directly) — 0 (unlimited-safe) for any tenant not seeded.
+func (f *fakeStore) CountAppsForTenant(_ context.Context, id string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.apps[id], nil
 }
 
 func (f *fakeStore) DeleteTenant(_ context.Context, id string) error {
@@ -452,6 +473,92 @@ func TestList_OnlyCallersWorkspaces(t *testing.T) {
 	}
 }
 
+// --- ChangePlan --------------------------------------------------------------
+
+func TestChangePlan_UpgradeSucceeds(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	got, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro")
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	if got.Plan != "pro" {
+		t.Fatalf("plan = %q, want pro", got.Plan)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "pro" {
+		t.Fatalf("row not persisted: %+v", row)
+	}
+}
+
+func TestChangePlan_NoopOnSamePlan(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
+	got, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro")
+	if err != nil || got.Plan != "pro" {
+		t.Fatalf("no-op: %+v %v", got, err)
+	}
+}
+
+func TestChangePlan_DowngradeRefusedOverMemberCap(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
+	st.members[w.ID] = append(st.members[w.ID], store.TenantMember{TenantID: w.ID, Subject: "user-b", Role: "developer"})
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "hobby"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("2 members -> hobby: want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChangePlan_DowngradeRefusedOverServiceCap(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
+	if st.apps == nil {
+		st.apps = map[string]int{}
+	}
+	st.apps[w.ID] = 26
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "hobby"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("26 services -> hobby: want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChangePlan_DowngradeRefusedOverPerUserWorkspaceCap(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	ctx := ctxAs("user-a")
+	for i := 0; i < 5; i++ {
+		if _, err := svc.Create(ctx, fmt.Sprintf("h%d", i), "hobby"); err != nil {
+			t.Fatalf("hobby #%d: %v", i, err)
+		}
+	}
+	w, _ := svc.Create(ctx, "sixth", "pro")
+	if _, err := svc.ChangePlan(ctx, w.ID, "hobby"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("6th hobby via downgrade: want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChangePlan_DowngradeRefusedOverOutOfPlanRole(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "scale")
+	st.members[w.ID][0] = store.TenantMember{TenantID: w.ID, Subject: "user-a", Role: "viewer"}
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("viewer on scale->pro: want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestChangePlan_AdminOnly(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
+	if _, err := denied.ChangePlan(ctxAs("user-b"), w.ID, "pro"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("non-admin: want forbidden, got %v", err)
+	}
+}
+
 // --- plan rules (store) ----------------------------------------------------
 
 func TestPlanLimitsAndGuards(t *testing.T) {
@@ -472,5 +579,19 @@ func TestPlanLimitsAndGuards(t *testing.T) {
 	}
 	if p, _ := store.NormalizePlan(""); p != store.PlanHobby {
 		t.Fatalf("empty plan default = %q", p)
+	}
+	// RolesFor was folded into PlanLimits.AllowedRoles (w6/m12 /simplify pass) —
+	// cover the per-plan role ladder directly, not just through ChangePlan/Invite.
+	if store.RoleAllowedOnPlan(store.PlanPro, "viewer") {
+		t.Fatal("pro should not allow viewer")
+	}
+	if !store.RoleAllowedOnPlan(store.PlanPro, "developer") {
+		t.Fatal("pro should allow developer")
+	}
+	if !store.RoleAllowedOnPlan(store.PlanScale, "viewer") {
+		t.Fatal("scale should allow viewer")
+	}
+	if !store.RoleAllowedOnPlan(store.PlanHobby, "admin") {
+		t.Fatal("hobby should allow admin (the sole member)")
 	}
 }

@@ -180,6 +180,38 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Couldn't delete the workspace",
     description: "Fallback toast/inline message on a failed delete",
   },
+  "workspaces.changePlanTrigger": {
+    message: "Change plan",
+    description: "Workspace settings plan-badge link opening the change-plan dialog",
+  },
+  "workspaces.changePlanTitle": {
+    message: "Change plan",
+    description: "Change-plan dialog title",
+  },
+  "workspaces.changePlanDescription": {
+    message: "Pick a new plan for this workspace. No payment step — the plan changes immediately.",
+    description: "Change-plan dialog description",
+  },
+  "workspaces.changePlanCancel": {
+    message: "Cancel",
+    description: "Change-plan dialog cancel button",
+  },
+  "workspaces.changePlanSubmit": {
+    message: "Change Plan",
+    description: "Change-plan dialog submit button",
+  },
+  "workspaces.changePlanErrorTitle": {
+    message: "Couldn't change plan",
+    description: "Change-plan dialog inline error alert title",
+  },
+  "workspaces.changePlanSuccess": {
+    message: "Changed plan to {plan}",
+    description: "Toast on a successful plan change",
+  },
+  "workspaces.changePlanError": {
+    message: "Couldn't change the workspace plan",
+    description: "Fallback toast/inline message on a failed plan change",
+  },
 };
 
 export default enWorkspaces;

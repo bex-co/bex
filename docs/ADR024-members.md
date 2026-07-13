@@ -25,6 +25,15 @@ The five Render roles, verified live (`docs/render-artifacts/team-members.graphq
 
 Roles are **UPPERCASE on the wire** (Render's enum: `ADMIN`, `DEVELOPER`, …) and lowercase as the stored role / FGA relation; adapters convert at the view boundary. A change of role is a Revoke of the old relation tuple then a Grant of the new one; the `tenant_members.role` column is the source of truth, the tuple a best-effort follow-up (the resolver re-drives a missing grant on login).
 
+### Roles are plan-gated (w6/m12)
+
+Not every role is assignable on every plan — Render's live capture (`docs/render-artifacts/team-members.graphql`, `RESEARCH-workspaces.md` finding 5) shows the role picker itself narrows by plan: **Hobby** has no invites at all (single member, always `admin`); **Pro** offers `admin`/`developer` only; **Scale**/**Enterprise** add `contributor`/`viewer`/`billing`. bex encodes this as `PlanLimits.AllowedRoles` (`lego/backend/internal/store/plans.go`'s `LimitsFor`, alongside the member/service caps) plus a `RoleAllowedOnPlan(plan, role) bool` predicate, and enforces it in two places:
+
+- `members.Invite` / `members.ChangeRole` reject a role outside `RoleAllowedOnPlan(tenant.Plan, role)` with a `core.ErrBadRequest` naming the plan and its allowed roles (`guardPlanRole`).
+- `workspaces.Service.ChangePlan`'s downgrade guard refuses a plan change while any member holds a role the **target** plan's `AllowedRoles` no longer offers, naming the blocking member(s) — a downgrade must shed the disallowed roles first (`ChangeRole`/`Remove` them) before the plan can flip.
+
+No migration is needed for pre-existing data: roles shipped after plans (w4/m12 came after w6/m1), so no workspace could have assigned an out-of-plan role before this guard existed.
+
 ## Invites: pending row → redeem on login
 
 An invite is addressed to an **email**, which has no OpenFGA subject yet — the recipient may not have signed up. So an invite is a `tenant_invites` row (id, email, role, token, `expires_at`, `accepted_at`), not a membership. It is redeemed on the recipient's **first authenticated login**:
@@ -38,6 +47,7 @@ Invites expire (Render's 7 days). Delivery is best-effort: a flaky relay is logg
 ## Guardrails
 
 - **Seat cap** — accepted members + outstanding invites both consume a seat, so a single-member (Hobby) workspace can't invite a second person until upgraded (`store.CanAddMember`).
+- **Plan-gated roles** — invite/change-role reject a role the workspace's plan doesn't offer (`store.RoleAllowedOnPlan`, `guardPlanRole`); see "Roles are plan-gated" above.
 - **Last-admin refusal** — the only admin cannot be demoted or removed, so a workspace is never left with no one who can administer it (`CountTenantAdmins`, `guardLastAdmin`).
 - **Atomic membership** — the `tenant_members` row is the source of truth; its OpenFGA tuple is kept in step (grant on accept/upgrade, revoke on remove/downgrade). Postgres and OpenFGA aren't one transaction, so tuple writes are best-effort and idempotent (check-before-grant, delete-tolerates-absent).
 

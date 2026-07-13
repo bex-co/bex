@@ -834,7 +834,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		}
 	}
 	mFields := schema.MutationType().Fields()
-	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile", "inviteWorkspaceMember", "changeWorkspaceMemberRole", "removeWorkspaceMember", "revokeWorkspaceInvite"} {
+	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "changeWorkspacePlan", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile", "inviteWorkspaceMember", "changeWorkspaceMemberRole", "removeWorkspaceMember", "revokeWorkspaceInvite"} {
 		if mFields[f] == nil {
 			t.Errorf("Mutation.%s not wired into the single schema", f)
 		}

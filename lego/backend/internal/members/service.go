@@ -277,6 +277,9 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	if err != nil {
 		return InviteView{}, mapStoreErr(err)
 	}
+	if err := guardPlanRole(tenant.Plan, role); err != nil {
+		return InviteView{}, err
+	}
 	// Seat cap: accepted members + outstanding invites both consume a seat, so a
 	// single-member (Hobby) workspace can't invite a second person until upgraded.
 	members, err := s.Store.CountTenantMembers(ctx, workspaceID)
@@ -326,6 +329,13 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	}
 	if m.Role == role {
 		return memberView(m), nil // already there — nothing to write
+	}
+	tenant, err := s.Store.GetTenant(ctx, workspaceID)
+	if err != nil {
+		return MemberView{}, mapStoreErr(err)
+	}
+	if err := guardPlanRole(tenant.Plan, role); err != nil {
+		return MemberView{}, err
 	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, role); err != nil {
 		return MemberView{}, err
@@ -382,6 +392,17 @@ func (s *Service) RevokeInvite(ctx context.Context, workspaceID, inviteID string
 		return mapStoreErr(err)
 	}
 	return nil
+}
+
+// guardPlanRole refuses a role Render doesn't offer on the workspace's plan
+// (RESEARCH-workspaces.md finding 5: Pro is Admin+Developer only; Contributor,
+// Viewer, and Billing are Scale+) — the same rule ChangePlan's downgrade guard
+// enforces in the other direction (internal/workspaces/service.go).
+func guardPlanRole(plan, role string) error {
+	if store.RoleAllowedOnPlan(plan, role) {
+		return nil
+	}
+	return fmt.Errorf("%w: the %s plan only allows roles %s", core.ErrBadRequest, plan, strings.Join(store.LimitsFor(plan).AllowedRoles, "|"))
 }
 
 // guardLastAdmin refuses a change that would leave a workspace with zero admins:

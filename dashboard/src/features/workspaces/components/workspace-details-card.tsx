@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
 import {
   WORKSPACE_NAME_RE,
   WORKSPACE_PLAN_CATALOG,
@@ -36,15 +37,17 @@ export interface WorkspaceDetailsCardProps {
 }
 
 /**
- * Workspace settings' primary card (w6/m3/t003): rename, the plan as a
- * read-only badge (no upgrade path — bex has no billing system yet,
- * .pm/w6/README.md "Not in w6"), and the id/created-at metadata Render's own
- * settings page shows alongside the name.
+ * Workspace settings' primary card (w6/m3/t003, plan section w6/m12/t005):
+ * rename, the plan as a badge with a change-plan dialog (upgrade/downgrade —
+ * no payment step, bex has no billing system yet, .pm/w6/README.md "Not in
+ * w6"), and the id/created-at metadata Render's own settings page shows
+ * alongside the name.
  */
 export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
   const { t } = useTranslations();
   const { rename, busy, error } = useRenameWorkspace();
   const { refetch } = useWorkspace();
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
 
   const [name, setName] = useState(workspace.name);
 
@@ -104,10 +107,17 @@ export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
             <dt className="text-muted-foreground">
               {t("workspaces.fieldPlan")}
             </dt>
-            <dd>
+            <dd className="flex items-center gap-2">
               <Badge variant="secondary">
                 {planNameKey ? t(planNameKey) : workspace.plan}
               </Badge>
+              <Button
+                variant="link"
+                className="h-auto p-0"
+                onClick={() => setChangePlanOpen(true)}
+              >
+                {t("workspaces.changePlanTrigger")}
+              </Button>
             </dd>
           </div>
           <div className="space-y-1">
@@ -122,6 +132,13 @@ export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
           </div>
         </dl>
       </CardContent>
+
+      <ChangePlanDialog
+        workspace={workspace}
+        open={changePlanOpen}
+        onOpenChange={setChangePlanOpen}
+        onChanged={() => void refetch()}
+      />
     </Card>
   );
 }

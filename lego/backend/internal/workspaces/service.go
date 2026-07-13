@@ -84,10 +84,15 @@ type WorkspaceStore interface {
 	CreateWorkspace(ctx context.Context, name, plan, ownerSubject string) (store.Tenant, error)
 	GetTenant(ctx context.Context, id string) (store.Tenant, error)
 	RenameTenant(ctx context.Context, id, name string) (store.Tenant, error)
+	UpdateTenantPlan(ctx context.Context, id, plan string) (store.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
 	CountWorkspacesForSubjectPlan(ctx context.Context, subject, plan string) (int, error)
+	// CountAppsForTenant counts a workspace's services (all of them, including
+	// suspended) — ChangePlan's downgrade guard against the target plan's
+	// MaxServices, the same count internal/store/api.go's create-time cap uses.
+	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
 	// OwnerIDForSubject returns the stable opaque "own-" id for a subject
 	// (minted on first sight) — the Render userId the members surface reports
 	// instead of the raw subject (w6/m7).
@@ -377,14 +382,8 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	// paid). Checked before the write; a race past it is bounded and benign
 	// (worst case one extra workspace), and the read-modify-write isn't worth a
 	// lock here.
-	if limit := store.LimitsFor(plan).MaxWorkspacesPerUser; limit > 0 {
-		n, err := s.Store.CountWorkspacesForSubjectPlan(ctx, id.Subject, plan)
-		if err != nil {
-			return WorkspaceView{}, err
-		}
-		if n >= limit {
-			return WorkspaceView{}, fmt.Errorf("%w: at most %d %s workspaces per user", core.ErrBadRequest, limit, plan)
-		}
+	if err := s.guardPerUserWorkspaceCap(ctx, id.Subject, plan); err != nil {
+		return WorkspaceView{}, err
 	}
 	t, err := s.Store.CreateWorkspace(ctx, name, plan, id.Subject)
 	if err != nil {
@@ -421,6 +420,100 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 		return WorkspaceView{}, mapStoreErr(err)
 	}
 	return view(t, "admin"), nil
+}
+
+// ChangePlan upgrades or downgrades a workspace's plan (w6/m12,
+// docs/render-artifacts/workspace-plan-change.md). Admin-only (can_manage). A
+// no-op when the plan is unchanged, mirroring Render's submit-disabled-until-
+// different UX. A downgrade is refused when the workspace would violate the
+// target plan's caps — member count vs MaxMembers, service count vs
+// MaxServices, the caller's own per-plan workspace count vs
+// MaxWorkspacesPerUser (e.g. a 6th Hobby workspace via downgrade, the same cap
+// Create enforces on creation) — or when any member holds a role the target
+// plan's AllowedRoles no longer offers (t004); each guard names the exact reason.
+func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceView, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+		return WorkspaceView{}, err
+	}
+	if s.Store == nil {
+		return WorkspaceView{}, core.ErrWorkspacesUnavailable
+	}
+	plan, err := normalizePlan(plan)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	t, err := s.Store.GetTenant(ctx, id)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	if t.Plan == plan {
+		return view(t, "admin"), nil // already there — nothing to write
+	}
+	members, err := s.Store.ListTenantMembers(ctx, id)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	limits := store.LimitsFor(plan)
+	if limits.MaxMembers > 0 && len(members) > limits.MaxMembers {
+		return WorkspaceView{}, fmt.Errorf("%w: workspace has %d members, exceeds %s plan's limit of %d",
+			core.ErrBadRequest, len(members), plan, limits.MaxMembers)
+	}
+	if limits.MaxServices > 0 {
+		n, err := s.Store.CountAppsForTenant(ctx, id)
+		if err != nil {
+			return WorkspaceView{}, err
+		}
+		if n > limits.MaxServices {
+			return WorkspaceView{}, fmt.Errorf("%w: workspace has %d services, exceeds %s plan's limit of %d",
+				core.ErrBadRequest, n, plan, limits.MaxServices)
+		}
+	}
+	if caller, ok := core.IdentityFrom(ctx); ok {
+		if err := s.guardPerUserWorkspaceCap(ctx, caller.Subject, plan); err != nil {
+			return WorkspaceView{}, err
+		}
+	}
+	if blocked := rolesOutsidePlan(members, plan); len(blocked) > 0 {
+		return WorkspaceView{}, fmt.Errorf("%w: workspace has members with roles not allowed on %s (%s); downgrade first",
+			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
+	}
+	nt, err := s.Store.UpdateTenantPlan(ctx, id, plan)
+	if err != nil {
+		return WorkspaceView{}, mapStoreErr(err)
+	}
+	return view(nt, "admin"), nil
+}
+
+// rolesOutsidePlan returns the "subject:role" pairs that wouldn't be
+// assignable on plan — ChangePlan's role-downgrade guard (t004): a downgrade
+// must not leave a member holding a role the new plan no longer offers.
+func rolesOutsidePlan(members []store.TenantMember, plan string) []string {
+	var blocked []string
+	for _, m := range members {
+		if !store.RoleAllowedOnPlan(plan, m.Role) {
+			blocked = append(blocked, m.Subject+":"+m.Role)
+		}
+	}
+	return blocked
+}
+
+// guardPerUserWorkspaceCap refuses a plan (Create's target, or ChangePlan's)
+// that would put subject over Render's per-user workspace cap for that plan
+// (Hobby: five free workspaces/user; paid plans unlimited) — the one rule
+// both verbs enforce, Create on a new row and ChangePlan on a downgrade into it.
+func (s *Service) guardPerUserWorkspaceCap(ctx context.Context, subject, plan string) error {
+	limit := store.LimitsFor(plan).MaxWorkspacesPerUser
+	if limit == 0 {
+		return nil
+	}
+	n, err := s.Store.CountWorkspacesForSubjectPlan(ctx, subject, plan)
+	if err != nil {
+		return err
+	}
+	if n >= limit {
+		return fmt.Errorf("%w: at most %d %s workspaces per user", core.ErrBadRequest, limit, plan)
+	}
+	return nil
 }
 
 // DeleteConfirmation is the exact phrase the caller must type to arm a

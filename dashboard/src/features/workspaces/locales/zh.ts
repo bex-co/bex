@@ -179,6 +179,38 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "无法删除工作区",
     description: "Fallback toast/inline message on a failed delete",
   },
+  "workspaces.changePlanTrigger": {
+    message: "更改套餐",
+    description: "Workspace settings plan-badge link opening the change-plan dialog",
+  },
+  "workspaces.changePlanTitle": {
+    message: "更改套餐",
+    description: "Change-plan dialog title",
+  },
+  "workspaces.changePlanDescription": {
+    message: "为此工作区选择新套餐。无需支付步骤 —— 套餐立即生效。",
+    description: "Change-plan dialog description",
+  },
+  "workspaces.changePlanCancel": {
+    message: "取消",
+    description: "Change-plan dialog cancel button",
+  },
+  "workspaces.changePlanSubmit": {
+    message: "更改套餐",
+    description: "Change-plan dialog submit button",
+  },
+  "workspaces.changePlanErrorTitle": {
+    message: "更改套餐失败",
+    description: "Change-plan dialog inline error alert title",
+  },
+  "workspaces.changePlanSuccess": {
+    message: "已更改为 {plan} 套餐",
+    description: "Toast on a successful plan change",
+  },
+  "workspaces.changePlanError": {
+    message: "无法更改工作区套餐",
+    description: "Fallback toast/inline message on a failed plan change",
+  },
 };
 
 export default zhWorkspaces;

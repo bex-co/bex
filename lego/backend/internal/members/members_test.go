@@ -289,6 +289,37 @@ func TestInviteRejectsBadRoleAndEmail(t *testing.T) {
 	}
 }
 
+func TestInviteEnforcesPlanRoleGate(t *testing.T) {
+	// Pro only offers admin/developer (RESEARCH-workspaces.md finding 5) —
+	// inviting a VIEWER is refused, DEVELOPER succeeds.
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, nil)
+	if _, err := s.Invite(ctxWith("admin-1"), "tea-1", "v@example.com", "viewer"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("viewer on pro: want ErrBadRequest, got %v", err)
+	}
+	if _, err := s.Invite(ctxWith("admin-1"), "tea-1", "d@example.com", "developer"); err != nil {
+		t.Fatalf("developer on pro: %v", err)
+	}
+	// Scale offers the full role set.
+	stScale := newFakeStore(store.PlanScale)
+	stScale.seedMember("admin-1", "admin")
+	sScale := svc(stScale, newFakeGranter(), nil, nil)
+	if _, err := sScale.Invite(ctxWith("admin-1"), "tea-1", "v@example.com", "viewer"); err != nil {
+		t.Fatalf("viewer on scale: %v", err)
+	}
+}
+
+func TestChangeRoleEnforcesPlanRoleGate(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	s := svc(st, newFakeGranter(), nil, nil)
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "viewer"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("viewer on pro: want ErrBadRequest, got %v", err)
+	}
+}
+
 func TestInviteEnforcesMemberCap(t *testing.T) {
 	st := newFakeStore(store.PlanHobby) // single-member
 	st.seedMember("admin-1", "admin")
@@ -517,7 +548,7 @@ func TestRevokeInviteDeletes(t *testing.T) {
 	st := newFakeStore(store.PlanPro)
 	st.seedMember("admin-1", "admin")
 	s := svc(st, newFakeGranter(), nil, nil)
-	inv, err := s.Invite(ctxWith("admin-1"), "tea-1", "p@example.com", "viewer")
+	inv, err := s.Invite(ctxWith("admin-1"), "tea-1", "p@example.com", "developer")
 	if err != nil {
 		t.Fatalf("invite: %v", err)
 	}

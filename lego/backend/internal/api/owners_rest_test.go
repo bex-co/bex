@@ -74,7 +74,11 @@ func (f *fakeWSStore) GetTenant(_ context.Context, id string) (store.Tenant, err
 func (f *fakeWSStore) RenameTenant(context.Context, string, string) (store.Tenant, error) {
 	return store.Tenant{}, fmt.Errorf("unused: %w", store.ErrNotFound)
 }
+func (f *fakeWSStore) UpdateTenantPlan(context.Context, string, string) (store.Tenant, error) {
+	return store.Tenant{}, fmt.Errorf("unused: %w", store.ErrNotFound)
+}
 func (f *fakeWSStore) DeleteTenant(context.Context, string) error { return nil }
+func (f *fakeWSStore) CountAppsForTenant(context.Context, string) (int, error) { return 0, nil }
 func (f *fakeWSStore) ListTenantsForSubject(_ context.Context, subject string) ([]store.Tenant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

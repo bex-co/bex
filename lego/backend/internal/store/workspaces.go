@@ -103,6 +103,23 @@ func (s *PGStore) RenameTenant(ctx context.Context, id, name string) (Tenant, er
 	return t, nil
 }
 
+// UpdateTenantPlan changes a workspace's plan (ErrNotFound when the id doesn't
+// exist). The plan is validated by the caller (workspaces.Service.ChangePlan
+// via store.NormalizePlan) before this write; the `tenants.plan` CHECK
+// constraint is the last-resort backstop, surfaced as ErrInvalid via classify.
+func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
+	var t Tenant
+	err := s.Pool.QueryRow(ctx,
+		`UPDATE tenants SET plan = $2, updated_at = now() WHERE id = $1
+		 RETURNING id, name, plan, created_at`,
+		id, plan,
+	).Scan(&t.ID, &t.Name, &t.Plan, &t.CreatedAt)
+	if err != nil {
+		return Tenant{}, classify("workspace", err)
+	}
+	return t, nil
+}
+
 // DeleteTenant removes a workspace row. The FK cascades (ON DELETE CASCADE) drop
 // its apps, their domains, and its tenant_members in the same statement; the
 // projector then prunes the orphaned App CRs on its next pass. Returns

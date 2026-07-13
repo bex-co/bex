@@ -35,6 +35,16 @@ mutation RenameWorkspace($id: String!, $name: String!) {
   }
 }
 
+mutation ChangeWorkspacePlan($id: String!, $plan: String!) {
+  changeWorkspacePlan(id: $id, plan: $plan) {
+    id
+    name
+    plan
+    role
+    createdAt
+  }
+}
+
 mutation DeleteWorkspace($id: String!, $confirmation: String!) {
   deleteWorkspace(id: $id, confirmation: $confirmation)
 }

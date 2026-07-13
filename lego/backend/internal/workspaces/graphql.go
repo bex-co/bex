@@ -77,6 +77,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.Rename(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 			},
 		},
+		"changeWorkspacePlan": &graphql.Field{
+			// w6/m12: upgrade/downgrade a workspace's plan
+			// (docs/render-artifacts/workspace-plan-change.md). GraphQL-only —
+			// Render's REST owners surface has no plan-mutation endpoint and its
+			// MCP has no workspace mutations, so REST/MCP deliberately gain
+			// nothing here (parity by absence).
+			Type: workspaceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ChangePlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+			},
+		},
 		"deleteWorkspace": &graphql.Field{
 			// Returns the deleted workspace's id on success (Render dashboard
 			// delete mutations echo the affected id); a boolean would lose it.

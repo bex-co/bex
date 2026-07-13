@@ -18,6 +18,7 @@ package store
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -41,8 +42,9 @@ const DefaultPlan = PlanHobby
 // truth for validation and any plan picker.
 var WorkspacePlans = []string{PlanHobby, PlanPro, PlanScale, PlanEnterprise}
 
-// PlanLimits are the caps a plan imposes. A zero field means "unlimited" — the
-// paid plans lift Hobby's limits entirely (Render's Pro/Scale/Enterprise all
+// PlanLimits are the caps and capabilities a plan grants — the one place a
+// plan's full shape is defined. A zero numeric field means "unlimited" — the
+// paid plans lift Hobby's caps entirely (Render's Pro/Scale/Enterprise all
 // allow unlimited members and services), so only Hobby carries non-zero caps.
 type PlanLimits struct {
 	// MaxServices caps services per workspace, counting suspended ones (Render:
@@ -55,16 +57,34 @@ type PlanLimits struct {
 	// own. Render allows five free Hobby workspaces per user and unlimited paid
 	// ones, so only Hobby sets this (5). 0 = unlimited.
 	MaxWorkspacesPerUser int
+	// AllowedRoles is the role set assignable on the plan — Render's plan-gated
+	// role catalog (RESEARCH-workspaces.md finding 5, docs/render-artifacts/team-members.graphql):
+	// Hobby is single-member (no invites, the sole member is always admin); Pro
+	// adds Developer; Scale and Enterprise add Contributor, Viewer, and Billing.
+	// Lowercase (the stored/FGA form), matching members.Roles.
+	AllowedRoles []string
 }
 
-// LimitsFor returns the caps for a plan. Unknown plans get the (unlimited) paid
-// shape rather than Hobby's caps — validation rejects unknown plans upstream, so
-// this is only a safe default, never a silent downgrade.
+// LimitsFor returns the caps and capabilities for a plan. Unknown plans get
+// the (unlimited, full-role) paid shape rather than Hobby's — validation
+// rejects unknown plans upstream, so this is only a safe default, never a
+// silent downgrade.
 func LimitsFor(plan string) PlanLimits {
-	if plan == PlanHobby {
-		return PlanLimits{MaxServices: 25, MaxMembers: 1, MaxWorkspacesPerUser: 5}
+	switch plan {
+	case PlanHobby:
+		return PlanLimits{MaxServices: 25, MaxMembers: 1, MaxWorkspacesPerUser: 5, AllowedRoles: []string{"admin"}}
+	case PlanPro:
+		return PlanLimits{AllowedRoles: []string{"admin", "developer"}}
+	default: // scale, enterprise, and any future higher tier
+		return PlanLimits{AllowedRoles: []string{"admin", "developer", "contributor", "viewer", "billing"}}
 	}
-	return PlanLimits{}
+}
+
+// RoleAllowedOnPlan reports whether role is assignable on plan — the single
+// predicate members.guardPlanRole (invite/change-role) and workspaces.ChangePlan's
+// downgrade guard both consult, mirroring CanAddMember's shape below.
+func RoleAllowedOnPlan(plan, role string) bool {
+	return slices.Contains(LimitsFor(plan).AllowedRoles, role)
 }
 
 // CanAddMember reports whether a workspace on the given plan can take another
