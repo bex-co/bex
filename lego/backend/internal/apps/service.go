@@ -480,7 +480,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 }
 
 // create is the unauthorized core of Create — shared with Deploy, which
-// authorizes once before mapping the bex.yml.
+// authorizes once before mapping the bex.yml. An update-in-place is always a
+// redeploy here (the interactive intent): the stack path's idempotent no-op
+// variant is applyCreate (deploy.go).
 func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
 	desired, err := specFromCreate(req)
 	if err != nil {
@@ -615,6 +617,73 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 		return view(existing), nil
 	}
+}
+
+// createNewApp writes a brand-new App CR (the not-found path both create and the
+// stack applyCreate share): stamps the tenant + store labels, opens the store
+// row + its first deploy record when the store is on, mints a clone secret for a
+// private repo, and creates the CR. Shared so the stack path creates services
+// identically to the interactive create (w1/m24).
+func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
+	a := &appv1alpha1.App{}
+	a.Name = req.Name
+	a.Namespace = s.Namespace
+	a.Spec = desired
+	// Resolve the caller's tenant; used both for the tenant label and the
+	// store row. Empty when the store is off or the caller is unbound.
+	tenantID := ""
+	if s.Workspace != nil {
+		if t, ok := s.Tenant(ctx); ok {
+			tenantID = t
+		}
+	}
+	if tenantID != "" {
+		a.Labels = map[string]string{core.LabelTenant: tenantID}
+	}
+	// Write the store row when the store is on + a tenant is resolved, so the
+	// create populates deploy history and the projector recognises the CR as
+	// store-managed (unified create path, w2/m11).
+	if s.Store != nil && tenantID != "" {
+		row, err := s.Store.CreateApp(ctx, store.App{
+			TenantID: tenantID,
+			Name:     req.Name,
+			Repo:     req.Repo,
+			Image:    req.Image,
+			Branch:   desired.Branch,
+			Port:     desired.Port,
+			Replicas: desired.Replicas,
+			Tier:     desired.Tier,
+		})
+		if err != nil {
+			return AppView{}, fmt.Errorf("creating service record: %w", err)
+		}
+		// Stamp the managed-by + app-id labels so the projector's byID index
+		// finds this CR on its next pass (avoiding a duplicate create) and
+		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
+		if a.Labels == nil {
+			a.Labels = map[string]string{}
+		}
+		a.Labels[store.LabelManagedBy] = store.ManagedByValue
+		a.Labels[store.LabelAppID] = row.ID
+		a.Labels[store.LabelWorkspace] = tenantID
+	}
+	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
+	// its first build authenticates. create-owned only: never set on a spec
+	// that already hand-pointed cloneSecret elsewhere.
+	if desired.CloneSecret == "" {
+		secretName, err := s.ensureCloneSecret(ctx, a)
+		if err != nil {
+			return AppView{}, err
+		}
+		a.Spec.CloneSecret = secretName
+	}
+	if err := s.Client.Create(ctx, a); err != nil {
+		return AppView{}, err
+	}
+	if s.Kick != nil {
+		s.Kick()
+	}
+	return view(a), nil
 }
 
 // Delete removes a service — the single implementation the three adapters

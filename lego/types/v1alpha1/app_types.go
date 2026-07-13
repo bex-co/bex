@@ -158,12 +158,16 @@ type AppSpec struct {
 	// +kubebuilder:default=3000
 	Port int32 `json:"port,omitempty"`
 
-	// Env are plain (literal) environment variables set on the App's container,
-	// in the order given. These carry non-secret configuration only — secret
-	// material is delivered out-of-band via EnvFromSecret (docs/ADR013-secrets.md), never
-	// inlined here where it would sit in plaintext in etcd. The operator-owned PORT
-	// always wins: a user Env entry named PORT is ignored, so it can never shadow
-	// the injected value.
+	// Env are environment variables set on the App's container, in the order
+	// given. Each entry is either a plain literal (Value) or a single-key
+	// reference into a Secret (ValueFrom.SecretKeyRef). Literal entries carry
+	// non-secret configuration only; a secret-backed entry — the shape a bex.yml
+	// `fromDatabase` reference resolves to — wires a service's DATABASE_URL at the
+	// referenced Database's CNPG connection Secret without the credential ever
+	// appearing in the App spec (docs/ADR013-secrets.md, w1/m24). Bulk secret
+	// material still arrives via EnvFromSecret. The operator-owned PORT always
+	// wins: a user Env entry named PORT is ignored, so it can never shadow the
+	// injected value.
 	// +optional
 	Env []EnvVar `json:"env,omitempty"`
 
@@ -301,17 +305,53 @@ type AutoscalingSpec struct {
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
-// EnvVar is a single literal name/value environment variable for an App's
-// container (the plain half of Render's envVars shape). Only literal values are
-// carried here; a secret reference belongs in AppSpec.EnvFromSecret.
+// EnvVar is one environment variable for an App's container — either a plain
+// literal (Value) or a single-key Secret reference (ValueFrom). Mirrors the
+// two shapes a bex.yml envVars entry resolves to: a hardcoded {key,value} maps
+// to a literal, and a fromDatabase reference maps to a ValueFrom.SecretKeyRef
+// into the Database's CNPG connection Secret (w1/m24). Value and ValueFrom are
+// mutually exclusive; ValueFrom is the only way a connection string reaches a
+// container without its plaintext landing in the App spec (docs/ADR013-secrets.md).
 type EnvVar struct {
 	// Name of the environment variable.
 	// +required
 	Name string `json:"name"`
 
 	// Value is the literal value; empty is allowed (sets the variable to "").
+	// Mutually exclusive with ValueFrom.
 	// +optional
 	Value string `json:"value,omitempty"`
+
+	// ValueFrom sources this variable from a Secret key in the App's namespace.
+	// The bex.yml fromDatabase form resolves here, so a service's DATABASE_URL
+	// points at the CNPG "<database>-app" Secret without the credential ever
+	// appearing in bex.yml or the App spec (survives credential rotation: a
+	// redeploy reads the live Secret value). Mutually exclusive with Value.
+	// +optional
+	ValueFrom *EnvVarSource `json:"valueFrom,omitempty"`
+}
+
+// EnvVarSource selects a single Secret key to source an EnvVar from — the
+// shape a fromDatabase reference resolves to. Mirrors Kubernetes' core EnvVar
+// sourcing (a narrowed EnvVarSource with only the SecretKeyRef selector bex
+// uses today).
+type EnvVarSource struct {
+	// SecretKeyRef names the Secret + key whose value populates this variable.
+	// +optional
+	SecretKeyRef *SecretKeySelector `json:"secretKeyRef,omitempty"`
+}
+
+// SecretKeySelector names one key of one Secret in the App's namespace.
+type SecretKeySelector struct {
+	// Name is the Secret name (e.g. a Database's "<name>-app" connection Secret).
+	// +required
+	Name string `json:"name"`
+
+	// Key is the key within the Secret (e.g. "uri", "host", "port", "username",
+	// "password", "dbname" — the CNPG app-Secret vocabulary, which Render's
+	// fromDatabase property names map onto).
+	// +required
+	Key string `json:"key"`
 }
 
 // StaticRoute is one redirect/rewrite rule for a static_site, matching Render's

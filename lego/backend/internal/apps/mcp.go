@@ -190,12 +190,28 @@ func toEnvVars(in []envVarArg) []appv1alpha1.EnvVar {
 }
 
 // deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
-// is create_web_service with a manifest — one agent call takes code to a URL.
+// is create with a manifest — one agent call takes code (one service or a whole
+// stack) to live URLs.
 type deployArgs struct {
 	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace to deploy into (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
-	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml (render.yaml-shaped manifest) describing the service"`
+	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml — a render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
+}
+
+// renderStack is the deploy tool's result for a multi-resource bex.yml: the
+// services + databases one deploy call created (databases applied first, then
+// services — dependents reference databases via fromDatabase). A single-service
+// bex.yml returns a one-element services list and no databases. Poll each
+// service to a live URL via get_service; poll databases via get_postgres.
+type renderStack struct {
+	Services  []renderService      `json:"services"`
+	Databases []StackDatabaseView  `json:"databases,omitempty"`
+}
+
+// toRenderStack maps a StackResult onto the MCP deploy result shape.
+func toRenderStack(res StackResult) renderStack {
+	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases}
 }
 
 // autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
@@ -394,18 +410,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
-		Description: "Deploy a project from a git repo and its bex.yml in one call — takes code to a live https URL. Calling it again for the same service redeploys it. bex extension (pillar 4, deploy-from-chat).",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.Deploy(ctx, DeployRequest{
-			OwnerID:  core.SelectedWorkspace(s.Selections, req, in.OwnerID),
-			Repo:     in.Repo,
-			Branch:   in.Branch,
-			Manifest: in.BexYAML,
-		})
+		Description: "Deploy a project from a git repo and its bex.yml (render.yaml Blueprint) in one call. A bex.yml may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying an unchanged bex.yml is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). bex extension (pillar 4, deploy-from-chat at stack scale).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderStack, error) {
+		res, err := s.DeployStack(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML})
 		if err != nil {
-			return nil, renderService{}, err
+			return nil, renderStack{}, err
 		}
-		return nil, toRenderService(app), nil
+		return nil, toRenderStack(res), nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

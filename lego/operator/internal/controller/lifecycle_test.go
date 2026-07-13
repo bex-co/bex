@@ -73,6 +73,34 @@ func TestAppEnv(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ValueFrom secretRef is materialized (fromDatabase, w1/m24)", func(t *testing.T) {
+		// A bex.yml fromDatabase reference resolves to an EnvVar.ValueFrom.SecretKeyRef;
+		// the operator projects it onto a corev1 SecretKeySelector (non-optional, so a
+		// service waits on its Database's CNPG connection Secret) — no plaintext value.
+		env := appEnv(mk(appv1alpha1.EnvVar{
+			Name: "DATABASE_URL",
+			ValueFrom: &appv1alpha1.EnvVarSource{SecretKeyRef: &appv1alpha1.SecretKeySelector{
+				Name: "db-app", Key: "uri",
+			}},
+		}), 3000)
+		var du *corev1.EnvVar
+		for i := range env {
+			if env[i].Name == "DATABASE_URL" {
+				du = &env[i]
+			}
+		}
+		if du == nil || du.Value != "" || du.ValueFrom == nil || du.ValueFrom.SecretKeyRef == nil {
+			t.Fatalf("DATABASE_URL must be a secretKeyRef with no plaintext value, got %+v", du)
+		}
+		ref := du.ValueFrom.SecretKeyRef
+		if ref.Name != "db-app" || ref.Key != "uri" {
+			t.Errorf("secretKeyRef = %+v, want {db-app, uri}", ref)
+		}
+		if ref.Optional != nil {
+			t.Errorf("fromDatabase secretRef must be non-optional so the service waits on the DB, got optional=%v", *ref.Optional)
+		}
+	})
 }
 
 func TestEnvFromSources(t *testing.T) {

@@ -1,78 +1,261 @@
 #!/usr/bin/env bash
-# Apply a project's bex.yml (App manifest, render.yaml-style) as App CRs.
+# Apply a project's bex.yml (render.yaml Blueprint manifest) as App + Database CRs.
 # Usage: scripts/app-apply.sh <path-to-bex.yml | project-dir>
-#        DRY_RUN=1 scripts/app-apply.sh ...   # print the App CRs instead of applying
+#        DRY_RUN=1 scripts/app-apply.sh ...   # print the CRs instead of applying
 # Requires: yq v4, kubectl (respects $KUBECONFIG).
 #
+# A bex.yml declares a stack — the render.yaml Blueprint shape:
+#   services:   web/worker/cron/private/static services (render.yaml field names:
+#               type/plan/numInstances/domains/healthCheckPath/envVars/…; the bex
+#               aliases tier/replicas/port/image are accepted too).
+#   databases:  managed Postgres instances (name/plan/diskSizeGB/…).
+# The legacy single-service top-level `apps:` list is an alias for `services:`,
+# so pre-existing bex.yml files apply unchanged.
+#
+# Databases apply first, then services, so a service's fromDatabase env reference
+# (resolved to a secretRef into the CNPG "<name>-app" connection Secret) waits on
+# a Database that is already provisioning. Re-applying is a server-side idempotent
+# upsert (kubectl apply). bex v1 does NOT sync-delete resources absent from the
+# file — a documented divergence from Render Blueprints' optional sync.
+#
 # Manifest semantics: `type: web` (the default) is public — <name>.<base-domain>
-# is auto-assigned; `domains:` adds custom domains on top. `type: private` is
-# in-cluster only. The `expose` knob is CR-level mechanism, not a manifest key.
+# is auto-assigned, `domains:` adds custom domains. `type: private|worker|cron`
+# have no ingress. `expose` is CR-level mechanism, not a manifest key.
+#
+# CR generation is deliberately split: bash reads each field (simple yq lookups)
+# and resolves env into a JSON array; a final yq --null-input call only assembles
+# the CR from strenv values (no yq conditionals — yq v4 has none). This keeps the
+# projection transparent and matches what lego/backend/internal/apps/deploy.go does.
 set -euo pipefail
 
 manifest="${1:?usage: app-apply.sh <bex.yml | project-dir>}"
 [ -d "$manifest" ] && manifest="$manifest/bex.yml"
 [ -f "$manifest" ] || { echo "error: $manifest not found" >&2; exit 1; }
 
-count="$(yq '.apps | length' "$manifest")"
-[ "$count" -gt 0 ] 2>/dev/null || { echo "error: no .apps[] entries in $manifest" >&2; exit 1; }
+# `services:` is the Blueprint key; `apps:` is the legacy single-service alias
+# (mutually exclusive). Exactly one, unless the file is databases-only.
+have_services=$(yq '.services | length' "$manifest" 2>/dev/null || echo 0)
+have_apps=$(yq '.apps | length' "$manifest" 2>/dev/null || echo 0)
+if [ "$have_services" -gt 0 ] 2>/dev/null && [ "$have_apps" -gt 0 ] 2>/dev/null; then
+  echo "error: $manifest uses both services: and apps: — use only one (services: preferred)" >&2; exit 1
+fi
+if [ "$have_services" -gt 0 ] 2>/dev/null; then svc_key="services"
+elif [ "$have_apps" -gt 0 ] 2>/dev/null; then svc_key="apps"
+else
+  ndb=$(yq '.databases | length' "$manifest" 2>/dev/null || echo 0)
+  [ "$ndb" -gt 0 ] 2>/dev/null || { echo "error: no services:/apps:/databases: entries in $manifest" >&2; exit 1; }
+  svc_key=""
+fi
 
-for i in $(seq 0 $((count - 1))); do
-  name="$(yq ".apps[$i].name" "$manifest")"
-  [ "$name" != "null" ] || { echo "error: .apps[$i].name is required" >&2; exit 1; }
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+[ -n "$svc_key" ] && yq ".$svc_key" "$manifest" > "$tmp/services.yml"
+yq '.databases // []' "$manifest" > "$tmp/databases.yml"
 
-  # type decides exposure (render.yaml-style): "web" (default) is public — the
-  # platform hostname <name>.<BEX_BASE_DOMAIN> is auto-assigned and mandatory
-  # (spec.expose); "private" is in-cluster only (ClusterIP, no Ingress, no domains).
-  apptype="$(yq ".apps[$i].type // \"web\"" "$manifest")"
-  ndomains="$(yq ".apps[$i].domains | length" "$manifest")"
-  case "$apptype" in
-    web) expose_json=true ;;
-    private)
-      expose_json=null
-      if [ "$ndomains" -gt 0 ] 2>/dev/null; then
-        echo "error: $name is type: private but lists domains — private services have no ingress" >&2
-        exit 1
-      fi
-      ;;
-    *) echo "error: $name has unknown type \"$apptype\" (web|private)" >&2; exit 1 ;;
+apply_cr() { # reads a YAML CR on stdin, applies or print it
+  if [ "${DRY_RUN:-}" = "1" ]; then echo "---"; cat
+  else kubectl apply -f -; fi
+}
+
+# snapshot_svc writes services[$name] alone to $tmp/svc.yml — a tiny single-object
+# doc every per-service read then queries, so each field read parses ~10 lines
+# instead of re-scanning the whole stack with .[] | select(.name==…).
+snapshot_svc() { yq ".[] | select(.name == \"$1\")" "$tmp/services.yml" > "$tmp/svc.yml"; }
+
+# sf reads .$field off the current service snapshot (set by snapshot_svc).
+sf() { yq ".$1" "$tmp/svc.yml"; } # $1 = field
+df() { yq ".[] | select(.name == \"$1\") | .$2" "$tmp/databases.yml"; } # $1=name $2=field
+
+# service_kind maps a service to the normalized bex kind (web|private|worker|cron|
+# static), folding render.yaml's runtime:static (type:web+runtime:static) and the
+# pserv alias. Reads the snapshot set by snapshot_svc.
+service_kind() { # reads $tmp/svc.yml
+  local t rt
+  t=$(yq '.type // "web"' "$tmp/svc.yml")
+  rt=$(yq '.runtime // ""' "$tmp/svc.yml")
+  if [ "$t" = "web" ] && [ "$rt" = "static" ]; then echo static
+  elif [ "$t" = "pserv" ]; then echo private
+  else echo "$t"; fi
+}
+
+# db_secret_key maps a render.yaml fromDatabase property to the CNPG "<name>-app"
+# Secret key (the connection vocabulary: username/password/dbname/host/port/uri).
+db_secret_key() { # $1 = property
+  case "$1" in
+    connectionString) echo uri ;;   # render.yaml connectionString -> the ready-made uri
+    host) echo host ;; port) echo port ;; user) echo username ;;
+    password) echo password ;; database) echo dbname ;;
+    *) echo "error: unknown fromDatabase property '$1'" >&2; exit 1 ;;
   esac
+}
 
-  # Project .apps[i] onto an App CR: name -> metadata, domains[0] -> spec.host
-  # (canonical; keeps existing Apps' TLS secret stable), domains[1:] -> spec.hosts
-  # (extra hosts, e.g. customers' custom domains), envVars[] {key,value} ->
-  # spec.env[] {name,value} (literal config only — secrets go through the env-vars
-  # API, docs/ADR013-secrets.md), everything else 1:1; drop null/absent fields so
-  # operator defaults apply.
-  cr="$(yq -o=yaml "
-    .apps[$i] as \$a |
-    {
-      \"apiVersion\": \"app.bex.co/v1alpha1\",
-      \"kind\": \"App\",
-      \"metadata\": {\"name\": \$a.name, \"namespace\": (\$a.namespace // \"default\")},
-      \"spec\": {
-        \"image\": \$a.image,
-        \"repo\": \$a.repo,
-        \"branch\": \$a.branch,
-        \"builder\": \$a.builder,
-        \"port\": \$a.port,
-        \"replicas\": \$a.replicas,
-        \"tier\": \$a.tier,
-        \"healthCheckPath\": \$a.healthCheckPath,
-        \"host\": \$a.domains[0],
-        \"hosts\": ((\$a.domains // []) | .[1:] | select(length > 0) // null),
-        \"env\": ((\$a.envVars // []) | map({\"name\": .key, \"value\": .value}) | select(length > 0) // null),
-        \"expose\": $expose_json
-      } | with_entries(select(.value != null))
-    } | ... comments=\"\"" "$manifest")"
-
-  if [ "${DRY_RUN:-}" = "1" ]; then
-    echo "---"; echo "$cr"
+# build_env writes a JSON array of spec.env entries to $1 from the current
+# service snapshot ($tmp/svc.yml). Literal {key,value} stays literal; fromDatabase
+# {name,property} -> secretRef into the CNPG "<name>-app" Secret (never a plaintext
+# copy); fromService {name,property} host/port/hostport -> literal (bare <name>
+# resolves in-cluster; port from the referenced service's declared port — that one
+# read queries the full services list, default 3000). Written to a file (not
+# echoed) because the JSON contains '"' — yq load consumes it.
+build_env() { # $1 = output file
+  local out=$1 nev i key fdn fdp fsn fsp refport val
+  nev=$(yq '.envVars | length' "$tmp/svc.yml")
+  if [ "$nev" -gt 0 ] 2>/dev/null; then
+    printf '[' > "$out"; i=0
+    while [ "$i" -lt "$nev" ]; do
+      key=$(yq ".envVars[$i].key" "$tmp/svc.yml")
+      fdn=$(yq ".envVars[$i].fromDatabase.name // \"\"" "$tmp/svc.yml")
+      fdp=$(yq ".envVars[$i].fromDatabase.property // \"\"" "$tmp/svc.yml")
+      fsn=$(yq ".envVars[$i].fromService.name // \"\"" "$tmp/svc.yml")
+      fsp=$(yq ".envVars[$i].fromService.property // \"\"" "$tmp/svc.yml")
+      [ "$i" -gt 0 ] && printf ',' >> "$out"
+      if [ -n "$fdn" ]; then
+        printf '{"name":"%s","valueFrom":{"secretKeyRef":{"name":"%s-app","key":"%s"}}}' \
+          "$key" "$fdn" "$(db_secret_key "$fdp")" >> "$out"
+      elif [ -n "$fsn" ]; then
+        case "$fsp" in
+          host) val="$fsn" ;;
+          port|hostport)
+            refport=$(yq ".[] | select(.name == \"$fsn\") | .port // 3000" "$tmp/services.yml")
+            [ "$fsp" = "port" ] && val="$refport" || val="$fsn:$refport" ;;
+          *) echo "error: fromService property '$fsp' unsupported (want host/port/hostport)" >&2; exit 1 ;;
+        esac
+        printf '{"name":"%s","value":"%s"}' "$key" "$val" >> "$out"
+      else
+        val=$(yq ".envVars[$i].value" "$tmp/svc.yml")
+        printf '{"name":"%s","value":"%s"}' "$key" "$val" >> "$out"
+      fi
+      i=$((i + 1))
+    done
+    printf ']' >> "$out"
   else
-    echo "$cr" | kubectl apply -f -
+    printf '[]' > "$out"
   fi
-done
+}
+
+# strip-empty (stdin YAML CR -> stdout) drops spec entries whose value is unset
+# (null/0/false/""/empty-array) so operator defaults apply.
+strip_empty() {
+  yq -o=yaml '.spec |= with_entries(select(.value != null and .value != 0 and .value != false and .value != "" and ((.value | kind) != "seq" or (.value | length > 0)))) | del(.. | select(tag == "!!null"))'
+}
+
+# crtype_of maps a bex kind to the App CRD serviceType.
+crtype_of() { # $1 = kind
+  case "$1" in
+    web) echo web_service ;; private) echo private_service ;;
+    worker) echo background_worker ;; cron) echo cron_job ;; static) echo static_site ;;
+  esac
+}
+
+# num reads a numeric field off the snapshot, coercing null/empty to 0 (dropped
+# by strip_empty).
+num() { local v; v=$(sf "$1"); [ "$v" = "null" ] || [ -z "$v" ] && echo 0 || echo "$v"; }
+
+# render_app emits one App CR for the current service snapshot ($tmp/svc.yml).
+render_app() { # $1 = name (snapshot already set by the caller)
+  local name=$1 kind crtype
+  kind=$(service_kind); crtype=$(crtype_of "$kind")
+  local repo image branch builder rootdir port replicas tier hcp publish schedule host expose
+  repo=$(sf repo); branch=$(sf branch)
+  builder=$(sf builder); rootdir=$(sf rootDir); publish=$(sf 'staticPublishPath // .publishPath')
+  port=$(num port); replicas=$(num 'numInstances // .replicas'); tier=$(sf 'plan // .tier')
+  hcp=$(sf healthCheckPath); schedule=$(sf schedule)
+  # image is render.yaml {url:…} (map) OR a bare string OR absent — .image.url // .image
+  # misbehaves when image is absent (returns {url:null}), so read .image raw and pick.
+  local rawimg
+  rawimg=$(sf image)
+  case "$rawimg" in null|"") image="" ;; url:*) image=$(sf 'image.url') ;; *) image="$rawimg" ;; esac
+  host=$(yq '.domains[0] // ""' "$tmp/svc.yml")
+  yq -o=json '(.domains // []) | .[1:]' "$tmp/svc.yml" > "$tmp/hosts.json"
+  build_env "$tmp/env.json"
+  [ "$kind" = "web" ] && expose="true" || expose="false"
+
+  # Array values (hosts/env) load from temp JSON files (they contain '"', which
+  # would break shell VAR="$val" quoting); scalars ride strenv.
+  NAME="$name" CRTYPE="$crtype" REPO="$repo" IMAGE="$image" BRANCH="$branch" \
+  BUILDER="$builder" ROOTDIR="$rootdir" PORT="$port" REPLICAS="$replicas" TIER="$tier" \
+  HCP="$hcp" PUBLISH="$publish" SCHEDULE="$schedule" HOST="$host" EXPOSE="$expose" \
+  HOSTS="$tmp/hosts.json" ENV="$tmp/env.json" \
+  yq --null-input -o=yaml '
+    . = {
+      "apiVersion":"app.bex.co/v1alpha1","kind":"App",
+      "metadata":{"name": strenv(NAME)},
+      "spec":{
+        "type": strenv(CRTYPE),
+        "schedule": strenv(SCHEDULE),
+        "repo": strenv(REPO), "image": strenv(IMAGE), "branch": strenv(BRANCH),
+        "builder": strenv(BUILDER), "rootDir": strenv(ROOTDIR),
+        "port": (strenv(PORT) | to_number),
+        "replicas": (strenv(REPLICAS) | to_number),
+        "tier": strenv(TIER), "healthCheckPath": strenv(HCP),
+        "publishPath": strenv(PUBLISH),
+        "host": strenv(HOST),
+        "hosts": (load strenv(HOSTS)),
+        "env": (load strenv(ENV)),
+        "expose": (strenv(EXPOSE) | fromjson)
+      }
+    }' | strip_empty
+}
+
+# render_db emits one Database CR for databases[$name] on stdout.
+render_db() { # $1 = name
+  local name=$1 plan version storage ha v
+  plan=$(df "$name" plan); version=$(df "$name" postgresMajorVersion)
+  v=$(df "$name" diskSizeGB); [ "$v" = "null" ] || [ -z "$v" ] && storage=0 || storage="$v"
+  ha=$(df "$name" 'highAvailability.enabled // false')
+  yq -o=json ".[] | select(.name == \"$name\") | (.ipAllowList // []) | map(.source)" "$tmp/databases.yml" > "$tmp/ipallow.json"
+  yq -o=json ".[] | select(.name == \"$name\") | .readReplicas // []" "$tmp/databases.yml" > "$tmp/replicas.json"
+  NAME="$name" PLAN="$plan" VERSION="$version" STORAGE="$storage" HA="$ha" \
+  IPALLOW="$tmp/ipallow.json" REPLICAS="$tmp/replicas.json" \
+  yq --null-input -o=yaml '
+    . = {
+      "apiVersion":"app.bex.co/v1alpha1","kind":"Database",
+      "metadata":{"name": strenv(NAME)},
+      "spec":{
+        "plan": strenv(PLAN), "version": strenv(VERSION),
+        "storageGB": (strenv(STORAGE) | to_number),
+        "ipAllowList": (load strenv(IPALLOW)),
+        "highAvailability": (strenv(HA) | fromjson),
+        "readReplicas": (load strenv(REPLICAS))
+      }
+    }' | strip_empty
+}
+
+# --- databases first (a fromDatabase env ref waits on the <name>-app Secret) ---
+ndb=$(yq 'length' "$tmp/databases.yml")
+if [ "${ndb:-0}" -gt 0 ] 2>/dev/null; then
+  for i in $(seq 0 $((ndb - 1))); do
+    name=$(yq ".[$i].name" "$tmp/databases.yml")
+    [ "$name" != "null" ] && [ -n "$name" ] || { echo "error: databases[$i].name is required" >&2; exit 1; }
+    render_db "$name" | apply_cr
+  done
+fi
+
+# --- services ---
+if [ -n "$svc_key" ]; then
+  nsvc=$(yq 'length' "$tmp/services.yml")
+  if [ "${nsvc:-0}" -gt 0 ] 2>/dev/null; then
+    for i in $(seq 0 $((nsvc - 1))); do
+      name=$(yq ".[$i].name" "$tmp/services.yml")
+      [ "$name" != "null" ] && [ -n "$name" ] || { echo "error: $svc_key[$i].name is required" >&2; exit 1; }
+      snapshot_svc "$name" # snapshot once; every per-service read queries this tiny doc
+
+      # Non-web types have no ingress; listing domains for one is a mistake.
+      kind=$(service_kind)
+      case "$kind" in
+        web) : ;;
+        private|worker|cron|static)
+          ndomains=$(yq '.domains | length' "$tmp/svc.yml" 2>/dev/null || echo 0)
+          if [ "$ndomains" -gt 0 ] 2>/dev/null; then
+            echo "error: $name is type: $kind but lists domains — non-web services have no ingress" >&2; exit 1
+          fi ;;
+        *) echo "error: $name has unknown service type (web|private|worker|cron|static)" >&2; exit 1 ;;
+      esac
+
+      render_app "$name" | apply_cr
+    done
+  fi
+fi
 
 if [ "${DRY_RUN:-}" != "1" ]; then
-  echo "watch:  kubectl get apps.app.bex.co -w"
+  echo "watch:  kubectl get apps.app.bex.co,databases.app.bex.co -w"
   echo "serve:  curl \$(kubectl get apps.app.bex.co <name> -o jsonpath='{.status.url}')/"
 fi

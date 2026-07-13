@@ -1162,13 +1162,26 @@ const portEnvName = "PORT"
 // injected port — the one invariant the CRD contract promises. Secret-backed
 // variables arrive separately through envFrom (envFromSources); a container-level
 // Env entry overrides an envFrom key of the same name, so PORT wins over both.
+// A ValueFrom.SecretKeyRef entry (a bex.yml fromDatabase reference, w1/m24)
+// becomes a corev1 EnvVar.ValueFrom.SecretKeyRef — non-optional, so a service
+// waiting on its Database stays Pending until the CNPG connection Secret exists.
 func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
 	for _, e := range app.Spec.Env {
 		if e.Name == portEnvName {
 			continue // operator-owned; never let a user shadow it
 		}
-		env = append(env, corev1.EnvVar{Name: e.Name, Value: e.Value})
+		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
+		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+			ev.Value = ""
+			ev.ValueFrom = &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: e.ValueFrom.SecretKeyRef.Name},
+					Key:                  e.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		}
+		env = append(env, ev)
 	}
 	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
 	return env

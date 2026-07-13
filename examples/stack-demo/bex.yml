@@ -1,0 +1,35 @@
+# bex.yml — a render.yaml Blueprint stack (w1/m24). One deploy call converges
+# all three: the postgres database first, then the web service and the worker,
+# wired by the fromDatabase env reference (resolved to a secretRef into the
+# database's CNPG connection Secret — the credential never appears here).
+#
+# Deploy: hand the repo + this file to the MCP `deploy` tool, or apply directly
+# with `scripts/app-apply.sh examples/stack-demo` (DRY_RUN=1 to preview the CRs).
+# The web service's GET / runs SELECT 1 through DATABASE_URL, proving the link.
+services:
+  - name: web
+    type: web
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/stack-demo
+    plan: free
+    port: 3000
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: db
+          property: connectionString
+  - name: worker
+    type: worker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/stack-demo
+    envVars:
+      - key: ROLE
+        value: worker # the shared image's app branches on ROLE (web is the default)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: db
+          property: connectionString
+databases:
+  - name: db
+    plan: free

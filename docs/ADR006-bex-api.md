@@ -97,6 +97,36 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 "Deploy this" is **one call, no bespoke endpoint** — it rides the same create surface (ADR: [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md)). Over MCP the `deploy` tool takes a `{repo, bexYaml}` (`bexYaml` is the project's render.yaml-shaped `bex.yml`); it parses the manifest, maps its fields onto a `CreateRequest` (the same mapping `scripts/app-apply.sh` uses), and calls `Create`. `create_web_service` is the equivalent with structured args (a `repo` or `image`). A later push closes the loop through the webhook below.
 
+#### `bex.yml` — the render.yaml Blueprint manifest (w1/m24)
+
+A `bex.yml` is render.yaml's Blueprint shape: a top-level **`services:`** list + **`databases:`** list (+ `envVarGroups:`, classified below). The legacy single-service **`apps:`** key is an alias for `services:` (mutually exclusive), so pre-existing files apply byte-identically. One `deploy` call converges a whole stack: **databases first** (so a service's `fromDatabase` env can wait on the Database's CNPG connection Secret), then services — each an idempotent upsert (re-applying an unchanged file is a no-op: zero spec diff, zero new deploy records, no restart). **All-or-nothing validation**: every entry validates before any write — one invalid entry rejects the whole apply with a per-entry error, nothing partially created.
+
+`fromDatabase: {name, property}` is the one first-class DB→service linkage (the dashboard picker is a [DO_NOT_DO](../.pm/DO_NOT_DO.md)). It resolves to a **`secretRef` into the Database's CNPG `<name>-app` connection Secret** — never a plaintext copy (survives credential rotation; nothing sensitive in `bex.yml` or the App spec). `property` maps onto the CNPG app-Secret vocabulary: `connectionString`→`uri`, `host`→`host`, `port`→`port`, `user`→`username`, `password`→`password`, `database`→`dbname`. References are same-file only; an unknown name names the offender. `fromService: {name, property}` for a web/private service's `host`/`port`/`hostport` resolves to a literal (the in-cluster DNS name + the referenced service's port — bare `<name>` resolves because every bex Service is named after its App in one namespace).
+
+**Field ledger (render.yaml → bex):**
+
+| render.yaml field | bex | note |
+| --- | :-: | --- |
+| `services`, `databases` | ✅ | the stack lists; `apps:` legacy alias |
+| service `name`, `type` (`web`/`pserv`/`worker`/`cron`), `runtime: static` | ✅ | `type`+`runtime` map to the App serviceType (`pserv`→private, `web`+`static`→static_site) |
+| `repo`, `branch`, `rootDir`, `healthCheckPath`, `schedule`, `domains` | ✅ | 1:1 (build-from-git + custom domains) |
+| `plan`, `numInstances` | ✅ | render.yaml spellings (the bex `tier`/`replicas` aliases also accepted) |
+| `image: {url}` / bare `image` | ✅ | prebuilt image; `autoDeployTrigger`/`autoDeploy` honored |
+| `staticPublishPath` | ✅ | static-site publish dir (the `publishPath` alias also accepted) |
+| `envVars: {key,value}` | ✅ | literal env |
+| `envVars: {key, fromDatabase}` | ✅ | → secretRef (above) |
+| `envVars: {key, fromService}` (host/port/hostport) | ✅ | → literal |
+| `databases`: `name`/`plan`/`diskSizeGB`/`postgresMajorVersion`/`ipAllowList`/`readReplicas`/`highAvailability` | ✅ | → Database CR spec |
+| `autoDeployTrigger` | ✅ | `commit`/`checksPass`→on, `off`→off |
+| `generateValue`, `sync:false` | ✖ | rejected (named error) — bex secrets come via the env-vars API, not blueprint-time |
+| `fromGroup`, `envVarGroups` | ✖ | rejected — m16 env-groups exist but aren't name-keyed the Blueprint way (documented omission) |
+| `fromService.envVarKey`, keyvalue `fromService`, self-reference | ✖ | rejected — needs cross-service secret plumbing (documented omission) |
+| `region`, `databaseName`, `user`, `disk`, `scaling`, `buildFilter`, `previews`, `maintenanceMode`, `renderSubdomainPolicy`, `maxShutdownDelaySeconds`, `initialDeployHook`, `preDeployCommand`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked) |
+| sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
+| `projects`, `ungrouped`, `previews` (PR preview environments) | ✖ | non-goal (PR previews explicitly rejected, [DO_NOT_DO](../.pm/DO_NOT_DO.md)) |
+
+The REST surface has **no bespoke `/v1/deploy`**: a stack rides the same per-resource upsert paths (`POST /v1/services` × N, `POST /v1/postgres` × M); `scripts/app-apply.sh` is the scripted form. GraphQL has no stack mutation (the dashboard has no consumer, and a Blueprint UI is a DO_NOT_DO). The MCP `deploy` tool returns `{services:[…], databases:[…]}` — a single-service file returns a one-element `services` list.
+
 ### Deploy history + trigger (w2/m5, Render `/deploys` compatible)
 
 Every rollout of a store-managed App (`BEX_CP_DB_URI`) is a row: `GET /v1/services/{id}/deploys` (the `{deploy, cursor}` list envelope, newest first) and `GET /v1/services/{id}/deploys/{deployId}` are Render's `list_deploys`/`get_deploy` REST equivalents; `POST /v1/services/{id}/deploys` (201) triggers a fresh deploy — for an image-backed service, a re-pull/restart now (`spec.restartedAt` bumped the same no-row way `restart` does); build-from-git triggering activates when w1/m5 lands. Render's trigger body may carry `clearCache` — accepted and ignored (bex has no build cache), the safe-superset rule. A suspended service refuses the trigger, **409**. Status flows `update_in_progress -> live` (health-gated: the App CR reaches `Running`) or `-> update_failed` (the CR reaches `Failed`, or the deploy stays open past a gating window — covers a bad image stuck `ImagePullBackOff`, which never makes the CR's own phase machine fail on its own). `build_in_progress`/`build_failed` are reserved for w1/m5. This is **store-only**: a hand-applied App (no control-plane row) has empty history, and with the store off entirely every verb is **503** (omitted, not faked — the env-vars precedent). Its own feature package, `lego/backend/internal/deploys`.
