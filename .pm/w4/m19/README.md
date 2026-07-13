@@ -1,0 +1,32 @@
+# w4 · m19 — Duplicate service names: workspace-unique names + globally-unique subdomains (Render-consistent)
+
+**Worker:** worker4 **Goal:** Creating a service whose name is already used in the caller's workspace is cleanly rejected ("Name is already in use", 409) with a suggested free alternative (`beancount-cms-v2` taken → suggest `beancount-cms-v2-1`), while two _different_ workspaces can both own `beancount-cms` — the public URL stays globally unique via a Render-style random slug suffix (`beancount-cms-bkxk.<base>`). **Status:** todo
+
+## Tasks (in order)
+
+| id   | title                                                                                                                                                  | est | depends_on       |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------------- |
+| t001 | Capture Render's duplicate-name behavior as a render-artifact (workspace-unique names; slug ≠ name; random subdomain suffix)                             | 15m | —                |
+| t002 | Store + CRD: persist a globally-unique subdomain slug (`apps.slug` UNIQUE migration; `spec.subdomain`; mint `-xxxx` suffix on global collision)          | 45m | t001             |
+| t003 | Core.Create: same-workspace duplicate → clean 409 (no more silent upsert); cross-tenant same name allowed (collision-free CR naming); fix 500-on-conflict | 45m | t002             |
+| t004 | Operator: derive the platform host from the stored slug, not `app.Name` (`effectiveHosts`, static resolver, status URL)                                  | 30m | t002             |
+| t005 | Name-availability + suggestion surface: query returns `available` / taken + next free `name-N` suggestion                                                | 30m | t003             |
+| t006 | Dashboard create form: debounced availability check, inline "Name is already in use", suggested-name prefill, conflict-aware create error                | 40m | t005             |
+| t007 | Verify e2e: same workspace duplicate → 409 + suggestion in the form; two workspaces, same name → two live services with distinct suffixed URLs           | 30m | t003, t004, t006 |
+| t008 | Render parity — same 409 shape + semantics across REST/GraphQL/MCP + dashboard; update the ADR018 create-service row (upsert → reject) and MCP tool docs | 20m | t007             |
+| t009 | Simplify — run `/simplify` over the code this milestone changed                                                                                          | 20m | t008             |
+| t010 | Test coverage — meaningful tests for duplicate-name behavior across surfaces, slug minting, operator host derivation                                     | 30m | t008             |
+| t011 | Closeout — DoD met → move milestone to `done/`                                                                                                           | 10m | t010             |
+
+## Definition of done
+
+Proven end-to-end against a running stack: (1) creating a second service with an in-use name in the same workspace returns **409** with a "Name is already in use"-shaped error on REST, GraphQL, and MCP — never a silent redeploy, never a 500 — and the dashboard create form shows the error inline **before submit** (debounced availability check) plus a concrete suggested free name (`beancount-cms-v2` → `beancount-cms-v2-1`) that creates successfully when accepted; (2) two different workspaces each create `beancount-cms` and **both** end up live with distinct public URLs, the later one carrying a random slug suffix (`beancount-cms-xxxx.<base domain>`), with no Ingress/host collision and no cross-tenant existence leak (the second workspace is never told the name exists elsewhere); (3) existing single-service flows (deploy, custom domains, static sites) still resolve at their URLs.
+
+## Source + Goal linkage
+
+- **Source:** user request 2026-07-12 (`/pm` for w4) — mirror Render's duplicate-name behavior, verified 2026-07-12: Render docs state "All of a workspace's services must have unique names—even services that belong to different project environments" ([render.com/docs/projects](https://render.com/docs/projects)), and the `onrender.com` subdomain is a `slug` distinct from `name`, made globally unique with a random short suffix (`helloworld-p9vq.onrender.com` in the docs; user-observed `beancount-cms-bkxk.onrender.com`).
+- **Goal linkage:** Render parity (docs/ADR018-render-parity.md) on the create-service surface, and a correctness/tenancy fix in the same breath: today bex-api's create is a silent same-tenant upsert, returns a cross-tenant **403 that leaks name existence** (`core/base.go` tenant guard via shared-namespace `GetApp`), maps store conflicts to **500** (`store.ErrConflict` ≠ `core.ErrConflict`), and two tenants simply **cannot** both own `web` — the operator would also emit two Ingresses claiming the same host if they could. Multi-tenant-secure naming is squarely w4's mission.
+- **Expected outcome:** name collisions become a first-class, Render-consistent UX (reject + suggest in-workspace; suffix globally) instead of an accidental mix of upsert/403/500, and the platform-host axis (`<slug>.<BEX_BASE_DOMAIN>`) is globally collision-free by construction.
+- **Why now:** w6's plan-mutable workspaces and w4/m12's members surface make multiple real workspaces the normal case — the first time two workspaces pick the same service name, one of them hits the 403 leak or a broken host. The DB already enforces `UNIQUE (tenant_id, name)`; this milestone makes the API/operator/dashboard tell the truth about it.
+- **Render parity:** included (t008) — this is feature work on the create surface across REST/GraphQL/MCP/UI; the create-service semantics change (upsert → reject-on-duplicate) must be reflected in the ADR018 ledger row and the MCP tool descriptions ("calling it again for the same name redeploys it" goes away).
+- **Anti-goal check:** no DO_NOT_DO conflict — this is core Render-parity hosting behavior, not a non-goal surface; theme-wise it stretches w4 (auth & identity) toward service creation, but the cross-tenant existence-leak + tenancy-correct naming core is w4's multi-tenant-security mandate, and the user directed it to w4 explicitly.
