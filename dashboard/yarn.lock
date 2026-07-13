@@ -6203,6 +6203,7 @@ __metadata:
     react-dom: "npm:^19.2.3"
     react-hook-form: "npm:^7.69.0"
     react-i18next: "npm:^17.0.8"
+    react-intl: "npm:7.1.13"
     react-markdown: "npm:^10.1.0"
     rehype-raw: "npm:^7.0.0"
     rehype-sanitize: "npm:^6.0.0"
