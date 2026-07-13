@@ -361,6 +361,34 @@ All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (
 
 **Note:** bex-api is currently single-replica; the per-caller token-bucket is in-process. In a multi-replica deployment each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas` — a distributed counter (Redis token bucket) is the follow-up when bex-api scales out.
 
+## Per-workspace resource caps (w7/m9)
+
+Creation caps prevent a single workspace from monopolising the platform. They are enforced in the service layer (before the CR is written) and apply identically across REST, GraphQL, and MCP — no per-surface special cases.
+
+**Error shape when a cap is exceeded:**
+
+- REST: `HTTP 400 Bad Request` — `{"id":"bad_request","message":"workspace is limited to N <resource>s; delete an existing one to create another"}`
+- GraphQL: `{"data":null,"errors":[{"message":"workspace is limited to …","extensions":{"code":"BAD_REQUEST"}}]}`
+- MCP: tool result `{isError:true, content:[{type:"text",text:"workspace is limited to …"}]}`
+
+The cap is per-workspace (tenant-scoped): workspace B can always create even when workspace A is at its limit. When the workspace resolver is off (`BEX_CP_DB_URI` unset), caps are skipped — byte-identical to the store-off legacy mode.
+
+**Build concurrency cap (operator, w7/m9):**
+
+The operator enforces two additional limits:
+
+- **Newest-wins per App:** when a new build is triggered for an App that already has an active build Job, the old Job is deleted before the new one starts (a push-spam burst yields at most one active build per App).
+- **Per-workspace concurrent-build cap:** if `BEX_MAX_CONCURRENT_BUILDS > 0` and the workspace already has that many active build Jobs, the reconcile loop requeues with `BuildQueued` phase and retries after 30 s. The new build starts as soon as a slot opens.
+
+| Cap | Render anchor | Env var | 0 = |
+| --- | --- | --- | --- |
+| Services per workspace | 25 (Hobby) | `BEX_MAX_SERVICES` | unlimited |
+| Postgres instances per workspace | 1 (Hobby) | `BEX_MAX_POSTGRES` | unlimited |
+| Key-Value instances per workspace | 1 (Hobby) | `BEX_MAX_KEYVALUES` | unlimited |
+| Concurrent build Jobs per workspace | — (bex extension) | `BEX_MAX_CONCURRENT_BUILDS` | unlimited |
+
+All default to `0` (unlimited) so an unset environment is byte-identical to before.
+
 ## Scope
 
 Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [ADR003-control-plane.md](ADR003-control-plane.md)). Not yet: rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.

@@ -89,16 +89,20 @@ func mountRegistryCred(c *corev1.Container, secret string) {
 
 // Options configures a single in-cluster build.
 type Options struct {
-	Repo       string        // git URL to clone (BuildKit fetches it)
-	Ref        string        // branch or commit; defaults to the repo's default branch
-	RootDir    string        // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
-	Name       string        // image repo name (the service name)
-	Registry   string        // in-cluster registry host, e.g. zot.bex-registry.svc:5000
-	Revision   string        // image tag, operator-supplied (e.g. "gen-7") — deterministic per revision
-	Builder    string        // auto | dockerfile | buildpack (App.spec.builder)
-	CNBBuilder string        // CNB builder image (buildpack strategy; not yet in-cluster)
-	Namespace  string        // namespace the build Job runs in
-	Client     client.Client // cluster client used to create + watch the Job
+	Repo       string // git URL to clone (BuildKit fetches it)
+	Ref        string // branch or commit; defaults to the repo's default branch
+	RootDir    string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
+	Name       string // image repo name (the service name)
+	Registry   string // in-cluster registry host, e.g. zot.bex-registry.svc:5000
+	Revision   string // image tag, operator-supplied (e.g. "gen-7") — deterministic per revision
+	Builder    string // auto | dockerfile | buildpack (App.spec.builder)
+	CNBBuilder string // CNB builder image (buildpack strategy; not yet in-cluster)
+	Namespace  string // namespace the build Job runs in
+	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
+	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
+	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).
+	Workspace string
+	Client    client.Client // cluster client used to create + watch the Job
 	// CloneSecret names a Secret (in Namespace, key "token") whose value is
 	// passed to BuildKit as the GIT_AUTH_TOKEN build secret so a private Repo's
 	// https git context authenticates (App.spec.cloneSecret). Empty = public
@@ -335,14 +339,18 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	}
 	podSpec.Volumes = volumes // single assign (registry-cred, plus cosign-key when signing)
 
+	labels := map[string]string{
+		"app.bex.co/build":     o.Name,
+		"app.bex.co/component": "build",
+	}
+	if o.Workspace != "" {
+		labels["app.bex.co/workspace"] = o.Workspace
+	}
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
 			Namespace: o.Namespace,
-			Labels: map[string]string{
-				"app.bex.co/build":     o.Name,
-				"app.bex.co/component": "build",
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
@@ -423,6 +431,56 @@ func jobFailureMessage(j *batchv1.Job) string {
 		}
 	}
 	return "unknown build failure"
+}
+
+// CancelActiveBuilds deletes all active (not Complete, not Failed) build Jobs
+// for the named service in namespace. This implements the newest-wins policy
+// (w7/m9): before dispatching a fresh build for a new revision, the operator
+// cancels any superseded in-progress build so push-spam never runs more than
+// one build at a time per App. Not-found on delete is tolerated (concurrent GC).
+func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.Client) error {
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs,
+		client.InNamespace(namespace),
+		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
+		return fmt.Errorf("list builds for %s: %w", name, err)
+	}
+	for i := range jobs.Items {
+		j := &jobs.Items[i]
+		if jobCondition(j, batchv1.JobComplete) || jobCondition(j, batchv1.JobFailed) {
+			continue
+		}
+		if err := cl.Delete(ctx, j); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("cancel build %s: %w", j.Name, err)
+		}
+	}
+	return nil
+}
+
+// ActiveWorkspaceBuilds counts active (not Complete, not Failed) build Jobs in
+// namespace that carry the given workspace label — used by the operator to
+// enforce the per-workspace concurrent-build cap (w7/m9). Returns 0 for an
+// empty workspace string (caller should skip the cap check in that case).
+func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl client.Client) (int, error) {
+	if workspace == "" {
+		return 0, nil
+	}
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs,
+		client.InNamespace(namespace),
+		client.MatchingLabels{
+			"app.bex.co/component": "build",
+			"app.bex.co/workspace": workspace,
+		}); err != nil {
+		return 0, fmt.Errorf("list workspace builds: %w", err)
+	}
+	active := 0
+	for i := range jobs.Items {
+		if !jobCondition(&jobs.Items[i], batchv1.JobComplete) && !jobCondition(&jobs.Items[i], batchv1.JobFailed) {
+			active++
+		}
+	}
+	return active, nil
 }
 
 func ptr[T any](v T) *T { return &v }

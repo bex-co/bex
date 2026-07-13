@@ -432,7 +432,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			dbname: dbname, owner: owner, store: store,
 			recovery: db.Spec.Recovery, users: db.Spec.Users,
 			highAvailability: db.Spec.HighAvailability,
-			parameters: db.Spec.Parameters,
+			parameters:       db.Spec.Parameters,
 		})
 		// Propagate the workspace label to CNPG-managed pods via inheritedMetadata
 		// so same-workspace NetworkPolicy selectors can reach the database.

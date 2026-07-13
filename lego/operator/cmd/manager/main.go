@@ -210,18 +210,25 @@ func main() {
 			staticServerPort = p
 		}
 	}
+	maxConcurrentBuilds := 0
+	if v := os.Getenv("BEX_MAX_CONCURRENT_BUILDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			maxConcurrentBuilds = n
+		}
+	}
 	appReconciler := &controller.AppReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		Mode:             envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
-		Registry:         envOr("BEX_REGISTRY", "127.0.0.1:5050"),
-		CNBBuilder:       envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
-		BuildNamespace:   os.Getenv("BEX_BUILD_NAMESPACE"),
-		Runtime:          bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
-		BaseDomain:       envOr("BEX_BASE_DOMAIN", ""),
-		ClusterIssuer:    envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
-		ActivatorService: envOr("BEX_ACTIVATOR_SERVICE", ""),
-		ActivatorPort:    activatorPort,
+		Client:              mgr.GetClient(),
+		Scheme:              mgr.GetScheme(),
+		Mode:                envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
+		Registry:            envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+		CNBBuilder:          envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
+		BuildNamespace:      os.Getenv("BEX_BUILD_NAMESPACE"),
+		Runtime:             bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
+		BaseDomain:          envOr("BEX_BASE_DOMAIN", ""),
+		ClusterIssuer:       envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		ActivatorService:    envOr("BEX_ACTIVATOR_SERVICE", ""),
+		ActivatorPort:       activatorPort,
+		MaxConcurrentBuilds: maxConcurrentBuilds,
 		StaticStore: publish.Store{
 			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
 			Endpoint: envOr("BEX_STATIC_S3_ENDPOINT", ""),

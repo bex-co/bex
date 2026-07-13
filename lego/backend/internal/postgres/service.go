@@ -43,6 +43,10 @@ type Service struct {
 	// selected workspace when its ownerId argument is omitted. Read-only
 	// (postgres never selects a workspace). Nil => no fallback.
 	Selections core.WorkspaceSelectionReader
+	// MaxPostgres, when positive, caps how many Postgres instances a workspace
+	// may own. 0 = unlimited (the default; byte-identical to before). Only
+	// enforced when the caller's tenant is resolvable (w7/m9).
+	MaxPostgres int
 }
 
 // PostgresView is the Render-shaped "postgres" object.
@@ -299,6 +303,20 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	}
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return PostgresView{}, err
+	}
+	// Per-workspace Postgres cap (w7/m9).
+	if s.MaxPostgres > 0 {
+		if tenantID, ok := s.Tenant(ctx); ok {
+			var existing appv1alpha1.DatabaseList
+			if listErr := s.Client.List(ctx, &existing,
+				client.InNamespace(s.Namespace),
+				client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
+				return PostgresView{}, fmt.Errorf("checking postgres cap: %w", listErr)
+			}
+			if len(existing.Items) >= s.MaxPostgres {
+				return PostgresView{}, fmt.Errorf("%w: workspace is limited to %d Postgres instances; delete an existing one to create another", core.ErrBadRequest, s.MaxPostgres)
+			}
+		}
 	}
 	crReplicas := make([]appv1alpha1.DatabaseReadReplica, 0, len(req.ReadReplicas))
 	for _, r := range req.ReadReplicas {

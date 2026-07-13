@@ -423,3 +423,87 @@ func TestBuildRejectsBuildpackAndNilClient(t *testing.T) {
 		t.Errorf("nil client should error, got %v", err)
 	}
 }
+
+// TestBuildJobWorkspaceLabel pins w7/m9: the workspace label is stamped when
+// Options.Workspace is set, omitted otherwise (byte-identical legacy path).
+func TestBuildJobWorkspaceLabel(t *testing.T) {
+	// No workspace: label absent.
+	j := BuildJob(opts(), opts().ImageRef())
+	if _, ok := j.Labels["app.bex.co/workspace"]; ok {
+		t.Error("no Workspace => workspace label must be absent")
+	}
+
+	// Workspace set: label present on Job and pod template.
+	o := opts()
+	o.Workspace = "tea-abc"
+	j = BuildJob(o, o.ImageRef())
+	if j.Labels["app.bex.co/workspace"] != "tea-abc" {
+		t.Errorf("job workspace label = %q, want tea-abc", j.Labels["app.bex.co/workspace"])
+	}
+}
+
+// TestCancelActiveBuilds pins w7/m9 newest-wins: active Jobs are deleted,
+// complete/failed Jobs are left untouched, and a not-found on delete is tolerated.
+func TestCancelActiveBuilds(t *testing.T) {
+	o := opts()
+	active := BuildJob(o, o.ImageRef()) // active: no conditions
+	active.Name = JobName(o.Name, "gen-5")
+
+	done := completedJob(o, batchv1.JobComplete)
+	done.Name = JobName(o.Name, "gen-4")
+
+	cl := fakeClient(active, done)
+	ctx := context.Background()
+
+	if err := CancelActiveBuilds(ctx, o.Name, o.Namespace, cl); err != nil {
+		t.Fatalf("CancelActiveBuilds: %v", err)
+	}
+
+	// Active Job deleted.
+	var j batchv1.Job
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: active.Name}, &j); err == nil {
+		t.Error("active build Job should have been deleted")
+	}
+	// Completed Job untouched.
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: done.Name}, &j); err != nil {
+		t.Errorf("completed build Job should not be deleted: %v", err)
+	}
+}
+
+// TestActiveWorkspaceBuilds pins w7/m9 per-workspace build counting: only
+// active (not complete/failed) Jobs with the workspace label are counted.
+func TestActiveWorkspaceBuilds(t *testing.T) {
+	activeA := BuildJob(opts(), opts().ImageRef())
+	activeA.Name = "bld-a-gen-1"
+	activeA.Labels["app.bex.co/workspace"] = "tea-x"
+
+	activeB := BuildJob(opts(), opts().ImageRef())
+	activeB.Name = "bld-b-gen-1"
+	activeB.Labels["app.bex.co/workspace"] = "tea-x"
+
+	doneC := completedJob(opts(), batchv1.JobComplete)
+	doneC.Name = "bld-c-gen-1"
+	doneC.Labels["app.bex.co/workspace"] = "tea-x"
+
+	otherWS := BuildJob(opts(), opts().ImageRef())
+	otherWS.Name = "bld-d-gen-1"
+	otherWS.Labels["app.bex.co/workspace"] = "tea-y"
+
+	cl := fakeClient(activeA, activeB, doneC, otherWS)
+	ctx := context.Background()
+
+	n, err := ActiveWorkspaceBuilds(ctx, "tea-x", "default", cl)
+	if err != nil {
+		t.Fatalf("ActiveWorkspaceBuilds: %v", err)
+	}
+	// 2 active for tea-x (done and other-workspace excluded).
+	if n != 2 {
+		t.Errorf("ActiveWorkspaceBuilds(tea-x) = %d, want 2", n)
+	}
+
+	// Empty workspace string is a no-op (returns 0, not an error).
+	n, err = ActiveWorkspaceBuilds(ctx, "", "default", cl)
+	if err != nil || n != 0 {
+		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
+	}
+}

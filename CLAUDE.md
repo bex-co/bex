@@ -82,6 +82,10 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_MAX_BODY_BYTES` | max non-GET request body size in bytes (default 2097152 = 2 MiB); `0` disables |
 | bex-api | `BEX_MAX_QUERY_HOURS` | max `startTime`..`endTime` window for REST log/metrics queries in hours (default 720 = 30 days); `0` disables |
 | bex-api | `BEX_MAX_SSE_CONNS` | max concurrent `GET /v1/logs/subscribe` SSE connections (default 100); `0` disables |
+| bex-api | `BEX_MAX_SERVICES` | per-workspace service creation cap (docs/ADR006-bex-api.md §Per-workspace resource caps); `0` = unlimited (default, byte-identical). Render Hobby anchor: 25 |
+| bex-api | `BEX_MAX_POSTGRES` | per-workspace Postgres creation cap; `0` = unlimited. Render Hobby anchor: 1 |
+| bex-api | `BEX_MAX_KEYVALUES` | per-workspace key-value creation cap; `0` = unlimited. Render Hobby anchor: 1 |
+| operator | `BEX_MAX_CONCURRENT_BUILDS` | max concurrent active build Jobs per workspace; `0` = unlimited. Newest-wins per App is always active (independent of this cap) |
 | dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent at `/auth/consent` (docs/ADR012-auth.md §7): Hydra's admin API + the allowlist of clients that skip the consent screen (headless auto-accept); every other client gets the user-facing consent page (w4/m16). Server-only (not `VITE_`); `HYDRA_ADMIN_URL` unset ⇒ consent 503 |
 
 ## Docs index

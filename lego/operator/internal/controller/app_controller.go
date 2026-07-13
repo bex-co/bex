@@ -116,6 +116,12 @@ type AppReconciler struct {
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
 	MetricsReader MetricsReader
+	// MaxConcurrentBuilds, when positive, caps how many active build Jobs a
+	// workspace may have at once. When the workspace is at its limit, the
+	// reconciler sets phase=Building/BuildQueued and requeues for 30s rather than
+	// starting another build. 0 = unlimited (the default; byte-identical to before).
+	// Has no effect for Apps without the workspace label (legacy/hand-applied).
+	MaxConcurrentBuilds int
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -186,12 +192,37 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		if branch == "" {
 			branch = "main"
 		}
-		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "Building", "Building image from "+app.Spec.Repo)
 		// Tag by generation: a spec/revision bump (including a webhook redeploy that
 		// stamps spec.restartedAt) yields a new tag, so the built image is fresh and
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
 		buildNs := r.buildNamespace(app.Namespace)
+
+		// Newest-wins per App (w7/m9): cancel any active build Job for this service
+		// so a push-spam burst never runs more than one build at a time per App,
+		// matching Render's "Render cancels any in-progress build for the same service".
+		if err := build.CancelActiveBuilds(ctx, app.Name, buildNs, r.Client); err != nil {
+			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err))
+		}
+
+		// Per-workspace concurrent-build cap (w7/m9): hold off when the workspace is
+		// at its limit — requeue until a slot opens rather than starting another.
+		// Byte-identical when MaxConcurrentBuilds == 0 (unset) or workspace absent.
+		if r.MaxConcurrentBuilds > 0 {
+			if workspace := app.Labels[labelWorkspace]; workspace != "" {
+				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, r.Client)
+				if err != nil {
+					return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err))
+				}
+				if active >= r.MaxConcurrentBuilds {
+					r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "BuildQueued",
+						fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
+					return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+				}
+			}
+		}
+
+		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "Building", "Building image from "+app.Spec.Repo)
 		// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
 		// in the App's namespace, but the build Job runs in buildNs
 		// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
@@ -209,6 +240,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			Builder:       app.Spec.Builder,
 			Revision:      fmt.Sprintf("gen-%d", app.Generation),
 			Namespace:     buildNs,
+			Workspace:     app.Labels[labelWorkspace],
 			CloneSecret:   app.Spec.CloneSecret,
 			SignKeySecret: r.TenantSignKeySecret,
 			SignImage:     r.TenantSignImage,

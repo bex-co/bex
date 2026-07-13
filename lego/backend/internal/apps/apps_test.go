@@ -1092,3 +1092,56 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 		t.Errorf("first entry = %+v, want id=free name=Free (ladder order)", first)
 	}
 }
+
+// --- Per-workspace service cap (w7/m9) ---
+
+// TestServiceCapEnforcement verifies that the (N+1)th create is refused with
+// ErrBadRequest while a second workspace can still create (fairness boundary,
+// not a global cap). Redeploys of existing services bypass the cap — they do
+// not consume a new slot.
+func TestServiceCapEnforcement(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a", "user-b": "tea-b"}
+	ctx := func(subject string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+	}
+
+	// Two workspaces share the same namespace, each already at cap (2).
+	svc, _ := newTenantService(ws,
+		tenantApp("a1", "tea-a"), tenantApp("a2", "tea-a"),
+		tenantApp("b1", "tea-b"),
+	)
+	svc.MaxServices = 2
+
+	// tea-a is at cap — next create must be refused.
+	if _, err := svc.create(ctx("user-a"), CreateRequest{Name: "a3", Image: "img:1"}); err == nil {
+		t.Fatal("create at cap: want ErrBadRequest, got nil")
+	} else if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("create at cap: got %v, want ErrBadRequest", err)
+	}
+
+	// tea-b has one service, so it can still create (fairness — not a global cap).
+	if _, err := svc.create(ctx("user-b"), CreateRequest{Name: "b2", Image: "img:1"}); err != nil {
+		t.Errorf("second workspace create: %v, want success (separate cap)", err)
+	}
+
+	// Unset cap (MaxServices=0): unlimited — same two apps, extra create succeeds.
+	svc2, _ := newTenantService(ws, tenantApp("x1", "tea-a"), tenantApp("x2", "tea-a"))
+	svc2.MaxServices = 0
+	if _, err := svc2.create(ctx("user-a"), CreateRequest{Name: "x3", Image: "img:1"}); err != nil {
+		t.Errorf("unlimited cap: %v, want success", err)
+	}
+
+	// Store off (no Workspace resolver): cap is skipped even when MaxServices > 0.
+	svc3, _ := newService(nil, tenantApp("y1", "tea-a"), tenantApp("y2", "tea-a"))
+	svc3.MaxServices = 2
+	if _, err := svc3.create(context.Background(), CreateRequest{Name: "y3", Image: "img:1"}); err != nil {
+		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
+	}
+
+	// Redeploy of an existing service never triggers the cap.
+	svc4, _ := newTenantService(ws, tenantApp("a1", "tea-a"), tenantApp("a2", "tea-a"))
+	svc4.MaxServices = 2
+	if _, err := svc4.create(ctx("user-a"), CreateRequest{Name: "a1", Image: "img:2"}); err != nil {
+		t.Errorf("redeploy at cap: %v, want success (cap is new-service only)", err)
+	}
+}

@@ -206,6 +206,14 @@ type Deps struct {
 	GitHubClient github.APIClient
 	GitHubStore  github.ConnectionStore
 	DashboardURL string
+
+	// Per-workspace resource caps (w7/m9). 0 = unlimited (default; byte-identical
+	// to before). Only enforced when the caller's tenant is resolvable (store on +
+	// bound caller). Render-Hobby-anchored defaults set via BEX_MAX_SERVICES (25),
+	// BEX_MAX_POSTGRES (1), BEX_MAX_KEYVALUES (1).
+	MaxServices  int
+	MaxPostgres  int
+	MaxKeyValues int
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -239,7 +247,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DashboardURL: d.DashboardURL,
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource()},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), MaxServices: d.MaxServices},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -250,8 +258,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
-		Postgres:  &postgres.Service{Base: base, Selections: selections},
-		KeyValue:  &keyvalue.Service{Base: base, Selections: selections},
+		Postgres:  &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres},
+		KeyValue:  &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues},
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
 		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore, BuildNamespace: d.DeployBuildNamespace},

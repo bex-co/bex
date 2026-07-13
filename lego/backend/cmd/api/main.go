@@ -344,6 +344,12 @@ func main() {
 	// browser back to the dashboard settings page on success.
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 
+	// Per-workspace resource caps (w7/m9): 0 (unset) = unlimited, byte-identical.
+	// Render-Hobby defaults: BEX_MAX_SERVICES=25, BEX_MAX_POSTGRES=1, BEX_MAX_KEYVALUES=1.
+	deps.MaxServices, _ = strconv.Atoi(os.Getenv("BEX_MAX_SERVICES"))
+	deps.MaxPostgres, _ = strconv.Atoi(os.Getenv("BEX_MAX_POSTGRES"))
+	deps.MaxKeyValues, _ = strconv.Atoi(os.Getenv("BEX_MAX_KEYVALUES"))
+
 	srv := api.NewServer(base, deps)
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows

@@ -532,3 +532,64 @@ func TestKVTierDisplayName(t *testing.T) {
 		}
 	}
 }
+
+func newTenantService(ws core.WorkspaceResolver, kvs ...*appv1alpha1.KeyValue) (*Service, client.Client) {
+	objs := make([]client.Object, len(kvs))
+	for i, k := range kvs {
+		objs[i] = k
+	}
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}}, cl
+}
+
+func tenantKV(name, tenantID string) *appv1alpha1.KeyValue {
+	return &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+			Labels:    map[string]string{core.LabelTenant: tenantID},
+		},
+	}
+}
+
+// TestKeyValueCapEnforcement verifies that the (N+1)th key-value create is
+// refused with ErrBadRequest while a second workspace can still create.
+func TestKeyValueCapEnforcement(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a", "user-b": "tea-b"}
+	ctx := func(subject string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+	}
+
+	// tea-a has one instance (at cap=1); tea-b has none.
+	svc, _ := newTenantService(ws, tenantKV("kv-1", "tea-a"))
+	svc.MaxKeyValues = 1
+
+	// tea-a is at cap.
+	if _, err := svc.CreateKeyValue(ctx("user-a"), CreateKeyValueRequest{Name: "kv-new", Plan: "free"}); err == nil {
+		t.Fatal("create at cap: want ErrBadRequest, got nil")
+	} else if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("create at cap: got %v, want ErrBadRequest", err)
+	}
+
+	// tea-b has zero instances — can still create despite tea-a being at cap.
+	if _, err := svc.CreateKeyValue(ctx("user-b"), CreateKeyValueRequest{Name: "kv-b1", Plan: "free"}); err != nil {
+		t.Errorf("second workspace create: %v, want success", err)
+	}
+
+	// MaxKeyValues=0: unlimited.
+	svc2, _ := newTenantService(ws, tenantKV("kv-1", "tea-a"))
+	svc2.MaxKeyValues = 0
+	if _, err := svc2.CreateKeyValue(ctx("user-a"), CreateKeyValueRequest{Name: "kv-2", Plan: "free"}); err != nil {
+		t.Errorf("unlimited cap: %v, want success", err)
+	}
+
+	// Store off (no Workspace resolver): cap is skipped.
+	svc3, _ := newService(tenantKV("kv-1", "tea-a"))
+	svc3.MaxKeyValues = 1
+	if _, err := svc3.CreateKeyValue(context.Background(), CreateKeyValueRequest{Name: "kv-2", Plan: "free"}); err != nil {
+		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
+	}
+}

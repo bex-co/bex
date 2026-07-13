@@ -72,6 +72,13 @@ type Service struct {
 	// milliseconds instead of on the next resync period. nil => no nudge (store off
 	// or tests).
 	Kick func()
+	// MaxServices, when positive, caps how many services a workspace may own.
+	// Enforced on new-service creates only (not redeploys of existing services).
+	// 0 = unlimited (the default; byte-identical to before). Only enforced when
+	// the caller's tenant is resolvable (store on + bound caller) — a store-off
+	// operator or an unbound caller skips the check, consistent with the
+	// per-workspace design (w7/m9).
+	MaxServices int
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -472,6 +479,20 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if s.Workspace != nil {
 			if t, ok := s.Tenant(ctx); ok {
 				tenantID = t
+			}
+		}
+		// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
+		// service is refused across all three surfaces. Skipped when cap is 0
+		// (unlimited) or the caller has no resolved tenant (store off / unbound).
+		if s.MaxServices > 0 && tenantID != "" {
+			var existing appv1alpha1.AppList
+			if listErr := s.Client.List(ctx, &existing,
+				client.InNamespace(s.Namespace),
+				client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
+				return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
+			}
+			if len(existing.Items) >= s.MaxServices {
+				return AppView{}, fmt.Errorf("%w: workspace is limited to %d services; delete an existing service to create another", core.ErrBadRequest, s.MaxServices)
 			}
 		}
 		if tenantID != "" {

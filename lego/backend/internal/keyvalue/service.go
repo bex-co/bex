@@ -50,6 +50,10 @@ type Service struct {
 	// selected workspace when its ownerId argument is omitted. Read-only
 	// (key-value never selects a workspace). Nil => no fallback.
 	Selections core.WorkspaceSelectionReader
+	// MaxKeyValues, when positive, caps how many key-value instances a workspace
+	// may own. 0 = unlimited (the default; byte-identical to before). Only
+	// enforced when the caller's tenant is resolvable (w7/m9).
+	MaxKeyValues int
 }
 
 // KeyValueView is the Render-shaped "key-value" object. Fields bex cannot back
@@ -226,6 +230,20 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return KeyValueView{}, err
+	}
+	// Per-workspace key-value cap (w7/m9).
+	if s.MaxKeyValues > 0 {
+		if tenantID, ok := s.Tenant(ctx); ok {
+			var existing appv1alpha1.KeyValueList
+			if listErr := s.Client.List(ctx, &existing,
+				client.InNamespace(s.Namespace),
+				client.MatchingLabels{core.LabelTenant: tenantID}); listErr != nil {
+				return KeyValueView{}, fmt.Errorf("checking key-value cap: %w", listErr)
+			}
+			if len(existing.Items) >= s.MaxKeyValues {
+				return KeyValueView{}, fmt.Errorf("%w: workspace is limited to %d key-value instances; delete an existing one to create another", core.ErrBadRequest, s.MaxKeyValues)
+			}
+		}
 	}
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
