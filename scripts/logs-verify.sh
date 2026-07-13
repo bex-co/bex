@@ -27,15 +27,20 @@
 #   7. DISCOVERY (w3/m8): `list_log_label_values` / GET /v1/logs/values lists the
 #      service's REAL levels and statuses — and never another service's (tenancy).
 #
-# Like secrets-verify.sh, bex-api AND the operator run on the host (go build)
-# talking to the cluster apiserver via $KUBECONFIG; Loki (and Hydra/OpenFGA when
-# authz is on) are reached through kubectl port-forwards — so this runs on the
-# CAPD mock cluster with no operator image, provided the GitOps Loki + log-shipper
-# have synced.
+# Like secrets-verify.sh, bex-api runs on the host (go build) talking to the
+# cluster apiserver via $KUBECONFIG; Loki (and Hydra/OpenFGA when authz is on) are
+# reached through kubectl port-forwards. The operator itself does NOT run on the
+# host — this script never starts one — so the target cluster must already have
+# something reconciling App CRs: prod's in-cluster manager (the common case, via
+# `HCLOUD_TOKEN=… scripts/fetch-app-kubeconfig.sh <path>` — no mgmt cluster
+# post-pivot), or on the CAPD mock cluster a separately-run `make run`.
 #
 # Usage: scripts/logs-verify.sh      # respects $KUBECONFIG; exits 0 on pass
-# Requires: kubectl, curl, jq, go; a cluster with w3/m5 (Loki + log-shipper)
-# synced and the operator's App CRD installed (scripts/mock-cluster.sh + GitOps).
+# Requires: kubectl, curl, jq, go; a cluster with Loki + log-shipper synced
+# (deploy/gitops/base/loki.yaml + log-shipper.yaml) and an operator reconciling
+# App CRs (prod: the in-cluster manager; mock: run `make run` yourself first —
+# scripts/mock-cluster.sh alone installs no Argo CD/GitOps, so Loki never syncs
+# there and this script can't prove anything on it).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
