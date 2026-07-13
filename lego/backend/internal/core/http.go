@@ -157,6 +157,16 @@ func (c *TTLCache[V]) Get(key string) (V, bool) {
 	return e.v, true
 }
 
+// Delete evicts key immediately, regardless of its expiry — the counterpart to
+// Put for a cached positive answer that must not survive a state change no
+// timer alone can observe (e.g. the resource the key resolves to is deleted
+// mid-TTL). A no-op if key isn't cached.
+func (c *TTLCache[V]) Delete(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.m, key)
+}
+
 // Put caches v until the given expiry (callers may clamp below PositiveTTL, e.g.
 // to a token's own exp).
 func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {

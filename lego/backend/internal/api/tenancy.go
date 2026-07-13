@@ -87,6 +87,15 @@ func NewTenantService(s TenantStore, granter store.MembershipGranter) *tenantSer
 // and a Hydra client_id can never shadow each other.
 func cacheKey(method, subject string) string { return method + ":" + subject }
 
+// The two core.Identity.Method values this file's cache keys off of (see
+// core/identity.go's Method field). Named here (rather than repeating the
+// literals at every cacheKey call site in this file) so InvalidateTenant's
+// two-key eviction can't drift from EnsureTenant's mint.
+const (
+	methodSession = "session"
+	methodOAuth2  = "oauth2"
+)
+
 // EnsureTenant resolves a human identity's PERSONAL tenant on login (minting it
 // on first login) and redeems any workspace invites addressed to its email.
 // Returns the personal tenant's id. Idempotent: concurrent first logins yield
@@ -109,7 +118,7 @@ func cacheKey(method, subject string) string { return method + ":" + subject }
 // owns. A returning caller costs one owner-keyed SELECT (TenantForOwner); only a
 // first login falls to the idempotent CreateTenantWithMember upsert.
 func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string) (string, error) {
-	key := cacheKey("session", identityID)
+	key := cacheKey(methodSession, identityID)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, nil
 	}
@@ -212,6 +221,25 @@ func (t *tenantService) Tenant(ctx context.Context, id core.Identity) (string, b
 	}
 	t.cache.Put(key, tenant.ID, time.Now().Add(core.PositiveTTL))
 	return tenant.ID, true
+}
+
+// InvalidateTenant evicts subject's cached tenant resolution under both
+// possible core.Identity.Method values (a given subject is only ever active
+// under one — "session" for a Kratos identity, "oauth2" for a bound API key —
+// so evicting both is always safe and lets the caller invalidate by subject
+// alone, without knowing which method minted the cached entry). Called by
+// workspaces.Service.Delete for every member it revokes, so a request racing
+// the delete re-resolves instead of riding the stale positive answer for the
+// rest of its core.PositiveTTL window: without this, Tenant kept resolving a
+// revoked member (including the deleter) to the just-deleted tenant for up to
+// 30s, and core.Base.Authorize then 403'd every verb against it — including
+// workspaces.Service.List, which is supposed to be membership-scoped and
+// return the caller's OTHER workspaces regardless (m13 live-verify finding:
+// the dashboard's workspace switcher went blank for up to 30s after a
+// self-delete even though the account still owned a second workspace).
+func (t *tenantService) InvalidateTenant(subject string) {
+	t.cache.Delete(cacheKey(methodSession, subject))
+	t.cache.Delete(cacheKey(methodOAuth2, subject))
 }
 
 // BindKey implements apikeys.KeyBinder: records the client's tenant_members

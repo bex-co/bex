@@ -790,9 +790,12 @@ func TestMembersAndInvites(t *testing.T) {
 		t.Errorf("re-remove: want ErrNotFound, got %v", err)
 	}
 
-	// Invite lifecycle.
+	// Invite lifecycle. The role must be one the workspace's plan actually offers
+	// (Pro: admin/developer) — AcceptInvitesForEmail enforces the plan at accept
+	// time (w6/m13), so a contributor invite on a Pro workspace, a state the
+	// members service's invite-time guard would never mint anyway, is left pending.
 	exp := time.Now().Add(24 * time.Hour)
-	inv, err := s.CreateInvite(ctx, ten.ID, "carol@example.com", "contributor", "tok", "admin-1", exp)
+	inv, err := s.CreateInvite(ctx, ten.ID, "carol@example.com", "developer", "tok", "admin-1", exp)
 	if err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
@@ -810,8 +813,8 @@ func TestMembersAndInvites(t *testing.T) {
 	if err != nil || len(accepted) != 1 || accepted[0].ID != inv.ID {
 		t.Fatalf("accept: %v %+v", err, accepted)
 	}
-	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-carol"); err != nil || m.Role != "contributor" {
-		t.Fatalf("redeemed member role = %q (%v), want contributor", m.Role, err)
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-carol"); err != nil || m.Role != "developer" {
+		t.Fatalf("redeemed member role = %q (%v), want developer", m.Role, err)
 	}
 	if pending, _ := s.ListInvites(ctx, ten.ID); len(pending) != 0 {
 		t.Errorf("pending after accept = %d, want 0", len(pending))
@@ -831,5 +834,101 @@ func TestMembersAndInvites(t *testing.T) {
 	}
 	if n != 0 {
 		t.Errorf("invites after tenant delete = %d, want 0 (cascade)", n)
+	}
+}
+
+// TestAcceptInviteRespectsPlanLimits pins the fix for the plan-limit bypass this
+// milestone (w6/m13) proved on real prod: a workspace on Pro invites a second
+// member (and a `developer`, a role Hobby doesn't offer), then downgrades to
+// Hobby. ChangePlan's guards count ACCEPTED members, so the downgrade succeeds
+// with the invites still pending; when the invitee first logs in, the accept path
+// used to redeem them unconditionally — leaving a Hobby workspace (cap: 1 member,
+// admin-only) with 2 members and a forbidden role. Accept now enforces the
+// workspace's current plan and leaves a violating invite pending, so it can
+// self-heal if the workspace upgrades again.
+func TestAcceptInviteRespectsPlanLimits(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+	exp := time.Now().Add(24 * time.Hour)
+
+	// A Pro workspace invites a 2nd member (admin) and a developer — both legal on Pro.
+	ten, err := s.CreateWorkspace(ctx, "acme", PlanPro, "admin-1")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, ten.ID, "seat@example.com", "admin", "tok-seat", "admin-1", exp); err != nil {
+		t.Fatalf("invite seat: %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, ten.ID, "dev@example.com", "developer", "tok-dev", "admin-1", exp); err != nil {
+		t.Fatalf("invite dev: %v", err)
+	}
+
+	// ...then downgrades to Hobby (cap: 1 member, admin-only) while both are pending.
+	if _, err := s.UpdateTenantPlan(ctx, ten.ID, PlanHobby); err != nil {
+		t.Fatalf("downgrade: %v", err)
+	}
+
+	// The 2nd seat must NOT be redeemed: it would put the Hobby workspace at 2 members.
+	accepted, err := s.AcceptInvitesForEmail(ctx, "seat@example.com", "identity-seat")
+	if err != nil {
+		t.Fatalf("accept seat: %v", err)
+	}
+	if len(accepted) != 0 {
+		t.Errorf("hobby workspace redeemed a 2nd member: accepted %d, want 0 (member cap 1)", len(accepted))
+	}
+	if _, err := s.GetTenantMember(ctx, ten.ID, "identity-seat"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("seat became a member of a full Hobby workspace: %v", err)
+	}
+
+	// The developer invite must NOT be redeemed either: Hobby offers no such role.
+	if accepted, err := s.AcceptInvitesForEmail(ctx, "dev@example.com", "identity-dev"); err != nil || len(accepted) != 0 {
+		t.Errorf("hobby workspace redeemed a developer: accepted %d (%v), want 0 (role not on plan)", len(accepted), err)
+	}
+
+	// Both invites stay pending (not consumed) so they can self-heal on upgrade.
+	if pending, err := s.ListInvites(ctx, ten.ID); err != nil || len(pending) != 2 {
+		t.Fatalf("pending after refused accepts = %d (%v), want 2 (left redeemable)", len(pending), err)
+	}
+
+	// Upgrading back to Pro lets the very same invites redeem on the next login.
+	if _, err := s.UpdateTenantPlan(ctx, ten.ID, PlanPro); err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	if accepted, err := s.AcceptInvitesForEmail(ctx, "seat@example.com", "identity-seat"); err != nil || len(accepted) != 1 {
+		t.Fatalf("accept after upgrade = %d (%v), want 1", len(accepted), err)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-seat"); err != nil || m.Role != "admin" {
+		t.Errorf("redeemed role = %q (%v), want admin", m.Role, err)
+	}
+	if accepted, err := s.AcceptInvitesForEmail(ctx, "dev@example.com", "identity-dev"); err != nil || len(accepted) != 1 {
+		t.Fatalf("accept developer after upgrade = %d (%v), want 1", len(accepted), err)
+	}
+
+	// An invite that only UPGRADES an existing member's role takes no new seat, so
+	// it redeems even on a plan whose member cap is already met.
+	solo, err := s.CreateWorkspace(ctx, "solo", PlanHobby, "identity-solo")
+	if err != nil {
+		t.Fatalf("create hobby workspace: %v", err)
+	}
+	if _, err := s.CreateInvite(ctx, solo.ID, "solo@example.com", "admin", "tok-solo", "identity-solo", exp); err != nil {
+		t.Fatalf("invite solo: %v", err)
+	}
+	if accepted, err := s.AcceptInvitesForEmail(ctx, "solo@example.com", "identity-solo"); err != nil || len(accepted) != 1 {
+		t.Errorf("self re-invite on a full Hobby workspace = %d (%v), want 1 (role change, no new seat)", len(accepted), err)
 	}
 }

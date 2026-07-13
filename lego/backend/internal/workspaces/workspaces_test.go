@@ -453,6 +453,62 @@ func TestDelete_PurgerFailureSurfaces(t *testing.T) {
 	}
 }
 
+// fakeInvalidatingResolver wraps fakeResolver and records every subject
+// InvalidateTenant is called with — lets a test assert Delete evicts the
+// right subjects' cached resolutions without a real api.tenantService.
+type fakeInvalidatingResolver struct {
+	fakeResolver
+	invalidated []string
+}
+
+func (r *fakeInvalidatingResolver) InvalidateTenant(subject string) {
+	r.invalidated = append(r.invalidated, subject)
+}
+
+// TestDelete_InvalidatesEveryMemberTenantResolution guards the m13 live-verify
+// finding: core.Base.Authorize caches a caller's resolved "current workspace"
+// for core.PositiveTTL, and Delete used to leave that cache pointing at the
+// just-deleted tenant — so List (and every other verb) 403'd against a
+// workspace that no longer existed for up to 30s, even for a caller who still
+// owned another workspace. Delete must invalidate every revoked member's
+// cached resolution (via the optional TenantResolutionInvalidator seam on
+// Base.Workspace), not just the deleting caller's.
+func TestDelete_InvalidatesEveryMemberTenantResolution(t *testing.T) {
+	st := newFakeStore()
+	rev := &fakeRevoker{}
+	inv := &fakeInvalidatingResolver{fakeResolver: fakeResolver{store: st}}
+	svc := &Service{
+		Base:    &core.Base{Authz: &fakeChecker{allow: true}, Workspace: inv},
+		Store:   st,
+		Granter: &fakeGranter{},
+		Revoker: rev,
+	}
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	// A second member beyond the creator — proves invalidation covers every
+	// revoked member, not just the caller doing the delete.
+	st.members[w.ID] = append(st.members[w.ID], store.TenantMember{TenantID: w.ID, Subject: "user-b", Role: "admin"})
+
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if got := inv.invalidated; len(got) != 2 || got[0] != "user-a" || got[1] != "user-b" {
+		t.Fatalf("invalidated = %v, want [user-a user-b]", got)
+	}
+}
+
+// TestDelete_ToleratesResolverWithoutInvalidation guards the optionality of
+// the TenantResolutionInvalidator seam: a Base.Workspace resolver that doesn't
+// implement it (e.g. a store-off mode, or any future resolver that predates
+// this seam) must not break Delete — the type assertion just no-ops.
+func TestDelete_ToleratesResolverWithoutInvalidation(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
+		t.Fatalf("delete with a non-invalidating resolver: %v", err)
+	}
+}
+
 // --- List ------------------------------------------------------------------
 
 func TestList_OnlyCallersWorkspaces(t *testing.T) {

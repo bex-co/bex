@@ -42,6 +42,16 @@ rules:
   - apiGroups: ["metrics.k8s.io"]
     resources: ["pods"]
     verbs: ["get", "list"]
+  # Read-only Job access for usage metering's build_seconds component
+  # (docs/ADR023-usage-metering.md): usage.queryBuildSeconds lists the build Jobs
+  # in this namespace by app-name label and sums their run time. Without this the
+  # rollup fails closed on EVERY reconcile ("jobs.batch is forbidden") and build
+  # seconds are silently under-reported — observed live on prod (w6/m13), the same
+  # species of gap as the missing `keyvalues` grant m11 found. List-only: the
+  # build Jobs themselves are created by the operator, never by bex-api.
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

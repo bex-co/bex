@@ -113,6 +113,19 @@ type WorkspaceRevoker interface {
 	RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
 }
 
+// TenantResolutionInvalidator evicts a subject's cached "current workspace"
+// resolution (the api.tenantService cache behind core.Base's WorkspaceResolver)
+// — optional and type-asserted from Base.Workspace, structurally like
+// WorkspaceGranter/WorkspaceRevoker, since a store-off Base has no such cache to
+// invalidate. Delete calls it for every member it revokes so a request racing
+// the delete re-resolves instead of riding a stale positive TTL entry that
+// still names the just-deleted tenant (core.PositiveTTL, up to 30s) — the
+// window that made List (below) 403 immediately after a self-delete even
+// though the caller still owned another workspace.
+type TenantResolutionInvalidator interface {
+	InvalidateTenant(subject string)
+}
+
 // WorkspacePurger tears down one class of a deleted workspace's resources that
 // the tenant-row FK cascade does NOT reach — its OpenBao env-var secrets, its
 // managed Databases. Purge is called after the row (and its cascade) is gone;
@@ -555,9 +568,13 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 		if err != nil {
 			return err
 		}
+		inv, _ := s.Workspace.(TenantResolutionInvalidator)
 		for _, m := range members {
 			if err := s.Revoker.RevokeWorkspaceMember(ctx, id, "user:"+m.Subject, m.Role); err != nil {
 				return fmt.Errorf("revoke %s from workspace %s: %w", m.Subject, id, err)
+			}
+			if inv != nil {
+				inv.InvalidateTenant(m.Subject)
 			}
 		}
 	}

@@ -179,11 +179,24 @@ func (s *PGStore) CountAppsForTenant(ctx context.Context, tenantID string) (int,
 	return n, err
 }
 
+// queryRower is the minimal shape CountTenantMembers needs — satisfied by both
+// *pgxpool.Pool (a standalone call) and pgx.Tx (a call inside an in-flight
+// transaction, e.g. planAllowsJoin's accept-time plan enforcement in
+// members.go) — so both call sites share one query instead of two copies that
+// can drift.
+type queryRower interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // CountTenantMembers counts a workspace's members — the guard w4/m12's
 // invite verb consults before adding one (Hobby's single-member cap).
 func (s *PGStore) CountTenantMembers(ctx context.Context, tenantID string) (int, error) {
+	return countTenantMembers(ctx, s.Pool, tenantID)
+}
+
+func countTenantMembers(ctx context.Context, q queryRower, tenantID string) (int, error) {
 	var n int
-	err := s.Pool.QueryRow(ctx,
+	err := q.QueryRow(ctx,
 		`SELECT count(*) FROM tenant_members WHERE tenant_id = $1`, tenantID).Scan(&n)
 	return n, err
 }

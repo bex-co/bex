@@ -233,9 +233,27 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 		return nil, nil
 	}
 	// Redeem the whole set in one transaction so a signup joins all its invited
-	// workspaces or none.
+	// workspaces or none. An invite whose workspace can no longer seat it under
+	// its CURRENT plan is left pending rather than redeemed (planAllowsJoin) —
+	// the plan caps are enforced here, at the moment membership is created,
+	// because that is the only point every path to a tenant_members row passes
+	// through. Invite-time and ChangePlan-time checks both look at state that
+	// can change before the invitee ever logs in: an invite issued on Pro (2nd
+	// member, or a `developer` role Hobby doesn't offer) outlives a downgrade to
+	// Hobby, whose guards count accepted members only — so without this check a
+	// Hobby workspace ends up over its member cap, or holding a role its plan
+	// forbids (verified live on prod, w6/m13). A skipped invite stays pending and
+	// self-heals: it redeems on the next login after the workspace upgrades again.
+	accepted := make([]Invite, 0, len(pending))
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		for _, inv := range pending {
+			ok, err := planAllowsJoin(ctx, tx, inv, subject)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				continue
+			}
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
 				 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`,
@@ -246,11 +264,45 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 				`UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID); err != nil {
 				return err
 			}
+			accepted = append(accepted, inv)
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, classify("invite", err)
 	}
-	return pending, nil
+	return accepted, nil
+}
+
+// planAllowsJoin reports whether redeeming inv for subject keeps the workspace
+// within its current plan — the accept-time half of the plan-limit enforcement
+// (LimitsFor/RoleAllowedOnPlan are the same predicates invite and ChangePlan
+// use). A subject who is ALREADY a member takes no new seat, so only the role is
+// checked for them (an invite can upgrade an existing membership's role).
+func planAllowsJoin(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (bool, error) {
+	var plan string
+	if err := tx.QueryRow(ctx, `SELECT plan FROM tenants WHERE id = $1`, inv.TenantID).Scan(&plan); err != nil {
+		return false, err
+	}
+	if !RoleAllowedOnPlan(plan, inv.Role) {
+		return false, nil
+	}
+	limits := LimitsFor(plan)
+	if limits.MaxMembers <= 0 {
+		return true, nil // unlimited seats on this plan
+	}
+	var alreadyMember bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND subject = $2)`,
+		inv.TenantID, subject).Scan(&alreadyMember); err != nil {
+		return false, err
+	}
+	if alreadyMember {
+		return true, nil // role change, not a new seat
+	}
+	members, err := countTenantMembers(ctx, tx, inv.TenantID)
+	if err != nil {
+		return false, err
+	}
+	return members < limits.MaxMembers, nil
 }

@@ -430,6 +430,58 @@ func TestTenantResolvesSessionAndMachineCallersSeparately(t *testing.T) {
 	}
 }
 
+// TestInvalidateTenantEvictsStaleCachedResolution guards the m13 live-verify
+// finding: Tenant's positive TTL cache had no eviction hook, so a subject
+// resolved just before its tenant was deleted kept resolving to that
+// now-gone tenant for up to core.PositiveTTL (30s) — core.Base.Authorize then
+// 403'd every verb against it, including workspaces.Service.List for a caller
+// who still owned another workspace. workspaces.Service.Delete now calls
+// InvalidateTenant for every member it revokes; this asserts the cache
+// primitive it relies on actually evicts, both before (stale hit reproduces
+// the bug) and after (miss proves the fix) calling it.
+func TestInvalidateTenantEvictsStaleCachedResolution(t *testing.T) {
+	st := newFakeTenantStore()
+	ts := NewTenantService(st, nil)
+	ctx := context.Background()
+
+	if _, err := st.CreateTenantWithMember(ctx, "identity-a", store.PlanHobby); err != nil {
+		t.Fatal(err)
+	}
+	// Resolve under both possible Identity.Method values so the test can prove
+	// InvalidateTenant clears both cache-key variants — InvalidateTenant's
+	// caller (workspaces.Service.Delete) knows only the subject, never which
+	// method minted the cached entry, so it must evict both unconditionally.
+	tid, ok := ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "session"})
+	if !ok || tid != "tea-1" {
+		t.Fatalf("initial session resolve: %q %v", tid, ok)
+	}
+	tid, ok = ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "oauth2"})
+	if !ok || tid != "tea-1" {
+		t.Fatalf("initial oauth2 resolve: %q %v", tid, ok)
+	}
+
+	// Simulate the tenant being deleted (the workspaces feature drops the
+	// tenant_members row) without invalidating yet: the cached positive answers
+	// must still be served — this is the bug, reproduced.
+	st.mu.Lock()
+	delete(st.members, "identity-a")
+	st.mu.Unlock()
+	if tid, ok := ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "session"}); !ok || tid != "tea-1" {
+		t.Fatalf("expected stale session cache hit before invalidation, got %q %v", tid, ok)
+	}
+	if tid, ok := ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "oauth2"}); !ok || tid != "tea-1" {
+		t.Fatalf("expected stale oauth2 cache hit before invalidation, got %q %v", tid, ok)
+	}
+
+	ts.InvalidateTenant("identity-a")
+	if _, ok := ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "session"}); ok {
+		t.Error("session cache entry survived InvalidateTenant")
+	}
+	if _, ok := ts.Tenant(ctx, core.Identity{Subject: "identity-a", Method: "oauth2"}); ok {
+		t.Error("oauth2 cache entry survived InvalidateTenant")
+	}
+}
+
 // --- Store-off fallback: NewTenantService(nil, ...) must be inert ---
 
 func TestNewTenantServiceNilStoreReturnsNilResolver(t *testing.T) {
