@@ -35,17 +35,32 @@ const (
 
 // AuditEvent is one recorded write-verb authorization decision: who attempted
 // what, against which object, and whether it was allowed. Never carries
-// request bodies or values — Verb/Resource are derived from the call site and
-// the OpenFGA object string, never from a verb's arguments, so there is no
-// path for a secret to reach an event.
+// request bodies or values — Verb/Resource/Target are derived from the call
+// site, the OpenFGA object string, and the verb's resource NAME, never from a
+// verb's value-bearing arguments, so there is no path for a secret to reach an
+// event.
 type AuditEvent struct {
 	Caller       string // core.Identity.Subject; empty for an unauthenticated caller
 	CallerMethod string // core.Identity.Method ("oauth2" | "session")
 	Verb         string // the verb's short name, e.g. "apps.Suspend" (derived, never hand-set)
 	Resource     string // the OpenFGA object authorized against, e.g. "workspace:tea-abc"
+	Target       string // the resource acted ON, e.g. "service:my-api"; empty for a workspace-wide verb
 	Outcome      AuditOutcome
 	At           time.Time
 }
+
+// ServiceTarget is the AuditEvent.Target of a verb acting on one service — the
+// dimension the audit log lacked until w3/m7 (Resource is the OpenFGA object,
+// i.e. the WORKSPACE a verb was authorized against, which cannot say WHICH
+// service was suspended). With it, the per-service events feed (internal/events)
+// is a pure VIEW over audit_events + deploys: no second write path, and the
+// structural redaction holds — a target is a resource name, never a value.
+//
+// Note the App CR name is globally unique (all Apps live in one namespace), so
+// a service target is unambiguous across tenants; internal/events still scopes
+// its read by workspace so a cross-tenant caller cannot inject rows into
+// someone else's feed (see store.ListServiceEvents).
+func ServiceTarget(name string) string { return "service:" + name }
 
 // AuditSink persists audit events. Base.emit bounds every call to
 // auditRecordTimeout and always swallows a Record error (logged, never
@@ -88,17 +103,23 @@ var writeRelations = map[string]bool{
 var receiverRE = regexp.MustCompile(`\(\*?\w+\)\.`)
 
 // verbFrameSkip is the runtime.Caller depth from inside callerVerb up to the
-// verb method that called Authorize/AuthorizeOn: 0 is callerVerb's own frame,
-// 1 is Authorize/AuthorizeOn (callerVerb's direct caller), 2 is the verb that
-// called one of those — CLAUDE.md's "every verb starts with s.Authorize"
-// invariant is what makes this constant, not a per-call guess. Named so both
-// call sites in base.go can't drift to different skip counts.
+// verb method that called Authorize/AuthorizeTarget/AuthorizeOn: 0 is
+// callerVerb's own frame, 1 is the entry point (callerVerb's direct caller), 2
+// is the verb that called it — CLAUDE.md's "every verb starts with s.Authorize"
+// invariant is what makes this constant, not a per-call guess.
+//
+// Named so all THREE entry points in base.go can't drift to different skip
+// counts — and note this is why each of them calls callerVerb(verbFrameSkip)
+// itself rather than delegating to a sibling: one entry point implemented in
+// terms of another would add a frame, silently rename every recorded verb to
+// "Base.Authorize…", and (since w3/m7 keys the events feed off the verb name)
+// empty every service's activity feed without failing anything.
 const verbFrameSkip = 2
 
 // callerVerb resolves the short "<package>.<Method>" name of the function skip
-// frames up the stack — the verb method that called into Authorize/AuthorizeOn.
-// Unexported so only this file's two entry points use it; a bad skip count is a
-// bug caught by audit_test.go's expected-verb assertions, not a panic (an
+// frames up the stack — the verb method that called into an authorize entry
+// point. Unexported so only this file's entry points use it; a bad skip count is
+// a bug caught by audit_test.go's expected-verb assertions, not a panic (an
 // unresolved frame degrades to "unknown", never blocks the verb).
 func callerVerb(skip int) string {
 	pc, _, _, ok := runtime.Caller(skip)
@@ -120,7 +141,7 @@ func callerVerb(skip int) string {
 // and denial alike; read relations never reach here (authorizeAndAudit filters
 // before calling). A sink error is logged and swallowed, never returned: audit
 // recording must never fail the verb it's recording.
-func (b *Base) emit(ctx context.Context, verb, resource string, authzErr error) {
+func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr error) {
 	sink := b.Audit
 	if sink == nil {
 		sink = NoopAuditSink
@@ -129,7 +150,7 @@ func (b *Base) emit(ctx context.Context, verb, resource string, authzErr error) 
 	if authzErr != nil {
 		outcome = AuditDenied
 	}
-	ev := AuditEvent{Verb: verb, Resource: resource, Outcome: outcome, At: b.Now()}
+	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now()}
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
 	}

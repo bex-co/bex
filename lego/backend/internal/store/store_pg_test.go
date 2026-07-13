@@ -90,6 +90,7 @@ func TestPGStore(t *testing.T) {
 	assertDeployLifecycle(ctx, t, s, app)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
+	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
@@ -224,6 +225,158 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 	remaining, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{})
 	if err != nil || len(remaining) != 1 || remaining[0].ID != recorded[0].ID {
 		t.Fatalf("remaining after purge = %+v (err %v), want [%s] (the newest event, at+2m, not < the purge boundary)", remaining, err, recorded[0].ID)
+	}
+}
+
+// assertServiceEvents exercises w3/m7's composed feed against real Postgres —
+// the parts that are Postgres's job, not Go's: the UNION ALL of two key spaces,
+// the (at DESC, key DESC) total order across them, and the keyset cursor's
+// stability when a row is inserted between two pages.
+//
+// It runs after assertDeployLifecycle, so `app` already has the two deploys that
+// function left behind: #1 closed live (started + ended = two events) and #2 open
+// (started only) — three deploy events.
+func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant, app App) {
+	t.Helper()
+	target := core.ServiceTarget(app.Name)
+	verbs := []string{"apps.Suspend", "apps.Scale"}
+	phases := []string{EventPhaseStarted, EventPhaseEnded}
+
+	deploys, err := s.ListDeploys(ctx, app.ID)
+	if err != nil || len(deploys) != 2 {
+		t.Fatalf("precondition: deploys = %+v (err %v), want 2", deploys, err)
+	}
+	// Anchor the audit rows AFTER the deploy rows (whose timestamps are Postgres's
+	// now()), so the expected newest-first order is known exactly.
+	base := deploys[0].CreatedAt.Add(time.Second)
+
+	record := func(at time.Time, verb, workspace, tgt string, outcome core.AuditOutcome) {
+		t.Helper()
+		if err := s.Record(ctx, core.AuditEvent{
+			Caller: "user-x", CallerMethod: "session",
+			Verb: verb, Resource: core.WorkspaceObject(workspace), Target: tgt, Outcome: outcome, At: at,
+		}); err != nil {
+			t.Fatalf("record %s: %v", verb, err)
+		}
+	}
+	record(base, "apps.Suspend", ten.ID, target, core.AuditAllowed)
+	record(base.Add(time.Second), "apps.Scale", ten.ID, target, core.AuditAllowed)
+	// The three rows that must NOT reach the feed:
+	//   denied      — an attempt is audit-log material, not something that happened.
+	//   cross-tenant— a stranger's authorize passed against THEIR workspace before
+	//                 GetApp rejected them; the row exists, but not in this feed.
+	//   unmapped    — a verb the events vocabulary does not name (internal/events).
+	record(base.Add(2*time.Second), "apps.Suspend", ten.ID, target, core.AuditDenied)
+	record(base.Add(3*time.Second), "apps.Suspend", "tea-stranger00000000", target, core.AuditAllowed)
+	record(base.Add(4*time.Second), "apps.Create", ten.ID, target, core.AuditAllowed)
+
+	all, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases})
+	if err != nil {
+		t.Fatalf("list service events: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("feed = %d events, want 5 (3 deploy + 2 audit; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
+	}
+	// Newest first, and the order is TOTAL: every adjacent pair is strictly
+	// ordered by (at, key), never merely equal — which is what makes the cursor
+	// below resumable.
+	for i := 1; i < len(all); i++ {
+		prev, cur := all[i-1], all[i]
+		if prev.At.Before(cur.At) || (prev.At.Equal(cur.At) && prev.Key <= cur.Key) {
+			t.Fatalf("feed not in strict (at DESC, key DESC) order at %d: %+v then %+v", i, prev, cur)
+		}
+	}
+	if all[0].Verb != "apps.Scale" || all[1].Verb != "apps.Suspend" {
+		t.Errorf("two newest = %q, %q; want the audit rows apps.Scale then apps.Suspend", all[0].Verb, all[1].Verb)
+	}
+	if all[0].Source != EventSourceAudit || all[0].Caller != "user-x" {
+		t.Errorf("audit event = %+v, want source=audit caller=user-x", all[0])
+	}
+	// The closed deploy projects BOTH of its transitions; the open one only its start.
+	seenPhases := map[string]int{}
+	for _, e := range all {
+		if e.Source == EventSourceDeploy {
+			seenPhases[e.Phase]++
+		}
+	}
+	if seenPhases[EventPhaseStarted] != 2 || seenPhases[EventPhaseEnded] != 1 {
+		t.Errorf("deploy phases = %v, want 2 started (both deploys) + 1 ended (only the closed one)", seenPhases)
+	}
+
+	// Keyset paging: walk the feed 2 at a time and reassemble it exactly. Between
+	// page 1 and page 2 a NEWER event lands — the page-2 cursor must not notice
+	// (an OFFSET would have shifted and re-served a row here).
+	page1, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, Limit: 2})
+	if err != nil || len(page1) != 2 {
+		t.Fatalf("page 1 = %+v (err %v), want 2", page1, err)
+	}
+	record(base.Add(time.Minute), "apps.Suspend", ten.ID, target, core.AuditAllowed) // concurrent insert, newest
+	after := page1[len(page1)-1]
+
+	var walked []ServiceEventRow
+	walked = append(walked, page1...)
+	for {
+		page, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+			Verbs: verbs, Phases: phases, Limit: 2, AfterAt: after.At, AfterKey: after.Key,
+		})
+		if err != nil {
+			t.Fatalf("page after %s: %v", after.Key, err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		walked = append(walked, page...)
+		after = page[len(page)-1]
+	}
+	if len(walked) != len(all) {
+		t.Fatalf("paged walk = %d events, want the original %d (a row inserted mid-walk must not duplicate or drop one)", len(walked), len(all))
+	}
+	seen := map[string]bool{}
+	for i, e := range walked {
+		if seen[e.Key] {
+			t.Fatalf("paged walk repeated %s", e.Key)
+		}
+		seen[e.Key] = true
+		if e.Key != all[i].Key {
+			t.Fatalf("paged walk diverged at %d: %s, want %s", i, e.Key, all[i].Key)
+		}
+	}
+
+	// The window bounds `at` inclusively — the two audit events only.
+	windowed, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+		Verbs: verbs, Phases: phases, Since: base, Until: base.Add(time.Second),
+	})
+	if err != nil || len(windowed) != 2 {
+		t.Fatalf("windowed feed = %+v (err %v), want the 2 audit events", windowed, err)
+	}
+
+	// The type filter is a PUSH-DOWN: narrowing to one kind of event must bound the
+	// SQL page, not the Go result. With limit=2 and only the deploy phases asked
+	// for, both rows must come back deploy rows — a Go-side filter after the LIMIT
+	// would have spent the page on the two newest (audit) rows and returned an empty
+	// one, which a cursor client reads as the end of the feed.
+	deploysOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+		Verbs: nil, Phases: []string{EventPhaseStarted}, Limit: 2,
+	})
+	if err != nil || len(deploysOnly) != 2 {
+		t.Fatalf("type-filtered page = %+v (err %v), want 2 FULL rows", deploysOnly, err)
+	}
+	for _, e := range deploysOnly {
+		if e.Source != EventSourceDeploy || e.Phase != EventPhaseStarted {
+			t.Errorf("type-filtered page leaked %+v — the filter must run in SQL, before the LIMIT", e)
+		}
+	}
+	// The converse: no phases ⇒ no deploy rows at all.
+	auditOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: []string{"apps.Scale"}})
+	if err != nil || len(auditOnly) != 1 || auditOnly[0].Verb != "apps.Scale" {
+		t.Fatalf("verb-filtered feed = %+v (err %v), want just the scale", auditOnly, err)
+	}
+
+	// A hand-applied app (no control-plane row) and a service nobody targeted:
+	// an empty feed, never another service's rows.
+	empty, err := s.ListServiceEvents(ctx, "srv-doesnotexist0000", core.ServiceTarget("nope"), ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases})
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("feed of an unknown service = %+v (err %v), want empty", empty, err)
 	}
 }
 

@@ -44,8 +44,12 @@ type AuditRow struct {
 	CallerMethod string
 	Verb         string
 	Resource     string
-	Outcome      string
-	At           time.Time
+	// Target is the resource the verb acted ON ("service:my-api",
+	// core.ServiceTarget) — empty for a workspace-wide verb. Resource is what the
+	// verb was authorized AGAINST (the workspace); Target is what it changed.
+	Target  string
+	Outcome string
+	At      time.Time
 }
 
 // AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
@@ -78,17 +82,17 @@ func workspaceOf(resource string) string {
 // type needed.
 func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, outcome, at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, string(ev.Outcome), ev.At)
+		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, outcome, at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, string(ev.Outcome), ev.At)
 	return err
 }
 
-const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, outcome, at`
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, outcome, at`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Outcome, &r.At)
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.Outcome, &r.At)
 	return r, err
 }
 

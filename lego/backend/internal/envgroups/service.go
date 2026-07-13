@@ -344,7 +344,7 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 // group's env + files Secret refs, its pods roll, and the group's link set records
 // the service. Idempotent. Manage scope.
 func (s *Service) LinkService(ctx context.Context, gid, service string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -372,7 +372,7 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 // UnlinkService reverses LinkService: drop the group's Secret refs from the
 // service, roll it, and remove it from the group's link set. Idempotent.
 func (s *Service) UnlinkService(ctx context.Context, gid, service string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
 		return err
 	}
 	if s.Store == nil {

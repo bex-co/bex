@@ -264,7 +264,7 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 // or already registered on another App (core.ErrConflict, Render's "already in
 // use"). For store-managed Apps the row is written first (same rationale as Suspend).
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(appName)); err != nil {
 		return DomainView{}, err
 	}
 	if hostname == "" {
@@ -309,7 +309,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 // hostname not in spec.hosts[] is a no-op. For store-managed Apps the row is
 // deleted first (same row-first rationale as the other intent verbs).
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(appName)); err != nil {
 		return err
 	}
 	app, err := s.GetApp(ctx, appName)

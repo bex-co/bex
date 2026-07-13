@@ -75,6 +75,12 @@ var (
 	// isn't wired (BEX_CP_DB_URI unset) — adapters surface it as 503
 	// (docs/ADR026-github-integration.md).
 	ErrGitHubUnavailable = errors.New("github integration not configured")
+	// ErrEventsUnavailable is returned by the service-events feed when the
+	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
+	// as 503. BOTH of the feed's sources (deploys, audit_events) are control-plane
+	// tables, so there is no CR-only feed to degrade to — omitted, not faked
+	// (w3/m7, the deploy-history precedent).
+	ErrEventsUnavailable = errors.New("events store not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

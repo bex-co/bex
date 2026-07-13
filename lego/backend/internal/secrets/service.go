@@ -110,7 +110,7 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 // values land in OpenBao (source of truth), are projected into the app's Secret,
 // and the pods roll so the new values take effect.
 func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarView) ([]EnvVarView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
@@ -142,7 +142,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 // {value}), merging it into the existing set rather than replacing it. Returns
 // the bare {key,value}. Manage-scope verb.
 func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (EnvVarView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
 		return EnvVarView{}, err
 	}
 	if s.Store == nil {
@@ -173,7 +173,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (En
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
 // re-projecting the reduced set. Unknown key => core.ErrNotFound.
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
 		return err
 	}
 	if s.Store == nil {

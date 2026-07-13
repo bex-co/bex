@@ -13,11 +13,12 @@ srv-c185th5c2rvvnhbfiltg
 
 Registered prefixes (the `id.Kind` registry — Render's public-API spellings, so bex ids are drop-in for Render-shaped clients):
 
-| Prefix | Resource           | Render |
-| ------ | ------------------ | ------ |
-| `tea-` | workspace (tenant) | teams  |
-| `srv-` | service (app)      | srv    |
-| `cdm-` | custom domain      | cdm    |
+| Prefix | Resource                    | Render |
+| ------ | --------------------------- | ------ |
+| `tea-` | workspace (tenant)          | teams  |
+| `srv-` | service (app)               | srv    |
+| `cdm-` | custom domain               | cdm    |
+| `evt-` | service event (**derived**) | evt    |
 
 ## Why this shape
 
@@ -25,6 +26,18 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 - **DNS-/k8s-name safe → hyphen, not underscore.** bex ids flow into URLs, hostnames, and Kubernetes object names. A hyphen is legal in a DNS-1123 label; an **underscore is not** (RFC 952/1123 forbid `_` in hostnames, and k8s object names are DNS-1123). This is the decisive reason bex does **not** use Stripe's `tea_…` form — however nice underscores are for double-click-to-select, an underscore id cannot be a hostname or a k8s name. The guard test asserts every minted id is a valid DNS-1123 label, so this can't regress.
 - **Typed + greppable.** The prefix says what an id refers to at a glance and in logs (`grep srv-`), and lets an adapter route or reject by kind (`id.KindOf`).
 - **xid, not UUID.** [xid](https://github.com/rs/xid) is k-sortable (embeds a timestamp, so ids sort by creation time — friendly to Postgres b-tree locality), non-guessable, URL-safe (lowercase base32-hex, no padding), and 20 chars (vs UUID's 36 with hyphens). A random UUID is none of typed, sortable, or Render-shaped.
+
+## Minted vs derived ids
+
+Most ids are **minted**: `id.New(kind)` draws a fresh xid, and the id is stored alongside the row it names. A few resources have no row to store an id in — they are **projections**, computed at read time from rows the store already holds. The service-events feed is the first ([ADR006-bex-api.md](ADR006-bex-api.md) § Service events): an event is a view over a `deploys` or `audit_events` row, never a table of its own.
+
+For those, `id.Derive(kind, parts…)` mints the id as a **deterministic function of the source row** — same parts in, same id out, forever — instead of a fresh xid:
+
+```go
+id.Derive(id.Event, "dep-c185th5c2rvvnhbfiltg:started") // → evt-… , identical on every read
+```
+
+Determinism is the requirement, not a nicety: a client pages with an event's cursor, re-fetches it, and dedupes on its id. `id.New` would hand out a different id for the same event on every request, which is exactly wrong. The output is 100 bits of SHA-256 in base32-hex, so a derived id is **shape-identical to a minted one** (`WellFormed`/`KindOf` accept it, it is a valid DNS-1123 label, and it satisfies Render's `^evt-[0-9a-z]{20}$`) — the distinction is where the entropy comes from, not what the id looks like. `Derive` lives in the same closed registry as `New` and panics the same way on an unregistered kind, so this is a second mint path, not a bypass of the one place ids are made.
 
 ## id ≠ name
 

@@ -209,6 +209,7 @@ func main() {
 		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
 		deps.GitHubStore = st // git connections (w2/m8): connect/disconnect/list read+write git_connections
+		deps.EventStore = st  // service events (w3/m7): the feed composes deploys + audit_events, writing neither
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
@@ -394,6 +395,7 @@ func main() {
 	srv.Logs.MaxQueryHours = maxQueryHours
 	srv.Logs.MaxSSEConns = maxSSEConns
 	srv.Metrics.MaxQueryHours = maxQueryHours
+	srv.Events.MaxQueryHours = maxQueryHours
 
 	handler, err := srv.Handler()
 	if err != nil {

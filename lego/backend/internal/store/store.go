@@ -86,6 +86,15 @@ const (
 	DeployCanceled         = "canceled"
 )
 
+// The deploy `trigger` vocabulary — what caused a rollout. One place, since
+// both the writers (CreateApp, deploys.Trigger/Rollback) and the readers (the
+// events feed's deploy_started trigger flags, internal/events) spell it.
+const (
+	TriggerCreate   = "create"   // the app's first deploy, opened by CreateApp
+	TriggerAPI      = "api"      // an explicit POST .../deploys
+	TriggerRollback = "rollback" // a deploy created by Rollback (w2/m10), restoring an earlier image
+)
+
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
 // first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),
@@ -422,8 +431,8 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 		// brand-new App CR, and a freshly created Kubernetes object always
 		// starts at metadata.generation 1.
 		_, err := tx.Exec(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, 'create', $3, 1, $4)`,
-			ids.New(ids.Deploy), a.ID, a.Image, DeployUpdateInProgress)
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, 1, $5)`,
+			ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, DeployUpdateInProgress)
 		return err
 	})
 	if err != nil {
@@ -683,11 +692,11 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 // live before), so resolved_image is set immediately rather than waiting for
 // the reconciler's write-back to backfill it on convergence.
 func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Status: DeployUpdateInProgress}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Status: DeployUpdateInProgress}
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, status)
-		 VALUES ($1, $2, 'rollback', $3, $3, $4, $5) RETURNING created_at`,
-		d.ID, d.AppID, image, rollbackOf, d.Status,
+		 VALUES ($1, $2, $3, $4, $4, $5, $6) RETURNING created_at`,
+		d.ID, d.AppID, d.Trigger, image, rollbackOf, d.Status,
 	).Scan(&d.CreatedAt)
 	if err != nil {
 		return Deploy{}, classify("deploy", err)

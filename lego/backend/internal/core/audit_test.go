@@ -71,6 +71,71 @@ func listLikeVerb(ctx context.Context, b *Base) error {
 	return b.Authorize(ctx, RelCanView)
 }
 
+// scaleLikeVerb stands in for a SERVICE-SCOPED write verb (apps.Service.Scale's
+// shape, w3/m7): it names the resource it acts on, which is what makes its audit
+// row attributable to one service — and therefore what makes the events feed a
+// view rather than a second write path.
+func scaleLikeVerb(ctx context.Context, b *Base, service string) error {
+	return b.AuthorizeTarget(ctx, RelCanOperate, ServiceTarget(service))
+}
+
+// TestAuditTargetNamesTheResourceActedOn is w3/m7's write side: AuthorizeTarget
+// records WHICH service a verb changed (Resource stays the workspace it was
+// authorized against — the two are different questions), it resolves the verb
+// name from the same frame depth Authorize does, and a plain Authorize still
+// records no target at all.
+func TestAuditTargetNamesTheResourceActedOn(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
+
+	if err := scaleLikeVerb(ctx, b, "web"); err != nil {
+		t.Fatalf("scaleLikeVerb: %v", err)
+	}
+	if err := suspendLikeVerb(ctx, b); err != nil { // a workspace-wide verb, for contrast
+		t.Fatalf("suspendLikeVerb: %v", err)
+	}
+	if sink.len() != 2 {
+		t.Fatalf("got %d events, want 2", sink.len())
+	}
+	targeted, untargeted := sink.events[0], sink.events[1]
+	if targeted.Target != "service:web" {
+		t.Errorf("Target = %q, want %q — the events feed keys on this", targeted.Target, "service:web")
+	}
+	if targeted.Resource != DefaultWorkspace {
+		t.Errorf("Resource = %q, want the workspace the verb was authorized against (%q)", targeted.Resource, DefaultWorkspace)
+	}
+	// The frame skip must be identical on both entry points, or the verb name
+	// silently becomes "Base.AuthorizeTarget" and every event type goes unmapped.
+	if targeted.Verb != "core.scaleLikeVerb" {
+		t.Errorf("Verb = %q, want %q", targeted.Verb, "core.scaleLikeVerb")
+	}
+	if untargeted.Target != "" {
+		t.Errorf("a workspace-wide verb recorded Target = %q, want empty", untargeted.Target)
+	}
+}
+
+// TestAuditTargetRecordsDeniedAttempts pins the property internal/events relies
+// on to keep a stranger out of a service's feed: a DENIED authorize still writes
+// a targeted row (that is the audit log's job), so the feed — not the writer —
+// must be what filters it out (store.ListServiceEvents: allowed-only,
+// workspace-scoped).
+func TestAuditTargetRecordsDeniedAttempts(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeDenyChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "stranger", Method: "oauth2"})
+
+	if err := scaleLikeVerb(ctx, b, "victim"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("denied verb = %v, want ErrForbidden", err)
+	}
+	if sink.len() != 1 {
+		t.Fatalf("got %d events, want 1 (a denial is recorded, not swallowed)", sink.len())
+	}
+	if ev := sink.events[0]; ev.Outcome != AuditDenied || ev.Target != "service:victim" {
+		t.Errorf("denied event = %+v, want outcome=denied target=service:victim", ev)
+	}
+}
+
 func TestAuditRecordsWriteVerbSuccessWithResolvedVerbName(t *testing.T) {
 	sink := &fakeAuditSink{}
 	b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}

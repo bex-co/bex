@@ -207,7 +207,7 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 // the row still opens, the CR just has nothing new to build). Suspended
 // services refuse the trigger: there is nothing to roll.
 func (s *Service) Trigger(ctx context.Context, service string) (DeployView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(service)); err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {
@@ -229,7 +229,7 @@ func (s *Service) Trigger(ctx context.Context, service string) (DeployView, erro
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateDeploy(ctx, appID, "api", a.Spec.Image, a.Generation)
+	d, err := s.Store.CreateDeploy(ctx, appID, store.TriggerAPI, a.Spec.Image, a.Generation)
 	if err != nil {
 		return DeployView{}, err
 	}

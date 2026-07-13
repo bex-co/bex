@@ -28,8 +28,11 @@ limitations under the License.
 package id
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/rs/xid"
 )
@@ -64,12 +67,13 @@ var (
 	Export    = Kind{prefix: "exp", desc: "managed-postgres export (on-demand snapshot)"}
 	Audit     = Kind{prefix: "aud", desc: "audit log event"}             // w4/m10 audit log
 	Owner     = Kind{prefix: "own", desc: "user identity (Render own-)"} // w6/m7: opaque per-subject user id
+	Event     = Kind{prefix: "evt", desc: "service event (derived)"}     // Render: events are evt-; w3/m7 — minted by Derive, never New
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }
@@ -92,6 +96,38 @@ func New(k Kind) string {
 	}
 	return k.prefix + "-" + xid.New().String()
 }
+
+// Derive returns the id of a DERIVED resource: same "<prefix>-<20 chars>" shape
+// as New, but a deterministic function of parts rather than a fresh xid. It is
+// the mint path for a resource that is a PROJECTION of rows the store already
+// holds and is never itself stored — service events (internal/events, w3/m7),
+// whose entries are composed from deploys + audit_events at read time.
+//
+// Determinism is the whole point: an event's id must be identical on every read
+// (a client pages with it, re-fetches it, dedupes on it), so New's fresh xid
+// would be exactly wrong. Same parts in, same id out, forever.
+//
+// parts must uniquely identify the projected event (e.g. the source row id + the
+// transition within it) — they are joined with a separator that cannot occur in
+// an id, so ("dep-x", "started") and ("dep-xstarted") can never collide. The
+// output is 100 bits of SHA-256 in base32hex, which keeps it inside the
+// [0-9a-v]{20} alphabet WellFormed pins, so a derived id is indistinguishable in
+// shape from a minted one and satisfies Render's ^evt-[0-9a-z]{20}$ pattern.
+func Derive(k Kind, parts ...string) string {
+	if !slices.Contains(kinds, k) {
+		panic("id.Derive: unregistered kind " + k.prefix + " — use a package-declared Kind (id.Event, …)")
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	// Encode only the 13 bytes the 20 output chars need (13×8 = 104 bits ≥ 20×5 =
+	// 100), over a lowercase base32-hex alphabet — so this is one allocation, not
+	// three (a 52-char encode of the full digest, a ToLower copy, then the concat).
+	return k.prefix + "-" + derivedEncoding.EncodeToString(sum[:13])[:xidLen]
+}
+
+// derivedEncoding is base32-hex with the lowercase alphabet WellFormed pins
+// ([0-9a-v]) — the standard HexEncoding is uppercase, which would need a second
+// pass to fix.
+var derivedEncoding = base32.NewEncoding("0123456789abcdefghijklmnopqrstuv").WithPadding(base32.NoPadding)
 
 // WellFormed reports whether s has the canonical id shape (prefix-xid). It does
 // NOT check that the prefix is a registered kind — use KindOf for that. Cheap

@@ -578,7 +578,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 // cert-manager TLS Secret (documented in docs/ADR006-bex-api.md). Unknown id =>
 // core.ErrNotFound; unauthorized => core.ErrForbidden.
 func (s *Service) Delete(ctx context.Context, name string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(name)); err != nil {
 		return err
 	}
 	a, err := s.GetApp(ctx, name)
@@ -805,7 +805,7 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 // Restart requests a rolling restart (spec.restartedAt = now). The operator
 // stamps the pod template and Kubernetes rolls the pods with no downtime.
 func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	return s.patch(ctx, name, func(a *appv1alpha1.App) {
@@ -819,7 +819,7 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 // shows. Rejected for a non-cron service. Intent only — the run appears in
 // status.runs once the operator reconciles, not synchronously.
 func (s *Service) TriggerCronRun(ctx context.Context, name string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	a, err := s.GetApp(ctx, name)
@@ -836,7 +836,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (AppView, err
 
 // Suspend parks the App (spec.suspended = true): scaled to 0, host/certs kept.
 func (s *Service) Suspend(ctx context.Context, name string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	return s.setSuspended(ctx, name, true)
@@ -845,7 +845,7 @@ func (s *Service) Suspend(ctx context.Context, name string) (AppView, error) {
 // Resume brings a suspended App back (spec.suspended = false); the operator
 // restores spec.replicas.
 func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	return s.setSuspended(ctx, name, false)
@@ -858,7 +858,7 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // Deployment rollout — the same restart-shaped cost as Render's own plan
 // changes.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	t, ok := tiers.Compute.ByRenderPlan(plan)
@@ -885,7 +885,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 // maps spec.replicas 0 to 1 (the default), so 0 is ambiguous — scale-to-zero
 // (m4) owns redefining that, and will keep this 1-based verb valid.
 func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	if replicas < 1 || replicas > store.MaxReplicas {
@@ -910,7 +910,7 @@ const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
 // value is stored regardless so it takes effect if the plan later changes to
 // free; the dashboard is what gates the control per tier.
 func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	if seconds < 0 || seconds > MaxIdleTTLSeconds {
@@ -929,7 +929,7 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 // carries it, so this is a direct CR patch like Restart, not
 // writeThroughStore. Rejected for an image-backed App (nothing to build).
 func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	a, err := s.GetApp(ctx, name)
@@ -996,7 +996,7 @@ func validCronSchedule(s string) bool {
 // not projection-owned (mirrors Builder/RootDir), and no restartedAt bump —
 // flipping the toggle changes future push behavior, it does not itself redeploy.
 func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	return s.patch(ctx, name, func(a *appv1alpha1.App) {
@@ -1157,7 +1157,7 @@ func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteVie
 // static-server reads them live, so the change takes effect on the next resolver
 // refresh — no rebuild/republish. Direct CR patch (not projection-owned).
 func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRouteView) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	if err := validateRoutes(routes); err != nil {
@@ -1194,7 +1194,7 @@ func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderV
 // SetHeaders replaces a static_site's custom response-header rules (Render's bulk
 // PUT /v1/services/{id}/headers). Same live-read semantics as SetRoutes.
 func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticHeaderView) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	if err := validateHeaders(headers); err != nil {
@@ -1217,7 +1217,7 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 // generation invalidates the cached revision, re-running the publish plane).
 // Rejected for a non-static_site or an empty path.
 func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) (AppView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AppView{}, err
 	}
 	if strings.TrimSpace(publishPath) == "" {
@@ -1290,7 +1290,7 @@ func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingV
 // The autoscaling config is written directly to the CR spec (not row-first,
 // like SetRootDir) — autoscaling is not a projection-owned field.
 func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutoscalingRequest) (AutoscalingView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return AutoscalingView{}, err
 	}
 	if req.MinInstances < 0 {
@@ -1334,7 +1334,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 // .../autoscaling): clears spec.autoscaling so the service reverts to its
 // fixed spec.replicas count. Idempotent — already-disabled is a no-op.
 func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(name)); err != nil {
 		return err
 	}
 	a, err := s.GetApp(ctx, name)

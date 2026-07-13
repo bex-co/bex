@@ -157,15 +157,38 @@ func (b *Base) Now() time.Time {
 // CLAUDE.md), so it's resolved here rather than threaded through 80+ call
 // sites — a write-relation verb can't opt out of being recorded.
 func (b *Base) Authorize(ctx context.Context, relation string) error {
-	workspace := DefaultWorkspace
+	return b.authorizeAndAudit(ctx, relation, b.callerWorkspace(ctx), "", callerVerb(verbFrameSkip))
+}
+
+// AuthorizeTarget is Authorize for a verb that acts on ONE named resource: the
+// same caller-workspace check, plus the target (e.g. core.ServiceTarget(name))
+// recorded on the audit event. It is what makes the per-service events feed a
+// view rather than a second write path (internal/events): the audit row already
+// written on every write verb now also says WHICH service the verb acted on.
+//
+// The target is the name the caller ASKED for, resolved before the App is
+// fetched — so a verb that then 404s or 403s still records its attempt, exactly
+// as the audit log already does for a denied authorize. internal/events filters
+// those out (allowed-only, workspace-scoped) so they cannot pollute a feed.
+// Pass a resource NAME, never a value: Target is on the redacted-by-structure
+// side of the audit contract (core.AuditEvent).
+func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) error {
+	return b.authorizeAndAudit(ctx, relation, b.callerWorkspace(ctx), target, callerVerb(verbFrameSkip))
+}
+
+// callerWorkspace is the OpenFGA object of the caller's OWN workspace:
+// workspace:tea-<id> when the resolver finds a tenant, workspace:default
+// otherwise (store off, or an unbound machine caller that 403s there unless it
+// is the seeded bootstrap).
+func (b *Base) callerWorkspace(ctx context.Context) string {
 	if b.Workspace != nil {
 		if id, ok := IdentityFrom(ctx); ok {
 			if tenantID, found := b.Workspace.Tenant(ctx, id); found {
-				workspace = "workspace:" + tenantID
+				return "workspace:" + tenantID
 			}
 		}
 	}
-	return b.authorizeAndAudit(ctx, relation, workspace, callerVerb(verbFrameSkip))
+	return DefaultWorkspace
 }
 
 // AuthorizeOn gates a verb on the caller's permission against a specific object
@@ -176,17 +199,17 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 // for the RelCanManage/RelCanCreate/RelCanOperate/RelCanManageKeys verbs that
 // call this directly). Same audit interception as Authorize.
 func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
-	return b.authorizeAndAudit(ctx, relation, object, callerVerb(verbFrameSkip))
+	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip))
 }
 
 // authorizeAndAudit runs the OpenFGA check and, for write relations only,
-// records the outcome (audit.go) — the one place both Authorize and
+// records the outcome (audit.go) — the one place Authorize, AuthorizeTarget and
 // AuthorizeOn funnel through, so a verb is recorded exactly once regardless of
 // which entry point it calls.
-func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, verb string) error {
+func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string) error {
 	err := b.checkAuthz(ctx, relation, object)
 	if writeRelations[relation] {
-		b.emit(ctx, verb, object, err)
+		b.emit(ctx, verb, object, target, err)
 	}
 	return err
 }

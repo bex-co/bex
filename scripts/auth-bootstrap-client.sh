@@ -36,7 +36,13 @@ cleanup() {
     kill "$PF_PID" 2>/dev/null || true
     wait "$PF_PID" 2>/dev/null || true
   fi
-  [ -n "$PF_LOG" ] && rm -f "$PF_LOG"
+  # `if`, not `[ … ] && …`: under `set -e` a trap whose LAST command returns
+  # non-zero makes the whole script exit non-zero. With HYDRA_ADMIN_URL set (the
+  # port-forward path callers like events-verify.sh/secrets-verify.sh use) PF_LOG
+  # is empty, so the test failed and this script "failed" after succeeding.
+  if [ -n "$PF_LOG" ]; then
+    rm -f "$PF_LOG"
+  fi
 }
 trap cleanup EXIT
 

@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
@@ -74,6 +75,7 @@ type Server struct {
 	Members    *members.Service
 	Usage      *usage.Service
 	Deploys    *deploys.Service
+	Events     *events.Service
 	Audit      *audit.Service
 	GitHub     *github.Service
 
@@ -148,6 +150,11 @@ type Deps struct {
 	// the operator's own BEX_BUILD_NAMESPACE for the Job identity to resolve.
 	// Empty falls back to the App's own namespace (the operator's own default).
 	DeployBuildNamespace string
+	// EventStore, when set (the control-plane store is wired), backs the
+	// per-service events feed (w3/m7) — a VIEW over the deploys + audit_events
+	// rows the store already holds, adding no writes of its own. nil => the feed
+	// answers core.ErrEventsUnavailable (both its sources are control-plane tables).
+	EventStore events.EventStore
 	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
@@ -245,6 +252,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
 		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore, BuildNamespace: d.DeployBuildNamespace},
+		Events:    &events.Service{Base: base, Store: d.EventStore},
 		Workspaces: &workspaces.Service{
 			Base:       base,
 			Store:      d.WorkspaceStore,
@@ -337,6 +345,9 @@ func (s *Server) features() []any {
 	}
 	if s.Deploys != nil {
 		out = append(out, s.Deploys)
+	}
+	if s.Events != nil {
+		out = append(out, s.Events)
 	}
 	if s.Audit != nil {
 		out = append(out, s.Audit)

@@ -68,6 +68,45 @@ func TestNewIsWellFormedAndDNSSafe(t *testing.T) {
 	}
 }
 
+// TestDeriveIsDeterministicAndWellFormed pins the contract the service-events
+// feed rests on (w3/m7): a derived id is a pure function of its parts, is
+// shaped exactly like a minted one (so it passes WellFormed/KindOf and Render's
+// ^evt-[0-9a-z]{20}$ pattern), and cannot be confused across part boundaries.
+func TestDeriveIsDeterministicAndWellFormed(t *testing.T) {
+	for _, k := range Kinds() {
+		got := Derive(k, "dep-c185th5c2rvvnhbfiltg", "started")
+		if got != Derive(k, "dep-c185th5c2rvvnhbfiltg", "started") {
+			t.Errorf("Derive(%s, …) is not deterministic — a client pages and dedupes on this id", k.Desc())
+		}
+		if !WellFormed(got) {
+			t.Errorf("Derive(%s, …) = %q is not well-formed", k.Desc(), got)
+		}
+		if kind, ok := KindOf(got); !ok || kind.Prefix() != k.Prefix() {
+			t.Errorf("KindOf(%q) = %+v, %v; want kind %s", got, kind, ok, k.Prefix())
+		}
+		if !dns1123Label.MatchString(got) {
+			t.Errorf("Derive(%s, …) = %q is not a valid DNS-1123 label", k.Desc(), got)
+		}
+	}
+	// Different parts, different ids — including across the part boundary, so a
+	// deploy's start and end events can never collide with one another.
+	a := Derive(Event, "dep-1", "started")
+	b := Derive(Event, "dep-1", "ended")
+	c := Derive(Event, "dep-1started")
+	if a == b || a == c || b == c {
+		t.Errorf("Derive collided: %q %q %q — parts must not be ambiguously joined", a, b, c)
+	}
+}
+
+func TestDerivePanicsOnUnregisteredKind(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("Derive(Kind{}, …) should panic on an unregistered kind")
+		}
+	}()
+	_ = Derive(Kind{}, "x")
+}
+
 // TestNewPanicsOnUnregisteredKind documents the compile-time closure's runtime
 // backstop: the one Kind a caller can construct without the package's blessing
 // is the zero Kind{} (unexported fields block any other), and New rejects it
