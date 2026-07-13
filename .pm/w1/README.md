@@ -33,6 +33,7 @@
 - [x] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17, last open Postgres parity row) — done 2026-07-12, moved to `w2/done/m25/`
 - [ ] **m26** — Harden the build-image pull path (Zot node access, retention, drift guards) (10 tasks) ← promoted from `017` 2026-07-12 (found live during a routine backfill: no git-built image was reliably pullable on prod; autoscaler-minted nodes fail today without this)
 - [ ] **m27** — Close the control-plane disaster-recovery gaps (10 tasks) ← from a codebase survey during `/pm-brainstorm more milestones to work on` 2026-07-13 (`bex-db`'s CNPG cluster has zero backup config at all; OpenBao's restore path has never been tested; etcd's last restore test predates the m19 rearchitecture); includes `docs/ADR031-platform-data-backup.md`
+- [ ] **m28** — Gate deploys on real CI test runs (10 tasks) ← from a CI-workflow audit during `/pm-brainstorm more milestones to work on` 2026-07-13 (no `.github/workflows/*.yml` anywhere runs `go test`/`make test`/`yarn test`; `deploy.yml` builds+pushes+deploys on every push to `main` with zero test gate); not Render parity — pursued on reliability merits per user decision 2026-07-13
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

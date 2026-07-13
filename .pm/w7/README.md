@@ -13,11 +13,11 @@
 - [x] **m7** — Least-privilege platform RBAC (operator + bex-api secret scoping) (6 tasks) ← from `/pm-brainstorm for w7` 2026-07-12
 - [x] **m8** — Tenant registry authn/z (close the unauthenticated Zot hole) (8 tasks) ← from `/pm-brainstorm more for w7` 2026-07-12
 - [ ] **m9** — Per-workspace abuse limits (creation caps + build concurrency) (10 tasks) ← from `/pm-brainstorm more for w7` round 2, 2026-07-12; task breakdown materialized 2026-07-12 via `/pm-brainstorm more milestones to work on` (the milestone had been named in this README but never written to disk)
+- [ ] **m10** — Security hygiene: image CVE scanning in CI + HTTP hardening headers (7 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `001`, `002` (each sub-hour)
 
 ## Inbox
 
-- `001.md` — Image CVE scanning in CI (trivy over the built image in `deploy.yml`)
-- `002.md` — HTTP security headers on bex-api + dashboard SSR
+_(empty — `001.md`, `002.md` grouped into **m10** 2026-07-13)_
 
 ## Not in w7 (deliberate)
 
