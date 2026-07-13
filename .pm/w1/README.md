@@ -35,6 +35,7 @@
 - [ ] **m27** — Close the control-plane disaster-recovery gaps (10 tasks) ← from a codebase survey during `/pm-brainstorm more milestones to work on` 2026-07-13 (`bex-db`'s CNPG cluster has zero backup config at all; OpenBao's restore path has never been tested; etcd's last restore test predates the m19 rearchitecture); includes `docs/ADR031-platform-data-backup.md`
 - [ ] **m28** — Gate deploys on real CI test runs (10 tasks) ← from a CI-workflow audit during `/pm-brainstorm more milestones to work on` 2026-07-13 (no `.github/workflows/*.yml` anywhere runs `go test`/`make test`/`yarn test`; `deploy.yml` builds+pushes+deploys on every push to `main` with zero test gate); not Render parity — pursued on reliability merits per user decision 2026-07-13
 - [ ] **m29** — Managed Postgres external connectivity: SNI proxy for preamble-mode TLS clients (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`docs/ADR009-postgresql-management.md:53` names the fix, never built)
+- [ ] **m30** — SIGTERM shutdown fix + Dependabot residual watch (6 tasks) ← groups `018`, `019` 2026-07-13 (each sub-hour), same pattern as `m23`/`w6/m15`/`w7/m10`
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
@@ -53,7 +54,9 @@
 
 ## Inbox
 
-- `018.md` — Dependabot triage (w1/m23 t002): all 33 alerts npm-only; 2 criticals dev-only/unreachable, fixed anyway; safe batch applied (vitest/vite/js-cookie + resolutions); residuals — lodash (no fix), minimatch/picomatch (multi-major), srvx, @tanstack/start-server-core, vite 8.x — need breaking/parent upgrades
+_(empty — `018`, `019` promoted to `m30` 2026-07-13)_
+
+> **Promoted 2026-07-13:** `018` (Dependabot residual triage) and `019` (bex-api SIGTERM shutdown bug) → **m30**; both notes moved to `done/`.
 
 > **Promoted 2026-07-12:** `017` (Zot node-pull path: DNS/TLS, NetworkPolicy drift, retention, generation churn, migration-ownership drift) → **m26**; note moved to `done/`.
 
