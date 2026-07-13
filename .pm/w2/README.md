@@ -19,7 +19,7 @@
 
 ## Inbox
 
-- `006.md` — GraphQL `triggerDeploy` mutation (deploy-trigger is REST-only since w2/m5; unblocks the Manual Deploy button riding `w5/007`) ← from `/pm-brainstorm more for w5` 2026-07-12
+_(empty — 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`)_
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 
 > `002.md` retired to `done/` after w6/m2 closed (line repaired 2026-07-12 — a stale "none open" bullet sat here while `005.md` was open).

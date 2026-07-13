@@ -24,10 +24,10 @@ import (
 
 // graphql.go is the GraphQL fragment: a read query, deploys(serviceId), for
 // the dashboard's Deploys/Events tab (w5) to nest deploy history under a
-// service, plus w2/m10's cancelDeploy/rollbackService mutations. Named
-// deploys/serviceId (not id) since it isn't a single-resource fetch-by-id
-// like server(id) — it's a service-scoped list, matching the milestone's own
-// naming.
+// service, plus w2/m10's cancelDeploy/rollbackService mutations and the
+// triggerDeploy mutation (w2/006). Named deploys/serviceId (not id) since it
+// isn't a single-resource fetch-by-id like server(id) — it's a service-scoped
+// list, matching the milestone's own naming.
 
 var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Deploy",
@@ -66,14 +66,22 @@ var deployMutationArgs = graphql.FieldConfigArgument{
 	"deployId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 }
 
-// GraphQLMutation returns cancelDeploy/rollbackService (w2/m10) — bex
-// extensions, naming unconfirmed against a live Render dashboard capture
-// (Render's own dashboard exposes Cancel/Rollback as deploy-list actions, not
-// documented GraphQL operation names), so it follows the existing
-// suspendService/resumeService scalar-arg convention rather than inventing a
-// different shape.
+// GraphQLMutation returns triggerDeploy (w2/006) plus cancelDeploy/rollbackService
+// (w2/m10). triggerDeploy mirrors Render's dashboard Manual Deploy action —
+// delegates to the same Trigger verb as REST POST .../deploys so the surfaces
+// cannot drift. cancelDeploy/rollbackService follow the existing
+// suspendService/resumeService scalar-arg convention.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
+		"triggerDeploy": &graphql.Field{
+			Type: deployGQLType,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Trigger(p.Context, p.Args["serviceId"].(string))
+			},
+		},
 		"cancelDeploy": &graphql.Field{
 			Type: deployGQLType,
 			Args: deployMutationArgs,
