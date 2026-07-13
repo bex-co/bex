@@ -156,4 +156,14 @@ else
   echo "WARN: promtool not installed — skipping alerting-rule check/test (docs/ADR010-observability.md)" >&2
 fi
 
+# bex-db backup guard (w2/m27 t009): spec.backup.barmanObjectStore must be present
+# so a future edit can't silently drop the backup config. Same structural-manifest
+# pattern as the network-policy and RBAC checks above.
+echo "==> bex-db backup config present (deploy/gitops/charts/bex-postgres/cluster.yaml)"
+barman="$(yq '.spec.backup.barmanObjectStore' deploy/gitops/charts/bex-postgres/cluster.yaml)"
+if [ "$barman" = "null" ] || [ -z "$barman" ]; then
+  echo "FAIL: cluster.yaml missing spec.backup.barmanObjectStore — bex-db has no backup config (see docs/ADR031-platform-data-backup.md)" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

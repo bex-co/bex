@@ -108,6 +108,8 @@ mv /root/etcd.yaml /etc/kubernetes/manifests/          # restart etcd
 kubectl get apps.app.bex.co -A                         # verify
 ```
 
-## What was tested (2026-07-05, local CAPD cluster)
+## What was tested
 
-The full chain ran against a real kubeadm cluster with the real bucket: the Job scheduled onto the control-plane node (nodeSelector + toleration), snapshotted live etcd over hostNetwork with the hostPath certs, uploaded, and pruned 10 objects down to the newest 7. Path A then recovered `/registry/app.bex.co/apps/default/beancount-cms` from the downloaded snapshot via a throwaway etcd. Test objects were removed from the bucket afterwards; the `etcd-snapshots/` prefix starts empty for prod.
+**2026-07-05, local CAPD cluster (single-node, pre-m19):** The full chain ran against a real kubeadm cluster with the real bucket: the Job scheduled onto the control-plane node (nodeSelector + toleration), snapshotted live etcd over hostNetwork with the hostPath certs, uploaded, and pruned 10 objects down to the newest 7. Path A then recovered `/registry/app.bex.co/apps/default/beancount-cms` from the downloaded snapshot via a throwaway etcd. Test objects were removed from the bucket afterwards.
+
+**Multi-node topology re-verification (pending):** The 2026-07-05 test predates the w1/m19 rearchitecture (CAPH-owned network, tainted control plane, CAPI pivot). A re-drill against the current multi-node prod topology is planned; drill procedure and record target are in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records.

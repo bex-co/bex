@@ -278,6 +278,32 @@ spec:
                   - source_labels: [__name__]
                     regex: (vault|bao)_core_unsealed
                     action: keep
+              # CNPG bex-db per-pod metrics (:9187) — pg_stat_archiver for the
+              # BexDbBackupStale alert. Scraped from the bex-db CNPG pod(s) directly
+              # (not the cluster Service) to see archiver state on the primary.
+              # Verify metric names on first deploy:
+              #   kubectl -n bex-system exec bex-db-1 -- curl -s :9187/metrics | grep archiver
+              - job_name: cnpg-bex-db
+                scrape_interval: 60s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+                    action: keep
+                    regex: bex-db
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9187
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                  - source_labels: [__meta_kubernetes_pod_namespace]
+                    target_label: namespace
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: cnpg_pg_stat_archiver_.*
+                    action: keep
           # ── Alerting rules ──────────────────────────────────────────────────
           # Small, high-signal pack: every alert carries a one-line description
           # with the kubectl command to start debugging. Two groups: `platform`
@@ -390,7 +416,21 @@ spec:
                       severity: critical
                     annotations:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
-                      description: "The nightly {{ $labels.cronjob }} last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md"
+                      description: "The nightly {{ $labels.cronjob }} last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR031-platform-data-backup.md"
+
+                  # bex-db WAL archiver staleness — the CNPG-native backup path that
+                  # CronJobStale cannot see (CNPG uses pg_stat_archiver, not a CronJob).
+                  # Fires if pg_stat_archiver reports no successful archival in >26h.
+                  # Metric is served by the bex-db CNPG pod on :9187 (cnpg-bex-db scrape).
+                  - alert: BexDbBackupStale
+                    expr: |
+                      (time() - cnpg_pg_stat_archiver_last_archived_time{namespace="bex-system"}) > (26 * 3600)
+                    for: 0m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "bex-db WAL archiving stalled (>26h since last archive)"
+                      description: "bex-db's WAL archiver hasn't shipped a segment in >26h — control-plane PITR data is at risk. Debug: kubectl -n bex-system exec {{ $labels.pod }} -- psql -U postgres -c \"SELECT * FROM pg_stat_archiver\"; check s3://bex-tfstate/bex-db/ for recent WAL; verify Secret bex-db-backup-s3 exists. Runbook: docs/ADR031-platform-data-backup.md"
 
                   # Per-MEMBER seal detection off the openbao per-pod telemetry
                   # scrape (vault_core_unsealed=0 ⇒ sealed). Not the round-robin

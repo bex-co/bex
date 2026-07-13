@@ -4,7 +4,9 @@
 # disk, so it survives a node rebuild (unlike etcd). CNPG creates:
 #   - service  bex-db-rw   (read-write endpoint the control plane connects to)
 #   - secret   bex-db-app  (app user/password for database `bex`)
-# TODO(task 007): add spec.backup.barmanObjectStore -> Wasabi for off-cluster backups + PITR.
+# Backup: nightly ScheduledBackup + continuous WAL archiving to the shared object-store
+# bucket (see scheduled-backup.yaml). Credentials in Secret `bex-db-backup-s3` (NOT in
+# git); creation command + restore runbook: docs/ADR031-platform-data-backup.md.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -33,3 +35,22 @@ spec:
     initdb:
       database: bex
       owner: bex
+  backup:
+    # Mirrors the tenant-Postgres backup config the operator builds via BEX_DB_BACKUP_*.
+    # endpointURL / destinationPath must match $TF_STATE_ENDPOINT / s3://$TF_STATE_BUCKET.
+    # Update endpointURL for Hetzner Object Storage: https://fsn1.your-objectstorage.com.
+    retentionPolicy: "7d"
+    barmanObjectStore:
+      destinationPath: s3://bex-tfstate/bex-db
+      endpointURL: https://s3.eu-central-2.wasabisys.com
+      s3Credentials:
+        accessKeyId:
+          name: bex-db-backup-s3
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: bex-db-backup-s3
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip

@@ -87,4 +87,4 @@ bao operator raft snapshot restore <latest>.snap
 
 For a from-scratch rebuild (new PVC): let Argo bring OpenBao up, run `scripts/bao-init.sh` so the node initializes/unseals with the `.env` keys, then apply steps 1–3. `bao-init.sh` on a fresh node writes NEW keys to `.env` — if you are restoring an OLD snapshot, keep the old `.env` keys, because the restored data is sealed with the master key that matches them.
 
-> ⚠ Untested against a live cluster — structurally complete (the CronJob renders and the role is least-privilege), but verify the first real snapshot + restore end-to-end before relying on it, the same way etcd-backup was validated.
+> **Restore drill pending (2026-07-12):** The backup CronJob is structurally complete and the role is least-privilege, but the restore path has not yet been executed against a live cluster. Full drill procedure and record target are in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records. Execute the drill and update that document before relying on this runbook in a real recovery.

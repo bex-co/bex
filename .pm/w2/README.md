@@ -17,6 +17,7 @@
 - [x] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks; DONE 2026-07-12 — REST/GraphQL/MCP + dashboard InsightsPanel; `pg_stat_statements` enabled in CNPG spec; parameter-overrides write path through operator; parity row closed) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17); moved to `done/m25/`
 - [x] **m11** — Unify service creation through the control-plane store (9 tasks; DONE 2026-07-12 — all creates write store rows + mint clone secrets; deploy history populates for all surfaces) ← promoted from `005` 2026-07-12 (found during the m8/m9 live acceptance: private-repo store-managed builds fail with no clone secret; public creates have no deploy history)
 - [ ] **m13** — Health check path: full-surface parity (PATCH · GraphQL · MCP · dashboard) (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-12 (docs/ADR018-render-parity.md line 21 gap; folds `w5/009`)
+- [x] **m27** — Close the control-plane disaster-recovery gaps (10 tasks; DONE 2026-07-12 — bex-db barmanObjectStore backup config + ScheduledBackup; BexDbBackupStale alert + CNPG scrape; ADR031 consolidated backup/restore policy; ADR011/ADR015 stale warnings updated; gitops-validate.sh structural guard; restore drill procedures documented — operational drills require live cluster execution post-deploy) ← from `/pm-brainstorm more` 2026-07-12 (highest-severity unaddressed gap: bex-db had zero backup)
 
 ## Inbox
 
