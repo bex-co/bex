@@ -44,7 +44,8 @@ spec:
 ---
 # bex-registry: zot OCI registry on :5000
 # Allowed: bex-system (operator triggers builds, not push; nodes pull directly),
-#   build pods in the apps namespace (push after in-cluster BuildKit build).
+#   build pods in the apps namespace (push after in-cluster BuildKit build),
+#   and the NODES themselves via the CiliumNetworkPolicy below.
 # Blocked: tenant app pods in the apps namespace (they must not push/pull directly).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -65,6 +66,25 @@ spec:
           podSelector:
             matchLabels:
               app.bex.co/component: build
+
+---
+# Kubelet image pulls reach zot FROM THE NODE (host/remote-node identity, not a
+# pod IP), and under Cilium a k8s-NetworkPolicy ipBlock can never match node
+# traffic (CIDR rules apply to world/external only). Without this additive
+# Cilium policy, every deploy of a git-built image dies in ImagePullBackOff —
+# found live on prod 2026-07-12 backfilling beancount-cms/eden-cms-v2. Tenant
+# pod isolation is unaffected: pods keep matching the k8s policy above.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-image-pulls
+  namespace: bex-registry
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
 
 ---
 # secrets: OpenBao on :8200
