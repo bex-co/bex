@@ -32,6 +32,7 @@
 - [ ] **m24** — Multi-service `bex.yml`: Blueprint-shaped stack deploys (9 tasks) ← from `/pm-brainstorm more` 2026-07-12 (revives the 2026-07-09 proposal; DO_NOT_DO routes `fromDatabase` spec work to w1; all ingredients — types m15, env groups m16, Postgres m17, KV m14 — now shipped)
 - [x] **m25** — Managed Postgres observability: processes · top-queries · sizes · table-scans · parameter-overrides (10 tasks) ← from `/pm-brainstorm more` 2026-07-12 (extends w1/m17, last open Postgres parity row) — done 2026-07-12, moved to `w2/done/m25/`
 - [ ] **m26** — Harden the build-image pull path (Zot node access, retention, drift guards) (10 tasks) ← promoted from `017` 2026-07-12 (found live during a routine backfill: no git-built image was reliably pullable on prod; autoscaler-minted nodes fail today without this)
+- [ ] **m27** — Close the control-plane disaster-recovery gaps (10 tasks) ← from a codebase survey during `/pm-brainstorm more milestones to work on` 2026-07-13 (`bex-db`'s CNPG cluster has zero backup config at all; OpenBao's restore path has never been tested; etcd's last restore test predates the m19 rearchitecture); includes `docs/ADR031-platform-data-backup.md`
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
