@@ -123,6 +123,35 @@ tests:
               summary: "bex-system/bex-api-abc (api) is CrashLoopBackOff"
               description: "Platform container has been CrashLoopBackOff for >10m. Debug: kubectl -n bex-system describe pod bex-api-abc; kubectl -n bex-system logs bex-api-abc -c api --previous"
 
+  # ZotRegistryFillingUp: fires above 70% (not at 65%), respects the 15m for-duration.
+  - name: ZotRegistryFillingUp threshold and for-duration
+    interval: 1m
+    input_series:
+      # 72% full (above 70%) — fires after 15m
+      - series: 'kubelet_volume_stats_used_bytes{namespace="bex-registry", persistentvolumeclaim="zot-data"}'
+        values: "7200000000x30"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="bex-registry", persistentvolumeclaim="zot-data"}'
+        values: "10000000000x30"
+      # 65% full (below 70%) — must NOT fire
+      - series: 'kubelet_volume_stats_used_bytes{namespace="bex-registry", persistentvolumeclaim="zot-other"}'
+        values: "6500000000x30"
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="bex-registry", persistentvolumeclaim="zot-other"}'
+        values: "10000000000x30"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: ZotRegistryFillingUp
+        exp_alerts: [] # not yet 15m for the 72% PVC
+      - eval_time: 16m
+        alertname: ZotRegistryFillingUp
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              persistentvolumeclaim: zot-data
+            exp_annotations:
+              summary: "Zot registry PVC zot-data is 72.00% full"
+              description: "The Zot registry volume is >70% full. The retention policy prunes to the last 10 tags per repo (w1/m26 t003); if still filling, a build churn loop may be the cause. Debug: kubectl -n bex-registry get pvc; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry"
+
   # OpenBaoSealed: per-member — a sealed follower (gauge 0) fires even while the
   # leader is unsealed (gauge 1). Proves the alert is NOT masked by a healthy
   # member (the reason it reads per-pod telemetry, not the round-robin Service).

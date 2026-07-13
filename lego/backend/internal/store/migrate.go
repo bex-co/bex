@@ -22,6 +22,7 @@ limitations under the License.
 package store
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5" // registers the pgx5:// driver
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 //go:embed migrations/*.sql
@@ -50,6 +52,39 @@ func Migrate(uri string) error {
 	defer func() { _, _ = m.Close() }()
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("controlplane: migrate: %w", err)
+	}
+	return nil
+}
+
+// CheckOwnership verifies that every table in the public schema is owned by the
+// role the pool connects as. A mismatch means a migration was applied by a
+// superuser (e.g. postgres) instead of the app role (bex), which silently
+// breaks table-level permissions. Call after Migrate at startup so the problem
+// pages immediately instead of surfacing as a cryptic "permission denied" at
+// runtime.
+func CheckOwnership(ctx context.Context, pool *pgxpool.Pool) error {
+	rows, err := pool.Query(ctx,
+		`SELECT tablename, tableowner
+		 FROM   pg_tables
+		 WHERE  schemaname = 'public'
+		 AND    tableowner != current_user`)
+	if err != nil {
+		return fmt.Errorf("controlplane: check table ownership: %w", err)
+	}
+	defer rows.Close()
+	var misowned []string
+	for rows.Next() {
+		var tablename, owner string
+		if err := rows.Scan(&tablename, &owner); err != nil {
+			return fmt.Errorf("controlplane: scan ownership row: %w", err)
+		}
+		misowned = append(misowned, tablename+" (owner: "+owner+")")
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("controlplane: check table ownership: %w", err)
+	}
+	if len(misowned) > 0 {
+		return fmt.Errorf("controlplane: tables owned by unexpected role — run ALTER TABLE <t> OWNER TO <current_user> for: %s", strings.Join(misowned, ", "))
 	}
 	return nil
 }

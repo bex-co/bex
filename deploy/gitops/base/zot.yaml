@@ -19,19 +19,31 @@ spec:
   source:
     repoURL: https://zotregistry.dev/helm-charts
     chart: zot
-    targetRevision: "0.1.121"          # pinned (was "0.1.*"); bump deliberately
+    targetRevision: "0.1.121" # pinned (was "0.1.*"); bump deliberately
     helm:
       values: |
+        # NodePort 30500 lets kubelet on tenant nodes pull images via
+        # 127.0.0.1:30500 (configured in the CAPH machine template's
+        # containerd hosts.toml) without needing cluster-internal DNS.
         service:
-          type: ClusterIP
+          type: NodePort
           port: 5000
-        # mountConfig: ship our own config (below) so auth + accessControl are on.
-        # The chart creates <release>-config and mounts it at /etc/zot.
+          nodePort: 30500
+        # mountConfig: true ships our own config (below) so auth + accessControl
+        # are on, and GC + retention (w1/m26 t003) prevent a runaway rebuild loop
+        # from silently filling the 10Gi volume.
         mountConfig: true
+        persistence: true
         configFiles:
           config.json: |-
             {
-              "storage": { "rootDirectory": "/var/lib/registry" },
+              "distSpecVersion": "1.1.0",
+              "storage": {
+                "rootDirectory": "/var/lib/registry",
+                "gc": true,
+                "gcDelay": "1h",
+                "gcInterval": "24h"
+              },
               "http": {
                 "address": "0.0.0.0",
                 "port": "5000",
@@ -50,7 +62,24 @@ spec:
                   }
                 }
               },
-              "log": { "level": "info" }
+              "log": { "level": "info" },
+              "extensions": {
+                "retention": {
+                  "dryRun": false,
+                  "delay": "2h",
+                  "policies": [
+                    {
+                      "repositories": [".*"],
+                      "keepTags": [
+                        {
+                          "patterns": [".*"],
+                          "mostRecentlyPushedCount": 10
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
             }
         # Do NOT use the chart's secretFiles (it defaults to admin:admin). The
         # htpasswd is mounted from the out-of-band zot-htpasswd Secret instead.
@@ -58,7 +87,6 @@ spec:
         externalSecrets:
           - secretName: zot-htpasswd
             mountPath: /secret
-        persistence: true
         # w1/m19 t003: platform pool
         nodeSelector:
           bex.co/pool: platform

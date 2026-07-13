@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -167,7 +168,14 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 			continue
 		}
 		if _, err := h.Svc.redeploy(ctx, a.Name); err != nil {
-			return nil, err
+			// Log but do not propagate: a 5xx response causes the git host to
+			// retry the delivery, re-triggering redeploy on apps that were already
+			// bumped (each retry stamps a new spec.restartedAt, incrementing the
+			// CR generation and triggering a full rebuild — the generation churn
+			// that can fill the Zot registry volume). Return 200 with the
+			// partial list instead.
+			log.Printf("webhook: redeploy %s: %v", a.Name, err)
+			continue
 		}
 		redeployed = append(redeployed, a.Name)
 	}

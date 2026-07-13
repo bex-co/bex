@@ -195,6 +195,9 @@ func main() {
 		if err := store.Migrate(dbURI); err != nil {
 			log.Fatalf("bex-api: %v", err)
 		}
+		if err := store.CheckOwnership(ctx, pool); err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
 
 		st := store.NewPGStore(pool)
 		rec = store.NewReconciler(cl, st, appsNS)

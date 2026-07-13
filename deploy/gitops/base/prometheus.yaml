@@ -492,6 +492,22 @@ spec:
                     annotations:
                       summary: "Traefik is serving >5% 5xx responses"
                       description: "Over 5% of edge requests have been 5xx for >10m (with meaningful traffic). Debug: kubectl -n traefik logs deploy/traefik; check upstream service health and recent deploys."
+
+                  # Zot registry specific: fire at 70% (vs. the generic 85% threshold) to
+                  # give more lead time. A runaway build churn loop can fill Zot's 10Gi
+                  # PVC within hours; the retention policy (w1/m26 t003) bounds growth but
+                  # a page before it fills is the safety net if GC falls behind.
+                  - alert: ZotRegistryFillingUp
+                    expr: |
+                      kubelet_volume_stats_used_bytes{namespace="bex-registry"}
+                      / kubelet_volume_stats_capacity_bytes{namespace="bex-registry"}
+                      > 0.70
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+                      description: "The Zot registry volume is >70% full. The retention policy prunes to the last 10 tags per repo (w1/m26 t003); if still filling, a build churn loop may be the cause. Debug: kubectl -n bex-registry get pvc; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

@@ -128,6 +128,14 @@ spec:
         - mkdir -p /etc/containerd
         - containerd config default > /etc/containerd/config.toml
         - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
+        # w1/m26 t001: kubelet resolves "zot.bex-registry.svc" via host DNS
+        # (not kube-dns), so the ClusterIP is unreachable. NodePort 30500 on
+        # 127.0.0.1 is always reachable from any node; skip_verify permits the
+        # plain-HTTP internal registry. Written here (not files:) because the
+        # parent dir doesn't exist yet when cloud-init write_files runs.
+        - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000
+        - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+        - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
         - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
         - mkdir -p /etc/apt/keyrings/
         - curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg

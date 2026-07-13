@@ -837,6 +837,48 @@ func TestMembersAndInvites(t *testing.T) {
 	}
 }
 
+// TestCheckOwnership verifies that CheckOwnership returns nil when all
+// public-schema tables are owned by the connecting role (the normal post-
+// migration state), and returns an error when a table has drifted to a
+// different owner (the tenant_invites incident, w1/m26 t006).
+func TestCheckOwnership(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	// Normal post-migration state: all tables owned by the current user.
+	if err := CheckOwnership(ctx, pool); err != nil {
+		t.Fatalf("clean ownership check failed: %v", err)
+	}
+
+	// Simulate drift: create a throwaway role, transfer a table's owner, verify
+	// CheckOwnership catches it. Skipped if the test user lacks SUPERUSER/CREATEROLE.
+	const driftRole = "bex_ownership_test_role"
+	if _, err := pool.Exec(ctx, `CREATE ROLE `+driftRole); err != nil {
+		t.Skipf("cannot create role (no privilege): %v", err)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, `ALTER TABLE tenants OWNER TO CURRENT_USER`)
+		_, _ = pool.Exec(ctx, `DROP ROLE IF EXISTS `+driftRole)
+	}()
+	if _, err := pool.Exec(ctx, `ALTER TABLE tenants OWNER TO `+driftRole); err != nil {
+		t.Skipf("cannot change table owner: %v", err)
+	}
+	if err := CheckOwnership(ctx, pool); err == nil {
+		t.Error("CheckOwnership returned nil with misowned table, want error")
+	}
+}
+
 // TestAcceptInviteRespectsPlanLimits pins the fix for the plan-limit bypass this
 // milestone (w6/m13) proved on real prod: a workspace on Pro invites a second
 // member (and a `developer`, a role Hobby doesn't offer), then downgrades to
