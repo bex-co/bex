@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -60,8 +61,9 @@ type monthKey struct {
 }
 
 type monthlyVal struct {
-	workspaceID string
-	quantity    int64
+	workspaceID  string
+	resourceKind string
+	quantity     int64
 }
 
 func newMemUsageStore(apps ...store.App) *memUsageStore {
@@ -100,7 +102,8 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	totals := map[struct{ svc, kind, tier string }]int64{}
+	type summaryKey struct{ svc, kind, tier, resourceKind string }
+	totals := map[summaryKey]int64{}
 	for k, row := range m.rows {
 		if row.WorkspaceID != workspaceID {
 			continue
@@ -109,19 +112,25 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 		if ws.Before(monthStart) || !ws.Before(now) {
 			continue
 		}
-		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		key := summaryKey{k.serviceID, k.kind, k.tier, row.ResourceKind}
 		totals[key] += row.Quantity
 	}
 	for k, v := range m.monthly {
 		if v.workspaceID != workspaceID || !k.month.Equal(monthStart) {
 			continue
 		}
-		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		key := summaryKey{k.serviceID, k.kind, k.tier, v.resourceKind}
 		totals[key] += v.quantity
 	}
 	out := make([]store.UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
-		out = append(out, store.UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
+		out = append(out, store.UsageSummaryRow{
+			ServiceID:    key.svc,
+			Kind:         key.kind,
+			Tier:         key.tier,
+			ResourceKind: key.resourceKind,
+			Total:        total,
+		})
 	}
 	return out, nil
 }
@@ -143,8 +152,9 @@ func (m *memUsageStore) CompactUsage(_ context.Context, before time.Time) (store
 		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
 		mk := monthKey{k.serviceID, k.kind, k.tier, month}
 		m.monthly[mk] = monthlyVal{
-			workspaceID: row.WorkspaceID,
-			quantity:    m.monthly[mk].quantity + row.Quantity,
+			workspaceID:  row.WorkspaceID,
+			resourceKind: row.ResourceKind,
+			quantity:     m.monthly[mk].quantity + row.Quantity,
 		}
 		delete(m.rows, k)
 		months[month] = true
@@ -557,6 +567,247 @@ func TestPromInstantScalarParsesCorrectly(t *testing.T) {
 	const want = 42.5
 	if v != want {
 		t.Errorf("expected %v, got %v", want, v)
+	}
+}
+
+// --- t008: Database/KeyValue rollup tests ---
+
+// buildFakeClientWithDatastores creates a fake k8s client containing one
+// Database CR ("mydb", plan "basic-256mb", tenant "tea-ds") and one KeyValue
+// CR ("mykv", plan "starter", tenant "tea-ds").
+func buildFakeClientWithDatastores(t *testing.T) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	_ = appv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mydb",
+			Namespace: "default",
+			Labels: map[string]string{
+				core.LabelTenant: "tea-ds",
+			},
+		},
+		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb"},
+	}
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mykv",
+			Namespace: "default",
+			Labels: map[string]string{
+				core.LabelTenant: "tea-ds",
+			},
+		},
+		Spec: appv1alpha1.KeyValueSpec{Plan: "starter"},
+	}
+	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(db, kv).Build()
+}
+
+// TestProcessDatastoreWindowUpsertInstanceSeconds verifies that
+// processDatastoreWindow writes an instance_seconds row with the correct
+// resource_kind, service_id (CR name), and tier (plan) for a Database.
+func TestProcessDatastoreWindowUpsertInstanceSeconds(t *testing.T) {
+	prom := fakeProm(1.0) // 1 pod present → 3600 instance-seconds per window
+	defer prom.Close()
+
+	st := newMemUsageStore()
+	svc := &Service{
+		Base:     &core.Base{},
+		Store:    st,
+		PromBase: prom.URL,
+	}
+
+	ds := datastoreEntry{
+		ID:       "mydb",
+		Name:     "mydb",
+		TenantID: "tea-ds",
+		Plan:     "basic-256mb",
+		Kind:     store.ResourceKindPostgres,
+	}
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	svc.processDatastoreWindow(context.Background(), ds, window)
+
+	k := usageKey{"mydb", store.UsageKindInstanceSeconds, "basic-256mb", window}
+	st.mu.Lock()
+	row, ok := st.rows[k]
+	st.mu.Unlock()
+
+	if !ok {
+		t.Fatalf("expected usage_hourly row for mydb/instance_seconds, none found")
+	}
+	if row.ResourceKind != store.ResourceKindPostgres {
+		t.Errorf("ResourceKind: want %q, got %q", store.ResourceKindPostgres, row.ResourceKind)
+	}
+	if row.Quantity <= 0 {
+		t.Errorf("instance_seconds quantity: expected > 0, got %d", row.Quantity)
+	}
+}
+
+// TestProcessDatastoreWindowNoEgressOrBuild verifies that
+// processDatastoreWindow writes ONLY instance_seconds — never egress_bytes or
+// build_seconds — for a Database or KeyValue resource.
+func TestProcessDatastoreWindowNoEgressOrBuild(t *testing.T) {
+	prom := fakeProm(1.0)
+	defer prom.Close()
+
+	st := newMemUsageStore()
+	svc := &Service{
+		Base:     &core.Base{},
+		Store:    st,
+		PromBase: prom.URL,
+	}
+
+	ds := datastoreEntry{
+		ID:       "mykv",
+		Name:     "mykv",
+		TenantID: "tea-ds",
+		Plan:     "starter",
+		Kind:     store.ResourceKindKeyValue,
+	}
+	window := time.Date(2026, 7, 11, 6, 0, 0, 0, time.UTC)
+	svc.processDatastoreWindow(context.Background(), ds, window)
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for k := range st.rows {
+		if k.serviceID == "mykv" && (k.kind == store.UsageKindEgressBytes || k.kind == store.UsageKindBuildSeconds) {
+			t.Errorf("unexpected %s row for datastore mykv", k.kind)
+		}
+	}
+}
+
+// TestListDatastoresPicksUpCRs verifies that listDatastores finds both a
+// Database and a KeyValue CR with the correct attributes (id, plan, kind,
+// tenantID) and skips unlabeled CRs.
+func TestListDatastoresPicksUpCRs(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = appv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+
+	// Two labeled CRs (to pick up) and one unlabeled Database (to skip).
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mydb", Namespace: "default",
+			Labels: map[string]string{core.LabelTenant: "tea-ds"},
+		},
+		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb"},
+	}
+	unlabeledDB := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "orphan", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free"},
+	}
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mykv", Namespace: "default",
+			Labels: map[string]string{core.LabelTenant: "tea-ds"},
+		},
+		Spec: appv1alpha1.KeyValueSpec{Plan: "starter"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(db, unlabeledDB, kv).Build()
+
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	entries, err := svc.listDatastores(context.Background())
+	if err != nil {
+		t.Fatalf("listDatastores: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 labeled entries, got %d: %+v", len(entries), entries)
+	}
+	byID := map[string]datastoreEntry{}
+	for _, e := range entries {
+		byID[e.ID] = e
+	}
+	dbEntry := byID["mydb"]
+	if dbEntry.TenantID != "tea-ds" || dbEntry.Plan != "basic-256mb" || dbEntry.Kind != store.ResourceKindPostgres {
+		t.Errorf("mydb entry wrong: %+v", dbEntry)
+	}
+	kvEntry := byID["mykv"]
+	if kvEntry.TenantID != "tea-ds" || kvEntry.Plan != "starter" || kvEntry.Kind != store.ResourceKindKeyValue {
+		t.Errorf("mykv entry wrong: %+v", kvEntry)
+	}
+}
+
+// TestCatchUpCoversDatastoreWindows verifies that catchUp fills missed windows
+// for Database/KeyValue CRs alongside App services.
+func TestCatchUpCoversDatastoreWindows(t *testing.T) {
+	cl := buildFakeClientWithDatastores(t)
+	app := store.App{ID: "srv-ds", TenantID: "tea-ds", Name: "api", Tier: "starter"}
+	st := newMemUsageStore(app)
+
+	prom := fakeProm(1.0)
+	defer prom.Close()
+
+	svc := &Service{
+		Base:     &core.Base{Client: cl, Namespace: "default"},
+		Store:    st,
+		PromBase: prom.URL,
+	}
+
+	svc.catchUp(context.Background())
+
+	st.mu.Lock()
+	var appRows, dbRows, kvRows int
+	for _, row := range st.rows {
+		switch row.ResourceKind {
+		case store.ResourceKindService:
+			appRows++
+		case store.ResourceKindPostgres:
+			dbRows++
+		case store.ResourceKindKeyValue:
+			kvRows++
+		}
+	}
+	st.mu.Unlock()
+
+	// At least one window per resource after catch-up.
+	if appRows == 0 {
+		t.Error("catchUp: no App rows written")
+	}
+	if dbRows == 0 {
+		t.Error("catchUp: no Database rows written")
+	}
+	if kvRows == 0 {
+		t.Error("catchUp: no KeyValue rows written")
+	}
+}
+
+// TestRollupCoversDatastoreWindow verifies that rollup processes Database and
+// KeyValue CRs for the window alongside Apps.
+func TestRollupCoversDatastoreWindow(t *testing.T) {
+	cl := buildFakeClientWithDatastores(t)
+	app := store.App{ID: "srv-ds2", TenantID: "tea-ds", Name: "api2", Tier: "free"}
+	st := newMemUsageStore(app)
+
+	prom := fakeProm(1.0)
+	defer prom.Close()
+
+	svc := &Service{
+		Base:     &core.Base{Client: cl, Namespace: "default"},
+		Store:    st,
+		PromBase: prom.URL,
+	}
+
+	// rollup operates on the window that just closed (the hour before t).
+	t2 := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC) // triggers window 11:00
+	svc.rollup(context.Background(), t2)
+
+	st.mu.Lock()
+	var dbRows, kvRows int
+	for _, row := range st.rows {
+		switch row.ResourceKind {
+		case store.ResourceKindPostgres:
+			dbRows++
+		case store.ResourceKindKeyValue:
+			kvRows++
+		}
+	}
+	st.mu.Unlock()
+
+	if dbRows == 0 {
+		t.Error("rollup: no Database rows written")
+	}
+	if kvRows == 0 {
+		t.Error("rollup: no KeyValue rows written")
 	}
 }
 

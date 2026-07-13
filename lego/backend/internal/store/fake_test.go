@@ -390,8 +390,9 @@ type monthKey struct {
 
 // monthlyRow is one usage_monthly aggregate value.
 type monthlyRow struct {
-	workspaceID string
-	quantity    int64
+	workspaceID  string
+	resourceKind string
+	quantity     int64
 }
 
 func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
@@ -420,7 +421,8 @@ func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now t
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	totals := map[struct{ svc, kind, tier string }]int64{}
+	type summaryKey struct{ svc, kind, tier, resourceKind string }
+	totals := map[summaryKey]int64{}
 	for k, row := range m.usage {
 		if row.WorkspaceID != workspaceID {
 			continue
@@ -429,19 +431,25 @@ func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now t
 		if ws.Before(monthStart) || !ws.Before(now) {
 			continue
 		}
-		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		key := summaryKey{k.serviceID, k.kind, k.tier, row.ResourceKind}
 		totals[key] += row.Quantity
 	}
 	for k, row := range m.monthly {
 		if row.workspaceID != workspaceID || !k.month.Equal(monthStart) {
 			continue
 		}
-		key := struct{ svc, kind, tier string }{k.serviceID, k.kind, k.tier}
+		key := summaryKey{k.serviceID, k.kind, k.tier, row.resourceKind}
 		totals[key] += row.quantity
 	}
 	out := make([]UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
-		out = append(out, UsageSummaryRow{ServiceID: key.svc, Kind: key.kind, Tier: key.tier, Total: total})
+		out = append(out, UsageSummaryRow{
+			ServiceID:    key.svc,
+			Kind:         key.kind,
+			Tier:         key.tier,
+			ResourceKind: key.resourceKind,
+			Total:        total,
+		})
 	}
 	return out, nil
 }
@@ -461,8 +469,9 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
 		mk := monthKey{k.serviceID, k.kind, k.tier, month}
 		m.monthly[mk] = monthlyRow{
-			workspaceID: row.WorkspaceID,
-			quantity:    m.monthly[mk].quantity + row.Quantity,
+			workspaceID:  row.WorkspaceID,
+			resourceKind: row.ResourceKind,
+			quantity:     m.monthly[mk].quantity + row.Quantity,
 		}
 		delete(m.usage, k)
 		months[month] = true

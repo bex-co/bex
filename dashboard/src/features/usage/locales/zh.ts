@@ -37,6 +37,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "服务",
     description: "Table column header: service name",
   },
+  "usage.colKind": {
+    message: "类型",
+    description: "Table column header: resource kind (service/postgres/key_value)",
+  },
   "usage.colPlan": {
     message: "套餐",
     description: "Table column header: service plan/tier",

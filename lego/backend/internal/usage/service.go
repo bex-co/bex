@@ -43,6 +43,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // UsageStore is the slice of internal/store the usage feature needs: the
@@ -100,8 +101,9 @@ type Summary struct {
 // ServiceUsage is one service's contribution to the workspace's month-to-date
 // totals, broken out by kind (and tier for instance_seconds).
 type ServiceUsage struct {
-	ServiceID string
-	Rows      []store.UsageSummaryRow
+	ServiceID    string
+	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value"
+	Rows         []store.UsageSummaryRow
 }
 
 // monthToDateAt is the implementation used by adapters. now controls both the
@@ -135,19 +137,22 @@ func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
 	return s.monthToDateAt(ctx, s.Now().UTC())
 }
 
-// summarise groups flat summary rows by service.
+// summarise groups flat summary rows by service, carrying the resource kind
+// from the first row per service (all rows for a service_id share the same kind).
 func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
 	var order []string
 	byID := map[string][]store.UsageSummaryRow{}
+	kindByID := map[string]string{}
 	for _, r := range rows {
 		if _, seen := byID[r.ServiceID]; !seen {
 			order = append(order, r.ServiceID)
+			kindByID[r.ServiceID] = r.ResourceKind
 		}
 		byID[r.ServiceID] = append(byID[r.ServiceID], r)
 	}
 	svcs := make([]ServiceUsage, 0, len(order))
 	for _, id := range order {
-		svcs = append(svcs, ServiceUsage{ServiceID: id, Rows: byID[id]})
+		svcs = append(svcs, ServiceUsage{ServiceID: id, ResourceKind: kindByID[id], Rows: byID[id]})
 	}
 	return Summary{WorkspaceID: workspaceID, Services: svcs}
 }
@@ -230,6 +235,83 @@ func (s *Service) compact(ctx context.Context) {
 	}
 }
 
+// datastoreEntry holds the metering attributes for one Database or KeyValue CR.
+type datastoreEntry struct {
+	ID       string // CR name (== service_id in usage rows; name-as-id)
+	Name     string // same as ID
+	TenantID string // from core.LabelTenant
+	Plan     string // Spec.Plan (== tier in usage rows)
+	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue
+}
+
+// listDatastores returns all tenant-owned Database and KeyValue CRs in the
+// service namespace via the k8s client. Skips unlabeled CRs (not tenant-owned).
+// Returns nil when the k8s client is not wired.
+func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) {
+	if s.Client == nil {
+		return nil, nil
+	}
+	var out []datastoreEntry
+	var dbs appv1alpha1.DatabaseList
+	if err := s.Client.List(ctx, &dbs, client.InNamespace(s.Namespace)); err != nil {
+		return nil, fmt.Errorf("list databases: %w", err)
+	}
+	for _, d := range dbs.Items {
+		tenantID := d.Labels[core.LabelTenant]
+		if tenantID == "" {
+			continue
+		}
+		out = append(out, datastoreEntry{
+			ID:       d.Name,
+			Name:     d.Name,
+			TenantID: tenantID,
+			Plan:     d.Spec.Plan,
+			Kind:     store.ResourceKindPostgres,
+		})
+	}
+	var kvs appv1alpha1.KeyValueList
+	if err := s.Client.List(ctx, &kvs, client.InNamespace(s.Namespace)); err != nil {
+		return nil, fmt.Errorf("list keyvalues: %w", err)
+	}
+	for _, kv := range kvs.Items {
+		tenantID := kv.Labels[core.LabelTenant]
+		if tenantID == "" {
+			continue
+		}
+		out = append(out, datastoreEntry{
+			ID:       kv.Name,
+			Name:     kv.Name,
+			TenantID: tenantID,
+			Plan:     kv.Spec.Plan,
+			Kind:     store.ResourceKindKeyValue,
+		})
+	}
+	return out, nil
+}
+
+// processDatastoreWindow measures instance_seconds for one (datastore, window)
+// pair and upserts the row. Only instance_seconds applies to managed datastores
+// (see docs/ADR023-usage-metering.md § Meter applicability for Database/KeyValue):
+// egress_bytes is N/A (Traefik TCP/SNI doesn't emit the HTTP frontend metric)
+// and build_seconds is N/A (no build Jobs for managed data stores).
+func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) {
+	end := window.Add(time.Hour)
+	instanceSecs := s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+	if instanceSecs > 0 || ds.Plan != "" {
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID:  ds.TenantID,
+			ServiceID:    ds.ID,
+			ResourceKind: ds.Kind,
+			Kind:         store.UsageKindInstanceSeconds,
+			Tier:         ds.Plan,
+			WindowStart:  window,
+			Quantity:     instanceSecs,
+		}); err != nil {
+			log.Printf("usage: upsert instance_seconds datastore %s: %v", ds.ID, err)
+		}
+	}
+}
+
 // catchUp finds the latest recorded window per service and fills any gap since
 // then (bounded to catchupLimit so a long-dead service doesn't sweep months).
 func (s *Service) catchUp(ctx context.Context) {
@@ -256,6 +338,26 @@ func (s *Service) catchUp(ctx context.Context) {
 			s.processWindow(ctx, app, w)
 		}
 	}
+	datastores, err := s.listDatastores(ctx)
+	if err != nil {
+		log.Printf("usage: catch-up: list datastores: %v", err)
+	}
+	for _, ds := range datastores {
+		latest, err := s.Store.LatestUsageWindow(ctx, ds.ID)
+		if err != nil {
+			log.Printf("usage: catch-up: latest window for datastore %s: %v", ds.ID, err)
+			continue
+		}
+		start := latest.UTC().Truncate(time.Hour)
+		if start.IsZero() || start.Before(floor) {
+			start = floor
+		} else {
+			start = start.Add(time.Hour)
+		}
+		for w := start; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
+			s.processDatastoreWindow(ctx, ds, w)
+		}
+	}
 }
 
 // rollup processes the window that just closed (the hour ending at t).
@@ -269,7 +371,15 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 	for _, app := range apps {
 		s.processWindow(ctx, app, window)
 	}
-	log.Printf("usage: rolled up window %s for %d services", window.Format(time.RFC3339), len(apps))
+	datastores, err := s.listDatastores(ctx)
+	if err != nil {
+		log.Printf("usage: rollup: list datastores: %v", err)
+	}
+	for _, ds := range datastores {
+		s.processDatastoreWindow(ctx, ds, window)
+	}
+	log.Printf("usage: rolled up window %s for %d services + %d datastores",
+		window.Format(time.RFC3339), len(apps), len(datastores))
 }
 
 // processWindow measures one (app, window) triplet and upserts all three kinds.
@@ -292,12 +402,13 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 	// (and thus produced no Prometheus signal) for the entire window.
 	if instanceSecs > 0 || app.Tier != "" {
 		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID: app.TenantID,
-			ServiceID:   app.ID,
-			Kind:        store.UsageKindInstanceSeconds,
-			Tier:        app.Tier,
-			WindowStart: window,
-			Quantity:    instanceSecs,
+			WorkspaceID:  app.TenantID,
+			ServiceID:    app.ID,
+			ResourceKind: store.ResourceKindService,
+			Kind:         store.UsageKindInstanceSeconds,
+			Tier:         app.Tier,
+			WindowStart:  window,
+			Quantity:     instanceSecs,
 		}); err != nil {
 			log.Printf("usage: upsert instance_seconds %s: %v", app.ID, err)
 		}
@@ -305,12 +416,13 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 
 	if egressBytes > 0 {
 		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID: app.TenantID,
-			ServiceID:   app.ID,
-			Kind:        store.UsageKindEgressBytes,
-			Tier:        "",
-			WindowStart: window,
-			Quantity:    egressBytes,
+			WorkspaceID:  app.TenantID,
+			ServiceID:    app.ID,
+			ResourceKind: store.ResourceKindService,
+			Kind:         store.UsageKindEgressBytes,
+			Tier:         "",
+			WindowStart:  window,
+			Quantity:     egressBytes,
 		}); err != nil {
 			log.Printf("usage: upsert egress_bytes %s: %v", app.ID, err)
 		}
@@ -318,12 +430,13 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 
 	if buildSecs > 0 {
 		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID: app.TenantID,
-			ServiceID:   app.ID,
-			Kind:        store.UsageKindBuildSeconds,
-			Tier:        "",
-			WindowStart: window,
-			Quantity:    buildSecs,
+			WorkspaceID:  app.TenantID,
+			ServiceID:    app.ID,
+			ResourceKind: store.ResourceKindService,
+			Kind:         store.UsageKindBuildSeconds,
+			Tier:         "",
+			WindowStart:  window,
+			Quantity:     buildSecs,
 		}); err != nil {
 			log.Printf("usage: upsert build_seconds %s: %v", app.ID, err)
 		}
@@ -336,8 +449,30 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 // app was running in [start, end), using cAdvisor's
 // container_memory_working_set_bytes as a presence signal (same matcher as the
 // metrics feature's instance-count query). The result is count-of-present-pods
-// × window-seconds, truncated to an integer.
+// × window-seconds, truncated to an integer. Used for App (ReplicaSet) pods
+// whose names follow the two-segment pattern <appName>-<hash>-<hash5>.
 func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) int64 {
+	matchers := fmt.Sprintf(
+		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
+		namespace, promEscape(appName))
+	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, appName)
+}
+
+// queryInstanceSecondsStateful returns instance-seconds for a StatefulSet-style
+// workload (CNPG Cluster pods <dbName>-1, <dbName>-2 or Valkey StatefulSet pods
+// <kvName>-0). The pod pattern is <name>-[0-9]+ (ordinal suffix), distinct from
+// App ReplicaSet pods which use two random-char segments.
+func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namespace string, start, end time.Time) int64 {
+	matchers := fmt.Sprintf(
+		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
+		namespace, promEscape(name))
+	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
+}
+
+// queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body.
+// It counts pods matching matchers, multiplies by windowSecs, and returns
+// pod-count × window-seconds. Returns 0 when PromBase is not set.
+func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers string, start, end time.Time, logName string) int64 {
 	if s.PromBase == "" {
 		return 0
 	}
@@ -345,15 +480,12 @@ func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace s
 	// by 3600 to get instance-seconds. Using avg_over_time with a range
 	// covering the whole window gives a pod-count average.
 	windowSecs := int64(end.Sub(start) / time.Second)
-	matchers := fmt.Sprintf(
-		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
-		namespace, promEscape(appName))
 	q := fmt.Sprintf(
 		`count(avg_over_time(container_memory_working_set_bytes{%s}[%ds]))`,
 		matchers, windowSecs)
 	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
-		log.Printf("usage: instance_seconds for %s: %v", appName, err)
+		log.Printf("usage: instance_seconds for %s: %v", logName, err)
 		return 0
 	}
 	return int64(math.Round(v * float64(windowSecs)))

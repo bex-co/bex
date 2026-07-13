@@ -266,6 +266,104 @@ func TestGraphQLAdapterAuthzDenied(t *testing.T) {
 	}
 }
 
+// seedMixedStore creates a store pre-populated with one App service row, one
+// Database row, and one KeyValue row — all in workspace "tea-mix" in July 2026.
+// Used to verify that all three resource kinds surface across adapters.
+func seedMixedStore() *memUsageStore {
+	appRow := store.App{ID: "srv-mix", TenantID: "tea-mix", Name: "webapi", Tier: "starter"}
+	st := newMemUsageStore(appRow)
+	window := time.Date(2026, 7, 12, 8, 0, 0, 0, time.UTC)
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "srv-mix",
+		ResourceKind: store.ResourceKindService,
+		Kind:         store.UsageKindInstanceSeconds, Tier: "starter",
+		WindowStart: window, Quantity: 3600,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "mydb",
+		ResourceKind: store.ResourceKindPostgres,
+		Kind:         store.UsageKindInstanceSeconds, Tier: "basic-256mb",
+		WindowStart: window, Quantity: 3600,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "mykv",
+		ResourceKind: store.ResourceKindKeyValue,
+		Kind:         store.UsageKindInstanceSeconds, Tier: "starter",
+		WindowStart: window, Quantity: 3600,
+	})
+	return st
+}
+
+// TestResourceKindSurfacesAcrossAdapters verifies that REST and GraphQL return
+// the correct resourceKind for App, Database, and KeyValue rows — the t004 DoD.
+func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
+	svc := svcWithTenant(seedMixedStore(), "tea-mix")
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+
+	// REST
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	req := httptest.NewRequest("GET", "/v1/usage", nil)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("REST: status %d: %s", w.Code, w.Body.String())
+	}
+	var restResp usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&restResp); err != nil {
+		t.Fatalf("REST decode: %v", err)
+	}
+	if len(restResp.Services) != 3 {
+		t.Fatalf("REST: expected 3 services (app+db+kv), got %d", len(restResp.Services))
+	}
+	restKinds := map[string]string{}
+	for _, svcEntry := range restResp.Services {
+		restKinds[svcEntry.ServiceID] = svcEntry.ResourceKind
+	}
+	if restKinds["srv-mix"] != store.ResourceKindService {
+		t.Errorf("REST: srv-mix resourceKind: want %q, got %q", store.ResourceKindService, restKinds["srv-mix"])
+	}
+	if restKinds["mydb"] != store.ResourceKindPostgres {
+		t.Errorf("REST: mydb resourceKind: want %q, got %q", store.ResourceKindPostgres, restKinds["mydb"])
+	}
+	if restKinds["mykv"] != store.ResourceKindKeyValue {
+		t.Errorf("REST: mykv resourceKind: want %q, got %q", store.ResourceKindKeyValue, restKinds["mykv"])
+	}
+
+	// GraphQL — same service count and resourceKind values.
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	gql := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ usage { services { serviceId resourceKind } } }`,
+		Context:       ctx,
+	})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", gql.Errors)
+	}
+	data := gql.Data.(map[string]any)
+	usageData := data["usage"].(map[string]any)
+	gqlServices := usageData["services"].([]any)
+	if len(gqlServices) != 3 {
+		t.Fatalf("GraphQL: expected 3 services, got %d", len(gqlServices))
+	}
+	gqlKinds := map[string]string{}
+	for _, raw := range gqlServices {
+		s := raw.(map[string]any)
+		sid, _ := s["serviceId"].(string)
+		rk, _ := s["resourceKind"].(string)
+		gqlKinds[sid] = rk
+	}
+	for id, wantKind := range restKinds {
+		if gqlKinds[id] != wantKind {
+			t.Errorf("GraphQL: %s resourceKind mismatch: REST=%q GraphQL=%q", id, wantKind, gqlKinds[id])
+		}
+	}
+}
+
 // --- cross-adapter consistency ---
 
 // TestAdapterConsistency verifies that the REST and GraphQL adapters return the

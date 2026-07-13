@@ -29,23 +29,34 @@ const (
 	UsageKindBuildSeconds    = "build_seconds"
 )
 
+// ResourceKind identifies what type of resource a usage row belongs to.
+// "service" is the default (App CRs); "postgres" and "key_value" are the
+// managed-datastore kinds added in w7/m5.
+const (
+	ResourceKindService  = "service"   // App (web/worker/cron/static)
+	ResourceKindPostgres = "postgres"  // Database CR → CNPG Cluster
+	ResourceKindKeyValue = "key_value" // KeyValue CR → Valkey StatefulSet
+)
+
 // HourlyRow is one window of usage for one service + kind.
 type HourlyRow struct {
-	WorkspaceID string
-	ServiceID   string
-	Kind        string
-	Tier        string    // non-empty only for instance_seconds
-	WindowStart time.Time // truncated to the hour (UTC)
-	Quantity    int64
+	WorkspaceID  string
+	ServiceID    string
+	Kind         string
+	Tier         string    // non-empty only for instance_seconds
+	ResourceKind string    // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
+	WindowStart  time.Time // truncated to the hour (UTC)
+	Quantity     int64
 }
 
 // UsageSummaryRow is one service/kind/tier aggregate as returned by
 // UsageMonthToDate — the raw numbers m2's core verb formats for adapters.
 type UsageSummaryRow struct {
-	ServiceID string
-	Kind      string
-	Tier      string // non-empty only for instance_seconds
-	Total     int64
+	ServiceID    string
+	Kind         string
+	Tier         string // non-empty only for instance_seconds
+	ResourceKind string // ResourceKindService / ResourceKindPostgres / ResourceKindKeyValue
+	Total        int64
 }
 
 // UsageCompaction reports what one CompactUsage pass did — the operational
@@ -60,12 +71,16 @@ type UsageCompaction struct {
 // key already exists. The ON CONFLICT … DO UPDATE makes the rollup loop
 // idempotent: re-processing a window never double-counts.
 func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
+	rk := row.ResourceKind
+	if rk == "" {
+		rk = ResourceKindService
+	}
 	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, window_start, quantity)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (service_id, kind, tier, window_start)
-		DO UPDATE SET quantity = EXCLUDED.quantity`,
-		row.WorkspaceID, row.ServiceID, row.Kind, row.Tier, row.WindowStart, row.Quantity)
+		DO UPDATE SET quantity = EXCLUDED.quantity, resource_kind = EXCLUDED.resource_kind`,
+		row.WorkspaceID, row.ServiceID, row.Kind, row.Tier, rk, row.WindowStart, row.Quantity)
 	return err
 }
 
@@ -97,21 +112,21 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, serviceID string) (time
 func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	rows, err := s.Pool.Query(ctx, `
-		SELECT service_id, kind, tier, SUM(quantity)
+		SELECT service_id, kind, tier, resource_kind, SUM(quantity)
 		FROM (
-			SELECT service_id, kind, tier, quantity
+			SELECT service_id, kind, tier, resource_kind, quantity
 			FROM usage_hourly
 			WHERE workspace_id = $1
 			  AND window_start >= $2
 			  AND window_start < $3
 			UNION ALL
-			SELECT service_id, kind, tier, quantity
+			SELECT service_id, kind, tier, resource_kind, quantity
 			FROM usage_monthly
 			WHERE workspace_id = $1
 			  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
 		) u
-		GROUP BY service_id, kind, tier
-		ORDER BY service_id, kind, tier`,
+		GROUP BY service_id, kind, tier, resource_kind
+		ORDER BY service_id, kind, tier, resource_kind`,
 		workspaceID, monthStart, now)
 	if err != nil {
 		return nil, err
@@ -120,7 +135,7 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 	var out []UsageSummaryRow
 	for rows.Next() {
 		var r UsageSummaryRow
-		if err := rows.Scan(&r.ServiceID, &r.Kind, &r.Tier, &r.Total); err != nil {
+		if err := rows.Scan(&r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.Total); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -139,14 +154,14 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 		WITH purged AS (
 			DELETE FROM usage_hourly
 			WHERE window_start < $1
-			RETURNING workspace_id, service_id, kind, tier, window_start, quantity
+			RETURNING workspace_id, service_id, kind, tier, resource_kind, window_start, quantity
 		), compacted AS (
-			INSERT INTO usage_monthly (workspace_id, service_id, kind, tier, month, quantity)
-			SELECT workspace_id, service_id, kind, tier,
+			INSERT INTO usage_monthly (workspace_id, service_id, kind, tier, resource_kind, month, quantity)
+			SELECT workspace_id, service_id, kind, tier, resource_kind,
 			       date_trunc('month', window_start AT TIME ZONE 'UTC')::date,
 			       SUM(quantity)
 			FROM purged
-			GROUP BY workspace_id, service_id, kind, tier,
+			GROUP BY workspace_id, service_id, kind, tier, resource_kind,
 			         date_trunc('month', window_start AT TIME ZONE 'UTC')
 			ON CONFLICT (service_id, kind, tier, month)
 			DO UPDATE SET quantity = usage_monthly.quantity + EXCLUDED.quantity

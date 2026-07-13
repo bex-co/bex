@@ -37,6 +37,10 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Service",
     description: "Table column header: service name",
   },
+  "usage.colKind": {
+    message: "Kind",
+    description: "Table column header: resource kind (service/postgres/key_value)",
+  },
   "usage.colPlan": {
     message: "Plan",
     description: "Table column header: service plan/tier",

@@ -12,9 +12,23 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 Meters match Render's three billing dimensions exactly (compute time per tier, bandwidth, pipeline minutes) so the data is comparable for operators migrating from Render.
 
+## Meter applicability by resource kind
+
+The rollup loop emits meters for three resource kinds. Not every meter applies to every kind:
+
+| Meter | App service (`service`) | Managed Postgres (`postgres`) | Managed Key Value (`key_value`) |
+| --- | --- | --- | --- |
+| `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) |
+| `egress_bytes` | ✅ Traefik HTTP router counter | — TCP/SNI routes not tracked by Traefik's HTTP metrics | — TCP/SNI routes not tracked by Traefik's HTTP metrics |
+| `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step |
+
+Each row in `usage_hourly` and `usage_monthly` carries a `resource_kind` column (`DEFAULT 'service'`, migration `0013_usage_resource_kind.up.sql`) so the REST/GraphQL/MCP surfaces can distinguish App compute from managed-datastore compute. The column is backward-compatible: rows written before the migration surface as `"service"`.
+
 ## How it works
 
 An hourly rollup loop (`usage.Service.Run`) writes rows to the `usage_hourly` table (migration `0006_usage.up.sql`) whenever both `BEX_CP_DB_URI` (the control-plane store) and `BEX_PROM_URL` (Prometheus) are set. Each row is keyed on `(service_id, kind, tier, window_start)` and is idempotent: re-processing a window (`ON CONFLICT … DO UPDATE`) never double-counts. On restart the loop catches up missed windows bounded to the last 48 hours.
+
+The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their CR name as `service_id` (name-as-id, the same documented deviation managed Postgres takes — [docs/ADR020-identifiers.md](ADR020-identifiers.md)).
 
 With `BEX_CP_DB_URI` set but `BEX_PROM_URL` absent the service is wired (the month-to-date read still works) but the metering side of the loop is skipped — only the retention compaction below runs.
 
@@ -59,17 +73,25 @@ Response:
   "services": [
     {
       "serviceId": "srv-xyz456",
+      "resourceKind": "service",
       "rows": [
         { "kind": "instance_seconds", "tier": "starter", "total": 14400 },
         { "kind": "egress_bytes", "total": 2048 },
         { "kind": "build_seconds", "total": 120 }
+      ]
+    },
+    {
+      "serviceId": "mydb",
+      "resourceKind": "postgres",
+      "rows": [
+        { "kind": "instance_seconds", "tier": "basic-256mb", "total": 3600 }
       ]
     }
   ]
 }
 ```
 
-`tier` is omitted on the JSON response when it is the empty string (non-compute meters). `services` is always a JSON array (never `null`).
+`tier` is omitted on the JSON response when it is the empty string (non-compute meters). `resourceKind` identifies the resource type (`"service"`, `"postgres"`, `"key_value"`). `services` is always a JSON array (never `null`).
 
 ### GraphQL
 
@@ -79,6 +101,7 @@ Response:
     workspaceId
     services {
       serviceId
+      resourceKind
       rows {
         kind
         tier

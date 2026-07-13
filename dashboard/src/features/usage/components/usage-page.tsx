@@ -57,6 +57,7 @@ function buildSecondsToMinutes(seconds: number): string {
 
 interface ComputeRow {
   serviceId: string;
+  resourceKind: string;
   tier: string;
   total: number;
 }
@@ -128,7 +129,7 @@ function ComputeSection({
       </CardHeader>
       <CardContent>
         {loading && rows.length === 0 ? (
-          <SkeletonTable cols={3} />
+          <SkeletonTable cols={4} />
         ) : rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {t("usage.empty")}
@@ -138,6 +139,7 @@ function ComputeSection({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("usage.colService")}</TableHead>
+                <TableHead>{t("usage.colKind")}</TableHead>
                 <TableHead>{t("usage.colPlan")}</TableHead>
                 <TableHead className="text-right tabular-nums">
                   {t("usage.colHours")}
@@ -148,6 +150,9 @@ function ComputeSection({
               {rows.map((r) => (
                 <TableRow key={`${r.serviceId}:${r.tier}`}>
                   <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.resourceKind || "service"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground capitalize">
                     {r.tier || "—"}
                   </TableCell>
@@ -157,7 +162,7 @@ function ComputeSection({
                 </TableRow>
               ))}
               <TableRow className="border-t-2 font-semibold">
-                <TableCell colSpan={2}>{t("usage.totalRow")}</TableCell>
+                <TableCell colSpan={3}>{t("usage.totalRow")}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {instanceSecondsToHours(totalSeconds)}
                 </TableCell>
@@ -291,6 +296,7 @@ export function UsagePage() {
   const services = summary?.services ?? [];
   const computeRows = extractRows<ComputeRow>(services, "instance_seconds", (svc, r) => ({
     serviceId: svc.serviceId,
+    resourceKind: svc.resourceKind,
     tier: r.tier,
     total: r.total,
   }));

@@ -36,6 +36,7 @@ describe("useUsage", () => {
           services: [
             {
               serviceId: "eden-cms-v2",
+              resourceKind: "service",
               rows: [
                 { kind: "instance_seconds", tier: "starter", total: 7200 },
                 { kind: "egress_bytes", tier: "", total: 1048576 },
@@ -43,6 +44,7 @@ describe("useUsage", () => {
             },
             {
               serviceId: "nightly-report",
+              resourceKind: "service",
               rows: [{ kind: "build_seconds", tier: "", total: 600 }],
             },
           ],
@@ -59,6 +61,7 @@ describe("useUsage", () => {
       services: [
         {
           serviceId: "eden-cms-v2",
+          resourceKind: "service",
           rows: [
             { kind: "instance_seconds", tier: "starter", total: 7200 },
             { kind: "egress_bytes", tier: "", total: 1048576 },
@@ -66,6 +69,7 @@ describe("useUsage", () => {
         },
         {
           serviceId: "nightly-report",
+          resourceKind: "service",
           rows: [{ kind: "build_seconds", tier: "", total: 600 }],
         },
       ],

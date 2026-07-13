@@ -38,8 +38,9 @@ type usageRow struct {
 
 // usageServiceEntry is one service's contribution in the REST/MCP response.
 type usageServiceEntry struct {
-	ServiceID string     `json:"serviceId"`
-	Rows      []usageRow `json:"rows"`
+	ServiceID    string     `json:"serviceId"`
+	ResourceKind string     `json:"resourceKind,omitempty"`
+	Rows         []usageRow `json:"rows"`
 }
 
 // usageResponse is the shared JSON envelope for GET /v1/usage and the MCP
@@ -73,7 +74,7 @@ func toUsageResponse(sum Summary, now time.Time) usageResponse {
 		for _, r := range svc.Rows {
 			rows = append(rows, usageRow{Kind: r.Kind, Tier: r.Tier, Total: r.Total})
 		}
-		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, Rows: rows})
+		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ResourceKind: svc.ResourceKind, Rows: rows})
 	}
 	return usageResponse{WorkspaceID: sum.WorkspaceID, Period: period, Services: svcs}
 }

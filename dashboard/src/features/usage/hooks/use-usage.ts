@@ -24,6 +24,7 @@ export interface UsageRow {
 
 export interface ServiceUsage {
   serviceId: string;
+  resourceKind: string;
   rows: UsageRow[];
 }
 
@@ -55,6 +56,7 @@ export function useUsage(): UseUsageResult {
               .filter(Boolean)
               .map((s) => ({
                 serviceId: s!.serviceId ?? "",
+                resourceKind: s!.resourceKind ?? "service",
                 rows: (s!.rows ?? [])
                   .filter(Boolean)
                   .map((r) => ({
