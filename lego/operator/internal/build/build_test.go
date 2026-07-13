@@ -131,8 +131,8 @@ func TestBuildJobSigningMovesBuildToInitAndSignsAfterPush(t *testing.T) {
 	if len(sign.VolumeMounts) != 1 || sign.VolumeMounts[0].MountPath != "/keys" || !sign.VolumeMounts[0].ReadOnly {
 		t.Errorf("sign volumeMounts = %+v; want /keys ro", sign.VolumeMounts)
 	}
-	if len(signed.Volumes) != 1 || signed.Volumes[0].VolumeSource.Secret == nil ||
-		signed.Volumes[0].VolumeSource.Secret.SecretName != "bex-tenant-cosign" {
+	if len(signed.Volumes) != 1 || signed.Volumes[0].Secret == nil ||
+		signed.Volumes[0].Secret.SecretName != "bex-tenant-cosign" {
 		t.Errorf("volumes = %+v; want the cosign-key Secret", signed.Volumes)
 	}
 	gotPW := false
@@ -263,6 +263,126 @@ func TestBuildCreatesJobWhenAbsent(t *testing.T) {
 	if !found {
 		t.Fatal("Build did not create the build Job")
 	}
+}
+
+// TestBuildJobPushSecret pins w7/m8: with a push Secret set, the buildkit
+// container mounts the docker-config at /docker-config (DOCKER_CONFIG pointing
+// there) so buildkitd authenticates the push — and the credential is reachable
+// ONLY through that mount: the Secret name and any credential material never
+// appear in buildctl args or the build container's env (a tenant Dockerfile RUN
+// step could read those). Unset ⇒ no mount, no DOCKER_CONFIG env (byte-identical
+// dev default).
+func TestBuildJobPushSecret(t *testing.T) {
+	const secret = "bex-registry-push"
+
+	// Unset: byte-identical — no registry-cred volume, no DOCKER_CONFIG env.
+	def := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec
+	if volByName(def.Volumes, "registry-cred") != nil {
+		t.Error("no push secret => no registry-cred volume")
+	}
+	if dockerConfigValue(def.Containers[0].Env) != "" {
+		t.Error("no push secret => no DOCKER_CONFIG env on buildkit")
+	}
+
+	// Set: buildkit gets the mount + DOCKER_CONFIG; the volume references the Secret.
+	o := opts()
+	o.PushSecret = secret
+	set := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+	bk := containerByName(set.Containers, "buildkit")
+	if bk == nil {
+		t.Fatal("buildkit container missing")
+	}
+	if vm := mountByName(bk.VolumeMounts, "registry-cred"); vm == nil || vm.MountPath != dockerConfigMount || !vm.ReadOnly {
+		t.Errorf("buildkit registry-cred mount = %+v; want ro %s", vm, dockerConfigMount)
+	}
+	if dockerConfigValue(bk.Env) != dockerConfigMount {
+		t.Errorf("buildkit DOCKER_CONFIG = %q; want %q", dockerConfigValue(bk.Env), dockerConfigMount)
+	}
+	vol := volByName(set.Volumes, "registry-cred")
+	if vol == nil || vol.Secret == nil || vol.Secret.SecretName != secret {
+		t.Errorf("registry-cred volume = %+v; want Secret %s", vol, secret)
+	}
+
+	// NEGATIVE SPACE — the load-bearing security invariant: the credential never
+	// appears anywhere a tenant RUN step can read it. BuildKit RUN steps can see
+	// buildctl args (no) and declared --secret mounts (none here), but NOT the
+	// container's own volume mounts — still, assert the Secret name leaks nowhere
+	// in args or env, so a future refactor can't accidentally inline it.
+	for _, a := range bk.Args {
+		if strings.Contains(a, secret) || strings.Contains(a, "config.json") {
+			t.Errorf("credential leaked into buildctl args: %q", a)
+		}
+	}
+	for _, e := range bk.Env {
+		if strings.Contains(e.Value, secret) {
+			t.Errorf("credential leaked into buildkit env %s=%q", e.Name, e.Value)
+		}
+	}
+}
+
+// TestBuildJobPushSecretWithSigning asserts the w7/m8 mount lands on BOTH the
+// buildkit initContainer and the cosign container when push + signing are both
+// enabled (cosign pushes a signature artifact, so it authenticates too).
+func TestBuildJobPushSecretWithSigning(t *testing.T) {
+	o := opts()
+	o.PushSecret = "bex-registry-push"
+	o.SignKeySecret = "bex-tenant-cosign"
+	spec := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+
+	bk := containerByName(spec.InitContainers, "buildkit")
+	sign := containerByName(spec.Containers, "sign")
+	if bk == nil || sign == nil {
+		t.Fatalf("want buildkit init + sign containers; got init=%v containers=%v",
+			contNames(spec.InitContainers), contNames(spec.Containers))
+	}
+	for _, c := range []*corev1.Container{bk, sign} {
+		if mountByName(c.VolumeMounts, "registry-cred") == nil {
+			t.Errorf("%s container missing the registry-cred mount", c.Name)
+		}
+		if dockerConfigValue(c.Env) != dockerConfigMount {
+			t.Errorf("%s container DOCKER_CONFIG = %q; want %q", c.Name, dockerConfigValue(c.Env), dockerConfigMount)
+		}
+	}
+	// Both volumes present (registry-cred + cosign-key).
+	if volByName(spec.Volumes, "registry-cred") == nil || volByName(spec.Volumes, "cosign-key") == nil {
+		t.Errorf("want both registry-cred + cosign-key volumes; got %+v", spec.Volumes)
+	}
+}
+
+func containerByName(cs []corev1.Container, name string) *corev1.Container {
+	for i := range cs {
+		if cs[i].Name == name {
+			return &cs[i]
+		}
+	}
+	return nil
+}
+
+func mountByName(mounts []corev1.VolumeMount, name string) *corev1.VolumeMount {
+	for i := range mounts {
+		if mounts[i].Name == name {
+			return &mounts[i]
+		}
+	}
+	return nil
+}
+
+func volByName(vols []corev1.Volume, name string) *corev1.Volume {
+	for i := range vols {
+		if vols[i].Name == name {
+			return &vols[i]
+		}
+	}
+	return nil
+}
+
+func dockerConfigValue(envs []corev1.EnvVar) string {
+	for _, e := range envs {
+		if e.Name == "DOCKER_CONFIG" {
+			return e.Value
+		}
+	}
+	return ""
 }
 
 func TestBuildJobResourceLimits(t *testing.T) {

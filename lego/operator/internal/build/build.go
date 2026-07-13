@@ -66,6 +66,27 @@ const buildTimeout = 20 * time.Minute
 // pollInterval is how often Build re-reads the Job while waiting for it.
 const pollInterval = 3 * time.Second
 
+// dockerConfigMount is where the registry push credential (a docker-config
+// Secret named by Options.PushSecret, key "config.json") is mounted so buildkitd
+// (and cosign, when signing) authenticate the push against the auth-enabled Zot.
+// DOCKER_CONFIG points here. It lives in the container's own filesystem — outside
+// BuildKit's build-execution namespace — so tenant Dockerfile RUN steps cannot
+// read it (w7/m8, docs/ADR022-tenant-isolation.md § Registry access control).
+const dockerConfigMount = "/docker-config"
+
+// mountRegistryCred attaches the docker-config volume (read-only) + DOCKER_CONFIG
+// env to c so buildkitd/cosign authenticate against the in-cluster registry. It
+// is a no-op when secret is empty, keeping the unset path byte-identical.
+func mountRegistryCred(c *corev1.Container, secret string) {
+	if secret == "" {
+		return
+	}
+	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+		Name: "registry-cred", ReadOnly: true, MountPath: dockerConfigMount,
+	})
+	c.Env = append(c.Env, corev1.EnvVar{Name: "DOCKER_CONFIG", Value: dockerConfigMount})
+}
+
 // Options configures a single in-cluster build.
 type Options struct {
 	Repo       string        // git URL to clone (BuildKit fetches it)
@@ -95,6 +116,16 @@ type Options struct {
 	SignKeySecret string
 	// SignImage overrides the cosign image used by the signing container.
 	SignImage string
+	// PushSecret names a Secret (in Namespace, key "config.json") whose docker
+	// config authenticates the push against an auth-enabled registry (w7/m8). It
+	// is mounted into the buildkit container's own filesystem at dockerConfigMount
+	// with DOCKER_CONFIG pointing there — used by buildkitd to authenticate the
+	// push, but OUTSIDE BuildKit's build-execution namespace, so a tenant
+	// Dockerfile RUN step (or a declared --mount=type=secret) cannot read it
+	// (docs/ADR022-tenant-isolation.md § Registry access control). When signing is
+	// also enabled, cosign gets the same mount so its signature push authenticates.
+	// Empty = unauthenticated push (the dev default; byte-identical).
+	PushSecret string
 }
 
 // Result is a successful build.
@@ -208,6 +239,18 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
 	ttl := int32(3600)  // reap the finished Job after an hour
 
+	// Registry push credential (w7/m8): when PushSecret is set, mount the
+	// docker-config into the buildkit (and cosign) container's own filesystem so
+	// buildkitd authenticates the push. Tenant RUN steps cannot read it — see
+	// mountRegistryCred / docs/ADR022-tenant-isolation.md § Registry access control.
+	var volumes []corev1.Volume
+	if o.PushSecret != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name:         "registry-cred",
+			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PushSecret}},
+		})
+	}
+
 	// buildkit container (rootless BuildKit builds + pushes the image).
 	buildkit := corev1.Container{
 		Name:    "buildkit",
@@ -237,6 +280,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			},
 		},
 	}
+	mountRegistryCred(&buildkit, o.PushSecret) // w7/m8: docker-config for the push
 
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
@@ -280,14 +324,16 @@ func BuildJob(o Options, image string) *batchv1.Job {
 				},
 			},
 		}
+		mountRegistryCred(&sign, o.PushSecret) // w7/m8: cosign's signature push authenticates too
 		podSpec.InitContainers = []corev1.Container{buildkit}
 		podSpec.Containers = []corev1.Container{sign}
-		podSpec.Volumes = []corev1.Volume{{
+		volumes = append(volumes, corev1.Volume{
 			Name:         "cosign-key",
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.SignKeySecret}},
-		}}
+		})
 		annotations["container.apparmor.security.beta.kubernetes.io/sign"] = "unconfined"
 	}
+	podSpec.Volumes = volumes // single assign (registry-cred, plus cosign-key when signing)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

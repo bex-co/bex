@@ -97,6 +97,12 @@ type Options struct {
 	Client      client.Client // cluster client used to create + watch the Job
 	// AWSCLIImage overrides the uploader image (tests / air-gapped).
 	AWSCLIImage string
+	// PullSecret names an imagePullSecret (in Namespace) that authenticates the
+	// extract initContainer's pull of o.Image from an auth-enabled registry
+	// (w7/m8). The publish Job runs in the build namespace, so this Secret must
+	// exist there (scripts/registry-secrets.sh creates bex-registry-pull in both
+	// the apps and build namespaces). Empty => unauthenticated pull (dev default).
+	PullSecret string
 }
 
 // Prefix is the object-key prefix a publish writes under: "<appID>/<revision>/".
@@ -108,6 +114,18 @@ func (o Options) Prefix() string {
 // destURI is the s3:// sync target for this publish.
 func (o Options) destURI() string {
 	return "s3://" + o.Store.Bucket + "/" + o.Prefix()
+}
+
+// imagePullSecrets returns the imagePullSecrets the publish pod carries so its
+// extract initContainer authenticates the pull of o.Image from an auth-enabled
+// registry (w7/m8). o.Image is always the in-cluster build output, so there is
+// no registry-hosted check (unlike app_controller's imagePullSecrets) — it is
+// attached whenever a pull Secret is configured, nil (omitted) otherwise.
+func imagePullSecrets(pullSecret string) []corev1.LocalObjectReference {
+	if pullSecret == "" {
+		return nil
+	}
+	return []corev1.LocalObjectReference{{Name: pullSecret}}
 }
 
 // Publish dispatches an in-cluster Job that extracts o.PublishPath from o.Image
@@ -198,6 +216,9 @@ func PublishJob(o Options) *batchv1.Job {
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					// The extract initContainer pulls o.Image (the just-built Zot
+					// image) — authenticate it under an auth-enabled registry (w7/m8).
+					ImagePullSecrets: imagePullSecrets(o.PullSecret),
 					Volumes: []corev1.Volume{{
 						Name:         outVolume,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},

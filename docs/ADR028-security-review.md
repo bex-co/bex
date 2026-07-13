@@ -13,6 +13,7 @@ This is one finding-by-finding writeup across the six audit areas of w6/m6. Each
 | RBAC | bex-api ClusterRole grants cluster-wide `secrets`/`pods`/`pods/log` read | MEDIUM-HIGH | follow-up-filed ([w6/002](../.pm/w6/002.md)) |
 | Supply chain | No image signing or SBOM anywhere in the repo | HIGH (gap) | **fixed** — cosign + SBOM in CI |
 | Supply chain | CNB tenant images (in-cluster build → Zot) unsigned | MEDIUM (gap) | follow-up-filed ([w6/006](../.pm/w6/006.md)) |
+| Registry authz | In-cluster Zot accepts unauthenticated push/pull/catalog from tenant build pods | HIGH (gap) | **fixed** — htpasswd + `accessControl` (anonymous denied), build-push & pull authenticated ([w7/m8](../.pm/w7/m8/README.md), [ADR022 § Registry access control](ADR022-tenant-isolation.md#registry-access-control-w7m8)) |
 | Injection | SQL construction (control-plane Postgres) | — | **clean** — all parameterized |
 | Injection | Webhook HMAC verification | — | **clean** — constant-time, full-body, fail-closed |
 | Injection | No input validation on build `repo`/`branch`/`rootDir` | LOW (defense-in-depth) | **fixed** — validators at the API boundary |

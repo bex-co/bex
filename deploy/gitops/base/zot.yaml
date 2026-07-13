@@ -1,5 +1,14 @@
 # Zot OCI registry (the build->registry->deploy hop). In-cluster Deployment + Service.
 # Uses the upstream Zot Helm repo (a real Helm repo, so this one is apply-ready).
+#
+# Auth is ON (w7/m8, docs/ADR022-tenant-isolation.md § Registry access control):
+# htpasswd + accessControl with anonymous DENIED (defaultPolicy []). Tenant build
+# pods are inside the network allow-list (they must push), but now need a
+# credential their own Dockerfile RUN steps cannot read — so the push/pull
+# credentials live out-of-band (scripts/registry-secrets.sh, the auth-secrets.sh
+# pattern — NO secret material in git). The htpasswd itself is mounted from the
+# out-of-band zot-htpasswd Secret (externalSecrets), NOT the chart's secretFiles
+# (which ships an admin:admin default we deliberately do not use).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,14 +19,45 @@ spec:
   source:
     repoURL: https://zotregistry.dev/helm-charts
     chart: zot
-    targetRevision: "0.1.*"            # TODO: pin exact chart version
+    targetRevision: "0.1.121"          # pinned (was "0.1.*"); bump deliberately
     helm:
       values: |
-        # local/dev defaults; on Hetzner front with TLS + auth and persistent storage
         service:
           type: ClusterIP
           port: 5000
-        mountConfig: false
+        # mountConfig: ship our own config (below) so auth + accessControl are on.
+        # The chart creates <release>-config and mounts it at /etc/zot.
+        mountConfig: true
+        configFiles:
+          config.json: |-
+            {
+              "storage": { "rootDirectory": "/var/lib/registry" },
+              "http": {
+                "address": "0.0.0.0",
+                "port": "5000",
+                "readTimeout": "60s",
+                "writeTimeout": "60s",
+                "auth": { "htpasswd": { "path": "/secret/htpasswd" } },
+                "accessControl": {
+                  "repositories": {
+                    "**": {
+                      "policies": [
+                        { "users": ["bex-builder"], "actions": ["read", "create", "update", "delete"] },
+                        { "users": ["bex-puller"],  "actions": ["read"] }
+                      ],
+                      "defaultPolicy": []
+                    }
+                  }
+                }
+              },
+              "log": { "level": "info" }
+            }
+        # Do NOT use the chart's secretFiles (it defaults to admin:admin). The
+        # htpasswd is mounted from the out-of-band zot-htpasswd Secret instead.
+        mountSecret: false
+        externalSecrets:
+          - secretName: zot-htpasswd
+            mountPath: /secret
         persistence: true
         # w1/m19 t003: platform pool
         nodeSelector:

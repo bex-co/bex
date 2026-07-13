@@ -85,6 +85,16 @@ spec:
           # bex-registry namespace on http:5000 (local/dev); front with TLS on prod.
           - name: BEX_REGISTRY
             value: zot.bex-registry.svc:5000
+          # Registry auth (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
+          # control): Zot denies anonymous catalog/pull/push. These name docker-config
+          # Secrets (minted out-of-band by scripts/registry-secrets.sh) — the build Job
+          # mounts PUSH_SECRET to authenticate its push; PULL_SECRET is attached to
+          # tenant Deployments as an imagePullSecret so kubelet pulls authenticate.
+          # Both live in the build/apps namespace; unset => unauthenticated (dev only).
+          - name: BEX_REGISTRY_PUSH_SECRET
+            value: bex-registry-push
+          - name: BEX_REGISTRY_PULL_SECRET
+            value: bex-registry-pull
           # Namespace the build Jobs run in; empty => the App's own namespace.
           - name: BEX_BUILD_NAMESPACE
             value: bex-system

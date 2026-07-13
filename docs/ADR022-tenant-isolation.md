@@ -163,6 +163,55 @@ The live matrix that script asserts is wired for repeatability two ways, so a re
 - **On demand** — `make verify-tenant-isolation` (from `lego/operator/`) runs `scripts/verify-tenant-isolation.sh` against the current kubeconfig.
 - **In CI** — `scripts/gitops-validate.sh` (cluster-less, runs in `.github/workflows/gitops.yml`) asserts every platform namespace carries a default-deny-ingress policy (`podSelector: {}` + `policyTypes: [Ingress]`) and that no allow-list peer names the tenant apps namespace (`default`) — a manifest regression in `deploy/gitops/base/network-policies.yaml` fails before Argo CD applies it.
 
+## Registry access control (w7/m8)
+
+The network layer (above) puts a build-labeled pod inside Zot's allow-list, because the build Job must push to it. That same pod runs tenant-authored Dockerfile/CNB `RUN` steps in its network namespace — so the network layer alone leaves every tenant build able to enumerate (`/v2/_catalog`), pull (source disclosure), or overwrite (tag poisoning) every other tenant's image. w7/m8 closes that hole at the **application** layer: Zot requires a credential the tenant `RUN` steps cannot read.
+
+### Threat model
+
+- **Cross-tenant image enumeration** — `GET /v2/_catalog`, `GET /v2/<repo>/tags/list`: leaks every tenant's image/repo names.
+- **Cross-tenant pull (source disclosure)** — `GET /v2/<repo>/manifests/…` + blobs: reconstructs another tenant's image.
+- **Tag-overwrite poisoning** — `PUT` over an existing tag: a fresh autoscaled node then pulls the poisoned layer on its first deploy.
+
+All three are unauthenticated today (`deploy/gitops/base/zot.yaml` ships the chart's auth-off defaults).
+
+### Credential scheme (decision)
+
+Zot's `htpasswd` + `accessControl` is **static-file** config — per-App credentials would mean regenerating the htpasswd (bcrypt) on every App create/delete, and would only add protection against a buildkitd compromise (not the threat model above, which is tenant `RUN` code with no credential at all). The cost is not worth it pre-real-tenants, so we ship **two shared credentials** minted out-of-band (`scripts/registry-secrets.sh`, the `auth-secrets.sh` pattern — no secret material in git):
+
+| User | Zot actions | Held by | Custody |
+| --- | --- | --- | --- |
+| `bex-builder` | `read, create, update, delete` | the build Job's buildkitd + cosign containers (pod filesystem only) | `bex-registry-push` docker-config Secret, build namespace |
+| `bex-puller` | `read` | tenant runtime pods, via `imagePullSecrets` (read by kubelet) | `bex-registry-pull` docker-config Secret, apps namespace |
+
+`accessControl.repositories["**"].defaultPolicy: []` — **anonymous is denied everything** (catalog, list, pull, push all `401`). The two users get explicit policies; everyone else gets nothing.
+
+### Why a docker-config mount is safe from tenant `RUN` steps
+
+This is the load-bearing invariant. BuildKit runs a build's `RUN` steps in a **separate execution namespace** (runc/rootlesskit) whose rootfs is the build context + image layers + explicitly-declared BuildKit secrets — it does **not** include the `buildkitd` container's own filesystem. So a docker-config credential mounted into the buildkitd container (at `/docker-config`, `$DOCKER_CONFIG`) is used by `buildkitd` to authenticate the push, but a `RUN cat /docker-config/config.json` (or a `--mount=type=secret`) in a tenant Dockerfile **cannot read it**. The credential therefore appears:
+
+- ✅ as a volume mount on the buildkitd container (and cosign, when signing is enabled — w6/006);
+- ❌ never as a `--build-arg`;
+- ❌ never as a declared BuildKit `--secret` (the `GIT_AUTH_TOKEN` precedent is opt-in, so a malicious Dockerfile _could_ declare a mount — we therefore do **not** pass the registry cred that way);
+- ❌ never in the build step's container env.
+
+A unit test (`lego/operator/internal/build/build_test.go`) asserts the credential name never appears in `buildctl` args or the build container's env.
+
+### Read policy (decision)
+
+**Authenticated read** (`defaultPolicy: []`, anonymous denied). Pulls authenticate via the read-only `bex-puller` `imagePullSecret` the operator attaches to tenant Deployments/CronJobs when the image is registry-hosted (`BEX_REGISTRY_PULL_SECRET`). This is stronger than anonymous-read: a tenant build pod can no longer pull another tenant's image at all, because it has no credential. Kubelet pulls keep working because the node-side NetworkPolicy (the `host`/`remote-node` Cilium entity, w1/m19) still reaches Zot, now presenting the `imagePullSecret`.
+
+**Accepted residual:** a _compromised tenant runtime pod_ still holding the shared `bex-puller` cred can read every tenant's images (the read cred is shared, not per-App). This is a strictly harder threat than the one being closed (it requires RCE in the tenant's own running app, which already runs the tenant's code) and is the same shared-cred tradeoff documented above; closing it needs per-App pull creds, which needs per-App htpasswd entries — deferred for the same sequencing reason as the rest of w7 (before real tenants).
+
+### TLS posture (residual)
+
+`registry.insecure=true` on the build push and HTTP-only Zot means the `bex-builder`/`bex-puller` credentials cross the cluster network in plaintext. This is acceptable **inside** a trusted cluster network (the same trust boundary the in-cluster control plane relies on) but is the reason Zot must be `ClusterIP`-only (never exposed) — the platform-side NetworkPolicy already denies tenant pods; this residual is about east-west between platform namespaces, not north-south. Fronting Zot with TLS + a public face is a prod-hardening follow-up, not in m8 scope; documented here so it is not silently inherited.
+
+### Verification
+
+- **Live** — `scripts/verify-registry-auth.sh` asserts from a build-labeled probe pod that anonymous `GET /v2/_catalog` and an anonymous push are both refused (`401`), and that a credentialed build-from-git App round-trips (build → push → deploy → serve). It complements `verify-tenant-isolation.sh`, which already proves the network-layer deny (tenant pod → zot) — together they cover both the network and application layers.
+- **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`mountConfig`, `auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
+
 ## Rejected options
 
 - **vcluster**: rejected (DO_NOT_DO.md) — adds control-plane overhead without a meaningful network boundary.

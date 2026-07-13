@@ -131,6 +131,24 @@ func TestPublishJobNameTruncation(t *testing.T) {
 	}
 }
 
+// TestPublishJobPullSecret pins w7/m8: the extract initContainer pulls the built
+// image from an auth-enabled registry, so the publish pod carries an
+// imagePullSecret when one is configured, and omits it (byte-identical default)
+// when unset.
+func TestPublishJobPullSecret(t *testing.T) {
+	// Unset → no imagePullSecret (dev default).
+	if got := PublishJob(testOptions()).Spec.Template.Spec.ImagePullSecrets; got != nil {
+		t.Errorf("unset pull secret = %+v; want nil", got)
+	}
+	// Set → attached so kubelet authenticates the extract pull.
+	o := testOptions()
+	o.PullSecret = "bex-registry-pull"
+	got := PublishJob(o).Spec.Template.Spec.ImagePullSecrets
+	if len(got) != 1 || got[0].Name != "bex-registry-pull" {
+		t.Errorf("pull secret = %+v; want [bex-registry-pull]", got)
+	}
+}
+
 func TestRegionEnvOptional(t *testing.T) {
 	o := testOptions()
 	o.Store.Region = "eu-central-2"

@@ -103,6 +103,15 @@ type AppReconciler struct {
 	TenantSignKeySecret string
 	// TenantSignImage overrides the cosign image used by the signing container.
 	TenantSignImage string
+	// RegistryPushSecret names a docker-config Secret (in the build namespace,
+	// key "config.json") the build Job mounts to authenticate its push against an
+	// auth-enabled registry (w7/m8). Empty => unauthenticated push (dev default).
+	RegistryPushSecret string
+	// RegistryPullSecret names a docker-config Secret (in the apps namespace) the
+	// operator attaches as an imagePullSecret to tenant Deployments/CronJobs so
+	// kubelet pulls authenticate against an auth-enabled registry (w7/m8). Empty
+	// => no imagePullSecret attached.
+	RegistryPullSecret string
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -203,6 +212,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			CloneSecret:   app.Spec.CloneSecret,
 			SignKeySecret: r.TenantSignKeySecret,
 			SignImage:     r.TenantSignImage,
+			PushSecret:    r.RegistryPushSecret,
 			Client:        r.Client,
 		})
 		if err != nil {
@@ -256,6 +266,19 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 		return r.BuildNamespace
 	}
 	return appNS
+}
+
+// imagePullSecrets returns the imagePullSecrets a tenant pod carries so kubelet
+// pulls authenticate against the auth-enabled registry (w7/m8, docs/ADR022-
+// tenant-isolation.md § Registry access control). It is nil — and therefore
+// omitted from the pod spec — when no pull secret is configured OR the image is
+// not hosted in the in-cluster registry (a prebuilt public/external image is
+// left untouched, so the registry cred is never sent to a foreign registry).
+func (r *AppReconciler) imagePullSecrets(image string) []corev1.LocalObjectReference {
+	if r.RegistryPullSecret == "" || r.Registry == "" || !strings.HasPrefix(image, r.Registry+"/") {
+		return nil
+	}
+	return []corev1.LocalObjectReference{{Name: r.RegistryPullSecret}}
 }
 
 // copyCloneSecret relocates an opaque git-credential Secret from srcNS to dstNS
@@ -429,6 +452,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
 		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{container}
+		// Authenticate kubelet pulls against the auth-enabled registry (w7/m8). nil
+		// when no pull secret is configured or the image isn't registry-hosted, so a
+		// prebuilt public image is left untouched.
+		dep.Spec.Template.Spec.ImagePullSecrets = r.imagePullSecrets(image)
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
@@ -727,6 +754,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			Revision:    rev,
 			Store:       r.StaticStore,
 			Namespace:   r.buildNamespace(app.Namespace),
+			PullSecret:  r.RegistryPullSecret, // w7/m8: extract pulls the built image from authed Zot
 			Client:      r.Client,
 		}); err != nil {
 			return r.fail(ctx, app, "PublishFailed", err)
@@ -816,7 +844,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		// Suspend pauses scheduling without losing history — resume just clears it.
 		cj.Spec.Suspend = &suspended
 		cj.Spec.JobTemplate.Labels = labels // so the Jobs it creates carry labelApp
-		cj.Spec.JobTemplate.Spec.Template = cronPodSpec(app, image, port, labels)
+		cj.Spec.JobTemplate.Spec.Template = r.cronPodSpec(app, image, port, labels)
 		return controllerutil.SetControllerReference(app, cj, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "CronJobFailed", err)
@@ -880,7 +908,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 		return err
 	}
 	job.Labels = labels
-	job.Spec.Template = cronPodSpec(app, image, port, labels)
+	job.Spec.Template = r.cronPodSpec(app, image, port, labels)
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
@@ -951,7 +979,7 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // the App's env. A cron container declares no port — it is not an HTTP server.
 // spec.command, when set, overrides the image's default entrypoint/cmd via a
 // shell (Render's cron "Command" field); empty leaves the image's own command.
-func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
+func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
 	container := corev1.Container{
 		Name:            "app",
 		Image:           image,
@@ -973,6 +1001,9 @@ func cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string
 		spec.Volumes = []corev1.Volume{*vol}
 	}
 	spec.Containers = []corev1.Container{container}
+	// Authenticate the pull under an auth-enabled registry (w7/m8) — owned here so
+	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
+	spec.ImagePullSecrets = r.imagePullSecrets(image)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Labels: labels},
 		Spec:       spec,

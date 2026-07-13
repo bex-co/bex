@@ -67,6 +67,34 @@ for rbac_file in lego/operator/config/rbac/role.yaml lego/operator/config/api/rb
   fi
 done
 
+# Zot registry auth guard (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
+# control): the in-cluster registry must deny anonymous access — unauthenticated
+# catalog/pull/push from a tenant build pod is a cross-tenant hole. Asserts the
+# committed Application values carry the auth machinery (a pinned chart, a mounted
+# custom config with htpasswd auth + accessControl whose defaultPolicy is empty —
+# anonymous denied). Checks zot.yaml's values string directly (the chart is never
+# rendered here, so the source values are the contract). A regression that drops
+# auth, widens the anonymous policy, or unpins the chart fails CI.
+ZOT="deploy/gitops/base/zot.yaml"
+if [ -f "$ZOT" ]; then
+  echo "==> $ZOT registry-auth shape"
+  # Chart pinned to an exact version (a bare * or x.* wildcard is a regression).
+  rev="$(yq '.spec.source.targetRevision' "$ZOT")"
+  echo "$rev" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' \
+    || { echo "FAIL: zot targetRevision is '$rev' — pin an exact chart version (no wildcard)" >&2; fail=1; }
+  vals="$(yq '.spec.source.helm.values' "$ZOT")"
+  # A custom config carrying auth must be shipped (not the chart's auth-off defaults).
+  echo "$vals" | yq -e '.mountConfig == true' >/dev/null \
+    || { echo "FAIL: zot mountConfig must be true (ship the authed config)" >&2; fail=1; }
+  # The auth/accessControl tokens must all be present (htpasswd auth, the accessControl
+  # block, and the two named users). One grep pass over the committed values string.
+  echo "$vals" | grep -qE '"(htpasswd|accessControl|bex-builder|bex-puller)"' \
+    || { echo "FAIL: zot config missing auth/accessControl tokens (htpasswd/accessControl/bex-builder/bex-puller)" >&2; fail=1; }
+  # defaultPolicy must be empty — anonymous denied everything (catalog/pull/push).
+  echo "$vals" | grep -q '"defaultPolicy": *\[\]' \
+    || { echo "FAIL: zot accessControl.defaultPolicy must be [] (anonymous denied)" >&2; fail=1; }
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

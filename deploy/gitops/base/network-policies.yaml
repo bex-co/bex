@@ -47,6 +47,10 @@ spec:
 #   build pods in the apps namespace (push after in-cluster BuildKit build),
 #   and the NODES themselves via the CiliumNetworkPolicy below.
 # Blocked: tenant app pods in the apps namespace (they must not push/pull directly).
+# Auth complements this (w7/m8): even a build pod — inside this allow-list, running
+# tenant Dockerfile RUN steps — must now present the bex-builder credential to push
+# and bex-puller to pull; anonymous catalog/pull/push are 401. docs/ADR022-tenant-isolation.md
+# § Registry access control.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
