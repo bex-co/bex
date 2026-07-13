@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -129,6 +130,90 @@ func TestAddDomainEmptyHostnameIsBadRequest(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web"))
 	if _, err := svc.AddDomain(context.Background(), "web", ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("empty hostname => ErrBadRequest, got %v", err)
+	}
+}
+
+// --- w7/m6: cross-app collision + reserved-host guards ---
+
+// TestAddDomainRejectsHostOnAnotherApp: a host registered on a different App
+// (any tenant) is refused with core.ErrConflict — Render's "already exists on
+// another site" — and the claiming App's spec.hosts stays untouched. Covers both
+// the other App's spec.hosts[] and its primary spec.host.
+func TestAddDomainRejectsHostOnAnotherApp(t *testing.T) {
+	owner := appWithHosts("owner", "www.example.com")
+	primaryOwner := sampleApp("primary")
+	primaryOwner.Spec.Host = "apex.example.com"
+	svc, cl := newService(nil, owner, primaryOwner, sampleApp("web"))
+
+	for _, host := range []string{"www.example.com", "apex.example.com"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrConflict) {
+			t.Errorf("add %q claimed elsewhere => ErrConflict, got %v", host, err)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Errorf("rejected add must not touch spec.hosts, got %v", got)
+	}
+}
+
+// TestAddDomainOwnHostNotAConflict: the collision guard must not false-positive
+// on the App's own already-registered host — a re-add stays idempotent even with
+// other Apps present.
+func TestAddDomainOwnHostNotAConflict(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("web", "www.example.com"), sampleApp("other"))
+	if _, err := svc.AddDomain(context.Background(), "web", "www.example.com"); err != nil {
+		t.Errorf("re-adding own host must be idempotent, got %v", err)
+	}
+}
+
+// TestAddDomainStoreConflictMapsToConflict: if the CR scan misses a concurrent
+// add (the race the DB UNIQUE index closes), the store's ErrConflict is mapped to
+// core.ErrConflict, not a 500, and the CR is left untouched.
+func TestAddDomainStoreConflictMapsToConflict(t *testing.T) {
+	rec := &recordingStore{err: store.ErrConflict}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(context.Background(), "web", "www.example.com"); !errors.Is(err, core.ErrConflict) {
+		t.Errorf("store ErrConflict => core.ErrConflict, got %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Errorf("store-conflict add must not touch spec.hosts, got %v", got)
+	}
+}
+
+// TestAddDomainReservedPlatformHosts: with BaseDomain set, the apex and any
+// foreign `<x>.<base>` platform host are refused (core.ErrBadRequest), while the
+// App's own `<app>.<base>` auto host is allowed (Render lets a service keep its
+// own platform subdomain).
+func TestAddDomainReservedPlatformHosts(t *testing.T) {
+	svc, cl := newBaseDomainService("onbex.co", "", sampleApp("web"))
+	for _, host := range []string{"onbex.co", "other.onbex.co", "api.onbex.co"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("reserved host %q => ErrBadRequest, got %v", host, err)
+		}
+	}
+	// The App's own auto host is not reserved.
+	if _, err := svc.AddDomain(context.Background(), "web", "web.onbex.co"); err != nil {
+		t.Errorf("own auto host web.onbex.co must be allowed, got %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "web.onbex.co" {
+		t.Errorf("own auto host should append, got %v", got)
+	}
+}
+
+// TestAddDomainReservedDashboardHost: the configured dashboard host is reserved.
+func TestAddDomainReservedDashboardHost(t *testing.T) {
+	svc, _ := newBaseDomainService("onbex.co", "dashboard.bex.co", sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "dashboard.bex.co"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("dashboard host => ErrBadRequest, got %v", err)
+	}
+}
+
+// TestAddDomainNoWwwApexPairing pins the conscious divergence from Render: bex
+// does NOT auto-pair www/apex, so registering www.foo.com on one App does not
+// reserve foo.com — a different App can still claim the apex sibling.
+func TestAddDomainNoWwwApexPairing(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("a", "www.foo.com"), sampleApp("b"))
+	if _, err := svc.AddDomain(context.Background(), "b", "foo.com"); err != nil {
+		t.Errorf("apex sibling must remain claimable (no pairing), got %v", err)
 	}
 }
 

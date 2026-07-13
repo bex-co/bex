@@ -838,6 +838,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't add {name}",
     description: "Toast on a failed custom-domain add",
   },
+  "services.domainAddConflict": {
+    message: "{name} is already in use by another service",
+    description:
+      "Toast when a custom-domain add is rejected because the host is registered on another service (409)",
+  },
+  "services.domainAddReserved": {
+    message: "{name} is a reserved platform hostname",
+    description:
+      "Toast when a custom-domain add is rejected because the host is a platform-owned name (400)",
+  },
   "services.domainDeleteSuccess": {
     message: "Removed {name}",
     description: "Toast on a successful custom-domain delete",

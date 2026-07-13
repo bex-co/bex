@@ -469,14 +469,34 @@ func (s *PGStore) DeleteDomain(ctx context.Context, appID, host string) error {
 	return nil
 }
 
-// AddDomain appends a non-primary domain row for apps.IntentStore — idempotent
-// (conflict means it's already registered; silently ignored).
+// AddDomain appends a non-primary domain row for apps.IntentStore. host is
+// globally UNIQUE, so a conflict is idempotent (silently ignored) only when THIS
+// app already owns the row; a conflict from a *different* app owning the host is
+// a real cross-app collision and surfaces as ErrConflict (Render's "already
+// exists on another site"), not swallowed.
 func (s *PGStore) AddDomain(ctx context.Context, appID, host string) error {
 	_, err := s.CreateDomain(ctx, appID, host, false)
 	if err != nil && errors.Is(err, ErrConflict) {
-		return nil
+		if owner, ok, e := s.domainOwner(ctx, host); e == nil && ok && owner == appID {
+			return nil // this app already registered it — idempotent
+		}
+		return ErrConflict
 	}
 	return err
+}
+
+// domainOwner returns the app id that owns host, or ok=false if the host is
+// unclaimed. Backs AddDomain's same-app-vs-cross-app conflict decision.
+func (s *PGStore) domainOwner(ctx context.Context, host string) (string, bool, error) {
+	var appID string
+	err := s.Pool.QueryRow(ctx, `SELECT app_id FROM domains WHERE host = $1`, host).Scan(&appID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return appID, true, nil
 }
 
 // RemoveDomain deletes a domain row for apps.IntentStore — idempotent

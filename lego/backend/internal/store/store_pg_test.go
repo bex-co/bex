@@ -88,6 +88,7 @@ func TestPGStore(t *testing.T) {
 	assertErrorTaxonomy(ctx, t, s, ten)
 	assertProjectionJoin(ctx, t, s, app)
 	assertDeployLifecycle(ctx, t, s, app)
+	assertDomainUniqueness(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertDeleteCascades(ctx, t, s, pool, app)
@@ -525,6 +526,39 @@ func assertProjectionJoin(ctx context.Context, t *testing.T, s *PGStore, app App
 	// Primary domain must come first — it becomes spec.host.
 	if len(d.Hosts) != 2 || d.Hosts[0] != "web.example.com" || d.Hosts[1] != "extra.example.com" {
 		t.Errorf("hosts = %v", d.Hosts)
+	}
+}
+
+// assertDomainUniqueness exercises w7/m6's cross-app collision guard against
+// real Postgres. domains.host is globally UNIQUE, so AddDomain is idempotent only
+// for the SAME app; a different app claiming a registered host must surface
+// ErrConflict rather than being silently swallowed (the domainOwner check that
+// distinguishes the two conflict cases). Creates its own apps and deletes them so
+// the domains table is clean again for assertDeleteCascades' count==0.
+func assertDomainUniqueness(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
+	t.Helper()
+	a1, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "dom-a", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create dom-a: %v", err)
+	}
+	a2, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "dom-b", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create dom-b: %v", err)
+	}
+	defer func() { _ = s.DeleteApp(ctx, a1.ID); _ = s.DeleteApp(ctx, a2.ID) }()
+
+	if err := s.AddDomain(ctx, a1.ID, "shared.example.com"); err != nil {
+		t.Fatalf("first AddDomain: %v", err)
+	}
+	// Same app, same host → idempotent no-op (the host UNIQUE conflict is this
+	// app's own row, so it is swallowed).
+	if err := s.AddDomain(ctx, a1.ID, "shared.example.com"); err != nil {
+		t.Errorf("same-app re-add must be idempotent, got %v", err)
+	}
+	// A different app claiming the same host → real cross-app collision, surfaced
+	// (Render's "already exists on another site"), not swallowed.
+	if err := s.AddDomain(ctx, a2.ID, "shared.example.com"); !errors.Is(err, ErrConflict) {
+		t.Errorf("cross-app AddDomain => ErrConflict, got %v", err)
 	}
 }
 

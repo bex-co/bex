@@ -193,6 +193,20 @@ type Deps struct {
 	DashboardURL string
 }
 
+// hostOf extracts the bare hostname (no scheme/port) from a URL like
+// BEX_DASHBOARD_URL, for the apps service's reserved-host guard. Empty in,
+// unparseable, or hostless => "" (guard inert for the dashboard host).
+func hostOf(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
+
 // NewServer wires the five feature services over one core.Base + deps. Callers
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
@@ -210,7 +224,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DashboardURL: d.DashboardURL,
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, Selections: selections, GitHub: gh.DeployTokenSource()},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource()},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory},
 		Metrics: &metrics.Service{
 			Base:                       base,

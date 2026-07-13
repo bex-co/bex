@@ -337,6 +337,15 @@ func managedApp(name, appID string) *appv1alpha1.App {
 	return a
 }
 
+// newBaseDomainService builds a store-less Service with BaseDomain/DashboardHost
+// set, for the w7/m6 reserved-host guard tests.
+func newBaseDomainService(baseDomain, dashboardHost string, apps ...*appv1alpha1.App) (*Service, client.Client) {
+	svc, cl := newService(nil, apps...)
+	svc.BaseDomain = baseDomain
+	svc.DashboardHost = dashboardHost
+	return svc, cl
+}
+
 func TestSuspendManagedAppWritesRowThenCR(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))

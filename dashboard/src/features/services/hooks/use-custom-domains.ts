@@ -58,6 +58,18 @@ function mapRaw(raw: RawDomain): CustomDomainView | null {
   return raw?.name ? mapDomain(raw as RawDomain & { name: string }) : null;
 }
 
+// addDomainErrorKey classifies a failed add by bex-api's sentinel text so the
+// toast tells the user *why* — the host is taken by another service (409,
+// Render's "already exists on another site") or is a reserved platform host
+// (400) — rather than a generic failure. Same message-substring convention the
+// env-vars/secret-files hooks use (bex-api sentinels are stable wire text).
+function addDomainErrorKey(error: unknown): string {
+  const msg = error instanceof Error ? error.message.toLowerCase() : "";
+  if (msg.includes("another site")) return "services.domainAddConflict";
+  if (msg.includes("reserved platform")) return "services.domainAddReserved";
+  return "services.domainAddError";
+}
+
 export interface UseCustomDomainsResult {
   domains: CustomDomainView[];
   loading: boolean;
@@ -130,8 +142,8 @@ export function useCustomDomainMutations(
           description: t("services.domainPropagateNote"),
         });
         return mapRaw(res.data?.addCustomDomain ?? null);
-      } catch {
-        toast.error(t("services.domainAddError", { name }));
+      } catch (e) {
+        toast.error(t(addDomainErrorKey(e), { name }));
         return null;
       } finally {
         setBusy(false);

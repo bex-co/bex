@@ -828,6 +828,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法添加 {name}",
     description: "Toast on a failed custom-domain add",
   },
+  "services.domainAddConflict": {
+    message: "{name} 已被另一个服务使用",
+    description:
+      "Toast when a custom-domain add is rejected because the host is registered on another service (409)",
+  },
+  "services.domainAddReserved": {
+    message: "{name} 是平台保留的主机名",
+    description:
+      "Toast when a custom-domain add is rejected because the host is a platform-owned name (400)",
+  },
   "services.domainDeleteSuccess": {
     message: "已移除 {name}",
     description: "Toast on a successful custom-domain delete",

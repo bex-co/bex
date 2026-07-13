@@ -46,6 +46,11 @@ type Service struct {
 	// tenant points their record at. Empty falls back to deriving the platform host
 	// from the App's status URLs (docs/ADR005-custom-domain.md).
 	BaseDomain string
+	// DashboardHost is the bare hostname of BEX_DASHBOARD_URL (e.g.
+	// "dashboard.bex.co"), reserved so no tenant can claim the control-plane
+	// dashboard host as a custom domain (w7/m6). Empty => not reserved (the
+	// base-domain guard still covers the `*.<BaseDomain>` platform namespace).
+	DashboardHost string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
 	// the bex.co/app-id label). Suspend/Resume write the row first — the row owns
 	// spec.suspended, and the projection loop reverts CR patches it didn't

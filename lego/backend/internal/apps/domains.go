@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -201,9 +202,67 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	return s.GetDomain(ctx, appName, hostname)
 }
 
+// reservedHost reports whether host is a platform-owned name no App may claim as
+// a custom domain. Reserved: the BEX_BASE_DOMAIN apex, and any `<label…>.<base>`
+// platform host other than this App's own `<app>.<base>` auto host (the whole
+// `*.<base>` namespace is platform-controlled — its DNS resolves to the shared
+// ingress, so a foreign claim would pass ACME and hijack another App's platform
+// subdomain), plus the dashboard host when configured. Render likewise reserves
+// its own `*.onrender.com` subdomains; the dashboard/base-apex entries are the
+// bex analog for the platform's own control-plane hosts. Inert when BaseDomain is
+// unset (nothing to reserve under it).
+func (s *Service) reservedHost(appName, host string) bool {
+	if s.BaseDomain != "" {
+		if host == s.BaseDomain {
+			return true // the base-domain apex itself
+		}
+		// a `<x>.<base>` platform host — reserved unless it's this App's own auto host
+		if strings.HasSuffix(host, "."+s.BaseDomain) && host != appName+"."+s.BaseDomain {
+			return true
+		}
+	}
+	return s.DashboardHost != "" && host == s.DashboardHost
+}
+
+// errDomainInUse is the cross-App collision rejection — Render's "this domain
+// already exists on another site" (core.ErrConflict => 409). Built in one place
+// so the service-level guard and the store-race backstop word it identically.
+func errDomainInUse() error {
+	return fmt.Errorf("%w: this domain already exists on another site", core.ErrConflict)
+}
+
+// hostClaimedElsewhere reports whether host is already registered (as spec.host
+// or in spec.hosts[]) on a *different* App in the namespace — the cross-App,
+// cross-tenant collision Render blocks with "this domain already exists on
+// another site." The owning App's name is deliberately not returned: a caller
+// must not learn another tenant's service name from the rejection.
+func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
+	var list appv1alpha1.AppList
+	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+		return false, err
+	}
+	for i := range list.Items {
+		a := &list.Items[i]
+		if a.Name == appName {
+			continue
+		}
+		if a.Spec.Host == host {
+			return true, nil
+		}
+		for _, h := range a.Spec.Hosts {
+			if h == host {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 // AddDomain appends hostname to App.spec.hosts[] if not already present.
-// Idempotent — returns the existing view if the hostname is already registered.
-// For store-managed Apps the row is written first (same rationale as Suspend).
+// Idempotent — returns the existing view if the hostname is already registered
+// on this App. Rejects a hostname that is platform-reserved (core.ErrBadRequest)
+// or already registered on another App (core.ErrConflict, Render's "already in
+// use"). For store-managed Apps the row is written first (same rationale as Suspend).
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return DomainView{}, err
@@ -220,9 +279,20 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 			return s.domainView(ctx, app, hostname, s.platformHost(app)), nil // already present
 		}
 	}
+	if s.reservedHost(appName, hostname) {
+		return DomainView{}, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
+	}
+	if claimed, err := s.hostClaimedElsewhere(ctx, appName, hostname); err != nil {
+		return DomainView{}, err
+	} else if claimed {
+		return DomainView{}, errDomainInUse()
+	}
 	if s.Store != nil {
 		if id := app.Labels[store.LabelAppID]; id != "" {
 			if err := s.Store.AddDomain(ctx, id, hostname); err != nil {
+				if errors.Is(err, store.ErrConflict) { // lost a race to another App's add
+					return DomainView{}, errDomainInUse()
+				}
 				return DomainView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
