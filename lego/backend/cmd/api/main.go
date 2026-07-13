@@ -215,8 +215,9 @@ func main() {
 		// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
-		deps.GitHubStore = st // git connections (w2/m8): connect/disconnect/list read+write git_connections
-		deps.EventStore = st  // service events (w3/m7): the feed composes deploys + audit_events, writing neither
+		deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
+		deps.EventStore = st         // service events (w3/m7): the feed composes deploys + audit_events, writing neither
+		deps.NotificationsStore = st // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
@@ -364,6 +365,12 @@ func main() {
 	if rec != nil {
 		rec.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
 		srv.Apps.Kick = rec.Kick
+		// DeployNotifier (w3/m9): srv.Notifications structurally satisfies
+		// store.DeployNotifier (NotifyDeploy), so every deploy the reconciler
+		// closes as succeeded/failed fans out to the workspace's members —
+		// same wiring shape as CloneSecrets, deferred until here so it's set
+		// before the first reconcile pass.
+		rec.DeployNotifier = srv.Notifications
 		go rec.Run(ctx)
 	}
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")

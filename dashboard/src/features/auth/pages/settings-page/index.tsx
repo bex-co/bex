@@ -10,6 +10,7 @@ import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
+import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
@@ -55,6 +56,7 @@ export default function SettingsPage() {
           <TeamPanel />
           <ConnectGithubCard />
           <ApiKeysPanel />
+          <NotificationSettingsPanel />
           <SecurityComplianceSection />
         </div>
       </div>

@@ -88,6 +88,10 @@ var (
 	// tables, so there is no CR-only feed to degrade to — omitted, not faked
 	// (w3/m7, the deploy-history precedent).
 	ErrEventsUnavailable = errors.New("events store not configured")
+	// ErrNotificationsUnavailable is returned by the notification-settings verbs
+	// when the control-plane store isn't wired (BEX_CP_DB_URI unset); adapters
+	// surface it as 503 (w3/m9, the deploy-history precedent).
+	ErrNotificationsUnavailable = errors.New("notification settings store not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

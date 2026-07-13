@@ -1051,3 +1051,107 @@ func TestDefaultWorkspaceIsTheOldestMembership(t *testing.T) {
 		}
 	}
 }
+
+// TestNotificationSettings (w3/m9) exercises the deploy-notification store
+// path: a member with no row gets the default (both true) via
+// ListNotifyRecipients' COALESCE, an explicit Upsert overrides it for that
+// member only, and a second Upsert updates in place rather than duplicating
+// (the (tenant_id, subject) unique index).
+func TestNotificationSettings(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+
+	ten, err := s.CreateWorkspace(ctx, "acme", PlanPro, "admin-1")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	if err := s.AddMember(ctx, "bob", ten.ID, "developer"); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	// No explicit row for either member yet: GetNotificationSettings is
+	// ErrNotFound (the service layer applies the default), but
+	// ListNotifyRecipients already resolves the default for both.
+	if _, err := s.GetNotificationSettings(ctx, ten.ID, "admin-1"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("get with no row: want ErrNotFound, got %v", err)
+	}
+	recipients, err := s.ListNotifyRecipients(ctx, ten.ID)
+	if err != nil || len(recipients) != 2 {
+		t.Fatalf("recipients = %d (%v), want 2", len(recipients), err)
+	}
+	for _, r := range recipients {
+		if !r.DeploySucceeded || !r.DeployFailed {
+			t.Errorf("recipient %s defaults = (%v,%v), want (true,true)", r.Subject, r.DeploySucceeded, r.DeployFailed)
+		}
+	}
+
+	// bob opts out of success emails only.
+	got, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", false, true)
+	if err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+	if got.DeploySucceeded || !got.DeployFailed {
+		t.Errorf("upserted = (%v,%v), want (false,true)", got.DeploySucceeded, got.DeployFailed)
+	}
+	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || got.DeploySucceeded || !got.DeployFailed {
+		t.Errorf("get after upsert = %+v (%v), want (false,true)", got, err)
+	}
+	// admin-1 is untouched — still the default via the join.
+	recipients, err = s.ListNotifyRecipients(ctx, ten.ID)
+	if err != nil || len(recipients) != 2 {
+		t.Fatalf("recipients after upsert = %d (%v), want 2", len(recipients), err)
+	}
+	for _, r := range recipients {
+		switch r.Subject {
+		case "bob":
+			if r.DeploySucceeded || !r.DeployFailed {
+				t.Errorf("bob recipient = (%v,%v), want (false,true)", r.DeploySucceeded, r.DeployFailed)
+			}
+		case "admin-1":
+			if !r.DeploySucceeded || !r.DeployFailed {
+				t.Errorf("admin-1 recipient = (%v,%v), want (true,true) (default, unmodified)", r.DeploySucceeded, r.DeployFailed)
+			}
+		}
+	}
+
+	// A second upsert updates the same row (unique index), not a duplicate.
+	if _, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", true, false); err != nil {
+		t.Fatalf("re-upsert: %v", err)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM notification_settings WHERE tenant_id = $1 AND subject = 'bob'`, ten.ID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("rows for bob = %d, want 1 (upsert, not insert)", n)
+	}
+	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || !got.DeploySucceeded || got.DeployFailed {
+		t.Errorf("get after re-upsert = %+v (%v), want (true,false)", got, err)
+	}
+
+	// Deleting the workspace cascades its notification_settings rows.
+	if err := s.DeleteTenant(ctx, ten.ID); err != nil {
+		t.Fatalf("delete tenant: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM notification_settings`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("notification_settings after tenant delete = %d, want 0 (cascade)", n)
+	}
+}

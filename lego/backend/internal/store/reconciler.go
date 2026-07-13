@@ -77,6 +77,19 @@ type CloneSecreter interface {
 	EnsureCloneSecret(ctx context.Context, namespace, appName, workspaceID, repo string) (string, error)
 }
 
+// DeployNotifier is called by the Reconciler when recordDeploy closes a
+// deploy as succeeded or failed (w3/m9) — it fans the outcome out to the
+// workspace's members by email, per each member's notification preferences.
+// *notifications.Service satisfies it structurally (this package cannot
+// import notifications: notifications imports store for NotificationsStore,
+// so the dependency must run the other way, same shape as CloneSecreter).
+// nil => no notifications (store-off / feature-off mode, byte-identical to
+// before this milestone). Best-effort: implementations must not return an
+// error — a flaky relay must never block reconciliation.
+type DeployNotifier interface {
+	NotifyDeploy(ctx context.Context, tenantID, appName, status string)
+}
+
 // Reconciler projects the source of truth into the cluster: each apps row
 // (+ its domains) becomes an App CR; rows deleted from Postgres get their CR
 // deleted; the CR's observed status (phase, url) is written back to the row.
@@ -98,6 +111,11 @@ type Reconciler struct {
 	// done so. Soft failure: a minting error is logged but the CR is still
 	// created (public repos don't need a secret).
 	CloneSecrets CloneSecreter
+
+	// DeployNotifier, when non-nil, is called every time recordDeploy closes a
+	// deploy as succeeded or failed — see DeployNotifier. nil => no emails
+	// (notifications feature off / store off).
+	DeployNotifier DeployNotifier
 
 	kick chan struct{}
 }
@@ -199,7 +217,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		// subresource) — so it's the right snapshot to decide the app's open
 		// deploy, if any, is done.
 		if open, ok := openByApp[d.ID]; ok {
-			r.recordDeploy(ctx, open, cur)
+			r.recordDeploy(ctx, d, open, cur)
 		}
 	}
 	// Rows deleted from Postgres → delete their projected CR.
@@ -225,7 +243,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 // the gate window is a no-op — the next pass re-checks. Store errors are
 // logged, not fatal: a deploy-bookkeeping hiccup must never block App CR
 // reconciliation.
-func (r *Reconciler) recordDeploy(ctx context.Context, open Deploy, cur *appv1alpha1.App) {
+func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App) {
 	status := ""
 	switch {
 	case cur.Status.Phase == appv1alpha1.PhaseRunning:
@@ -246,8 +264,21 @@ func (r *Reconciler) recordDeploy(ctx context.Context, open Deploy, cur *appv1al
 	if status == DeployLive {
 		resolvedImage = cur.Status.Image
 	}
-	if _, err := r.Store.CloseDeploy(ctx, open.ID, status, resolvedImage); err != nil {
+	ok, err := r.Store.CloseDeploy(ctx, open.ID, status, resolvedImage)
+	if err != nil {
 		log.Printf("controlplane: close deploy %s: %v", open.ID, err)
+		return
+	}
+	// Notify only the pass that actually closed the row (ok) — a race with a
+	// concurrent Cancel must fire at most one notification for this deploy,
+	// matching CloseDeploy's own idempotency guard. Backgrounded: NotifyDeploy
+	// does per-recipient network I/O (an identity lookup + an SMTP send each),
+	// which must not block ReconcileOnce's loop over every OTHER app in this
+	// pass. context.WithoutCancel detaches from ctx's deadline — ctx is
+	// ReconcileOnce's per-pass context and may already be gone by the time a
+	// slow relay would otherwise get to send.
+	if ok && r.DeployNotifier != nil {
+		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), d.TenantID, d.Name, status)
 	}
 }
 

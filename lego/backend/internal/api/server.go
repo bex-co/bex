@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -63,21 +64,22 @@ const errNoHydraURL = "bex-api: BEX_HYDRA_ADMIN_URL must be set (refusing to ser
 // surfaces. All surfaces mount on the same mux, share the auth middleware, and
 // call identical Service methods — so they cannot diverge in behavior.
 type Server struct {
-	Apps       *apps.Service
-	Logs       *logs.Service
-	Metrics    *metrics.Service
-	APIKeys    *apikeys.Service
-	Postgres   *postgres.Service
-	KeyValue   *keyvalue.Service
-	Secrets    *secrets.Service
-	EnvGroups  *envgroups.Service
-	Workspaces *workspaces.Service
-	Members    *members.Service
-	Usage      *usage.Service
-	Deploys    *deploys.Service
-	Events     *events.Service
-	Audit      *audit.Service
-	GitHub     *github.Service
+	Apps          *apps.Service
+	Logs          *logs.Service
+	Metrics       *metrics.Service
+	APIKeys       *apikeys.Service
+	Postgres      *postgres.Service
+	KeyValue      *keyvalue.Service
+	Secrets       *secrets.Service
+	EnvGroups     *envgroups.Service
+	Workspaces    *workspaces.Service
+	Members       *members.Service
+	Usage         *usage.Service
+	Deploys       *deploys.Service
+	Events        *events.Service
+	Audit         *audit.Service
+	GitHub        *github.Service
+	Notifications *notifications.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -214,6 +216,13 @@ type Deps struct {
 	MaxServices  int
 	MaxPostgres  int
 	MaxKeyValues int
+	// NotificationsStore, when set (the control-plane store is wired), backs
+	// the deploy-notification settings verbs (w3/m9). nil => those verbs
+	// report core.ErrNotificationsUnavailable (503). Delivery reuses Mailer
+	// above (mailer.SMTP satisfies both members.Mailer and
+	// notifications.Mailer structurally) — nil Mailer leaves NotifyDeploy a
+	// silent no-op, same degrade-quietly shape as invite delivery.
+	NotificationsStore notifications.NotificationsStore
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -282,6 +291,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Mailer:        d.Mailer,
 			InviteBaseURL: d.InviteBaseURL,
 			Identities:    identityEmailLookup{d.Identities},
+		},
+		Notifications: &notifications.Service{
+			Base:       base,
+			Store:      d.NotificationsStore,
+			Mailer:     d.Mailer,
+			Identities: identityEmailLookup{d.Identities},
 		},
 		GitHub:  gh,
 		Onboard: d.Onboard,
@@ -365,6 +380,9 @@ func (s *Server) features() []any {
 	}
 	if s.GitHub != nil {
 		out = append(out, s.GitHub)
+	}
+	if s.Notifications != nil {
+		out = append(out, s.Notifications)
 	}
 	return out
 }

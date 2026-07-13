@@ -2149,3 +2149,30 @@ export const CancelDeployDocument = {"kind":"Document","definitions":[{"kind":"O
 export const RollbackServiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RollbackService"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"rollbackService"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"trigger"}},{"kind":"Field","name":{"kind":"Name","value":"rollbackTarget"}},{"kind":"Field","name":{"kind":"Name","value":"image"}}]}}]}}]} as unknown as DocumentNode<RollbackServiceMutation, RollbackServiceMutationVariables>;
 
 export const SetHealthCheckPathDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetHealthCheckPath"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"path"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setHealthCheckPath"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"path"},"value":{"kind":"Variable","name":{"kind":"Name","value":"path"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"healthCheckPath"}}]}}]}}]} as unknown as DocumentNode<SetHealthCheckPathMutation, SetHealthCheckPathMutationVariables>;
+
+// --- w3/m9: notificationSettings/updateNotificationSettings (hand-added,
+// same reason as scaleService above: full codegen against src/**/*.graphql
+// currently drifts on unrelated pre-existing operations without a live
+// bex-api to reconcile against; these two are copied verbatim from an
+// offline SCHEMA_JSON-driven codegen run — see docs/ADR018-render-parity.md
+// notifications row and internal/api/schema_dump_test.go). ---
+
+export type NotificationSettings = {
+  __typename: 'NotificationSettings';
+  deployFailed: Maybe<Scalars['Boolean']['output']>;
+  deploySucceeded: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type NotificationSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+export type NotificationSettingsQuery = { notificationSettings: { __typename: 'NotificationSettings', deploySucceeded: boolean | null, deployFailed: boolean | null } | null };
+
+export type UpdateNotificationSettingsMutationVariables = Exact<{
+  deploySucceeded: Scalars['Boolean']['input'];
+  deployFailed: Scalars['Boolean']['input'];
+}>;
+
+export type UpdateNotificationSettingsMutation = { updateNotificationSettings: { __typename: 'NotificationSettings', deploySucceeded: boolean | null, deployFailed: boolean | null } | null };
+
+export const NotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<NotificationSettingsQuery, NotificationSettingsQueryVariables>;
+export const UpdateNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateNotificationSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateNotificationSettings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deploySucceeded"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployFailed"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationSettingsMutation, UpdateNotificationSettingsMutationVariables>;

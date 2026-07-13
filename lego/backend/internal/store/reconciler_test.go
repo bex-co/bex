@@ -18,7 +18,9 @@ package store
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -365,6 +367,87 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 	deploys, err := store.ListDeploys(ctx, row.ID)
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed via the gate timeout", deploys, err)
+	}
+}
+
+// fakeDeployNotifier records NotifyDeploy calls. Thread-safe and signals each
+// call on a channel: recordDeploy fires DeployNotifier in a goroutine (w3/m9,
+// so a slow relay can't block ReconcileOnce), so a test asserting on calls
+// must synchronize on that channel rather than reading the slice immediately
+// after ReconcileOnce returns.
+type fakeDeployNotifier struct {
+	mu        sync.Mutex
+	calls     []struct{ tenantID, appName, status string }
+	notifiedC chan struct{}
+}
+
+func newFakeDeployNotifier() *fakeDeployNotifier {
+	return &fakeDeployNotifier{notifiedC: make(chan struct{}, 16)}
+}
+
+func (f *fakeDeployNotifier) NotifyDeploy(_ context.Context, tenantID, appName, status string) {
+	f.mu.Lock()
+	f.calls = append(f.calls, struct{ tenantID, appName, status string }{tenantID, appName, status})
+	f.mu.Unlock()
+	f.notifiedC <- struct{}{}
+}
+
+func (f *fakeDeployNotifier) snapshot() []struct{ tenantID, appName, status string } {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]struct{ tenantID, appName, status string }(nil), f.calls...)
+}
+
+// awaitCall blocks until NotifyDeploy has been called at least once more since
+// the last awaitCall/newFakeDeployNotifier, or fails the test after 2s — the
+// bounded wait for the backgrounded goroutine recordDeploy launches.
+func (f *fakeDeployNotifier) awaitCall(t *testing.T) {
+	t.Helper()
+	select {
+	case <-f.notifiedC:
+	case <-time.After(2 * time.Second):
+		t.Fatal("NotifyDeploy was not called within 2s")
+	}
+}
+
+// TestRecordDeployNotifiesExactlyOnceOnClose (w3/m9) pins two things at once:
+// DeployNotifier fires with the right (tenant, app, status) the pass a deploy
+// actually closes, and it does NOT fire again on a later pass over the same
+// already-closed deploy — recordDeploy gates the call on CloseDeploy's own ok
+// return, the same idempotency guard that protects a Cancel race.
+func TestRecordDeployNotifiesExactlyOnceOnClose(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	notifier := newFakeDeployNotifier()
+	rec.DeployNotifier = notifier
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	_, _ = store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 1: creates the CR, no status yet — no notify
+		t.Fatalf("reconcile: %v", err)
+	}
+	if calls := notifier.snapshot(); len(calls) != 0 {
+		t.Fatalf("calls after create = %+v, want none (deploy still open)", calls)
+	}
+
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 2: closes live — notify fires once
+		t.Fatalf("reconcile: %v", err)
+	}
+	notifier.awaitCall(t)
+	if calls := notifier.snapshot(); len(calls) != 1 || calls[0].tenantID != ten.ID || calls[0].appName != "web" || calls[0].status != DeployLive {
+		t.Fatalf("calls after close = %+v, want exactly one (tenant=%s app=web status=%s)", calls, ten.ID, DeployLive)
+	}
+
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 3: nothing left open — no re-notify
+		t.Fatalf("reconcile: %v", err)
+	}
+	if calls := notifier.snapshot(); len(calls) != 1 {
+		t.Fatalf("calls after a third pass = %d, want still 1 (no re-notify of an already-closed deploy)", len(calls))
 	}
 }
 

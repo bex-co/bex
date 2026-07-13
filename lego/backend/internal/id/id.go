@@ -58,22 +58,23 @@ func (k Kind) Desc() string   { return k.desc }
 // adds its Kind here (and nowhere else); the guard test then holds it to the
 // format + uniqueness + DNS-safety contract automatically.
 var (
-	Workspace = Kind{prefix: "tea", desc: "workspace (tenant/team)"} // Render: teams are tea-
-	Service   = Kind{prefix: "srv", desc: "service (app)"}           // Render: services are srv-
-	Domain    = Kind{prefix: "cdm", desc: "custom domain"}           // Render: custom domains are cdm-
-	EnvGroup  = Kind{prefix: "evg", desc: "environment group"}       // Render: env groups are evg-
-	Deploy    = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
-	Invite    = Kind{prefix: "inv", desc: "workspace member invite"} // w4/m12 team invites
-	Export    = Kind{prefix: "exp", desc: "managed-postgres export (on-demand snapshot)"}
-	Audit     = Kind{prefix: "aud", desc: "audit log event"}             // w4/m10 audit log
-	Owner     = Kind{prefix: "own", desc: "user identity (Render own-)"} // w6/m7: opaque per-subject user id
-	Event     = Kind{prefix: "evt", desc: "service event (derived)"}     // Render: events are evt-; w3/m7 — minted by Derive, never New
+	Workspace    = Kind{prefix: "tea", desc: "workspace (tenant/team)"} // Render: teams are tea-
+	Service      = Kind{prefix: "srv", desc: "service (app)"}           // Render: services are srv-
+	Domain       = Kind{prefix: "cdm", desc: "custom domain"}           // Render: custom domains are cdm-
+	EnvGroup     = Kind{prefix: "evg", desc: "environment group"}       // Render: env groups are evg-
+	Deploy       = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
+	Invite       = Kind{prefix: "inv", desc: "workspace member invite"} // w4/m12 team invites
+	Export       = Kind{prefix: "exp", desc: "managed-postgres export (on-demand snapshot)"}
+	Audit        = Kind{prefix: "aud", desc: "audit log event"}                            // w4/m10 audit log
+	Owner        = Kind{prefix: "own", desc: "user identity (Render own-)"}                // w6/m7: opaque per-subject user id
+	Event        = Kind{prefix: "evt", desc: "service event (derived)"}                    // Render: events are evt-; w3/m7 — minted by Derive, never New
+	Notification = Kind{prefix: "ntf", desc: "per-member deploy notification preferences"} // w3/m9
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

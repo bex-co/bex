@@ -1,0 +1,17 @@
+# bex-api's deploy-notification settings (backend/internal/notifications/graphql.go,
+# w3/m9). Self-service, scoped to the caller — no workspaceId arg (same shape as
+# `usage`).
+
+query NotificationSettings {
+  notificationSettings {
+    deploySucceeded
+    deployFailed
+  }
+}
+
+mutation UpdateNotificationSettings($deploySucceeded: Boolean!, $deployFailed: Boolean!) {
+  updateNotificationSettings(deploySucceeded: $deploySucceeded, deployFailed: $deployFailed) {
+    deploySucceeded
+    deployFailed
+  }
+}
