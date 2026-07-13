@@ -15,6 +15,7 @@ import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
 import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
+import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 export const Route = createFileRoute("/databases/$databaseId")({
@@ -71,6 +72,11 @@ export function DatabaseDetailPage() {
               <MetadataCard database={database} />
               <ConnectionInfoPanel id={database.id} />
               <HAPanel database={database} refetch={refetch} />
+              <DatastoreMetricsPanel
+                kind="database"
+                resource={database.name}
+                highAvailabilityEnabled={database.highAvailabilityEnabled}
+              />
               <InsightsPanel id={database.id} />
               <RecoveryPanel id={database.id} />
               <AccessControlPanel id={database.id} />

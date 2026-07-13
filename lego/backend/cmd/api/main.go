@@ -128,6 +128,12 @@ func main() {
 		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
 		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
 		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
+		// Datastore metrics (w3/m10): PVC usage (kubelet, already scraped
+		// cluster-wide) and CNPG's postgres_exporter (connections, replication
+		// lag — deploy/gitops/base/prometheus.yaml's cnpg-tenant-db job).
+		deps.DiskUsage = metrics.NewPrometheusDiskUsageSource(promURL, nil)
+		deps.DBConnections = metrics.NewPrometheusDBConnectionsSource(promURL, nil)
+		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
 	}
 	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key

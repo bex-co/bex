@@ -2176,3 +2176,27 @@ export type UpdateNotificationSettingsMutation = { updateNotificationSettings: {
 
 export const NotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<NotificationSettingsQuery, NotificationSettingsQueryVariables>;
 export const UpdateNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateNotificationSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateNotificationSettings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deploySucceeded"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployFailed"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationSettingsMutation, UpdateNotificationSettingsMutationVariables>;
+
+// --- w3/m10: datastoreMetrics (hand-added, same reason as notificationSettings
+// above: full codegen against src/**/*.graphql currently drifts on unrelated
+// pre-existing operations without a live bex-api to reconcile against — this
+// is copied verbatim from an offline SCHEMA_JSON-driven codegen run. See
+// docs/ADR018-render-parity.md's "Extended metrics" row and
+// lego/backend/internal/metrics/graphql.go's datastoreMetrics field). ---
+
+export type DatastoreMetricsQueryInput = {
+  kind?: InputMaybe<Scalars['String']['input']>;
+  resource: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  start?: InputMaybe<Scalars['String']['input']>;
+  end?: InputMaybe<Scalars['String']['input']>;
+  resolution?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type DatastoreMetricsQueryVariables = Exact<{
+  query: DatastoreMetricsQueryInput;
+}>;
+
+export type DatastoreMetricsQuery = { datastoreMetrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null } | null> | null };
+
+export const DatastoreMetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DatastoreMetrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DatastoreMetricsQueryInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"datastoreMetrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"labels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"values"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]} as unknown as DocumentNode<DatastoreMetricsQuery, DatastoreMetricsQueryVariables>;

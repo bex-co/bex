@@ -21,6 +21,7 @@ import {
 } from "@/features/metrics/hooks/use-metrics";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
+import { latestValue } from "@/features/metrics/lib/series";
 
 interface ApplicationMetricsCardProps {
   resource: string;
@@ -60,6 +61,11 @@ export function ApplicationMetricsCard({
     ...window,
     aggregateMax: true,
   });
+  // Autoscale target (w3/m10, w1/m20's config): a single current-value point,
+  // omitted server-side when autoscaling is disabled — latestValue then
+  // naturally resolves to null and the target line/label just don't render.
+  const cpuTarget = useMetrics(resource, "cpu_target", window);
+  const memoryTarget = useMetrics(resource, "memory_target", window);
   const instances = useMetrics(resource, "instance_count", window);
 
   const instancesSeries = useMemo<LineSeriesInput[]>(
@@ -81,6 +87,7 @@ export function ApplicationMetricsCard({
           result={memory}
           limit={latestValue(memoryLimit.series)}
           limitUnit="bytes"
+          target={latestValue(memoryTarget.series)}
           percentage={percentage}
         />
         <ResourceSection
@@ -88,6 +95,7 @@ export function ApplicationMetricsCard({
           result={cpu}
           limit={latestValue(cpuLimit.series)}
           limitUnit="cpu"
+          target={latestValue(cpuTarget.series)}
           percentage={percentage}
         />
         <MetricSection
@@ -114,6 +122,14 @@ interface ResourceSectionProps {
   /** The App's limit (max across instances) — null when none is configured. */
   limit: number | null;
   limitUnit: string;
+  /**
+   * The App's configured autoscale-target utilization (0..100), null when
+   * autoscaling is disabled/unconfigured (w3/m10, w1/m20). Only meaningful in
+   * percentage mode — both target and the %-of-limit chart share the same
+   * 0..100 scale, so it overlays as the dashed reference line there (the
+   * limit line takes that slot in absolute mode instead).
+   */
+  target?: number | null;
   percentage: boolean;
 }
 
@@ -128,11 +144,13 @@ function ResourceSection({
   result,
   limit,
   limitUnit,
+  target,
   percentage,
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
   const hasLimit = limit != null && limit !== 0;
+  const hasTarget = target != null;
   const noLimit = percentage && !hasLimit;
   const unit = percentage
     ? "percentage"
@@ -168,6 +186,13 @@ function ResourceSection({
               })}
             </span>
           )}
+          {percentage && hasTarget && (
+            <span className="text-xs text-muted-foreground">
+              {t("metrics.targetLabel", {
+                value: formatMetricValue("percentage", target),
+              })}
+            </span>
+          )}
           {!noLimit && (
             <LatestValue
               result={result}
@@ -185,7 +210,15 @@ function ResourceSection({
           <SvgLineChart
             unit={unit}
             series={series}
-            referenceValue={!percentage && hasLimit ? limit : undefined}
+            referenceValue={
+              percentage
+                ? hasTarget
+                  ? target
+                  : undefined
+                : hasLimit
+                  ? limit
+                  : undefined
+            }
           />
           <ChartLegend entries={series} />
         </>
@@ -216,10 +249,4 @@ function LatestValue({
       {text}
     </span>
   );
-}
-
-/** The last point's value of the first series — null when there is none. */
-function latestValue(series: { points: { value: number }[] }[]): number | null {
-  const points = series[0]?.points ?? [];
-  return points.length > 0 ? points[points.length - 1].value : null;
 }

@@ -1,0 +1,164 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { DatastoreMetricsPanel } from "../datastore-metrics-panel";
+import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
+
+vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
+  useDatastoreMetrics: vi.fn(),
+}));
+
+const mockUseDatastoreMetrics = vi.mocked(useDatastoreMetrics);
+
+function emptyResult() {
+  return { series: [], loading: false, unavailable: false, error: undefined };
+}
+
+function seriesResult(unit: string, values: number[], instance?: string) {
+  return {
+    series: [
+      {
+        unit,
+        labels: instance ? { instance } : {},
+        points: values.map((value, i) => ({
+          timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
+          value,
+        })),
+      },
+    ],
+    loading: false,
+    unavailable: false,
+    error: undefined,
+  };
+}
+
+describe("DatastoreMetricsPanel", () => {
+  beforeEach(() => {
+    mockUseDatastoreMetrics.mockReset();
+  });
+
+  it("fetches disk usage for both database and keyvalue kinds, connections/lag only for database", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    render(
+      <DatastoreMetricsPanel
+        kind="keyvalue"
+        resource="sessions-cache"
+        highAvailabilityEnabled={false}
+      />,
+    );
+
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "disk",
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "disk_capacity",
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "db_connections",
+      { skip: true },
+    );
+    // No connections/replication-lag chart sections for a keyvalue resource.
+    expect(screen.queryByText("Active Connections")).not.toBeInTheDocument();
+    expect(screen.queryByText("Replication Lag")).not.toBeInTheDocument();
+  });
+
+  it("renders disk usage with a capacity reference label", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "disk") return seriesResult("bytes", [1024, 2048]);
+      if (metric === "disk_capacity") return seriesResult("bytes", [10240]);
+      return emptyResult();
+    });
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    expect(screen.getByText("Disk")).toBeInTheDocument();
+    expect(screen.getByText("Capacity 10 KiB")).toBeInTheDocument();
+  });
+
+  it("renders the active-connections chart for a database resource", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "db_connections")
+        return seriesResult("count", [3, 5], "pg-1");
+      return emptyResult();
+    });
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    expect(screen.getByText("Active Connections")).toBeInTheDocument();
+  });
+
+  it("shows a clear N/A state for replication lag before HA is enabled — never a fake chart", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    render(
+      <DatastoreMetricsPanel
+        kind="database"
+        resource="pg"
+        highAvailabilityEnabled={false}
+      />,
+    );
+
+    expect(screen.getByText("Replication Lag")).toBeInTheDocument();
+    expect(
+      screen.getByText(/N\/A — no replica/),
+    ).toBeInTheDocument();
+    // The lag query itself is skipped pre-HA — no point asking a Prometheus
+    // metric that reports a fake 0 from a lone primary (datastore.go's gate).
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "replication_lag",
+      { skip: true },
+    );
+  });
+
+  it("renders a real replication-lag chart once HA is enabled", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "replication_lag") return seriesResult("seconds", [0.4]);
+      return emptyResult();
+    });
+
+    render(
+      <DatastoreMetricsPanel
+        kind="database"
+        resource="pg"
+        highAvailabilityEnabled={true}
+      />,
+    );
+
+    expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "replication_lag",
+      { skip: false },
+    );
+  });
+
+  it("renders the unavailable state when Prometheus isn't wired for a live HA instance", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "replication_lag") {
+        return { series: [], loading: false, unavailable: true, error: undefined };
+      }
+      return emptyResult();
+    });
+
+    render(
+      <DatastoreMetricsPanel
+        kind="database"
+        resource="pg"
+        highAvailabilityEnabled={true}
+      />,
+    );
+
+    expect(
+      screen.getByText("Metrics source not configured"),
+    ).toBeInTheDocument();
+  });
+});

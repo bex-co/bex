@@ -219,24 +219,13 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 }
 
+// fetchDatabase resolves a Database by name through the shared core.Base fetch
+// (the workspace gate every fetch-by-name needs — core.Base.AuthorizeLabeled,
+// the same rule apps' GetApp applies; also shared by internal/metrics' w3/m10
+// datastore-scoped metrics). Kept as a thin wrapper so this package's many
+// call sites don't all need to spell core.Base.GetDatabase.
 func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
-	var d appv1alpha1.Database
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, &d)
-	if apierrors.IsNotFound(err) {
-		return nil, core.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	// The workspace gate every fetch-by-name needs (core.Base.AuthorizeLabeled —
-	// the same rule apps' shared GetApp applies). Without it this was a bare Get:
-	// any authenticated caller who knew a Database's name read it — connection
-	// string included — from any workspace. relation is the one the calling verb
-	// authorized, so a viewer of the owning workspace still cannot delete it.
-	if err := s.AuthorizeLabeled(ctx, relation, d.Labels); err != nil {
-		return nil, err
-	}
-	return &d, nil
+	return s.GetDatabase(ctx, relation, name)
 }
 
 // loadAppSecret resolves a Database and its CNPG-generated "<name>-app" Secret

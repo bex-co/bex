@@ -28,7 +28,7 @@ import (
 // plus the optional time window and options.
 type getMetricsArgs struct {
 	Resource          []string `json:"resource" jsonschema:"service ids (bex App names) to read metrics for"`
-	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth"`
+	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: cpu|memory|instance_count|http_requests|http_latency|bandwidth|cpu_target|memory_target (cpu_target/memory_target are bex extensions: the App's configured autoscale-target utilization, w1/m20 — omitted when autoscaling is disabled)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window (request metrics)"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window (request metrics)"`
 	ResolutionSeconds int64    `json:"resolutionSeconds,omitempty" jsonschema:"request-metric step in seconds"`
@@ -78,6 +78,67 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				}
 				all = append(all, series...)
 			}
+		}
+		return nil, getMetricsResult{Series: all}, nil
+	})
+	RegisterDatastoreMetricsMCP(s, srv)
+}
+
+// getDatastoreMetricsArgs is get_datastore_metrics' input — the Database/
+// KeyValue-scoped sibling of getMetricsArgs. One resource per call (a
+// datastore metric always names exactly one instance, mirroring the
+// list_postgres_instances/get_postgres_instance MCP shape rather than
+// get_metrics' multi-resource array).
+type getDatastoreMetricsArgs struct {
+	Resource          string   `json:"resource" jsonschema:"the Database or KeyValue name to read metrics for"`
+	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue (default database)"`
+	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database or KeyValue) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22)"`
+	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
+	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
+	ResolutionSeconds int64    `json:"resolutionSeconds,omitempty" jsonschema:"step in seconds"`
+}
+
+// RegisterDatastoreMetricsMCP adds the get_datastore_metrics tool — split from
+// RegisterMCP only so datastore.go's verb and its MCP fragment read together;
+// it still contributes into the same shared MCP registry.
+func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_datastore_metrics",
+		Description: "Get disk usage, active-connections, and replication-lag metrics for one managed Postgres or Key Value instance, as Render-shaped time-series. bex extension (no Render equivalent).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
+		kind := in.Kind
+		if kind == "" {
+			kind = DatastoreDatabase
+		}
+		q := DatastoreMetricQuery{
+			Kind:       kind,
+			Resource:   in.Resource,
+			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
+		}
+		if in.StartTime != "" {
+			if t, err := time.Parse(time.RFC3339, in.StartTime); err == nil {
+				q.Start = t
+			}
+		}
+		if in.EndTime != "" {
+			if t, err := time.Parse(time.RFC3339, in.EndTime); err == nil {
+				q.End = t
+			}
+		}
+		var all []MetricSeries
+		for _, metric := range in.MetricTypes {
+			q.Metric = metric
+			series, err := s.DatastoreMetrics(ctx, q)
+			if err != nil {
+				return nil, getMetricsResult{}, err
+			}
+			for i := range series {
+				if series[i].Labels == nil {
+					series[i].Labels = map[string]string{}
+				}
+				series[i].Labels["metric"] = metric
+			}
+			all = append(all, series...)
 		}
 		return nil, getMetricsResult{Series: all}, nil
 	})

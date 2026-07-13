@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Metric ids — bex's canonical names (underscored). They map 1:1 to Render's
@@ -47,6 +48,11 @@ const (
 	MetricHTTPRequests  = "http_requests"
 	MetricHTTPLatency   = "http_latency"
 	MetricBandwidth     = "bandwidth"
+	// MetricCPUTarget/MetricMemoryTarget are bex extensions (w3/m10, w1/m20's
+	// autoscaling config): the App's configured target utilization percentage,
+	// alongside its current cpu/memory usage. No Render equivalent.
+	MetricCPUTarget    = "cpu_target"
+	MetricMemoryTarget = "memory_target"
 )
 
 // Metric units (the `unit` field of a Render time-series).
@@ -198,6 +204,19 @@ type Service struct {
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
 	MetricsFilterValuesSource MetricsFilterValuesSource
+	// DiskUsage reads a managed Database/KeyValue's backing-PVC usage/capacity
+	// (w3/m10); nil => disk/disk_capacity report core.ErrMetricsUnavailable.
+	DiskUsage DiskUsageSource
+	// DBConnections reads a managed Postgres instance's active-connection
+	// history (w3/m10, CNPG's exporter); nil => db_connections reports
+	// core.ErrMetricsUnavailable.
+	DBConnections DBConnectionsSource
+	// ReplicationLag reads a managed Postgres instance's replication-lag
+	// history (w3/m10, CNPG's exporter) — reached only once a Database's
+	// HighAvailabilityEnabled is true (w1/m22); nil => replication_lag reports
+	// core.ErrMetricsUnavailable for an HA instance instead of silently 503ing
+	// on every instance regardless of HA state.
+	ReplicationLag ReplicationLagSource
 	// MaxQueryHours, when positive, caps the start–end window accepted by REST
 	// metrics queries (GET /v1/metrics/*). 0 = unlimited.
 	MaxQueryHours int
@@ -210,12 +229,12 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
-	if _, err := s.GetApp(ctx, core.RelCanView, q.App); err != nil {
+	app, err := s.GetApp(ctx, core.RelCanView, q.App)
+	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	q = q.normalized(s.Now())
 	var series []MetricSeries
-	var err error
 	switch q.Metric {
 	case MetricCPU, MetricMemory:
 		series, err = s.resourceMetric(ctx, q)
@@ -225,6 +244,8 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		series, err = s.instanceCountMetric(ctx, q)
 	case MetricHTTPRequests, MetricHTTPLatency, MetricBandwidth:
 		series, err = s.requestMetric(ctx, q)
+	case MetricCPUTarget, MetricMemoryTarget:
+		series = autoscaleTargetMetric(app, q, s.Now())
 	default:
 		return nil, fmt.Errorf("unknown metric %q", q.Metric)
 	}
@@ -407,6 +428,31 @@ func (s *Service) resourceLimitMetric(ctx context.Context, q MetricQuery) ([]Met
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Labels["instance"] < out[j].Labels["instance"] })
 	return out, nil
+}
+
+// autoscaleTargetMetric returns the App's configured autoscale target
+// utilization (w1/m20, App.spec.autoscaling) as a single current-value point —
+// a static config value, like cpu_limit/memory_limit, not a usage sample.
+// Omitted (empty, not a fake zero) when autoscaling is disabled or the specific
+// target isn't configured, exactly like resourceLimitMetric's no-limit case.
+// Takes the App Metrics already fetched (not a second s.GetApp round-trip).
+func autoscaleTargetMetric(app *appv1alpha1.App, q MetricQuery, now time.Time) []MetricSeries {
+	as := app.Spec.Autoscaling
+	if as == nil || !as.Enabled {
+		return nil
+	}
+	target := as.TargetCPUPercent
+	if q.Metric == MetricMemoryTarget {
+		target = as.TargetMemoryPercent
+	}
+	if target == nil {
+		return nil
+	}
+	return []MetricSeries{{
+		Labels: map[string]string{"resource": q.App},
+		Unit:   unitPercentage,
+		Points: []MetricPoint{{Timestamp: now.UTC().Format(time.RFC3339), Value: float64(*target)}},
+	}}
 }
 
 // instanceCountMetric returns the App's replica count: a stepped count-over-time

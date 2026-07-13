@@ -116,6 +116,50 @@ describe("ApplicationMetricsCard", () => {
     expect(screen.getByText("Limit 200 B")).toBeInTheDocument();
   });
 
+  it("shows the autoscale-target label alongside the limit in percentage mode (w3/m10)", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "memory") return seriesResult("bytes", [50, 100]);
+      if (metric === "memory_limit") return seriesResult("bytes", [200]);
+      if (metric === "memory_target") return seriesResult("percentage", [70]);
+      return emptyResult();
+    });
+
+    renderCard(true);
+
+    expect(screen.getByText("Target 70.0%")).toBeInTheDocument();
+    expect(screen.getByText("Limit 200 B")).toBeInTheDocument();
+  });
+
+  it("fetches cpu_target/memory_target over the shared window (w3/m10)", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard(true, "beancount-cms");
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "cpu_target",
+      WINDOW,
+    );
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "memory_target",
+      WINDOW,
+    );
+  });
+
+  it("omits the target label when autoscaling is disabled/unconfigured (no fake value)", () => {
+    mockUseMetrics.mockImplementation((_resource, metric) => {
+      if (metric === "memory") return seriesResult("bytes", [50, 100]);
+      if (metric === "memory_limit") return seriesResult("bytes", [200]);
+      return emptyResult(); // memory_target: server omits it entirely
+    });
+
+    renderCard(true);
+
+    expect(screen.queryByText(/^Target/)).not.toBeInTheDocument();
+    expect(screen.getByText("Limit 200 B")).toBeInTheDocument();
+  });
+
   it("shows the honest no-limit state for percentage when no _limit series exists", () => {
     mockUseMetrics.mockImplementation((_resource, metric) => {
       if (metric === "cpu") return seriesResult("cpu", [0.5]);

@@ -359,6 +359,99 @@ func parsePromScalarSum(pr promInstantResponse) (float64, error) {
 	return total, nil
 }
 
+// --- Datastore metrics: PVC stats + CNPG's postgres_exporter over Prometheus ---
+
+// NewPrometheusDiskUsageSource returns the production DiskUsageSource — PVC
+// used/capacity bytes via query_range over kubelet's volume-stats series
+// (deploy/gitops/base/prometheus.yaml's kubernetes-kubelet job, already scraped
+// cluster-wide for the PersistentVolumeFillingUp alert, so no new scrape config
+// is needed for this series).
+func NewPrometheusDiskUsageSource(base string, hc *http.Client) DiskUsageSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
+		metric := "kubelet_volume_stats_used_bytes"
+		if req.Metric == MetricDiskCapacity {
+			metric = "kubelet_volume_stats_capacity_bytes"
+		}
+		q := fmt.Sprintf(`%s{namespace=%q,persistentvolumeclaim=~%q}`, metric, req.Namespace, req.PVCPattern)
+		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
+		if err != nil {
+			return nil, err
+		}
+		unit := unitBytes
+		for i := range series {
+			labels := map[string]string{"resource": req.Resource}
+			if pvc := series[i].Labels["persistentvolumeclaim"]; pvc != "" {
+				labels["instance"] = pvc
+			}
+			series[i].Labels = labels
+			series[i].Unit = unit
+		}
+		return series, nil
+	}
+}
+
+// cnpgInstanceQuery runs a query_range for a CNPG-cluster-scoped metric and
+// relabels each series onto Core's vocabulary (pod => instance, plus the
+// cluster's resource tag) with the given unit — the shared scaffold behind
+// NewPrometheusDBConnectionsSource and NewPrometheusReplicationLagSource,
+// which differ only in their PromQL and unit.
+func cnpgInstanceQuery(ctx context.Context, hc *http.Client, base, query, cluster, unit string, start, end time.Time, step int64) ([]MetricSeries, error) {
+	series, err := promQueryRange(ctx, hc, base, query, start, end, step)
+	if err != nil {
+		return nil, err
+	}
+	for i := range series {
+		labels := map[string]string{"resource": cluster}
+		if pod := series[i].Labels["pod"]; pod != "" {
+			labels["instance"] = pod
+		}
+		series[i].Labels = labels
+		series[i].Unit = unit
+	}
+	return series, nil
+}
+
+// NewPrometheusDBConnectionsSource returns the production DBConnectionsSource —
+// a managed Postgres instance's active-connection count via query_range over
+// CNPG's postgres_exporter cnpg_backends_total (verified against CNPG's
+// monitoring reference: the "backends" default query's `total` column, summed
+// across every datname/usename/state combination for one cluster).
+func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnectionsSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
+		q := fmt.Sprintf(`sum by (pod) (cnpg_backends_total{namespace=%q,cnpg_io_cluster=%q})`,
+			req.Namespace, promEscape(req.Cluster))
+		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitCount, req.Start, req.End, stepSeconds(req.Resolution))
+	}
+}
+
+// NewPrometheusReplicationLagSource returns the production ReplicationLagSource
+// — a managed Postgres instance's replication lag (seconds) via query_range
+// over CNPG's postgres_exporter cnpg_pg_replication_lag (verified against
+// CNPG's monitoring reference: the "pg_replication" default query's `lag`
+// column). Only called once a Database's HighAvailabilityEnabled is true
+// (datastore.go) — pre-HA there is no standby, and this metric reports 0 from
+// the lone primary rather than absence, which is exactly the fake-zero the
+// caller gates against.
+func NewPrometheusReplicationLagSource(base string, hc *http.Client) ReplicationLagSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
+		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=%q})`,
+			req.Namespace, promEscape(req.Cluster))
+		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
+	}
+}
+
 // --- Filter-value discovery: Prometheus's label-values API ---
 
 // NewPrometheusFilterValuesSource returns the production MetricsFilterValuesSource,

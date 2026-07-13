@@ -1,17 +1,20 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { MetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_METRIC_NAMES,
   type MetricId,
   type ChartSeries,
 } from "@/features/metrics/types";
+import {
+  isMetricsUnavailable,
+  toChartSeries,
+  METRICS_UNAVAILABLE_MESSAGE,
+} from "@/features/metrics/lib/graphql-series";
 
-// bex-api's Metrics verb reports this exact message (Core's ErrMetricsUnavailable,
-// operator/internal/api/core.go) when a metric's backend isn't wired (e.g. no
-// Prometheus for request metrics) — surfaced here, not as a generic error.
-export const METRICS_UNAVAILABLE_MESSAGE = "metrics source not configured";
+// Re-exported for existing importers (this hook's own message constant lived
+// here before it was shared with useDatastoreMetrics).
+export { METRICS_UNAVAILABLE_MESSAGE };
 
 export interface UseMetricsOptions {
   startTime?: string;
@@ -104,32 +107,12 @@ export function useMetrics(
     errorPolicy: "all",
   });
 
-  const unavailable = Boolean(
-    error &&
-    CombinedGraphQLErrors.is(error) &&
-    error.errors.some((e) => e.message === METRICS_UNAVAILABLE_MESSAGE),
-  );
+  const unavailable = isMetricsUnavailable(error);
 
   // Memoized on data identity: a stable series identity is what lets the
   // charts' geometry useMemos actually cache across poll-tick re-renders.
   const series: ChartSeries[] = useMemo(
-    () =>
-      (data?.metrics ?? [])
-        .filter((s) => s != null)
-        .map((s) => ({
-          unit: s.unit ?? "",
-          labels: Object.fromEntries(
-            (s.labels ?? [])
-              .filter((l) => l?.field != null && l.value != null)
-              .map((l) => [l!.field as string, l!.value as string]),
-          ),
-          points: (s.values ?? [])
-            .filter((p) => p?.time != null && p.value != null)
-            .map((p) => ({
-              timestamp: p!.time as string,
-              value: p!.value as number,
-            })),
-        })),
+    () => toChartSeries(data?.metrics),
     [data],
   );
 

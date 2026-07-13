@@ -10,6 +10,10 @@ export const METRIC_IDS = [
   "http_requests",
   "http_latency",
   "bandwidth",
+  // bex extensions (w3/m10): the App's configured autoscale-target utilization
+  // (w1/m20), alongside current cpu/memory usage. No Render equivalent.
+  "cpu_target",
+  "memory_target",
 ] as const;
 
 export type MetricId = (typeof METRIC_IDS)[number];
@@ -26,6 +30,30 @@ export const RENDER_METRIC_NAMES: Record<MetricId, string> = {
   http_requests: "HTTP_REQUESTS",
   http_latency: "HTTP_LATENCY",
   bandwidth: "BANDWIDTH",
+  cpu_target: "CPU_TARGET",
+  memory_target: "MEMORY_TARGET",
+};
+
+// Datastore metric ids (w3/m10) — the Database/KeyValue-scoped sibling of
+// MetricId. All bex extensions (no Render equivalent): mirrors
+// lego/backend/internal/metrics/datastore.go's Metric* constants.
+export const DATASTORE_METRIC_IDS = [
+  "disk",
+  "disk_capacity",
+  "db_connections",
+  "replication_lag",
+] as const;
+
+export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
+
+export type DatastoreKind = "database" | "keyvalue";
+
+// Mirrors lego/backend/internal/metrics/graphql.go's datastoreMetricNames.
+export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> = {
+  disk: "DISK",
+  disk_capacity: "DISK_CAPACITY",
+  db_connections: "DB_CONNECTIONS",
+  replication_lag: "REPLICATION_LAG",
 };
 
 // A metric point with guaranteed (non-null) fields — what charts consume.

@@ -143,23 +143,13 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 }
 
+// fetchKeyValue resolves a KeyValue by name through the shared core.Base fetch
+// (the workspace gate every fetch-by-name needs — core.Base.AuthorizeLabeled,
+// the same rule apps' GetApp applies). Goes through s.Base explicitly: this
+// package's own public verb is ALSO named GetKeyValue (Render's naming), which
+// would otherwise shadow core.Base's promoted method of the same name.
 func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
-	var kv appv1alpha1.KeyValue
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: name}, &kv)
-	if apierrors.IsNotFound(err) {
-		return nil, core.ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	// The workspace gate every fetch-by-name needs (core.Base.AuthorizeLabeled — the
-	// same rule apps' shared GetApp applies). Without it this was a bare Get: any
-	// authenticated caller who knew a KeyValue's name read it, connection string
-	// included, from any workspace.
-	if err := s.AuthorizeLabeled(ctx, relation, kv.Labels); err != nil {
-		return nil, err
-	}
-	return &kv, nil
+	return s.Base.GetKeyValue(ctx, relation, name)
 }
 
 // loadSecret resolves a KeyValue and its operator-generated credentials Secret

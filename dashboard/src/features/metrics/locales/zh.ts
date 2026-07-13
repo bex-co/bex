@@ -53,6 +53,43 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown instead of a percentage chart when the App's pods declare no resource limit",
   },
+  "metrics.targetLabel": {
+    message: "目标 {value}",
+    description:
+      "Autoscale-target annotation on the Memory/CPU chart headers (percentage mode only), e.g. 'Target 70%'",
+  },
+  "metrics.diskTitle": {
+    message: "磁盘",
+    description: "Datastore metrics panel: disk usage chart section title",
+  },
+  "metrics.diskCapacityLabel": {
+    message: "容量 {value}",
+    description:
+      "Disk usage chart header annotation showing the PVC's total capacity",
+  },
+  "metrics.connectionsTitle": {
+    message: "活跃连接数",
+    description:
+      "Datastore metrics panel: Postgres active-connections chart section title",
+  },
+  "metrics.replicationLagTitle": {
+    message: "复制延迟",
+    description:
+      "Datastore metrics panel: Postgres replication-lag chart section title",
+  },
+  "metrics.replicationLagPendingHA": {
+    message: "不适用——无副本（启用高可用后可查看复制延迟）",
+    description:
+      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+  },
+  "metrics.datastoreMetricsTitle": {
+    message: "指标",
+    description: "Database/Key Value detail page metrics panel card title",
+  },
+  "metrics.datastoreMetricsDescription": {
+    message: "该实例的实时资源使用情况",
+    description: "Database/Key Value detail page metrics panel card description",
+  },
   "metrics.statusCode": {
     message: "状态码",
     description: "Toolbar filter label for HTTP status code",

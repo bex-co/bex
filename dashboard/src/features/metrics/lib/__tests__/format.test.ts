@@ -53,11 +53,13 @@ describe("METRIC_LABELS", () => {
         "bandwidth",
         "cpu",
         "cpu_limit",
+        "cpu_target",
         "http_latency",
         "http_requests",
         "instance_count",
         "memory",
         "memory_limit",
+        "memory_target",
       ].sort(),
     );
   });

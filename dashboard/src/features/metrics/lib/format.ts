@@ -73,4 +73,6 @@ export const METRIC_LABELS: Record<MetricId, string> = {
   http_requests: "Total Requests",
   http_latency: "Response Times",
   bandwidth: "Outbound Bandwidth",
+  cpu_target: "CPU Target",
+  memory_target: "Memory Target",
 };

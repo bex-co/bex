@@ -42,7 +42,38 @@ var renderMetricNames = map[string]string{
 	"HTTP_LATENCY":       MetricHTTPLatency,
 	"ENRICHED_BANDWIDTH": MetricBandwidth,
 	"BANDWIDTH":          MetricBandwidth,
+	// bex extensions (w3/m10): App-scoped autoscale-target values.
+	"CPU_TARGET":    MetricCPUTarget,
+	"MEMORY_TARGET": MetricMemoryTarget,
 }
+
+// datastoreMetricNames is the datastoreMetrics query's `name` enum (w3/m10) —
+// the Database/KeyValue-scoped sibling of renderMetricNames. All four are bex
+// extensions; Render's metrics API has no datastore-scoped series.
+var datastoreMetricNames = map[string]string{
+	"DISK":            MetricDisk,
+	"DISK_CAPACITY":   MetricDiskCapacity,
+	"DB_CONNECTIONS":  MetricDBConnections,
+	"REPLICATION_LAG": MetricReplicationLag,
+}
+
+// datastoreMetricsQueryInputType is datastoreMetrics' query input — the
+// Database/KeyValue-scoped sibling of metricsQueryInputType. It names one
+// resource directly (kind + resource), not a RESOURCE filter array: a
+// datastore metric always targets exactly one instance, mirroring
+// GET /v1/postgres/{id} and GET /v1/key-value/{id} rather than the app
+// metrics' multi-resource filter shape.
+var datastoreMetricsQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "DatastoreMetricsQueryInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"kind":       &graphql.InputObjectFieldConfig{Type: graphql.String}, // DATABASE | KEYVALUE; default DATABASE
+		"resource":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"name":       &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"start":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"end":        &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"resolution": &graphql.InputObjectFieldConfig{Type: graphql.Int},
+	},
+})
 
 var metricsFilterInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "MetricsFilterInput",
@@ -262,6 +293,27 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return out, nil
 			},
 		},
+		"datastoreMetrics": &graphql.Field{
+			Type: graphql.NewList(metricSeriesGQLType),
+			Args: graphql.FieldConfigArgument{
+				"query": &graphql.ArgumentConfig{Type: graphql.NewNonNull(datastoreMetricsQueryInputType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				q, err := datastoreMetricsQueryInputFromArgs(p.Args["query"])
+				if err != nil {
+					return nil, err
+				}
+				series, err := s.DatastoreMetrics(p.Context, q)
+				if err != nil {
+					return nil, err
+				}
+				out := make([]metricSeriesResult, 0, len(series))
+				for _, ser := range series {
+					out = append(out, metricSeriesResult{MetricSeries: ser})
+				}
+				return out, nil
+			},
+		},
 		"monthToDateBandwidth": &graphql.Field{
 			Type: monthToDateBandwidthGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -388,6 +440,47 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	}
 
 	return resources, q, nil
+}
+
+// datastoreMetricsQueryInputFromArgs maps datastoreMetrics' input onto a
+// DatastoreMetricQuery — the sibling of metricsQueryInputFromArgs.
+func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
+	input, ok := raw.(map[string]any)
+	if !ok {
+		return DatastoreMetricQuery{}, fmt.Errorf("query is required")
+	}
+
+	resource, _ := input["resource"].(string)
+	if resource == "" {
+		return DatastoreMetricQuery{}, fmt.Errorf("resource is required")
+	}
+	name, _ := input["name"].(string)
+	metric, ok := datastoreMetricNames[strings.ToUpper(name)]
+	if !ok {
+		return DatastoreMetricQuery{}, fmt.Errorf("unknown datastore metrics name %q", name)
+	}
+	rawKind, _ := input["kind"].(string)
+	kind := strings.ToLower(strings.TrimSpace(rawKind))
+	if kind == "" {
+		kind = DatastoreDatabase
+	}
+	q := DatastoreMetricQuery{Kind: kind, Resource: resource, Metric: metric}
+
+	if s, ok := input["start"].(string); ok && s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			q.Start = t
+		}
+	}
+	if e, ok := input["end"].(string); ok && e != "" {
+		if t, err := time.Parse(time.RFC3339, e); err == nil {
+			q.End = t
+		}
+	}
+	if n, ok := input["resolution"].(int); ok {
+		q.Resolution = time.Duration(n) * time.Second
+	}
+
+	return q, nil
 }
 
 func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {

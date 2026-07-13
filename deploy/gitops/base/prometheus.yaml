@@ -304,6 +304,40 @@ spec:
                   - source_labels: [__name__]
                     regex: cnpg_pg_stat_archiver_.*
                     action: keep
+              # CNPG TENANT database per-pod metrics (:9187) — w3/m10's
+              # active-connections + replication-lag series, for every managed
+              # Postgres (w1/m17) across every app namespace (bex's own bex-db
+              # stays on the tightly-scoped cnpg-bex-db job above; dropped here
+              # to avoid a double scrape). cnpg_backends_total's `total` column
+              # has no cluster/namespace label of its own (CNPG's SQL query only
+              # labels by datname/usename/application_name/state), so
+              # cnpg_io_cluster/namespace/pod are stamped at scrape time —
+              # exactly the label vocabulary lego/backend/internal/metrics's
+              # DBConnections/ReplicationLag sources select on.
+              - job_name: cnpg-tenant-db
+                scrape_interval: 60s
+                kubernetes_sd_configs:
+                  - role: pod
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_namespace]
+                    action: drop
+                    regex: bex-system
+                  - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+                    action: keep
+                    regex: (.+)
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9187
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                  - source_labels: [__meta_kubernetes_namespace]
+                    target_label: namespace
+                  - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+                    target_label: cnpg_io_cluster
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: cnpg_backends_total|cnpg_pg_replication_.*
+                    action: keep
           # ── Alerting rules ──────────────────────────────────────────────────
           # Small, high-signal pack: every alert carries a one-line description
           # with the kubectl command to start debugging. Two groups: `platform`

@@ -12,6 +12,7 @@ import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row
 import { KeyValueLifecycleActions } from "@/features/keyvalue/components/key-value-lifecycle-actions";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
+import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
@@ -69,6 +70,7 @@ export function KeyValueDetailPage() {
                 id={keyValue.id}
                 isPublic={keyValue.public}
               />
+              <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.name} />
               <KeyValueLifecycleActions
                 keyValue={keyValue}
                 onChanged={() => void refetch()}

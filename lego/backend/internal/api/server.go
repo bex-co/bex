@@ -140,7 +140,14 @@ type Deps struct {
 	RequestMetrics       metrics.RequestMetricsSource
 	MonthToDateBandwidth metrics.MonthToDateBandwidthSource
 	MetricsFilterValues  metrics.MetricsFilterValuesSource
-	APIKeys              apikeys.APIKeyStore
+	// DiskUsage/DBConnections/ReplicationLag (w3/m10) back the datastore-scoped
+	// metrics (Database/KeyValue disk usage; Postgres connections + replication
+	// lag). nil => those metrics report core.ErrMetricsUnavailable, same as the
+	// App-scoped Prometheus-backed metrics above.
+	DiskUsage      metrics.DiskUsageSource
+	DBConnections  metrics.DBConnectionsSource
+	ReplicationLag metrics.ReplicationLagSource
+	APIKeys        apikeys.APIKeyStore
 	Store                apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
@@ -265,6 +272,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 			RequestMetrics:             d.RequestMetrics,
 			MonthToDateBandwidthSource: d.MonthToDateBandwidth,
 			MetricsFilterValuesSource:  d.MetricsFilterValues,
+			DiskUsage:                  d.DiskUsage,
+			DBConnections:              d.DBConnections,
+			ReplicationLag:             d.ReplicationLag,
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
 		Postgres:  &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres},

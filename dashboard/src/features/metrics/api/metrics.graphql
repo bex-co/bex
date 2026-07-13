@@ -51,3 +51,22 @@ query MetricsPathFilterSuggestions($query: MetricsPathFilterSuggestionsInput!) {
     paths
   }
 }
+
+# w3/m10: the Database/KeyValue-scoped sibling of Metrics — disk usage (both
+# kinds), active-connections and replication-lag (Postgres only). Unlike
+# Metrics' RESOURCE filter array, this names one resource + kind directly: a
+# datastore metric always targets exactly one instance. bex extension — no
+# Render equivalent (Render's metrics API has no datastore-scoped series).
+query DatastoreMetrics($query: DatastoreMetricsQueryInput!) {
+  datastoreMetrics(query: $query) {
+    unit
+    labels {
+      field
+      value
+    }
+    values {
+      time
+      value
+    }
+  }
+}

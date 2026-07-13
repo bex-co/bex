@@ -366,6 +366,46 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	return &a, nil
 }
 
+// GetDatabase fetches one Database by name — the Database sibling of GetApp,
+// same not-found mapping and cross-workspace gate (AuthorizeLabeled). Shared
+// by internal/postgres and internal/metrics (w3/m10's datastore-scoped
+// metrics), so a caller who knows a Database's name can't read it — or its
+// metrics — from a workspace it doesn't belong to just because one feature
+// remembered the gate and another didn't (w6/m14's fix for GetApp, generalized
+// once a second caller needed it: the Rule-of-Three case AuthorizeLabeled's own
+// doc comment already anticipated).
+func (b *Base) GetDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
+	var d appv1alpha1.Database
+	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &d)
+	if apierrors.IsNotFound(err) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := b.AuthorizeLabeled(ctx, relation, d.Labels); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// GetKeyValue fetches one KeyValue by name — the KeyValue sibling of GetApp;
+// see GetDatabase.
+func (b *Base) GetKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
+	var kv appv1alpha1.KeyValue
+	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &kv)
+	if apierrors.IsNotFound(err) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := b.AuthorizeLabeled(ctx, relation, kv.Labels); err != nil {
+		return nil, err
+	}
+	return &kv, nil
+}
+
 // AuthorizeLabeled is the cross-workspace gate for any tenant-labeled resource
 // the caller reached BY NAME — an App (GetApp, above), a Database, a KeyValue.
 // It is the one rule, in one place, so a feature cannot fetch its own CRs

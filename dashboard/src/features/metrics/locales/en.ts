@@ -53,6 +53,43 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Shown instead of a percentage chart when the App's pods declare no resource limit",
   },
+  "metrics.targetLabel": {
+    message: "Target {value}",
+    description:
+      "Autoscale-target annotation on the Memory/CPU chart headers (percentage mode only), e.g. 'Target 70%'",
+  },
+  "metrics.diskTitle": {
+    message: "Disk",
+    description: "Datastore metrics panel: disk usage chart section title",
+  },
+  "metrics.diskCapacityLabel": {
+    message: "Capacity {value}",
+    description:
+      "Disk usage chart header annotation showing the PVC's total capacity",
+  },
+  "metrics.connectionsTitle": {
+    message: "Active Connections",
+    description:
+      "Datastore metrics panel: Postgres active-connections chart section title",
+  },
+  "metrics.replicationLagTitle": {
+    message: "Replication Lag",
+    description:
+      "Datastore metrics panel: Postgres replication-lag chart section title",
+  },
+  "metrics.replicationLagPendingHA": {
+    message: "N/A — no replica (enable High Availability to see replication lag)",
+    description:
+      "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
+  },
+  "metrics.datastoreMetricsTitle": {
+    message: "Metrics",
+    description: "Database/Key Value detail page metrics panel card title",
+  },
+  "metrics.datastoreMetricsDescription": {
+    message: "Live resource usage for this instance",
+    description: "Database/Key Value detail page metrics panel card description",
+  },
   "metrics.statusCode": {
     message: "Status Code",
     description: "Toolbar filter label for HTTP status code",

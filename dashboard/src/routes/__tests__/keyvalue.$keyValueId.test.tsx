@@ -48,6 +48,19 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   }),
 }));
 
+// DatastoreMetricsPanel (w3/m10) reads via Apollo's useQuery directly, which
+// needs an ApolloProvider this route's test tree doesn't set up (no other
+// panel here touches Apollo) — mocked at the hook boundary like every other
+// panel's data hook above.
+vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
+  useDatastoreMetrics: () => ({
+    series: [],
+    loading: false,
+    unavailable: false,
+    error: undefined,
+  }),
+}));
+
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
     id: "sessions-cache",
