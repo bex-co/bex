@@ -20,9 +20,9 @@ import {
 } from "../types";
 
 // Render's Logs filter row (design source .pm/w5/m6/README.md): a type dropdown,
-// a wide search box, and a live toggle. Time-range/level/status filters Render
-// exposes are omitted — bex-api's GraphQL logs() can't honor them over raw pod
-// logs (see the milestone's honored-vs-omitted table).
+// a wide search box, and a live toggle. The level/status/method/path filters Render
+// also exposes are not built HERE yet — but bex-api does honor them now (w3/m8),
+// with `logLabelValues` to populate their dropdowns; the UI half is .pm/w5/008.
 const TYPE_LABEL_KEYS: Record<LogTypeFilter, keyof typeof en> = {
   [LOG_TYPE_ALL]: "logs.typeAll",
   [LOG_TYPE_APP]: "logs.typeApplication",

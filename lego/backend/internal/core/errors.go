@@ -34,6 +34,13 @@ var (
 	// wired (adapters surface it as 503, not 404 — the App exists, the source
 	// doesn't).
 	ErrLogsUnavailable = errors.New("logs source not configured")
+	// ErrLogStoreUnavailable is returned by the logs verbs when a caller asks for
+	// something only the durable log store can answer — request logs, or a
+	// structured filter (level/statusCode/method/path/host) — while bex-api runs
+	// in pod-log fallback mode (BEX_LOKI_URL unset). Adapters surface it as 503:
+	// refusing beats silently ignoring the filter and returning unfiltered lines
+	// (docs/ADR010-observability.md § Log filters).
+	ErrLogStoreUnavailable = errors.New("request logs and structured log filters require the durable log store")
 	// ErrMetricsUnavailable is returned by the metrics verbs when the backend a
 	// metric needs isn't wired (adapters surface it as 503).
 	ErrMetricsUnavailable = errors.New("metrics source not configured")

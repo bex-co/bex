@@ -1,9 +1,23 @@
-# log-shipper — the DaemonSet that tails App pod logs into Loki (loki.yaml).
-# One replica per node discovers pods via the Kubernetes API, keeps only tenant
-# App pods (label app.bex.co/app), labels each stream namespace/app/pod/container
-# — exactly the labels bex-api's LogQL selects on
-# ({namespace=, app=, container="app"}, see NewLokiSource / docs/ADR010-observability.md)
-# — and pushes to Loki's /loki/api/v1/push.
+# log-shipper — the DaemonSet that tails the two log streams bex serves into Loki
+# (loki.yaml). One replica per node discovers pods via the Kubernetes API and
+# ships:
+#
+#   type=app     — tenant App pod logs (label app.bex.co/app), labelled
+#                  namespace/app/pod/container + `level` (parsed from JSON lines).
+#   type=request — Traefik's access log (traefik.values.yaml `logs.access`),
+#                  attributed back to the App via the access line's ServiceName
+#                  and labelled method/status.
+#
+# These are exactly the labels bex-api's LogQL selects on (see lokiSelectorFor /
+# docs/ADR010-observability.md § Log labels), and both push to /loki/api/v1/push.
+#
+# CARDINALITY BUDGET (docs/ADR010-observability.md § Log labels) — a label is a
+# Loki stream, so only BOUNDED fields become labels:
+#   labels:    namespace, app, type, pod, container, level (≤5), method (≤8), status (≤~15)
+#   line-only: path, host  — unbounded per request; filtered at query time with
+#              LogQL's `| json` over the access line, never promoted to a label.
+# Worst case ≈ replicas×levels + methods×statuses streams per App (low hundreds);
+# typically under 20. Raising `path` to a label would be a cardinality incident.
 #
 # Shipper choice — Grafana Alloy, not Promtail: Promtail reached end-of-life
 # (Grafana's supported successor is Alloy), so a new install ships on Alloy. And
@@ -13,10 +27,11 @@
 # little more apiserver read load, acceptable at platform scale.
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
-# name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app)
-# and the Loki push URL. If either differs on a cluster, tune the relabel rules /
-# endpoint below. Confirm the pinned alloy chart line against the repo before a
-# first real sync.
+# name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
+# the tenant App namespace (`default` — BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE,
+# baked into the ServiceName regex below), and the Loki push URL. If any differs on
+# a cluster, tune the relabel rules / stages / endpoint below. Confirm the pinned
+# alloy chart line against the repo before a first real sync.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -42,12 +57,15 @@ spec:
           tolerations:
             - operator: Exists
         alloy:
-          # Static River config: discover pods -> keep App pods -> label -> push.
+          # Static River config: discover pods -> two pipelines (App logs, Traefik
+          # access logs) -> label -> push.
           configMap:
             content: |-
               discovery.kubernetes "pods" {
                 role = "pod"
               }
+
+              // --- type=app: tenant App container logs ---
 
               discovery.relabel "app_pods" {
                 targets = discovery.kubernetes.pods.targets
@@ -79,6 +97,153 @@ spec:
 
               loki.source.kubernetes "app_pods" {
                 targets    = discovery.relabel.app_pods.output
+                forward_to = [loki.process.app_logs.receiver]
+              }
+
+              // `level` on App logs, honestly: parsed from the line's own JSON
+              // severity field, NEVER guessed from substring matching (a line
+              // containing the word "error" is not an error). A non-JSON line —
+              // or JSON without a severity key — is labelled `unknown`, which is
+              // the truth: bex does not know. Tenants who want level=error to
+              // isolate their errors log JSON (recommended, never required).
+              loki.process "app_logs" {
+                // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
+                // via "level", pino numeric aside) and `severity` (OTel/GCP).
+                // A non-JSON line leaves both empty -> unknown, below.
+                stage.json {
+                  expressions = {
+                    level    = "level",
+                    severity = "severity",
+                  }
+                }
+
+                // Normalize the vocabulary to Render's five buckets. Anything not
+                // recognized collapses to `unknown` rather than minting an unbounded
+                // label value per typo — the cardinality budget above holds because
+                // this template can only ever emit those 5 values.
+                stage.template {
+                  source   = "level"
+                  template = "{{ $l := ToLower (or .Value .severity) }}{{ if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") }}error{{ else if or (eq $l \"warn\") (eq $l \"warning\") }}warn{{ else if or (eq $l \"info\") (eq $l \"notice\") }}info{{ else if or (eq $l \"debug\") (eq $l \"trace\") }}debug{{ else }}unknown{{ end }}"
+                }
+
+                // The `unknown` bucket, and Render's type vocabulary (app | request
+                // | build) so list_log_label_values(label="type") discovers real
+                // values. These are DEFAULTS: they must precede stage.labels, which
+                // overwrites `level` whenever the line actually carried one. A
+                // plaintext line never reaches the template above (a stage whose
+                // source key was never extracted is skipped), so `unknown` is what
+                // it keeps — the honest answer, and the reason it is seeded here
+                // rather than emitted there.
+                stage.static_labels {
+                  values = {
+                    type  = "app",
+                    level = "unknown",
+                  }
+                }
+
+                stage.labels {
+                  values = { level = "level" }
+                }
+
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // --- type=request: Traefik access logs ---
+
+              discovery.relabel "traefik" {
+                targets = discovery.kubernetes.pods.targets
+
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+                  separator     = "/"
+                  regex         = "traefik/traefik"
+                  action        = "keep"
+                }
+                // The ONLY label promoted here, and it never reaches Loki
+                // (stage.label_drop, below). It exists because `stage.match`'s
+                // selector reads an entry's INCOMING labels — the ones set by the
+                // source — and cannot see labels a pipeline stage added; without a
+                // label to select on, the access-line filter below could not run.
+                // The edge pod's own namespace/pod are deliberately NOT promoted:
+                // they are Traefik's, not the App's, and every label on a request
+                // stream is derived from the access line itself.
+                rule {
+                  target_label = "job"
+                  replacement  = "traefik"
+                }
+              }
+
+              loki.source.kubernetes "traefik" {
+                targets    = discovery.relabel.traefik.output
+                forward_to = [loki.process.request_logs.receiver]
+              }
+
+              loki.process "request_logs" {
+                // Traefik's stdout mixes its own operational logs (plain text) with
+                // the JSON access log; only access lines carry ServiceName. Drop the
+                // rest — bex serves App logs, not the edge proxy's. This is a LINE
+                // filter (LogQL `!=` — "does not contain"), deliberately NOT a drop
+                // on an extracted field: a stage keyed on extracted data is skipped
+                // entirely for a line the JSON stage could not parse, so Traefik's
+                // plaintext operational lines would sail straight through it.
+                stage.match {
+                  selector            = "{job=\"traefik\"} != \"ServiceName\""
+                  action              = "drop"
+                  drop_counter_reason = "not_an_access_line"
+                }
+
+                stage.json {
+                  expressions = {
+                    service = "ServiceName",
+                    method  = "RequestMethod",
+                    status  = "DownstreamStatus",
+                  }
+                }
+
+                // App attribution: Traefik names an Ingress-backed service
+                // `<namespace>-<app>-<port>@kubernetes`, and the operator names the
+                // k8s Service after the App (app_controller.go), so the middle
+                // segment IS the App name. `default` is the tenant App namespace
+                // (see NOTE above) — the one knob to change if that moves. The
+                // greedy `.+` claims every hyphen but the port's, so `hello-go`
+                // survives intact.
+                stage.regex {
+                  source     = "service"
+                  expression = "^(?P<namespace>default)-(?P<app>.+)-\\d+@kubernetes$"
+                }
+                // A service that doesn't match (a non-App Ingress at the edge — the
+                // dashboard, bex-api itself) has no App to attribute to: drop it
+                // rather than invent one. The regex leaves `app` NIL on a miss, and
+                // a nil renders as the literal "<no value>" — so normalize to the
+                // empty string first, then drop on it. (`{{ .Value }}` alone would
+                // emit "<no value>" and sail straight past the drop below.)
+                stage.template {
+                  source   = "app"
+                  template = "{{ if .Value }}{{ .Value }}{{ end }}"
+                }
+                stage.drop {
+                  source              = "app"
+                  expression          = "^$"
+                  drop_counter_reason = "not_a_tenant_app"
+                }
+
+                stage.labels {
+                  values = {
+                    namespace = "namespace",
+                    app       = "app",
+                    method    = "method",
+                    status    = "status",
+                  }
+                }
+                stage.static_labels {
+                  values = { type = "request" }
+                }
+                // `job` was scaffolding for the match stage above — it is not part
+                // of the label taxonomy and must not become a stream.
+                stage.label_drop {
+                  values = ["job"]
+                }
+
                 forward_to = [loki.write.default.receiver]
               }
 

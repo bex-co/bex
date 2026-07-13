@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -147,30 +148,40 @@ func TestLogsErrors(t *testing.T) {
 	}
 }
 
-// narrowLogType (shared by the REST + MCP fragments) turns Render's repeatable
-// `type` filter into Core's single Type: narrow only on one concrete type,
-// tolerate the `application` alias, report ok=false for an unknown value.
-func TestNarrowLogType(t *testing.T) {
+// NormalizeTypes (shared by all three surfaces) maps Render's repeatable `type`
+// filter onto the canonical set: the `application` alias folds into `app`, "all"
+// means no narrowing, and an unknown value errors instead of silently widening the
+// query to every type.
+func TestNormalizeTypes(t *testing.T) {
 	cases := []struct {
-		in     []string
-		want   string
-		wantOK bool
+		in      []string
+		want    []string
+		wantErr bool
 	}{
-		{nil, "", true},                                     // no filter => all
-		{[]string{"all"}, "", true},                         // explicit all
-		{[]string{"app"}, LogTypeApplication, true},         // Render's `app`
-		{[]string{"application"}, LogTypeApplication, true}, // alias
-		{[]string{"request"}, LogTypeRequest, true},
-		{[]string{"build"}, LogTypeBuild, true},
-		{[]string{"app", "request"}, "", true}, // several => all
-		{[]string{"app", "app"}, LogTypeApplication, true},
-		{[]string{"bogus"}, "", false}, // unknown => not ok
+		{nil, nil, false},             // no filter => all
+		{[]string{"all"}, nil, false}, // explicit all
+		{[]string{"app"}, []string{"app"}, false},
+		{[]string{"application"}, []string{"app"}, false}, // alias
+		{[]string{"request"}, []string{"request"}, false},
+		{[]string{"build"}, []string{"build"}, false},
+		{[]string{"app", "request"}, []string{"app", "request"}, false}, // both kept — a real union
+		{[]string{"app", "app"}, []string{"app"}, false},                // deduped
+		{[]string{"bogus"}, nil, true},                                  // unknown => error, not "all"
 	}
 	for _, c := range cases {
-		got, ok := narrowLogType(c.in)
-		if got != c.want || ok != c.wantOK {
-			t.Errorf("narrowLogType(%v) = (%q,%v), want (%q,%v)", c.in, got, ok, c.want, c.wantOK)
+		got, err := NormalizeTypes(c.in)
+		if (err != nil) != c.wantErr {
+			t.Errorf("NormalizeTypes(%v) err = %v, wantErr %v", c.in, err, c.wantErr)
+			continue
 		}
+		if err == nil && !slices.Equal(got, c.want) {
+			t.Errorf("NormalizeTypes(%v) = %v, want %v", c.in, got, c.want)
+		}
+	}
+	// The error is a bad request (400), naming the offending value.
+	_, err := NormalizeTypes([]string{"bogus"})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("unknown type must be a bad request naming the value, got %v", err)
 	}
 }
 
@@ -207,7 +218,7 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	if len(env.Logs) != 3 || env.Logs[0].Message != "first boot ok" {
 		t.Fatalf("want 3 lines sorted oldest-first: %+v", env.Logs)
 	}
-	if env.Logs[0].ID == "" || env.Logs[0].Labels[0].Name != "type" || env.Logs[0].Labels[0].Value != renderLogTypeApp {
+	if env.Logs[0].ID == "" || env.Logs[0].Labels[0].Name != "type" || env.Logs[0].Labels[0].Value != LogTypeApp {
 		t.Errorf("render log id/type label wrong: %+v", env.Logs[0])
 	}
 	if env.NextStartTime == "" || env.NextEndTime == "" {
@@ -229,13 +240,16 @@ func TestRESTLogsTypeAndErrors(t *testing.T) {
 	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
 		sampleApp("web"), podFor("web", "web-1"))
 
-	// request/build have no source: 200 + empty.
-	for _, ty := range []string{"request", "build"} {
-		rec := serveREST(svc, "GET", "/v1/logs?resource=web&type="+ty)
-		var env renderLogList
-		if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 0 {
-			t.Errorf("type=%s => 200 empty, got %d %+v", ty, rec.Code, env.Logs)
-		}
+	// `build` has no backend anywhere in bex — the one empty-by-design type.
+	rec := serveREST(svc, "GET", "/v1/logs?resource=web&type=build")
+	var env renderLogList
+	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 0 {
+		t.Errorf("type=build => 200 empty, got %d %+v", rec.Code, env.Logs)
+	}
+	// `request` lives in the durable store; without it (pod-log fallback) the API
+	// says so — a 503 — instead of serving a fake empty page.
+	if got := serveREST(svc, "GET", "/v1/logs?resource=web&type=request").Code; got != 503 {
+		t.Errorf("type=request without the store => 503, got %d", got)
 	}
 	if serveREST(svc, "GET", "/v1/logs").Code != 400 {
 		t.Error("missing resource => 400")
@@ -245,6 +259,106 @@ func TestRESTLogsTypeAndErrors(t *testing.T) {
 	}
 	if serveREST(svc, "GET", "/v1/logs?resource=web&type=bogus").Code != 400 {
 		t.Error("bad type => 400")
+	}
+	if serveREST(svc, "GET", "/v1/logs?resource=web&direction=sideways").Code != 400 {
+		t.Error("bad direction => 400")
+	}
+}
+
+// The honesty rule, on the surface that enforces it: in pod-log fallback mode a
+// structured filter bex cannot honor is refused (503) — never accepted and
+// ignored, which would answer a narrow question with unfiltered lines.
+func TestRESTStructuredFiltersRefusedWithoutStore(t *testing.T) {
+	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", "web-1"))
+
+	for _, filter := range []string{"level=error", "statusCode=500", "method=GET", "path=/x", "host=web.example.com"} {
+		rec := serveREST(svc, "GET", "/v1/logs?resource=web&"+filter)
+		if rec.Code != 503 {
+			t.Errorf("%s without the store => 503, got %d (%s)", filter, rec.Code, rec.Body.String())
+		}
+	}
+	// `instance` is the one structured filter the pod-log path CAN honor — a pod
+	// name is a pod name — so it narrows rather than refusing.
+	var env renderLogList
+	rec := serveREST(svc, "GET", "/v1/logs?resource=web&instance=web-1")
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil || rec.Code != 200 || len(env.Logs) != 1 {
+		t.Errorf("instance filter should be honored on pod logs: %d %+v", rec.Code, env.Logs)
+	}
+	if rec = serveREST(svc, "GET", "/v1/logs?resource=web&instance=web-9"); rec.Code != 200 {
+		t.Errorf("unknown instance => 200 empty, got %d", rec.Code)
+	} else if _ = json.Unmarshal(rec.Body.Bytes(), &env); len(env.Logs) != 0 {
+		t.Errorf("instance=web-9 matches no replica, want no lines: %+v", env.Logs)
+	}
+}
+
+// The request-log split over the REST surface, end to end: `type=request` reaches
+// the store's request streams and comes back as Render log lines whose labels tell
+// the truth (type/method/statusCode), and `/v1/logs/values` discovers real values.
+func TestRESTRequestLogsAndDiscovery(t *testing.T) {
+	access := `{\"ServiceName\":\"default-web-80@kubernetes\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/healthz\",\"DownstreamStatus\":200}`
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"app":"web","type":"request","method":"GET","status":"200"}`,
+		"values": `[["1751673601000000000","` + access + `"]]`,
+	}))
+	defer f.srv.Close()
+
+	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z app line"}},
+		sampleApp("web"), podFor("web", "web-1"))
+	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
+	svc.LabelValues = NewLokiLabelValuesSource(f.srv.URL, f.srv.Client())
+
+	var env renderLogList
+	rec := serveREST(svc, "GET", "/v1/logs?resource=web&type=request&statusCode=2xx&method=GET&path=/healthz")
+	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 1 {
+		t.Fatalf("type=request => the access line, got %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(env.Logs[0].Message, "/healthz") {
+		t.Errorf("the access line itself must be returned: %q", env.Logs[0].Message)
+	}
+	labels := map[string]string{}
+	for _, l := range env.Logs[0].Labels {
+		labels[l.Name] = l.Value
+	}
+	if labels[LabelType] != LogTypeRequest || labels[LabelMethod] != "GET" || labels[LabelStatusCode] != "200" {
+		t.Errorf("request line labels must be truthful: %+v", labels)
+	}
+	// The filters reached the store as LogQL rather than being dropped on the floor.
+	if q := f.lastValues.Get("query"); !strings.Contains(q, `type="request"`) ||
+		!strings.Contains(q, `method="GET"`) || !strings.Contains(q, `status=~"^(2.*)$"`) ||
+		!strings.Contains(q, `request_path="/healthz"`) {
+		t.Errorf("filters not pushed down as LogQL: %s", q)
+	}
+
+	// Discovery: GET /v1/logs/values?label=… returns Render's bare string array.
+	f.body = `{"status":"success","data":["error","info"]}`
+	rec = serveREST(svc, "GET", "/v1/logs/values?resource=web&label=level")
+	var values []string
+	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &values) != nil || !slices.Equal(values, []string{"error", "info"}) {
+		t.Errorf("label discovery => [error info], got %d %s", rec.Code, rec.Body.String())
+	}
+	if rec = serveREST(svc, "GET", "/v1/logs/values?resource=web"); rec.Code != 400 {
+		t.Errorf("missing label => 400, got %d", rec.Code)
+	}
+	if rec = serveREST(svc, "GET", "/v1/logs/values?resource=web&label=bogus"); rec.Code != 400 {
+		t.Errorf("unknown label => 400, got %d", rec.Code)
+	}
+}
+
+// BEX_MAX_QUERY_HOURS bounds every REST log read — the historical query AND label
+// discovery, which takes the same time range and would otherwise let a caller scan
+// the whole store.
+func TestRESTMaxQueryHoursBoundsBothReads(t *testing.T) {
+	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", "web-1"))
+	svc.MaxQueryHours = 24
+
+	wide := "startTime=2020-01-01T00:00:00Z&endTime=2026-01-01T00:00:00Z"
+	if got := serveREST(svc, "GET", "/v1/logs?resource=web&"+wide).Code; got != 400 {
+		t.Errorf("an over-wide query range => 400, got %d", got)
+	}
+	if got := serveREST(svc, "GET", "/v1/logs/values?resource=web&label=level&"+wide).Code; got != 400 {
+		t.Errorf("discovery must honor the same window cap => 400, got %d", got)
 	}
 }
 
@@ -287,7 +401,7 @@ func TestGraphQLLogs(t *testing.T) {
 		t.Fatalf("want 1 log, got %d", len(list))
 	}
 	first := list[0].(map[string]any)
-	if first["message"] != "hello" || first["type"] != renderLogTypeApp || first["instance"] != "web-1" {
+	if first["message"] != "hello" || first["type"] != LogTypeApp || first["instance"] != "web-1" {
 		t.Fatalf("unexpected log shape: %+v", first)
 	}
 }

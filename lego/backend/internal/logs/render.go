@@ -25,9 +25,19 @@ import (
 // and labels as a [{name,value}] array. The MCP list_logs tool returns LogEntry
 // verbatim (matching Render's MCP server); the REST logs API uses this shape.
 
-// renderLogTypeApp is Render's `type` label value for application logs. bex only
-// sources application logs, so every REST log line is tagged with it.
-const renderLogTypeApp = "app"
+// renderLabels is the order labels appear on a REST log line (Render's `name`) and
+// the LogEntry key each reads from — they differ only for `resource`, which Core
+// carries as `service`. A line carries only the labels its stream actually had: an
+// app line has no method/statusCode, a request line no instance/container.
+var renderLabels = []struct{ name, key string }{
+	{LabelType, LabelType},
+	{"resource", "service"},
+	{LabelInstance, LabelInstance},
+	{"container", "container"},
+	{LabelLevel, LabelLevel},
+	{LabelMethod, LabelMethod},
+	{LabelStatusCode, LabelStatusCode},
+}
 
 // renderLabel is Render's logLabel ({name, value}); the REST logs API returns
 // labels as an ordered array rather than LogEntry's map.
@@ -65,17 +75,11 @@ func logID(e LogEntry) string {
 }
 
 func toRenderLog(e LogEntry) renderLog {
-	// Fixed label order (Render's names): type, then resource (LogEntry's
-	// "service"), instance, container — deterministic output.
-	labels := []renderLabel{{Name: "type", Value: renderLogTypeApp}}
-	if v := e.Labels["service"]; v != "" {
-		labels = append(labels, renderLabel{Name: "resource", Value: v})
-	}
-	if v := e.Labels["instance"]; v != "" {
-		labels = append(labels, renderLabel{Name: "instance", Value: v})
-	}
-	if v := e.Labels["container"]; v != "" {
-		labels = append(labels, renderLabel{Name: "container", Value: v})
+	labels := make([]renderLabel, 0, len(e.Labels))
+	for _, l := range renderLabels {
+		if v := e.Labels[l.key]; v != "" {
+			labels = append(labels, renderLabel{Name: l.name, Value: v})
+		}
 	}
 	return renderLog{ID: logID(e), Message: e.Message, Timestamp: e.Timestamp, Labels: labels}
 }

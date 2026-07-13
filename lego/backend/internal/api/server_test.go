@@ -847,7 +847,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_logs", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
+	for _, name := range []string{"list_services", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

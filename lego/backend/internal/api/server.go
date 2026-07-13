@@ -129,7 +129,10 @@ type Deps struct {
 	// LogHistory, when set (BEX_LOKI_URL), backs QueryLogs/Logs with durable Loki
 	// history that survives pod restarts. nil => those reads use live pod logs
 	// (byte-identical to before). The SSE tail always stays on pod logs.
-	LogHistory           logs.LogHistorySource
+	LogHistory logs.LogHistorySource
+	// LogLabelValues, when set (BEX_LOKI_URL), backs list_log_label_values /
+	// GET /v1/logs/values — filter-value discovery over the store's labels.
+	LogLabelValues       logs.LogLabelValuesSource
 	ResourceMetrics      metrics.ResourceMetricsSource
 	ResourceMetricsRange metrics.ResourceMetricsRangeSource
 	RequestMetrics       metrics.RequestMetricsSource
@@ -237,7 +240,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	}
 	return &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource()},
-		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory},
+		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
 		Metrics: &metrics.Service{
 			Base:                       base,
 			ResourceMetrics:            d.ResourceMetrics,

@@ -43,24 +43,80 @@ Loki keeps **7 days** of searchable history (`limits_config.retention_period: 16
 
 ### Cluster enablement
 
-`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that tails App pod logs into it — keeping only tenant App pods (label `app.bex.co/app`) and labelling each stream `namespace`/`app`/`pod`/`container`, the labels `NewLokiSource`'s LogQL selects on. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips `QueryLogs`/`Logs` from pod logs to durable history. Unset ⇒ the pod-log fallback, byte-identical to before. (Alloy, not Promtail: Promtail is end-of-life; Alloy is Grafana's supported successor, and its API-based `loki.source.kubernetes` is the simplest static config — no host-path/file-glob templating.)
+`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that ships **both** log streams into it — the App pods' own output (`type=app`) and Traefik's access log (`type=request`) — labelling each stream with what `lokiSelectorFor`'s LogQL selects on. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips `QueryLogs`/`Logs` from pod logs to durable history. Unset ⇒ the pod-log fallback: app logs still work, request logs and the structured filters are refused with a 503 (see [Log filters](#log-filters)). (Alloy, not Promtail: Promtail is end-of-life; Alloy is Grafana's supported successor, and its API-based `loki.source.kubernetes` is the simplest static config — no host-path/file-glob templating.)
+
+### Log labels (and the cardinality budget)
+
+A Loki **label is a stream**, so only bounded fields become labels; unbounded ones stay in the line and are filtered at query time. That single rule is the whole taxonomy:
+
+| field | where it lives | why |
+| --- | --- | --- |
+| `namespace`, `app` | label | the scope of every query — an equality matcher the service resolves, never the caller |
+| `type` (`app`/`request`) | label | 2 values; the Application/Request split itself |
+| `pod`, `container` | label (app logs) | bounded by replica count; `pod` is Render's `instance` |
+| `level` | label (app logs) | 5 values, hard-capped by the shipper's normalizer (below) |
+| `method` | label (request logs) | the HTTP verb set (≤8) |
+| `status` | label (request logs) | the status codes an App actually returns (≤~15); Render's `statusCode` |
+| **`path`**, **`host`** | **line only** | **unbounded per request** — one label per URL would mint a stream per URL |
+
+Worst case ≈ (replicas × levels) + (methods × statuses) streams per App — low hundreds; typically under 20. `path`/`host` are still fully filterable: the access line is JSON, so a query parses them out with LogQL's `| json` stage (`request_path`/`request_host`) instead of indexing them. **Promoting `path` to a label would be a cardinality incident** — `TestPathAndHostNeverBecomeLabels` guards it.
+
+**Request logs (`type=request`)** are Traefik's JSON access log (`logs.access` in `deploy/gitops/base/values/traefik.values.yaml`), attributed back to the App by the access line's `ServiceName` — Traefik names an Ingress-backed service `<namespace>-<app>-<port>@kubernetes`, and the operator names the k8s Service after the App, so the middle segment _is_ the App. A line the regex can't attribute (the dashboard, bex-api itself — non-App Ingresses at the same edge) is **dropped, not guessed**. Request headers are dropped at the source: they carry `Authorization`/`Cookie`, and a request log is not a place to leak a credential. The message stays the raw JSON access line (every field intact and searchable) rather than a prettified summary — a divergence from Render's rendered request line, in favor of losing nothing.
+
+**`level` on app logs is parsed, never guessed.** The shipper JSON-parses each app line and promotes its `level` (or `severity`) field, normalizing the spellings (`err`/`fatal`/`panic`/`critical` → `error`, `warning` → `warn`, …) into Render's buckets. A line that is not JSON, or JSON without a severity field, is labelled **`unknown`** — the honest answer, because bex does not know. **Substring matching is deliberately not used**: a line containing the word "error" is not an error. The consequence is worth stating plainly: `level=error` isolates errors for services that log **structured JSON**, and buckets everything else into `unknown`. bex recommends JSON logging; it does not require it.
+
+### Log filters
+
+Every filter Render's logs API documents is honored, and each maps to exactly one mechanism:
+
+| filter | mechanism | notes |
+| --- | --- | --- |
+| `type` | stream selection | `app` ∪ `request`; `build` is empty by design (below) |
+| `level` | label matcher | app logs; `unknown` is a real, queryable value |
+| `instance` | label matcher (`pod`) | app logs — a request line comes from the edge, not a replica |
+| `statusCode` | label matcher (`status`) | exact (`404`) or class (`4xx`) |
+| `method` | label matcher | request logs |
+| `path`, `host` | `\| json` line filter | request logs; unbounded, so never labels (above) |
+| `text` | line filter | case-insensitive substring, identical to the pod-log path's |
+| `startTime`/`endTime` | query range |  |
+| `direction` | `backward` (default) / `forward` | which end of the window `limit` keeps; the returned slice stays oldest-first either way |
+| `limit` | line cap | default 20, max 100 (Render's paging range) |
+
+Multiple values for one filter OR together (Render's arrays); different filters AND. A `*` wildcard is supported per value; everything else is a literal (Render also documents full regex — **bex honors the wildcard subset**, a stated divergence rather than a silent one). Every interpolated value is escaped (`%q` + `regexp.QuoteMeta`), so no service name or filter value can break out of a matcher and inject a selector — the label-injection guard, unit-tested.
+
+**Nothing is accepted and ignored.** A filter bex cannot honor is refused where it is asked for:
+
+- **Pod-log fallback mode** (`BEX_LOKI_URL` unset): the labels live in the store, not in a pod's stdout — so `type=request` and the `level`/`statusCode`/`method`/`path`/`host` filters return **503** (`ErrLogStoreUnavailable`), rather than quietly answering a narrow question with unfiltered lines. `type=app`, `text`, `instance`, time and `direction` still work, unchanged.
+- **The SSE live tail** reads pod logs by design (see above), so it honors the same subset and refuses the store-only filters with a terminal SSE `event: error` frame (its headers are already on the wire, so a status code is no longer available).
+- **An unknown `type`, `direction` or label** is a **400** naming the value — never a silently widened query.
 
 ### REST surface
 
 | method + path | effect |
 | --- | --- |
 | `GET /v1/logs` | historical query → `{hasMore, next*Time, logs}` |
+| `GET /v1/logs/values` | filter-value discovery → a bare `["…"]` array |
 | `GET /v1/logs/subscribe` | live tail over Server-Sent Events |
 | `graphql { logs(...) }` | same query, flat `LogEntry` rows |
-| MCP `list_logs` | agent read (Core.QueryLogs), `resource` array + `type`/`text`/`startTime`/`endTime`/`limit` |
+| `graphql { logLabelValues(...) }` | same discovery (the logs sibling of `metricsFilters`) |
+| MCP `list_logs` | agent read (Core.QueryLogs), `resource` array + the full filter set |
+| MCP `list_log_label_values` | agent discovery (Core.LogLabelValues), `label` + `resource` + the same filters |
 
-Query params (Render vocabulary): `resource` (App id, repeatable), `type` (repeatable), `text` (case-insensitive substring), `startTime`/`endTime` (RFC3339), `limit` (default 20, max 100 — Render's paging range). `Core` re-applies every filter, sorts oldest-first, and keeps the newest `limit`.
+Query params (Render vocabulary): `resource` (App id, repeatable), plus the [filters](#log-filters) above — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text` (all repeatable), `startTime`/`endTime` (RFC3339), `direction`, `limit`. `/v1/logs/values` takes the same set plus a required `label` (`host`|`instance`|`level`|`method`|`statusCode`|`type` — the enum Render's tool uses). One `Core` verb per read (`QueryLogs`, `LogLabelValues`) backs all three surfaces, so a filter means the same thing on every one.
 
-The REST log object is Render's public-API `log` (all fields required): `{id, message, timestamp, labels[]}`. bex synthesizes a stable `id` from instance + timestamp + a message hash, and renders Core's map labels as Render's `{name,value}` array — `type` (value `app`), `resource` (Core's `service`), `instance`. The envelope carries all four required fields: `hasMore`, `nextStartTime` (newest line), `nextEndTime` (oldest line, the backward-page cursor), `logs`. (MCP instead returns `LogEntry` with map labels verbatim, matching Render's MCP server — each adapter mirrors its own Render counterpart.)
+**Discovery is scoped to the App**, always: the label-values call goes to Loki with the requested service's stream selector, so no caller can enumerate another tenant's pods, hostnames or statuses. `host` is the exception that proves the taxonomy — it is not a stream label, so its values come from the App's own `status.urls` (the same derivation the metrics feature's `HOST` filter uses), which is why it resolves even with no store wired.
+
+The REST log object is Render's public-API `log` (all fields required): `{id, message, timestamp, labels[]}`. bex synthesizes a stable `id` from instance + timestamp + a message hash, and renders Core's map labels as Render's `{name,value}` array — `type`, `resource` (Core's `service`), `instance`, `container`, `level`, `method`, `statusCode`. **A line carries only the labels its stream actually had**: an app line has no `method`/`statusCode`, a request line no `instance`/`container`. Nothing is faked to fill the shape. The envelope carries all four required fields: `hasMore`, `nextStartTime` (newest line), `nextEndTime` (oldest line, the backward-page cursor), `logs`. (MCP instead returns `LogEntry` with map labels verbatim, matching Render's MCP server — each adapter mirrors its own Render counterpart.)
 
 ### Log types
 
-Render's `type` is `app`/`request`/`build`. **bex only sources application (`app`) logs today** — the App's own container stdout/stderr, read from every replica pod (label `app.bex.co/app=<name>`) and aggregated. `request` (Traefik access logs) and `build` (bex builds in a separate plane, see [go-and-gitops](ADR001-go-and-gitops.md)) have no backend here, so those types resolve to an empty page rather than an error — a Render-shaped client filtering by them sees an empty result, never a break. `application` is accepted as an input alias for `app`.
+Render's `type` is `app`/`request`/`build`, and bex serves the first two:
+
+- **`app`** — the App's own container stdout/stderr, from every replica pod (label `app.bex.co/app=<name>`), aggregated. `application` is accepted as an input alias.
+- **`request`** — Traefik's access log for that App (see [Log labels](#log-labels-and-the-cardinality-budget)), with truthful `method`/`statusCode` and a searchable `path`/`host`.
+- **`build`** — **empty by design, and the only one.** bex builds run in a separate plane ([go-and-gitops](ADR001-go-and-gitops.md)) with no shipper into this store, so `type=build` resolves to an empty page rather than an error: a Render-shaped client filtering by it sees an empty result, never a break. This is the single remaining "accepted-but-empty" type, stated here rather than hidden.
+
+Asking for no type (or `all`) unions app + request — the default a Render client sees.
 
 ### Live tail (SSE)
 
@@ -68,11 +124,14 @@ Render's `type` is `app`/`request`/`build`. **bex only sources application (`app
 
 ### Render compatibility
 
-Shapes verified against `render-public-api-1.json`: the `type`/`resource`/`text`/`startTime`/`endTime`/`limit` params, the `{hasMore, nextStartTime, nextEndTime, logs}` envelope, and the `{id, message, timestamp, labels[]}` log object (with the label-name enum). Known, intentional deviations:
+Shapes verified against `render-public-api-1.json` and `render-oss/render-mcp-server` (`pkg/logs/tools.go`): the full filter param set, the `{hasMore, nextStartTime, nextEndTime, logs}` envelope, the `{id, message, timestamp, labels[]}` log object (with the label-name enum), and both MCP tools' names/arguments (`list_logs`, `list_log_label_values` — the latter's `label` enum is Render's exact six). Known, intentional deviations:
 
 - **subscribe transport** — SSE vs Render's WebSocket (`101` upgrade).
 - **`ownerId`** — Render requires it; bex is single-tenant and omits it.
-- **unimplemented filters** — Render's request-log filters `instance`, `level`, `host`, `statusCode`, `method`, `path`, and the `direction` (forward/backward) param are not wired yet; `text`/`type`/time filtering is.
+- **wildcards, not regex** — Render's filters accept full regex; bex honors `*` wildcards and treats everything else as a literal (see [Log filters](#log-filters)).
+- **`type=build`** — empty by design (no build-log shipper); every other filter is honored or refused, never ignored.
+- **request-line message** — the raw JSON access line, not a rendered request summary.
+- **GraphQL arity** — `logs(type:)`/`logs(text:)` stay single-valued strings (the shape the dashboard sends); REST and MCP take Render's arrays. The request filters are lists on all three.
 
 ### RBAC
 

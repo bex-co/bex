@@ -28,7 +28,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -591,7 +590,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
 		case "HOST":
-			out = append(out, MetricsFilterValues{Field: field, Values: hostsFromURLs(a.Status.URLs)})
+			out = append(out, MetricsFilterValues{Field: field, Values: core.HostsFromURLs(a.Status.URLs)})
 		case "STATUS_CODE":
 			values, err := s.filterValuesOrEmpty(ctx, q.App, "code")
 			if err != nil {
@@ -610,18 +609,4 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app, label string) ([
 		return []string{}, nil
 	}
 	return s.MetricsFilterValuesSource(ctx, s.Namespace, app, label)
-}
-
-// hostsFromURLs strips the scheme (and any trailing slash) from an App's status
-// URLs, matching Render's HOST filter's bare-hostname vocabulary.
-func hostsFromURLs(urls []string) []string {
-	out := make([]string, 0, len(urls))
-	for _, u := range urls {
-		host := u
-		if _, after, ok := strings.Cut(u, "://"); ok {
-			host = after
-		}
-		out = append(out, strings.TrimSuffix(host, "/"))
-	}
-	return out
 }

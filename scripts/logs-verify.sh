@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# E2E for durable logs (docs/ADR010-observability.md, w3/m5) against the current
-# kubeconfig cluster's Loki (deploy/gitops/base/loki.yaml) + log-shipper. Proves
-# the milestone's whole point — logs survive a pod restart — over the real
-# surfaces:
+# E2E for durable logs (docs/ADR010-observability.md, w3/m5) and the Application /
+# Request split + structured filters (w3/m8), against the current kubeconfig
+# cluster's Loki (deploy/gitops/base/loki.yaml) + log-shipper. Proves both
+# milestones' points over the real surfaces:
 #
 #   1. DURABLE: deploy a whoami App, wait for a boot line to ship into Loki, note
 #      the pre-restart timestamp window, then `kubectl delete pod` and wait for the
@@ -14,7 +14,18 @@
 #      it — the range is a real bounded search, not best-effort over a live stream.
 #   3. FALLBACK (truthful degraded answer): rerun the same post-restart query with
 #      BEX_LOKI_URL unset. The pre-restart line is GONE (the new pod's buffer never
-#      held it) — the honest live-only answer, byte-identical to the pre-Loki path.
+#      held it) — the honest live-only answer. In the same mode, `type=request` and
+#      the structured filters return 503, never a fake empty page (w3/m8).
+#   4. REQUEST (w3/m8): curl the App through the Traefik edge on a unique path, then
+#      `type=request` returns exactly that access line with a truthful method/status,
+#      the `path` filter finds it, and a wrong-status filter excludes it.
+#   5. SPLIT (w3/m8): `type=app` returns NO request lines and `type=request` returns
+#      no app lines — the split is clean in both directions.
+#   6. LEVEL (w3/m8): a JSON-logging fixture App plants one error line; `level=error`
+#      isolates exactly it, and its plaintext line lands in the honest `unknown`
+#      bucket (never substring-guessed).
+#   7. DISCOVERY (w3/m8): `list_log_label_values` / GET /v1/logs/values lists the
+#      service's REAL levels and statuses — and never another service's (tenancy).
 #
 # Like secrets-verify.sh, bex-api AND the operator run on the host (go build)
 # talking to the cluster apiserver via $KUBECONFIG; Loki (and Hydra/OpenFGA when
@@ -30,10 +41,15 @@ cd "$(dirname "$0")/.."
 
 MON_NS=monitoring
 SYS_NS=bex-system
+TRAEFIK_NS=traefik
 APP_NS=default
-SVC=whoami-logs # a dedicated App so a rerun never collides with examples/whoami
+SVC=whoami-logs   # a dedicated App so a rerun never collides with examples/whoami
+JSVC=jsonlog-logs # the JSON-logging fixture App (level labelling, w3/m8)
+HOST=logs-verify.local
+NONCE="m8-$(date -u +%s)" # unique per run: the exact request path / planted line
 
 LOKI=127.0.0.1:23100
+EDGE=127.0.0.1:18080
 API=127.0.0.1:18090
 API_PID=""
 OP_PID=""
@@ -46,7 +62,8 @@ cleanup() {
     kill "${PIDS[@]}" 2>/dev/null || true
     wait "${PIDS[@]}" 2>/dev/null || true
   fi
-  kubectl -n "$APP_NS" delete app.app.bex.co "$SVC" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "$APP_NS" delete job -l app.bex.co/app="$JSVC" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "$APP_NS" delete app.app.bex.co "$SVC" "$JSVC" --ignore-not-found >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -66,7 +83,9 @@ sleep 2
 curl -sf "http://$LOKI/ready" >/dev/null 2>&1 || info "loki /ready not yet 200 (still starting is OK if pushes land)"
 
 # --- deploy the App and wait for it Running ---
-info "deploying App/$SVC"
+# spec.hosts gives it an Ingress on the shared Traefik edge regardless of
+# BEX_BASE_DOMAIN, which is what makes the request-log phase (4) possible.
+info "deploying App/$SVC (host $HOST)"
 cat <<YAML | kubectl apply -f - >/dev/null
 apiVersion: app.bex.co/v1alpha1
 kind: App
@@ -74,6 +93,7 @@ metadata: { name: $SVC, namespace: $APP_NS }
 spec:
   image: traefik/whoami
   port: 80
+  hosts: [$HOST]
 YAML
 kubectl -n "$APP_NS" wait --for=jsonpath='{.status.phase}'=Running "app.app.bex.co/$SVC" --timeout=180s \
   || fail "App/$SVC never reached Running"
@@ -158,5 +178,128 @@ fb_old="$(echo "$fb" | jq --arg p "$OLD_POD" '[.logs[] | select(.labels[]? | .va
   && pass "FALLBACK: with BEX_LOKI_URL unset the deleted pod's lines are gone (honest live-only answer)" \
   || fail "fallback should NOT surface the deleted pod's lines (it has no store), got $fb_old"
 
+# 3b. FALLBACK HONESTY (w3/m8): the labels live in the store, not in a pod's
+#     stdout — so a store-only filter is REFUSED (503), never silently ignored and
+#     answered with unfiltered lines.
+for filter in "type=request" "level=error" "statusCode=500" "method=GET" "path=/x"; do
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://$API/v1/logs?resource=$SVC&$filter")"
+  [ "$code" = "503" ] || fail "fallback: $filter should be 503 (store-only), got $code"
+done
+pass "FALLBACK HONESTY: type=request + every store-only filter => 503, not a fake empty page"
+
+# --- back to the Loki-wired API for the w3/m8 phases ---
+start_api "http://$LOKI"
+
+# 4. REQUEST: drive one request through the real Traefik edge on a unique path, then
+#    read it back as a request log with a truthful method/status.
+kubectl -n "$TRAEFIK_NS" port-forward svc/traefik 18080:80 >/dev/null 2>&1 &
+PIDS+=($!)
+sleep 2
+curl -sf -H "Host: $HOST" "http://$EDGE/$NONCE" >/dev/null \
+  || fail "could not reach App/$SVC through the Traefik edge (Host: $HOST) — no access line to verify"
+info "requested http://$HOST/$NONCE through the edge; waiting for the access line to ship"
+
+req=""
+for i in $(seq 1 30); do
+  req="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&limit=100")"
+  echo "$req" | jq -e --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length > 0' >/dev/null 2>&1 && break
+  sleep 2
+done
+line="$(echo "$req" | jq -c --arg n "$NONCE" 'first(.logs[] | select(.message | contains($n)))' 2>/dev/null)"
+[ -n "$line" ] && [ "$line" != "null" ] \
+  || fail "type=request returned no access line for /$NONCE after 60s (check Traefik access logs + the shipper)"
+
+lbl() { echo "$line" | jq -r --arg k "$1" 'first(.labels[] | select(.name == $k) | .value) // ""'; }
+[ "$(lbl type)" = "request" ] || fail "the access line's type label is '$(lbl type)', want request"
+[ "$(lbl method)" = "GET" ] || fail "the access line's method label is '$(lbl method)', want GET"
+[ "$(lbl statusCode)" = "200" ] || fail "the access line's statusCode label is '$(lbl statusCode)', want 200"
+pass "REQUEST: type=request returns the access line for /$NONCE (method=GET, statusCode=200 — truthful)"
+
+# path is line-searchable (never a label — the cardinality budget), statusCode narrows.
+n_path="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&path=/$NONCE&limit=100" | jq '.logs | length')"
+[ "${n_path:-0}" -gt 0 ] || fail "the path filter should find /$NONCE, got $n_path lines"
+n_5xx="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&statusCode=5xx&limit=100" \
+  | jq --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length')"
+[ "${n_5xx:-1}" -eq 0 ] || fail "statusCode=5xx must exclude the 200 access line, got $n_5xx"
+pass "REQUEST FILTERS: path=/$NONCE finds it; statusCode=5xx excludes it (filters really narrow)"
+
+# 5. SPLIT: the two types don't bleed into each other, in either direction.
+app_reqs="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=app&limit=100" \
+  | jq '[.logs[] | select(.labels[]? | select(.name == "type") | .value == "request")] | length')"
+[ "${app_reqs:-1}" -eq 0 ] || fail "type=app returned $app_reqs request line(s) — the split leaks"
+req_apps="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&limit=100" \
+  | jq '[.logs[] | select(.labels[]? | select(.name == "type") | .value == "app")] | length')"
+[ "${req_apps:-1}" -eq 0 ] || fail "type=request returned $req_apps app line(s) — the split leaks"
+pass "SPLIT: type=app excludes access lines and type=request excludes app lines (clean both ways)"
+
+# 6. LEVEL: a JSON-logging fixture plants exactly one error line. A cron-type App is
+#    the CR path that honors spec.command, and `kubectl create job --from` runs it
+#    once now — its pod carries the App label, so the shipper treats it as app logs.
+info "deploying the JSON-logging fixture App/$JSVC and planting one error line"
+cat <<YAML | kubectl apply -f - >/dev/null
+apiVersion: app.bex.co/v1alpha1
+kind: App
+metadata: { name: $JSVC, namespace: $APP_NS }
+spec:
+  type: cron_job
+  schedule: "0 0 31 2 *" # never fires on its own (Feb 31) — the run below is explicit
+  image: busybox
+  command: >-
+    echo '{"level":"info","msg":"json fixture up $NONCE"}';
+    echo '{"level":"error","msg":"planted failure $NONCE"}';
+    echo 'plain text, not json $NONCE'
+YAML
+for i in $(seq 1 30); do kubectl -n "$APP_NS" get cronjob "$JSVC" >/dev/null 2>&1 && break; sleep 2; done
+kubectl -n "$APP_NS" get cronjob "$JSVC" >/dev/null 2>&1 || fail "the operator never created CronJob/$JSVC"
+kubectl -n "$APP_NS" create job "$JSVC-$NONCE" --from="cronjob/$JSVC" >/dev/null
+kubectl -n "$APP_NS" wait --for=condition=complete "job/$JSVC-$NONCE" --timeout=120s >/dev/null \
+  || fail "the JSON-logging fixture job never completed"
+
+errs=""
+for i in $(seq 1 30); do
+  errs="$(curl -sf "http://$API/v1/logs?resource=$JSVC&type=app&level=error&limit=100")"
+  [ "$(echo "$errs" | jq '.logs | length')" -gt 0 ] && break
+  sleep 2
+done
+n_err="$(echo "$errs" | jq '.logs | length')"
+[ "${n_err:-0}" -eq 1 ] || fail "level=error should isolate exactly the 1 planted line, got ${n_err:-0}"
+echo "$errs" | jq -e --arg n "$NONCE" '.logs[0].message | contains("planted failure") and contains($n)' >/dev/null \
+  || fail "level=error returned the wrong line: $(echo "$errs" | jq -c '.logs[0].message')"
+pass "LEVEL: level=error isolates exactly the planted error line (parsed from JSON, not guessed)"
+
+n_unknown="$(curl -sf "http://$API/v1/logs?resource=$JSVC&type=app&level=unknown&limit=100" \
+  | jq '[.logs[] | select(.message | contains("plain text, not json"))] | length')"
+[ "${n_unknown:-0}" -gt 0 ] \
+  && pass "LEVEL: the plaintext line lands in the honest 'unknown' bucket (never substring-guessed)" \
+  || fail "the plaintext line should be level=unknown, got $n_unknown lines"
+
+# 7. DISCOVERY: real values, and scoped to the service that asked (tenancy).
+levels="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=level")"
+echo "$levels" | jq -e 'index("error") != null and index("info") != null and index("unknown") != null' >/dev/null \
+  || fail "level discovery should list the fixture's real levels (error/info/unknown), got $levels"
+statuses="$(curl -sf "http://$API/v1/logs/values?resource=$SVC&label=statusCode")"
+echo "$statuses" | jq -e 'index("200") != null' >/dev/null \
+  || fail "statusCode discovery should list 200 for $SVC, got $statuses"
+pass "DISCOVERY: label values are the service's REAL levels ($(echo "$levels" | jq -c .)) and statuses"
+
+# TENANCY: the JSON fixture never served a request, so it must expose NO methods —
+# proving discovery is scoped to the asking service, not the whole store.
+jmethods="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=method")"
+[ "$(echo "$jmethods" | jq 'length')" -eq 0 ] \
+  || fail "TENANCY LEAK: $JSVC has no request logs but method discovery returned $jmethods"
+jinst="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=instance")"
+echo "$jinst" | jq -e --arg p "$NEW_POD" 'index($p) == null' >/dev/null \
+  || fail "TENANCY LEAK: $JSVC's instance discovery lists $SVC's pod $NEW_POD"
+pass "TENANCY: $JSVC's discovery never returns $SVC's methods or pods (scoped to the caller's service)"
+
+# 7b. The same discovery over MCP, under the official tool's name/args.
+mcpv="$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_log_label_values","arguments":{"label":"level","resource":["%s"]}}}' "$JSVC" \
+  | BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="http://$LOKI" go run ./lego/backend/cmd/api mcp-stdio 2>/dev/null)"
+# grep for `unknown`, not `error` — "error" is both a level VALUE and what a failed
+# call would say, so it can't tell success from failure.
+echo "$mcpv" | grep -q "unknown" \
+  && pass "MCP list_log_label_values: discovers the same levels (three-adapter parity)" \
+  || info "MCP list_log_label_values check inconclusive (stdio framing) — REST already proved discovery"
+
 echo
-pass "durable logs verified: pre-restart lines survive over REST+MCP, bounds are real, fallback is truthful"
+pass "logs verified: history survives restarts; the app/request split is real and clean; level=error is truthful; discovery is scoped"

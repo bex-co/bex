@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -293,4 +294,21 @@ func (b *Base) AppPods(ctx context.Context, app string) ([]corev1.Pod, error) {
 		return nil, err
 	}
 	return pods.Items, nil
+}
+
+// HostsFromURLs strips the scheme (and any trailing slash) from an App's status
+// URLs — the bare-hostname vocabulary Render's `host` filter speaks. It lives here
+// because logs and metrics both answer that filter's values, and features never
+// import each other: one derivation, so the two surfaces can't disagree about what
+// a host is.
+func HostsFromURLs(urls []string) []string {
+	out := make([]string, 0, len(urls))
+	for _, u := range urls {
+		host := u
+		if _, after, ok := strings.Cut(u, "://"); ok {
+			host = after
+		}
+		out = append(out, strings.TrimSuffix(host, "/"))
+	}
+	return out
 }

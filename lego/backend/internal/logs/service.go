@@ -23,7 +23,9 @@ package logs
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -33,15 +35,42 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// Log types — Render's `type` vocabulary (app / request / build). bex only
-// sources application (`app`) logs today: request/build logs have no backend
-// here, so those types resolve to an empty result. `application` is accepted as
-// an input alias for `app`.
+// Log types — Render's `type` vocabulary. `app` is the App container's own
+// output; `request` is Traefik's access log, shipped and labelled by the
+// log-shipper (deploy/gitops/base/log-shipper.yaml) and served from the durable
+// store. `build` has no backend in bex (builds run in a separate plane,
+// docs/ADR001-go-and-gitops.md), so it resolves to an honest empty result — the
+// one type that is empty by design, and documented as such.
+// `application` is accepted as an input alias for `app`.
 const (
-	LogTypeApplication = "application"
-	LogTypeRequest     = "request"
-	LogTypeBuild       = "build"
+	LogTypeApp     = "app"
+	LogTypeRequest = "request"
+	LogTypeBuild   = "build"
+
+	// logTypeApplicationAlias is the long spelling of LogTypeApp that bex's own
+	// surfaces have always accepted.
+	logTypeApplicationAlias = "application"
 )
+
+// The log labels Render's clients filter and discover by (`list_log_label_values`'s
+// enum). Each maps onto a stream label the shipper attaches — except LabelHost,
+// which is deliberately NOT a label (unbounded per request; it lives in the access
+// line) and is answered from the App's own hostnames.
+const (
+	LabelType       = "type"
+	LabelLevel      = "level"
+	LabelInstance   = "instance"
+	LabelMethod     = "method"
+	LabelStatusCode = "statusCode"
+	LabelHost       = "host"
+)
+
+// DiscoverableLabels is the label enum LogLabelValues accepts — Render's exact six
+// (render-oss/render-mcp-server's `list_log_label_values`), sorted so the error
+// message and the MCP tool description read the same. The domain owns this
+// vocabulary; translating it to a particular store's label names is the store
+// adapter's job (see NewLokiLabelValuesSource).
+var DiscoverableLabels = []string{LabelHost, LabelInstance, LabelLevel, LabelMethod, LabelStatusCode, LabelType}
 
 // Render defaults the logs `limit` to 20 and caps it at 100; bex matches so a
 // Render client sees identical paging. defaultLogTail caps the MCP list_logs
@@ -74,6 +103,15 @@ type PodLogStream func(ctx context.Context, namespace, pod, container string) (i
 // domain.
 type LogHistorySource func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error)
 
+// LogLabelValuesSource discovers the values one stream label takes among the logs
+// a LogQuery selects — the backend of `list_log_label_values`. label is the store's
+// label name (already mapped from Render's vocabulary by lokiLabelFor), and the
+// query is scoped to one App, so a caller can never enumerate another tenant's
+// pods or hostnames. nil => the discovery verb reports core.ErrLogStoreUnavailable
+// for the store-backed labels. Injected from BEX_LOKI_URL via
+// NewLokiLabelValuesSource, the logs sibling of MetricsFilterValuesSource.
+type LogLabelValuesSource func(ctx context.Context, namespace, label string, q LogQuery) ([]string, error)
+
 // LogEntry is one log line in Render's log shape: a timestamp, the message, and
 // a label set (service/instance/container). Adapters render it verbatim.
 type LogEntry struct {
@@ -95,6 +133,10 @@ type Service struct {
 	// History, when wired (BEX_LOKI_URL), backs QueryLogs/Logs with durable
 	// history that survives pod restarts; nil => those verbs read live pod logs.
 	History LogHistorySource
+	// LabelValues, when wired (BEX_LOKI_URL), backs LogLabelValues — filter-value
+	// discovery over the store's labels; nil => only the `host` label (answered
+	// from the App itself) resolves, the rest report ErrLogStoreUnavailable.
+	LabelValues LogLabelValuesSource
 	// MaxQueryHours, when positive, caps the startTime–endTime window accepted by
 	// REST log queries. 0 = unlimited.
 	MaxQueryHours int
@@ -105,19 +147,62 @@ type Service struct {
 	sseConns atomic.Int64
 }
 
-// LogQuery is the resolved filter set for QueryLogs / FollowLogs.
+// Query directions — Render's `direction`: which end of the time window the
+// `limit` lines are taken from. Backward (the default) keeps the most recent;
+// forward keeps the oldest. Either way the returned slice stays oldest-first.
+const (
+	DirectionBackward = "backward"
+	DirectionForward  = "forward"
+)
+
+// LogQuery is the resolved filter set for QueryLogs / FollowLogs — Render's logs
+// filter vocabulary (api-docs.render.com/reference/list-logs). Every filter here
+// is honored; a filter bex cannot honor is refused at the adapter or with
+// core.ErrLogStoreUnavailable, never silently dropped.
 type LogQuery struct {
 	App    string
-	Type   string    // "" == all; application | request | build
-	Search string    // case-insensitive substring on the message
+	Types  []string  // empty == all types; values: app | request | build
+	Search string    // case-insensitive substring on the message (Render's `text`)
 	Since  time.Time // zero == no lower bound
 	End    time.Time // zero == no upper bound
-	Limit  int64     // max lines (most recent kept)
+	Limit  int64     // max lines
+	// Direction picks which end of the window Limit keeps: DirectionBackward
+	// (default, newest) or DirectionForward (oldest).
+	Direction string
+
+	// Structured filters. Each is a value set (OR within a filter, AND across
+	// filters — Render's semantics); a `*` wildcard is supported per value.
+	// Level applies to app logs; Host/StatusCode/Method/Path to request logs;
+	// Instance to app logs (a request line's origin is the edge, not a replica).
+	Level      []string
+	Instance   []string
+	Host       []string
+	StatusCode []string
+	Method     []string
+	Path       []string
 
 	searchLower string // Search lowercased once by normalized(); read by keep()
 }
 
-// normalized clamps Limit to Render's paging range and precomputes searchLower.
+// validate rejects a filter value outside the accepted vocabulary — an unknown
+// `direction` or log `type`. It runs inside the verbs (before normalized(), which
+// coerces), so the refusal is the service's, not each adapter's: a fourth caller
+// cannot forget it, and all three surfaces refuse identically. core.ErrBadRequest
+// maps to 400 (adapters name the offending value in the message).
+func (q LogQuery) validate() error {
+	if q.Direction != "" && q.Direction != DirectionBackward && q.Direction != DirectionForward {
+		return fmt.Errorf("%w: unknown direction %q (want %s|%s)", core.ErrBadRequest, q.Direction, DirectionBackward, DirectionForward)
+	}
+	for _, t := range q.Types {
+		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild {
+			return fmt.Errorf("%w: unknown log type %q (want %s|%s|%s)", core.ErrBadRequest, t, LogTypeApp, LogTypeRequest, LogTypeBuild)
+		}
+	}
+	return nil
+}
+
+// normalized clamps Limit to Render's paging range, defaults the direction, and
+// precomputes searchLower.
 func (q LogQuery) normalized() LogQuery {
 	if q.Limit <= 0 {
 		q.Limit = defaultLogLimit
@@ -125,13 +210,95 @@ func (q LogQuery) normalized() LogQuery {
 	if q.Limit > maxLogLimit {
 		q.Limit = maxLogLimit
 	}
+	if q.Direction != DirectionForward {
+		q.Direction = DirectionBackward
+	}
 	q.searchLower = strings.ToLower(q.Search)
 	return q
 }
 
-// hasFilters reports whether any line-level filter (search/time) is set.
+// hasFilters reports whether any line-level filter (search/time) is set — the
+// ones the pod-log path applies in Go.
 func (q LogQuery) hasFilters() bool {
 	return q.Search != "" || !q.Since.IsZero() || !q.End.IsZero()
+}
+
+// wants reports whether the query asks for a log type. An empty Types means "all
+// types", so it wants every one of them.
+func (q LogQuery) wants(t string) bool {
+	if len(q.Types) == 0 {
+		return true
+	}
+	return slices.Contains(q.Types, t)
+}
+
+// needsStore reports whether the query asks for something only the durable log
+// store can answer: request logs, or a structured filter over labels the shipper
+// attaches. The pod-log fallback has neither — it reads one container's stdout —
+// so these must be refused there rather than quietly ignored.
+func (q LogQuery) needsStore() bool {
+	return slices.Contains(q.Types, LogTypeRequest) || // asked for request logs explicitly
+		len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
+		len(q.Method) > 0 || len(q.Path) > 0
+}
+
+// tailSupports rejects the filters the live tail cannot honor. The tail follows
+// pod stdout by design (docs/ADR010-observability.md § The tail reads pod logs) —
+// the labels those filters select on are attached by the shipper on the way into
+// the store, and are simply not present on a stream read straight off the kubelet.
+// So this is a permanent property of the transport, not a missing dependency: the
+// query API answers these, the tail says so, and neither silently ignores them.
+func (q LogQuery) tailSupports() error {
+	if q.needsStore() {
+		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
+	}
+	return nil
+}
+
+// keepPod reports whether a pod satisfies the `instance` filter — the one
+// structured filter the pod-log fallback CAN honor (a pod name is a pod name).
+func (q LogQuery) keepPod(pod string) bool {
+	if len(q.Instance) == 0 {
+		return true
+	}
+	return slices.Contains(q.Instance, pod)
+}
+
+// capToLimit keeps q.Limit entries from the end the direction asks for: the
+// newest (backward, the default) or the oldest (forward). entries are oldest-first
+// and stay that way — direction chooses which lines, not how they're ordered.
+func (q LogQuery) capToLimit(entries []LogEntry) []LogEntry {
+	lim := lokiLimit(q)
+	if int64(len(entries)) <= lim {
+		return entries
+	}
+	if q.Direction == DirectionForward {
+		return entries[:lim]
+	}
+	return entries[int64(len(entries))-lim:]
+}
+
+// NormalizeTypes maps Render's repeatable `type` filter onto the canonical set
+// (app/request/build), accepting the `application` alias and treating ""/"all" as
+// "every type". An unrecognized value is reported so the adapter can refuse it
+// (REST 400) instead of silently widening the query. Shared by all three surfaces.
+func NormalizeTypes(types []string) ([]string, error) {
+	var out []string
+	for _, t := range types {
+		switch t {
+		case "", "all":
+			return nil, nil // one "all" means all — no narrowing
+		case LogTypeApp, logTypeApplicationAlias:
+			out = append(out, LogTypeApp)
+		case LogTypeRequest:
+			out = append(out, LogTypeRequest)
+		case LogTypeBuild:
+			out = append(out, LogTypeBuild)
+		default:
+			return nil, fmt.Errorf("%w: unknown log type %q (want app|request|build)", core.ErrBadRequest, t)
+		}
+	}
+	return slices.Compact(slices.Sorted(slices.Values(out))), nil
 }
 
 // keep reports whether an entry satisfies the search/time filters. Assumes
@@ -151,12 +318,6 @@ func (q LogQuery) keep(e LogEntry) bool {
 		}
 	}
 	return true
-}
-
-// appliesToApplication reports whether the query could match application logs —
-// bex's only log source. A request/build-only query never can.
-func (q LogQuery) appliesToApplication() bool {
-	return q.Type == "" || q.Type == LogTypeApplication
 }
 
 // Logs returns recent log lines for an App, aggregated across its pods and
@@ -179,16 +340,21 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
-		return s.History(ctx, s.Namespace, LogQuery{App: name, Limit: tail})
+		return s.History(ctx, s.Namespace, LogQuery{App: name, Limit: tail}.normalized())
 	}
-	return s.collectPodLogs(ctx, name, tail)
+	return s.collectPodLogs(ctx, LogQuery{App: name}, tail)
 }
 
-// QueryLogs returns an App's log lines filtered by type/text/time, newest-last,
-// capped at Limit. It reuses the same pod-log collection as Logs; request/build
-// types resolve to an empty slice (no backend).
+// QueryLogs returns an App's log lines matching the filter set, oldest-first and
+// capped at Limit. With the durable store wired it serves both log types (app +
+// request) and every structured filter; in pod-log fallback mode it serves app
+// logs and refuses what it cannot honor (ErrLogStoreUnavailable) rather than
+// returning unfiltered lines. `build` has no backend either way: an honest empty.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
 	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+		return nil, err
+	}
+	if err := q.validate(); err != nil {
 		return nil, err
 	}
 	if s.History == nil && s.PodLogs == nil {
@@ -198,15 +364,20 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, err
 	}
 	q = q.normalized()
-	if !q.appliesToApplication() {
-		return []LogEntry{}, nil // request/build have no source in bex
+	// A build-only query has no source anywhere in bex — the one empty-by-design
+	// answer (docs/ADR010-observability.md § Log types).
+	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
+		return []LogEntry{}, nil
 	}
 	if s.History != nil {
-		// Durable history (Loki) applies the type/text/time/limit filters in the
-		// store; it already returns oldest-first, capped at q.Limit.
+		// The store applies every filter (labels + line) server-side and returns
+		// oldest-first, capped at q.Limit.
 		return s.History(ctx, s.Namespace, q)
 	}
-	entries, err := s.collectPodLogs(ctx, q.App, q.Limit)
+	if q.needsStore() {
+		return nil, core.ErrLogStoreUnavailable
+	}
+	entries, err := s.collectPodLogs(ctx, q, q.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -220,17 +391,58 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		}
 		entries = kept
 	}
-	if int64(len(entries)) > q.Limit {
-		entries = entries[int64(len(entries))-q.Limit:] // keep the newest Limit
+	return q.capToLimit(entries), nil
+}
+
+// LogLabelValues lists the values a log label takes for one App — Render's
+// `list_log_label_values` / `GET /v1/logs/values`, so a client discovers which
+// levels, statuses, methods, instances or types actually occur instead of guessing.
+// Values are always scoped to the requested App's streams: no caller can enumerate
+// another tenant's pods. `host` is answered from the App's own URLs (it is not a
+// stream label — the cardinality budget keeps it in the line), so it resolves even
+// without the store.
+func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+		return nil, err
 	}
-	return entries, nil
+	if err := q.validate(); err != nil {
+		return nil, err
+	}
+	if !slices.Contains(DiscoverableLabels, label) {
+		// Naming the offending label beats an empty list, which a client would read
+		// as "this service has no such values".
+		return nil, fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
+	}
+	app, err := s.GetApp(ctx, q.App)
+	if err != nil {
+		return nil, err
+	}
+	if label == LabelHost {
+		// `host` is not a stream label (the cardinality budget keeps it in the line),
+		// so its values come from the App itself — which is why it resolves even with
+		// no store wired.
+		return core.HostsFromURLs(app.Status.URLs), nil
+	}
+	if s.LabelValues == nil {
+		return nil, core.ErrLogStoreUnavailable
+	}
+	values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+	if err != nil {
+		return nil, err
+	}
+	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or
-// emit errors. The same type/text filters as QueryLogs apply. Requires a
-// PodLogStream (nil => core.ErrLogsUnavailable).
+// emit errors. The tail always reads live pod logs (never the store — real-time,
+// zero ingest lag), so it serves app logs with the text/time/instance filters and
+// refuses the store-only ones (ErrLogStoreUnavailable), exactly as the fallback
+// query path does. Requires a PodLogStream (nil => core.ErrLogsUnavailable).
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
 	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+		return err
+	}
+	if err := q.validate(); err != nil {
 		return err
 	}
 	if s.PodLogsFollow == nil {
@@ -240,12 +452,19 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return err
 	}
 	q = q.normalized()
-	if !q.appliesToApplication() {
+	// The tail's refusal is about the TRANSPORT, not the deployment: it reads pod
+	// logs even when Loki is wired, so a store-only filter is something this stream
+	// structurally cannot do — a bad request (400), not "the store is missing"
+	// (503), which would be an outright lie on a cluster that has one.
+	if err := q.tailSupports(); err != nil {
+		return err
+	}
+	if !q.wants(LogTypeApp) {
 		<-ctx.Done() // nothing to stream; hold until the client disconnects
 		return ctx.Err()
 	}
 
-	pods, err := s.AppPods(ctx, q.App)
+	pods, err := s.appPodNames(ctx, q)
 	if err != nil {
 		return err
 	}
@@ -259,7 +478,7 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		go func(pod string) {
 			defer wg.Done()
 			s.streamPodLogs(ctx, q.App, pod, ch)
-		}(pods[i].Name)
+		}(pods[i])
 	}
 	go func() { wg.Wait(); close(ch) }()
 
@@ -281,22 +500,40 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	}
 }
 
-// collectPodLogs reads up to tail lines from every replica of an App, tagged and
-// timestamp-sorted. Shared by Logs (MCP) and QueryLogs (REST/GraphQL).
-func (s *Service) collectPodLogs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
-	pods, err := s.AppPods(ctx, name)
+// collectPodLogs reads up to tail lines from every replica of an App the query's
+// `instance` filter admits, tagged and timestamp-sorted. Shared by Logs (MCP) and
+// QueryLogs (REST/GraphQL).
+func (s *Service) collectPodLogs(ctx context.Context, q LogQuery, tail int64) ([]LogEntry, error) {
+	pods, err := s.appPodNames(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 	var out []LogEntry
-	for i := range pods {
-		entries, err := s.readPodLogs(ctx, name, pods[i].Name, tail)
+	for _, pod := range pods {
+		entries, err := s.readPodLogs(ctx, q.App, pod, tail)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, entries...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return out, nil
+}
+
+// appPodNames lists the App's replica names the query's `instance` filter admits
+// — the pod-log path's honoring of that filter (a pod name is a pod name, so this
+// one structured filter needs no store).
+func (s *Service) appPodNames(ctx context.Context, q LogQuery) ([]string, error) {
+	pods, err := s.AppPods(ctx, q.App)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(pods))
+	for i := range pods {
+		if q.keepPod(pods[i].Name) {
+			out = append(out, pods[i].Name)
+		}
+	}
 	return out, nil
 }
 
@@ -354,6 +591,7 @@ func parseLogLine(service, pod, line string) LogEntry {
 			"service":   service,
 			"instance":  pod,
 			"container": core.AppContainer,
+			LabelType:   LogTypeApp, // the pod-log path reads the App container only
 		},
 	}
 }

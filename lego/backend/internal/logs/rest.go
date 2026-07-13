@@ -18,8 +18,10 @@ package logs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -31,33 +33,78 @@ import (
 // query string (resource/type/text/startTime/endTime/limit) and the {hasMore,
 // next*Time, logs} envelope onto QueryLogs, and serves a live tail over SSE.
 
-// RegisterREST mounts the logs query + live-tail routes.
+// RegisterREST mounts the logs query, label-value discovery, and live-tail routes.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/logs", s.logsQuery)
+	mux.HandleFunc("GET /v1/logs/values", s.logsValues)
 	mux.HandleFunc("GET /v1/logs/subscribe", s.logsSubscribe)
+}
+
+// checkWindow enforces BEX_MAX_QUERY_HOURS on a query's time range. Every REST log
+// read goes through it — the historical query AND label discovery, which accepts the
+// same startTime/endTime and would otherwise let a caller scan the store unbounded.
+func (s *Service) checkWindow(q LogQuery) error {
+	if s.MaxQueryHours <= 0 || q.Since.IsZero() {
+		return nil
+	}
+	end := q.End
+	if end.IsZero() {
+		end = time.Now()
+	}
+	if end.Sub(q.Since) > time.Duration(s.MaxQueryHours)*time.Hour {
+		return fmt.Errorf("%w: query range exceeds %d hours", core.ErrBadRequest, s.MaxQueryHours)
+	}
+	return nil
+}
+
+// logsValues serves GET /v1/logs/values — Render's filter-value discovery: the
+// values one label takes among the logs the same filter set selects. Render
+// returns a bare JSON string array, and so does bex.
+func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
+	resources, q, err := parseLogParams(r)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if err := s.checkWindow(q); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	label := r.URL.Query().Get("label")
+	if label == "" {
+		core.WriteErr(w, fmt.Errorf("%w: label is required", core.ErrBadRequest))
+		return
+	}
+
+	all := []string{}
+	for _, res := range resources {
+		q.App = res
+		values, err := s.LogLabelValues(r.Context(), label, q)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		all = append(all, values...)
+	}
+	slices.Sort(all)
+	core.WriteJSON(w, http.StatusOK, slices.Compact(all))
 }
 
 // logsQuery serves GET /v1/logs — a historical query across an App's replicas.
 func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 	resources, q, err := parseLogParams(r)
 	if err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErr(w, err)
 		return
 	}
-	if s.MaxQueryHours > 0 && !q.Since.IsZero() {
-		effectiveEnd := q.End
-		if effectiveEnd.IsZero() {
-			effectiveEnd = time.Now()
-		}
-		if effectiveEnd.Sub(q.Since) > time.Duration(s.MaxQueryHours)*time.Hour {
-			core.WriteJSON(w, http.StatusBadRequest, map[string]string{
-				"error": fmt.Sprintf("query range exceeds %d hours", s.MaxQueryHours),
-			})
-			return
-		}
+	if err := s.checkWindow(q); err != nil {
+		core.WriteErr(w, err)
+		return
 	}
 
 	// Render's `resource` is an array; merge each App's lines, then sort + cap.
+	// QueryLogs gets the query as parsed — normalizing here first would coerce an
+	// invalid `direction` to the default before the verb could refuse it.
 	var all []LogEntry
 	for _, res := range resources {
 		q.App = res
@@ -68,13 +115,12 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		}
 		all = append(all, entries...)
 	}
+	merged := q.normalized() // the limit/direction the merge across resources applies
 	if len(resources) > 1 {
 		sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
-		if int64(len(all)) > q.Limit {
-			all = all[int64(len(all))-q.Limit:]
-		}
+		all = merged.capToLimit(all) // the limit is a total across resources, not per-App
 	}
-	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, q.Limit))
+	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, merged.Limit))
 }
 
 // logsSubscribe serves GET /v1/logs/subscribe — a live tail over Server-Sent
@@ -92,7 +138,7 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	resources, q, err := parseLogParams(r)
 	if err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErr(w, err)
 		return
 	}
 	q.App = resources[0] // subscribe follows a single App
@@ -124,80 +170,68 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 		return nil
 	})
-	if err == core.ErrLogsUnavailable {
-		// Headers are already sent; surface the reason as a terminal SSE event.
+	// Headers are already sent, so a refusal can't be an HTTP status: surface the
+	// reason as a terminal SSE event. ErrLogStoreUnavailable lands here when the
+	// tail is asked for a store-only filter (level/statusCode/…) — the tail reads
+	// pod logs by design, so it says so rather than streaming unfiltered lines.
+	if errors.Is(err, core.ErrLogsUnavailable) || errors.Is(err, core.ErrLogStoreUnavailable) {
 		_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
 		flusher.Flush()
 	}
 }
 
-// narrowLogType maps Render's repeatable `type` filter onto Core's single Type.
-// bex narrows only when exactly one concrete type is requested; empty / "all" /
-// several => "" (all types). ok is false when a value isn't a recognized type —
-// the REST adapter turns that into a 400, while the MCP tool tolerates it (Render
-// clients pass filters through). `application` is the accepted alias for `app`
-// (renderLogTypeApp). Shared by the REST and MCP fragments so the two agree.
-func narrowLogType(types []string) (typ string, ok bool) {
-	ok = true
-	seen := map[string]struct{}{}
-	for _, t := range types {
-		switch t {
-		case "", "all":
-		case renderLogTypeApp, LogTypeApplication:
-			seen[LogTypeApplication] = struct{}{}
-		case LogTypeRequest:
-			seen[LogTypeRequest] = struct{}{}
-		case LogTypeBuild:
-			seen[LogTypeBuild] = struct{}{}
-		default:
-			ok = false
-		}
-	}
-	if len(seen) == 1 {
-		for t := range seen {
-			return t, ok
-		}
-	}
-	return "", ok
-}
-
 // parseLogParams maps Render's logs query string onto resources + a LogQuery.
+// Every filter Render documents (level/instance/host/statusCode/method/path,
+// repeatable) is parsed into the query and honored downstream; a value the
+// vocabulary doesn't contain — an unknown `type` or `direction` — is a 400 naming
+// it, never a silently widened query. Shared by /v1/logs, /v1/logs/values and
+// /v1/logs/subscribe so the three agree on what a filter means.
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
 
 	resources := v["resource"]
 	if len(resources) == 0 {
-		return nil, LogQuery{}, fmt.Errorf("resource is required")
+		return nil, LogQuery{}, fmt.Errorf("%w: resource is required", core.ErrBadRequest)
 	}
 
-	q := LogQuery{Search: v.Get("text")}
-
-	// `type` is repeatable (Render). Narrow only when a single concrete type is
-	// asked for; several — or none — returns all types.
-	typ, ok := narrowLogType(v["type"])
-	if !ok {
-		return nil, LogQuery{}, fmt.Errorf("unknown type (want app|request|build)")
+	q := LogQuery{
+		Search:     v.Get("text"),
+		Level:      v["level"],
+		Instance:   v["instance"],
+		Host:       v["host"],
+		StatusCode: v["statusCode"],
+		Method:     v["method"],
+		Path:       v["path"],
 	}
-	q.Type = typ
 
+	types, err := NormalizeTypes(v["type"])
+	if err != nil {
+		return nil, LogQuery{}, err
+	}
+	q.Types = types
+
+	// `direction` and `type` values are vetted by the verb (LogQuery.validate), so
+	// the three surfaces refuse identically; NormalizeTypes only maps the `app`
+	// alias and the "all" widening, which is adapter-shaped work.
+	q.Direction = v.Get("direction")
 	if s := v.Get("startTime"); s != "" {
 		t, err := time.Parse(time.RFC3339, s)
 		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("startTime: %w", err)
+			return nil, LogQuery{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
 		}
 		q.Since = t
 	}
 	if e := v.Get("endTime"); e != "" {
 		t, err := time.Parse(time.RFC3339, e)
 		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("endTime: %w", err)
+			return nil, LogQuery{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
 		}
 		q.End = t
 	}
 	if l := v.Get("limit"); l != "" {
 		n, err := strconv.ParseInt(l, 10, 64)
 		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("limit: %w", err)
+			return nil, LogQuery{}, fmt.Errorf("%w: limit: %s", core.ErrBadRequest, err)
 		}
 		q.Limit = n
 	}

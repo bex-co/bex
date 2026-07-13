@@ -109,8 +109,12 @@ func main() {
 	// then read Loki (history survives pod restarts) instead of live pod logs.
 	// Unset => the pod-log path runs byte-identical to before (docs/ADR010-observability.md).
 	// The SSE live tail stays on pod logs either way.
+	// It also backs the request-log split (type=request) and the structured
+	// filters/label discovery — the labels live in the store, not in a pod's
+	// stdout, so unset means those are refused (503), never silently ignored.
 	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
 		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
+		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
 	}
 	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
 	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired

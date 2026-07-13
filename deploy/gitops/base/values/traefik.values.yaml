@@ -51,6 +51,23 @@ ingressClass:
 providers:
   kubernetesIngress:
     enabled: true # watch standard networking.k8s.io/Ingress
+# Access logs — the backend for bex-api's REQUEST logs (GET /v1/logs?type=request,
+# docs/ADR010-observability.md). JSON format so the log-shipper (log-shipper.yaml)
+# can parse each line into labels: ServiceName gives App attribution
+# (`<namespace>-<app>-<port>@kubernetes` — the operator names the k8s Service after
+# the App), RequestMethod/DownstreamStatus become bounded labels, RequestPath/
+# RequestHost stay in the line (unbounded — never labels; see the ADR's cardinality
+# budget). Headers are dropped: they carry Authorization/Cookie, and a request log
+# is not a place to leak a credential.
+logs:
+  access:
+    enabled: true
+    format: json
+    fields:
+      general:
+        defaultmode: keep
+      headers:
+        defaultmode: drop
 # Prometheus request metrics — the backend for bex-api's request metrics
 # (GET /v1/metrics/{http-requests,http-latency,bandwidth}). addServicesLabels
 # exposes the per-service counters (traefik_service_requests_total,
