@@ -22,13 +22,12 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
-// graphql.go is the GraphQL fragment (t004): a single read query,
-// deploys(serviceId), for the dashboard's Deploys/Events tab (w5) to nest
-// deploy history under a service. Named deploys/serviceId (not id) since it
-// isn't a single-resource fetch-by-id like server(id) — it's a service-scoped
-// list, matching the milestone's own naming. No mutation: triggering a deploy
-// is REST-only for now (t003), mirroring Render's official MCP server, which
-// is likewise read-heavy and omits most write verbs.
+// graphql.go is the GraphQL fragment: a read query, deploys(serviceId), for
+// the dashboard's Deploys/Events tab (w5) to nest deploy history under a
+// service, plus w2/m10's cancelDeploy/rollbackService mutations. Named
+// deploys/serviceId (not id) since it isn't a single-resource fetch-by-id
+// like server(id) — it's a service-scoped list, matching the milestone's own
+// naming.
 
 var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Deploy",
@@ -37,6 +36,7 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"status":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Status })},
 		"trigger":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Trigger })},
 		"image":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Image })},
+		"rollbackOf": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.RollbackOf })},
 		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
 		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
 		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
@@ -54,6 +54,38 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.List(p.Context, p.Args["serviceId"].(string))
+			},
+		},
+	}
+}
+
+// deployMutationArgs is the (serviceId, deployId) argument shape cancelDeploy and
+// rollbackService share.
+var deployMutationArgs = graphql.FieldConfigArgument{
+	"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+	"deployId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+}
+
+// GraphQLMutation returns cancelDeploy/rollbackService (w2/m10) — bex
+// extensions, naming unconfirmed against a live Render dashboard capture
+// (Render's own dashboard exposes Cancel/Rollback as deploy-list actions, not
+// documented GraphQL operation names), so it follows the existing
+// suspendService/resumeService scalar-arg convention rather than inventing a
+// different shape.
+func (s *Service) GraphQLMutation() graphql.Fields {
+	return graphql.Fields{
+		"cancelDeploy": &graphql.Field{
+			Type: deployGQLType,
+			Args: deployMutationArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Cancel(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
+			},
+		},
+		"rollbackService": &graphql.Field{
+			Type: deployGQLType,
+			Args: deployMutationArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Rollback(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
 			},
 		},
 	}

@@ -363,11 +363,11 @@ func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, e
 	return a, nil
 }
 
-func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string) (store.Deploy, error) {
+func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (store.Deploy, error) {
 	if r.err != nil {
 		return store.Deploy{}, r.err
 	}
-	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Status: store.DeployUpdateInProgress}
+	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: store.DeployUpdateInProgress}
 	r.deployCalls = append(r.deployCalls, d)
 	return d, nil
 }

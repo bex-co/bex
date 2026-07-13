@@ -237,7 +237,16 @@ func (r *Reconciler) recordDeploy(ctx context.Context, open Deploy, cur *appv1al
 	default:
 		return // still converging, inside the gate window
 	}
-	if err := r.Store.CloseDeploy(ctx, open.ID, status); err != nil {
+	// resolvedImage backfills Deploy.ResolvedImage (Rollback's restore target,
+	// w2/m10) only on a genuine live convergence — cur.Status.Image is the
+	// image the operator actually ran, whether resolved from a build or taken
+	// straight from spec.image. Left "" on a failed/timed-out close: a deploy
+	// that never went live is correctly never a valid rollback target.
+	resolvedImage := ""
+	if status == DeployLive {
+		resolvedImage = cur.Status.Image
+	}
+	if _, err := r.Store.CloseDeploy(ctx, open.ID, status, resolvedImage); err != nil {
 		log.Printf("controlplane: close deploy %s: %v", open.ID, err)
 	}
 }

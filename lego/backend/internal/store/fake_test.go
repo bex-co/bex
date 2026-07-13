@@ -339,6 +339,18 @@ func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) er
 	return nil
 }
 
+func (m *memStore) SetAppImage(_ context.Context, id string, image string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	a.Image = image
+	m.apps[id] = a
+	return nil
+}
+
 // usageKey is the composite primary key of usage_hourly.
 type usageKey struct {
 	serviceID   string
@@ -440,13 +452,27 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 	return res, nil
 }
 
-func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string) (Deploy, error) {
+func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	m.deploys[d.ID] = d
+	return d, nil
+}
+
+func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string) (Deploy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.apps[appID]; !ok {
+		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
+	}
+	d := Deploy{
+		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
+		RollbackOf: rollbackOf, Status: DeployUpdateInProgress, CreatedAt: time.Now(),
+	}
 	m.deploys[d.ID] = d
 	return d, nil
 }
@@ -486,16 +512,19 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) CloseDeploy(_ context.Context, id, status string) error {
+func (m *memStore) CloseDeploy(_ context.Context, id, status, resolvedImage string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
 	if !ok || d.FinishedAt != nil {
-		return nil
+		return false, nil
 	}
 	now := time.Now()
 	d.Status = status
+	if resolvedImage != "" {
+		d.ResolvedImage = resolvedImage
+	}
 	d.FinishedAt = &now
 	m.deploys[id] = d
-	return nil
+	return true, nil
 }

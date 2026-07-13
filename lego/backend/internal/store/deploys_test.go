@@ -75,22 +75,23 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 		t.Fatalf("open first deploy: %v", err)
 	}
 
-	if err := s.CloseDeploy(ctx, first.ID, DeployLive); err != nil {
-		t.Fatalf("close: %v", err)
+	if won, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:resolved"); err != nil || !won {
+		t.Fatalf("close: won=%v err=%v", won, err)
 	}
-	// Re-closing an already-terminal deploy must not flip its status.
-	if err := s.CloseDeploy(ctx, first.ID, DeployUpdateFailed); err != nil {
-		t.Fatalf("re-close: %v", err)
+	// Re-closing an already-terminal deploy must not flip its status, and must
+	// report it lost the race (already terminal).
+	if won, err := s.CloseDeploy(ctx, first.ID, DeployUpdateFailed, ""); err != nil || won {
+		t.Fatalf("re-close: won=%v err=%v, want won=false", won, err)
 	}
 	got, err := s.GetDeploy(ctx, app.ID, first.ID)
-	if err != nil || got.Status != DeployLive || got.FinishedAt == nil {
-		t.Fatalf("closed deploy = %+v (err %v), want status live with finished_at set", got, err)
+	if err != nil || got.Status != DeployLive || got.FinishedAt == nil || got.ResolvedImage != "img:resolved" {
+		t.Fatalf("closed deploy = %+v (err %v), want status live with finished_at + resolved_image set", got, err)
 	}
 	if _, ok, err := openDeployFor(ctx, s, app.ID); err != nil || ok {
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2")
+	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2", 2)
 	if err != nil {
 		t.Fatalf("trigger deploy: %v", err)
 	}
@@ -100,6 +101,30 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 	}
 	if len(deploys) != 2 || deploys[0].ID != second.ID || deploys[1].ID != first.ID {
 		t.Fatalf("list not newest-first: %+v", deploys)
+	}
+}
+
+// TestCreateRollbackDeployRecordsProvenanceAndResolvedImage covers w2/m10's
+// t001: unlike a normal trigger, a rollback deploy already knows the exact
+// image it restores (it ran live before), so ResolvedImage is set immediately
+// — Rollback never has to wait on the reconciler's write-back.
+func TestCreateRollbackDeployRecordsProvenanceAndResolvedImage(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+
+	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID)
+	if err != nil {
+		t.Fatalf("create rollback deploy: %v", err)
+	}
+	if rb.Trigger != "rollback" || rb.Image != "img:1" || rb.ResolvedImage != "img:1" || rb.RollbackOf != first.ID {
+		t.Fatalf("rollback deploy = %+v", rb)
+	}
+	got, err := s.GetDeploy(ctx, app.ID, rb.ID)
+	if err != nil || got.RollbackOf != first.ID {
+		t.Fatalf("get rollback deploy = %+v (err %v)", got, err)
 	}
 }
 

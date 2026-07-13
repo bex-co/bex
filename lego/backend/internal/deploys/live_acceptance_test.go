@@ -145,6 +145,72 @@ func TestLiveAcceptance(t *testing.T) {
 	}
 	t.Logf("broken-image deploy truthfully update_failed: %+v", badList[0])
 
+	// --- 4: bad-image deploy -> rollback -> previous digest live (w2/m10/t005) ---
+	// "web" is live on deploy #2's image (traefik/whoami, from step 2's
+	// trigger); simulate a bad deploy by pointing spec.image at a bogus tag
+	// directly (bex-api has no "change image" verb yet, so this mirrors what
+	// one would eventually drive) and opening a matching deploy row, the same
+	// bookkeeping Trigger would do for an image change.
+	goodDeploys, err := svc.List(ctx, name)
+	if err != nil || len(goodDeploys) == 0 {
+		t.Fatalf("list web deploys before rollback: %+v (err %v)", goodDeploys, err)
+	}
+	lastGood := goodDeploys[0] // newest-first; this is deploy #2, live on traefik/whoami
+	webApp := getApp(t, cl, name)
+	webApp.Spec.Image = "typo-registry.invalid/no/such/image:latest"
+	webApp.Spec.RestartedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	// Update first (as Trigger itself now does) so the deploy row is stamped
+	// with the CR's post-bump generation, not a value a race could move past.
+	if err := cl.Update(ctx, webApp); err != nil {
+		t.Fatalf("patch web to a bad image: %v", err)
+	}
+	badDeploy, err := st.CreateDeploy(ctx, app.ID, "api", "typo-registry.invalid/no/such/image:latest", webApp.Generation)
+	if err != nil {
+		t.Fatalf("open bad deploy on web: %v", err)
+	}
+	waitForDeployStatus(t, ctx, rec, svc, name, badDeploy.ID, store.DeployUpdateFailed, 30*time.Second)
+	t.Logf("web's bad-image redeploy truthfully update_failed: %s", badDeploy.ID)
+
+	rolled, err := svc.Rollback(ctx, name, lastGood.ID)
+	if err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if rolled.Trigger != "rollback" || rolled.RollbackOf != lastGood.ID {
+		t.Fatalf("rolled-back deploy = %+v, want trigger=rollback rollbackOf=%s", rolled, lastGood.ID)
+	}
+	waitForDeployStatus(t, ctx, rec, svc, name, rolled.ID, store.DeployLive, 60*time.Second)
+	waitForPhase(t, ctx, rec, cl, name, appv1alpha1.PhaseRunning, 60*time.Second)
+	restored := getApp(t, cl, name)
+	if restored.Spec.Image != lastGood.Image {
+		t.Fatalf("web's image after rollback = %q, want %q (the rolled-back-to deploy's image)", restored.Spec.Image, lastGood.Image)
+	}
+	t.Logf("rollback restored web to %s, live: %+v", restored.Spec.Image, rolled)
+
+	// --- 5: mid-build cancel -> job gone (w2/m10/t005) --------------------------
+	// A fresh deploy on the now-healthy "web" is still update_in_progress the
+	// instant it opens; Cancel closes it canceled before it ever converges,
+	// and a further reconcile pass must not clobber that back to live — the
+	// CAS guard (store.CloseDeploy) is what makes that race safe.
+	toCancel, err := svc.Trigger(ctx, name)
+	if err != nil {
+		t.Fatalf("trigger a deploy to cancel: %v", err)
+	}
+	canceled, err := svc.Cancel(ctx, name, toCancel.ID)
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	if canceled.Status != store.DeployCanceled {
+		t.Fatalf("canceled deploy = %+v, want status canceled", canceled)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile after cancel: %v", err)
+	}
+	stillCanceled, err := svc.Get(ctx, name, toCancel.ID)
+	if err != nil || stillCanceled.Status != store.DeployCanceled {
+		t.Fatalf("deploy after a further reconcile = %+v (err %v), want it to stay canceled (CAS guard)", stillCanceled, err)
+	}
+	t.Logf("canceled deploy survives a further reconcile pass: %+v", stillCanceled)
+
 	// Cleanup.
 	_ = st.DeleteApp(ctx, app.ID)
 	_ = st.DeleteApp(ctx, badApp.ID)

@@ -143,6 +143,11 @@ type Deps struct {
 	// deploy-history feature (w2/m5). nil => its verbs answer
 	// core.ErrDeploysUnavailable (deploy history has no CR-only equivalent).
 	DeployStore deploys.DeployStore
+	// DeployBuildNamespace is BEX_BUILD_NAMESPACE (w2/m10) — the namespace
+	// Cancel looks for a repo-backed App's in-flight build Job in; must match
+	// the operator's own BEX_BUILD_NAMESPACE for the Job identity to resolve.
+	// Empty falls back to the App's own namespace (the operator's own default).
+	DeployBuildNamespace string
 	// BaseDomain is BEX_BASE_DOMAIN (the platform wildcard domain, e.g. "onbex.co")
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
@@ -239,7 +244,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		KeyValue:  &keyvalue.Service{Base: base, Selections: selections},
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
-		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore},
+		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore, BuildNamespace: d.DeployBuildNamespace},
 		Workspaces: &workspaces.Service{
 			Base:       base,
 			Store:      d.WorkspaceStore,

@@ -22,11 +22,15 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// mcp.go is the MCP fragment (t004): list_deploys/get_deploy, under Render's
+// mcp.go is the MCP fragment: list_deploys/get_deploy, under Render's
 // official tool names (render-oss/render-mcp-server) — the deferral w2/m1's
 // README recorded ("no list_deploys/get_deploy — add them when Core grows
-// those verbs") closes here. Both delegate to the same List/Get the REST
-// adapter calls, so the surfaces cannot drift.
+// those verbs") closed in w2/m5. cancel_deploy/rollback_deploy (w2/m10) are
+// bex extensions: Render's official MCP server ships neither, but "that
+// deploy broke, roll it back" is the highest-value verb an agent driving the
+// list_deploys/get_deploy poll loop is missing. All four delegate to the same
+// List/Get/Cancel/Rollback the REST adapter calls, so the surfaces cannot
+// drift.
 
 // listDeploysArgs is list_deploys' input — Render keys deploy tools on
 // serviceId, like every other single-service tool.
@@ -49,7 +53,7 @@ type listDeploysResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
-		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live or *_failed.",
+		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live, *_failed, or canceled.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, listDeploysResult, error) {
 		deploys, err := s.List(ctx, in.ServiceID)
 		if err != nil {
@@ -64,9 +68,31 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_deploy",
-		Description: "Get one deploy by id — poll this after triggering a deploy until status is live (or a *_failed status).",
+		Description: "Get one deploy by id — poll this after triggering a deploy until status is live (or a *_failed/canceled status).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		d, err := s.Get(ctx, in.ServiceID, in.DeployID)
+		if err != nil {
+			return nil, renderDeploy{}, err
+		}
+		return nil, toRenderDeploy(d), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "cancel_deploy",
+		Description: "bex extension: cancel a still-in-progress deploy — kills its in-flight build (if any) and marks it canceled. 409s once the deploy has already reached a final status (live/*_failed/canceled).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
+		d, err := s.Cancel(ctx, in.ServiceID, in.DeployID)
+		if err != nil {
+			return nil, renderDeploy{}, err
+		}
+		return nil, toRenderDeploy(d), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "rollback_deploy",
+		Description: "bex extension: roll a service back to a previously-live deploy's exact image — creates a fresh deploy restoring it, never rewrites history. Only a deploy that itself reached live is a valid target.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
+		d, err := s.Rollback(ctx, in.ServiceID, in.DeployID)
 		if err != nil {
 			return nil, renderDeploy{}, err
 		}

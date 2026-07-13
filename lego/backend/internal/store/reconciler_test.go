@@ -282,6 +282,37 @@ func TestRecordDeployClosesLiveOnHealthy(t *testing.T) {
 	}
 }
 
+// TestRecordDeployClosesLiveBackfillsResolvedImage covers w2/m10's t001: the
+// deploy row's ResolvedImage is backfilled from the CR's own Status.Image the
+// moment it reaches live — the field Rollback later trusts as a restore
+// target, since Image alone stays "" for a build-from-git deploy until a
+// build resolves it (recordDeploy has no build here, but the write-back path
+// is identical either way — see reconciler.go's own comment).
+func TestRecordDeployClosesLiveBackfillsResolvedImage(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.Image = "img:1@sha256:resolved"
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID)
+	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployLive || deploys[0].ResolvedImage != "img:1@sha256:resolved" {
+		t.Fatalf("deploys = %+v (err %v), want exactly one, live, with resolved_image backfilled", deploys, err)
+	}
+}
+
 // TestRecordDeployClosesFailedOnCRFailed mirrors the above for the CR's own
 // Failed phase (a build error, say) — closes update_failed immediately, no
 // need to wait out the gate window.

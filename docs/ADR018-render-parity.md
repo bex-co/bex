@@ -6,7 +6,7 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 **Legend.** ✅ parity (evidence pointer) · ◐ partial (divergence documented) · ✖ missing (gap — see backlog) · — deliberate non-goal (rationale inline). "Render capability" = a noun/verb Render exposes on _any_ of its surfaces; a `—` on the REST column can still be a `✅` elsewhere (Render itself splits work across surfaces — e.g. read-only SQL is MCP-only on both sides).
 
-> **Headline.** bex has real parity on the **service lifecycle, env vars, environment groups, secret files, custom domains, managed Postgres, managed Key Value, logs, metrics, and autoscaling config** core across all four surfaces, and is _ahead_ of Render on three AI-native verbs (API-key management over the API, deploy-from-chat, an inbound push webhook — [§ bex ahead of Render](#bex-ahead-of-render)). The open frontier is **deploys as first-class objects and advanced Postgres data-protection** — all mapped to owning milestones/notes in the [§ Gap backlog](#gap-backlog). (Background-worker and cron-job service types shipped in w1/m15; environment groups + secret files in w1/m16; managed Key Value landed on REST/GraphQL/MCP in w2/m7 and the dashboard in w5/m12; autoscaling config shipped in w1/m20; static sites — build → object-store origin + redirects/rewrites/headers — shipped in w1/m21.)
+> **Headline.** bex has real parity on the **service lifecycle, env vars, environment groups, secret files, custom domains, managed Postgres, managed Key Value, logs, metrics, and autoscaling config** core across all four surfaces, and is _ahead_ of Render on three AI-native verbs (API-key management over the API, deploy-from-chat, an inbound push webhook — [§ bex ahead of Render](#bex-ahead-of-render)). The open frontier is **advanced Postgres data-protection** — all mapped to owning milestones/notes in the [§ Gap backlog](#gap-backlog). (Background-worker and cron-job service types shipped in w1/m15; environment groups + secret files in w1/m16; managed Key Value landed on REST/GraphQL/MCP in w2/m7 and the dashboard in w5/m12; autoscaling config shipped in w1/m20; static sites — build → object-store origin + redirects/rewrites/headers — shipped in w1/m21; deploys as first-class objects — list/get/trigger in w2/m5, cancel/rollback in w2/m10 — shipped across REST/GraphQL/MCP.)
 
 ---
 
@@ -38,10 +38,10 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 | Render capability | REST | GraphQL | MCP | UI | Evidence / divergence |
 | --- | :-: | :-: | :-: | :-: | --- |
-| Trigger a deploy | ◐ | ◐ | ✅ | ✖ | No dedicated endpoint: `POST /v1/services` upsert re-applies the spec (rebuild) and the HMAC webhook redeploys on push; MCP `deploy` (bexYaml) + `create_web_service`. Render `POST …/deploys` → **w2/m5**. See [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md). |
-| List / get deploy objects | ✖ | ✖ | ✖ | ✖ | Render `list_deploys`/`get_deploy`, `GET …/deploys`. **Stale row** — shipped by w2/m5 2026-07-09 (`internal/deploys/{rest,graphql,mcp}.go`); refresh with evidence in w2/m10/t006 (flagged 2026-07-12). |
-| Cancel deploy | ✖ | ✖ | ✖ | ✖ | Render `POST /services/{serviceId}/deploys/{deployId}/cancel`. Deploy objects shipped without it (w2/m5) → **w2/m10** (2026-07-12). |
-| Rollback | ✖ | ✖ | ✖ | ✖ | Render `POST …/rollback {deployId}`. Rollback target recorded per deploy → **w2/m10** (2026-07-12); UI button → `w5/007`. |
+| Trigger a deploy | ✅ | ◐ | ✅ | ✖ | Render `POST /services/{id}/deploys` → `internal/deploys/rest.go` `POST /v1/services/{id}/deploys` (201, opens a `dep-…` row + bumps `spec.restartedAt`, w2/m5). GraphQL still has no dedicated `triggerDeploy` mutation — `createService` upsert (rebuild) and the HMAC push webhook remain the GraphQL/webhook-side redeploy paths, so this cell stays ◐. MCP parity is via `deploy` (bexYaml) + `create_web_service`, not a dedicated tool, unchanged since before w2/m5. See [ADR017-deploy-from-chat.md](ADR017-deploy-from-chat.md). |
+| List / get deploy objects | ✅ | ✅ | ✅ | ✖ | Render `list_deploys`/`get_deploy`, `GET …/deploys`, `GET …/deploys/{id}` → `internal/deploys/{rest,graphql,mcp}.go` (w2/m5, shipped 2026-07-09; row refreshed here per w2/m10/t006 — the four-surface shape is unchanged, only this ledger was stale). UI: no Deploys tab yet → `w5/007`. |
+| Cancel deploy | ✅ | ✅ | ✅ | ✖ | Render `POST /services/{serviceId}/deploys/{deployId}/cancel` → `POST /v1/services/{id}/deploys/{deployId}/cancel` (200); GraphQL `cancelDeploy(serviceId, deployId)`; MCP `cancel_deploy` (bex extension — Render's official MCP server ships no cancel tool). Best-effort kills the in-flight build Job for a repo-backed service (a no-op for an image-backed one — nothing to build); the row closes `canceled` via the same CAS guard the reconciler's write-back uses, so a race with a genuinely-converging rollout can't leave it half-canceled. A deploy already at a terminal status (live/`*_failed`/canceled) is past the cancelable window: 409, never a silent no-op. `internal/deploys/service.go` `Cancel`, w2/m10. UI → `w5/007`. |
+| Rollback | ✅ | ✅ | ✅ | ✖ | Render `POST …/rollback {deployId}` → `POST /v1/services/{id}/rollback` (201, body `{"deployId":"dep-…"}`); GraphQL `rollbackService(serviceId, deployId)`; MCP `rollback_deploy` (bex extension). Modeled as Render does: a **fresh** deploy restoring the target's exact image, never a history rewrite — only a deploy that itself reached live is a valid target (`resolved_image`, backfilled by the reconciler's write-back the moment a deploy goes live, `0011_deploy_rollback_target` migration). Restores what ran (the image), not workspace config (replicas/tier/idleTTL stay put). `internal/deploys/service.go` `Rollback`, w2/m10. UI button → `w5/007`. |
 
 ## Environment & config
 
@@ -156,8 +156,8 @@ Every `✖`/`◐` worth doing, mapped to its owning milestone or inbox note (not
 | Gap | Owner | Status |
 | --- | --- | --- |
 | Delete service | `w2/m4` · `w5/m14` | done 2026-07-09 (REST/GraphQL/MCP); dashboard danger-zone UI done 2026-07-11 (`w5/m14`) |
-| Deploy objects (list/get/trigger) | `w2/m5` | done 2026-07-09 (`internal/deploys/`; §Deploys rows refresh in w2/m10/t006) |
-| Deploy cancel + rollback | `w2/m10` | todo |
+| Deploy objects (list/get/trigger) | `w2/m5` | done 2026-07-09 (`internal/deploys/`; §Deploys rows refreshed 2026-07-12, `w2/m10/t006`) |
+| Deploy cancel + rollback | `w2/m10` | done 2026-07-12 (REST/GraphQL/MCP; `internal/deploys/service.go` `Cancel`/`Rollback`, `0011_deploy_rollback_target` migration; UI → `w5/007`) |
 | Service events feed | `w3/m7` | todo (UI → `w5/007`) |
 | Multi-service `bex.yml` (Blueprint stack deploys) | `w1/m24` | todo |
 | Manual-scaling control in dashboard | `w5/004` | todo (blocked) |

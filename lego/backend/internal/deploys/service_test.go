@@ -71,18 +71,31 @@ func newService(ds DeployStore, objs ...client.Object) (*Service, client.Client)
 
 // fakeStore is an in-memory DeployStore, newest-first like PGStore/memStore.
 type fakeStore struct {
-	mu     sync.Mutex
-	byApp  map[string][]store.Deploy
-	nextID int
+	mu       sync.Mutex
+	byApp    map[string][]store.Deploy
+	nextID   int
+	setImage map[string]string // appID -> last SetAppImage call, for assertions
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
 
-func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string) (store.Deploy, error) {
+func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
+	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
+	return d, nil
+}
+
+func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string) (store.Deploy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.nextID++
+	d := store.Deploy{
+		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
+		RollbackOf: rollbackOf, Status: store.DeployUpdateInProgress, CreatedAt: time.Now(),
+	}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
 }
@@ -104,6 +117,45 @@ func (f *fakeStore) GetDeploy(_ context.Context, appID, deployID string) (store.
 	return store.Deploy{}, store.ErrNotFound
 }
 
+// CloseDeploy mirrors store.PGStore's CAS guard (WHERE finished_at IS NULL)
+// so the fake exercises the same race-safety Cancel and the reconciler's
+// write-back both rely on.
+func (f *fakeStore) CloseDeploy(_ context.Context, id, status, resolvedImage string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for appID, deploys := range f.byApp {
+		for i, d := range deploys {
+			if d.ID != id {
+				continue
+			}
+			if d.FinishedAt != nil {
+				return false, nil
+			}
+			now := time.Now()
+			d.Status = status
+			if resolvedImage != "" {
+				d.ResolvedImage = resolvedImage
+			}
+			d.FinishedAt = &now
+			f.byApp[appID][i] = d
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// SetAppImage records the image write-through for assertion — the fake has
+// no backing apps table, so it just remembers the last call per app id.
+func (f *fakeStore) SetAppImage(_ context.Context, id string, image string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.setImage == nil {
+		f.setImage = map[string]string{}
+	}
+	f.setImage[id] = image
+	return nil
+}
+
 // --- List / Get -----------------------------------------------------------
 
 func TestListEmptyForHandAppliedApp(t *testing.T) {
@@ -122,7 +174,7 @@ func TestListEmptyForHandAppliedApp(t *testing.T) {
 
 func TestListGetTriggerLifecycle(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, cl := newService(ds, sampleApp("web", "srv-1"))
 
 	list, err := svc.List(context.Background(), "web")
@@ -208,7 +260,7 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 
 func TestRESTListGetTrigger(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -269,7 +321,7 @@ func TestREST503WithoutStore(t *testing.T) {
 // not a second implementation.
 func TestMCPMatchesREST(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1")
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)

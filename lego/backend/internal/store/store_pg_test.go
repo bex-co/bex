@@ -116,23 +116,23 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("open deploy = %+v ok=%v (err %v)", open, ok, err)
 	}
 
-	if err := s.CloseDeploy(ctx, first.ID, DeployLive); err != nil {
-		t.Fatalf("close deploy: %v", err)
+	if won, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:resolved"); err != nil || !won {
+		t.Fatalf("close deploy: won=%v err=%v", won, err)
 	}
 	// Idempotent: a deploy that's already terminal doesn't get re-closed with a
-	// different status.
-	if err := s.CloseDeploy(ctx, first.ID, DeployUpdateFailed); err != nil {
-		t.Fatalf("re-close deploy: %v", err)
+	// different status, and CAS reports it lost the race.
+	if won, err := s.CloseDeploy(ctx, first.ID, DeployUpdateFailed, ""); err != nil || won {
+		t.Fatalf("re-close deploy: won=%v err=%v, want won=false", won, err)
 	}
 	closed, err := s.GetDeploy(ctx, app.ID, first.ID)
-	if err != nil || closed.Status != DeployLive || closed.FinishedAt == nil {
-		t.Fatalf("closed deploy = %+v (err %v), want status live with finished_at set", closed, err)
+	if err != nil || closed.Status != DeployLive || closed.FinishedAt == nil || closed.ResolvedImage != "img:resolved" {
+		t.Fatalf("closed deploy = %+v (err %v), want status live with finished_at + resolved_image set", closed, err)
 	}
 	if _, ok, err := openDeployFor(ctx, s, app.ID); err != nil || ok {
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image)
+	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2)
 	if err != nil || second.Status != DeployUpdateInProgress {
 		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
 	}

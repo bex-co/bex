@@ -85,8 +85,12 @@ type IntentStore interface {
 	CreateApp(ctx context.Context, a store.App) (store.App, error)
 	// CreateDeploy opens a new deploy row (status update_in_progress) — called
 	// on redeploy of a store-managed App so the deploys API reflects the push.
-	// The reconciler's write-back closes it once the CR reaches Running/Failed.
-	CreateDeploy(ctx context.Context, appID, trigger, image string) (store.Deploy, error)
+	// generation is the App CR's metadata.generation this deploy runs under,
+	// captured after the redeploy's own patch (w2/m10: Cancel's build-Job
+	// identity is derived from this stored value, not a fresh re-fetch, so it
+	// must be the generation this deploy actually runs under). The
+	// reconciler's write-back closes the row once the CR reaches Running/Failed.
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (store.Deploy, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
 	// store-managed App's existence. The projector deletes the orphaned App CR
 	// on its next pass, so the row delete (not a bare CR delete) is what keeps
@@ -526,16 +530,6 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// no other field changed.
 		base := client.MergeFrom(existing.DeepCopy())
 		applyCreateToSpec(&existing.Spec, desired)
-		// For store-managed apps, open a deploy row so the redeploy surfaces in
-		// the deploys API — the reconciler's write-back closes it when the CR
-		// converges to Running or fails to launch.
-		if s.Store != nil {
-			if id := existing.Labels[store.LabelAppID]; id != "" {
-				if _, err := s.Store.CreateDeploy(ctx, id, "api", existing.Spec.Image); err != nil {
-					return AppView{}, fmt.Errorf("recording redeploy: %w", err)
-				}
-			}
-		}
 		// Refresh the clone token so the rebuild starts with a token minted
 		// seconds ago. ensureCloneSecret reads the just-applied repo; it returns
 		// "" for an unconnected repo, so a hand-set cloneSecret pointing elsewhere
@@ -550,6 +544,19 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return AppView{}, err
+		}
+		// For store-managed apps, open a deploy row so the redeploy surfaces in
+		// the deploys API — stamped with the CR's now-bumped generation (patch
+		// before create, w2/m10: a spec write always increments
+		// metadata.generation, and Cancel needs the exact value this deploy
+		// runs under). The reconciler's write-back closes the row when the CR
+		// converges to Running or fails to launch.
+		if s.Store != nil {
+			if id := existing.Labels[store.LabelAppID]; id != "" {
+				if _, err := s.Store.CreateDeploy(ctx, id, "api", existing.Spec.Image, existing.Generation); err != nil {
+					return AppView{}, fmt.Errorf("recording redeploy: %w", err)
+				}
+			}
 		}
 		if s.Kick != nil {
 			s.Kick()

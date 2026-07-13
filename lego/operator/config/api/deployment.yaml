@@ -109,6 +109,11 @@ spec:
                   key: uri
             - name: BEX_CP_APPS_NAMESPACE # namespace the projector writes App CRs into
               value: default
+            # Cancel (w2/m10) computes a repo-backed App's in-flight build
+            # Job's identity to delete it — must match manager.yaml's
+            # BEX_BUILD_NAMESPACE so the Job's namespace resolves the same way.
+            - name: BEX_BUILD_NAMESPACE
+              value: bex-system
             # GitHub App integration (docs/ADR026-github-integration.md): private-repo
             # deploys + zero-config push-to-deploy. Created out-of-band by
             # scripts/github-app-secret.sh (reads .env). optional:true so bex-api

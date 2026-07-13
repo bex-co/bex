@@ -77,28 +77,42 @@ type App struct {
 
 // Deploy status vocabulary — Render's deploy status enum, the subset bex can
 // honor today (docs/ADR004-deployment.md health gating). build_in_progress/
-// build_failed are reserved for w1/m5 (build-from-git); deactivated/canceled
-// are deferred (w2/m5's README).
+// build_failed are reserved for w1/m5 (build-from-git); DeployCanceled closes
+// w2/m10's own deferral (deactivated is not modeled — no equivalent verb).
 const (
 	DeployUpdateInProgress = "update_in_progress"
 	DeployLive             = "live"
 	DeployUpdateFailed     = "update_failed"
+	DeployCanceled         = "canceled"
 )
 
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
-// first deploy, opened by CreateApp) or "api" (an explicit POST .../deploys).
-// Commit is omitted here — it stays empty until w1/m5 tracks build-from-git
-// commits; callers project it out rather than surface an always-empty field.
+// first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),
+// or "rollback" (w2/m10: a deploy created by Rollback, RollbackOf naming the
+// source deploy it restores). Commit is omitted here — it stays empty until
+// w1/m5 tracks build-from-git commits; callers project it out rather than
+// surface an always-empty field. ResolvedImage is the image this deploy
+// actually put into the cluster (backfilled by CloseDeploy once the deploy
+// reaches live — "" until then, and forever for one that never does): the
+// only field Rollback (w2/m10) trusts as a restore target, since Image alone
+// is "" for a build-from-git deploy until the build resolves it. Generation
+// is the App CR's metadata.generation this deploy runs under, captured once
+// at open time — Cancel (w2/m10) derives its build-Job identity from this
+// stored value rather than the App's current generation, which a later,
+// unrelated spec write could have already moved past.
 type Deploy struct {
-	ID         string     `json:"id"`
-	AppID      string     `json:"appId"`
-	Trigger    string     `json:"trigger"`
-	Image      string     `json:"image,omitempty"`
-	Status     string     `json:"status"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	StartedAt  *time.Time `json:"startedAt,omitempty"`
-	FinishedAt *time.Time `json:"finishedAt,omitempty"`
+	ID            string     `json:"id"`
+	AppID         string     `json:"appId"`
+	Trigger       string     `json:"trigger"`
+	Image         string     `json:"image,omitempty"`
+	ResolvedImage string     `json:"-"`
+	RollbackOf    string     `json:"rollbackOf,omitempty"`
+	Generation    int64      `json:"-"`
+	Status        string     `json:"status"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	StartedAt     *time.Time `json:"startedAt,omitempty"`
+	FinishedAt    *time.Time `json:"finishedAt,omitempty"`
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -182,6 +196,10 @@ type Store interface {
 	// idle-timeout verb on store-managed Apps (the projector owns
 	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+	// SetAppImage updates the row's image — the single write path for a
+	// rollback's restored image on store-managed Apps (the projector owns
+	// spec.image), same row-first rationale as SetAppReplicas (w2/m10).
+	SetAppImage(ctx context.Context, id string, image string) error
 
 	// UpsertUsageHourly writes one window row idempotently (ON CONFLICT DO
 	// UPDATE) — the write path for the metering loop (w8/m1). Re-processing
@@ -204,8 +222,18 @@ type Store interface {
 	// CreateDeploy opens a new deploy row for appID (status
 	// DeployUpdateInProgress) — CreateApp calls this for an app's first deploy
 	// (trigger "create"); the deploys feature's Trigger verb calls it for an
-	// explicit redeploy (trigger "api"). The reconciler's write-back closes it.
-	CreateDeploy(ctx context.Context, appID, trigger, image string) (Deploy, error)
+	// explicit redeploy (trigger "api"). generation is the App CR's
+	// metadata.generation this deploy runs under, captured once at open time
+	// (w2/m10) — Cancel's build-Job identity is derived from this stored
+	// value, not a fresh re-fetch, so a later unrelated spec write can't make
+	// it compute the wrong Job name. The reconciler's write-back closes it.
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (Deploy, error)
+	// CreateRollbackDeploy opens a new deploy row for appID whose trigger is
+	// "rollback" and whose image/resolvedImage are the target being restored
+	// — Render models rollback as a fresh deploy, never a history rewrite
+	// (w2/m10). rollbackOf records provenance: the source deploy id being
+	// rolled back to.
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error)
 	// ListDeploys returns an app's deploy history, newest first.
 	ListDeploys(ctx context.Context, appID string) ([]Deploy, error)
 	// GetDeploy fetches one deploy scoped to appID — a deployID belonging to a
@@ -216,9 +244,14 @@ type Store interface {
 	// calls this once per ReconcileOnce pass and looks apps up in the result,
 	// rather than one query per app in its per-app loop.
 	ListOpenDeploys(ctx context.Context) ([]Deploy, error)
-	// CloseDeploy marks a deploy row terminal (status DeployLive or
-	// DeployUpdateFailed) with finished_at = now. A no-op if already terminal.
-	CloseDeploy(ctx context.Context, id, status string) error
+	// CloseDeploy marks a deploy row terminal (status DeployLive,
+	// DeployUpdateFailed, or DeployCanceled) with finished_at = now, guarded by
+	// WHERE finished_at IS NULL so a genuinely-converging rollout and a Cancel
+	// call can race safely — whichever gets there first wins, reported by the
+	// returned bool (false = already terminal, a no-op). resolvedImage, when
+	// non-empty, backfills the deploy's ResolvedImage (Rollback's restore
+	// target) — pass "" to leave it untouched (Cancel never has one to give).
+	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -385,8 +418,11 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 		).Scan(&a.CreatedAt); err != nil {
 			return err
 		}
+		// generation is always 1: the reconciler projects this row into a
+		// brand-new App CR, and a freshly created Kubernetes object always
+		// starts at metadata.generation 1.
 		_, err := tx.Exec(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, status) VALUES ($1, $2, 'create', $3, $4)`,
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, 'create', $3, 1, $4)`,
 			ids.New(ids.Deploy), a.ID, a.Image, DeployUpdateInProgress)
 		return err
 	})
@@ -613,11 +649,28 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 	return nil
 }
 
-func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Status: DeployUpdateInProgress}
+// SetAppImage updates the row's image (the deploys feature's Rollback verb,
+// w2/m10). The projector carries it onto spec.image the same way it carries
+// replicas/tier — the write-through-store discipline every intent field with
+// a row as its single writer of truth follows.
+func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET image = $2, updated_at = now() WHERE id = $1`,
+		id, image)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: DeployUpdateInProgress}
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, status) VALUES ($1, $2, $3, $4, $5) RETURNING created_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Status,
+		`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at`,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Status,
 	).Scan(&d.CreatedAt)
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
@@ -625,11 +678,28 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 	return d, nil
 }
 
-const deployColumns = `id, app_id, trigger, image, status, created_at, started_at, finished_at`
+// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
+// unlike a normal trigger, the restored image is already fully known (it ran
+// live before), so resolved_image is set immediately rather than waiting for
+// the reconciler's write-back to backfill it on convergence.
+func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Status: DeployUpdateInProgress}
+	err := s.Pool.QueryRow(ctx,
+		`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, status)
+		 VALUES ($1, $2, 'rollback', $3, $3, $4, $5) RETURNING created_at`,
+		d.ID, d.AppID, image, rollbackOf, d.Status,
+	).Scan(&d.CreatedAt)
+	if err != nil {
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, status, created_at, started_at, finished_at`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
 	return d, err
 }
 
@@ -678,10 +748,19 @@ func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	return out, rows.Err()
 }
 
-func (s *PGStore) CloseDeploy(ctx context.Context, id, status string) error {
-	_, err := s.Pool.Exec(ctx,
-		`UPDATE deploys SET status = $2, finished_at = now() WHERE id = $1 AND finished_at IS NULL`, id, status)
-	return err
+func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error) {
+	// COALESCE(NULLIF($3,''), resolved_image): an empty resolvedImage (Cancel
+	// never has one to give) leaves the column untouched, a non-empty one
+	// overwrites it — one statement instead of branching two near-identical
+	// UPDATEs.
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE deploys SET status = $2, resolved_image = COALESCE(NULLIF($3, ''), resolved_image), finished_at = now()
+		 WHERE id = $1 AND finished_at IS NULL`,
+		id, status, resolvedImage)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 // classify maps Postgres errors to the shared taxonomy: unique violations are

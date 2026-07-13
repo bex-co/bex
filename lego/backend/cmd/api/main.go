@@ -205,6 +205,9 @@ func main() {
 		// the first reconcile pass (w2/m11).
 		deps.Store = st       // single writer of intent: suspend/resume write the row first
 		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
+		// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
+		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
+		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
 		deps.GitHubStore = st // git connections (w2/m8): connect/disconnect/list read+write git_connections
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
