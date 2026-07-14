@@ -1,0 +1,55 @@
+---
+# Service that exposes the operator's webhook server (port 9443) so the
+# Kubernetes API server can reach it for admission reviews.
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-service
+  namespace: system
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+      protocol: TCP
+  selector:
+    control-plane: controller-manager
+---
+# ValidatingWebhookConfiguration that intercepts Pod CREATE/UPDATE in tenant
+# namespaces (those labeled bex.co/workspace) and calls the operator's
+# /validate-v1-pod endpoint.
+#
+# failurePolicy: Ignore — pods are admitted if the webhook is unavailable
+# (e.g. during operator rolling upgrade). For stricter enforcement once the
+# operator is stable, change to Fail.
+#
+# The caBundle field is injected by cert-manager's CA injector once
+# config/certmanager/ resources are deployed. See config/default/kustomization.yaml
+# for the replacement rule that sets cert-manager.io/inject-ca-from.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: system/serving-cert
+spec:
+  webhooks:
+    - name: vpod.kb.io
+      admissionReviewVersions: ["v1"]
+      sideEffects: None
+      failurePolicy: Ignore
+      namespaceSelector:
+        matchExpressions:
+          - key: bex.co/workspace
+            operator: Exists
+      rules:
+        - apiGroups: [""]
+          apiVersions: ["v1"]
+          operations: ["CREATE", "UPDATE"]
+          resources: ["pods"]
+          scope: Namespaced
+      clientConfig:
+        service:
+          namespace: system
+          name: webhook-service
+          path: /validate-v1-pod
+          port: 443

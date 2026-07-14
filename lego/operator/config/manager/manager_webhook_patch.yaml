@@ -1,0 +1,28 @@
+# Adds the webhook server port (9443), cert volume, and --webhook-cert-path
+# arg to the controller-manager Deployment so the admission webhook has TLS.
+# Applied only when config/webhook + config/certmanager are enabled in
+# config/default/kustomization.yaml.
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+
+- op: add
+  path: /spec/template/spec/containers/0/ports/-
+  value:
+    containerPort: 9443
+    name: webhook-server
+    protocol: TCP
+
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    mountPath: /tmp/k8s-webhook-server/serving-certs
+    name: webhook-server-cert
+    readOnly: true
+
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: webhook-server-cert
+    secret:
+      secretName: webhook-server-cert

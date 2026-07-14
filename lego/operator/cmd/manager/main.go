@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/controller"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
+	bexwebhook "github.com/bex-co/bex/lego/operator/internal/webhook"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
@@ -273,6 +274,20 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	// Admission-time tenant-image signature verification (w7/m11): active only
+	// when BEX_TENANT_SIGNING_KEY_SECRET is set AND the Secret contains cosign.pub.
+	if signKey := os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"); signKey != "" {
+		if err := bexwebhook.SetupWithManager(mgr,
+			signKey,
+			envOr("BEX_BUILD_NAMESPACE", "bex-system"),
+			envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
+		); err != nil {
+			setupLog.Error(err, "Failed to set up image signature admission webhook")
+			os.Exit(1)
+		}
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Failed to set up health check")

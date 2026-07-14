@@ -110,13 +110,15 @@ type Options struct {
 	CloneSecret string
 	// BuildkitImage overrides the rootless BuildKit image (tests / air-gapped).
 	BuildkitImage string
-	// SignKeySecret names a Secret (in Namespace, keys "cosign.key" +
-	// "cosign.password") whose cosign key signs the pushed tenant image after a
-	// successful build (w6/006). Empty = unsigned (the default; existing builds
-	// are byte-identical). When set, build+push moves to an initContainer and a
-	// cosign container signs as the main container (k8s runs init → containers
-	// sequentially, so signing only fires on a successful push). Admission-time
-	// signature verification is still deferred (see docs/ADR028-security-review.md).
+	// SignKeySecret names a Secret (in Namespace, keys "cosign.key",
+	// "cosign.password", and "cosign.pub") whose cosign key signs the pushed
+	// tenant image after a successful build (w6/006). Empty = unsigned (the
+	// default; existing builds are byte-identical). When set, build+push moves
+	// to an initContainer and a cosign container signs as the main container
+	// (k8s runs init → containers sequentially, so signing only fires on a
+	// successful push). Admission-time signature verification is enforced by the
+	// /validate-v1-pod webhook when "cosign.pub" is present in this Secret
+	// (w7/m11, docs/ADR028-security-review.md).
 	SignKeySecret string
 	// SignImage overrides the cosign image used by the signing container.
 	SignImage string

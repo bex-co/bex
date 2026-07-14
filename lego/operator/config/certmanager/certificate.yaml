@@ -1,0 +1,30 @@
+---
+# Self-signed Issuer used only to sign the operator webhook TLS certificate.
+# A SelfSigned issuer is appropriate here because the CA bundle is injected
+# into the ValidatingWebhookConfiguration by cert-manager's CA injector, so
+# the Kubernetes API server trusts exactly the cert serving the webhook.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: system
+spec:
+  selfSigned: {}
+---
+# Intermediate CA certificate whose public key is injected as caBundle into
+# the ValidatingWebhookConfiguration by the cert-manager CA injector.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: serving-cert
+  namespace: system
+spec:
+  # dnsNames components are replaced by kustomize replacements in
+  # config/default/kustomization.yaml with the actual service + namespace.
+  dnsNames:
+    - webhook-service.system.svc
+    - webhook-service.system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: webhook-server-cert

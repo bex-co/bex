@@ -124,11 +124,12 @@ All seven findings filed during this review were **implemented 2026-07-12** as t
 - [w6/003](../.pm/w6/done/003.md) — ✅ PKCE required at the dashboard consent acceptor (`hydra-consent.ts`); a consent request whose authorize URL lacks a `code_challenge` is rejected. (Hydra has no global toggle.)
 - [w6/004](../.pm/w6/done/004.md) — ✅ webhook `verify` computes every configured key's MAC with no early return; the internal tenant-API bearer uses `crypto/subtle.ConstantTimeCompare`.
 - [w6/005](../.pm/w6/done/005.md) — ✅ `APIError.Error()` returns status only; the upstream response body is no longer interpolated into error responses.
-- [w6/006](../.pm/w6/done/006.md) — ✅ opt-in tenant-image signing in the build Job (`build.go`: build+push as an initContainer, cosign as the main container), gated behind `BEX_TENANT_SIGNING_KEY_SECRET`. Admission-time verification is the remaining open half.
+- [w6/006](../.pm/w6/done/006.md) — ✅ opt-in tenant-image signing in the build Job (`build.go`: build+push as an initContainer, cosign as the main container), gated behind `BEX_TENANT_SIGNING_KEY_SECRET`. Admission-time verification closed by w7/m11: a `ValidatingWebhookConfiguration` backed by `internal/webhook.PodAdmitter` rejects pods with unsigned or tampered tenant images when `cosign.pub` is present in the Secret.
 - [w6/007](../.pm/w6/done/007.md) — ✅ `+kubebuilder:validation:Pattern`/`:MaxLength` markers on `Repo`/`Branch`/`RootDir` (`lego/types`); CRD regenerated so hand-applied App CRs can't bypass the input validators.
 - [w6/008](../.pm/w6/done/008.md) — ✅ two pre-existing red `internal/apps` autoscaling tests fixed (root cause: missing `Context` in `graphql.Params` — graphql-go v0.8.1 doesn't default a nil context).
 
 ## Out of scope
 
 - Dependabot triage (36 findings) is owned by `w1/m23/t002` — excluded here.
-- Admission-time tenant-image signature verification remains deferred (w6/006 implemented signing only); namespace-per-workspace isolation is deferred (`docs/ADR022-tenant-isolation.md` §Rejected options).
+- Namespace-per-workspace isolation is deferred (`docs/ADR022-tenant-isolation.md` §Rejected options).
+- Admission-time tenant-image signature verification: **closed by w7/m11** (2026-07-13). A `ValidatingWebhookConfiguration` backed by `internal/webhook.PodAdmitter` enforces cosign signatures on tenant images when `BEX_TENANT_SIGNING_KEY_SECRET` is set with `cosign.pub`. Off by default; byte-identical when unset.
