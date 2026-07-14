@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import {
@@ -27,8 +27,8 @@ import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
 
 export const Route = createFileRoute("/project/$projectId/settings")({
   component: ProjectSettingsPage,
-  head: ({ params }) => ({
-    meta: [{ title: `Settings · ${params.projectId} · bex dashboard` }],
+  head: () => ({
+    meta: [{ title: "Project Settings · bex dashboard" }],
   }),
 });
 
@@ -44,6 +44,12 @@ export function ProjectSettingsPage() {
   const { t } = useTranslations();
   const { projects, loading, refetch } = useProjects();
   const project = projects.find((p) => p.id === projectId);
+
+  useEffect(() => {
+    if (project?.name) {
+      document.title = `Settings · ${project.name} · bex dashboard`;
+    }
+  }, [project?.name]);
 
   const { rename, busy: renaming } = useRenameProject();
   const [editing, setEditing] = useState(false);

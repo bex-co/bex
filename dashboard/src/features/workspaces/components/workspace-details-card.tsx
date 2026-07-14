@@ -140,7 +140,11 @@ export function WorkspaceDetailsCard({
             <dt className="text-muted-foreground">
               {t("workspaces.fieldCreatedAt")}
             </dt>
-            <dd>{workspace.createdAt ?? "—"}</dd>
+            <dd>
+              {workspace.createdAt
+                ? new Date(workspace.createdAt).toLocaleDateString()
+                : "—"}
+            </dd>
           </div>
         </dl>
       </CardContent>

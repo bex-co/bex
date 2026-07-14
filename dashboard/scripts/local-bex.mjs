@@ -1366,6 +1366,17 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (svc) svc.healthCheckPath = variables.path || "/";
       return { setHealthCheckPath: { __typename: "Service", id: variables.id, healthCheckPath: svc?.healthCheckPath ?? variables.path } };
     }
+    // Blueprints (w7/m27) — no seeded blueprints in the dev stub; return an
+    // empty list so Apollo's InMemoryCache doesn't log "Missing field" warnings
+    // when writing a `{}` fallback for an unhandled operation name.
+    case "Blueprints":
+      return { blueprints: [] };
+    case "Blueprint":
+      return { blueprint: null };
+    case "ValidateBlueprint":
+      return { validateBlueprint: { __typename: "BlueprintValidationResult", valid: true, errors: [] } };
+    case "SyncBlueprint":
+      return { syncBlueprint: null };
     default:
       return {};
   }
@@ -1437,7 +1448,7 @@ const server = createServer((req, res) => {
               node_type: "input",
             },
             messages: [],
-            meta: { label: { id: 1070002, text: "E-Mail", type: "info" } },
+            meta: { label: { id: 1070002, text: "E-Mail", type: "info", context: { title: "E-Mail" } } },
           },
           {
             type: "input",

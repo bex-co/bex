@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, Pencil } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -23,8 +23,8 @@ import { EnvironmentsPanel } from "@/features/environments/components/environmen
 
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
-  head: ({ params }) => ({
-    meta: [{ title: `${params.projectId} · bex dashboard` }],
+  head: () => ({
+    meta: [{ title: "Project · bex dashboard" }],
   }),
 });
 
@@ -52,6 +52,12 @@ export function ProjectPage() {
   const { groups } = useGroupedResources({ projects, services, databases, keyValues });
   const project = projects.find((p) => p.id === projectId);
   const group = groups.find((g) => g.id === projectId);
+
+  useEffect(() => {
+    if (project?.name) {
+      document.title = `${project.name} · bex dashboard`;
+    }
+  }, [project?.name]);
 
   const { rename, busy: renaming } = useRenameProject();
   const [renameOpen, setRenameOpen] = useState(false);
