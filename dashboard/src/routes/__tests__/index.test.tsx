@@ -33,6 +33,13 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
   useServiceLifecycle: () => ({ pending: null, run }),
 }));
 
+// HomePage also reads projects (w1/m31) to build the grouped view; mock it so
+// the route renders without a live Apollo client. An empty list keeps HomePage
+// on its flat-list fallback, which is what these list/empty-state cases assert.
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({ projects: [], loading: false, error: undefined }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",

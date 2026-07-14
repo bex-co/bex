@@ -337,9 +337,14 @@ func main() {
 			ReadTimeout:       30 * time.Second,
 			WriteTimeout:      30 * time.Second,
 		}
+		log.Printf("bex-api control plane (source of truth) on %s (projecting Apps into %q)", cpAddr, appsNS)
 		go func() {
-			log.Printf("bex-api control plane (source of truth) on %s (projecting Apps into %q)", cpAddr, appsNS)
-			if err := cpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			// Same serve-then-graceful-shutdown pattern as the public server
+			// below: on SIGTERM (ctx cancelled) the internal API drains instead
+			// of being cut mid-request. Its drain is best-effort — main returns
+			// once the public server finishes draining, so a slower CP drain is
+			// cut short at process exit; acceptable for an internal-only API.
+			if err := serveUntilShutdown(ctx, cpSrv); err != nil {
 				log.Fatalf("bex-api control plane: %v", err)
 			}
 		}()
@@ -441,7 +446,39 @@ func main() {
 		WriteTimeout:      30 * time.Second,
 	}
 	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
-	log.Fatal(httpSrv.ListenAndServe())
+	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
+	// ctrl.SetupSignalHandler above) so the process shuts the server down
+	// gracefully instead of serving for the whole termination grace period with
+	// every background loop's context already cancelled (w1/m30, .pm/w1/019.md).
+	if err := serveUntilShutdown(ctx, httpSrv); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+}
+
+// serveUntilShutdown runs srv.ListenAndServe in a goroutine and blocks until
+// either the server stops on its own (a bind/startup error, returned as-is) or
+// ctx is cancelled — on cancel it gracefully shuts the server down within a
+// bounded timeout and returns Shutdown's result (nil on a clean drain). This is
+// the shared serve/shutdown lifecycle used by both the public API server and the
+// internal control-plane server so a SIGTERM'd bex-api exits promptly.
+func serveUntilShutdown(ctx context.Context, srv *http.Server) error {
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.ListenAndServe() }()
+	select {
+	case err := <-serveErr:
+		// The server stopped before any signal — e.g. the port was already
+		// bound. ErrServerClosed only arises from the Shutdown in the ctx.Done
+		// path below, so here it means a clean stop; anything else is a real
+		// startup error the caller should fail fast on.
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	}
 }
 
 // waitForDB pings until the pool answers, for up to ~2 minutes.

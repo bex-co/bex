@@ -109,11 +109,12 @@
     "vitest": "^4.1.10"
   },
   "resolutions": {
-    "lodash": "^4.17.23",
+    "lodash": "^4.18.1",
     "undici": "^7.28.0",
     "rollup": "^4.59.0",
     "@ory/client-fetch": "1.22.22",
     "shell-quote": "^1.8.4",
+    "srvx": "^0.11.13",
     "ws": "^8.21.0",
     "flatted": "^3.4.2",
     "immutable": "^3.8.3"
