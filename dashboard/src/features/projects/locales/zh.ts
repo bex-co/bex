@@ -1,17 +1,41 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhProjects: Record<string, TranslationEntry> = {
-  "projects.groupLabel": {
+  "projects.overviewTitle": {
+    message: "概览",
+    description: "Page title of the Overview page (workspace homepage)",
+  },
+  "projects.projectsHeading": {
     message: "项目",
-    description: "Row group label shown above a project's resources",
+    description: "Section heading above the Overview page's project grid",
   },
-  "projects.ungroupedLabel": {
-    message: "无项目",
-    description: "Group label for resources not assigned to any project",
+  "projects.ungroupedHeading": {
+    message: "未分组资源",
+    description: "Section heading above the Overview page's ungrouped resource table",
   },
-  "projects.cardTitle": {
-    message: "全部资源",
-    description: "Title of the unified Projects page's resources card",
+  "projects.eyebrow": {
+    message: "项目",
+    description: "Small uppercase label above a project page's name heading",
+  },
+  "projects.cardEmpty": {
+    message: "暂无资源",
+    description: "Project card status line when the project has no resources",
+  },
+  "projects.cardHealthy": {
+    message: "所有资源运行正常",
+    description: "Project card status line when every resource is healthy",
+  },
+  "projects.cardUnhealthy": {
+    message: "{count} 项资源需要处理",
+    description: "Project card status line when one or more resources are unhealthy",
+  },
+  "projects.newProjectCard": {
+    message: "创建新项目",
+    description: "The dashed \"+ create project\" tile at the end of the project grid",
+  },
+  "projects.notFound": {
+    message: "未找到项目。",
+    description: "Shown on a project page when the id doesn't match any project",
   },
   "projects.errorTitle": {
     message: "资源加载失败",

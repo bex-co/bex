@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
 } from "@/common/components/ui/sidebar.tsx";
 import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
+import { isNavItemActive } from "./nav-active";
 
 // Render parity: one "Projects" entry groups every resource type (services,
 // databases, key value) on a single page (`routes/index.tsx`), rather than a
@@ -40,7 +41,7 @@ export function DashboardSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild isActive={pathname === item.to}>
+                  <SidebarMenuButton asChild isActive={isNavItemActive(pathname, item.to)}>
                     <Link to={item.to}>
                       <item.icon />
                       <span>{t(item.labelKey)}</span>

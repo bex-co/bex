@@ -176,13 +176,20 @@ const securityHeaders: Record<string, string> = {
   // TanStack Start SSR injects inline hydration scripts; inline styles come from
   // Tailwind and shadcn/Radix. connect-src https: covers the API and auth
   // origins (api.bex.co, auth.bex.co) without hard-coding their values here.
+  // Outside production, also allow plain-http localhost: `yarn dev:local`
+  // (dashboard/CLAUDE.md's fast frontend loop) points VITE_API_URL straight at
+  // local-bex.mjs's wide-open-CORS stub on a different port (:8099) rather than
+  // through graphqlDevProxy's same-origin tunnel — without this the CSP silently
+  // blocks that fetch and every page hangs on "Select a workspace".
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self' https:",
+    process.env.NODE_ENV === "production"
+      ? "connect-src 'self' https:"
+      : "connect-src 'self' https: http://localhost:*",
     "frame-ancestors 'none'",
   ].join("; "),
 };

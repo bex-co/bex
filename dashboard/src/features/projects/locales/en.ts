@@ -1,17 +1,41 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enProjects: Record<string, TranslationEntry> = {
-  "projects.groupLabel": {
+  "projects.overviewTitle": {
+    message: "Overview",
+    description: "Page title of the Overview page (workspace homepage)",
+  },
+  "projects.projectsHeading": {
+    message: "Projects",
+    description: "Section heading above the Overview page's project grid",
+  },
+  "projects.ungroupedHeading": {
+    message: "Ungrouped Resources",
+    description: "Section heading above the Overview page's ungrouped resource table",
+  },
+  "projects.eyebrow": {
     message: "Project",
-    description: "Row group label shown above a project's resources",
+    description: "Small uppercase label above a project page's name heading",
   },
-  "projects.ungroupedLabel": {
-    message: "No Project",
-    description: "Group label for resources not assigned to any project",
+  "projects.cardEmpty": {
+    message: "No resources yet",
+    description: "Project card status line when the project has no resources",
   },
-  "projects.cardTitle": {
-    message: "All Resources",
-    description: "Title of the unified Projects page's resources card",
+  "projects.cardHealthy": {
+    message: "All resources running",
+    description: "Project card status line when every resource is healthy",
+  },
+  "projects.cardUnhealthy": {
+    message: "{count} resource(s) need attention",
+    description: "Project card status line when one or more resources are unhealthy",
+  },
+  "projects.newProjectCard": {
+    message: "Create new project",
+    description: "The dashed \"+ create project\" tile at the end of the project grid",
+  },
+  "projects.notFound": {
+    message: "Project not found.",
+    description: "Shown on a project page when the id doesn't match any project",
   },
   "projects.errorTitle": {
     message: "Couldn't load resources",

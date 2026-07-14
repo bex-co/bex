@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -26,9 +26,10 @@ import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { computeStats as computeKeyValueStats } from "@/features/keyvalue/lib/status";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
-import { ProjectSection } from "@/features/projects/components/project-section";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
+import { ProjectCard } from "@/features/projects/components/project-card";
+import { NewProjectCard } from "@/features/projects/components/new-project-card";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/")({
 
 export function HomePage() {
   const { t } = useTranslations();
+  const navigate = useNavigate();
   const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices();
   const {
     databases,
@@ -93,7 +95,7 @@ export function HomePage() {
   // a transient poll error or background refetch must not blank an existing list.
   const showSkeleton = loading && totalResources === 0;
   const showError = !loading && error && totalResources === 0;
-  const showEmpty = !loading && !error && totalResources === 0;
+  const showEmpty = !loading && !error && totalResources === 0 && projects.length === 0;
 
   function refetchAll() {
     void refetchServices();
@@ -105,10 +107,10 @@ export function HomePage() {
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="w-full space-y-6">
+        <div className="w-full space-y-8">
           <div className="flex flex-row items-center justify-between gap-2">
             <h1 className="text-xl leading-none font-semibold">
-              {t("projects.cardTitle")}
+              {t("projects.overviewTitle")}
             </h1>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -134,6 +136,7 @@ export function HomePage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
           {showError ? (
             <Alert variant="destructive">
               <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
@@ -147,26 +150,24 @@ export function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {groups.map((g) => (
-                <ProjectSection
-                  key={g.id}
-                  id={g.id}
-                  name={g.name}
-                  rows={g.rows}
-                  loading={showSkeleton}
-                  servicePending={pending}
-                  onRunServiceAction={run}
-                  onDatabaseDeleted={refetchAll}
-                  onKeyValueDeleted={refetchAll}
-                  onChanged={refetchAll}
-                />
-              ))}
-              {(ungrouped.length > 0 || groups.length === 0) && (
-                <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("projects.ungroupedLabel")}
-                  </p>
+            <>
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold">
+                  {t("projects.projectsHeading")}
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {groups.map((g) => (
+                    <ProjectCard key={g.id} id={g.id} name={g.name} rows={g.rows} />
+                  ))}
+                  <NewProjectCard onClick={() => setNewProjectOpen(true)} />
+                </div>
+              </section>
+
+              {(ungrouped.length > 0 || showSkeleton) && (
+                <section className="space-y-3">
+                  <h2 className="text-sm font-semibold">
+                    {t("projects.ungroupedHeading")}
+                  </h2>
                   <ResourceTable
                     rows={ungrouped}
                     loading={showSkeleton}
@@ -175,9 +176,9 @@ export function HomePage() {
                     onDatabaseDeleted={refetchAll}
                     onKeyValueDeleted={refetchAll}
                   />
-                </div>
+                </section>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -189,7 +190,10 @@ export function HomePage() {
       <NewProjectDialog
         open={newProjectOpen}
         onOpenChange={setNewProjectOpen}
-        onCreated={() => void refetchProjects()}
+        onCreated={(id) => {
+          void refetchProjects();
+          void navigate({ to: "/project/$projectId", params: { projectId: id } });
+        }}
       />
     </DashboardLayout>
   );

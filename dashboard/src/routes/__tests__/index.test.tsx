@@ -13,9 +13,10 @@ import type { DatabaseView, DatabaseInstanceTypeView } from "@/features/database
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 
-// The unified Projects page (Render parity, w1/m31 extension) is a pure client
-// of the services/databases/key-value/projects hooks; mock them so the test
-// drives the list/loading/error/empty/grouped states directly.
+// The Overview page (Render parity: dashboard.render.com's workspace
+// homepage — a project card grid + an ungrouped-resources table) is a pure
+// client of the services/databases/key-value/projects hooks; mock them so
+// the test drives the list/loading/error/empty/grouped states directly.
 const servicesState: {
   services: ServiceView[];
   loading: boolean;
@@ -102,14 +103,6 @@ vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
 vi.mock("@/features/projects/hooks/use-create-project", () => ({
   useCreateProject: () => ({ create: vi.fn(), busy: false }),
 }));
-// Each project section's "•••" menu mounts unconditionally whenever there's
-// at least one project group.
-vi.mock("@/features/projects/hooks/use-rename-project", () => ({
-  useRenameProject: () => ({ rename: vi.fn(), busy: false }),
-}));
-vi.mock("@/features/projects/hooks/use-delete-project", () => ({
-  useDeleteProject: () => ({ remove: vi.fn(), deleting: null }),
-}));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
@@ -186,7 +179,7 @@ beforeEach(() => {
 });
 
 describe("HomePage", () => {
-  it("renders services, databases, and key value stores together with a Type column", async () => {
+  it("renders ungrouped resources together with a Type column", async () => {
     servicesState.services = [svc({ id: "hello-go", name: "hello-go" })];
     databasesState.databases = [db({ id: "shop-db", name: "shop-db" })];
     keyValuesState.keyValues = [kv({ id: "sessions-cache", name: "sessions-cache" })];
@@ -222,7 +215,7 @@ describe("HomePage", () => {
     ).toHaveLength(3);
   });
 
-  it("groups resources under their project section", async () => {
+  it("renders a project card linking to the project's own page", async () => {
     servicesState.services = [svc({ id: "grouped-svc", name: "grouped-svc" })];
     databasesState.databases = [db({ id: "ungrouped-db", name: "ungrouped-db" })];
     projectsState.projects = [
@@ -238,17 +231,40 @@ describe("HomePage", () => {
 
     renderHomePage();
 
-    expect(await screen.findByText(/storefront/)).toBeInTheDocument();
-    expect(screen.getByText("grouped-svc")).toBeInTheDocument();
+    const card = (await screen.findByText("storefront")).closest("a");
+    expect(card).toHaveAttribute("href", "/project/prj-1");
+    // healthy (Running) service in the project -> the green status line
+    expect(within(card!).getByText("All resources running")).toBeInTheDocument();
+
+    // the ungrouped database still shows in the ungrouped table, not the card
     expect(screen.getByText("ungrouped-db")).toBeInTheDocument();
-    expect(screen.getByText("No Project")).toBeInTheDocument();
+    expect(screen.getByText("Ungrouped Resources")).toBeInTheDocument();
+  });
+
+  it("shows an unhealthy count on a project card when a resource needs attention", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: [],
+        databaseIds: ["broken-db"],
+        keyValueIds: [],
+      },
+    ];
+    databasesState.databases = [db({ id: "broken-db", status: "unavailable" })];
+
+    renderHomePage();
+
+    const card = (await screen.findByText("storefront")).closest("a");
+    expect(within(card!).getByText("1 resource(s) need attention")).toBeInTheDocument();
   });
 
   it("shows skeleton placeholders while loading with no data", async () => {
     servicesState.loading = true;
     renderHomePage();
 
-    await screen.findByText("All Resources");
+    await screen.findByText("Overview");
     expect(
       screen.queryByRole("button", { name: "Open actions menu" }),
     ).not.toBeInTheDocument();
@@ -268,7 +284,7 @@ describe("HomePage", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when there are no resources", async () => {
+  it("shows an empty state when there are no resources or projects", async () => {
     renderHomePage();
 
     expect(await screen.findByText("No resources yet")).toBeInTheDocument();
