@@ -291,8 +291,11 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 		return InviteView{}, err
 	}
 	if !store.CanAddMember(tenant.Plan, members+pending) {
-		return InviteView{}, fmt.Errorf("%w: the %s plan is limited to %d workspace member(s); upgrade to invite more",
-			core.ErrBadRequest, tenant.Plan, store.LimitsFor(tenant.Plan).MaxMembers)
+		lim := store.LimitsFor(tenant.Plan)
+		return InviteView{}, core.NewPlanLimitError(
+			fmt.Sprintf("the %s plan is limited to %d workspace member(s); upgrade to invite more", tenant.Plan, lim.MaxMembers),
+			tenant.Plan, lim.MaxMembers,
+		)
 	}
 
 	inviter, _ := core.IdentityFrom(ctx)
@@ -402,7 +405,11 @@ func guardPlanRole(plan, role string) error {
 	if store.RoleAllowedOnPlan(plan, role) {
 		return nil
 	}
-	return fmt.Errorf("%w: the %s plan only allows roles %s", core.ErrBadRequest, plan, strings.Join(store.LimitsFor(plan).AllowedRoles, "|"))
+	lim := store.LimitsFor(plan)
+	return core.NewPlanLimitError(
+		fmt.Sprintf("the %s plan only allows roles %s", plan, strings.Join(lim.AllowedRoles, "|")),
+		plan, 0,
+	)
 }
 
 // guardLastAdmin refuses a change that would leave a workspace with zero admins:

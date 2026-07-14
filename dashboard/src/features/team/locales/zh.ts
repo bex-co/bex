@@ -76,6 +76,16 @@ const zhTeam: Record<string, TranslationEntry> = {
     description:
       "Link from the blocked-invite alert to the workspace settings plan section",
   },
+  "team.inviteErrorPlanLimitSeats": {
+    message: "{plan} 套餐最多支持 {limit} 名工作区成员，升级以邀请更多人。",
+    description:
+      "Plan seat-cap refusal in the invite dialog — shown when accepted members + pending invites reach the plan maximum",
+  },
+  "team.inviteErrorPlanLimitRole": {
+    message: "{plan} 套餐不支持此角色，升级以使用所有角色。",
+    description:
+      "Plan role-gate refusal in the invite dialog — shown when the chosen role isn't available on the current plan",
+  },
   "team.remove": {
     message: "移除",
     description: "Remove-member button / confirm label",

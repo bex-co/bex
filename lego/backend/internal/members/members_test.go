@@ -330,30 +330,51 @@ func TestInviteEnforcesMemberCap(t *testing.T) {
 	}
 }
 
-// TestInvitePlanRefusalsNameThePlan pins the contract the dashboard's invite
-// dialog keys on (w6/m15/t001): it shows the inline "your plan can't take this
-// invite" alert + the change-plan CTA only when the refusal's message mentions
-// the plan (use-invite-member.ts). That is a substring match on this prose, so
-// rewording either guard to drop the word "plan" would silently demote the CTA
-// back to the generic toast — the dead end the milestone removed. If this test
-// fails, fix the dashboard's discriminator, don't just re-word the assertion.
-func TestInvitePlanRefusalsNameThePlan(t *testing.T) {
-	// The seat cap (Hobby is single-member).
+// TestInvitePlanLimitCode replaces TestInvitePlanRefusalsNameThePlan (w2/m28):
+// the dashboard now keys on the PLAN_LIMIT error code rather than a substring
+// of the English message, so this test asserts code+params — a copy change to
+// the error text has zero effect on whether the CTA shows.
+func TestInvitePlanLimitCode(t *testing.T) {
+	var ce *core.CodedError
+
+	// seat cap (Hobby is single-member; use role "admin" — the only role Hobby
+	// allows — so the role gate passes and the seat cap is what fires)
 	capped := newFakeStore(store.PlanHobby)
 	capped.seedMember("admin-1", "admin")
 	_, err := svc(capped, newFakeGranter(), nil, nil).
-		Invite(ctxWith("admin-1"), "tea-1", "second@example.com", "developer")
-	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "plan") {
-		t.Fatalf("member-cap refusal must name the plan, got %v", err)
+		Invite(ctxWith("admin-1"), "tea-1", "second@example.com", "admin")
+	if !errors.As(err, &ce) {
+		t.Fatalf("seat cap: want *core.CodedError, got %T: %v", err, err)
+	}
+	if ce.Code != "PLAN_LIMIT" {
+		t.Errorf("seat cap code = %q, want PLAN_LIMIT", ce.Code)
+	}
+	if ce.Params["plan"] != store.PlanHobby {
+		t.Errorf("seat cap plan = %v, want %q", ce.Params["plan"], store.PlanHobby)
+	}
+	if ce.Params["limit"] != 1 {
+		t.Errorf("seat cap limit = %v, want 1", ce.Params["limit"])
+	}
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Error("seat cap: want errors.Is(err, ErrBadRequest)")
 	}
 
-	// The role gate (Pro doesn't offer viewer).
+	// role gate (Pro doesn't offer viewer)
 	pro := newFakeStore(store.PlanPro)
 	pro.seedMember("admin-1", "admin")
 	_, err = svc(pro, newFakeGranter(), nil, nil).
 		Invite(ctxWith("admin-1"), "tea-1", "v@example.com", "viewer")
-	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "plan") {
-		t.Fatalf("role-gate refusal must name the plan, got %v", err)
+	if !errors.As(err, &ce) {
+		t.Fatalf("role gate: want *core.CodedError, got %T: %v", err, err)
+	}
+	if ce.Code != "PLAN_LIMIT" {
+		t.Errorf("role gate code = %q, want PLAN_LIMIT", ce.Code)
+	}
+	if ce.Params["plan"] != store.PlanPro {
+		t.Errorf("role gate plan = %v, want %q", ce.Params["plan"], store.PlanPro)
+	}
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Error("role gate: want errors.Is(err, ErrBadRequest)")
 	}
 }
 

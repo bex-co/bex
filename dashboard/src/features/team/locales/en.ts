@@ -77,6 +77,18 @@ const enTeam: Record<string, TranslationEntry> = {
     description:
       "Link from the blocked-invite alert to the workspace settings plan section",
   },
+  "team.inviteErrorPlanLimitSeats": {
+    message:
+      "The {plan} plan is limited to {limit} workspace member(s). Upgrade to invite more.",
+    description:
+      "Plan seat-cap refusal in the invite dialog — shown when accepted members + pending invites reach the plan maximum",
+  },
+  "team.inviteErrorPlanLimitRole": {
+    message:
+      "The {plan} plan doesn't offer this role. Upgrade to access all roles.",
+    description:
+      "Plan role-gate refusal in the invite dialog — shown when the chosen role isn't available on the current plan",
+  },
   "team.remove": {
     message: "Remove",
     description: "Remove-member button / confirm label",

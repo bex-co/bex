@@ -46,18 +46,19 @@ describe("InviteMemberDialog", () => {
     expect(onInvited).toHaveBeenCalled();
   });
 
-  // w6/m15/t001 — the gap: a plan-capped invite used to dead-end in a toast that
-  // named the upgrade without offering one.
-  describe("the plan-limit refusal (w6/m15/t001)", () => {
-    it("shows the backend's reason inline with a change-plan CTA", async () => {
-      inviteState.planLimit =
-        "the hobby plan is limited to 1 workspace member(s); upgrade to invite more";
+  // w2/m28 — the CTA renders off the PLAN_LIMIT error code, not a substring of
+  // the English message. The hook (use-invite-member.ts) builds a localized
+  // string from params; the dialog renders whatever planLimit string it receives.
+  describe("the plan-limit refusal", () => {
+    it("shows the plan-limit message inline with a change-plan CTA", async () => {
+      // Localized copy from the hook — deliberately does NOT contain "plan" to
+      // prove the dialog does no string-matching of its own.
+      inviteState.planLimit = "Upgrade to invite more workspace members.";
       const user = userEvent.setup();
       await openDialog(user);
 
-      // The backend's exact copy, not a client-side paraphrase of the rule.
       expect(
-        screen.getByText(/the hobby plan is limited to 1 workspace member/),
+        screen.getByText("Upgrade to invite more workspace members."),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Change plan/ }),
@@ -65,7 +66,7 @@ describe("InviteMemberDialog", () => {
     });
 
     it("the CTA routes to the plan section and opens the change-plan dialog", async () => {
-      inviteState.planLimit = "the hobby plan is limited to 1 workspace member(s)";
+      inviteState.planLimit = "The hobby plan is limited to 1 workspace member(s). Upgrade to invite more.";
       const user = userEvent.setup();
       await openDialog(user);
 

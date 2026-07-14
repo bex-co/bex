@@ -57,6 +57,11 @@ func WriteErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrConflict):
 		code = http.StatusConflict
 	}
+	var ce *CodedError
+	if errors.As(err, &ce) {
+		WriteJSON(w, code, map[string]any{"error": err.Error(), "code": ce.Code, "params": ce.Params})
+		return
+	}
 	WriteJSON(w, code, map[string]string{"error": err.Error()})
 }
 

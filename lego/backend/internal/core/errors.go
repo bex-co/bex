@@ -109,3 +109,53 @@ func (e constErr) Error() string { return string(e) }
 
 // Err returns a comparable constant error carrying msg.
 func Err(msg string) error { return constErr(msg) }
+
+// CodedError is a domain error carrying a machine-readable Code and Params
+// alongside its human-readable message. REST callers receive code+params in the
+// JSON body alongside the error string; GraphQL callers receive them in the
+// error's extensions field (graphql-go's gqlerrors.ExtendedError interface
+// picks up Extensions() automatically). The wrapped sentinel keeps errors.Is
+// checks working — e.g. errors.Is(err, ErrBadRequest) is true for a
+// *CodedError that wraps ErrBadRequest.
+type CodedError struct {
+	Code     string
+	Params   map[string]any
+	sentinel error
+	msg      string
+}
+
+func (e *CodedError) Error() string { return e.msg }
+func (e *CodedError) Unwrap() error { return e.sentinel }
+
+// Extensions satisfies gqlerrors.ExtendedError so the graphql-go formatter
+// includes Code+Params in the GraphQL error's extensions field — the same
+// mechanism the RATE_LIMITED envelope uses in ratelimit.go, now as a shared,
+// reusable pattern rather than a one-off.
+func (e *CodedError) Extensions() map[string]any {
+	m := make(map[string]any, 1+len(e.Params))
+	m["code"] = e.Code
+	for k, v := range e.Params {
+		m[k] = v
+	}
+	return m
+}
+
+// Compile-time assertion: *CodedError satisfies gqlerrors.ExtendedError.
+var _ interface {
+	error
+	Extensions() map[string]any
+} = (*CodedError)(nil)
+
+// NewPlanLimitError returns a *CodedError for plan capacity and role
+// restrictions. plan is the workspace's current plan name; limit is the
+// per-plan maximum (member count for a seat cap, 0 for a role-gate refusal).
+// Wraps ErrBadRequest so errors.Is(err, ErrBadRequest) holds and REST/GraphQL
+// adapters map it to 400.
+func NewPlanLimitError(msg, plan string, limit int) *CodedError {
+	return &CodedError{
+		Code:     "PLAN_LIMIT",
+		Params:   map[string]any{"plan": plan, "limit": limit},
+		sentinel: ErrBadRequest,
+		msg:      msg,
+	}
+}
