@@ -47,6 +47,11 @@ type patchServiceRequest struct {
 	// explicit "" (restore the repo root) — Render's Root Directory setting,
 	// the Settings → Build & Deploy save flow (w5/m13).
 	RootDir *string `json:"rootDir"`
+	// BuildFilter is Render's Build Filters object (top-level, verified against
+	// Render's servicePATCH schema). A pointer so "absent" (leave unchanged) is
+	// distinct from an explicit object (set, or clear when both arrays are empty)
+	// — the Settings → Build & Deploy save flow (w1/m34).
+	BuildFilter *BuildFilterView `json:"buildFilter"`
 	// AutoDeploy is Render's "yes"/"no" (or bool-ish) toggle for push-to-deploy
 	// (spec.autoDeploy). "" => absent (leave unchanged); parseYesNo maps the rest
 	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
@@ -106,10 +111,13 @@ type createServiceRequest struct {
 	Builder string `json:"builder"`
 	// RootDir scopes build-from-git to a subdirectory of Repo, mirroring
 	// Render's Root Directory setting (monorepo support). Empty is the repo root.
-	RootDir string   `json:"rootDir"`
-	Port    int32    `json:"port"`
-	Plan    string   `json:"plan"`
-	Domains []string `json:"domains"`
+	RootDir string `json:"rootDir"`
+	// BuildFilter is Render's Build Filters object (top-level, verified against
+	// Render's servicePOST schema): glob patterns gating git-push auto-deploys.
+	BuildFilter *BuildFilterView `json:"buildFilter"`
+	Port        int32            `json:"port"`
+	Plan        string           `json:"plan"`
+	Domains     []string         `json:"domains"`
 	// PublishPath is a static_site's publish directory; a top-level convenience
 	// mirroring serviceDetails.publishPath (top level wins).
 	PublishPath string `json:"publishPath"`
@@ -236,6 +244,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		BuildCommand:     buildCommand,
 		StartCommand:     startCommand,
 		RootDir:          rootDir,
+		BuildFilter:      r.BuildFilter,
 		DockerfilePath:   dockerfilePath,
 		Port:             r.Port,
 		Replicas:         replicas,
@@ -370,7 +379,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil {
+		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -398,6 +407,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.RootDir != nil {
 			if app, err = s.SetRootDir(r.Context(), id, *req.RootDir); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.BuildFilter != nil {
+			if app, err = s.SetBuildFilter(r.Context(), id, req.BuildFilter); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

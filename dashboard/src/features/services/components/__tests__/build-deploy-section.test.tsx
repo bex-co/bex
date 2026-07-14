@@ -6,9 +6,14 @@ import { BuildDeploySection } from "@/features/services/components/build-deploy-
 const setRootDir = vi.fn(async () => true);
 const setAutoDeploy = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
+const setBuildFilter = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-build-filter", () => ({
+  useBuildFilter: () => ({ setBuildFilter, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
@@ -36,6 +41,8 @@ beforeEach(() => {
   setAutoDeploy.mockResolvedValue(true);
   setPreDeployCommand.mockClear();
   setPreDeployCommand.mockResolvedValue(true);
+  setBuildFilter.mockClear();
+  setBuildFilter.mockResolvedValue(true);
   connectionState.connection = undefined;
 });
 
@@ -139,9 +146,7 @@ describe("BuildDeploySection", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(
-        "Change Root Directory to the repository root?",
-      ),
+      within(dialog).getByText("Change Root Directory to the repository root?"),
     ).toBeInTheDocument();
   });
 
@@ -263,9 +268,7 @@ describe("BuildDeploySection", () => {
         showPreDeployCommand={false}
       />,
     );
-    expect(
-      screen.getByText(/manual git webhook/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/manual git webhook/)).toBeInTheDocument();
   });
 
   // Pre-Deploy Command field (w1/m33).
@@ -339,5 +342,92 @@ describe("BuildDeploySection", () => {
     // Trimmed before the mutation; no confirm dialog for this field.
     expect(setPreDeployCommand).toHaveBeenCalledWith("app", "npm run migrate");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  // Build Filters editor (w1/m34).
+  it("renders the Build Filters editor with both path lists", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.getByText("Included Paths")).toBeInTheDocument();
+    expect(screen.getByText("Ignored Paths")).toBeInTheDocument();
+    // Save is disabled until the draft differs from the (empty) current filter.
+    expect(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    ).toBeDisabled();
+  });
+
+  it("shows the existing build-filter globs", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        buildFilter={{ paths: ["src/**"], ignoredPaths: ["docs/**"] }}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.getByDisplayValue("src/**")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("docs/**")).toBeInTheDocument();
+  });
+
+  it("adds an included path and saves via setBuildFilter", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add included path" }));
+    await user.type(screen.getByPlaceholderText("e.g. src/**"), "src/**");
+    await user.click(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    );
+
+    expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
+  });
+
+  it("removes an existing ignored path and saves the shortened list", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        buildFilter={{ paths: ["src/**"], ignoredPaths: ["docs/**"] }}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove ignored path" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    );
+
+    // Ignored list cleared, included list preserved.
+    expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
   });
 });

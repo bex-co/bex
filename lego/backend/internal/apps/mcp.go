@@ -79,6 +79,29 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
+// buildFilterArg is Render's Build Filters object, shared by set_build_filter and
+// create_web_service: repository-root-relative globs deciding whether a git push
+// triggers an auto-deploy. Patterns support *, **, ?, and [class] wildcards.
+type buildFilterArg struct {
+	Paths        []string `json:"paths,omitempty" jsonschema:"include globs (e.g. 'src/**'); a push deploys only when a changed file matches one — empty means every path is included"`
+	IgnoredPaths []string `json:"ignoredPaths,omitempty" jsonschema:"exclude globs (e.g. 'docs/**'); a changed file matching one never triggers a deploy, even if it also matches paths"`
+}
+
+// toView converts the tool arg to the neutral view; a nil receiver (absent arg)
+// projects as nil so create leaves the filter unset.
+func (a *buildFilterArg) toView() *BuildFilterView {
+	if a == nil {
+		return nil
+	}
+	return &BuildFilterView{Paths: a.Paths, IgnoredPaths: a.IgnoredPaths}
+}
+
+// buildFilterArgs is set_build_filter's input — Render's Build Filters setting.
+type buildFilterArgs struct {
+	ServiceID   string         `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	BuildFilter buildFilterArg `json:"buildFilter" jsonschema:"the glob patterns gating git-push auto-deploys; pass empty paths and ignoredPaths to clear the filter"`
+}
+
 // updateCronJobArgs is update_cron_job's input — bex's functional implementation
 // of the verb Render ships as a non-functional stub. schedule is the 5-field
 // crontab expression (required); command is a pointer so nil means "keep the
@@ -121,26 +144,27 @@ type preDeployCommandArgs struct {
 // contract; builder and image are bex extensions. Region remains a one-region
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
-	OwnerID          string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name             string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Type             string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo             string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image            string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch           string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir          string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime          string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand     string      `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
-	StartCommand     string      `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
-	DockerfilePath   string      `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder          string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan             string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars          []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	AutoDeploy       string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	HealthCheckPath  string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
-	PreDeployCommand string      `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
-	Port             int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
-	Replicas         int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
-	DryRun           bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID          string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name             string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type             string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
+	Repo             string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image            string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch           string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir          string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	BuildFilter      *buildFilterArg `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
+	Runtime          string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand     string          `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
+	StartCommand     string          `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
+	DockerfilePath   string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder          string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan             string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars          []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	AutoDeploy       string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	HealthCheckPath  string          `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
+	PreDeployCommand string          `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
+	Port             int32           `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Replicas         int32           `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	DryRun           bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -158,6 +182,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Image:            a.Image,
 		Branch:           a.Branch,
 		RootDir:          a.RootDir,
+		BuildFilter:      a.BuildFilter.toView(),
 		Runtime:          a.Runtime,
 		BuildCommand:     a.BuildCommand,
 		StartCommand:     a.StartCommand,
@@ -570,6 +595,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_build_filter",
+		Description: "Set a build-from-git service's Build Filters: repository-root-relative glob patterns (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy. A push deploys only when a changed file matches an include path (or paths is empty) and is not ignored; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter. Tracks Render's Build Filters setting. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildFilterArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView())
 		if err != nil {
 			return nil, renderService{}, err
 		}

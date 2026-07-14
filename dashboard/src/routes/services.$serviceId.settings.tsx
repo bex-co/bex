@@ -109,6 +109,7 @@ export function ServiceSettingsPage() {
               repo={service.repo}
               branch={service.branch}
               rootDir={service.rootDir}
+              buildFilter={service.buildFilter}
               autoDeploy={service.autoDeploy ?? false}
               preDeployCommand={service.preDeployCommand}
               // A cron_job runs its own Command; the pre-deploy step doesn't
@@ -125,6 +126,7 @@ export function ServiceSettingsPage() {
               repo={service.repo}
               branch={service.branch}
               rootDir={service.rootDir}
+              buildFilter={service.buildFilter}
               autoDeploy={service.autoDeploy ?? false}
               preDeployCommand={service.preDeployCommand}
               // Pre-Deploy Command applies to web/private/worker; a static_site

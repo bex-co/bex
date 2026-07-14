@@ -6,6 +6,7 @@ import type {
   CronRunView,
   StaticRouteView,
   StaticHeaderView,
+  BuildFilterView,
 } from "@/features/services/types";
 
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
@@ -50,6 +51,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     repo: "repo" in s ? (s.repo ?? null) : null,
     branch: "branch" in s ? (s.branch ?? null) : null,
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
+    buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
@@ -81,6 +83,23 @@ function toStaticHeaders(headers: ServerNode["headers"]): StaticHeaderView[] {
       name: h.name ?? "",
       value: h.value ?? "",
     }));
+}
+
+/**
+ * Project the detail query's nullable `buildFilter` object onto BuildFilterView.
+ * null (unset) stays null; a present object's arrays are read defensively so a
+ * filter carrying only one list still yields a well-formed view.
+ */
+function toBuildFilter(
+  buildFilter: ServerNode["buildFilter"],
+): BuildFilterView | null {
+  if (!buildFilter) return null;
+  return {
+    paths: (buildFilter.paths ?? []).filter((p): p is string => p != null),
+    ignoredPaths: (buildFilter.ignoredPaths ?? []).filter(
+      (p): p is string => p != null,
+    ),
+  };
 }
 
 /** Project the detail query's nullable `runs` array onto CronRunView[]. */

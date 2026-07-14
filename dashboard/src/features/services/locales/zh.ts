@@ -1169,6 +1169,67 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
+  "services.buildFilterLabel": {
+    message: "构建过滤器",
+    description: "Build & Deploy: label for the build-filters editor",
+  },
+  "services.buildFilterHint": {
+    message:
+      "仅当 git 推送改动了匹配的文件时才触发部署。路径为相对仓库根目录的通配模式（如 src/**、**/*.md）。",
+    description: "Build & Deploy: help text for the build-filters editor",
+  },
+  "services.buildFilterIncludedTitle": {
+    message: "包含路径",
+    description: "Build & Deploy: title for the included-paths list",
+  },
+  "services.buildFilterIncludedHint": {
+    message: "仅当改动的文件匹配其中之一时才部署。留空表示包含所有路径。",
+    description: "Build & Deploy: help text for the included-paths list",
+  },
+  "services.buildFilterIncludedPlaceholder": {
+    message: "例如 src/**",
+    description: "Build & Deploy: placeholder for an included-path input",
+  },
+  "services.buildFilterAddIncluded": {
+    message: "添加包含路径",
+    description: "Build & Deploy: add-row button for the included-paths list",
+  },
+  "services.buildFilterRemoveIncluded": {
+    message: "移除包含路径",
+    description: "Build & Deploy: remove-row label for an included path",
+  },
+  "services.buildFilterIgnoredTitle": {
+    message: "忽略路径",
+    description: "Build & Deploy: title for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredHint": {
+    message: "匹配其中之一的改动文件永不触发部署，即使它同时匹配包含路径。",
+    description: "Build & Deploy: help text for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredPlaceholder": {
+    message: "例如 docs/**",
+    description: "Build & Deploy: placeholder for an ignored-path input",
+  },
+  "services.buildFilterAddIgnored": {
+    message: "添加忽略路径",
+    description: "Build & Deploy: add-row button for the ignored-paths list",
+  },
+  "services.buildFilterRemoveIgnored": {
+    message: "移除忽略路径",
+    description: "Build & Deploy: remove-row label for an ignored path",
+  },
+  "services.buildFilterSave": {
+    message: "保存构建过滤器",
+    description: "Build & Deploy: save button for the build-filters editor",
+  },
+  "services.buildFilterSuccess": {
+    message: "构建过滤器已更新。",
+    description: "Toast after setBuildFilter succeeds",
+  },
+  "services.buildFilterError": {
+    message: "无法更新构建过滤器，请重试。",
+    description: "Toast after setBuildFilter fails",
+  },
   "services.preDeployLabel": {
     message: "预部署命令",
     description: "Build & Deploy: label for the pre-deploy command field",

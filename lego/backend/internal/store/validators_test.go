@@ -120,3 +120,35 @@ func TestValidRootDir(t *testing.T) {
 		})
 	}
 }
+
+func TestValidGlob(t *testing.T) {
+	cases := []struct {
+		name string
+		glob string
+		want bool
+	}{
+		{"empty-rejected", "", false},
+		{"simple-star", "src/*", true},
+		{"globstar", "src/**", true},
+		{"double-globstar-suffix", "**/*.md", true},
+		{"single-char", "src/main.?s", true},
+		{"char-class", "src/[abc].go", true},
+		{"negated-class", "src/[^abc].go", true},
+		{"range-class", "src/[a-z].go", true},
+		{"unclosed-class-rejected", "src/[", false},
+		{"parent-traversal-rejected", "../escape/**", false},
+		{"mid-traversal-rejected", "src/../escape", false},
+		{"absolute-rejected", "/etc/passwd", false},
+		{"backslash-rejected", "src\\**", false},
+		{"newline-rejected", "src\n/**", false},
+		{"control-char-rejected", "src/\x00", false},
+		{"too-long-rejected", "a/" + strings.Repeat("x", 600), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ValidGlob(tc.glob); got != tc.want {
+				t.Errorf("ValidGlob(%q) = %v, want %v", tc.glob, got, tc.want)
+			}
+		})
+	}
+}

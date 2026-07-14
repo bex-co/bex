@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Check, X, Loader2 } from "lucide-react";
+import { Pencil, Check, X, Loader2, Plus, Trash2 } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -25,7 +25,9 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
+import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import type { BuildFilterView } from "@/features/services/types";
 
 export interface BuildDeploySectionProps {
   serviceId: string;
@@ -35,6 +37,12 @@ export interface BuildDeploySectionProps {
   branch: string | null;
   /** spec.rootDir; empty/null builds from the repo root. */
   rootDir: string | null;
+  /**
+   * spec.buildFilter — Render's Build Filters (glob paths/ignoredPaths gating
+   * push auto-deploys); null/undefined means no filter (every matching push
+   * deploys). Optional so callers that don't select it fall back to no filter.
+   */
+  buildFilter?: BuildFilterView | null;
   /** spec.autoDeploy — whether a signed git push redeploys this App. */
   autoDeploy: boolean;
   /** spec.preDeployCommand; empty/null means no pre-deploy step (w1/m33). */
@@ -61,6 +69,7 @@ export function BuildDeploySection({
   repo,
   branch,
   rootDir,
+  buildFilter,
   autoDeploy,
   preDeployCommand,
   showPreDeployCommand,
@@ -209,6 +218,11 @@ export function BuildDeploySection({
           )}
         </div>
 
+        <BuildFilterEditor
+          serviceId={serviceId}
+          buildFilter={buildFilter ?? null}
+        />
+
         {showPreDeployCommand && (
           <div>
             <div className="text-sm text-muted-foreground">
@@ -323,5 +337,143 @@ export function BuildDeploySection({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+/**
+ * The Build Filters editor (w1/m34 — Render's Build & Deploy "Build Filters"
+ * panel): two glob lists, Included Paths and Ignored Paths, deciding whether a
+ * git push triggers an auto-deploy. Edits both lists into a single draft and
+ * saves them together via `setBuildFilter` (one round-trip, like Render's bulk
+ * save). Empty rows are dropped on save; two empty lists clear the filter.
+ */
+function BuildFilterEditor({
+  serviceId,
+  buildFilter,
+}: {
+  serviceId: string;
+  buildFilter: BuildFilterView | null;
+}) {
+  const { t } = useTranslations();
+  const { setBuildFilter, busy } = useBuildFilter();
+  const current = {
+    paths: buildFilter?.paths ?? [],
+    ignoredPaths: buildFilter?.ignoredPaths ?? [],
+  };
+  const [draft, setDraft] = useState(current);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(current);
+
+  async function handleSave() {
+    const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
+    const paths = clean(draft.paths);
+    const ignoredPaths = clean(draft.ignoredPaths);
+    const ok = await setBuildFilter(serviceId, paths, ignoredPaths);
+    if (ok) setDraft({ paths, ignoredPaths });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {t("services.buildFilterLabel")}
+          <Badge variant="outline" className="text-xs font-normal">
+            {t("services.buildDeployRootDirOptional")}
+          </Badge>
+        </div>
+        <div className="mt-1 text-sm text-muted-foreground">
+          {t("services.buildFilterHint")}
+        </div>
+      </div>
+      <PathList
+        title={t("services.buildFilterIncludedTitle")}
+        hint={t("services.buildFilterIncludedHint")}
+        placeholder={t("services.buildFilterIncludedPlaceholder")}
+        addLabel={t("services.buildFilterAddIncluded")}
+        removeLabel={t("services.buildFilterRemoveIncluded")}
+        values={draft.paths}
+        onChange={(paths) => setDraft((d) => ({ ...d, paths }))}
+      />
+      <PathList
+        title={t("services.buildFilterIgnoredTitle")}
+        hint={t("services.buildFilterIgnoredHint")}
+        placeholder={t("services.buildFilterIgnoredPlaceholder")}
+        addLabel={t("services.buildFilterAddIgnored")}
+        removeLabel={t("services.buildFilterRemoveIgnored")}
+        values={draft.ignoredPaths}
+        onChange={(ignoredPaths) => setDraft((d) => ({ ...d, ignoredPaths }))}
+      />
+      <div className="flex justify-end gap-2">
+        {dirty && (
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => setDraft(current)}
+          >
+            {t("services.buildDeployCancel")}
+          </Button>
+        )}
+        <Button disabled={busy || !dirty} onClick={() => void handleSave()}>
+          {busy && <Loader2 className="animate-spin" />}
+          {t("services.buildFilterSave")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One editable glob list (Included or Ignored Paths): a row of monospace inputs
+ * with a per-row remove and an add button, mirroring the static-site RoutesEditor
+ * shape. The parent owns the value/onChange so both lists save as one draft.
+ */
+function PathList({
+  title,
+  hint,
+  placeholder,
+  addLabel,
+  removeLabel,
+  values,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  placeholder: string;
+  addLabel: string;
+  removeLabel: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">{title}</div>
+      <div className="text-xs text-muted-foreground">{hint}</div>
+      {values.map((value, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input
+            value={value}
+            onChange={(e) =>
+              onChange(values.map((v, j) => (j === i ? e.target.value : v)))
+            }
+            placeholder={placeholder}
+            className="font-mono text-sm"
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={removeLabel}
+            onClick={() => onChange(values.filter((_, j) => j !== i))}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onChange([...values, ""])}
+      >
+        <Plus /> {addLabel}
+      </Button>
+    </div>
   );
 }

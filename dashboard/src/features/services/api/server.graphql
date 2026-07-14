@@ -27,6 +27,12 @@ query Server($id: String!) {
     repo
     branch
     rootDir
+    # buildFilter is Render's Build Filters (w1/m34) — the glob patterns gating
+    # git-push auto-deploys, read by the Build & Deploy section. Null when unset.
+    buildFilter {
+      paths
+      ignoredPaths
+    }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);

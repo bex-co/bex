@@ -124,10 +124,11 @@ A `bex.yml` is render.yaml's Blueprint shape: a top-level **`services:`** list +
 | `databases`: `name`/`plan`/`diskSizeGB`/`postgresMajorVersion`/`ipAllowList`/`readReplicas`/`highAvailability` | ✅ | → Database CR spec |
 | `autoDeployTrigger` | ✅ | `commit`/`checksPass`→on, `off`→off |
 | `preDeployCommand` | ✅ | → `App.spec.preDeployCommand` (w1/m33): a command run to completion against the new revision's image before it serves traffic; a non-zero exit fails the deploy and leaves the previous revision live |
+| `buildFilter` (`paths`/`ignoredPaths`) | ✅ | → `App.spec.buildFilter` (w1/m34): Render's Build Filters — repository-root-relative globs gating git-push auto-deploys (empty `paths` = every path; `ignoredPaths` wins over `paths`); malformed globs rejected at parse |
 | `generateValue`, `sync:false` | ✖ | rejected (named error) — bex secrets come via the env-vars API, not blueprint-time |
 | `fromGroup`, `envVarGroups` | ✖ | rejected — m16 env-groups exist but aren't name-keyed the Blueprint way (documented omission) |
 | `fromService.envVarKey`, keyvalue `fromService`, self-reference | ✖ | rejected — needs cross-service secret plumbing (documented omission) |
-| `region`, `databaseName`, `user`, `disk`, `scaling`, `buildFilter`, `previews`, `maintenanceMode`, `renderSubdomainPolicy`, `maxShutdownDelaySeconds`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
+| `region`, `databaseName`, `user`, `disk`, `scaling`, `previews`, `maintenanceMode`, `renderSubdomainPolicy`, `maxShutdownDelaySeconds`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
 | sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
 | `projects`, `ungrouped`, `previews` (PR preview environments) | ✖ | non-goal (PR previews explicitly rejected, [DO_NOT_DO](../.pm/DO_NOT_DO.md)) |
 

@@ -128,6 +128,35 @@ spec:
                   A cron_job rejects commitId at the API layer before this field is set.
                 maxLength: 512
                 type: string
+              buildFilter:
+                description: |-
+                  BuildFilter scopes git-push auto-deploys to changes matching a glob filter
+                  (Render's Build Filters, monorepo support): a push whose changed files do
+                  not satisfy the filter does not trigger an auto-deploy. Globs are
+                  repository-root-relative (matching Render — a filter can name paths
+                  outside RootDir) and support the *, **, ?, and [class] wildcards. Composed
+                  with (ANDed after) RootDir's coarse prefix scoping. nil or an all-empty
+                  filter means every matching push deploys (today's behavior, unchanged).
+                  Applies to build-from-git only; ignored for prebuilt Image apps.
+                properties:
+                  ignoredPaths:
+                    description: |-
+                      IgnoredPaths are exclude globs. A changed file matching one never triggers
+                      a deploy, even if it also matches Paths (ignored wins, per Render). Empty
+                      means nothing is excluded.
+                    items:
+                      type: string
+                    maxItems: 100
+                    type: array
+                  paths:
+                    description: |-
+                      Paths are include globs. A push deploys only when a changed file matches
+                      one of these (and is not ignored). Empty means every path is included.
+                    items:
+                      type: string
+                    maxItems: 100
+                    type: array
+                type: object
               builder:
                 default: auto
                 description: |-

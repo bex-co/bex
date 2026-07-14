@@ -88,6 +88,7 @@ describe("toServiceView", () => {
       repo: null,
       branch: null,
       rootDir: null,
+      buildFilter: null,
       autoDeploy: null,
       healthCheckPath: null,
       preDeployCommand: null,

@@ -84,6 +84,39 @@ var staticHeaderInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
+// buildFilterGQLType renders Render's Build Filters object (spec.buildFilter);
+// buildFilterInputType is its mutation input (createService + setBuildFilter).
+var buildFilterGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildFilter",
+	Fields: graphql.Fields{
+		"paths":        &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(f BuildFilterView) any { return f.Paths })},
+		"ignoredPaths": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(f BuildFilterView) any { return f.IgnoredPaths })},
+	},
+})
+
+var buildFilterInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "BuildFilterInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"paths":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.String)},
+		"ignoredPaths": &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.String)},
+	},
+})
+
+// gqlBuildFilterInput parses a BuildFilterInput argument into the neutral view
+// (graphql-go delivers the input object as map[string]any and each [String] list
+// as []any of strings). Returns nil when the argument is absent, so create leaves
+// the filter unset.
+func gqlBuildFilterInput(args map[string]any, key string) *BuildFilterView {
+	m, ok := args[key].(map[string]any)
+	if !ok {
+		return nil
+	}
+	return &BuildFilterView{
+		Paths:        gqlutil.StringList(m["paths"]),
+		IgnoredPaths: gqlutil.StringList(m["ignoredPaths"]),
+	}
+}
+
 // gqlRouteInputs / gqlHeaderInputs / gqlEnvVarInputs parse list arguments of
 // input objects (graphql-go delivers each element as map[string]any).
 func gqlRouteInputs(args map[string]any, key string) []StaticRouteView {
@@ -219,8 +252,19 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"dockerfilePath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DockerfilePath })},
 		"builder":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Builder })},
 		// repo/branch are the build-from-git source, empty for an image-backed App.
-		"repo":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
-		"branch":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
+		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		// buildFilter is Render's Build Filters (spec.buildFilter): the glob
+		// patterns gating git-push auto-deploys. Null when unset.
+		"buildFilter": &graphql.Field{
+			Type: buildFilterGQLType,
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.BuildFilter == nil {
+					return nil
+				}
+				return *a.BuildFilter
+			}),
+		},
 		"autoDeploy":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
 		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
 		// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand);
@@ -611,8 +655,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"repo":         &graphql.ArgumentConfig{Type: graphql.String},
 				"image":        &graphql.ArgumentConfig{Type: graphql.String},
 				"branch":       &graphql.ArgumentConfig{Type: graphql.String},
-				"rootDir":      &graphql.ArgumentConfig{Type: graphql.String}, // subdirectory of repo to build from (monorepo support)
-				"runtime":      &graphql.ArgumentConfig{Type: graphql.String}, // Render runtime: native language | docker | image
+				"rootDir":      &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
+				"buildFilter":  &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
+				"runtime":      &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
 				"buildCommand": &graphql.ArgumentConfig{Type: graphql.String},
 				"startCommand": &graphql.ArgumentConfig{Type: graphql.String},
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
@@ -650,6 +695,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Image:            gqlStr(p.Args, "image"),
 					Branch:           gqlStr(p.Args, "branch"),
 					RootDir:          gqlStr(p.Args, "rootDir"),
+					BuildFilter:      gqlBuildFilterInput(p.Args, "buildFilter"),
 					Runtime:          gqlStr(p.Args, "runtime"),
 					BuildCommand:     gqlStr(p.Args, "buildCommand"),
 					StartCommand:     gqlStr(p.Args, "startCommand"),
@@ -776,6 +822,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
+			},
+		},
+		// setBuildFilter: the Settings → Build & Deploy Build Filters rows (w1/m34)
+		// write Render's Build Filters (spec.buildFilter) — the glob patterns gating
+		// git-push auto-deploys — on an existing App. Passing an all-empty object
+		// clears the filter. Rejected for an image-backed App (nothing to build).
+		// Follows the scalar/object-arg setter grammar (setRootDir/setStaticRoutes).
+		"setBuildFilter": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"buildFilter": &graphql.ArgumentConfig{Type: graphql.NewNonNull(buildFilterInputType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetBuildFilter(p.Context, p.Args["id"].(string), gqlBuildFilterInput(p.Args, "buildFilter"))
 			},
 		},
 		// setHealthCheckPath: the Settings → Health & Alerts health-check path

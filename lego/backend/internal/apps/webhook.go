@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -74,8 +75,8 @@ func (h *GitWebhook) verify(sig string, body []byte) bool {
 
 // pushEvent is the slice of a GitHub/Gitea push payload the webhook needs: which
 // ref moved, which repository it belongs to (matched against App.spec.repo),
-// and which files each pushed commit touched (matched against
-// App.spec.rootDir, monorepo support) — GitHub and Gitea both carry
+// and which files each pushed commit touched (matched against App.spec.rootDir
+// and App.spec.buildFilter, monorepo support) — GitHub and Gitea both carry
 // added/removed/modified paths per commit in this shape.
 type pushEvent struct {
 	Ref        string `json:"ref"` // e.g. refs/heads/main
@@ -167,6 +168,9 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch 
 		if !rootDirMatches(a.Spec.RootDir, paths) {
 			continue
 		}
+		if !buildFilterMatches(a.Spec.BuildFilter, paths) {
+			continue
+		}
 		if _, err := h.Svc.redeploy(ctx, a.Name); err != nil {
 			// Log but do not propagate: a 5xx response causes the git host to
 			// retry the delivery, re-triggering redeploy on apps that were already
@@ -223,6 +227,49 @@ func rootDirMatches(rootDir string, paths []string) bool {
 	for _, p := range paths {
 		p = strings.TrimPrefix(p, "/")
 		if p == dir || strings.HasPrefix(p, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// buildFilterMatches gates the glob-based auto-deploy filter (App.spec.buildFilter,
+// Render's Build Filters): a push redeploys only when at least one changed file is
+// a "triggering" file — one that matches an include glob (or, with no includes, any
+// file) and is NOT excluded by an ignore glob. Ignored wins over included, matching
+// Render ("ignored paths will not trigger an autodeploy, even if those files also
+// match an included path"). A nil or all-empty filter always matches (today's
+// behavior, unchanged). Globs are repository-root-relative (matching Render — a
+// filter can name paths outside RootDir), so this composes independently with the
+// coarse rootDirMatches prefix scoping. When the filter is set but the payload
+// carries no changed-path info, this fails open and matches (as rootDirMatches
+// does), since there is nothing to filter on.
+func buildFilterMatches(bf *appv1alpha1.BuildFilterSpec, paths []string) bool {
+	if bf == nil || (len(bf.Paths) == 0 && len(bf.IgnoredPaths) == 0) {
+		return true
+	}
+	if len(paths) == 0 {
+		return true
+	}
+	for _, p := range paths {
+		p = strings.TrimPrefix(p, "/")
+		if matchesAnyGlob(bf.IgnoredPaths, p) {
+			continue // ignored files never trigger, even when they also match Paths
+		}
+		if len(bf.Paths) == 0 || matchesAnyGlob(bf.Paths, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesAnyGlob reports whether path matches any of the doublestar glob patterns
+// (Render's dialect: *, **, ?, and [class] wildcards, "/"-separated). A malformed
+// pattern — which the API layer rejects on write (store.ValidGlob) — simply never
+// matches here, so a bad hand-applied CR can't wedge the webhook.
+func matchesAnyGlob(globs []string, path string) bool {
+	for _, g := range globs {
+		if ok, err := doublestar.Match(strings.TrimPrefix(g, "/"), path); err == nil && ok {
 			return true
 		}
 	}

@@ -123,6 +123,12 @@ vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
     busy: false,
   }),
 }));
+vi.mock("@/features/services/hooks/use-build-filter", () => ({
+  useBuildFilter: () => ({
+    setBuildFilter: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => ({ connection: undefined }),
 }));

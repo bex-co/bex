@@ -1,0 +1,14 @@
+# setBuildFilter is Render's Build Filters setting (w1/m34): the repository-root-
+# relative glob patterns (paths/ignoredPaths) deciding whether a git push triggers
+# an auto-deploy. Passing empty arrays clears the filter. Backs the Settings tab's
+# Build & Deploy section save flow (backend/internal/apps/graphql.go).
+mutation SetBuildFilter($id: String!, $buildFilter: BuildFilterInput!) {
+  setBuildFilter(id: $id, buildFilter: $buildFilter) {
+    id
+    buildFilter {
+      paths
+      ignoredPaths
+    }
+    phase
+  }
+}

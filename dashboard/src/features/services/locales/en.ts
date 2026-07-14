@@ -1188,6 +1188,69 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.buildFilterLabel": {
+    message: "Build Filters",
+    description: "Build & Deploy: label for the build-filters editor",
+  },
+  "services.buildFilterHint": {
+    message:
+      "Only trigger a deploy when a git push changes matching files. Paths are glob patterns relative to the repository root (e.g. src/**, **/*.md).",
+    description: "Build & Deploy: help text for the build-filters editor",
+  },
+  "services.buildFilterIncludedTitle": {
+    message: "Included Paths",
+    description: "Build & Deploy: title for the included-paths list",
+  },
+  "services.buildFilterIncludedHint": {
+    message:
+      "A push deploys only when a changed file matches one of these. Empty means every path is included.",
+    description: "Build & Deploy: help text for the included-paths list",
+  },
+  "services.buildFilterIncludedPlaceholder": {
+    message: "e.g. src/**",
+    description: "Build & Deploy: placeholder for an included-path input",
+  },
+  "services.buildFilterAddIncluded": {
+    message: "Add included path",
+    description: "Build & Deploy: add-row button for the included-paths list",
+  },
+  "services.buildFilterRemoveIncluded": {
+    message: "Remove included path",
+    description: "Build & Deploy: remove-row label for an included path",
+  },
+  "services.buildFilterIgnoredTitle": {
+    message: "Ignored Paths",
+    description: "Build & Deploy: title for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredHint": {
+    message:
+      "A changed file matching one of these never triggers a deploy, even if it also matches an included path.",
+    description: "Build & Deploy: help text for the ignored-paths list",
+  },
+  "services.buildFilterIgnoredPlaceholder": {
+    message: "e.g. docs/**",
+    description: "Build & Deploy: placeholder for an ignored-path input",
+  },
+  "services.buildFilterAddIgnored": {
+    message: "Add ignored path",
+    description: "Build & Deploy: add-row button for the ignored-paths list",
+  },
+  "services.buildFilterRemoveIgnored": {
+    message: "Remove ignored path",
+    description: "Build & Deploy: remove-row label for an ignored path",
+  },
+  "services.buildFilterSave": {
+    message: "Save Build Filters",
+    description: "Build & Deploy: save button for the build-filters editor",
+  },
+  "services.buildFilterSuccess": {
+    message: "Build Filters updated.",
+    description: "Toast after setBuildFilter succeeds",
+  },
+  "services.buildFilterError": {
+    message: "Couldn't update the Build Filters. Please try again.",
+    description: "Toast after setBuildFilter fails",
+  },
   "services.preDeployLabel": {
     message: "Pre-Deploy Command",
     description: "Build & Deploy: label for the pre-deploy command field",

@@ -130,6 +130,17 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=512
 	RootDir string `json:"rootDir,omitempty"`
 
+	// BuildFilter scopes git-push auto-deploys to changes matching a glob filter
+	// (Render's Build Filters, monorepo support): a push whose changed files do
+	// not satisfy the filter does not trigger an auto-deploy. Globs are
+	// repository-root-relative (matching Render — a filter can name paths
+	// outside RootDir) and support the *, **, ?, and [class] wildcards. Composed
+	// with (ANDed after) RootDir's coarse prefix scoping. nil or an all-empty
+	// filter means every matching push deploys (today's behavior, unchanged).
+	// Applies to build-from-git only; ignored for prebuilt Image apps.
+	// +optional
+	BuildFilter *BuildFilterSpec `json:"buildFilter,omitempty"`
+
 	// DockerfilePath is Render's Dockerfile Path setting, relative to RootDir.
 	// Empty uses Dockerfile. It applies only when Runtime is docker (or the
 	// legacy Dockerfile builder).
@@ -402,6 +413,24 @@ type AutoscalingSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+}
+
+// BuildFilterSpec is Render's Build Filters object (spec.buildFilter):
+// repository-root-relative glob patterns deciding whether a git push triggers
+// an auto-deploy. See AppSpec.BuildFilter for the composed semantics.
+type BuildFilterSpec struct {
+	// Paths are include globs. A push deploys only when a changed file matches
+	// one of these (and is not ignored). Empty means every path is included.
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	Paths []string `json:"paths,omitempty"`
+
+	// IgnoredPaths are exclude globs. A changed file matching one never triggers
+	// a deploy, even if it also matches Paths (ignored wins, per Render). Empty
+	// means nothing is excluded.
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	IgnoredPaths []string `json:"ignoredPaths,omitempty"`
 }
 
 // EnvVar is one environment variable for an App's container — either a plain

@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
+
 	"github.com/bex-co/bex/lego/types/tiers"
 )
 
@@ -436,6 +438,28 @@ func ValidRootDir(v string) bool {
 		}
 	}
 	return true
+}
+
+// ValidGlob reports whether v is a safe build-filter glob pattern (Render's Build
+// Filters, docs/ADR018): a non-empty, ≤512-byte, repository-root-relative pattern
+// with no control characters, no backslash, no traversal ("..") component, and no
+// leading "/", that doublestar can compile (Render's dialect — *, **, ?, [class]).
+// Exported so bex-api's SetBuildFilter and create enforce one rule for every
+// buildFilter pattern; a malformed pattern is rejected at the API boundary so the
+// webhook matcher never sees one it can't compile.
+func ValidGlob(v string) bool {
+	if v == "" || len(v) > 512 {
+		return false
+	}
+	if strings.ContainsAny(v, "\x00\r\n\t") || strings.Contains(v, "\\") || strings.HasPrefix(v, "/") {
+		return false
+	}
+	for _, part := range strings.Split(v, "/") {
+		if part == ".." {
+			return false
+		}
+	}
+	return doublestar.ValidatePattern(v)
 }
 
 // normalizeTier validates a tier/plan string against lego/types/tiers'

@@ -205,6 +205,10 @@ type AppView struct {
 	// (SetRootDir) — Repo/Branch are fixed at create time.
 	Repo   string `json:"repo,omitempty"`
 	Branch string `json:"branch,omitempty"`
+	// BuildFilter is Render's Build Filters object (spec.buildFilter): the glob
+	// patterns gating git-push auto-deploys. nil when unset. The Settings → Build
+	// & Deploy section reads it and writes it via SetBuildFilter.
+	BuildFilter *BuildFilterView `json:"buildFilter,omitempty"`
 	// Autoscaling is the current per-service autoscaling config (nil when
 	// spec.autoscaling is unset, i.e. disabled and unconfigured).
 	Autoscaling *AutoscalingView `json:"autoscaling,omitempty"`
@@ -274,6 +278,77 @@ func staticHeaderViews(headers []appv1alpha1.StaticHeader) []StaticHeaderView {
 	return out
 }
 
+// BuildFilterView is the neutral projection of Render's Build Filters object
+// (spec.buildFilter): the repository-root-relative glob patterns that gate
+// git-push auto-deploys. Its JSON shape ({paths, ignoredPaths}) is byte-identical
+// across every surface (Render create/PATCH body, service response, render.yaml
+// blueprint), so the one type serves as create input, PATCH input, read-back
+// output, and blueprint decode — no per-surface duplicate. Both arrays are
+// present (never null) when the object is, matching Render's required fields.
+type BuildFilterView struct {
+	Paths        []string `json:"paths"`
+	IgnoredPaths []string `json:"ignoredPaths"`
+}
+
+// buildFilterView projects the CR spec onto the neutral view. A nil or all-empty
+// filter projects as nil (the canonical "unset" — every matching push deploys),
+// so a read-back never shows an empty-but-present object. The slices are copied
+// (and forced non-nil when present) so the response marshals arrays, not null.
+func buildFilterView(bf *appv1alpha1.BuildFilterSpec) *BuildFilterView {
+	if bf == nil || (len(bf.Paths) == 0 && len(bf.IgnoredPaths) == 0) {
+		return nil
+	}
+	return &BuildFilterView{
+		Paths:        append([]string{}, bf.Paths...),
+		IgnoredPaths: append([]string{}, bf.IgnoredPaths...),
+	}
+}
+
+// normalizeBuildFilter validates and canonicalizes Render's Build Filters input:
+// each glob must pass store.ValidGlob (a compilable, repo-root-relative pattern,
+// ≤100 per list); empty/whitespace entries are dropped. When both lists end up
+// empty the whole filter is nil (the canonical "unset"), so setting an all-empty
+// filter clears it. Shared by create (specFromCreate) and SetBuildFilter so the
+// two entry points enforce one rule.
+func normalizeBuildFilter(in *BuildFilterView) (*appv1alpha1.BuildFilterSpec, error) {
+	if in == nil {
+		return nil, nil
+	}
+	paths, err := cleanGlobs("paths", in.Paths)
+	if err != nil {
+		return nil, err
+	}
+	ignored, err := cleanGlobs("ignoredPaths", in.IgnoredPaths)
+	if err != nil {
+		return nil, err
+	}
+	if len(paths) == 0 && len(ignored) == 0 {
+		return nil, nil
+	}
+	return &appv1alpha1.BuildFilterSpec{Paths: paths, IgnoredPaths: ignored}, nil
+}
+
+// cleanGlobs trims and validates one buildFilter list, dropping empty entries and
+// rejecting a malformed or over-long glob at the API boundary (so the webhook
+// matcher never sees a pattern it can't compile).
+func cleanGlobs(field string, globs []string) ([]string, error) {
+	var out []string
+	for _, g := range globs {
+		g = strings.TrimSpace(g)
+		if g == "" {
+			continue
+		}
+		if !store.ValidGlob(g) {
+			return nil, fmt.Errorf("%w: buildFilter.%s has an invalid glob pattern %q", core.ErrBadRequest, field, g)
+		}
+		out = append(out, g)
+	}
+	if len(out) > 100 {
+		return nil, fmt.Errorf("%w: buildFilter.%s has too many patterns (max 100)", core.ErrBadRequest, field)
+	}
+	return out, nil
+}
+
 func view(a *appv1alpha1.App) AppView {
 	created := ""
 	if !a.CreationTimestamp.IsZero() {
@@ -318,6 +393,7 @@ func view(a *appv1alpha1.App) AppView {
 		DockerfilePath:   a.Spec.DockerfilePath,
 		Repo:             a.Spec.Repo,
 		Branch:           a.Spec.Branch,
+		BuildFilter:      buildFilterView(a.Spec.BuildFilter),
 		Autoscaling:      asView,
 		AutoDeploy:       a.Spec.AutoDeploy,
 		HealthCheckPath:  a.Spec.HealthCheckPath,
@@ -470,7 +546,12 @@ type CreateRequest struct {
 	StartCommand string
 	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root
 	// Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
-	RootDir         string
+	RootDir string
+	// BuildFilter is Render's Build Filters at create time (spec.buildFilter):
+	// glob patterns gating git-push auto-deploys. nil means unset (every matching
+	// push deploys). Validated + canonicalized by normalizeBuildFilter; editable
+	// later via SetBuildFilter.
+	BuildFilter     *BuildFilterView
 	DockerfilePath  string
 	Port            int32
 	Replicas        int32
@@ -947,6 +1028,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.AutoDeploy != nil {
 		autoDeploy = *req.AutoDeploy
 	}
+	buildFilter, err := normalizeBuildFilter(req.BuildFilter)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	spec := appv1alpha1.AppSpec{
 		Type:             svcType,
 		Repo:             req.Repo,
@@ -957,6 +1042,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		StartCommand:     req.StartCommand,
 		Builder:          builder,
 		RootDir:          req.RootDir,
+		BuildFilter:      buildFilter,
 		DockerfilePath:   req.DockerfilePath,
 		Port:             port,
 		Replicas:         replicas,
@@ -1018,6 +1104,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.StartCommand = want.StartCommand
 	dst.Builder = want.Builder
 	dst.RootDir = want.RootDir
+	dst.BuildFilter = want.BuildFilter
 	dst.DockerfilePath = want.DockerfilePath
 	dst.Port = want.Port
 	dst.Replicas = want.Replicas
@@ -1228,6 +1315,31 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// SetBuildFilter replaces the git-push auto-deploy filter (spec.buildFilter,
+// Render's Build Filters): the repository-root-relative glob patterns deciding
+// whether a push redeploys this App. Passing all-empty (or all-whitespace)
+// lists clears the filter, so every matching push deploys again. A direct CR
+// patch, not projection-owned (mirrors Builder/RootDir), and — unlike SetRootDir
+// — no restartedAt bump: the filter changes only which FUTURE pushes redeploy, it
+// does not itself rebuild the current revision. Rejected for an image-backed App
+// (no repo, so no push to filter).
+func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *BuildFilterView) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Repo == "" {
+		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (build filters only apply to build-from-git)", core.ErrBadRequest, name)
+	}
+	bf, err := normalizeBuildFilter(filter)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.BuildFilter = bf
 	})
 }
 

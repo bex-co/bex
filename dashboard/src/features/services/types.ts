@@ -63,6 +63,12 @@ export interface ServiceView {
    */
   rootDir: string | null;
   /**
+   * Render's Build Filters (`spec.buildFilter`, w1/m34): repository-root-relative
+   * glob patterns gating git-push auto-deploys. null when unset (every matching
+   * push deploys) or not selected. Only the detail `server` query selects it.
+   */
+  buildFilter: BuildFilterView | null;
+  /**
    * Whether a signed git push redeploys this App (`spec.autoDeploy`, w2/m9);
    * null when not selected (list query) or for an image-backed App.
    */
@@ -96,6 +102,16 @@ export interface ServiceView {
    * /headers); empty for other types / when not selected.
    */
   headers: StaticHeaderView[];
+}
+
+/**
+ * Render's Build Filters object (`spec.buildFilter`): the glob patterns gating
+ * git-push auto-deploys. `paths` are include globs (empty = every path);
+ * `ignoredPaths` are exclude globs (ignored wins over included).
+ */
+export interface BuildFilterView {
+  paths: string[];
+  ignoredPaths: string[];
 }
 
 /** One redirect/rewrite rule for a static_site (Render's route shape). */

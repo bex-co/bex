@@ -58,6 +58,9 @@ type renderService struct {
 	// RootDir is the subdirectory of the repo this service builds from (Render's
 	// Root Directory setting, monorepo support). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`
+	// BuildFilter is Render's Build Filters object ({paths, ignoredPaths}, verified
+	// against Render's service schema as a top-level field); omitted when unset.
+	BuildFilter *BuildFilterView `json:"buildFilter,omitempty"`
 	// Repo/Branch are the build-from-git source, empty for an image-backed App.
 	Repo   string `json:"repo,omitempty"`
 	Branch string `json:"branch,omitempty"`
@@ -165,6 +168,7 @@ func toRenderService(a AppView) renderService {
 		Runs:            a.Runs,
 		IdleTTLSeconds:  a.IdleTTLSeconds,
 		RootDir:         a.RootDir,
+		BuildFilter:     a.BuildFilter,
 		Repo:            a.Repo,
 		Branch:          a.Branch,
 		Autoscaling:     ras,

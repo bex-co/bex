@@ -55,6 +55,82 @@ func TestRootDirMatches(t *testing.T) {
 	}
 }
 
+// --- buildFilterMatches (Render's Build Filters, glob-based auto-deploy gate) ---
+
+func TestBuildFilterMatches(t *testing.T) {
+	bf := func(paths, ignored []string) *appv1alpha1.BuildFilterSpec {
+		return &appv1alpha1.BuildFilterSpec{Paths: paths, IgnoredPaths: ignored}
+	}
+	cases := []struct {
+		name   string
+		filter *appv1alpha1.BuildFilterSpec
+		paths  []string
+		want   bool
+	}{
+		{"nil filter always matches (today's behavior)", nil, []string{"anything.go"}, true},
+		{"all-empty filter always matches", bf(nil, nil), []string{"anything.go"}, true},
+		{"no changed paths fails open (nothing to filter on)", bf([]string{"src/**"}, nil), nil, true},
+
+		// Included paths only: deploy iff a changed file matches an include glob.
+		{"included: a matching file triggers", bf([]string{"src/**"}, nil), []string{"src/app/main.go"}, true},
+		{"included: no matching file does not trigger", bf([]string{"src/**"}, nil), []string{"web/index.js"}, false},
+		{"included: one match among several is enough", bf([]string{"src/**"}, nil), []string{"web/index.js", "src/app/main.go"}, true},
+		{"included: globstar spans directories", bf([]string{"**/*.md"}, nil), []string{"docs/guide/readme.md"}, true},
+		{"included: leading slash on the changed path is tolerated", bf([]string{"src/**"}, nil), []string{"/src/main.go"}, true},
+
+		// Ignored paths only: skip iff ALL changed files are ignored.
+		{"ignored: all changed files ignored => no deploy", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "docs/b.md"}, false},
+		{"ignored: one non-ignored file => deploy", bf(nil, []string{"docs/**"}), []string{"docs/a.md", "src/main.go"}, true},
+
+		// Both: ignored wins over included, even for a file that matches both.
+		{"both: a file that is included but also ignored does not trigger", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go"}, false},
+		{"both: an included, non-ignored file triggers", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.go"}, true},
+		{"both: a mix with one triggering file deploys", bf([]string{"src/**"}, []string{"src/**/*.test.go"}), []string{"src/app/main.test.go", "src/app/main.go"}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := buildFilterMatches(c.filter, c.paths); got != c.want {
+				t.Errorf("buildFilterMatches(%+v, %v) = %v, want %v", c.filter, c.paths, got, c.want)
+			}
+		})
+	}
+}
+
+// TestRedeployMatchingComposesBuildFilterWithRootDir proves buildFilter is ANDed
+// after rootDir scoping: a change inside rootDir that the buildFilter ignores does
+// not redeploy, while an included change inside rootDir does.
+func TestRedeployMatchingComposesBuildFilterWithRootDir(t *testing.T) {
+	const repo = "https://github.com/x/mono"
+	app := &appv1alpha1.App{}
+	app.Name, app.Namespace = "api", "default"
+	app.Spec = appv1alpha1.AppSpec{
+		Repo: repo, Branch: "main", RootDir: "services/api", AutoDeploy: true,
+		BuildFilter: &appv1alpha1.BuildFilterSpec{IgnoredPaths: []string{"services/api/**/*.md"}},
+	}
+	svc, _ := newService(nil, app)
+	h := &GitWebhook{Svc: svc, Secret: "shh"}
+
+	// Inside rootDir but only a doc change the filter ignores => no redeploy.
+	ignored := newPush(repo, []string{"services/api/README.md"})
+	got, err := h.redeployMatching(context.Background(), ignored, "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if contains(got, "api") {
+		t.Errorf("an in-rootDir push matching only ignoredPaths must not redeploy: %v", got)
+	}
+
+	// Inside rootDir and not ignored => redeploy.
+	included := newPush(repo, []string{"services/api/main.go"})
+	got2, err := h.redeployMatching(context.Background(), included, "main")
+	if err != nil {
+		t.Fatalf("redeployMatching: %v", err)
+	}
+	if !contains(got2, "api") {
+		t.Errorf("an in-rootDir, non-ignored push must redeploy: %v", got2)
+	}
+}
+
 func TestPushEventChangedPaths(t *testing.T) {
 	var ev pushEvent
 	ev.Commits = append(ev.Commits, struct {
