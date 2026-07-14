@@ -29,6 +29,8 @@ interface EnvVarRowProps {
   onDelete: (key: string) => Promise<boolean>;
   /** A write is in flight somewhere in the table — disable row actions. */
   busy: boolean;
+  /** Context-specific consequence shown in the delete confirmation. */
+  deleteConfirmBody?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function EnvVarRow({
   onSave,
   onDelete,
   busy,
+  deleteConfirmBody,
 }: EnvVarRowProps) {
   const { t } = useTranslations();
   const [value, setValue] = useState<string | null>(null); // null = not revealed
@@ -196,7 +199,7 @@ export function EnvVarRow({
                     {t("services.envDeleteConfirmTitle", { key: entry.key })}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {t("services.envDeleteConfirmBody")}
+                    {deleteConfirmBody ?? t("services.envDeleteConfirmBody")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

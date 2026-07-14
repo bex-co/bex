@@ -1,4 +1,12 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+export const EnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"serviceLinks"}},{"kind":"Field","name":{"kind":"Name","value":"envVars"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}}]}},{"kind":"Field","name":{"kind":"Name","value":"secretFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<EnvGroupQuery, EnvGroupQueryVariables>;
+export const EnvGroupVarValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroupVarValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]} as unknown as DocumentNode<EnvGroupVarValueQuery, EnvGroupVarValueQueryVariables>;
+export const EnvGroupSecretFileContentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroupSecretFileContent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<EnvGroupSecretFileContentQuery, EnvGroupSecretFileContentQueryVariables>;
+export const RenameEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RenameEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"renameEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<RenameEnvGroupMutation, RenameEnvGroupMutationVariables>;
+export const SetEnvGroupVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"value"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}},{"kind":"Argument","name":{"kind":"Name","value":"value"},"value":{"kind":"Variable","name":{"kind":"Name","value":"value"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupVarMutation, SetEnvGroupVarMutationVariables>;
+export const DeleteEnvGroupVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvGroupVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvGroupVarMutation, DeleteEnvGroupVarMutationVariables>;
+export const SetEnvGroupSecretFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupSecretFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"content"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"content"},"value":{"kind":"Variable","name":{"kind":"Name","value":"content"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupSecretFileMutation, SetEnvGroupSecretFileMutationVariables>;
+export const DeleteEnvGroupSecretFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvGroupSecretFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvGroupSecretFileMutation, DeleteEnvGroupSecretFileMutationVariables>;
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -475,6 +483,7 @@ export type Mutation = {
   deleteDatabaseUser: Maybe<Scalars['Boolean']['output']>;
   deleteEnvGroup: Maybe<Scalars['Boolean']['output']>;
   deleteEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
+  deleteEnvGroupVar: Maybe<Scalars['Boolean']['output']>;
   deleteEnvVar: Maybe<Scalars['Boolean']['output']>;
   deleteEnvironment: Maybe<Scalars['String']['output']>;
   deleteKeyValue: Maybe<Scalars['Boolean']['output']>;
@@ -491,6 +500,7 @@ export type Mutation = {
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
   removeWorkspaceMember: Maybe<Scalars['String']['output']>;
+  renameEnvGroup: Maybe<EnvGroup>;
   renameEnvironment: Maybe<Environment>;
   renameProject: Maybe<Project>;
   renameWorkspace: Maybe<Workspace>;
@@ -510,6 +520,7 @@ export type Mutation = {
   setDatabaseParameterOverrides: Maybe<Database>;
   setDisplayName: Maybe<Service>;
   setEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
+  setEnvGroupVar: Maybe<Scalars['Boolean']['output']>;
   setEnvGroupVars: Maybe<Scalars['Boolean']['output']>;
   setEnvVar: Maybe<Scalars['Boolean']['output']>;
   setEnvVars: Maybe<Scalars['Boolean']['output']>;
@@ -707,6 +718,12 @@ export type MutationDeleteEnvGroupSecretFileArgs = {
 };
 
 
+export type MutationDeleteEnvGroupVarArgs = {
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteEnvVarArgs = {
   key: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
@@ -796,6 +813,12 @@ export type MutationRegenerateDeployHookArgs = {
 export type MutationRemoveWorkspaceMemberArgs = {
   subject: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationRenameEnvGroupArgs = {
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
 };
 
 
@@ -908,6 +931,13 @@ export type MutationSetEnvGroupSecretFileArgs = {
   content?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+
+export type MutationSetEnvGroupVarArgs = {
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+  value?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1178,6 +1208,8 @@ export type Query = {
   deployHook: Maybe<DeployHook>;
   deploys: Maybe<Array<Maybe<Deploy>>>;
   envGroup: Maybe<EnvGroup>;
+  envGroupSecretFile: Maybe<EnvGroupSecretFile>;
+  envGroupVar: Maybe<EnvGroupVar>;
   envGroups: Maybe<Array<Maybe<EnvGroup>>>;
   environment: Maybe<Environment>;
   environments: Maybe<Array<Maybe<Environment>>>;
@@ -1337,6 +1369,18 @@ export type QueryDeploysArgs = {
 
 export type QueryEnvGroupArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryEnvGroupSecretFileArgs = {
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+};
+
+
+export type QueryEnvGroupVarArgs = {
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
 };
 
 
@@ -2365,12 +2409,43 @@ export type EnvGroupsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type EnvGroupsQuery = { envGroups: Array<{ __typename: 'EnvGroup', id: string | null, name: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null> | null };
 
+export type EnvGroupQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+
+export type EnvGroupQuery = { envGroup: { __typename: 'EnvGroup', id: string | null, name: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null };
+
+export type EnvGroupVarValueQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+}>;
+
+
+export type EnvGroupVarValueQuery = { envGroupVar: { __typename: 'EnvGroupVar', key: string | null, value: string | null } | null };
+
+export type EnvGroupSecretFileContentQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+}>;
+
+
+export type EnvGroupSecretFileContentQuery = { envGroupSecretFile: { __typename: 'EnvGroupSecretFile', name: string | null, content: string | null } | null };
+
 export type CreateEnvGroupMutationVariables = Exact<{
   name: Scalars['String']['input'];
 }>;
 
 
 export type CreateEnvGroupMutation = { createEnvGroup: { __typename: 'EnvGroup', id: string | null, name: string | null } | null };
+
+export type RenameEnvGroupMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+}>;
+
+
+export type RenameEnvGroupMutation = { renameEnvGroup: { __typename: 'EnvGroup', id: string | null, name: string | null } | null };
 
 export type DeleteEnvGroupMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2386,6 +2461,40 @@ export type SetEnvGroupVarsMutationVariables = Exact<{
 
 
 export type SetEnvGroupVarsMutation = { setEnvGroupVars: boolean | null };
+
+export type SetEnvGroupVarMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+  value?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SetEnvGroupVarMutation = { setEnvGroupVar: boolean | null };
+
+export type DeleteEnvGroupVarMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+}>;
+
+
+export type DeleteEnvGroupVarMutation = { deleteEnvGroupVar: boolean | null };
+
+export type SetEnvGroupSecretFileMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  content?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SetEnvGroupSecretFileMutation = { setEnvGroupSecretFile: boolean | null };
+
+export type DeleteEnvGroupSecretFileMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+}>;
+
+
+export type DeleteEnvGroupSecretFileMutation = { deleteEnvGroupSecretFile: boolean | null };
 
 export type LinkEnvGroupMutationVariables = Exact<{
   id: Scalars['String']['input'];

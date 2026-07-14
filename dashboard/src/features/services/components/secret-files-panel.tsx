@@ -28,6 +28,8 @@ import {
 } from "@/features/services/hooks/use-secret-files";
 import { SecretFileRow } from "@/features/services/components/secret-file-row";
 import { CenteredState } from "@/features/services/components/centered-state";
+import type { SecretFileName } from "@/features/services/types";
+import type { SensitiveEditorErrorKind } from "./env-vars-panel";
 
 // A secret-file name: a relative path segment bex-api (and Kubernetes' Secret-key
 // validation) accepts — reject bad names client-side rather than round-tripping to
@@ -55,27 +57,90 @@ export function SecretFilesPanel({ serviceId }: { serviceId: string }) {
   );
 
   const errorKind = classifySecretFileError(error);
-  const initialLoading = loading && names.length === 0 && !error;
+  return (
+    <SecretFilesEditor
+      names={names}
+      loading={loading}
+      errorKind={errorKind}
+      reveal={reveal}
+      setFile={setFile}
+      deleteFile={deleteFile}
+      busy={busy}
+      copy={{
+        title: t("services.secretFilesTitle"),
+        description: t("services.secretFilesDescription"),
+        emptyTitle: t("services.secretFilesEmptyTitle"),
+        emptyBody: t("services.secretFilesEmptyBody"),
+        unavailableTitle: t("services.secretFilesUnavailableTitle"),
+        unavailableBody: t("services.secretFilesUnavailableBody"),
+        forbiddenTitle: t("services.secretFilesForbiddenTitle"),
+        forbiddenBody: t("services.secretFilesForbiddenBody"),
+        errorTitle: t("services.secretFilesErrorTitle"),
+        errorBody: t("services.secretFilesErrorBody"),
+        deleteConfirmBody: t("services.secretFileDeleteConfirmBody"),
+      }}
+    />
+  );
+}
+
+export interface SecretFilesEditorCopy {
+  title: string;
+  description: string;
+  emptyTitle: string;
+  emptyBody: string;
+  unavailableTitle: string;
+  unavailableBody: string;
+  forbiddenTitle: string;
+  forbiddenBody: string;
+  errorTitle: string;
+  errorBody: string;
+  deleteConfirmBody: string;
+}
+
+/** Shared names-only secret-file editor used by services and env groups. */
+export function SecretFilesEditor({
+  names,
+  loading,
+  errorKind,
+  reveal,
+  setFile,
+  deleteFile,
+  busy,
+  copy,
+}: {
+  names: SecretFileName[];
+  loading: boolean;
+  errorKind: SensitiveEditorErrorKind | null;
+  reveal: (name: string) => Promise<string>;
+  setFile: (name: string, content: string) => Promise<boolean>;
+  deleteFile: (name: string) => Promise<boolean>;
+  busy: boolean;
+  copy: SecretFilesEditorCopy;
+}) {
+  const { t } = useTranslations();
+  const initialLoading = loading && names.length === 0 && !errorKind;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("services.secretFilesTitle")}</CardTitle>
-        <CardDescription>
-          {t("services.secretFilesDescription")}
-        </CardDescription>
+        <CardTitle>{copy.title}</CardTitle>
+        <CardDescription>{copy.description}</CardDescription>
         <CardAction>
           <AddFileButton setFile={setFile} disabled={gated || busy} />
         </CardAction>
       </CardHeader>
       <CardContent>
         {errorKind ? (
-          <StatePanel kind={errorKind} />
+          <StatePanel kind={errorKind} copy={copy} />
         ) : initialLoading ? (
           <TableSkeleton />
         ) : names.length === 0 ? (
-          <SecretFilesEmptyState />
+          <CenteredState
+            icon={<FileLock2 />}
+            title={copy.emptyTitle}
+            body={copy.emptyBody}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -84,7 +149,9 @@ export function SecretFilesPanel({ serviceId }: { serviceId: string }) {
                   {t("services.secretFileColName")}
                 </TableHead>
                 <TableHead>{t("services.secretFileColContent")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableHead className="sr-only text-right">
+                  {t("services.actions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -96,6 +163,7 @@ export function SecretFilesPanel({ serviceId }: { serviceId: string }) {
                   onSave={setFile}
                   onDelete={deleteFile}
                   busy={busy}
+                  deleteConfirmBody={copy.deleteConfirmBody}
                 />
               ))}
             </TableBody>
@@ -206,40 +274,32 @@ function TableSkeleton() {
   );
 }
 
-function SecretFilesEmptyState() {
-  const { t } = useTranslations();
-  return (
-    <CenteredState
-      icon={<FileLock2 />}
-      title={t("services.secretFilesEmptyTitle")}
-      body={t("services.secretFilesEmptyBody")}
-    />
-  );
-}
-
 /** The unavailable (503) / forbidden (403) / generic error states. */
 function StatePanel({
   kind,
+  copy,
 }: {
-  kind: "unavailable" | "forbidden" | "generic";
+  kind: SensitiveEditorErrorKind;
+  copy: SecretFilesEditorCopy;
 }) {
-  const { t } = useTranslations();
-  const copy = {
+  const state = {
     unavailable: {
       icon: <AlertTriangle />,
-      title: t("services.secretFilesUnavailableTitle"),
-      body: t("services.secretFilesUnavailableBody"),
+      title: copy.unavailableTitle,
+      body: copy.unavailableBody,
     },
     forbidden: {
       icon: <ShieldAlert />,
-      title: t("services.secretFilesForbiddenTitle"),
-      body: t("services.secretFilesForbiddenBody"),
+      title: copy.forbiddenTitle,
+      body: copy.forbiddenBody,
     },
     generic: {
       icon: <AlertTriangle />,
-      title: t("services.secretFilesErrorTitle"),
-      body: t("services.secretFilesErrorBody"),
+      title: copy.errorTitle,
+      body: copy.errorBody,
     },
   }[kind];
-  return <CenteredState icon={copy.icon} title={copy.title} body={copy.body} />;
+  return (
+    <CenteredState icon={state.icon} title={state.title} body={state.body} />
+  );
 }

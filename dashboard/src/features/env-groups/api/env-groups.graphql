@@ -1,0 +1,90 @@
+# Workspace environment groups. List/detail reads are keys/names-only; the
+# dedicated per-value queries reveal sensitive data only when the user asks.
+
+query EnvGroups {
+  envGroups {
+    id
+    name
+    serviceLinks
+    envVars {
+      key
+    }
+    secretFiles {
+      name
+    }
+  }
+}
+
+query EnvGroup($id: String!) {
+  envGroup(id: $id) {
+    id
+    name
+    serviceLinks
+    envVars {
+      key
+    }
+    secretFiles {
+      name
+    }
+  }
+}
+
+query EnvGroupVarValue($id: String!, $key: String!) {
+  envGroupVar(id: $id, key: $key) {
+    key
+    value
+  }
+}
+
+query EnvGroupSecretFileContent($id: String!, $name: String!) {
+  envGroupSecretFile(id: $id, name: $name) {
+    name
+    content
+  }
+}
+
+mutation CreateEnvGroup($name: String!) {
+  createEnvGroup(name: $name) {
+    id
+    name
+  }
+}
+
+mutation RenameEnvGroup($id: String!, $name: String!) {
+  renameEnvGroup(id: $id, name: $name) {
+    id
+    name
+  }
+}
+
+mutation DeleteEnvGroup($id: String!) {
+  deleteEnvGroup(id: $id)
+}
+
+mutation SetEnvGroupVars($id: String!, $envVars: [EnvGroupVarInput!]!) {
+  setEnvGroupVars(id: $id, envVars: $envVars)
+}
+
+mutation SetEnvGroupVar($id: String!, $key: String!, $value: String) {
+  setEnvGroupVar(id: $id, key: $key, value: $value)
+}
+
+mutation DeleteEnvGroupVar($id: String!, $key: String!) {
+  deleteEnvGroupVar(id: $id, key: $key)
+}
+
+mutation SetEnvGroupSecretFile($id: String!, $name: String!, $content: String) {
+  setEnvGroupSecretFile(id: $id, name: $name, content: $content)
+}
+
+mutation DeleteEnvGroupSecretFile($id: String!, $name: String!) {
+  deleteEnvGroupSecretFile(id: $id, name: $name)
+}
+
+mutation LinkEnvGroup($id: String!, $serviceId: String!) {
+  linkEnvGroup(id: $id, serviceId: $serviceId)
+}
+
+mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {
+  unlinkEnvGroup(id: $id, serviceId: $serviceId)
+}

@@ -160,6 +160,31 @@ func (s *Service) CreateEnvGroup(ctx context.Context, name string) (EnvGroupView
 	return EnvGroupView{ID: gid, Name: name, ServiceLinks: []string{}, EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{}}, nil
 }
 
+// RenameEnvGroup updates a group's display name without changing its id,
+// contents, links, or materialized Secrets. The name is metadata only, so this
+// does not roll linked services. Manage scope.
+func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGroupView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvGroupView{}, err
+	}
+	if s.Store == nil {
+		return EnvGroupView{}, core.ErrSecretsUnavailable
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
+	}
+	m, err := s.requireGroup(ctx, gid)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
+	m.name = name
+	if err := s.writeMeta(ctx, gid, m); err != nil {
+		return EnvGroupView{}, err
+	}
+	return s.view(ctx, gid)
+}
+
 // DeleteEnvGroup unlinks the group from every service, deletes its projection
 // Secrets, and removes its store paths. Manage scope.
 func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
@@ -249,6 +274,72 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 		return EnvVarView{}, core.ErrNotFound
 	}
 	return EnvVarView{Key: key, Value: v}, nil
+}
+
+// SetEnvGroupVar adds or updates one variable while preserving every other key,
+// then re-materializes the group's env Secret and rolls linked services. Manage
+// scope. This is Render's per-key PUT semantics and means clients never need to
+// reveal and resubmit the group's other values.
+func (s *Service) SetEnvGroupVar(ctx context.Context, gid, key, value string) (EnvVarView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvVarView{}, err
+	}
+	if s.Store == nil {
+		return EnvVarView{}, core.ErrSecretsUnavailable
+	}
+	m, err := s.requireGroup(ctx, gid)
+	if err != nil {
+		return EnvVarView{}, err
+	}
+	key = strings.TrimSpace(key)
+	if !core.ValidEnvKey(key) {
+		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+	}
+	env, err := s.Store.Get(ctx, envPath(gid))
+	if err != nil {
+		return EnvVarView{}, err
+	}
+	env[key] = value
+	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+		return EnvVarView{}, err
+	}
+	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+		return EnvVarView{}, err
+	}
+	if err := s.rollLinked(ctx, m.links); err != nil {
+		return EnvVarView{}, err
+	}
+	return EnvVarView{Key: key, Value: value}, nil
+}
+
+// DeleteEnvGroupVar removes one variable and rolls every linked service. Manage
+// scope.
+func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	m, err := s.requireGroup(ctx, gid)
+	if err != nil {
+		return err
+	}
+	env, err := s.Store.Get(ctx, envPath(gid))
+	if err != nil {
+		return err
+	}
+	if _, ok := env[key]; !ok {
+		return core.ErrNotFound
+	}
+	delete(env, key)
+	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+		return err
+	}
+	if err := s.upsertSecret(ctx, envSecretName(gid), env); err != nil {
+		return err
+	}
+	return s.rollLinked(ctx, m.links)
 }
 
 // --- group contents (secret files) --------------------------------------------

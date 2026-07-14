@@ -910,13 +910,13 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "deploys", "workspaceMembers", "workspaceInvites"} {
+	for _, f := range []string{"services", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "envGroup", "envGroupVar", "envGroupSecretFile", "deploys", "workspaceMembers", "workspaceInvites"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
 	}
 	mFields := schema.MutationType().Fields()
-	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "changeWorkspacePlan", "deleteWorkspace", "createEnvGroup", "linkEnvGroup", "setSecretFile", "inviteWorkspaceMember", "changeWorkspaceMemberRole", "removeWorkspaceMember", "revokeWorkspaceInvite"} {
+	for _, f := range []string{"suspendService", "createDatabase", "createApiKey", "createWorkspace", "renameWorkspace", "changeWorkspacePlan", "deleteWorkspace", "createEnvGroup", "renameEnvGroup", "setEnvGroupVar", "deleteEnvGroupVar", "linkEnvGroup", "setSecretFile", "inviteWorkspaceMember", "changeWorkspaceMemberRole", "removeWorkspaceMember", "revokeWorkspaceInvite"} {
 		if mFields[f] == nil {
 			t.Errorf("Mutation.%s not wired into the single schema", f)
 		}
@@ -929,7 +929,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
+	for _, name := range []string{"list_services", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "select_workspace", "get_selected_workspace", "list_env_groups", "rename_env_group", "get_env_group_var", "set_env_group_var", "delete_env_group_var", "get_env_group_secret_file", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

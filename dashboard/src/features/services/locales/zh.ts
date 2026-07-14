@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhServices: Record<string, TranslationEntry> = {
+  "services.actions": {
+    message: "操作",
+    description: "Accessible heading for service configuration row actions",
+  },
   "services.statTotal": {
     message: "服务总数",
     description: "Services page stat card label",
@@ -566,7 +570,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Env-groups create-group name input accessible label",
   },
   "services.envGroupInvalidName": {
-    message: "只能使用字母、数字、点、短横线和下划线。",
+    message: "请输入组名称。",
     description:
       "Env-groups create-group validation message for an invalid name",
   },

@@ -27,6 +27,7 @@ import {
 } from "@/features/services/hooks/use-env-vars";
 import { EnvVarRow } from "@/features/services/components/env-var-row";
 import { CenteredState } from "@/features/services/components/centered-state";
+import type { EnvVarKey } from "@/features/services/types";
 
 // A C-locale env-var name: what bex-api (and a shell, and Kubernetes' Secret-key
 // validation) accepts — reject bad names client-side rather than round-tripping
@@ -46,25 +47,92 @@ export function EnvVarsPanel({ serviceId }: { serviceId: string }) {
   const { setVar, deleteVar, busy } = useEnvVarMutations(serviceId, refetch);
 
   const errorKind = classifyEnvVarError(error);
-  const initialLoading = loading && keys.length === 0 && !error;
+  return (
+    <EnvVarsEditor
+      keys={keys}
+      loading={loading}
+      errorKind={errorKind}
+      reveal={reveal}
+      setVar={setVar}
+      deleteVar={deleteVar}
+      busy={busy}
+      copy={{
+        title: t("services.envTitle"),
+        description: t("services.envDescription"),
+        emptyTitle: t("services.envEmptyTitle"),
+        emptyBody: t("services.envEmptyBody"),
+        unavailableTitle: t("services.envUnavailableTitle"),
+        unavailableBody: t("services.envUnavailableBody"),
+        forbiddenTitle: t("services.envForbiddenTitle"),
+        forbiddenBody: t("services.envForbiddenBody"),
+        errorTitle: t("services.envErrorTitle"),
+        errorBody: t("services.envErrorBody"),
+        deleteConfirmBody: t("services.envDeleteConfirmBody"),
+      }}
+    />
+  );
+}
+
+export type SensitiveEditorErrorKind = "unavailable" | "forbidden" | "generic";
+
+export interface EnvVarsEditorCopy {
+  title: string;
+  description: string;
+  emptyTitle: string;
+  emptyBody: string;
+  unavailableTitle: string;
+  unavailableBody: string;
+  forbiddenTitle: string;
+  forbiddenBody: string;
+  errorTitle: string;
+  errorBody: string;
+  deleteConfirmBody: string;
+}
+
+/** Shared keys-only env-var editor used by services and workspace env groups. */
+export function EnvVarsEditor({
+  keys,
+  loading,
+  errorKind,
+  reveal,
+  setVar,
+  deleteVar,
+  busy,
+  copy,
+}: {
+  keys: EnvVarKey[];
+  loading: boolean;
+  errorKind: SensitiveEditorErrorKind | null;
+  reveal: (key: string) => Promise<string>;
+  setVar: (key: string, value: string) => Promise<boolean>;
+  deleteVar: (key: string) => Promise<boolean>;
+  busy: boolean;
+  copy: EnvVarsEditorCopy;
+}) {
+  const { t } = useTranslations();
+  const initialLoading = loading && keys.length === 0 && !errorKind;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("services.envTitle")}</CardTitle>
-        <CardDescription>{t("services.envDescription")}</CardDescription>
+        <CardTitle>{copy.title}</CardTitle>
+        <CardDescription>{copy.description}</CardDescription>
         <CardAction>
           <AddVarButton setVar={setVar} disabled={gated || busy} />
         </CardAction>
       </CardHeader>
       <CardContent>
         {errorKind ? (
-          <StatePanel kind={errorKind} />
+          <StatePanel kind={errorKind} copy={copy} />
         ) : initialLoading ? (
           <TableSkeleton />
         ) : keys.length === 0 ? (
-          <EnvEmptyState />
+          <CenteredState
+            icon={<KeyRound />}
+            title={copy.emptyTitle}
+            body={copy.emptyBody}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -73,7 +141,9 @@ export function EnvVarsPanel({ serviceId }: { serviceId: string }) {
                   {t("services.envColKey")}
                 </TableHead>
                 <TableHead>{t("services.envColValue")}</TableHead>
-                <TableHead className="sr-only text-right">actions</TableHead>
+                <TableHead className="sr-only text-right">
+                  {t("services.actions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,6 +155,7 @@ export function EnvVarsPanel({ serviceId }: { serviceId: string }) {
                   onSave={setVar}
                   onDelete={deleteVar}
                   busy={busy}
+                  deleteConfirmBody={copy.deleteConfirmBody}
                 />
               ))}
             </TableBody>
@@ -196,40 +267,32 @@ function TableSkeleton() {
   );
 }
 
-function EnvEmptyState() {
-  const { t } = useTranslations();
-  return (
-    <CenteredState
-      icon={<KeyRound />}
-      title={t("services.envEmptyTitle")}
-      body={t("services.envEmptyBody")}
-    />
-  );
-}
-
 /** The unavailable (503) / forbidden (403) / generic error states. */
 function StatePanel({
   kind,
+  copy,
 }: {
-  kind: "unavailable" | "forbidden" | "generic";
+  kind: SensitiveEditorErrorKind;
+  copy: EnvVarsEditorCopy;
 }) {
-  const { t } = useTranslations();
-  const copy = {
+  const state = {
     unavailable: {
       icon: <AlertTriangle />,
-      title: t("services.envUnavailableTitle"),
-      body: t("services.envUnavailableBody"),
+      title: copy.unavailableTitle,
+      body: copy.unavailableBody,
     },
     forbidden: {
       icon: <ShieldAlert />,
-      title: t("services.envForbiddenTitle"),
-      body: t("services.envForbiddenBody"),
+      title: copy.forbiddenTitle,
+      body: copy.forbiddenBody,
     },
     generic: {
       icon: <AlertTriangle />,
-      title: t("services.envErrorTitle"),
-      body: t("services.envErrorBody"),
+      title: copy.errorTitle,
+      body: copy.errorBody,
     },
   }[kind];
-  return <CenteredState icon={copy.icon} title={copy.title} body={copy.body} />;
+  return (
+    <CenteredState icon={state.icon} title={state.title} body={state.body} />
+  );
 }

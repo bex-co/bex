@@ -24,9 +24,9 @@ import (
 
 // graphql.go is the env-groups GraphQL fragment. Types carry distinct names
 // (EnvGroupVar/EnvGroupSecretFile, not the apps feature's EnvVar/SecretFile) so
-// the single merged schema has no duplicate-type collision. The reads are
-// keys/names-only (values fetched via the sensitive reveal mutations' REST/MCP
-// siblings); mutations return a success boolean (bex's own names).
+// the single merged schema has no duplicate-type collision. Group list/detail
+// reads are keys/names-only; the top-level per-value queries reveal sensitive
+// values on demand. Mutations return a success boolean except create/rename.
 
 var envGroupVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvGroupVar",
@@ -96,6 +96,26 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.GetEnvGroup(p.Context, p.Args["id"].(string))
 			},
 		},
+		"envGroupVar": &graphql.Field{
+			Type: envGroupVarGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetEnvGroupVar(p.Context, p.Args["id"].(string), p.Args["key"].(string))
+			},
+		},
+		"envGroupSecretFile": &graphql.Field{
+			Type: envGroupFileGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetEnvGroupFile(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
 	}
 }
 
@@ -112,6 +132,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.CreateEnvGroup(p.Context, p.Args["name"].(string))
+			},
+		},
+		"renameEnvGroup": &graphql.Field{
+			Type: envGroupGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.RenameEnvGroup(p.Context, p.Args["id"].(string), p.Args["name"].(string))
 			},
 		},
 		"deleteEnvGroup": &graphql.Field{
@@ -131,6 +161,30 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				raw, _ := p.Args["envVars"].([]any)
 				_, err := s.SetEnvGroupVars(p.Context, p.Args["id"].(string), varsFromArgs(raw))
+				return err == nil, err
+			},
+		},
+		"setEnvGroupVar": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"value": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				value, _ := p.Args["value"].(string)
+				_, err := s.SetEnvGroupVar(p.Context, p.Args["id"].(string), p.Args["key"].(string), value)
+				return err == nil, err
+			},
+		},
+		"deleteEnvGroupVar": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"id":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				err := s.DeleteEnvGroupVar(p.Context, p.Args["id"].(string), p.Args["key"].(string))
 				return err == nil, err
 			},
 		},

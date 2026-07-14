@@ -29,6 +29,8 @@ interface SecretFileRowProps {
   onDelete: (name: string) => Promise<boolean>;
   /** A write is in flight somewhere in the table — disable row actions. */
   busy: boolean;
+  /** Context-specific consequence shown in the delete confirmation. */
+  deleteConfirmBody?: string;
 }
 
 /**
@@ -43,6 +45,7 @@ export function SecretFileRow({
   onSave,
   onDelete,
   busy,
+  deleteConfirmBody,
 }: SecretFileRowProps) {
   const { t } = useTranslations();
   const [content, setContent] = useState<string | null>(null); // null = not revealed
@@ -198,7 +201,8 @@ export function SecretFileRow({
                     })}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {t("services.secretFileDeleteConfirmBody")}
+                    {deleteConfirmBody ??
+                      t("services.secretFileDeleteConfirmBody")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

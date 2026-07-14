@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enServices: Record<string, TranslationEntry> = {
+  "services.actions": {
+    message: "Actions",
+    description: "Accessible heading for service configuration row actions",
+  },
   "services.statTotal": {
     message: "Total services",
     description: "Services page stat card label",
@@ -573,7 +577,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Env-groups create-group name input accessible label",
   },
   "services.envGroupInvalidName": {
-    message: "Use letters, digits, dot, dash and underscore.",
+    message: "Enter a group name.",
     description:
       "Env-groups create-group validation message for an invalid name",
   },

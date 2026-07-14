@@ -53,6 +53,17 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 		t.Fatalf("created group shape: %+v", g)
 	}
 
+	// Rename keeps the id and returns the updated group.
+	w = serveREST(svc, "PATCH", "/v1/env-groups/"+g.ID, `{"name":"shared-prod"}`)
+	if w.Code != 200 {
+		t.Fatalf("PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var renamed EnvGroupView
+	_ = json.Unmarshal(w.Body.Bytes(), &renamed)
+	if renamed.ID != g.ID || renamed.Name != "shared-prod" {
+		t.Fatalf("renamed group shape: %+v", renamed)
+	}
+
 	// Replace-all vars.
 	if c := serveREST(svc, "PUT", "/v1/env-groups/"+g.ID+"/env-vars", `[{"key":"K","value":"v"}]`).Code; c != 200 {
 		t.Fatalf("PUT env-vars => 200, got %d", c)
@@ -62,6 +73,16 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/env-groups/"+g.ID+"/env-vars/K", "").Body.Bytes(), &one)
 	if one.Value != "v" {
 		t.Fatalf("reveal var: %+v", one)
+	}
+	// Per-key update/delete preserves the collection endpoint's other variables.
+	if c := serveREST(svc, "PUT", "/v1/env-groups/"+g.ID+"/env-vars/OTHER", `{"value":"two"}`).Code; c != 200 {
+		t.Fatalf("PUT one env var => 200, got %d", c)
+	}
+	if c := serveREST(svc, "DELETE", "/v1/env-groups/"+g.ID+"/env-vars/K", "").Code; c != 204 {
+		t.Fatalf("DELETE one env var => 204, got %d", c)
+	}
+	if c := serveREST(svc, "GET", "/v1/env-groups/"+g.ID+"/env-vars/OTHER", "").Code; c != 200 {
+		t.Fatalf("sibling env var should remain, got %d", c)
 	}
 
 	// Link a service => 204, and the App picks up the group refs.

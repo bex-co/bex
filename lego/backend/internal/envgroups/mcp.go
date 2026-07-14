@@ -34,9 +34,25 @@ type createEnvGroupArgs struct {
 	Name string `json:"name" jsonschema:"the env group name"`
 }
 
+type renameEnvGroupArgs struct {
+	ID   string `json:"id" jsonschema:"the env group id (evg-...)"`
+	Name string `json:"name" jsonschema:"the new env group name"`
+}
+
 type setEnvGroupVarsArgs struct {
 	ID      string       `json:"id" jsonschema:"the env group id (evg-...)"`
 	EnvVars []EnvVarView `json:"envVars" jsonschema:"the complete desired set of {key,value} variables (replace semantics)"`
+}
+
+type envGroupVarArgs struct {
+	ID  string `json:"id" jsonschema:"the env group id (evg-...)"`
+	Key string `json:"key" jsonschema:"the environment variable key"`
+}
+
+type setEnvGroupVarArgs struct {
+	ID    string `json:"id" jsonschema:"the env group id (evg-...)"`
+	Key   string `json:"key" jsonschema:"the environment variable key"`
+	Value string `json:"value" jsonschema:"the environment variable value"`
 }
 
 type setEnvGroupFileArgs struct {
@@ -98,10 +114,42 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "rename_env_group",
+		Description: "Rename an environment group without changing its id, contents, or service links.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+		g, err := s.RenameEnvGroup(ctx, in.ID, in.Name)
+		return nil, g, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_env_group_vars",
 		Description: "Replace an environment group's whole env-var set (replace semantics); every linked service rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarsArgs) (*mcp.CallToolResult, okResult, error) {
 		_, err := s.SetEnvGroupVars(ctx, in.ID, in.EnvVars)
+		return nil, okResult{OK: err == nil}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_env_group_var",
+		Description: "Reveal one environment variable value in an environment group.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
+		v, err := s.GetEnvGroupVar(ctx, in.ID, in.Key)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_env_group_var",
+		Description: "Add or update one environment variable without replacing the group's other variables; linked services roll.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
+		v, err := s.SetEnvGroupVar(ctx, in.ID, in.Key, in.Value)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "delete_env_group_var",
+		Description: "Remove one environment variable from an environment group; linked services roll.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, okResult, error) {
+		err := s.DeleteEnvGroupVar(ctx, in.ID, in.Key)
 		return nil, okResult{OK: err == nil}, err
 	})
 
@@ -119,6 +167,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroupFile(ctx, in.ID, in.Name)
 		return nil, okResult{OK: err == nil}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_env_group_secret_file",
+		Description: "Reveal one secret file's contents in an environment group.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
+		f, err := s.GetEnvGroupFile(ctx, in.ID, in.Name)
+		return nil, f, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

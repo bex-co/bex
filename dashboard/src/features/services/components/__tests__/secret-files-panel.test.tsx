@@ -10,22 +10,25 @@ const mockReveal = vi.fn();
 const mockSetFile = vi.fn();
 const mockDeleteFile = vi.fn();
 
-vi.mock("@/features/services/hooks/use-secret-files", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/features/services/hooks/use-secret-files")
-    >();
-  return {
-    ...actual,
-    useSecretFileNames: (...a: unknown[]) => mockUseSecretFileNames(...a),
-    useRevealSecretFile: () => mockReveal,
-    useSecretFileMutations: () => ({
-      setFile: mockSetFile,
-      deleteFile: mockDeleteFile,
-      busy: false,
-    }),
-  };
-});
+vi.mock(
+  "@/features/services/hooks/use-secret-files",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/services/hooks/use-secret-files")
+      >();
+    return {
+      ...actual,
+      useSecretFileNames: (...a: unknown[]) => mockUseSecretFileNames(...a),
+      useRevealSecretFile: () => mockReveal,
+      useSecretFileMutations: () => ({
+        setFile: mockSetFile,
+        deleteFile: mockDeleteFile,
+        busy: false,
+      }),
+    };
+  },
+);
 
 import { SecretFilesPanel } from "@/features/services/components/secret-files-panel";
 

@@ -1,5 +1,5 @@
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import { BarChart3, FolderKanban, Layers, Settings } from "lucide-react";
+import { BarChart3, Boxes, FolderKanban, Layers, Settings } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Sidebar,
@@ -28,6 +28,7 @@ import { SidebarBrand } from "./sidebar-brand";
 const NAV_ITEMS = [
   { labelKey: "common.navProjects", to: "/", icon: FolderKanban },
   { labelKey: "common.navBlueprints", to: "/blueprints", icon: Layers },
+  { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
   { labelKey: "common.navUsage", to: "/usage", icon: BarChart3 },
   { labelKey: "common.navSettings", to: "/workspace/settings", icon: Settings },
 ] as const;

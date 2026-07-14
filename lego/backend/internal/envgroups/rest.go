@@ -61,6 +61,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, g)
 	})
+	mux.HandleFunc("PATCH /v1/env-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		g, err := s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, g)
+	})
 	mux.HandleFunc("DELETE /v1/env-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteEnvGroup(r.Context(), r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
@@ -69,7 +84,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// Group env vars: replace-all (Render's PUT semantics) + reveal one.
+	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.
 	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
 		var in []EnvVarView
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -90,6 +105,28 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Value string `json:"value"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		v, err := s.SetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"), req.Value)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("DELETE /v1/env-groups/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	// Group secret files: upsert one, reveal one, delete one.

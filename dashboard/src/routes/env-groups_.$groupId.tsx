@@ -1,0 +1,127 @@
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { requireAuth } from "@/common/lib/auth/auth";
+import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { Button } from "@/common/components/ui/button";
+import { Skeleton } from "@/common/components/ui/skeleton";
+import { EnvGroupActions } from "@/features/env-groups/components/env-group-actions";
+import { EnvGroupEditors } from "@/features/env-groups/components/env-group-editors";
+import { LinkedServicesCard } from "@/features/env-groups/components/linked-services-card";
+import {
+  classifyEnvGroupError,
+  isEnvGroupNotFound,
+  useEnvGroup,
+  useEnvGroupMutations,
+} from "@/features/env-groups/hooks/use-env-groups";
+import { useServices } from "@/features/services/hooks/use-services";
+
+// The trailing underscore in this file route deliberately escapes the
+// /env-groups list route's component hierarchy while preserving the public URL.
+// The list is a page, not a layout, so nesting the detail beneath it would leave
+// the list mounted because it has no <Outlet />.
+export const Route = createFileRoute("/env-groups_/$groupId")({
+  component: EnvGroupDetailPage,
+  beforeLoad: requireAuth("/env-groups/$groupId"),
+  head: ({ params }) => ({
+    meta: [{ title: `${params.groupId} · Environment Groups · bex` }],
+  }),
+});
+
+export function EnvGroupDetailPage() {
+  const { groupId } = Route.useParams();
+  const { t } = useTranslations();
+  const navigate = useNavigate();
+  const { group, loading, error, refetch } = useEnvGroup(groupId);
+  const {
+    services,
+    loading: servicesLoading,
+    error: servicesError,
+  } = useServices();
+  const mutations = useEnvGroupMutations(refetch, {
+    skipDeleteRefetch: true,
+  });
+  const errorKind = classifyEnvGroupError(error);
+  const notFound = isEnvGroupNotFound(error);
+
+  return (
+    <DashboardLayout>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/env-groups" aria-label={t("envGroups.backToList")}>
+              <ArrowLeft />
+            </Link>
+          </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-semibold">
+              {group?.name ?? groupId}
+            </h1>
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              {groupId}
+            </p>
+          </div>
+        </div>
+        {group ? (
+          <EnvGroupActions
+            group={group}
+            renameGroup={mutations.renameGroup}
+            deleteGroup={mutations.deleteGroup}
+            busy={mutations.busy}
+            onDeleted={() => void navigate({ to: "/env-groups" })}
+          />
+        ) : null}
+      </div>
+
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-5xl space-y-6">
+          {loading && !group ? (
+            <>
+              <Skeleton className="h-64" />
+              <Skeleton className="h-64" />
+            </>
+          ) : notFound && !group ? (
+            <div className="py-12 text-center">
+              <p className="font-medium">{t("envGroups.notFoundTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("envGroups.notFoundBody", { id: groupId })}
+              </p>
+            </div>
+          ) : errorKind && !group ? (
+            <div className="flex flex-col items-center gap-2 py-12 text-center">
+              <AlertTriangle className="size-8 text-destructive" />
+              <p className="font-medium">{t(`envGroups.${errorKind}Title`)}</p>
+              <p className="text-sm text-muted-foreground">
+                {t(`envGroups.${errorKind}Body`)}
+              </p>
+            </div>
+          ) : !group ? (
+            <div className="py-12 text-center">
+              <p className="font-medium">{t("envGroups.notFoundTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("envGroups.notFoundBody", { id: groupId })}
+              </p>
+            </div>
+          ) : (
+            <>
+              <EnvGroupEditors
+                group={group}
+                loading={loading}
+                error={error}
+                refetch={refetch}
+              />
+              <LinkedServicesCard
+                group={group}
+                services={services}
+                linkGroup={mutations.linkGroup}
+                unlinkGroup={mutations.unlinkGroup}
+                busy={mutations.busy || servicesLoading}
+                error={servicesError}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

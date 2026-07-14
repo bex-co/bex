@@ -18,14 +18,15 @@ package envgroups
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -35,6 +36,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // --- harness ------------------------------------------------------------------
@@ -179,6 +181,115 @@ func TestEnvGroup_CreateVarsAndView(t *testing.T) {
 	if _, err := svc.GetEnvGroup(ctx, "evg-doesnotexist00000000"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("unknown group => ErrNotFound, got %v", err)
 	}
+}
+
+func TestEnvGroup_RenamePreservesIdentityContentsAndLinks(t *testing.T) {
+	store := newFakeStore()
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+
+	g, _ := svc.CreateEnvGroup(ctx, "shared")
+	_, _ = svc.SetEnvGroupVar(ctx, g.ID, "TOKEN", "secret")
+	_ = svc.LinkService(ctx, g.ID, "web")
+	before := getApp(t, svc.Client, "web").Spec.RestartedAt
+
+	renamed, err := svc.RenameEnvGroup(ctx, g.ID, "shared-production")
+	if err != nil {
+		t.Fatalf("RenameEnvGroup: %v", err)
+	}
+	if renamed.ID != g.ID || renamed.Name != "shared-production" || !slices.Contains(renamed.ServiceLinks, "web") {
+		t.Fatalf("rename changed identity or links: %+v", renamed)
+	}
+	if got, _ := svc.GetEnvGroupVar(ctx, g.ID, "TOKEN"); got.Value != "secret" {
+		t.Fatalf("rename lost contents: %+v", got)
+	}
+	if after := getApp(t, svc.Client, "web").Spec.RestartedAt; after != before {
+		t.Fatalf("metadata-only rename should not roll service: before=%q after=%q", before, after)
+	}
+	if _, err := svc.RenameEnvGroup(ctx, g.ID, "  "); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("blank rename => ErrBadRequest, got %v", err)
+	}
+}
+
+func TestEnvGroup_SetAndDeleteOneVarPreservesSiblings(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	ctx := context.Background()
+	g, _ := svc.CreateEnvGroup(ctx, "shared")
+	_, _ = svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "A", Value: "one"}, {Key: "B", Value: "two"}})
+	_ = svc.LinkService(ctx, g.ID, "web")
+
+	if _, err := svc.SetEnvGroupVar(ctx, g.ID, "A", "updated"); err != nil {
+		t.Fatalf("SetEnvGroupVar: %v", err)
+	}
+	if got, _ := svc.GetEnvGroupVar(ctx, g.ID, "B"); got.Value != "two" {
+		t.Fatalf("per-key set lost sibling: %+v", got)
+	}
+	if err := svc.DeleteEnvGroupVar(ctx, g.ID, "A"); err != nil {
+		t.Fatalf("DeleteEnvGroupVar: %v", err)
+	}
+	if _, err := svc.GetEnvGroupVar(ctx, g.ID, "A"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("deleted var should be gone: %v", err)
+	}
+	if got, _ := svc.GetEnvGroupVar(ctx, g.ID, "B"); got.Value != "two" {
+		t.Fatalf("per-key delete lost sibling: %+v", got)
+	}
+	if err := svc.DeleteEnvGroupVar(ctx, g.ID, "missing"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("missing delete => ErrNotFound, got %v", err)
+	}
+}
+
+func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	ctx := context.Background()
+	srv := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+
+	call := func(name string, args map[string]any, out any) {
+		t.Helper()
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("call %s: err=%v isErr=%v", name, err, res != nil && res.IsError)
+		}
+		if out != nil {
+			b, _ := json.Marshal(res.StructuredContent)
+			if err := json.Unmarshal(b, out); err != nil {
+				t.Fatalf("decode %s: %v", name, err)
+			}
+		}
+	}
+
+	var group EnvGroupView
+	call("create_env_group", map[string]any{"name": "shared"}, &group)
+	call("set_env_group_var", map[string]any{"id": group.ID, "key": "TOKEN", "value": "secret"}, nil)
+	var variable EnvVarView
+	call("get_env_group_var", map[string]any{"id": group.ID, "key": "TOKEN"}, &variable)
+	if variable.Value != "secret" {
+		t.Fatalf("get_env_group_var: %+v", variable)
+	}
+	call("set_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem", "content": "pem"}, nil)
+	var file SecretFileView
+	call("get_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem"}, &file)
+	if file.Content != "pem" {
+		t.Fatalf("get_env_group_secret_file: %+v", file)
+	}
+	call("rename_env_group", map[string]any{"id": group.ID, "name": "Shared production"}, &group)
+	if group.Name != "Shared production" {
+		t.Fatalf("rename_env_group: %+v", group)
+	}
+	call("link_env_group", map[string]any{"id": group.ID, "serviceId": "web"}, nil)
+	call("unlink_env_group", map[string]any{"id": group.ID, "serviceId": "web"}, nil)
+	call("delete_env_group_var", map[string]any{"id": group.ID, "key": "TOKEN"}, nil)
+	call("delete_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem"}, nil)
+	call("delete_env_group", map[string]any{"id": group.ID}, nil)
 }
 
 func TestEnvGroup_LinkProjectsAndUnlink(t *testing.T) {

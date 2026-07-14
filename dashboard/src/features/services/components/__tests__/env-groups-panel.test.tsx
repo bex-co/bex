@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { EnvGroupView } from "@/features/services/types";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
 // Control the data/behavior the panel sees by mocking the feature hooks; keep the
 // real classifyEnvGroupError so the error-state routing is exercised for real.
@@ -11,23 +11,26 @@ const mockDeleteGroup = vi.fn();
 const mockLinkGroup = vi.fn();
 const mockUnlinkGroup = vi.fn();
 
-vi.mock("@/features/services/hooks/use-env-groups", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/features/services/hooks/use-env-groups")
-    >();
-  return {
-    ...actual,
-    useEnvGroups: (...a: unknown[]) => mockUseEnvGroups(...a),
-    useEnvGroupMutations: () => ({
-      createGroup: mockCreateGroup,
-      deleteGroup: mockDeleteGroup,
-      linkGroup: mockLinkGroup,
-      unlinkGroup: mockUnlinkGroup,
-      busy: false,
-    }),
-  };
-});
+vi.mock(
+  "@/features/env-groups/hooks/use-env-groups",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/env-groups/hooks/use-env-groups")
+      >();
+    return {
+      ...actual,
+      useEnvGroups: (...a: unknown[]) => mockUseEnvGroups(...a),
+      useEnvGroupMutations: () => ({
+        createGroup: mockCreateGroup,
+        deleteGroup: mockDeleteGroup,
+        linkGroup: mockLinkGroup,
+        unlinkGroup: mockUnlinkGroup,
+        busy: false,
+      }),
+    };
+  },
+);
 
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
 
@@ -128,8 +131,8 @@ describe("EnvGroupsPanel", () => {
     await user.click(screen.getByRole("button", { name: /Create group/ }));
     const nameInput = screen.getByLabelText("Group name");
 
-    // invalid name (space) => no mutation
-    await user.type(nameInput, "bad name");
+    // blank name => no mutation
+    await user.type(nameInput, "   ");
     await user.click(screen.getByRole("button", { name: /^Create$/ }));
     expect(mockCreateGroup).not.toHaveBeenCalled();
 

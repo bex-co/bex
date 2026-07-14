@@ -37,13 +37,10 @@ import {
   useEnvGroups,
   useEnvGroupMutations,
   classifyEnvGroupError,
-} from "@/features/services/hooks/use-env-groups";
+} from "@/features/env-groups/hooks/use-env-groups";
 import { CenteredState } from "@/features/services/components/centered-state";
-import type { EnvGroupView } from "@/features/services/types";
-
-// An env-group name: same C-locale-ish shape bex-api accepts for a group name;
-// reject bad names client-side rather than round-tripping to a 400.
-const VALID_GROUP_NAME = /^[-._a-zA-Z0-9]+$/;
+import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
 /**
  * The service Environment tab's Environment Groups section (Render dashboard
@@ -129,8 +126,7 @@ function EnvGroupItem({
             <Badge variant="success">{t("services.envGroupLinked")}</Badge>
           )}
         </div>
-        {group.envVarKeys.length === 0 &&
-        group.secretFileNames.length === 0 ? (
+        {group.envVarKeys.length === 0 && group.secretFileNames.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             {t("services.envGroupEmptyContents")}
           </p>
@@ -207,7 +203,7 @@ function CreateGroupButton({
   createGroup,
   disabled,
 }: {
-  createGroup: (name: string) => Promise<boolean>;
+  createGroup: (name: string) => Promise<string | null>;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
@@ -223,7 +219,7 @@ function CreateGroupButton({
   }
 
   async function submit() {
-    if (!VALID_GROUP_NAME.test(name.trim())) {
+    if (!isValidEnvGroupName(name)) {
       setInvalid(true);
       return;
     }

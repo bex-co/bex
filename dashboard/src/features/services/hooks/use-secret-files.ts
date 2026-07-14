@@ -36,7 +36,9 @@ export interface UseSecretFileNamesResult {
  * Reads a service's secret-file names (`service(id){ secretFileNames{ id name }
  * }`). Names only — no file content is returned in the list.
  */
-export function useSecretFileNames(serviceId: string): UseSecretFileNamesResult {
+export function useSecretFileNames(
+  serviceId: string,
+): UseSecretFileNamesResult {
   const { data, loading, error, refetch } = useQuery(SecretFileNamesDocument, {
     variables: { id: serviceId },
     fetchPolicy: "cache-and-network",

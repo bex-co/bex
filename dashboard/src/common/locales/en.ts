@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enCommon: Record<string, TranslationEntry> = {
+  "common.navEnvGroups": {
+    message: "Environment Groups",
+    description: "Workspace sidebar link to environment groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",
@@ -24,7 +28,8 @@ const enCommon: Record<string, TranslationEntry> = {
   },
   "common.navBlueprints": {
     message: "Blueprints",
-    description: "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
+    description:
+      "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
   },
   "common.navSettings": {
     message: "Settings",
@@ -43,7 +48,8 @@ const enCommon: Record<string, TranslationEntry> = {
   },
   "common.navProjectOverview": {
     message: "Overview",
-    description: "Contextual project sidebar nav link to the project's own Overview page",
+    description:
+      "Contextual project sidebar nav link to the project's own Overview page",
   },
   "common.navManageGroup": {
     message: "Manage",

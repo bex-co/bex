@@ -1,6 +1,10 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhCommon: Record<string, TranslationEntry> = {
+  "common.navEnvGroups": {
+    message: "环境变量组",
+    description: "Workspace sidebar link to environment groups",
+  },
   "common.appName": {
     message: "bex",
     description: "Product name shown in the dashboard chrome",
@@ -24,7 +28,8 @@ const zhCommon: Record<string, TranslationEntry> = {
   },
   "common.navBlueprints": {
     message: "蓝图",
-    description: "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
+    description:
+      "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
   },
   "common.navSettings": {
     message: "设置",
@@ -43,7 +48,8 @@ const zhCommon: Record<string, TranslationEntry> = {
   },
   "common.navProjectOverview": {
     message: "概览",
-    description: "Contextual project sidebar nav link to the project's own Overview page",
+    description:
+      "Contextual project sidebar nav link to the project's own Overview page",
   },
   "common.navManageGroup": {
     message: "管理",
