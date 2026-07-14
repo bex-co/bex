@@ -13,6 +13,7 @@ import enAudit from "@/features/audit/locales/en";
 import enGit from "@/features/git/locales/en";
 import enNotifications from "@/features/notifications/locales/en";
 import enProjects from "@/features/projects/locales/en";
+import enEnvironments from "@/features/environments/locales/en";
 import enRegistryCredentials from "@/features/registry-credentials/locales/en";
 import enConnectedAgents from "@/features/connected-agents/locales/en";
 import enSessions from "@/features/sessions/locales/en";
@@ -32,6 +33,7 @@ import zhAudit from "@/features/audit/locales/zh";
 import zhGit from "@/features/git/locales/zh";
 import zhNotifications from "@/features/notifications/locales/zh";
 import zhProjects from "@/features/projects/locales/zh";
+import zhEnvironments from "@/features/environments/locales/zh";
 import zhRegistryCredentials from "@/features/registry-credentials/locales/zh";
 import zhConnectedAgents from "@/features/connected-agents/locales/zh";
 import zhSessions from "@/features/sessions/locales/zh";
@@ -77,6 +79,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enGit),
   ...extractMessages(enNotifications),
   ...extractMessages(enProjects),
+  ...extractMessages(enEnvironments),
   ...extractMessages(enRegistryCredentials),
   ...extractMessages(enConnectedAgents),
   ...extractMessages(enSessions),
@@ -99,6 +102,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhGit),
   ...extractMessages(zhNotifications),
   ...extractMessages(zhProjects),
+  ...extractMessages(zhEnvironments),
   ...extractMessages(zhRegistryCredentials),
   ...extractMessages(zhConnectedAgents),
   ...extractMessages(zhSessions),

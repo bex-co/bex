@@ -17,7 +17,8 @@ export interface UseGroupedResourcesResult {
   ungrouped: ResourceRow[];
 }
 
-function toServiceRow(s: ServiceView): ResourceRow {
+/** Normalize a service into a merged-table `ResourceRow` (shared with the environments feature). */
+export function toServiceRow(s: ServiceView): ResourceRow {
   return { kind: "service", id: s.id, name: s.name, createdAt: s.createdAt, service: s };
 }
 

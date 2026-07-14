@@ -481,6 +481,14 @@ const PROJECTS = [
   },
 ];
 
+// Environments (w1/m32, bex extension — docs/ADR032-environments.md): named
+// subsets of a project's services. Seeded empty so the project page shows the
+// "no environments yet" state first; Create/Rename/Delete/SetServices mutate
+// ENVIRONMENTS in place. SetEnvironmentServices auto-joins the assigned
+// services to the parent project and (single-column membership) evicts them
+// from any other environment — the same side effects the real store applies.
+const ENVIRONMENTS = [];
+
 // Workspace audit trail (w4/m10 surface, w6/m14 workspace scoping) — the shape
 // of internal/audit/graphql.go's AuditLog type. Every event is tagged with the
 // workspace that owns it, and the two workspaces' events are deliberately
@@ -1167,6 +1175,61 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (!p) return { setProjectKeyValues: null };
       p.keyValueIds = variables.keyValueIds ?? [];
       return { setProjectKeyValues: p };
+    }
+    // Environments (w1/m32, bex extension) — project-scoped named service
+    // subsets, mutated in place so the project page's environments panel is
+    // exercised offline (docs/ADR032-environments.md).
+    case "Environments":
+      return {
+        environments: ENVIRONMENTS.filter((e) => e.projectId === variables.projectId),
+      };
+    case "Environment":
+      return { environment: ENVIRONMENTS.find((e) => e.id === variables.id) ?? null };
+    case "CreateEnvironment": {
+      const project = PROJECTS.find((p) => p.id === variables.projectId);
+      const created = {
+        __typename: "Environment",
+        id: `env-local${Date.now().toString(36)}`,
+        projectId: variables.projectId,
+        name: variables.name,
+        ownerId: project?.ownerId ?? WORKSPACE_DEFAULT,
+        createdAt: new Date().toISOString(),
+        serviceIds: [],
+      };
+      ENVIRONMENTS.push(created);
+      return { createEnvironment: created };
+    }
+    case "RenameEnvironment": {
+      const e = ENVIRONMENTS.find((env) => env.id === variables.id);
+      if (!e) return { renameEnvironment: null };
+      e.name = variables.name;
+      return { renameEnvironment: e };
+    }
+    case "DeleteEnvironment": {
+      const i = ENVIRONMENTS.findIndex((e) => e.id === variables.id);
+      if (i >= 0) ENVIRONMENTS.splice(i, 1);
+      return { deleteEnvironment: variables.id };
+    }
+    case "SetEnvironmentServices": {
+      const e = ENVIRONMENTS.find((env) => env.id === variables.id);
+      if (!e) return { setEnvironmentServices: null };
+      const wanted = variables.serviceIds ?? [];
+      e.serviceIds = wanted;
+      // Single-column membership: a service is in at most one environment, so
+      // assigning it here evicts it from every other environment.
+      for (const other of ENVIRONMENTS) {
+        if (other.id !== e.id) {
+          other.serviceIds = other.serviceIds.filter((s) => !wanted.includes(s));
+        }
+      }
+      // Auto-join the parent project (docs/ADR032): a service "in an
+      // environment" is implicitly "in that project".
+      const project = PROJECTS.find((p) => p.id === e.projectId);
+      if (project) {
+        const merged = new Set([...(project.serviceIds ?? []), ...wanted]);
+        project.serviceIds = [...merged];
+      }
+      return { setEnvironmentServices: e };
     }
     case "CustomDomains":
       return { customDomains: domainsFor(variables.id) };

@@ -13,6 +13,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "未分组资源",
     description: "Section heading above the Overview page's ungrouped resource table",
   },
+  "projects.allResourcesHeading": {
+    message: "所有资源",
+    description:
+      "Heading above a project page's full resource table, below the environments section",
+  },
   "projects.eyebrow": {
     message: "项目",
     description: "Small uppercase label above a project page's name heading",

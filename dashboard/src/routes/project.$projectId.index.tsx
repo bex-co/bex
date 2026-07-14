@@ -19,6 +19,7 @@ import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { ResourceTable } from "@/features/projects/components/resource-table";
+import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
 
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
@@ -112,20 +113,32 @@ export function ProjectPage() {
                 </div>
               </div>
 
-              {group && group.rows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("projects.emptyBody")}
-                </p>
-              ) : (
-                <ResourceTable
-                  rows={group?.rows ?? []}
-                  loading={loading}
-                  servicePending={pending}
-                  onRunServiceAction={run}
-                  onDatabaseDeleted={refetchAll}
-                  onKeyValueDeleted={refetchAll}
-                />
-              )}
+              <EnvironmentsPanel
+                projectId={projectId}
+                services={services}
+                servicePending={pending}
+                onRunServiceAction={run}
+              />
+
+              <section className="space-y-4">
+                <h2 className="text-lg font-semibold">
+                  {t("projects.allResourcesHeading")}
+                </h2>
+                {group && group.rows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("projects.emptyBody")}
+                  </p>
+                ) : (
+                  <ResourceTable
+                    rows={group?.rows ?? []}
+                    loading={loading}
+                    servicePending={pending}
+                    onRunServiceAction={run}
+                    onDatabaseDeleted={refetchAll}
+                    onKeyValueDeleted={refetchAll}
+                  />
+                )}
+              </section>
             </>
           )}
         </div>

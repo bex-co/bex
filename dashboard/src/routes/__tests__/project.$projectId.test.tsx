@@ -72,6 +72,13 @@ vi.mock("@/features/projects/hooks/use-rename-project", () => ({
   useRenameProject: () => ({ rename, busy: false }),
 }));
 
+// The Environments panel is an Apollo client of its own (covered by its own
+// tests); stub it here so this route test stays focused on the project page's
+// resource table + rename, without needing an ApolloProvider.
+vi.mock("@/features/environments/components/environments-panel", () => ({
+  EnvironmentsPanel: () => null,
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "eden-cms-v2",

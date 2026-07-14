@@ -13,6 +13,11 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "Ungrouped Resources",
     description: "Section heading above the Overview page's ungrouped resource table",
   },
+  "projects.allResourcesHeading": {
+    message: "All resources",
+    description:
+      "Heading above a project page's full resource table, below the environments section",
+  },
   "projects.eyebrow": {
     message: "Project",
     description: "Small uppercase label above a project page's name heading",
