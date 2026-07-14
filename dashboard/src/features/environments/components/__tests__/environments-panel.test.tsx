@@ -36,8 +36,12 @@ function renderPanel() {
     <EnvironmentsPanel
       projectId="prj-1"
       services={[]}
+      databases={[]}
+      keyValues={[]}
       servicePending={null}
       onRunServiceAction={vi.fn()}
+      onDatabaseDeleted={vi.fn()}
+      onKeyValueDeleted={vi.fn()}
     />,
   );
 }
@@ -65,8 +69,8 @@ describe("EnvironmentsPanel", () => {
 
   it("renders one card per environment", () => {
     environmentsState.environments = [
-      { id: "env-1", projectId: "prj-1", name: "staging", ownerId: "tea-1", createdAt: null, serviceIds: [] },
-      { id: "env-2", projectId: "prj-1", name: "production", ownerId: "tea-1", createdAt: null, serviceIds: ["api"] },
+      { id: "env-1", projectId: "prj-1", name: "staging", ownerId: "tea-1", createdAt: null, serviceIds: [], databaseIds: [], keyValueIds: [] },
+      { id: "env-2", projectId: "prj-1", name: "production", ownerId: "tea-1", createdAt: null, serviceIds: ["api"], databaseIds: [], keyValueIds: [] },
     ];
     renderPanel();
     const cards = screen.getAllByTestId("env-card");

@@ -9,28 +9,42 @@ import { EnvironmentCard } from "@/features/environments/components/environment-
 import { NewEnvironmentDialog } from "@/features/environments/components/new-environment-dialog";
 import type { LifecycleAction, ServiceView } from "@/features/services/types";
 import type { PendingLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import type { DatabaseView } from "@/features/databases/types";
+import type { KeyValueView } from "@/features/keyvalue/types";
 
 export interface EnvironmentsPanelProps {
   projectId: string;
   /** The workspace's services — resolves each environment's rows and the assign candidates. */
   services: ServiceView[];
+  /** The workspace's databases — same role as `services` (w6/m20 extension). */
+  databases: DatabaseView[];
+  /** The workspace's key-value instances — same role as `services` (w6/m20 extension). */
+  keyValues: KeyValueView[];
   servicePending: PendingLifecycle | null;
   onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onDatabaseDeleted: (id: string) => void;
+  onKeyValueDeleted: (id: string) => void;
 }
 
 /**
- * The Environments section on a Project's page: named subsets of the project's
- * services (staging/production), each a card of assigned services with
- * create/rename/delete + service-assignment affordances
- * (docs/ADR032-environments.md, w1/m32; dashboard UX w5/m25). The environment
- * mutations refetch the `Environments` (and, on assignment, `Projects`) queries
- * by name, so this panel just consumes `useEnvironments` — no refetch plumbing.
+ * The Environments section on a Project's page: named subsets of the
+ * project's resources (staging/production), each a card of assigned
+ * services, databases, and key-value instances with create/rename/delete +
+ * resource-assignment affordances (docs/ADR032-environments.md, w1/m32;
+ * dashboard UX w5/m25; w6/m20 extension for databases/key-value). The
+ * environment mutations refetch the `Environments` (and, on assignment,
+ * `Projects`) queries by name, so this panel just consumes `useEnvironments`
+ * — no refetch plumbing.
  */
 export function EnvironmentsPanel({
   projectId,
   services,
+  databases,
+  keyValues,
   servicePending,
   onRunServiceAction,
+  onDatabaseDeleted,
+  onKeyValueDeleted,
 }: EnvironmentsPanelProps) {
   const { t } = useTranslations();
   const { environments, loading, error } = useEnvironments(projectId);
@@ -68,8 +82,12 @@ export function EnvironmentsPanel({
               key={environment.id}
               environment={environment}
               services={services}
+              databases={databases}
+              keyValues={keyValues}
               servicePending={servicePending}
               onRunServiceAction={onRunServiceAction}
+              onDatabaseDeleted={onDatabaseDeleted}
+              onKeyValueDeleted={onKeyValueDeleted}
             />
           ))}
         </div>

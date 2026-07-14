@@ -22,11 +22,13 @@ export function toServiceRow(s: ServiceView): ResourceRow {
   return { kind: "service", id: s.id, name: s.name, createdAt: s.createdAt, service: s };
 }
 
-function toDatabaseRow(d: DatabaseView): ResourceRow {
+/** Normalize a database into a merged-table `ResourceRow` (shared with the environments feature). */
+export function toDatabaseRow(d: DatabaseView): ResourceRow {
   return { kind: "database", id: d.id, name: d.name, createdAt: d.createdAt, database: d };
 }
 
-function toKeyValueRow(k: KeyValueView): ResourceRow {
+/** Normalize a key-value instance into a merged-table `ResourceRow` (shared with the environments feature). */
+export function toKeyValueRow(k: KeyValueView): ResourceRow {
   return { kind: "keyvalue", id: k.id, name: k.name, createdAt: k.createdAt, keyValue: k };
 }
 

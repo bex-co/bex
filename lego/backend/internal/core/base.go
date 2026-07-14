@@ -109,6 +109,15 @@ const LabelWorkspace = "app.bex.co/workspace"
 // set/cleared by postgres.Service.SetProjectID / keyvalue.Service.SetProjectID.
 const LabelProject = "app.bex.co/project-id"
 
+// LabelEnvironment carries a Database or KeyValue CR's environment assignment
+// (w6/m20 extension, LabelProject's sibling): the owning Environment's id
+// (env-<xid>), or absent when unassigned. Services group into an environment
+// via the control-plane store's apps.environment_id column instead
+// (internal/store/environments.go) since they have a store row; Database/
+// KeyValue CRs have none, so this label is their only association — set/
+// cleared by postgres.Service.SetEnvironmentID / keyvalue.Service.SetEnvironmentID.
+const LabelEnvironment = "app.bex.co/environment-id"
+
 // WorkspaceResolver maps an authenticated caller to its workspace: the tenant
 // id ("tea-<id>") for a tenant member or a bound API key (ok=true). ok=false
 // means the store is on but the caller resolves to no tenant — an unbound

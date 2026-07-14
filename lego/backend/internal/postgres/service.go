@@ -97,6 +97,12 @@ type PostgresView struct {
 	// Database CR's core.LabelProject label. Empty means unassigned. Set via
 	// SetProjectID; the projects feature is the only writer.
 	ProjectID string `json:"projectId,omitempty"`
+
+	// EnvironmentID is the owning Environment's id (w6/m20 extension), read
+	// from the Database CR's core.LabelEnvironment label. Empty means
+	// unassigned. Set via SetEnvironmentID; the environments feature is the
+	// only writer.
+	EnvironmentID string `json:"environmentId,omitempty"`
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
@@ -226,6 +232,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		BackupsEnabled:          d.Status.BackupsEnabled,
 		OwnerID:                 d.Labels[core.LabelTenant],
 		ProjectID:               d.Labels[core.LabelProject],
+		EnvironmentID:           d.Labels[core.LabelEnvironment],
 	}
 }
 
@@ -505,6 +512,25 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 			d.Labels = map[string]string{}
 		}
 		d.Labels[core.LabelProject] = projectID
+	})
+	return err
+}
+
+// SetEnvironmentID assigns (or, with an empty environmentID, clears) this
+// Database's environment (w6/m20 extension) — the internal/environments
+// feature's write path, mirroring keyvalue.Service.SetEnvironmentID and
+// SetProjectID above. Authorized the same as the other tenant-mutating verbs
+// on a named Database (RelCanCreate, matching DeletePostgres).
+func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
+	_, err := s.patchDatabase(ctx, core.RelCanCreate, name, func(d *appv1alpha1.Database) {
+		if environmentID == "" {
+			delete(d.Labels, core.LabelEnvironment)
+			return
+		}
+		if d.Labels == nil {
+			d.Labels = map[string]string{}
+		}
+		d.Labels[core.LabelEnvironment] = environmentID
 	})
 	return err
 }

@@ -95,6 +95,12 @@ type KeyValueView struct {
 	// KeyValue CR's core.LabelProject label. Empty means unassigned. Set via
 	// SetProjectID; the projects feature is the only writer.
 	ProjectID string `json:"projectId,omitempty"`
+
+	// EnvironmentID is the owning Environment's id (w6/m20 extension), read
+	// from the KeyValue CR's core.LabelEnvironment label. Empty means
+	// unassigned. Set via SetEnvironmentID; the environments feature is the
+	// only writer.
+	EnvironmentID string `json:"environmentId,omitempty"`
 }
 
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
@@ -173,6 +179,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Public:          kv.Spec.Public,
 		OwnerID:         kv.Labels[core.LabelTenant],
 		ProjectID:       kv.Labels[core.LabelProject],
+		EnvironmentID:   kv.Labels[core.LabelEnvironment],
 	}
 }
 
@@ -365,6 +372,27 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 			kv.Labels = map[string]string{}
 		}
 		kv.Labels[core.LabelProject] = projectID
+	}
+	return s.Client.Update(ctx, kv)
+}
+
+// SetEnvironmentID assigns (or, with an empty environmentID, clears) this
+// KeyValue's environment (w6/m20 extension) — the internal/environments
+// feature's write path, mirroring postgres.Service.SetEnvironmentID and
+// SetProjectID above. Authorized the same as the other tenant-mutating verbs
+// on a named KeyValue (RelCanCreate, matching DeleteKeyValue).
+func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if environmentID == "" {
+		delete(kv.Labels, core.LabelEnvironment)
+	} else {
+		if kv.Labels == nil {
+			kv.Labels = map[string]string{}
+		}
+		kv.Labels[core.LabelEnvironment] = environmentID
 	}
 	return s.Client.Update(ctx, kv)
 }

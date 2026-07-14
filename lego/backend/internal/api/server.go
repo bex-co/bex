@@ -294,9 +294,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// above. Always non-nil; its verbs 503 until the control-plane store +
 	// OpenBao are both wired.
 	rc := &registrycreds.Service{Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets}
-	// pg and kv are also the projects feature's Database/KeyValue grouping seam
-	// (w1/m31 extension, internal/projects.DatabaseIndex/KeyValueIndex) — built
-	// once and shared, same as gh/rc above.
+	// pg and kv are also the projects and environments features' Database/
+	// KeyValue grouping seam (w1/m31 extension, internal/projects.DatabaseIndex/
+	// KeyValueIndex; w6/m20 extension, internal/environments' counterparts) —
+	// built once and shared, same as gh/rc above.
 	pg := &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
 	// Usage is constructed and its metering loop started in cmd/api/main.go
@@ -365,8 +366,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Selections: selections,
 		},
 		Environments: &environments.Service{
-			Base:  base,
-			Store: d.EnvironmentsStore,
+			Base:      base,
+			Store:     d.EnvironmentsStore,
+			Databases: pg,
+			KeyValues: kv,
 		},
 		GitHub:        gh,
 		RegistryCreds: rc,

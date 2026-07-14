@@ -41,6 +41,8 @@ describe("useEnvironments", () => {
             ownerId: "tea-1",
             createdAt: "2026-01-01T00:00:00Z",
             serviceIds: ["svc-a", null, "svc-b"],
+            databaseIds: ["db-a", null],
+            keyValueIds: [null, "kv-a"],
           },
           null,
         ],
@@ -58,8 +60,10 @@ describe("useEnvironments", () => {
       projectId: "prj-1",
       name: "staging",
       ownerId: "tea-1",
-      // null service ids are filtered out of the normalized view.
+      // null ids are filtered out of the normalized view, for every list.
       serviceIds: ["svc-a", "svc-b"],
+      databaseIds: ["db-a"],
+      keyValueIds: ["kv-a"],
     });
   });
 

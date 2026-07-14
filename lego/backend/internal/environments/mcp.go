@@ -49,6 +49,16 @@ type setEnvironmentServicesArgs struct {
 	ServiceIDs []string `json:"serviceIds" jsonschema:"App CR names (same as the id field on a service) to assign to the environment — replaces the full list; also joins these services to the environment's project"`
 }
 
+type setEnvironmentDatabasesArgs struct {
+	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
+	DatabaseIDs []string `json:"databaseIds" jsonschema:"Database CR names (same as the id field on a postgres instance) to assign to the environment — replaces the full list; also joins these databases to the environment's project"`
+}
+
+type setEnvironmentKeyValuesArgs struct {
+	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
+	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the environment — replaces the full list; also joins these key-value instances to the environment's project"`
+}
+
 type environmentsResult struct {
 	Environments []EnvironmentView `json:"environments"`
 }
@@ -107,6 +117,28 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			in.ServiceIDs = []string{}
 		}
 		e, err := s.SetServices(ctx, in.ID, in.ServiceIDs)
+		return nil, e, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_environment_databases",
+		Description: "Assign managed Postgres databases to an environment (replaces the full list); also joins them to the environment's project. Pass databaseIds as Database CR names — the same id shown by list_postgres_instances. bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentDatabasesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
+		if in.DatabaseIDs == nil {
+			in.DatabaseIDs = []string{}
+		}
+		e, err := s.SetDatabases(ctx, in.ID, in.DatabaseIDs)
+		return nil, e, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_environment_keyvalues",
+		Description: "Assign managed key-value instances to an environment (replaces the full list); also joins them to the environment's project. Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value_instances. bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentKeyValuesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
+		if in.KeyValueIDs == nil {
+			in.KeyValueIDs = []string{}
+		}
+		e, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
 		return nil, e, err
 	})
 }

@@ -122,8 +122,12 @@ export function ProjectPage() {
               <EnvironmentsPanel
                 projectId={projectId}
                 services={services}
+                databases={databases}
+                keyValues={keyValues}
                 servicePending={pending}
                 onRunServiceAction={run}
+                onDatabaseDeleted={refetchAll}
+                onKeyValueDeleted={refetchAll}
               />
 
               <section className="space-y-4">

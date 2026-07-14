@@ -30,7 +30,10 @@ Verified live against the CAPD mock cluster (`scripts/environments-verify.sh`, m
 
 ## Known divergence from Render / deliberate scope
 
-- **No dashboard UX.** REST/GraphQL/MCP only, matching Projects' own scope boundary and this milestone's.
 - **No forward pointer on a service's own view** — see above; a follow-on, not an oversight.
 - **Full-CRUD MCP, not read-only** — a deliberate consistency choice with the already-shipped Projects MCP surface, diverging from this feature's own original "read-only" plan.
-- **No protected-environment ACLs** (Render's `protectedStatus`/`networkIsolationEnabled`/`ipAllowList`) — out of scope, same boundary Projects itself drew.
+- **No protected-environment ACLs** (Render's `protectedStatus`/`networkIsolationEnabled`/`ipAllowList`) — out of scope, same boundary Projects itself drew (tracked separately as `w6/m19`).
+
+## w6/m20 extension: Databases and KeyValues join too
+
+The original scope above (and the dashboard UX added afterward, w5/m25) covered services only — the same services-only asymmetry `internal/projects` had before its own `w1/m31` extension added `DatabaseIndex`/`KeyValueIndex`. `w6/m20` closes the same gap here: `postgres.Service`/`keyvalue.Service` gained a `SetEnvironmentID` verb (mirroring `SetProjectID`) that stamps a new `core.LabelEnvironment` label on the Database/KeyValue CR — the same CR-label mechanism `LabelProject` already used, since these CRs have no control-plane row for `SetEnvironmentServices`' bulk-column approach to apply to. `environments.Service` gained `SetDatabases`/`SetKeyValues` (full-replace-by-name, diffing the label state like `projects.Service`'s own `SetDatabases`/`SetKeyValues`) and `EnvironmentView` now carries `databaseIds`/`keyValueIds` alongside `serviceIds`, surfaced identically over REST (`PUT /v1/environments/{id}/database-links`+`/keyvalue-links`), GraphQL (`setEnvironmentDatabases`/`setEnvironmentKeyValues` mutations, `databaseIds`/`keyValueIds` fields), and MCP (`set_environment_databases`/`set_environment_keyvalues` tools). Assigning a Database/KeyValue to an environment also joins it to the environment's project (mirroring `SetEnvironmentServices`' `apps.project_id` stamp); removing it from the environment does not unjoin the project, the same asymmetry `SetEnvironmentServices` already has for services. The dashboard's environment card and its "Manage resources" dialog (`dashboard/src/features/environments/`) were extended the same way Projects' own page already merges all three resource kinds (`use-grouped-resources.ts`).

@@ -51,6 +51,12 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.Create":     "its first deploy already appears as deploy_started with trigger.firstBuild",
 		"apps.Delete":     "the service and its feed are gone; the row stays in the workspace audit log",
 		"deploys.Trigger": "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		// w6/m20: new verbs from scratch (not a w6/m17 seam-collapse side
+		// effect — see below), deliberately deferred the same way their
+		// SetProjectID siblings were: postgres/keyvalue have no events feed
+		// integration at all yet.
+		"postgres.SetEnvironmentID": "mirrors postgres.SetProjectID; postgres has no events feed integration yet",
+		"keyvalue.SetEnvironmentID": "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

@@ -11,20 +11,21 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.emptyBody": {
     message:
-      "No environments yet. Create one (e.g. staging or production) to group this project's services.",
+      "No environments yet. Create one (e.g. staging or production) to group this project's resources.",
     description: "Empty state shown when a project has no environments",
   },
   "environments.errorBody": {
     message: "Something went wrong loading environments. Try again shortly.",
     description: "Error state shown when the environments query fails",
   },
-  "environments.serviceCount": {
-    message: "{count} service(s)",
-    description: "Count of services assigned to an environment, next to its name",
+  "environments.resourceCount": {
+    message: "{count} resource(s)",
+    description:
+      "Count of services+databases+key-value instances assigned to an environment, next to its name",
   },
   "environments.manageButton": {
-    message: "Manage services",
-    description: "Button on an environment card that opens the assign-services dialog",
+    message: "Manage resources",
+    description: "Button on an environment card that opens the manage-resources dialog",
   },
   "environments.moreActions": {
     message: "More actions",
@@ -40,8 +41,8 @@ const enEnvironments: Record<string, TranslationEntry> = {
       "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
   },
   "environments.cardEmpty": {
-    message: "No services in this environment yet.",
-    description: "Shown inside an environment card when it has no assigned services",
+    message: "No resources in this environment yet.",
+    description: "Shown inside an environment card when it has no assigned resources",
   },
   "environments.createTitle": {
     message: "New Environment",
@@ -49,7 +50,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.createDescription": {
     message:
-      "Group a subset of this project's services under a name, like staging or production.",
+      "Group a subset of this project's resources under a name, like staging or production.",
     description: "New-environment dialog description",
   },
   "environments.fieldName": {
@@ -98,7 +99,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.deleteConfirmBody": {
     message:
-      "Its services stay in the project and keep running — they just lose this environment label. This action cannot be undone.",
+      "Its services, databases, and key-value stores stay in the project and keep running — they just lose this environment label. This action cannot be undone.",
     description: "Delete-environment confirmation dialog body",
   },
   "environments.deleteSuccess": {
@@ -110,21 +111,41 @@ const enEnvironments: Record<string, TranslationEntry> = {
     description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
-    message: 'Manage services in "{name}"',
-    description: "Assign-services dialog title",
+    message: 'Manage resources in "{name}"',
+    description: "Manage-resources dialog title",
   },
   "environments.manageDescription": {
     message:
-      "Check the services that belong to this environment. Assigning a service also adds it to this project.",
-    description: "Assign-services dialog description",
+      "Check the resources that belong to this environment. Assigning a resource also adds it to this project.",
+    description: "Manage-resources dialog description",
+  },
+  "environments.tabServices": {
+    message: "Services",
+    description: "Manage-resources dialog tab label for the services checklist",
+  },
+  "environments.tabDatabases": {
+    message: "Databases",
+    description: "Manage-resources dialog tab label for the databases checklist",
+  },
+  "environments.tabKeyValues": {
+    message: "Key Value",
+    description: "Manage-resources dialog tab label for the key-value checklist",
   },
   "environments.manageNoServices": {
     message: "This workspace has no services to assign yet.",
-    description: "Assign-services dialog empty state when the workspace has no services",
+    description: "Manage-resources dialog empty state when the workspace has no services",
+  },
+  "environments.manageNoDatabases": {
+    message: "This workspace has no databases to assign yet.",
+    description: "Manage-resources dialog empty state when the workspace has no databases",
+  },
+  "environments.manageNoKeyValues": {
+    message: "This workspace has no key-value instances to assign yet.",
+    description: "Manage-resources dialog empty state when the workspace has no key-value instances",
   },
   "environments.manageSubmit": {
     message: "Save",
-    description: "Assign-services dialog submit button",
+    description: "Manage-resources dialog submit button",
   },
   "environments.assignSuccess": {
     message: 'Services for "{name}" updated.',
@@ -133,6 +154,22 @@ const enEnvironments: Record<string, TranslationEntry> = {
   "environments.assignError": {
     message: 'Failed to update services for "{name}".',
     description: "Toast shown when updating an environment's services fails",
+  },
+  "environments.assignDatabasesSuccess": {
+    message: 'Databases for "{name}" updated.',
+    description: "Toast shown after an environment's databases are updated",
+  },
+  "environments.assignDatabasesError": {
+    message: 'Failed to update databases for "{name}".',
+    description: "Toast shown when updating an environment's databases fails",
+  },
+  "environments.assignKeyValuesSuccess": {
+    message: 'Key-value instances for "{name}" updated.',
+    description: "Toast shown after an environment's key-value instances are updated",
+  },
+  "environments.assignKeyValuesError": {
+    message: 'Failed to update key-value instances for "{name}".',
+    description: "Toast shown when updating an environment's key-value instances fails",
   },
 };
 

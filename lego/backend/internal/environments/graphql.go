@@ -30,12 +30,14 @@ import (
 var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Environment",
 	Fields: graphql.Fields{
-		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ID })},
-		"projectId":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProjectID })},
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.Name })},
-		"ownerId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.OwnerID })},
-		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.CreatedAt })},
-		"serviceIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
+		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ID })},
+		"projectId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProjectID })},
+		"name":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.Name })},
+		"ownerId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.OwnerID })},
+		"createdAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.CreatedAt })},
+		"serviceIds":  &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
+		"databaseIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.DatabaseIDs })},
+		"keyValueIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.KeyValueIDs })},
 	},
 })
 
@@ -112,6 +114,36 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					names[i], _ = v.(string)
 				}
 				return s.SetServices(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		"setEnvironmentDatabases": &graphql.Field{
+			Type: environmentGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"databaseIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["databaseIds"].([]any)
+				names := make([]string, len(raw))
+				for i, v := range raw {
+					names[i], _ = v.(string)
+				}
+				return s.SetDatabases(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		"setEnvironmentKeyValues": &graphql.Field{
+			Type: environmentGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"keyValueIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["keyValueIds"].([]any)
+				names := make([]string, len(raw))
+				for i, v := range raw {
+					names[i], _ = v.(string)
+				}
+				return s.SetKeyValues(p.Context, p.Args["id"].(string), names)
 			},
 		},
 	}

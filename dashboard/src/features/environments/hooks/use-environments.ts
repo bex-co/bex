@@ -9,6 +9,8 @@ export interface EnvironmentView {
   ownerId: string;
   createdAt: string | null;
   serviceIds: string[];
+  databaseIds: string[];
+  keyValueIds: string[];
 }
 
 export interface UseEnvironmentsResult {
@@ -44,6 +46,12 @@ export function useEnvironments(projectId: string | null): UseEnvironmentsResult
         ownerId: e.ownerId ?? "",
         createdAt: e.createdAt ?? null,
         serviceIds: (e.serviceIds ?? []).filter((s): s is string => s != null),
+        databaseIds: (e.databaseIds ?? []).filter(
+          (s): s is string => s != null,
+        ),
+        keyValueIds: (e.keyValueIds ?? []).filter(
+          (s): s is string => s != null,
+        ),
       }));
   }, [data]);
 

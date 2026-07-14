@@ -5,6 +5,8 @@ fragment EnvironmentFields on Environment {
   ownerId
   createdAt
   serviceIds
+  databaseIds
+  keyValueIds
 }
 
 query Environments($projectId: String!) {
@@ -31,6 +33,18 @@ mutation DeleteEnvironment($id: String!) {
 
 mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {
   setEnvironmentServices(id: $id, serviceIds: $serviceIds) {
+    ...EnvironmentFields
+  }
+}
+
+mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {
+  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {
+    ...EnvironmentFields
+  }
+}
+
+mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {
+  setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {
     ...EnvironmentFields
   }
 }

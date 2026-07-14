@@ -14,14 +14,14 @@ vi.mock("@/features/environments/hooks/use-delete-environment", () => ({
   useDeleteEnvironment: () => ({ remove, deleting: null }),
 }));
 
-// The assign-services dialog reaches Apollo when opened; the card never opens it
-// in these tests, but stub it so mounting the (closed) dialog stays inert.
-vi.mock("@/features/environments/components/assign-services-dialog", () => ({
-  AssignServicesDialog: () => null,
+// The manage-resources dialog reaches Apollo when opened; the card never opens
+// it in these tests, but stub it so mounting the (closed) dialog stays inert.
+vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
+  ManageResourcesDialog: () => null,
 }));
 
-// An environment with no resolvable services renders the empty state instead of
-// the shared ResourceTable (which pulls in service row-actions + Apollo).
+// An environment with no resolvable resources renders the empty state instead
+// of the shared ResourceTable (which pulls in service row-actions + Apollo).
 const env: EnvironmentView = {
   id: "env-1",
   projectId: "prj-1",
@@ -29,6 +29,8 @@ const env: EnvironmentView = {
   ownerId: "tea-1",
   createdAt: null,
   serviceIds: [],
+  databaseIds: [],
+  keyValueIds: [],
 };
 
 function renderCard() {
@@ -36,8 +38,12 @@ function renderCard() {
     <EnvironmentCard
       environment={env}
       services={[]}
+      databases={[]}
+      keyValues={[]}
       servicePending={null}
       onRunServiceAction={vi.fn()}
+      onDatabaseDeleted={vi.fn()}
+      onKeyValueDeleted={vi.fn()}
     />,
   );
 }
@@ -50,11 +56,11 @@ beforeEach(() => {
 });
 
 describe("EnvironmentCard", () => {
-  it("shows the environment name and its empty-services state", () => {
+  it("shows the environment name and its empty-resources state", () => {
     renderCard();
     expect(screen.getByText("staging")).toBeInTheDocument();
     expect(
-      screen.getByText("No services in this environment yet."),
+      screen.getByText("No resources in this environment yet."),
     ).toBeInTheDocument();
   });
 

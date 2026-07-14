@@ -34,37 +34,51 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ResourceTable } from "@/features/projects/components/resource-table";
-import { toServiceRow } from "@/features/projects/hooks/use-grouped-resources";
+import {
+  toDatabaseRow,
+  toKeyValueRow,
+  toServiceRow,
+} from "@/features/projects/hooks/use-grouped-resources";
 import type { ResourceRow } from "@/features/projects/types";
 import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-environment";
 import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
-import { AssignServicesDialog } from "@/features/environments/components/assign-services-dialog";
+import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import type { LifecycleAction, ServiceView } from "@/features/services/types";
 import type { PendingLifecycle } from "@/features/services/hooks/use-service-lifecycle";
-
-/** Stable no-op for ResourceTable callbacks that an environment (services-only) never triggers. */
-const noop = () => {};
+import type { DatabaseView } from "@/features/databases/types";
+import type { KeyValueView } from "@/features/keyvalue/types";
 
 export interface EnvironmentCardProps {
   environment: EnvironmentView;
   /** All the workspace's services — used to resolve this env's rows and as assign candidates. */
   services: ServiceView[];
+  /** All the workspace's databases — same role as `services` (w6/m20 extension). */
+  databases: DatabaseView[];
+  /** All the workspace's key-value instances — same role as `services` (w6/m20 extension). */
+  keyValues: KeyValueView[];
   servicePending: PendingLifecycle | null;
   onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onDatabaseDeleted: (id: string) => void;
+  onKeyValueDeleted: (id: string) => void;
 }
 
 /**
  * One environment rendered as a card: its name with rename/delete affordances
- * and a "Manage services" action, over a reused `ResourceTable` of the
- * services assigned to it (docs/ADR032-environments.md — an environment only
- * groups services, never databases/key-value stores).
+ * and a "Manage resources" action, over a reused `ResourceTable` of the
+ * services, databases, and key-value instances assigned to it (w6/m20
+ * extension — an environment groups all three resource types, matching what
+ * Projects already did; see docs/ADR032-environments.md).
  */
 export function EnvironmentCard({
   environment,
   services,
+  databases,
+  keyValues,
   servicePending,
   onRunServiceAction,
+  onDatabaseDeleted,
+  onKeyValueDeleted,
 }: EnvironmentCardProps) {
   const { t } = useTranslations();
 
@@ -78,12 +92,30 @@ export function EnvironmentCard({
   const [assignOpen, setAssignOpen] = useState(false);
 
   const rows = useMemo((): ResourceRow[] => {
-    const byId = new Map(services.map((s) => [s.id, s]));
-    return environment.serviceIds
-      .map((id) => byId.get(id))
+    const serviceById = new Map(services.map((s) => [s.id, s]));
+    const databaseById = new Map(databases.map((d) => [d.id, d]));
+    const keyValueById = new Map(keyValues.map((k) => [k.id, k]));
+    const serviceRows = environment.serviceIds
+      .map((id) => serviceById.get(id))
       .filter((s): s is ServiceView => s != null)
       .map(toServiceRow);
-  }, [environment.serviceIds, services]);
+    const databaseRows = environment.databaseIds
+      .map((id) => databaseById.get(id))
+      .filter((d): d is DatabaseView => d != null)
+      .map(toDatabaseRow);
+    const keyValueRows = environment.keyValueIds
+      .map((id) => keyValueById.get(id))
+      .filter((k): k is KeyValueView => k != null)
+      .map(toKeyValueRow);
+    return [...serviceRows, ...databaseRows, ...keyValueRows];
+  }, [
+    environment.serviceIds,
+    environment.databaseIds,
+    environment.keyValueIds,
+    services,
+    databases,
+    keyValues,
+  ]);
 
   function openRename() {
     setRenameValue(environment.name);
@@ -112,7 +144,7 @@ export function EnvironmentCard({
         <CardTitle className="flex items-center gap-2">
           {environment.name}
           <span className="text-xs font-normal text-muted-foreground">
-            {t("environments.serviceCount", { count: rows.length })}
+            {t("environments.resourceCount", { count: rows.length })}
           </span>
         </CardTitle>
         <CardAction className="flex items-center gap-2">
@@ -156,10 +188,8 @@ export function EnvironmentCard({
             rows={rows}
             servicePending={servicePending}
             onRunServiceAction={onRunServiceAction}
-            // An environment groups only services, so no database/key-value
-            // rows ever render — these deletion callbacks are unreachable.
-            onDatabaseDeleted={noop}
-            onKeyValueDeleted={noop}
+            onDatabaseDeleted={onDatabaseDeleted}
+            onKeyValueDeleted={onKeyValueDeleted}
           />
         )}
       </CardContent>
@@ -224,9 +254,11 @@ export function EnvironmentCard({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AssignServicesDialog
+      <ManageResourcesDialog
         environment={environment}
         services={services}
+        databases={databases}
+        keyValues={keyValues}
         open={assignOpen}
         onOpenChange={setAssignOpen}
       />
