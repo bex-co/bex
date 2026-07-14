@@ -55,6 +55,29 @@ func TestMemStoreUsageIdempotent(t *testing.T) {
 	}
 }
 
+func TestMemStoreUsageOmitsZeroCoverageOnlyMeters(t *testing.T) {
+	st := newMemStore()
+	ctx := context.Background()
+	window := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
+	for _, row := range []HourlyRow{
+		{WorkspaceID: "tea-zero", ServiceID: "srv-zero", Kind: UsageKindInstanceSeconds, Tier: "starter", WindowStart: window},
+		{WorkspaceID: "tea-zero", ServiceID: "srv-zero", Kind: UsageKindEgressBytes, WindowStart: window},
+		{WorkspaceID: "tea-zero", ServiceID: "srv-zero", Kind: UsageKindBuildSeconds, WindowStart: window},
+	} {
+		if err := st.UpsertUsageHourly(ctx, row); err != nil {
+			t.Fatalf("upsert %s: %v", row.Kind, err)
+		}
+	}
+
+	rows, err := st.UsageMonthToDate(ctx, "tea-zero", window.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("UsageMonthToDate: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Kind != UsageKindInstanceSeconds || rows[0].Total != 0 {
+		t.Fatalf("zero summary rows: want only instance_seconds=0, got %+v", rows)
+	}
+}
+
 // TestMemStoreMonthBoundary verifies that rows at the last second of one month
 // and the first second of the next aggregate into their own months.
 func TestMemStoreMonthBoundary(t *testing.T) {

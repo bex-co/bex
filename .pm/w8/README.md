@@ -14,9 +14,10 @@
 - [x] **m8** — Service display name: rename without breaking the immutable resource id (8 tasks) ← from `/pm-brainstorm more` 2026-07-13 (`docs/ADR018-render-parity.md` "Change instance plan / type" row note — `name` PATCH field not editable). Originally proposed under `w2`, materialized under `w8` per user direction
 - [x] **m9** — Meter managed Postgres & Key Value storage separately from compute (9 tasks) ← promotes `002` 2026-07-13 (Render drift follow-up from m5, named directly in `docs/ADR018-render-parity.md`'s usage-metering row)
 - [ ] **m10** — Env vars: `generateValue` + cursor pagination (8 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (the ADR006/ADR018 env-vars row's two documented omissions; `w1/m35`'s generateValue prerequisite). Not usage work — placed under w8 for capacity per the m8 precedent
+- [x] **m11** — Reliable usage windows: durable zeroes + gap-free per-meter cursors (7 tasks) ← prerequisite split from `001` 2026-07-14; cap enforcement stays gated — done 2026-07-14
 
 ## Inbox
 
-- `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gated on m1 producing ~a month of real data
+- `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gate audited 2026-07-14: not ready; `m11` first makes collector coverage provable, then the note needs 28 days of real rows and an explicit decision on incomplete outbound-egress coverage
 
 > `002.md` promoted to **m9** 2026-07-13; note moved to `done/`.

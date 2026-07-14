@@ -50,6 +50,7 @@ type memUsageStore struct {
 	monthly  map[monthKey]monthlyVal
 	latestBy map[string]time.Time // resourceKind/serviceID/kind -> latest window_start
 	compacts []time.Time          // boundaries CompactUsage was called with
+	upsert   func(store.HourlyRow) error
 }
 
 type usageKey struct {
@@ -84,6 +85,11 @@ func (m *memUsageStore) ListApps(_ context.Context) ([]store.App, error) {
 }
 
 func (m *memUsageStore) UpsertUsageHourly(_ context.Context, row store.HourlyRow) error {
+	if m.upsert != nil {
+		if err := m.upsert(row); err != nil {
+			return err
+		}
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	row.ResourceKind = store.NormalizeResourceKind(row.ResourceKind)
@@ -130,6 +136,9 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 	}
 	out := make([]store.UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
+		if key.kind != store.UsageKindInstanceSeconds && total == 0 {
+			continue
+		}
 		out = append(out, store.UsageSummaryRow{
 			ServiceID:    key.svc,
 			Kind:         key.kind,
@@ -225,6 +234,160 @@ func TestProcessWindowUpsertIdempotent(t *testing.T) {
 
 	if rowsAfter != rowsBefore {
 		t.Errorf("idempotent upsert: row count changed from %d to %d on re-run", rowsBefore, rowsAfter)
+	}
+}
+
+func TestProcessWindowPersistsSuccessfulZeroAnchors(t *testing.T) {
+	app := store.App{ID: "srv-zero", TenantID: "tea-zero", Name: "quiet", Tier: "starter"}
+	st := newMemUsageStore(app)
+	prom := fakeProm(0)
+	defer prom.Close()
+
+	scheme := runtime.NewScheme()
+	_ = batchv1.AddToScheme(scheme)
+	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+	window := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
+
+	svc.processWindow(context.Background(), app, window)
+
+	for _, kind := range appMeterKinds {
+		tier := ""
+		if kind == store.UsageKindInstanceSeconds {
+			tier = app.Tier
+		}
+		key := usageKey{store.ResourceKindService, app.ID, kind, tier, window}
+		st.mu.Lock()
+		row, ok := st.rows[key]
+		st.mu.Unlock()
+		if !ok || row.Quantity != 0 {
+			t.Errorf("%s zero anchor: want present quantity=0, got %+v (present=%v)", kind, row, ok)
+		}
+	}
+
+	// Zero egress/build rows are collector coverage anchors, not new API
+	// entries. Preserve the existing summary behavior while instance_seconds
+	// keeps its zero row for suspended/tiered services.
+	rows, err := st.UsageMonthToDate(context.Background(), app.TenantID, window.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("UsageMonthToDate: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Kind != store.UsageKindInstanceSeconds || rows[0].Total != 0 {
+		t.Fatalf("zero summary rows: want only instance_seconds=0, got %+v", rows)
+	}
+}
+
+func TestProcessWindowUnavailableSourcesWriteNoFakeZero(t *testing.T) {
+	app := store.App{ID: "srv-fail", TenantID: "tea-fail", Name: "unavailable", Tier: "starter"}
+	st := newMemUsageStore(app)
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "temporary", http.StatusServiceUnavailable)
+	}))
+	defer prom.Close()
+
+	// A nil Kubernetes client is unavailable, not a successful empty Job list.
+	svc := NewService(&core.Base{}, st, prom.URL, prom.Client())
+	svc.processWindow(context.Background(), app, time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC))
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.rows) != 0 {
+		t.Fatalf("unavailable sources wrote fake zero rows: %+v", st.rows)
+	}
+}
+
+func TestAppMeterCatchUpRetriesFailedMeterWithoutBlockingHealthyMeters(t *testing.T) {
+	app := store.App{ID: "srv-retry", TenantID: "tea-retry", Name: "retry", Tier: "starter"}
+	st := newMemUsageStore(app)
+	prom := fakeProm(0)
+	defer prom.Close()
+
+	scheme := runtime.NewScheme()
+	_ = batchv1.AddToScheme(scheme)
+	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+
+	previous := time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC)
+	for _, kind := range appMeterKinds {
+		tier := ""
+		if kind == store.UsageKindInstanceSeconds {
+			tier = app.Tier
+		}
+		if err := st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+			WorkspaceID: app.TenantID, ServiceID: app.ID, ResourceKind: store.ResourceKindService,
+			Kind: kind, Tier: tier, WindowStart: previous,
+		}); err != nil {
+			t.Fatalf("seed %s: %v", kind, err)
+		}
+	}
+
+	var failMu sync.Mutex
+	failed := false
+	st.upsert = func(row store.HourlyRow) error {
+		failMu.Lock()
+		defer failMu.Unlock()
+		if !failed && row.Kind == store.UsageKindEgressBytes && row.WindowStart.Equal(previous.Add(time.Hour)) {
+			failed = true
+			return errors.New("temporary store failure")
+		}
+		return nil
+	}
+
+	// Egress fails at 09:00. Instance/build must still advance to 09:00.
+	svc.catchUpAppThrough(context.Background(), app, previous.Add(time.Hour))
+	for _, kind := range []string{store.UsageKindInstanceSeconds, store.UsageKindBuildSeconds} {
+		latest, err := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, kind)
+		if err != nil || !latest.Equal(previous.Add(time.Hour)) {
+			t.Errorf("healthy %s cursor: want 09:00, got %v (err=%v)", kind, latest, err)
+		}
+	}
+	egressLatest, _ := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, store.UsageKindEgressBytes)
+	if !egressLatest.Equal(previous) {
+		t.Fatalf("failed egress cursor advanced: want %v, got %v", previous, egressLatest)
+	}
+
+	// The next pass retries egress 09:00 before 10:00, while healthy meters add
+	// only their new 10:00 row. Idempotent keys leave a complete 3x3 grid.
+	svc.catchUpAppThrough(context.Background(), app, previous.Add(2*time.Hour))
+	for _, kind := range appMeterKinds {
+		latest, err := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, kind)
+		if err != nil || !latest.Equal(previous.Add(2*time.Hour)) {
+			t.Errorf("%s cursor after retry: want 10:00, got %v (err=%v)", kind, latest, err)
+		}
+	}
+	st.mu.Lock()
+	rowCount := len(st.rows)
+	st.mu.Unlock()
+	if rowCount != 9 {
+		t.Fatalf("rows after retry: want 3 meters x 3 windows = 9, got %d", rowCount)
+	}
+}
+
+func TestAppMeterCatchUpStartsAtAppCreationHour(t *testing.T) {
+	created := time.Date(2026, 7, 14, 9, 30, 0, 0, time.UTC)
+	app := store.App{
+		ID: "srv-new", TenantID: "tea-new", Name: "new-app", Tier: "starter", CreatedAt: created,
+	}
+	st := newMemUsageStore(app)
+	prom := fakeProm(0)
+	defer prom.Close()
+
+	scheme := runtime.NewScheme()
+	_ = batchv1.AddToScheme(scheme)
+	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+
+	svc.catchUpAppThrough(context.Background(), app, created.Truncate(time.Hour).Add(time.Hour))
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.rows) != 6 {
+		t.Fatalf("new App rows: want 3 meters x creation/current hours = 6, got %d", len(st.rows))
+	}
+	for key := range st.rows {
+		if key.windowStart.Before(created.Truncate(time.Hour)) {
+			t.Errorf("synthetic pre-creation row: %+v", key)
+		}
 	}
 }
 
@@ -577,7 +740,10 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 		Base: &core.Base{Client: cl, Namespace: "default"},
 	}
 
-	secs := svc.queryBuildSeconds(context.Background(), "myapp", window, end)
+	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", window, end)
+	if !ok {
+		t.Fatal("build_seconds: expected successful Job listing")
+	}
 	expected := int64(7 * 60) // 7 minutes
 	if secs != expected {
 		t.Errorf("build_seconds: expected %d, got %d", expected, secs)

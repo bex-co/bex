@@ -134,6 +134,7 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 			  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
 		) u
 		GROUP BY service_id, kind, tier, resource_kind
+		HAVING kind = 'instance_seconds' OR SUM(quantity) <> 0
 		ORDER BY service_id, kind, tier, resource_kind`,
 		workspaceID, monthStart, now)
 	if err != nil {

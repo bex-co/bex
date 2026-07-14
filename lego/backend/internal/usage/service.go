@@ -417,22 +417,9 @@ func (s *Service) catchUp(ctx context.Context) {
 		return
 	}
 	now := time.Now().UTC()
-	floor := now.Add(-catchupLimit).Truncate(time.Hour)
+	last := now.Truncate(time.Hour).Add(-time.Hour)
 	for _, app := range apps {
-		latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds)
-		if err != nil {
-			log.Printf("usage: catch-up: latest window for %s: %v", app.ID, err)
-			continue
-		}
-		start := latest.UTC().Truncate(time.Hour)
-		if start.IsZero() || start.Before(floor) {
-			start = floor
-		} else {
-			start = start.Add(time.Hour) // next unprocessed window
-		}
-		for w := start; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
-			s.processWindow(ctx, app, w)
-		}
+		s.catchUpAppThrough(ctx, app, last)
 	}
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
@@ -452,7 +439,7 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 		return
 	}
 	for _, app := range apps {
-		s.processWindow(ctx, app, window)
+		s.catchUpAppThrough(ctx, app, window)
 	}
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
@@ -465,68 +452,105 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 		window.Format(time.RFC3339), len(apps), len(datastores))
 }
 
+var appMeterKinds = [...]string{
+	store.UsageKindInstanceSeconds,
+	store.UsageKindEgressBytes,
+	store.UsageKindBuildSeconds,
+}
+
 // processWindow measures one (app, window) triplet and upserts all three kinds.
-// The three Prometheus/k8s queries are independent and run concurrently.
+// It is kept as the direct one-window seam used by acceptance tests. The live
+// loop calls catchUpAppThrough so each meter owns an independent contiguous
+// cursor. A failure in one source never holds the other two meters back.
 func (s *Service) processWindow(ctx context.Context, app store.App, window time.Time) {
-	end := window.Add(time.Hour)
-
-	var (
-		instanceSecs, egressBytes, buildSecs int64
-		wg                                   sync.WaitGroup
-	)
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
-		instanceSecs = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end)
-	}()
-	go func() { defer wg.Done(); egressBytes = s.queryEgressBytes(ctx, app.Name, window, end) }()
-	go func() { defer wg.Done(); buildSecs = s.queryBuildSeconds(ctx, app.Name, window, end) }()
+	var wg sync.WaitGroup
+	for _, kind := range appMeterKinds {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.processAppMeterWindow(ctx, app, kind, window)
+		}()
+	}
 	wg.Wait()
+}
 
-	// instance_seconds: upsert even on zero when the app has a billing tier so
-	// the month-to-date query has an anchor for tiered apps that were suspended
-	// (and thus produced no Prometheus signal) for the entire window.
-	if instanceSecs > 0 || app.Tier != "" {
-		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID:  app.TenantID,
-			ServiceID:    app.ID,
-			ResourceKind: store.ResourceKindService,
-			Kind:         store.UsageKindInstanceSeconds,
-			Tier:         app.Tier,
-			WindowStart:  window,
-			Quantity:     instanceSecs,
-		}); err != nil {
-			log.Printf("usage: upsert instance_seconds %s: %v", app.ID, err)
+// catchUpAppThrough advances each App meter independently through last. Each
+// meter processes oldest-first and stops at its first unavailable source or
+// failed store write, preserving a contiguous cursor without blocking healthy
+// meters. The next hourly pass retries the failed window (restart not needed).
+func (s *Service) catchUpAppThrough(ctx context.Context, app store.App, last time.Time) {
+	var wg sync.WaitGroup
+	for _, kind := range appMeterKinds {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.catchUpAppMeterThrough(ctx, app, kind, last)
+		}()
+	}
+	wg.Wait()
+}
+
+func (s *Service) catchUpAppMeterThrough(ctx context.Context, app store.App, kind string, last time.Time) {
+	latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID, kind)
+	if err != nil {
+		log.Printf("usage: catch-up: latest %s window for %s: %v", kind, app.ID, err)
+		return
+	}
+	floor := last.Add(time.Hour - catchupLimit)
+	if created := app.CreatedAt.UTC().Truncate(time.Hour); !created.IsZero() && created.After(floor) {
+		floor = created
+	}
+	start := latest.UTC().Truncate(time.Hour)
+	if start.IsZero() || start.Before(floor) {
+		start = floor
+	} else {
+		start = start.Add(time.Hour)
+	}
+	for window := start; !window.After(last); window = window.Add(time.Hour) {
+		if !s.processAppMeterWindow(ctx, app, kind, window) {
+			return
 		}
 	}
+}
 
-	if egressBytes > 0 {
-		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID:  app.TenantID,
-			ServiceID:    app.ID,
-			ResourceKind: store.ResourceKindService,
-			Kind:         store.UsageKindEgressBytes,
-			Tier:         "",
-			WindowStart:  window,
-			Quantity:     egressBytes,
-		}); err != nil {
-			log.Printf("usage: upsert egress_bytes %s: %v", app.ID, err)
-		}
+// processAppMeterWindow persists a successful measurement even when it is
+// zero. Zero is real coverage evidence; source unavailability is represented
+// by no row so the per-meter cursor retries the window later.
+func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind string, window time.Time) bool {
+	end := window.Add(time.Hour)
+	var quantity int64
+	var ok bool
+	switch kind {
+	case store.UsageKindInstanceSeconds:
+		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end)
+	case store.UsageKindEgressBytes:
+		quantity, ok = s.queryEgressBytes(ctx, app.Name, window, end)
+	case store.UsageKindBuildSeconds:
+		quantity, ok = s.queryBuildSeconds(ctx, app.Name, window, end)
+	default:
+		log.Printf("usage: unknown App meter %q for %s", kind, app.ID)
+		return false
 	}
-
-	if buildSecs > 0 {
-		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID:  app.TenantID,
-			ServiceID:    app.ID,
-			ResourceKind: store.ResourceKindService,
-			Kind:         store.UsageKindBuildSeconds,
-			Tier:         "",
-			WindowStart:  window,
-			Quantity:     buildSecs,
-		}); err != nil {
-			log.Printf("usage: upsert build_seconds %s: %v", app.ID, err)
-		}
+	if !ok {
+		return false
 	}
+	tier := ""
+	if kind == store.UsageKindInstanceSeconds {
+		tier = app.Tier
+	}
+	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+		WorkspaceID:  app.TenantID,
+		ServiceID:    app.ID,
+		ResourceKind: store.ResourceKindService,
+		Kind:         kind,
+		Tier:         tier,
+		WindowStart:  window,
+		Quantity:     quantity,
+	}); err != nil {
+		log.Printf("usage: upsert %s %s: %v", kind, app.ID, err)
+		return false
+	}
+	return true
 }
 
 // --- t002: Prometheus rollup queries ---
@@ -537,7 +561,7 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 // metrics feature's instance-count query). The result is count-of-present-pods
 // × window-seconds, truncated to an integer. Used for App (ReplicaSet) pods
 // whose names follow the two-segment pattern <appName>-<hash>-<hash5>.
-func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) int64 {
+func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) (int64, bool) {
 	matchers := fmt.Sprintf(
 		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
 		namespace, promEscape(appName))
@@ -552,7 +576,8 @@ func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namesp
 	matchers := fmt.Sprintf(
 		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
 		namespace, promEscape(name))
-	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
+	value, _ := s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
+	return value
 }
 
 const bytesPerDecimalGB = 1_000_000_000
@@ -590,10 +615,10 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 
 // queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body.
 // It counts pods matching matchers, multiplies by windowSecs, and returns
-// pod-count × window-seconds. Returns 0 when PromBase is not set.
-func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers string, start, end time.Time, logName string) int64 {
+// pod-count × window-seconds. ok is false when Prometheus is unavailable.
+func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers string, start, end time.Time, logName string) (int64, bool) {
 	if s.PromBase == "" {
-		return 0
+		return 0, false
 	}
 	// Count the average number of running pods over the window, then multiply
 	// by 3600 to get instance-seconds. Using avg_over_time with a range
@@ -605,18 +630,18 @@ func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers st
 	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
 		log.Printf("usage: instance_seconds for %s: %v", logName, err)
-		return 0
+		return 0, false
 	}
-	return int64(math.Round(v * float64(windowSecs)))
+	return int64(math.Round(v * float64(windowSecs))), true
 }
 
 // queryEgressBytes returns total outbound bytes for the app in [start, end)
 // via Traefik's increase() instant query at the window end, mirroring the
 // monthToDateBandwidth source in internal/metrics but window-bounded and
 // returning bytes (not MB).
-func (s *Service) queryEgressBytes(ctx context.Context, appName string, start, end time.Time) int64 {
+func (s *Service) queryEgressBytes(ctx context.Context, appName string, start, end time.Time) (int64, bool) {
 	if s.PromBase == "" {
-		return 0
+		return 0, false
 	}
 	elapsed := end.Sub(start)
 	q := fmt.Sprintf(
@@ -625,9 +650,9 @@ func (s *Service) queryEgressBytes(ctx context.Context, appName string, start, e
 	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
 		log.Printf("usage: egress_bytes for %s: %v", appName, err)
-		return 0
+		return 0, false
 	}
-	return int64(math.Round(v))
+	return int64(math.Round(v)), true
 }
 
 // --- t004: build-Job duration metering ---
@@ -638,9 +663,9 @@ const labelBuild = "app.bex.co/build"
 // queryBuildSeconds sums the durations of completed build Jobs whose
 // completionTime falls in [window, end). It lists Jobs in the service
 // namespace by the app-name label. The Kubernetes client comes from core.Base.
-func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window, end time.Time) int64 {
+func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window, end time.Time) (int64, bool) {
 	if s.Client == nil {
-		return 0
+		return 0, false
 	}
 	var jobs batchv1.JobList
 	if err := s.Client.List(ctx, &jobs,
@@ -648,7 +673,7 @@ func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window,
 		client.MatchingLabels{labelBuild: appName},
 	); err != nil {
 		log.Printf("usage: build_seconds list jobs for %s: %v", appName, err)
-		return 0
+		return 0, false
 	}
 	var total int64
 	for _, job := range jobs.Items {
@@ -668,7 +693,7 @@ func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window,
 			total += int64(dur / time.Second)
 		}
 	}
-	return total
+	return total, true
 }
 
 // --- Prometheus instant query helper (shared by t002 queries) ---

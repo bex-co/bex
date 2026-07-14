@@ -466,6 +466,9 @@ func (m *memStore) UsageMonthToDate(_ context.Context, workspaceID string, now t
 	}
 	out := make([]UsageSummaryRow, 0, len(totals))
 	for key, total := range totals {
+		if key.kind != UsageKindInstanceSeconds && total == 0 {
+			continue
+		}
 		out = append(out, UsageSummaryRow{
 			ServiceID:    key.svc,
 			Kind:         key.kind,

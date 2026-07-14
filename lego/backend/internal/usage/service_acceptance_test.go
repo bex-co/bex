@@ -258,6 +258,43 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	fmt.Printf("  catch-up no-op:   confirmed (no spurious rows)\n")
 }
 
+// TestAcceptance_ZeroCoverageAnchorsStayOutOfSummary proves the PostgreSQL
+// read path keeps m11's raw zero egress/build anchors available for coverage
+// audits without adding new all-zero groups to tenant-facing usage summaries.
+func TestAcceptance_ZeroCoverageAnchorsStayOutOfSummary(t *testing.T) {
+	ctx := context.Background()
+	pool, st := setupAcceptance(t, "tea-acc-zero", "srv-acc-zero", "quiet-app")
+	window := time.Now().UTC().Truncate(time.Hour).Add(-time.Hour)
+
+	for _, row := range []store.HourlyRow{
+		{WorkspaceID: "tea-acc-zero", ServiceID: "srv-acc-zero", Kind: store.UsageKindInstanceSeconds, Tier: "starter", WindowStart: window},
+		{WorkspaceID: "tea-acc-zero", ServiceID: "srv-acc-zero", Kind: store.UsageKindEgressBytes, WindowStart: window},
+		{WorkspaceID: "tea-acc-zero", ServiceID: "srv-acc-zero", Kind: store.UsageKindBuildSeconds, WindowStart: window},
+	} {
+		if err := st.UpsertUsageHourly(ctx, row); err != nil {
+			t.Fatalf("upsert %s zero anchor: %v", row.Kind, err)
+		}
+	}
+
+	var rawRows int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_hourly WHERE workspace_id = 'tea-acc-zero'`,
+	).Scan(&rawRows); err != nil {
+		t.Fatalf("count raw zero anchors: %v", err)
+	}
+	if rawRows != 3 {
+		t.Fatalf("raw zero anchors: want 3, got %d", rawRows)
+	}
+
+	summary, err := st.UsageMonthToDate(ctx, "tea-acc-zero", window.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("UsageMonthToDate: %v", err)
+	}
+	if len(summary) != 1 || summary[0].Kind != store.UsageKindInstanceSeconds || summary[0].Total != 0 {
+		t.Fatalf("zero summary rows: want only instance_seconds=0, got %+v", summary)
+	}
+}
+
 // TestAcceptance_DatastoreUsageIdentity proves the managed-datastore path
 // against the real schema. A Database and KeyValue may share a Kubernetes
 // name, meter, plan, and hour; resource_kind must keep both rows and summaries
