@@ -12,6 +12,7 @@
 !**/go.sum
 
 # Re-include embedded assets the build needs (bex-api control-plane migrations,
-# the instance-tier catalog)
+# the instance-tier catalog, the usage price sheet)
 !**/*.sql
 !types/tiers/tiers.yaml
+!backend/internal/pricing/pricing.yaml
