@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -153,7 +153,9 @@ describe("ServiceSettingsPage", () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
-    expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Custom Domains", { ignore: "a" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
     expect(screen.getByText("Instance count")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
@@ -175,7 +177,9 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { ignore: "a" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("*/15 * * * *")).toBeInTheDocument();
     expect(screen.getByText("npm run send-nightly-report")).toBeInTheDocument();
     expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
@@ -195,12 +199,51 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     // Both the cron Deploy section (schedule/command) and Build & Deploy render.
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
-    expect(screen.getByText("Build & Deploy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { ignore: "a" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Build & Deploy", { ignore: "a" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
     expect(
       screen.getByText("https://github.com/acme/reports"),
     ).toBeInTheDocument();
+  });
+
+  it("quick-nav lists only the sections actually rendered, each linking to a real anchor", async () => {
+    serverState.service = svc({
+      type: "web_service",
+      repo: "https://github.com/acme/web",
+      branch: "main",
+    });
+    renderSettings();
+
+    const nav = await screen.findByRole("navigation", {
+      name: "Settings sections",
+    });
+    expect(
+      within(nav).getByRole("link", { name: "General" }),
+    ).toHaveAttribute("href", "#general");
+    expect(within(nav).getByRole("link", { name: "Build & Deploy" })).toHaveAttribute(
+      "href",
+      "#build",
+    );
+    expect(
+      within(nav).getByRole("link", { name: "Health Checks" }),
+    ).toHaveAttribute("href", "#health-checks");
+    expect(
+      within(nav).getByRole("link", { name: "Custom Domains" }),
+    ).toHaveAttribute("href", "#custom-domains");
+    expect(within(nav).getByRole("link", { name: "Danger Zone" })).toHaveAttribute(
+      "href",
+      "#delete",
+    );
+    // No PR Previews/Log Stream/Maintenance Mode/etc. — bex has none of those,
+    // never link to a section that doesn't exist.
+    expect(
+      within(nav).queryByRole("link", { name: "PR Previews" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides Build & Deploy for an image-backed cron job (nothing to build)", async () => {
@@ -213,7 +256,9 @@ describe("ServiceSettingsPage", () => {
     });
     renderSettings();
 
-    expect(await screen.findByText("Deploy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Deploy", { ignore: "a" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Build & Deploy")).not.toBeInTheDocument();
     expect(screen.queryByText("Auto-Deploy")).not.toBeInTheDocument();
   });

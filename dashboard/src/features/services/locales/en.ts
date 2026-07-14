@@ -652,6 +652,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Configure this service's instance size and other settings.",
     description: "Settings tab card description",
   },
+  "services.settingsNavLabel": {
+    message: "Settings sections",
+    description: "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
+  },
+  "services.settingsNavGeneral": {
+    message: "General",
+    description: "Settings tab quick-nav item for the top instance/scaling card",
+  },
   "services.settingsInstanceType": {
     message: "Instance Type",
     description: "Settings tab row label for the App's current plan/tier",

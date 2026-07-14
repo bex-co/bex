@@ -644,6 +644,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "配置该服务的实例规格及其他设置。",
     description: "Settings tab card description",
   },
+  "services.settingsNavLabel": {
+    message: "设置分区",
+    description: "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
+  },
+  "services.settingsNavGeneral": {
+    message: "常规",
+    description: "Settings tab quick-nav item for the top instance/scaling card",
+  },
   "services.settingsInstanceType": {
     message: "实例类型",
     description: "Settings tab row label for the App's current plan/tier",
