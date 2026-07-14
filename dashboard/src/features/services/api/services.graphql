@@ -44,13 +44,8 @@ mutation ResumeService($id: String!) {
   }
 }
 
-mutation RestartServer($id: String!) {
-  restartServer(id: $id) {
-    id
-    suspended
-    phase
-  }
-}
+# restartServer removed (w2/m30): restart now routes through triggerDeploy
+# so every restart opens a deploy-history row in the Events tab.
 
 # deleteService returns a success boolean — there's no service left to select
 # (backend/internal/apps/graphql.go, following the deleteDatabase shape). The

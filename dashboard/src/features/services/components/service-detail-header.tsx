@@ -75,7 +75,7 @@ export function ServiceDetailHeader({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <ManualDeployButton service={service} pending={pending} onRun={onRun} />
+          <ManualDeployButton service={service} pending={pending !== null} />
           <ServiceRowActions
             service={service}
             pending={pending}

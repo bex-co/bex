@@ -178,10 +178,10 @@ describe("ServiceDetailHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("restarts through the Manual Deploy dropdown, not a duplicate control in the \"•••\" menu", async () => {
-    const onRun = vi.fn();
+  it("restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30), not a duplicate control in the \"•••\" menu", async () => {
+    triggerDeploy.mockClear();
     const user = userEvent.setup();
-    renderHeader(svc(), { onRun });
+    renderHeader(svc());
 
     await user.click(
       await screen.findByRole("button", { name: "Manual Deploy" }),
@@ -191,7 +191,9 @@ describe("ServiceDetailHeader", () => {
     );
     await user.click(screen.getByRole("button", { name: "Proceed" }));
 
-    expect(onRun).toHaveBeenCalledWith("restart", svc());
+    // Restart now routes through the same triggerDeploy mutation as Deploy,
+    // so every restart opens a deploy-history row (not a separate onRun path).
+    expect(triggerDeploy).toHaveBeenCalledWith("app");
 
     // the "•••" menu keeps Suspend but no longer offers Restart — it's owned
     // by Manual Deploy on this page (Render's own grouping)

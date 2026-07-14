@@ -20,41 +20,38 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
-import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import type { ServiceView } from "@/features/services/types";
 
 export interface ManualDeployButtonProps {
   service: ServiceView;
-  /** The lifecycle action in flight for this service, or null — shared with `ServiceRowActions`. */
-  pending: LifecycleAction | null;
-  onRun: (action: LifecycleAction, service: ServiceView) => void;
+  /** Whether any action is already in flight for this service. */
+  pending: boolean;
 }
 
 type ConfirmAction = "deploy" | "restart";
 
 /**
- * Render's "Manual Deploy" header dropdown (captured live from
- * dashboard.render.com/web/.../ — "Deploy latest commit" / "Deploy a specific
- * commit" / "Clear build cache & deploy", a divider, then "Restart service").
- * bex only ever redeploys a service's current source as a whole — there's no
- * build cache to selectively clear and no per-commit picker (`deploys.Trigger`
- * always rebuilds from the configured branch's HEAD, confirmed in
- * `lego/backend/internal/deploys/rest.go`'s own comment: a request `clearCache`
- * flag is accepted-and-ignored) — so the menu keeps only the two items bex can
- * honestly perform, each labeled and confirmed for what it actually does
- * instead of one generic "Trigger a new deploy?" click. "Restart service"
- * reuses the exact `onRun`/`pending` lifecycle plumbing `ServiceRowActions`
- * uses elsewhere — the header hides restart from its own "•••" menu
- * (`ServiceRowActions`'s `hideRestart`) so the same verb doesn't appear twice.
+ * Render's "Manual Deploy" header dropdown ("Deploy latest commit" /
+ * "Deploy latest image", a divider, then "Restart service").
+ *
+ * Both "Deploy" and "Restart service" route through the same `triggerDeploy`
+ * mutation (w2/m30 consolidation) so every rollout — including a restart —
+ * opens a deploy-history row in the Events tab.
+ *
+ * For repo-backed services "Restart service" triggers a rebuild from Branch
+ * HEAD (bex has no way to restart pods without a new build — any spec change
+ * increments the generation and unconditionally re-enters the build path).
+ * For image-backed services it re-pulls and restarts the containers in place.
+ *
+ * "Deploy a specific commit" and "Clear build cache & deploy" from Render's
+ * dropdown are omitted: bex's builds are always cache-free (ephemeral BuildKit
+ * Jobs), and per-commit targeting via commitId is an API-only feature for now.
  */
-export function ManualDeployButton({
-  service,
-  pending,
-  onRun,
-}: ManualDeployButtonProps) {
+export function ManualDeployButton({ service, pending }: ManualDeployButtonProps) {
   const { t } = useTranslations();
   const { deploying, trigger } = useTriggerDeploy();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
-  const busy = deploying || pending !== null;
+  const busy = deploying || pending;
   const repoBacked = !!service.repo;
 
   const deployLabel = repoBacked
@@ -81,11 +78,10 @@ export function ManualDeployButton({
         : t("services.deployConfirmImageBody", { name: service.name });
 
   async function handleConfirm() {
-    if (confirm === "restart") {
-      onRun("restart", service);
-      setConfirm(null);
-      return;
-    }
+    // Both "Deploy" and "Restart" go through triggerDeploy — the same mutation
+    // — so both open a deploy-history row (w2/m30). Restart passes no extra
+    // options: for image-backed services this re-pulls and restarts; for
+    // repo-backed services this rebuilds from Branch HEAD.
     await trigger(service.id);
     setConfirm(null);
   }
@@ -128,8 +124,6 @@ export function ManualDeployButton({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
-                // keep the dialog up until the mutation settles, so the button's
-                // disabled state is the only "in flight" signal the user needs
                 e.preventDefault();
                 void handleConfirm();
               }}

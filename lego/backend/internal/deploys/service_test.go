@@ -22,7 +22,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -213,7 +215,7 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 		t.Fatalf("List = %+v (err %v)", list, err)
 	}
 
-	triggered, err := svc.Trigger(context.Background(), "web")
+	triggered, err := svc.Trigger(context.Background(), "web", TriggerParams{})
 	if err != nil {
 		t.Fatalf("Trigger: %v", err)
 	}
@@ -256,7 +258,7 @@ func TestTriggerRefusesSuspendedService(t *testing.T) {
 	app.Spec.Suspended = true
 	svc, _ := newService(ds, app)
 
-	if _, err := svc.Trigger(context.Background(), "web"); !errors.Is(err, core.ErrConflict) {
+	if _, err := svc.Trigger(context.Background(), "web", TriggerParams{}); !errors.Is(err, core.ErrConflict) {
 		t.Errorf("suspended trigger: want core.ErrConflict, got %v", err)
 	}
 }
@@ -265,8 +267,102 @@ func TestTriggerRequiresStoreManagedApp(t *testing.T) {
 	ds := newFakeStore()
 	svc, _ := newService(ds, sampleApp("manual", ""))
 
-	if _, err := svc.Trigger(context.Background(), "manual"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.Trigger(context.Background(), "manual", TriggerParams{}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("hand-applied trigger: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+// --- commitId checkout override (t009) ----------------------------------------
+
+func TestTriggerSetsCommitIDInSpec(t *testing.T) {
+	ds := newFakeStore()
+	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+
+	_, err := svc.Trigger(context.Background(), "web", TriggerParams{CommitID: "abc123"})
+	if err != nil {
+		t.Fatalf("Trigger with commitId: %v", err)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.BuildCommit != "abc123" {
+		t.Errorf("spec.buildCommit = %q, want %q", app.Spec.BuildCommit, "abc123")
+	}
+}
+
+func TestTriggerResetsCommitIDWhenOmitted(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("web", "srv-1")
+	app.Spec.BuildCommit = "stale-commit" // was set by a previous pinned deploy
+	svc, cl := newService(ds, app)
+
+	_, err := svc.Trigger(context.Background(), "web", TriggerParams{})
+	if err != nil {
+		t.Fatalf("Trigger without commitId: %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if got.Spec.BuildCommit != "" {
+		t.Errorf("spec.buildCommit should be reset to empty on a non-commitId trigger; got %q", got.Spec.BuildCommit)
+	}
+}
+
+func TestTriggerRejectsCommitIDForCronJob(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("cron", "srv-2")
+	app.Spec.Type = appv1alpha1.TypeCronJob
+	svc, _ := newService(ds, app)
+
+	_, err := svc.Trigger(context.Background(), "cron", TriggerParams{CommitID: "abc123"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("commitId for cron_job: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+// --- deployMode reject/accept paths (t009) ------------------------------------
+
+func TestTriggerDeployOnlyRejectsRepoBacked(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-3")
+	app.Spec.Image = "" // repo-backed: no prebuilt image
+	app.Spec.Repo = "https://github.com/bex-co/hello.git"
+	svc, _ := newService(ds, app)
+
+	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{DeployMode: "deploy_only"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("deploy_only for repo-backed: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+func TestTriggerDeployOnlyAcceptsImageBacked(t *testing.T) {
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("svc", "srv-4"))
+	// sampleApp uses Image: "svc:v1" (image-backed), so deploy_only is fine.
+
+	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{DeployMode: "deploy_only"})
+	if err != nil {
+		t.Errorf("deploy_only for image-backed: want nil, got %v", err)
+	}
+}
+
+// --- Restart opens a deploy row (t009) -----------------------------------------
+
+func TestRestartOpensDeploy(t *testing.T) {
+	ds := newFakeStore()
+	svc, cl := newService(ds, sampleApp("web", "srv-5"))
+
+	d, err := svc.Trigger(context.Background(), "web", TriggerParams{})
+	if err != nil {
+		t.Fatalf("Trigger (restart): %v", err)
+	}
+	if d.Trigger != "api" || d.Status != store.DeployUpdateInProgress {
+		t.Errorf("Restart deploy = %+v, want trigger=api, status=update_in_progress", d)
+	}
+	// RestartedAt must be bumped so the operator rolls the pods.
+	app := getApp(t, cl, "web")
+	if app.Spec.RestartedAt == "" {
+		t.Error("Restart must bump spec.restartedAt")
+	}
+	// BuildCommit must remain empty (Restart is not a commitId-pinned deploy).
+	if app.Spec.BuildCommit != "" {
+		t.Errorf("Restart must not set spec.buildCommit; got %q", app.Spec.BuildCommit)
 	}
 }
 
@@ -282,7 +378,7 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 	if _, err := svc.Get(ctx, "web", "dep-1"); !errors.Is(err, core.ErrDeploysUnavailable) {
 		t.Errorf("Get: want ErrDeploysUnavailable, got %v", err)
 	}
-	if _, err := svc.Trigger(ctx, "web"); !errors.Is(err, core.ErrDeploysUnavailable) {
+	if _, err := svc.Trigger(ctx, "web", TriggerParams{}); !errors.Is(err, core.ErrDeploysUnavailable) {
 		t.Errorf("Trigger: want ErrDeploysUnavailable, got %v", err)
 	}
 }
@@ -319,6 +415,62 @@ func TestRESTListGetTrigger(t *testing.T) {
 	rec = do("GET", "/v1/services/web/deploys/dep-nope")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("get unknown: code=%d, want 404", rec.Code)
+	}
+}
+
+func TestRESTTriggerWithCommitID(t *testing.T) {
+	ds := newFakeStore()
+	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	req := httptest.NewRequest("POST", "/v1/services/web/deploys", strings.NewReader(`{"commitId":"deadbeef"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("trigger with commitId: code=%d body=%s", rec.Code, rec.Body)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.BuildCommit != "deadbeef" {
+		t.Errorf("spec.buildCommit = %q, want %q", app.Spec.BuildCommit, "deadbeef")
+	}
+}
+
+func TestRESTTriggerClearCacheRejected(t *testing.T) {
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	req := httptest.NewRequest("POST", "/v1/services/web/deploys", strings.NewReader(`{"clearCache":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("clearCache=true: want 400, got %d; body=%s", rec.Code, rec.Body)
+	}
+}
+
+func TestRESTTriggerDeployOnlyRejectsRepoBacked(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-2")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://github.com/bex-co/hello.git"
+	svc, _ := newService(ds, app)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"deployMode":"deploy_only"}`
+	req := httptest.NewRequest("POST", "/v1/services/svc/deploys", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("deploy_only for repo-backed: want 400, got %d; body=%s", rec.Code, rec.Body)
 	}
 }
 

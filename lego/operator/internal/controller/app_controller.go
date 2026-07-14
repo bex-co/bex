@@ -198,9 +198,16 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		if app.Spec.Repo == "" {
 			return r.fail(ctx, &app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required"))
 		}
-		branch := app.Spec.Branch
-		if branch == "" {
-			branch = "main"
+		ref := app.Spec.Branch
+		if ref == "" {
+			ref = "main"
+		}
+		// A commitId override from the deploy API (spec.BuildCommit) takes
+		// precedence over the tracked branch for this single build. The next
+		// trigger without a commitId resets BuildCommit to "" via the API patch,
+		// so Branch HEAD is the default for every subsequent deploy.
+		if app.Spec.BuildCommit != "" {
+			ref = app.Spec.BuildCommit
 		}
 		// Tag by generation: a spec/revision bump (including a webhook redeploy that
 		// stamps spec.restartedAt) yields a new tag, so the built image is fresh and
@@ -252,7 +259,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			}
 		}
 		res, err := build.Build(ctx, build.Options{
-			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir,
+			Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
 			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name,
 			Registry: r.Registry, KpackRegistry: r.KpackRegistry,
 			Builder:          builder,

@@ -252,16 +252,38 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 	return view(d), nil
 }
 
+// TriggerParams carries the optional body fields of Render's CreateDeploy
+// request (commitId, clearCache, deployMode) that bex can honestly honor.
+// Zero value = default behavior (Branch HEAD, full build-and-deploy).
+type TriggerParams struct {
+	// CommitID pins the build to a specific Git ref instead of Branch HEAD.
+	// Rejected for cron_job services (they run on a schedule, not per-commit).
+	// Only meaningful for repo-backed services; silently ignored for image-backed.
+	CommitID string
+	// DeployMode selects the deploy strategy. "deploy_only" skips the build
+	// step — valid for image-backed services (nothing to build anyway), but
+	// returns ErrBadRequest for repo-backed ones (bex has no cached build
+	// artifact; any spec change unconditionally rebuilds from source). Empty
+	// or "build_and_deploy" is the normal full-rebuild path.
+	DeployMode string
+}
+
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
-// spec.restartedAt the same no-row way Restart does (apps.Service.Restart) —
-// a re-pull/restart now — then opens a dep-… row (trigger "api") stamped with
-// the App's now-bumped generation (patch before create: a spec write always
-// increments metadata.generation, and Cancel later needs the exact value
-// this deploy runs under, not a value some other verb could move past in the
-// meantime). Build-from-git activates when w1/m5 lands (out of scope here —
-// the row still opens, the CR just has nothing new to build). Suspended
-// services refuse the trigger: there is nothing to roll.
-func (s *Service) Trigger(ctx context.Context, service string) (DeployView, error) {
+// spec.RestartedAt to create a new generation — triggering the operator to
+// rebuild/restart — then opens a dep-… row (trigger "api") stamped with the
+// App's bumped generation so Cancel can later find the right build Job.
+//
+// p.CommitID, if non-empty, sets spec.BuildCommit so the operator checks out
+// that ref instead of Branch HEAD; the field is explicitly reset to "" on
+// every trigger without a commitId so Branch HEAD is always the default.
+//
+// p.DeployMode "deploy_only" is an explicit request NOT to rebuild:
+//   - repo-backed service: rejected with ErrBadRequest (bex rebuilds on every
+//     generation bump; there is no cached artifact to skip the build with).
+//   - image-backed service: accepted (nothing to build regardless of mode).
+//
+// Suspended services refuse the trigger: there is nothing to roll.
+func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
 		return DeployView{}, err
@@ -276,8 +298,23 @@ func (s *Service) Trigger(ctx context.Context, service string) (DeployView, erro
 	if appID == "" {
 		return DeployView{}, fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
 	}
+	// deploy_only for a repo-backed service is rejected: bex has no cached build
+	// artifact — every generation bump unconditionally rebuilds from source.
+	if p.DeployMode == "deploy_only" && a.Spec.Repo != "" {
+		return DeployView{}, fmt.Errorf("%w: deployMode \"deploy_only\" is not supported for repo-backed services — "+
+			"bex has no cached build artifact; use \"build_and_deploy\" (or omit deployMode) to rebuild from source", core.ErrBadRequest)
+	}
+	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
+	// per-commit. Reject early rather than silently ignoring the field.
+	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
+		return DeployView{}, fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
+	}
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+		// Always write BuildCommit — set to the requested ref, or "" to reset to
+		// Branch HEAD. This ensures a trigger without commitId never inherits the
+		// commit a previous trigger pinned.
+		a.Spec.BuildCommit = p.CommitID
 	}); err != nil {
 		return DeployView{}, err
 	}

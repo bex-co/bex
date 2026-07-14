@@ -26,8 +26,8 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
   }
 }
 
-mutation TriggerDeploy($serviceId: String!) {
-  triggerDeploy(serviceId: $serviceId) {
+mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String) {
+  triggerDeploy(serviceId: $serviceId, commitId: $commitId, deployMode: $deployMode) {
     id
     status
     createdAt

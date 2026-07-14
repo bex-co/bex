@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   SuspendServiceDocument,
   ResumeServiceDocument,
-  RestartServerDocument,
+  TriggerDeployDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { sleep } from "@/common/lib/utils/time";
@@ -50,10 +50,15 @@ const SUCCESS_KEY: Record<LifecycleAction, string> = {
 
 /**
  * Wires the services list's row actions to bex-api's Render-named mutations
- * (`suspendService`/`resumeService`/`restartServer`). The patch is accepted
- * synchronously but the operator reconciles asynchronously, so after each verb
- * this polls the list until the row's observed state converges — the badge
- * reflects the operator, not an optimistic guess.
+ * (`suspendService`/`resumeService`/`triggerDeploy` for restart). The patch is
+ * accepted synchronously but the operator reconciles asynchronously, so after
+ * each verb this polls the list until the row's observed state converges —
+ * the badge reflects the operator, not an optimistic guess.
+ *
+ * Restart is routed through `triggerDeploy` (w2/m30 consolidation) so it
+ * always opens a deploy-history row in the Events tab, same as every other
+ * rollout. For repo-backed services this triggers a rebuild from Branch HEAD;
+ * for image-backed services it re-pulls and restarts the containers.
  */
 export function useServiceLifecycle(
   opts: UseServiceLifecycleOptions,
@@ -64,11 +69,13 @@ export function useServiceLifecycle(
 
   const [suspend] = useMutation(SuspendServiceDocument);
   const [resume] = useMutation(ResumeServiceDocument);
-  const [restart] = useMutation(RestartServerDocument);
+  const [triggerDeploy] = useMutation(TriggerDeployDocument, {
+    refetchQueries: ["ServiceEvents"],
+  });
   const mutate: Record<LifecycleAction, (id: string) => Promise<unknown>> = {
     suspend: (id) => suspend({ variables: { id } }),
     resume: (id) => resume({ variables: { id } }),
-    restart: (id) => restart({ variables: { id } }),
+    restart: (id) => triggerDeploy({ variables: { serviceId: id } }),
   };
 
   const pollUntilConverged = useCallback(

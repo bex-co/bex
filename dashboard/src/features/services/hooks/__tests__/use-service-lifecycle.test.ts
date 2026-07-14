@@ -11,16 +11,21 @@ let rejectNext = false;
 vi.mock("@apollo/client/react", () => ({
   // Each useMutation(doc) returns a fn tagged with the operation name so the
   // test can assert which Render-named mutation fired.
+  // `id` field in mutateCalls holds whichever of variables.id or
+  // variables.serviceId is present (suspend/resume use `id`; triggerDeploy
+  // uses `serviceId` after the w2/m30 restart consolidation).
   useMutation: (doc: { definitions: { name: { value: string } }[] }) => {
     const op = doc.definitions[0].name.value;
-    const fn = vi.fn(async ({ variables }: { variables: { id: string } }) => {
-      mutateCalls.push({ op, id: variables.id });
-      if (rejectNext) {
-        rejectNext = false;
-        throw new Error("boom");
-      }
-      return { data: {} };
-    });
+    const fn = vi.fn(
+      async ({ variables }: { variables: { id?: string; serviceId?: string } }) => {
+        mutateCalls.push({ op, id: variables.id ?? variables.serviceId ?? "" });
+        if (rejectNext) {
+          rejectNext = false;
+          throw new Error("boom");
+        }
+        return { data: {} };
+      },
+    );
     return [fn, {}];
   },
 }));
@@ -79,7 +84,7 @@ describe("useServiceLifecycle", () => {
     expect(mutateCalls.map((c) => c.op)).toEqual([
       "SuspendService",
       "ResumeService",
-      "RestartServer",
+      "TriggerDeploy", // restart consolidated into triggerDeploy (w2/m30)
     ]);
     expect(mutateCalls.every((c) => c.id === "app")).toBe(true);
   });

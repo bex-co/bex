@@ -118,6 +118,16 @@ spec:
                   builds. The command runs from RootDir in the generated native build image.
                 maxLength: 4096
                 type: string
+              buildCommit:
+                description: |-
+                  BuildCommit pins a single build to a specific Git ref (SHA, tag, or any
+                  ref BuildKit's context= argument accepts) instead of Branch HEAD. Set by
+                  the CreateDeploy API's commitId body field; the subsequent deploy always
+                  resets it to empty so the next trigger reverts to Branch HEAD. Only
+                  meaningful for repo-backed services; ignored for image-backed ones.
+                  A cron_job rejects commitId at the API layer before this field is set.
+                maxLength: 512
+                type: string
               builder:
                 default: auto
                 description: |-

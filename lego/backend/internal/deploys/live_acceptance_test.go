@@ -115,7 +115,7 @@ func TestLiveAcceptance(t *testing.T) {
 	t.Logf("deploy #1 recorded live: %+v", list[0])
 
 	// --- 2: trigger -> deploy #2 recorded -> polled to live -------------------
-	triggered, err := svc.Trigger(ctx, name)
+	triggered, err := svc.Trigger(ctx, name, TriggerParams{})
 	if err != nil {
 		t.Fatalf("trigger: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestLiveAcceptance(t *testing.T) {
 	// instant it opens; Cancel closes it canceled before it ever converges,
 	// and a further reconcile pass must not clobber that back to live — the
 	// CAS guard (store.CloseDeploy) is what makes that race safe.
-	toCancel, err := svc.Trigger(ctx, name)
+	toCancel, err := svc.Trigger(ctx, name, TriggerParams{})
 	if err != nil {
 		t.Fatalf("trigger a deploy to cancel: %v", err)
 	}

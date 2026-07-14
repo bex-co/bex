@@ -145,6 +145,16 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=255
 	Branch string `json:"branch,omitempty"`
 
+	// BuildCommit pins a single build to a specific Git ref (SHA, tag, or any
+	// ref BuildKit's context= argument accepts) instead of Branch HEAD. Set by
+	// the CreateDeploy API's commitId body field; the subsequent deploy always
+	// resets it to empty so the next trigger reverts to Branch HEAD. Only
+	// meaningful for repo-backed services; ignored for image-backed ones.
+	// A cron_job rejects commitId at the API layer before this field is set.
+	// +optional
+	// +kubebuilder:validation:MaxLength=512
+	BuildCommit string `json:"buildCommit,omitempty"`
+
 	// CloneSecret names a Secret in the App's namespace holding a git credential
 	// (key "token") used to clone a private Repo. When set, the build Job passes
 	// it to BuildKit as the standard GIT_AUTH_TOKEN build secret so the https

@@ -18,7 +18,9 @@ package deploys
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -140,11 +142,31 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
 		})
-		// Trigger (Render's POST .../deploys): the body may carry clearCache —
-		// accepted and ignored (bex has no build cache to clear), the safe-
-		// superset rule, so it's never even decoded.
+		// Trigger (Render's POST .../deploys): decode the optional body fields
+		// bex can honestly honor (commitId, deployMode). clearCache is rejected
+		// when true — bex builds are always cache-free (ephemeral BuildKit Jobs,
+		// no --cache-to/--cache-from), so accepting clearCache silently would be
+		// a lie; callers must omit it or set it to false.
 		mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
-			d, err := s.Trigger(r.Context(), r.PathValue("id"))
+			var body struct {
+				CommitID   string `json:"commitId"`
+				ClearCache bool   `json:"clearCache"`
+				DeployMode string `json:"deployMode"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+				return
+			}
+			if body.ClearCache {
+				core.WriteErr(w, fmt.Errorf("%w: clearCache: bex builds are always cache-free "+
+					"(ephemeral BuildKit Jobs with no persistent layer cache); "+
+					"this field must be false or omitted", core.ErrBadRequest))
+				return
+			}
+			d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
+				CommitID:   body.CommitID,
+				DeployMode: body.DeployMode,
+			})
 			if err != nil {
 				core.WriteErr(w, err)
 				return

@@ -111,20 +111,41 @@ var deployMutationArgs = graphql.FieldConfigArgument{
 	"deployId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 }
 
-// GraphQLMutation returns triggerDeploy (w2/006) plus cancelDeploy/rollbackService
-// (w2/m10). triggerDeploy mirrors Render's dashboard Manual Deploy action —
-// delegates to the same Trigger verb as REST POST .../deploys so the surfaces
-// cannot drift. cancelDeploy/rollbackService follow the existing
-// suspendService/resumeService scalar-arg convention.
+// GraphQLMutation returns triggerDeploy (w2/006), restartServer (consolidated
+// from apps — w2/m30), plus cancelDeploy/rollbackService (w2/m10).
+// triggerDeploy mirrors Render's dashboard Manual Deploy action — delegates to
+// the same Trigger verb as REST POST .../deploys so the surfaces cannot drift.
+// restartServer replaces apps.GraphQL's restartServer: routing through
+// deploys.Restart ensures every restart opens a deploy-history row.
+// cancelDeploy/rollbackService follow the suspendService/resumeService convention.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"triggerDeploy": &graphql.Field{
 			Type: deployGQLType,
 			Args: graphql.FieldConfigArgument{
+				"serviceId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"commitId":   &graphql.ArgumentConfig{Type: graphql.String},
+				"deployMode": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				commitID, _ := p.Args["commitId"].(string)
+				deployMode, _ := p.Args["deployMode"].(string)
+				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{
+					CommitID:   commitID,
+					DeployMode: deployMode,
+				})
+			},
+		},
+		// restartServer is kept for API callers that already send this mutation
+		// name; the dashboard uses triggerDeploy directly. Returns Deploy (not
+		// Service) — every restart opens a deploy-history row (w2/m30).
+		"restartServer": &graphql.Field{
+			Type: deployGQLType,
+			Args: graphql.FieldConfigArgument{
 				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Trigger(p.Context, p.Args["serviceId"].(string))
+				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{})
 			},
 		},
 		"cancelDeploy": &graphql.Field{

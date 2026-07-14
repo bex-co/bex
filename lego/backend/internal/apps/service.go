@@ -1063,6 +1063,7 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+		a.Spec.BuildCommit = "" // clear any commitId pin so the restart uses Branch HEAD
 	})
 }
 

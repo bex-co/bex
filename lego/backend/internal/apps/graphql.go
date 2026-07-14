@@ -676,7 +676,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"runCronJob":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Suspend)},
 		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
-		"restartServer":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Restart)},
+		// restartServer moved to deploys.GraphQLMutation (w2/m30): routing through
+		// deploys.Restart ensures every restart opens a deploy-history row.
 		// updateServicePlan: a bex extension (naming unconfirmed against a live
 		// Render dashboard capture — see the "plan" field comment above).
 		"updateServicePlan": &graphql.Field{
