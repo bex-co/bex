@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mock Cluster"
+  short_description: "Start or scale the local CAPD development cluster"
+  default_prompt: "Use $mock-cluster to start or scale the local CAPD development cluster."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy App"
+  short_description: "Deploy an app and verify readiness end to end"
+  default_prompt: "Use $deploy-app to deploy an app to the current cluster and verify it becomes ready."

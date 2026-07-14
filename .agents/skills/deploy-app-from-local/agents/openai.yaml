@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy Local App"
+  short_description: "Ship a local checkout to a production Hetzner app"
+  default_prompt: "Use $deploy-app-from-local to deploy a local checkout to the production Hetzner app."

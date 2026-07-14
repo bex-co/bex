@@ -1,0 +1,4 @@
+interface:
+  display_name: "PM Board"
+  short_description: "Create and maintain the repository PM board"
+  default_prompt: "Use $pm to inspect or update the repository PM board."

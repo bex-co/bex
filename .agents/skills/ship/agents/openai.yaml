@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ship Main"
+  short_description: "Commit and push the current main branch safely"
+  default_prompt: "Use $ship to commit and push the current main branch safely."

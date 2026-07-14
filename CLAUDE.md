@@ -127,7 +127,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 
 ## Rules
 
-- **Never `git commit` or `git push` unless the user runs `/ship`.** Leave work uncommitted otherwise.
+- **Never `git commit` or `git push` unless the user runs `/ship` (Claude) or invokes `$ship` (Codex).** Leave work uncommitted otherwise.
 - Never commit or print `.env` or `*.kubeconfig` contents.
 - **Keep `.env.example` and `.env.template` in sync with `.env`'s variable names.** They're the checked-in, value-less mirrors of the local runtime env (`.env.example`) and CI secrets env (`.env.template`) — whenever a var is added, renamed, or removed from one, mirror the change (name + comment, never the value) in the other(s) so `cp .env.example .env` / `cp .env.template .env` never falls out of date.
 - New Go files carry the Apache-2.0 header from `lego/operator/hack/boilerplate.go.txt`.

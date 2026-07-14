@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mermaid Diagram"
+  short_description: "Create and syntax-check architecture diagrams"
+  default_prompt: "Use $mermaid to create and validate an architecture diagram for this repository."

@@ -1,0 +1,1 @@
+../../../../.claude/commands/deploy-app-from-local.md

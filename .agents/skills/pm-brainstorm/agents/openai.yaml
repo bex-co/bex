@@ -1,0 +1,4 @@
+interface:
+  display_name: "PM Brainstorm"
+  short_description: "Decompose product work into PM board proposals"
+  default_prompt: "Use $pm-brainstorm to turn this product idea into a PM board proposal."
