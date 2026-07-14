@@ -137,17 +137,10 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "创建项目「{name}」失败。",
     description: "Toast shown when creating a project fails",
   },
-  "projects.projectActionsMenu": {
-    message: "项目操作",
-    description: "Accessible label for a project section's \"•••\" menu button",
-  },
-  "projects.actionRename": {
-    message: "重命名",
-    description: "Project actions menu item",
-  },
-  "projects.actionDelete": {
-    message: "删除",
-    description: "Project actions menu item",
+  "projects.editNameButton": {
+    message: "编辑",
+    description:
+      "Accessible label for the project page's inline pencil-edit button, and the Settings page's Project Name \"Edit\" button",
   },
   "projects.renameTitle": {
     message: "重命名项目",
@@ -164,6 +157,32 @@ const zhProjects: Record<string, TranslationEntry> = {
   "projects.renameError": {
     message: "重命名项目为「{name}」失败。",
     description: "Toast shown when renaming a project fails",
+  },
+  "projects.settingsTitle": {
+    message: "项目设置",
+    description: "Project settings page heading",
+  },
+  "projects.nameCardTitle": {
+    message: "项目名称",
+    description: "Project settings page's name card title",
+  },
+  "projects.nameCardDescription": {
+    message: "项目的唯一名称",
+    description: "Project settings page's name card description",
+  },
+  "projects.deleteCardTitle": {
+    message: "删除项目",
+    description: "Project settings page's danger-zone card title",
+  },
+  "projects.deleteCardDescription": {
+    message:
+      "仅删除项目分组——其服务、数据库和键值存储将变为未分组状态，不会被删除。此操作无法撤销。",
+    description: "Project settings page's danger-zone card description",
+  },
+  "projects.deleteCardButton": {
+    message: "删除项目",
+    description:
+      "Project settings page's danger-zone card button, and the delete-confirmation dialog's confirm button",
   },
   "projects.deleteConfirmTitle": {
     message: "删除项目「{name}」？",

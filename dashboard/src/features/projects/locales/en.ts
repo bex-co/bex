@@ -137,17 +137,10 @@ const enProjects: Record<string, TranslationEntry> = {
     message: 'Failed to create project "{name}".',
     description: "Toast shown when creating a project fails",
   },
-  "projects.projectActionsMenu": {
-    message: "Project actions",
-    description: "Accessible label for a project section's \"•••\" menu button",
-  },
-  "projects.actionRename": {
-    message: "Rename",
-    description: "Project actions menu item",
-  },
-  "projects.actionDelete": {
-    message: "Delete",
-    description: "Project actions menu item",
+  "projects.editNameButton": {
+    message: "Edit",
+    description:
+      "Accessible label for the project page's inline pencil-edit button, and the Settings page's Project Name \"Edit\" button",
   },
   "projects.renameTitle": {
     message: "Rename project",
@@ -164,6 +157,32 @@ const enProjects: Record<string, TranslationEntry> = {
   "projects.renameError": {
     message: 'Failed to rename project to "{name}".',
     description: "Toast shown when renaming a project fails",
+  },
+  "projects.settingsTitle": {
+    message: "Project settings",
+    description: "Project settings page heading",
+  },
+  "projects.nameCardTitle": {
+    message: "Project Name",
+    description: "Project settings page's name card title",
+  },
+  "projects.nameCardDescription": {
+    message: "A unique name for your project",
+    description: "Project settings page's name card description",
+  },
+  "projects.deleteCardTitle": {
+    message: "Delete Project",
+    description: "Project settings page's danger-zone card title",
+  },
+  "projects.deleteCardDescription": {
+    message:
+      "Only the project grouping is deleted — its services, databases, and key value stores become unassigned, not deleted. This action cannot be undone.",
+    description: "Project settings page's danger-zone card description",
+  },
+  "projects.deleteCardButton": {
+    message: "Delete Project",
+    description:
+      "Project settings page's danger-zone card button, and the delete-confirmation dialog's confirm button",
   },
   "projects.deleteConfirmTitle": {
     message: 'Delete project "{name}"?',

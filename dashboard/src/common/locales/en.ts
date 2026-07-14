@@ -24,15 +24,35 @@ const enCommon: Record<string, TranslationEntry> = {
   },
   "common.navSettings": {
     message: "Settings",
-    description: "Sidebar nav link to the account settings page",
+    description:
+      "Sidebar nav link to the workspace settings page (the sidebar is workspace-scoped; account settings hang off the user menu)",
+  },
+  "common.navBackToDashboard": {
+    message: "Dashboard",
+    description:
+      "Contextual project sidebar's back link label, shown on a project's Overview page (links up to the workspace Overview)",
+  },
+  "common.navBackToProject": {
+    message: "Project",
+    description:
+      "Contextual project sidebar's back link label, shown on a project's Settings page (links up to the project's Overview)",
+  },
+  "common.navProjectOverview": {
+    message: "Overview",
+    description: "Contextual project sidebar nav link to the project's own Overview page",
+  },
+  "common.navManageGroup": {
+    message: "Manage",
+    description: "Contextual project sidebar section label above Settings",
   },
   "common.changeLanguage": {
     message: "Change language",
     description: "Accessible label for the language switcher button",
   },
   "common.userMenuSettings": {
-    message: "Settings",
-    description: "User menu item that navigates to account settings",
+    message: "Account Settings",
+    description:
+      "User menu item that navigates to account settings (/settings)",
   },
   "common.userMenuTheme": {
     message: "Theme",

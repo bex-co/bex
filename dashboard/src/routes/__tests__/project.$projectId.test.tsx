@@ -8,7 +8,7 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ProjectPage } from "../project.$projectId";
+import { ProjectPage } from "../project.$projectId.index";
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
@@ -71,10 +71,6 @@ const rename = vi.fn();
 vi.mock("@/features/projects/hooks/use-rename-project", () => ({
   useRenameProject: () => ({ rename, busy: false }),
 }));
-const remove = vi.fn();
-vi.mock("@/features/projects/hooks/use-delete-project", () => ({
-  useDeleteProject: () => ({ remove, deleting: null }),
-}));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
@@ -119,7 +115,6 @@ beforeEach(() => {
   projectsState.loading = false;
   projectsState.error = undefined;
   rename.mockReset();
-  remove.mockReset();
 });
 
 describe("ProjectPage", () => {
@@ -150,7 +145,7 @@ describe("ProjectPage", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("renames the project via the \"•••\" menu", async () => {
+  it("renames the project via the inline pencil button", async () => {
     projectsState.projects = [
       {
         id: "prj-1",
@@ -167,8 +162,7 @@ describe("ProjectPage", () => {
     renderProjectPage();
 
     await screen.findByRole("heading", { name: "storefront" });
-    await user.click(screen.getByRole("button", { name: "Project actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
 
     const dialog = await screen.findByRole("dialog");
     const input = within(dialog).getByRole("textbox");
