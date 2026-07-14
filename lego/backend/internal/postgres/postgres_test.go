@@ -332,3 +332,114 @@ func TestPostgresCapEnforcement(t *testing.T) {
 		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
 	}
 }
+
+func TestRESTSetPostgresPlan(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "plan-db")
+
+	// valid plan upgrade.
+	w := serveREST(svc, "PATCH", "/v1/postgres/plan-db", `{"plan":"basic-1gb"}`)
+	if w.Code != 200 {
+		t.Fatalf("PATCH plan => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var pg PostgresView
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if pg.Plan != "basic-1gb" {
+		t.Errorf("plan in view = %q, want basic-1gb", pg.Plan)
+	}
+	var got appv1alpha1.Database
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "plan-db"}, &got)
+	if got.Spec.Plan != "basic-1gb" {
+		t.Errorf("spec.plan on CR = %q, want basic-1gb", got.Spec.Plan)
+	}
+
+	// unknown plan => 400.
+	if w := serveREST(svc, "PATCH", "/v1/postgres/plan-db", `{"plan":"nope"}`); w.Code != 400 {
+		t.Errorf("unknown plan => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	// unknown instance => 404.
+	if w := serveREST(svc, "PATCH", "/v1/postgres/missing", `{"plan":"free"}`); w.Code != 404 {
+		t.Errorf("missing db => 404, got %d", w.Code)
+	}
+	// /v1/databases alias works too.
+	w = serveREST(svc, "PATCH", "/v1/databases/plan-db", `{"plan":"basic-256mb"}`)
+	if w.Code != 200 {
+		t.Errorf("/v1/databases alias => 200, got %d", w.Code)
+	}
+}
+
+func TestGraphQLSetPostgresPlan(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "gql-plan-db")
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// valid plan change.
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { updateDatabasePlan(id:"gql-plan-db", plan:"basic-1gb") { id plan } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("updateDatabasePlan: %v", res.Errors)
+	}
+	var got appv1alpha1.Database
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-plan-db"}, &got)
+	if got.Spec.Plan != "basic-1gb" {
+		t.Errorf("spec.plan after updateDatabasePlan = %q, want basic-1gb", got.Spec.Plan)
+	}
+
+	// invalid plan => graphql error.
+	res = graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { updateDatabasePlan(id:"gql-plan-db", plan:"invalid") { id } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) == 0 {
+		t.Error("invalid plan must yield a GraphQL error")
+	}
+}
+
+func TestMCPSetPostgresPlan(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "mcp-plan-db")
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_postgres_plan",
+		Arguments: map[string]any{"postgresId": "mcp-plan-db", "plan": "basic-1gb"},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("update_postgres_plan: err=%v isErr=%v", err, res.IsError)
+	}
+	var got appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-plan-db"}, &got); err != nil || got.Spec.Plan != "basic-1gb" {
+		t.Fatalf("update_postgres_plan did not update spec.plan: %v %+v", err, got.Spec)
+	}
+
+	// invalid plan => tool error.
+	bad, _ := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_postgres_plan",
+		Arguments: map[string]any{"postgresId": "mcp-plan-db", "plan": "invalid"},
+	})
+	if !bad.IsError {
+		t.Error("invalid plan must yield tool error")
+	}
+}

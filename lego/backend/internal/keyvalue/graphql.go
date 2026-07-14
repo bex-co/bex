@@ -154,6 +154,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
+		"updateKeyValuePlan": &graphql.Field{
+			Type: keyValueGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+			},
+		},
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: gqlutil.IDArg(),

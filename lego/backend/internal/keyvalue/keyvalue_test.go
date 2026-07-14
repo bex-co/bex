@@ -593,3 +593,109 @@ func TestKeyValueCapEnforcement(t *testing.T) {
 		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
 	}
 }
+
+func TestRESTSetKeyValuePlan(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "plan-kv")
+
+	// valid plan upgrade.
+	w := serveREST(svc, "PATCH", "/v1/key-value/plan-kv", `{"plan":"standard"}`)
+	if w.Code != 200 {
+		t.Fatalf("PATCH plan => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var kv KeyValueView
+	_ = json.Unmarshal(w.Body.Bytes(), &kv)
+	if kv.Plan != "standard" {
+		t.Errorf("plan in view = %q, want standard", kv.Plan)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "plan-kv"}, &got)
+	if got.Spec.Plan != "standard" {
+		t.Errorf("spec.plan on CR = %q, want standard", got.Spec.Plan)
+	}
+
+	// unknown plan => 400.
+	if w := serveREST(svc, "PATCH", "/v1/key-value/plan-kv", `{"plan":"basic-1gb"}`); w.Code != 400 {
+		t.Errorf("unknown plan => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	// unknown instance => 404.
+	if w := serveREST(svc, "PATCH", "/v1/key-value/missing", `{"plan":"free"}`); w.Code != 404 {
+		t.Errorf("missing kv => 404, got %d", w.Code)
+	}
+}
+
+func TestGraphQLSetKeyValuePlan(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-plan-kv")
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// valid plan change.
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { updateKeyValuePlan(id:"gql-plan-kv", plan:"standard") { id plan } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("updateKeyValuePlan: %v", res.Errors)
+	}
+	var got appv1alpha1.KeyValue
+	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-plan-kv"}, &got)
+	if got.Spec.Plan != "standard" {
+		t.Errorf("spec.plan after updateKeyValuePlan = %q, want standard", got.Spec.Plan)
+	}
+
+	// invalid plan => graphql error.
+	res = graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { updateKeyValuePlan(id:"gql-plan-kv", plan:"invalid") { id } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) == 0 {
+		t.Error("invalid plan must yield a GraphQL error")
+	}
+}
+
+func TestMCPSetKeyValuePlan(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "mcp-plan-kv")
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_key_value_plan",
+		Arguments: map[string]any{"keyValueId": "mcp-plan-kv", "plan": "standard"},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("update_key_value_plan: err=%v isErr=%v", err, res.IsError)
+	}
+	var got appv1alpha1.KeyValue
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-plan-kv"}, &got); err != nil || got.Spec.Plan != "standard" {
+		t.Fatalf("update_key_value_plan did not update spec.plan: %v %+v", err, got.Spec)
+	}
+
+	// invalid plan => tool error.
+	bad, _ := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "update_key_value_plan",
+		Arguments: map[string]any{"keyValueId": "mcp-plan-kv", "plan": "invalid"},
+	})
+	if !bad.IsError {
+		t.Error("invalid plan must yield tool error")
+	}
+}

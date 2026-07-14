@@ -106,6 +106,15 @@ mutation SetKeyValueIpAllowList($id: String!, $cidrs: [String]) {
   }
 }
 
+mutation UpdateKeyValuePlan($id: String!, $plan: String!) {
+  updateKeyValuePlan(id: $id, plan: $plan) {
+    id
+    name
+    plan
+    status
+  }
+}
+
 mutation DeleteKeyValue($id: String!) {
   deleteKeyValue(id: $id)
 }

@@ -434,3 +434,31 @@ export const SetDatabaseParameterOverridesDocument = gql`
   SetDatabaseParameterOverridesMutation,
   SetDatabaseParameterOverridesVars
 >;
+
+// --- plan update (m16) ---
+
+export interface UpdateDatabasePlanVars {
+  id: string;
+  plan: string;
+}
+export interface UpdateDatabasePlanMutation {
+  updateDatabasePlan: {
+    id: string | null;
+    name: string | null;
+    plan: string | null;
+    status: string | null;
+  } | null;
+}
+export const UpdateDatabasePlanDocument = gql`
+  mutation UpdateDatabasePlan($id: String!, $plan: String!) {
+    updateDatabasePlan(id: $id, plan: $plan) {
+      id
+      name
+      plan
+      status
+    }
+  }
+` as unknown as TypedDocumentNode<
+  UpdateDatabasePlanMutation,
+  UpdateDatabasePlanVars
+>;

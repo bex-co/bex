@@ -217,6 +217,15 @@ mutation CreateDatabase(
   }
 }
 
+mutation UpdateDatabasePlan($id: String!, $plan: String!) {
+  updateDatabasePlan(id: $id, plan: $plan) {
+    id
+    name
+    plan
+    status
+  }
+}
+
 mutation DeleteDatabase($id: String!) {
   deleteDatabase(id: $id)
 }

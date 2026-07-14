@@ -70,6 +70,13 @@ type queryPostgresArgs struct {
 	SQL        string `json:"sql" jsonschema:"the read-only SQL query to run (SELECT/SHOW/EXPLAIN); writes, DDL and multi-statement input are rejected"`
 }
 
+// updatePlanArgs is update_postgres_plan's input — the postgres id and the
+// desired new plan (e.g. "basic-1gb").
+type updatePlanArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, basic-256mb, basic-1gb)"`
+}
+
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -122,6 +129,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, QueryResult{}, err
 		}
 		return nil, res, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_postgres_plan",
+		Description: "Change a managed Postgres database's instance plan (e.g. free → basic-1gb). The operator reconciles the new resource requests on the next sync; this is a rolling update, not a data-loss operation. Valid plans: free, basic-256mb, basic-1gb.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.SetPlan(ctx, in.PostgresID, in.Plan)
+		return nil, v, err
 	})
 
 	s.registerLifecycleMCP(srv)

@@ -181,6 +181,59 @@ func TestKvResources(t *testing.T) {
 	}
 }
 
+// TestKeyValuePlanChangeReconcile confirms that updating spec.plan on an
+// existing KeyValue CR results in the StatefulSet container resources being
+// updated on the very next reconcile — the "plan/version bump rolls" contract
+// documented in the reconciler (the pod template is reapplied every reconcile).
+func TestKeyValuePlanChangeReconcile(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "plan-change-kv", Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "plan-change-kv", Namespace: "default"}
+
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+		t.Fatalf("initial reconcile: %v", err)
+	}
+	var sts appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatalf("StatefulSet not created: %v", err)
+	}
+	freeMem := sts.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+	if freeMem != "128Mi" {
+		t.Errorf("free plan memory = %s, want 128Mi", freeMem)
+	}
+
+	// Patch spec.plan to "standard" and reconcile again.
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatalf("get kv: %v", err)
+	}
+	kv.Spec.Plan = "standard"
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatalf("update plan: %v", err)
+	}
+	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+		t.Fatalf("plan-change reconcile: %v", err)
+	}
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatalf("get StatefulSet after plan change: %v", err)
+	}
+	standardMem := sts.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+	if standardMem != "1Gi" {
+		t.Errorf("standard plan memory after change = %s, want 1Gi (plan change must update pod resources)", standardMem)
+	}
+}
+
 var _ = Describe("KeyValue Controller", func() {
 	const name = "smoke-kv"
 	ctx := context.Background()

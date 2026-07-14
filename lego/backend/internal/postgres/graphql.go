@@ -387,6 +387,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
+		"updateDatabasePlan": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+			},
+		},
 
 		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
 		"failoverDatabase": &graphql.Field{

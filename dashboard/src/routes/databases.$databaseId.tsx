@@ -15,6 +15,7 @@ import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
 import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
+import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
@@ -76,6 +77,10 @@ export function DatabaseDetailPage() {
                 kind="database"
                 resource={database.name}
                 highAvailabilityEnabled={database.highAvailabilityEnabled}
+              />
+              <DatabasePlanSection
+                database={database}
+                onChanged={() => void refetch()}
               />
               <InsightsPanel id={database.id} />
               <RecoveryPanel id={database.id} />

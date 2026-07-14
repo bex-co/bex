@@ -62,6 +62,33 @@ func TestResolvePlan(t *testing.T) {
 	}
 }
 
+// TestDatabasePlanChangeProducesNewResources confirms that updating spec.plan
+// causes the reconciler to project a CNPG Cluster spec with different resource
+// requests — the "plan change resizes pods on next reconcile" contract. The
+// reconciler calls cnpgClusterSpec on every reconcile loop (CreateOrUpdate
+// always mutates cluster.Object["spec"]), so a plan diff in spec flows through
+// in one reconcile without any special handling.
+func TestDatabasePlanChangeProducesNewResources(t *testing.T) {
+	freePlan, freeGB := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	bigPlan, bigGB := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
+
+	freeSpec := cnpgClusterSpec(clusterParams{plan: freePlan, storageGB: freeGB, dbname: "d", owner: "d_user"})
+	bigSpec := cnpgClusterSpec(clusterParams{plan: bigPlan, storageGB: bigGB, dbname: "d", owner: "d_user"})
+
+	freeReq := freeSpec["resources"].(map[string]any)["requests"].(map[string]any)
+	bigReq := bigSpec["resources"].(map[string]any)["requests"].(map[string]any)
+
+	if freeReq["memory"] == bigReq["memory"] {
+		t.Errorf("free and basic-1gb plans must produce different memory requests; both = %v", freeReq["memory"])
+	}
+	if bigReq["memory"] != "1Gi" {
+		t.Errorf("basic-1gb memory request = %v, want 1Gi", bigReq["memory"])
+	}
+	if freeReq["memory"] != "256Mi" {
+		t.Errorf("free memory request = %v, want 256Mi", freeReq["memory"])
+	}
+}
+
 func TestCnpgClusterSpec(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "my_db", owner: "my_db_user"})

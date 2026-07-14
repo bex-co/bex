@@ -61,6 +61,19 @@ vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   }),
 }));
 
+// KeyValuePlanSection (m16) calls useKeyValueInstanceTypes (Apollo) and
+// useUpdateKeyValuePlan (Apollo) — same pattern as DatastoreMetricsPanel above.
+vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
+  useKeyValueInstanceTypes: () => ({
+    instanceTypes: [],
+    loading: false,
+    error: undefined,
+  }),
+}));
+vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
+  useUpdateKeyValuePlan: () => ({ updatePlan: vi.fn(), busy: false }),
+}));
+
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
     id: "sessions-cache",

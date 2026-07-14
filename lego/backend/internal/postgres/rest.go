@@ -69,6 +69,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			core.WriteJSON(w, http.StatusOK, pg)
 		})
+		mux.HandleFunc("PATCH "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Plan string `json:"plan"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				return
+			}
+			pg, err := s.SetPlan(r.Context(), r.PathValue("id"), req.Plan)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, pg)
+		})
 		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 			if err := s.DeletePostgres(r.Context(), r.PathValue("id")); err != nil {
 				core.WriteErr(w, err)

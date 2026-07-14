@@ -331,6 +331,41 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Couldn't resume {name}. Please try again.",
     description: "Toast when a resume request fails",
   },
+  // --- Plan section (m16) ---
+  "keyvalue.planTitle": {
+    message: "Instance type",
+    description: "Key Value detail plan-picker card title",
+  },
+  "keyvalue.planDescription": {
+    message:
+      "Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.",
+    description: "Key Value detail plan-picker card description",
+  },
+  "keyvalue.planPickerSave": {
+    message: "Save",
+    description: "Key Value plan-picker save button",
+  },
+  "keyvalue.planPickerCancel": {
+    message: "Cancel",
+    description: "Key Value plan-picker cancel / reset button",
+  },
+  "keyvalue.planPickerConfirmTitle": {
+    message: "Change to {name}?",
+    description: "Key Value plan-picker confirm dialog title",
+  },
+  "keyvalue.planPickerConfirmBody": {
+    message:
+      "The operator will resize the store's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
+    description: "Key Value plan-picker confirm dialog body",
+  },
+  "keyvalue.planPickerSuccess": {
+    message: "Updating plan to {name}…",
+    description: "Toast after a plan update is accepted",
+  },
+  "keyvalue.planPickerError": {
+    message: "Couldn't update the plan. Please try again.",
+    description: "Toast when a plan update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "Networking",

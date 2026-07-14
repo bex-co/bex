@@ -39,6 +39,12 @@ type keyValueArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value_instances"`
 }
 
+// updateKeyValuePlanArgs is update_key_value_plan's input.
+type updateKeyValuePlanArgs struct {
+	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value_instances"`
+	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, starter, standard)"`
+}
+
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
@@ -103,5 +109,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, KeyValueView{}, err
 		}
 		return nil, v, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_key_value_plan",
+		Description: "Change a managed key-value store's instance plan (e.g. free → standard). The operator reconciles the new resource requests on the next sync. Valid plans: free, starter, standard.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValuePlanArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		v, err := s.SetPlan(ctx, in.KeyValueID, in.Plan)
+		return nil, v, err
 	})
 }

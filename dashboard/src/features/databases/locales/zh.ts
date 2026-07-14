@@ -640,6 +640,39 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "该数据库未启用高可用。",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  // --- Plan section (m16) ---
+  "databases.planTitle": {
+    message: "实例规格",
+    description: "Database detail plan-picker card title",
+  },
+  "databases.planDescription": {
+    message: "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+    description: "Database detail plan-picker card description",
+  },
+  "databases.planPickerSave": {
+    message: "保存",
+    description: "Database plan-picker save button",
+  },
+  "databases.planPickerCancel": {
+    message: "取消",
+    description: "Database plan-picker cancel / reset button",
+  },
+  "databases.planPickerConfirmTitle": {
+    message: "切换至 {name}？",
+    description: "Database plan-picker confirm dialog title",
+  },
+  "databases.planPickerConfirmBody": {
+    message: "操作员将在下次协调时调整数据库的计算资源，滚动重启期间连接会短暂中断。",
+    description: "Database plan-picker confirm dialog body",
+  },
+  "databases.planPickerSuccess": {
+    message: "正在更新规格至 {name}……",
+    description: "Toast after a plan update is accepted",
+  },
+  "databases.planPickerError": {
+    message: "无法更新规格，请重试。",
+    description: "Toast when a plan update fails",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "洞察",

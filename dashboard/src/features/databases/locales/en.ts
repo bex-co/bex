@@ -652,6 +652,41 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "High availability is not enabled for this database.",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  // --- Plan section (m16) ---
+  "databases.planTitle": {
+    message: "Instance type",
+    description: "Database detail plan-picker card title",
+  },
+  "databases.planDescription": {
+    message:
+      "Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.",
+    description: "Database detail plan-picker card description",
+  },
+  "databases.planPickerSave": {
+    message: "Save",
+    description: "Database plan-picker save button",
+  },
+  "databases.planPickerCancel": {
+    message: "Cancel",
+    description: "Database plan-picker cancel / reset button",
+  },
+  "databases.planPickerConfirmTitle": {
+    message: "Change to {name}?",
+    description: "Database plan-picker confirm dialog title",
+  },
+  "databases.planPickerConfirmBody": {
+    message:
+      "The operator will resize the database's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
+    description: "Database plan-picker confirm dialog body",
+  },
+  "databases.planPickerSuccess": {
+    message: "Updating plan to {name}…",
+    description: "Toast after a plan update is accepted",
+  },
+  "databases.planPickerError": {
+    message: "Couldn't update the plan. Please try again.",
+    description: "Toast when a plan update fails",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "Insights",

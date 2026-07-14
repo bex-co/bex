@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -427,6 +428,23 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.ReadReplicaConnectionStrings = rcs
 	}
 	return info, nil
+}
+
+// SetPlan changes the managed Postgres database's instance type (spec.plan).
+// Unknown plans are rejected before any write (the caller maps core.ErrBadRequest
+// to 400/a GraphQL error, listing the valid plans). A plan change resizes the
+// CNPG Cluster's pod resources on the next operator reconcile — same cost as any
+// rolling update.
+func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return PostgresView{}, err
+	}
+	if _, ok := tiers.Postgres.ByID(plan); !ok {
+		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
+	}
+	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+		d.Spec.Plan = plan
+	})
 }
 
 // patchDatabaseObj applies mutate to an already-fetched Database and writes it

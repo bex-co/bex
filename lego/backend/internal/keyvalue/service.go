@@ -30,6 +30,7 @@ package keyvalue
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -351,6 +352,38 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 		kv.Spec.IPAllowList = cidrs
 	}
 	if err := s.Client.Update(ctx, kv); err != nil {
+		return KeyValueView{}, err
+	}
+	return kvView(kv), nil
+}
+
+// SetPlan changes the managed key-value store's instance type (spec.plan).
+// Unknown plans are rejected before any write (the caller maps core.ErrBadRequest
+// to 400/a GraphQL error, listing the valid plans). A plan change resizes the
+// Valkey StatefulSet's pod resources on the next operator reconcile.
+func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
+	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+		return KeyValueView{}, err
+	}
+	if _, ok := tiers.Valkey.ByID(plan); !ok {
+		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
+	}
+	return s.patchKeyValue(ctx, core.RelCanOperate, name, func(kv *appv1alpha1.KeyValue) {
+		kv.Spec.Plan = plan
+	})
+}
+
+// patchKeyValue fetches the KeyValue and merge-patches it — the spec-intent
+// writer the operator converges (the same discipline postgres.patchDatabase uses).
+// Merge patches are conflict-free against the operator's concurrent status writes.
+func (s *Service) patchKeyValue(ctx context.Context, relation, name string, mutate func(kv *appv1alpha1.KeyValue)) (KeyValueView, error) {
+	kv, err := s.fetchKeyValue(ctx, relation, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	patch := client.MergeFrom(kv.DeepCopy())
+	mutate(kv)
+	if err := s.Client.Patch(ctx, kv, patch); err != nil {
 		return KeyValueView{}, err
 	}
 	return kvView(kv), nil

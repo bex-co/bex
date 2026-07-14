@@ -326,6 +326,39 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "无法恢复 {name}。请重试。",
     description: "Toast when a resume request fails",
   },
+  // --- Plan section (m16) ---
+  "keyvalue.planTitle": {
+    message: "实例规格",
+    description: "Key Value detail plan-picker card title",
+  },
+  "keyvalue.planDescription": {
+    message: "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+    description: "Key Value detail plan-picker card description",
+  },
+  "keyvalue.planPickerSave": {
+    message: "保存",
+    description: "Key Value plan-picker save button",
+  },
+  "keyvalue.planPickerCancel": {
+    message: "取消",
+    description: "Key Value plan-picker cancel / reset button",
+  },
+  "keyvalue.planPickerConfirmTitle": {
+    message: "切换至 {name}？",
+    description: "Key Value plan-picker confirm dialog title",
+  },
+  "keyvalue.planPickerConfirmBody": {
+    message: "操作员将在下次协调时调整存储的计算资源，滚动重启期间连接会短暂中断。",
+    description: "Key Value plan-picker confirm dialog body",
+  },
+  "keyvalue.planPickerSuccess": {
+    message: "正在更新规格至 {name}……",
+    description: "Toast after a plan update is accepted",
+  },
+  "keyvalue.planPickerError": {
+    message: "无法更新规格，请重试。",
+    description: "Toast when a plan update fails",
+  },
   // --- Networking (external-endpoint IP allowlist) ---
   "keyvalue.networkingTitle": {
     message: "网络",

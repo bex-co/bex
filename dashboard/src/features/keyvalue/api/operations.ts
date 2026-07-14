@@ -44,3 +44,31 @@ export const SetKeyValueIpAllowListDocument = gql`
   SetKeyValueIpAllowListMutation,
   SetKeyValueIpAllowListVars
 >;
+
+// --- plan update (m16) ---
+
+export interface UpdateKeyValuePlanVars {
+  id: string;
+  plan: string;
+}
+export interface UpdateKeyValuePlanMutation {
+  updateKeyValuePlan: {
+    id: string | null;
+    name: string | null;
+    plan: string | null;
+    status: string | null;
+  } | null;
+}
+export const UpdateKeyValuePlanDocument = gql`
+  mutation UpdateKeyValuePlan($id: String!, $plan: String!) {
+    updateKeyValuePlan(id: $id, plan: $plan) {
+      id
+      name
+      plan
+      status
+    }
+  }
+` as unknown as TypedDocumentNode<
+  UpdateKeyValuePlanMutation,
+  UpdateKeyValuePlanVars
+>;
