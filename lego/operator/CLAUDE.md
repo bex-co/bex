@@ -6,7 +6,7 @@ The **operator** module (`github.com/bex-co/bex/lego/operator`) is the **mechani
 
 - The CRD **types live in the sibling `types/` module** (`../types/v1alpha1`), not here. After editing `../types/v1alpha1/*_types.go`, run `make manifests generate` from `lego/operator/` and keep the output.
 - controller-gen reads CRD/deepcopy markers from `../types/...` and RBAC markers from `./...`; deepcopy lands in `../types/v1alpha1/zz_generated.deepcopy.go`, the CRD YAML in `config/crd/bases/`. Both are **generated — never hand-edit**.
-- `make test` runs codegen automatically; envtest binaries download to `bin/` on first run (version derives from `k8s.io/api` in go.mod).
+- `make test` runs codegen automatically; envtest binaries download to `bin/` on first run (version derives from `k8s.io/api` in go.mod). **CI-enforced** on every push/PR touching `lego/operator/**` or `lego/types/**` (`.github/workflows/operator-test.yml`); the test suite must pass before `deploy.yml` proceeds.
 
 ## Layering (mechanism only)
 

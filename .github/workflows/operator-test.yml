@@ -1,0 +1,35 @@
+name: test (operator)
+
+# Run the operator test suite (unit + envtest) on every push/PR touching
+# lego/operator or lego/types, and as a reusable workflow called by deploy.yml
+# to gate the build+push+deploy job.
+# `make test` auto-runs manifests/generate/fmt/vet before the test run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lego/operator/**"
+      - "lego/types/**"
+      - ".github/workflows/operator-test.yml"
+  pull_request:
+    paths:
+      - "lego/operator/**"
+      - "lego/types/**"
+      - ".github/workflows/operator-test.yml"
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: lego/operator/go.sum
+      - name: make test (operator + envtest)
+        working-directory: lego/operator
+        run: make test

@@ -35,7 +35,18 @@ env:
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
 
 jobs:
+  # --- gates: all three test suites must pass before any image is built or deployed ---
+  test-backend:
+    uses: ./.github/workflows/backend-test.yml
+
+  test-operator:
+    uses: ./.github/workflows/operator-test.yml
+
+  test-dashboard:
+    uses: ./.github/workflows/dashboard-test.yml
+
   build-and-deploy:
+    needs: [test-backend, test-operator, test-dashboard]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

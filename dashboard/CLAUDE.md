@@ -89,10 +89,12 @@ yarn build              # Build for production
 yarn typecheck          # generate-routes + tsc -b
 yarn lint               # typecheck + eslint
 yarn format             # Prettier formatting
-yarn test               # Vitest
+yarn test               # Vitest — CI-enforced on every push/PR touching dashboard/** (.github/workflows/dashboard-test.yml)
 yarn test:coverage      # Vitest with coverage
 yarn kill               # Kill process on port 5173
 ```
+
+`yarn typecheck && yarn lint && yarn test` must all pass before `deploy.yml` builds or pushes the dashboard image (`build-and-deploy` `needs:` the dashboard test job).
 
 ### Local development without a cluster (`local-bex`)
 

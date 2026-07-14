@@ -20,12 +20,14 @@ bex is the open-source Render alternative — AI-native ([docs/ADR008-vision.md]
 
 All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `backend/`). The `make` targets live in **`lego/operator/`** (codegen, manager build, image build with context `lego/`, deploy). Build/test bex-api from `lego/backend/` (`cd lego/backend && go build ./... && go test ./...`); the CRD types are in `lego/types/`. Run `make` below **from `lego/operator/`**:
 
-- `make test` — unit + envtest; auto-runs manifests/generate/fmt/vet first. First run downloads envtest binaries to `bin/`. (codegen reads CRD/deepcopy markers from `../types`, RBAC from `./...`.)
+- `make test` — unit + envtest; auto-runs manifests/generate/fmt/vet first. First run downloads envtest binaries to `bin/`. (codegen reads CRD/deepcopy markers from `../types`, RBAC from `./...`.) **CI-enforced** on every push/PR touching `lego/operator/**` or `lego/types/**` (`.github/workflows/operator-test.yml`).
+- `cd lego/backend && go test ./...` — backend unit + integration tests; integration tests gated on `BEX_TEST_DB_URI`/`BEX_TEST_OPENFGA_URL` are **not** skipped in CI — real ephemeral Postgres + OpenFGA containers run them (`.github/workflows/backend-test.yml`). **CI-enforced** on every push/PR touching `lego/backend/**` or `lego/types/**`.
 - `make lint` / `make lint-fix` — golangci-lint over **both** modules (operator + backend); `make lint-backend` runs the backend module alone (its `.golangci.yml` depguard-enforces the id convention, [docs/ADR020-identifiers.md](docs/ADR020-identifiers.md)).
 - `make build` — build the manager binary.
 - Dev inner loop against a cluster: `make install && BEX_RUNTIME=kubernetes make run` (runs the operator from the host).
 - `make docker-build IMG=…` / `make deploy IMG=…` — image build / kustomize deploy to the current kubeconfig.
 - ⚠️ `make test-e2e` creates and deletes a kind cluster (`control-plane-test-e2e`) — slow, CI territory; don't run casually.
+- All three test suites (`make test`, `go test ./...`, `yarn test`) **must pass before `deploy.yml` builds or pushes any image**: `build-and-deploy` `needs:` all three test jobs.
 
 ## Local cluster workflow
 

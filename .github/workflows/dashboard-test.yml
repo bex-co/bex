@@ -1,0 +1,37 @@
+name: test (dashboard)
+
+# Run the dashboard test suite on every push/PR touching dashboard/, and as a
+# reusable workflow called by deploy.yml to gate the build+push+deploy job.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard-test.yml"
+  pull_request:
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard-test.yml"
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "yarn"
+          cache-dependency-path: dashboard/yarn.lock
+      - name: install dependencies
+        working-directory: dashboard
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+      - name: typecheck + lint + test
+        working-directory: dashboard
+        run: yarn typecheck && yarn lint && yarn test

@@ -1,0 +1,66 @@
+name: test (backend)
+
+# Run the backend test suite on every push/PR touching lego/backend or lego/types,
+# and as a reusable workflow called by deploy.yml to gate the build+push+deploy job.
+# Integration tests gated on BEX_TEST_DB_URI / BEX_TEST_OPENFGA_URL run against real
+# ephemeral service containers (postgres:17 + openfga/openfga in-memory).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lego/backend/**"
+      - "lego/types/**"
+      - ".github/workflows/backend-test.yml"
+  pull_request:
+    paths:
+      - "lego/backend/**"
+      - "lego/types/**"
+      - ".github/workflows/backend-test.yml"
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: pw
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      openfga:
+        image: openfga/openfga:latest
+        env:
+          OPENFGA_DATASTORE_ENGINE: memory
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: lego/backend/go.sum
+      - name: seed OpenFGA (bex store + authz model)
+        run: |
+          # Wait for OpenFGA to accept connections (no HEALTHCHECK in its image).
+          timeout 60 bash -c 'until curl -sf http://localhost:8080/healthz; do sleep 2; done'
+          store_id=$(curl -sf -X POST http://localhost:8080/stores \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"bex"}' | jq -r '.id')
+          curl -sf -X POST "http://localhost:8080/stores/$store_id/authorization-models" \
+            -H 'Content-Type: application/json' \
+            -d @deploy/gitops/authz/model.json
+      - name: go test ./... (backend)
+        working-directory: lego/backend
+        env:
+          BEX_TEST_DB_URI: postgres://postgres:pw@localhost:5432/postgres?sslmode=disable
+          BEX_TEST_OPENFGA_URL: http://localhost:8080
+        run: go test ./...
