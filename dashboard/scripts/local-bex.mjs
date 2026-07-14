@@ -3,10 +3,16 @@
 //
 // It speaks just enough of bex-api's wire protocol for the app to run:
 //   • POST /graphql             — the reads the dashboard fires (services, server,
-//                                 logs, managed-Postgres databases, managed
-//                                 Key Value stores, and safe empties for the rest)
+//                                 logs (with type/startTime/endTime windowing,
+//                                 w9/m1/t002 parity), a single deploy by id
+//                                 (w9/m1/t001 parity), managed-Postgres databases,
+//                                 managed Key Value stores, and safe empties for
+//                                 the rest)
 //   • GET  /v1/logs/subscribe   — the SSE live-log tail (docs/ADR010-observability.md)
 //   • GET  /sessions/whoami     — Kratos session check, so the auth guard passes
+//   • GET  /sessions            — Kratos listMySessions (Settings → Active sessions)
+//   • GET/DELETE /admin/oauth2/auth/sessions/consent — Hydra admin consent
+//     sessions (Settings → Connected agents; dev:local sets HYDRA_ADMIN_URL here)
 // CORS is wide-open (echoes the Origin, allows credentials) and there is NO auth —
 // it is a DEV TOOL, never a real backend. Full-fidelity local bex needs the mock
 // cluster + Ory stack (scripts/mock-cluster.sh); this is the fast frontend loop.
@@ -91,6 +97,24 @@ const WORKSPACE_MEMBERS = [
   },
 ];
 
+// Hydra admin consent sessions (w4/m18's "Connected agents" card): one OAuth2
+// client the dev user has "authorized", so the Settings page's list + revoke
+// flow works offline. Shape mirrors what @ory/client-fetch's
+// listOAuth2ConsentSessions returns (consent_request.client + grant_scope).
+const CONSENT_SESSIONS = [
+  {
+    grant_scope: ["openid", "offline_access", "bex:read", "bex:write"],
+    handled_at: "2026-07-08T15:20:00Z",
+    consent_request: {
+      client: {
+        client_id: "local-claude-code",
+        client_name: "Claude Code",
+        client_uri: "https://claude.com/claude-code",
+      },
+    },
+  },
+];
+
 // One sample App, Render-shaped (matches the dashboard's Service selection set).
 // ownerId scopes it to the default workspace — a stub-only field, harmless if
 // it leaks into a response the dashboard didn't select it in.
@@ -112,6 +136,7 @@ const SERVICE = {
   command: null,
   runs: [],
   healthCheckPath: "/healthz",
+  preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: "https://github.com/acme-corp/eden-cms-v2",
   branch: "main",
@@ -144,6 +169,7 @@ const WORKER = {
   command: null,
   runs: [],
   healthCheckPath: null,
+  preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
   branch: null,
@@ -195,6 +221,7 @@ const CRON = {
     },
   ],
   healthCheckPath: null,
+  preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
   branch: null,
@@ -237,6 +264,7 @@ const EVENTS_BY_SERVICE = {
       details: {
         __typename: "ServiceEventDetails",
         deployStatus: "live",
+        preDeployStatus: "succeeded",
         actor: "dev@localhost",
         triggeredByUser: "dev@localhost",
         trigger: {
@@ -259,6 +287,7 @@ const EVENTS_BY_SERVICE = {
       details: {
         __typename: "ServiceEventDetails",
         deployStatus: "update_failed",
+        preDeployStatus: "failed",
         actor: "github",
         triggeredByUser: null,
         trigger: {
@@ -275,10 +304,167 @@ const EVENTS_BY_SERVICE = {
   ],
 };
 
+// Per-service Deploy objects (w9/m1/t005), the `deploy(serviceId, deployId)`
+// read's backing store — a separate shape from EVENTS_BY_SERVICE's
+// ServiceEventDetails (deploys.graphql.deployGQLType's flat fields: id,
+// status, trigger, image, rollbackOf, createdAt, startedAt, finishedAt,
+// preDeployStatus). Seeded 1:1 with EVENTS_BY_SERVICE's two eden-cms-v2 rows
+// (both terminal, hand-authored once, never mutated) so their Events-tab
+// links resolve to a real deploy page. A deploy the mutation cases CREATE
+// (TriggerDeploy/RollbackService) is different: its ServiceEvent is built by
+// deployServiceEvent(), which reads status/preDeployStatus live off this same
+// Deploy object via a getter — so CancelDeploy and the TriggerDeploy
+// setTimeout only ever write the Deploy row, never a second copy.
+const DEPLOYS_BY_SERVICE = {
+  "eden-cms-v2": [
+    {
+      __typename: "Deploy",
+      id: "dep-live-001",
+      status: "live",
+      trigger: "api",
+      image: "registry.example.com/eden-cms-v2:a1b2c3d",
+      rollbackOf: "",
+      createdAt: "2026-07-11T14:30:00Z",
+      startedAt: "2026-07-11T14:30:05Z",
+      finishedAt: "2026-07-11T14:31:40Z",
+      preDeployStatus: "succeeded",
+    },
+    {
+      __typename: "Deploy",
+      id: "dep-failed-000",
+      status: "update_failed",
+      trigger: "api",
+      image: "registry.example.com/eden-cms-v2:9f8e7d6",
+      rollbackOf: "",
+      createdAt: "2026-07-11T13:00:00Z",
+      startedAt: "2026-07-11T13:00:04Z",
+      finishedAt: "2026-07-11T13:01:12Z",
+      preDeployStatus: "failed",
+    },
+  ],
+};
+
 // Look up one service by id, or null — the stub must NEVER fabricate a service for
 // an unknown id (the 2026-07-09 phantom-service bug: any id echoed eden-cms-v2).
 function serviceById(id) {
   return SERVICES.find((s) => s.id === id) ?? null;
+}
+
+// The deploy list for a service (empty array for a service with none / unknown id).
+function deploysFor(serviceId) {
+  return DEPLOYS_BY_SERVICE[serviceId] ?? [];
+}
+
+// Look up one deploy scoped to a service, or null — mirrors serviceById's
+// never-borrow discipline: a deployId belonging to a DIFFERENT service (or an
+// unknown deployId) must not resolve, exactly like the real Get verb
+// (deploys.Service.Get, w9/m1/t001's not-found contract).
+function deployById(serviceId, deployId) {
+  return deploysFor(serviceId).find((d) => d.id === deployId) ?? null;
+}
+
+// Resolve the deploy a windowed build/predeploy Logs query is asking about.
+// The dashboard always sends the deploy's OWN createdAt as `startTime` (t003's
+// useDeploy → useDeployLogs wiring), so an exact match is enough for a stub —
+// no need to model interval overlap.
+function deployForWindow(serviceId, startTime) {
+  return deploysFor(serviceId).find((d) => d.createdAt === startTime) ?? null;
+}
+
+// Synthetic build + pre-deploy log lines for one seeded/triggered deploy
+// (w9/m1/t005) — a few scripted "==> …" build steps, and a pre-deploy
+// succeeded/failed line when the deploy has a preDeployStatus. Timestamps
+// land a few hundred ms apart starting at the deploy's createdAt, well inside
+// its own window.
+function deploySyntheticLogs(deploy) {
+  const base = Date.parse(deploy.createdAt);
+  const entry = (offsetMs, message, type) => ({
+    __typename: "LogEntry",
+    timestamp: new Date(base + offsetMs).toISOString(),
+    message,
+    type,
+    instance: null,
+    level: null,
+    method: null,
+    statusCode: null,
+  });
+  const build = [
+    entry(0, "==> Cloning from GitHub…", "build"),
+    entry(300, "==> Using Node.js version 20.11.0", "build"),
+    entry(700, "==> Running build command 'yarn build'…", "build"),
+    entry(1600, "==> Build successful", "build"),
+    entry(1900, "==> Uploading build…", "build"),
+  ];
+  const predeploy = deploy.preDeployStatus
+    ? [
+        entry(2200, "Running pre-deploy command…", "predeploy"),
+        entry(
+          2600,
+          deploy.preDeployStatus === "failed"
+            ? "pre-deploy command exited 1"
+            : "pre-deploy command exited 0",
+          "predeploy",
+        ),
+      ]
+    : [];
+  return { build, predeploy };
+}
+
+// The terminal statuses a deploy row settles into (store.DeployLive/
+// DeployUpdateFailed/DeployCanceled) — a deploy created in one of these is
+// already finished (RollbackService's immediate "live"); anything else means
+// finishedAt stays null until a mutation (the TriggerDeploy setTimeout,
+// CancelDeploy) closes it.
+const TERMINAL_DEPLOY_STATUSES = new Set(["live", "update_failed", "canceled"]);
+
+// makeDeploy builds a Deploy row (w9/m1/t005) — the shape TriggerDeploy and
+// RollbackService both need, differing only in status/trigger/rollbackOf/
+// image/preDeployStatus. Push the RETURNED object straight into
+// DEPLOYS_BY_SERVICE and reference it (never copy its fields) from the
+// matching ServiceEvent via deployServiceEvent below, so there is exactly one
+// place a status transition needs to be written.
+function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStatus = "" }) {
+  const createdAt = new Date().toISOString();
+  return {
+    __typename: "Deploy",
+    id,
+    status,
+    createdAt,
+    startedAt: createdAt,
+    finishedAt: TERMINAL_DEPLOY_STATUSES.has(status) ? createdAt : null,
+    trigger,
+    rollbackOf,
+    image,
+    preDeployStatus,
+  };
+}
+
+// deployServiceEvent projects a Deploy row onto the Events-tab shape
+// (EVENTS_BY_SERVICE's ServiceEvent, a different shape from Deploy: boolean
+// trigger flags instead of a plain string, no rollbackOf/image). `details`
+// is a getter reading LIVE off `deploy` — mirroring how the real backend's
+// events feed is a read-time view over the deploys table (internal/events),
+// never a second written copy — so a later status transition only has to
+// touch the Deploy row (see the TriggerDeploy/CancelDeploy cases) and every
+// ServiceEvents read reflects it automatically.
+function deployServiceEvent(deploy, trigger) {
+  return {
+    __typename: "ServiceEvent",
+    id: deploy.id,
+    type: "deploy",
+    timestamp: deploy.createdAt,
+    cursor: deploy.id,
+    get details() {
+      return {
+        __typename: "ServiceEventDetails",
+        deployStatus: deploy.status,
+        preDeployStatus: deploy.preDeployStatus,
+        actor: "dev@localhost",
+        triggeredByUser: "dev@localhost",
+        trigger,
+      };
+    },
+  };
 }
 
 // Per-service synthetic instance ids (replicas), derived from the service id so
@@ -774,6 +960,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
         schedule: null,
         command: null,
         runs: [],
+        healthCheckPath: null,
+        preDeployCommand: null,
         ownerId: WORKSPACE_DEFAULT,
         repo: variables.repo ?? null,
         branch: variables.branch ?? null,
@@ -838,17 +1026,41 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { scaleService: svc ?? null };
     }
     case "Logs": {
-      // Honor the same filters bex-api honors: type (app-only) + text substring.
+      // Honor the same filters bex-api honors: type + text substring +
+      // startTime/endTime (w9/m1/t002 GraphQL parity — the deploy page's
+      // windowed query).
       const type = variables.type;
+      const resource = variables.resource ?? "";
+      const limit = variables.limit ?? 100;
+      const inWindow = (iso) => {
+        const t = Date.parse(iso);
+        if (variables.startTime && t < Date.parse(variables.startTime))
+          return false;
+        if (variables.endTime && t > Date.parse(variables.endTime))
+          return false;
+        return true;
+      };
+      // build/predeploy (w9/m1/t005): sourced from the seeded/triggered deploy
+      // whose window the query names, never the synthetic app-log generator —
+      // an unmatched window (unknown deploy) answers empty, never borrowed data.
+      if (type === "build" || type === "predeploy") {
+        const deploy = deployForWindow(resource, variables.startTime);
+        const lines = deploy ? deploySyntheticLogs(deploy)[type] : [];
+        return { logs: lines.filter((l) => inWindow(l.timestamp)).slice(-limit) };
+      }
       if (type && type !== "app" && type !== "application") return { logs: [] };
-      let logs = history(60, variables.resource ?? "");
+      let logs = history(60, resource).filter((l) => inWindow(l.timestamp));
       if (variables.text) {
         const q = String(variables.text).toLowerCase();
         logs = logs.filter((l) => l.message.toLowerCase().includes(q));
       }
-      const limit = variables.limit ?? 100;
       return { logs: logs.slice(-limit) };
     }
+    // Single-deploy read (w9/m1/t001 GraphQL parity): the deploy detail page's
+    // header data. Unknown deployId, or one belonging to a different service,
+    // resolves null — never a borrowed deploy (deployById's contract above).
+    case "Deploy":
+      return { deploy: deployById(variables.serviceId, variables.deployId) };
     // Logs-tab filter dropdowns (w5/008): observed label values for one App.
     // `level`/`instance` are the two labels the synthetic app-log generator
     // actually varies (see MESSAGES/instancesFor above); the request-log-only
@@ -1421,96 +1633,77 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "ServiceEvents": {
       return { serviceEvents: EVENTS_BY_SERVICE[variables.serviceId] ?? [] };
     }
-    // TriggerDeploy: prepend a new in-progress event, simulate it going live.
+    // TriggerDeploy: prepend a new in-progress event AND a matching Deploy row
+    // (w9/m1/t005), simulate it going live over 5s — the deploy detail page's
+    // poll-until-terminal loop is exercisable offline. Note: variables.serviceId,
+    // NOT variables.id — this mutation's arg is serviceId (deployMutationArgs'
+    // shape), matching Cancel/Rollback below.
     case "TriggerDeploy": {
-      const svc = serviceById(variables.id);
-      const deploy = {
-        __typename: "Deploy",
+      const svc = serviceById(variables.serviceId);
+      const deploy = makeDeploy({
         id: `dep-stub-${Date.now().toString(36)}`,
         status: "update_in_progress",
-        createdAt: new Date().toISOString(),
-        trigger: "user",
-        rollbackOf: null,
+        trigger: "api",
         image: svc ? `registry.example.com/${svc.id}:stub` : null,
-      };
-      const evts = (EVENTS_BY_SERVICE[variables.id] ??= []);
-      evts.unshift({
-        __typename: "ServiceEvent",
-        id: deploy.id,
-        type: "deploy",
-        timestamp: deploy.createdAt,
-        cursor: deploy.id,
-        details: {
-          __typename: "ServiceEventDetails",
-          deployStatus: "update_in_progress",
-          actor: "dev@localhost",
-          triggeredByUser: "dev@localhost",
-          trigger: {
-            __typename: "DeployTrigger",
-            firstBuild: false,
-            envUpdated: false,
-            manual: true,
-            deployedByRender: false,
-            clearCache: false,
-            rollback: false,
-          },
-        },
+        // A pre-deploy step runs only when the service has one configured
+        // (Settings → preDeployCommand, w1/m33); starts "running" so the deploy
+        // page's log panel has a predeploy line to show immediately.
+        preDeployStatus: svc?.preDeployCommand ? "running" : "",
       });
+      (DEPLOYS_BY_SERVICE[variables.serviceId] ??= []).unshift(deploy);
+      (EVENTS_BY_SERVICE[variables.serviceId] ??= []).unshift(
+        deployServiceEvent(deploy, {
+          __typename: "DeployTrigger",
+          firstBuild: false,
+          envUpdated: false,
+          manual: true,
+          deployedByRender: false,
+          clearCache: false,
+          rollback: false,
+        }),
+      );
+      // Only the Deploy row's own fields need updating — ServiceEvents reads
+      // them live via deployServiceEvent's getter, so there's no second copy
+      // to remember to flip alongside it.
       setTimeout(() => {
-        const e = evts.find((ev) => ev.id === deploy.id);
-        if (e) e.details.deployStatus = "live";
+        if (deploy.preDeployStatus) deploy.preDeployStatus = "succeeded";
         deploy.status = "live";
+        deploy.finishedAt = new Date().toISOString();
       }, 5000);
       return { triggerDeploy: deploy };
     }
-    // CancelDeploy: flip the in-progress event to canceled.
+    // CancelDeploy: close the Deploy row canceled — the Events tab picks it
+    // up automatically (deployServiceEvent's live getter).
     case "CancelDeploy": {
-      const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
-      const e = evts.find((ev) => ev.id === variables.deployId);
-      if (e) e.details.deployStatus = "canceled";
-      return {
-        cancelDeploy: {
-          __typename: "Deploy",
-          id: variables.deployId,
-          status: "canceled",
-        },
-      };
+      const deploy = deployById(variables.serviceId, variables.deployId);
+      if (deploy) {
+        deploy.status = "canceled";
+        deploy.finishedAt = new Date().toISOString();
+      }
+      return { cancelDeploy: { __typename: "Deploy", id: variables.deployId, status: "canceled" } };
     }
-    // RollbackService: prepend a rollback-triggered deploy event.
+    // RollbackService: prepend a rollback-triggered Deploy row + its event.
     case "RollbackService": {
       const svc = serviceById(variables.serviceId);
-      const deploy = {
-        __typename: "Deploy",
+      const deploy = makeDeploy({
         id: `dep-rollback-${Date.now().toString(36)}`,
         status: "live",
-        createdAt: new Date().toISOString(),
         trigger: "rollback",
         rollbackOf: variables.deployId,
         image: svc ? `registry.example.com/${svc.id}:rollback` : null,
-      };
-      const evts = (EVENTS_BY_SERVICE[variables.serviceId] ??= []);
-      evts.unshift({
-        __typename: "ServiceEvent",
-        id: deploy.id,
-        type: "deploy",
-        timestamp: deploy.createdAt,
-        cursor: deploy.id,
-        details: {
-          __typename: "ServiceEventDetails",
-          deployStatus: "live",
-          actor: "dev@localhost",
-          triggeredByUser: "dev@localhost",
-          trigger: {
-            __typename: "DeployTrigger",
-            firstBuild: false,
-            envUpdated: false,
-            manual: false,
-            deployedByRender: false,
-            clearCache: false,
-            rollback: true,
-          },
-        },
       });
+      (DEPLOYS_BY_SERVICE[variables.serviceId] ??= []).unshift(deploy);
+      (EVENTS_BY_SERVICE[variables.serviceId] ??= []).unshift(
+        deployServiceEvent(deploy, {
+          __typename: "DeployTrigger",
+          firstBuild: false,
+          envUpdated: false,
+          manual: false,
+          deployedByRender: false,
+          clearCache: false,
+          rollback: true,
+        }),
+      );
       return { rollbackService: deploy };
     }
     // SetHealthCheckPath: persist the new path on the in-memory service object.
@@ -1524,6 +1717,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
           healthCheckPath: svc?.healthCheckPath ?? variables.path,
         },
       };
+    }
+    // SetPreDeployCommand (w1/m33): persist the pre-deploy command; empty clears it.
+    case "SetPreDeployCommand": {
+      const svc = serviceById(variables.id);
+      if (svc) svc.preDeployCommand = String(variables.command ?? "").trim() || null;
+      return { setPreDeployCommand: { __typename: "Service", id: variables.id, preDeployCommand: svc?.preDeployCommand ?? null, phase: svc?.phase ?? null } };
     }
     // Blueprints (w7/m27) — no seeded blueprints in the dev stub; return an
     // empty list so Apollo's InMemoryCache doesn't log "Missing field" warnings
@@ -1640,6 +1839,44 @@ const server = createServer((req, res) => {
     });
   }
 
+  // Hydra admin consent sessions — the Settings page's "Connected agents"
+  // card, via the dashboard's own /api/connected-agents server route (which
+  // reads HYDRA_ADMIN_URL; yarn dev:local points it here). One seeded client
+  // so list + revoke are exercised offline.
+  if (url.pathname === "/admin/oauth2/auth/sessions/consent") {
+    if (req.method === "DELETE") {
+      const client = url.searchParams.get("client");
+      const i = CONSENT_SESSIONS.findIndex(
+        (s) => s.consent_request?.client?.client_id === client,
+      );
+      if (i >= 0) CONSENT_SESSIONS.splice(i, 1);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    return json(res, 200, CONSENT_SESSIONS);
+  }
+
+  // Kratos listMySessions — the Settings page's "Active sessions" card
+  // (GET /sessions lists the identity's OTHER sessions; the current one comes
+  // from whoami). One seeded row so the revoke button has something to act on.
+  if (url.pathname === "/sessions" && req.method === "GET") {
+    return json(res, 200, [
+      {
+        id: "local-dev-session-other",
+        active: true,
+        authenticated_at: "2026-07-10T09:00:00Z",
+        devices: [
+          {
+            ip_address: "203.0.113.7",
+            location: "Berlin, DE",
+            user_agent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/128.0",
+          },
+        ],
+      },
+    ]);
+  }
+
   // Kratos session check — return a fixed active session so the auth guard passes.
   if (url.pathname === "/sessions/whoami") {
     return json(res, 200, {
@@ -1729,4 +1966,6 @@ server.listen(PORT, () => {
   console.log(`  GraphQL:  POST http://localhost:${PORT}/graphql`);
   console.log(`  Live tail: GET http://localhost:${PORT}/v1/logs/subscribe`);
   console.log(`  Kratos:   GET  http://localhost:${PORT}/sessions/whoami`);
+  console.log(`  Kratos:   GET  http://localhost:${PORT}/sessions`);
+  console.log(`  Hydra:    GET  http://localhost:${PORT}/admin/oauth2/auth/sessions/consent`);
 });

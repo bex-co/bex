@@ -40,9 +40,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/logs/subscribe", s.logsSubscribe)
 }
 
-// checkWindow enforces BEX_MAX_QUERY_HOURS on a query's time range. Every REST log
-// read goes through it — the historical query AND label discovery, which accepts the
-// same startTime/endTime and would otherwise let a caller scan the store unbounded.
+// checkWindow enforces BEX_MAX_QUERY_HOURS on a query's time range. Every REST
+// log read goes through it — the historical query AND label discovery — and
+// so does GraphQL's `logs`/`logLabelValues` (graphql.go, w9/m1/t002) — both
+// accept the same startTime/endTime and would otherwise let a caller scan the
+// store unbounded.
 func (s *Service) checkWindow(q LogQuery) error {
 	if s.MaxQueryHours <= 0 || q.Since.IsZero() {
 		return nil
@@ -214,19 +216,9 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	// the three surfaces refuse identically; NormalizeTypes only maps the `app`
 	// alias and the "all" widening, which is adapter-shaped work.
 	q.Direction = v.Get("direction")
-	if s := v.Get("startTime"); s != "" {
-		t, err := time.Parse(time.RFC3339, s)
-		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
-		}
-		q.Since = t
-	}
-	if e := v.Get("endTime"); e != "" {
-		t, err := time.Parse(time.RFC3339, e)
-		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
-		}
-		q.End = t
+	q.Since, q.End, err = parseTimeWindow(v.Get("startTime"), v.Get("endTime"))
+	if err != nil {
+		return nil, LogQuery{}, err
 	}
 	if l := v.Get("limit"); l != "" {
 		n, err := strconv.ParseInt(l, 10, 64)

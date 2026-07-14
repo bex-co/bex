@@ -764,6 +764,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "/",
     description: "Settings tab: health-check path input placeholder",
   },
+  "services.settingsHealthCheckPathEdit": {
+    message: "Edit Health Check Path",
+    description:
+      "Settings tab: accessible label for the health-check path edit-pencil button",
+  },
   "services.healthCheckPathSuccess": {
     message: "Health check path updated.",
     description: "Toast after setHealthCheckPath succeeds",

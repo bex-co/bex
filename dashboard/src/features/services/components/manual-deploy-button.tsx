@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -50,6 +51,7 @@ type ConfirmAction = "deploy" | "restart";
 export function ManualDeployButton({ service, pending }: ManualDeployButtonProps) {
   const { t } = useTranslations();
   const { deploying, trigger } = useTriggerDeploy();
+  const navigate = useNavigate();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const busy = deploying || pending;
   const repoBacked = !!service.repo;
@@ -82,8 +84,16 @@ export function ManualDeployButton({ service, pending }: ManualDeployButtonProps
     // — so both open a deploy-history row (w2/m30). Restart passes no extra
     // options: for image-backed services this re-pulls and restarts; for
     // repo-backed services this rebuilds from Branch HEAD.
-    await trigger(service.id);
+    const deployId = await trigger(service.id);
     setConfirm(null);
+    // Render lands the user straight on the new deploy's page (w9/m1/t004); a
+    // failed trigger already toasted and has no deploy id to navigate to.
+    if (deployId) {
+      void navigate({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: service.id, deployId },
+      });
+    }
   }
 
   return (

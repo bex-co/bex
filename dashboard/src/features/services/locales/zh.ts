@@ -751,6 +751,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "/",
     description: "Settings tab: health-check path input placeholder",
   },
+  "services.settingsHealthCheckPathEdit": {
+    message: "编辑健康检查路径",
+    description:
+      "Settings tab: accessible label for the health-check path edit-pencil button",
+  },
   "services.healthCheckPathSuccess": {
     message: "健康检查路径已更新。",
     description: "Toast after setHealthCheckPath succeeds",

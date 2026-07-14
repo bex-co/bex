@@ -3,6 +3,7 @@ import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
 import {
+  KRATOS_PUBLIC_URL,
   useOryConfig,
   oryHideSettingsPageHeader,
 } from "@/common/lib/ory/config";
@@ -42,7 +43,10 @@ export default function SettingsPage() {
             </p>
           </div>
           {flow ? (
-            <SessionProvider>
+            // Without baseUrl, SessionProvider guesses the Ory SDK URL as this
+            // app's own origin — but Kratos lives on its own host, so its
+            // whoami would 404/500 against the dashboard itself.
+            <SessionProvider baseUrl={KRATOS_PUBLIC_URL}>
               <Settings
                 flow={flow}
                 config={oryConfig}

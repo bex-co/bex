@@ -402,3 +402,78 @@ func TestGraphQLLogs(t *testing.T) {
 		t.Fatalf("unexpected log shape: %+v", first)
 	}
 }
+
+// TestGraphQLLogsTimeWindow covers w9/m1/t002: startTime/endTime filter to the
+// window exactly as REST's ?startTime=&endTime= does (both routed through the
+// same LogQuery.Since/.End the pod-log fallback's keep() applies) — the
+// deploy detail page's log panel depends on this to scope a query to one
+// deploy's createdAt..finishedAt range.
+func TestGraphQLLogsTimeWindow(t *testing.T) {
+	svc := newService(map[string][]string{
+		webInst: {
+			"2026-07-05T00:00:01Z before the window",
+			"2026-07-05T00:00:05Z inside the window",
+			"2026-07-05T00:00:09Z after the window",
+		},
+	}, sampleApp("web"), podFor("web", webInst))
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	data := runQuery(t, schema, `{ logs(resource:"web", startTime:"2026-07-05T00:00:03Z", endTime:"2026-07-05T00:00:07Z") { message } }`)
+	list := data["logs"].([]any)
+	if len(list) != 1 || list[0].(map[string]any)["message"] != "inside the window" {
+		t.Fatalf("windowed logs = %+v, want exactly [inside the window]", list)
+	}
+}
+
+// TestGraphQLLogsMalformedTimeErrors covers w9/m1/t002's error-shape parity:
+// a malformed startTime/endTime is a resolver error naming the offending
+// field, mirroring REST's `%w: startTime: …`/`%w: endTime: …` (rest.go) —
+// never a silently-dropped filter.
+func TestGraphQLLogsMalformedTimeErrors(t *testing.T) {
+	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", webInst))
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	for _, tc := range []struct{ field, query string }{
+		{"startTime", `{ logs(resource:"web", startTime:"not-a-time") { message } }`},
+		{"endTime", `{ logs(resource:"web", endTime:"not-a-time") { message } }`},
+	} {
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: tc.query, Context: context.Background()})
+		if len(res.Errors) == 0 {
+			t.Fatalf("malformed %s: want a resolver error, got none", tc.field)
+		}
+		if !strings.Contains(res.Errors[0].Message, tc.field+":") {
+			t.Errorf("malformed %s error = %q, want it to name the field", tc.field, res.Errors[0].Message)
+		}
+	}
+}
+
+// TestGraphQLLogsMaxQueryHoursBounds covers w9/m1/t008: BEX_MAX_QUERY_HOURS
+// bounds GraphQL's logs/logLabelValues exactly as it bounds REST's (rest.go's
+// checkWindow, now called from both resolvers, graphql.go) — an over-wide
+// window is a 400-shaped resolver error on every surface, never unbounded on
+// one and capped on another.
+func TestGraphQLLogsMaxQueryHoursBounds(t *testing.T) {
+	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", webInst))
+	svc.MaxQueryHours = 24
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	wide := `startTime:"2020-01-01T00:00:00Z", endTime:"2026-01-01T00:00:00Z"`
+	for _, q := range []string{
+		`{ logs(resource:"web", ` + wide + `) { message } }`,
+		`{ logLabelValues(resource:"web", label:"level", ` + wide + `) }`,
+	} {
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
+		if len(res.Errors) == 0 {
+			t.Errorf("%s: an over-wide window => resolver error, got none", q)
+		}
+	}
+}

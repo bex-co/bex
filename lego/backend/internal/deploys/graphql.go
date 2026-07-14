@@ -95,6 +95,20 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.List(p.Context, p.Args["serviceId"].(string), filter)
 			},
 		},
+		// deploy is the single-resource fetch-by-id twin of deploys(serviceId, …)
+		// (w9/m1/t001), closing GraphQL's drift from REST's GET
+		// .../deploys/{deployId} and MCP's get_deploy — the dashboard's deploy
+		// detail page needs a by-id read, not just the list. Resolves through the
+		// same Service.Get REST/MCP use, so a deployId belonging to another
+		// service or an unknown deployId errors identically (core.ErrNotFound)
+		// across all three surfaces.
+		"deploy": &graphql.Field{
+			Type: deployGQLType,
+			Args: deployMutationArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
+			},
+		},
 	}
 }
 

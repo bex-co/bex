@@ -699,6 +699,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "存储",
     description: "Insights panel — database/table sizes sub-section heading",
   },
+  "databases.insightsNoSizes": {
+    message: "暂无存储数据。",
+    description: "Insights storage empty state",
+  },
   "databases.insightsProcessesTitle": {
     message: "活跃进程",
     description: "Insights panel — pg_stat_activity sub-section heading",

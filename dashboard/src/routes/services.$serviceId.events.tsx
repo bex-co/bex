@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -30,6 +30,11 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
+import {
+  deployStatusVariant as statusVariant,
+  deployStatusKey as statusKey,
+  preDeployStatusKey as preDeployKey,
+} from "@/features/deploys/lib/deploy-status";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
@@ -37,55 +42,6 @@ export const Route = createFileRoute("/services/$serviceId/events")({
     meta: [{ title: `${params.serviceId} · Events · bex dashboard` }],
   }),
 });
-
-// Map wire deployStatus to badge variant + locale key
-function statusVariant(
-  status: string,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "live":
-      return "default";
-    case "update_in_progress":
-      return "secondary";
-    case "update_failed":
-      return "destructive";
-    case "canceled":
-      return "outline";
-    default:
-      return "secondary";
-  }
-}
-
-function statusKey(status: string): string {
-  switch (status) {
-    case "live":
-      return "services.eventsStatusLive";
-    case "update_in_progress":
-      return "services.eventsStatusInProgress";
-    case "update_failed":
-      return "services.eventsStatusFailed";
-    case "canceled":
-      return "services.eventsStatusCanceled";
-    default:
-      return status;
-  }
-}
-
-// The pre-deploy step's own status line (w1/m33), shown under the deploy badge
-// so a migration failure reads distinctly from a health-check failure. Only
-// running/succeeded/failed carry a label; "" (no pre-deploy step) shows nothing.
-function preDeployKey(status: string): string | null {
-  switch (status) {
-    case "running":
-      return "services.eventsPreDeployRunning";
-    case "succeeded":
-      return "services.eventsPreDeploySucceeded";
-    case "failed":
-      return "services.eventsPreDeployFailed";
-    default:
-      return null;
-  }
-}
 
 // ServiceEventDetails.trigger is the Trigger object (boolean flags), a
 // different shape from Deploy.trigger's plain string — derive a short label
@@ -120,6 +76,7 @@ type ConfirmAction =
 export function ServiceEventsPage() {
   const { serviceId } = Route.useParams();
   const { t } = useTranslations();
+  const navigate = useNavigate();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
 
   const { data, loading, refetch } = useQuery(ServiceEventsDocument, {
@@ -153,10 +110,19 @@ export function ServiceEventsPage() {
         });
         toast.success(t("services.cancelDeploySuccess"));
       } else {
-        await rollbackService({
+        const { data } = await rollbackService({
           variables: { serviceId, deployId: confirm.deployId },
         });
         toast.success(t("services.rollbackSuccess"));
+        // Render lands the user on the rollback deploy's own page (w9/m1/t004),
+        // not the deploy it restored.
+        const rollbackId = data?.rollbackService?.id;
+        if (rollbackId) {
+          void navigate({
+            to: "/services/$serviceId/deploys/$deployId",
+            params: { serviceId, deployId: rollbackId },
+          });
+        }
       }
       void refetch();
     } catch {
@@ -209,7 +175,11 @@ export function ServiceEventsPage() {
                     key={evt.id}
                     className="flex items-start justify-between gap-4 py-3"
                   >
-                    <div className="min-w-0 flex-1">
+                    <Link
+                      to="/services/$serviceId/deploys/$deployId"
+                      params={{ serviceId, deployId: evt.id }}
+                      className="min-w-0 flex-1"
+                    >
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={statusVariant(details?.deployStatus ?? "")}
@@ -242,7 +212,7 @@ export function ServiceEventsPage() {
                           {new Date(evt.timestamp).toLocaleString()}
                         </p>
                       )}
-                    </div>
+                    </Link>
                     <div className="flex shrink-0 gap-2">
                       {isInProgress && (
                         <Button

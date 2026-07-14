@@ -98,16 +98,22 @@ export function fromRenderLog(log: RenderLog): LogLine {
   );
 }
 
+// dedupeLogLines drops any line whose key already appeared earlier in the
+// array, keeping the first occurrence — the key-based unique-by-key building
+// block any multi-source merge (mergeLogLines below, or a fan-out across
+// several typed queries) shares.
+export function dedupeLogLines(lines: LogLine[]): LogLine[] {
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    if (seen.has(line.key)) return false;
+    seen.add(line.key);
+    return true;
+  });
+}
+
 // mergeLogLines appends live-tail lines after the historical page, dropping any
 // live line whose key already appears in history — a line straddling the last
 // historical page and the first streamed frames is drawn once, in order.
 export function mergeLogLines(history: LogLine[], live: LogLine[]): LogLine[] {
-  const seen = new Set(history.map((l) => l.key));
-  const merged = [...history];
-  for (const line of live) {
-    if (seen.has(line.key)) continue;
-    seen.add(line.key);
-    merged.push(line);
-  }
-  return merged;
+  return dedupeLogLines([...history, ...live]);
 }

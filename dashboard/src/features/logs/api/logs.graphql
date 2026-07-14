@@ -21,6 +21,8 @@ query Logs(
   $statusCode: [String!]
   $method: [String!]
   $path: [String!]
+  $startTime: String
+  $endTime: String
   $limit: Int
 ) {
   logs(
@@ -32,6 +34,8 @@ query Logs(
     statusCode: $statusCode
     method: $method
     path: $path
+    startTime: $startTime
+    endTime: $endTime
     limit: $limit
   ) {
     timestamp

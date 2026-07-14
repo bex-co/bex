@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -242,6 +243,54 @@ func TestGraphQLDeploysFiltersMatchREST(t *testing.T) {
 	list = res.Data.(map[string]any)["deploys"].([]any)
 	if len(list) != 2 || list[0].(map[string]any)["id"] != "dep-2" || list[1].(map[string]any)["id"] != "dep-1" {
 		t.Fatalf("cursor page = %+v, want [dep-2 dep-1]", list)
+	}
+}
+
+// TestGraphQLDeploySingleRead covers w9/m1/t001: the deploy(serviceId,
+// deployId) by-id field REST's GET .../deploys/{deployId} and MCP's
+// get_deploy already had — found, unknown, and cross-service-owned-id, all
+// through the same s.Get verb REST/MCP call, so the three surfaces cannot
+// drift on fields or the not-found shape.
+func TestGraphQLDeploySingleRead(t *testing.T) {
+	ds := newFakeStore()
+	seedHistory(ds)
+	svc, _ := newService(ds, sampleApp("web", "srv-1"), sampleApp("other", "srv-2"))
+	schema := testSchema(t, svc)
+	ctx := context.Background()
+
+	// Found: the same DeployView fields the REST detail endpoint serves.
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ deploy(serviceId: "web", deployId: "dep-3") { id status preDeployStatus } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("deploy query: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["deploy"].(map[string]any)
+	if got["id"] != "dep-3" || got["status"] != store.DeployLive {
+		t.Fatalf("deploy = %+v, want id=dep-3 status=live", got)
+	}
+
+	// Cross-checked against Service.Get (what REST/MCP render) — identical.
+	want, err := svc.Get(ctx, "web", "dep-3")
+	if err != nil || want.ID != "dep-3" || want.Status != store.DeployLive {
+		t.Fatalf("Service.Get = %+v (err %v) — GraphQL and REST/MCP must agree", want, err)
+	}
+
+	// Unknown deployId -> not-found (a resolver error), never a phantom deploy.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ deploy(serviceId: "web", deployId: "dep-nope") { id } }`})
+	if len(res.Errors) == 0 {
+		t.Fatal("unknown deployId: want a not-found error, got none")
+	}
+	if !strings.Contains(res.Errors[0].Message, "not found") {
+		t.Errorf("unknown deployId error = %q, want it to name not-found", res.Errors[0].Message)
+	}
+
+	// A deployId belonging to a DIFFERENT service must not resolve — never a
+	// cross-app leak through the id alone (deploys.Service.Get's doc comment).
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ deploy(serviceId: "other", deployId: "dep-3") { id } }`})
+	if len(res.Errors) == 0 {
+		t.Fatal("cross-service deployId: want a not-found error, got none")
 	}
 }
 

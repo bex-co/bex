@@ -711,6 +711,10 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Storage",
     description: "Insights panel — database/table sizes sub-section heading",
   },
+  "databases.insightsNoSizes": {
+    message: "No size data yet.",
+    description: "Insights storage empty state",
+  },
   "databases.insightsProcessesTitle": {
     message: "Active processes",
     description: "Insights panel — pg_stat_activity sub-section heading",

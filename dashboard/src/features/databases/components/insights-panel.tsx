@@ -96,7 +96,9 @@ export function InsightsPanel({ id }: { id: string }) {
                 </table>
               )}
             </div>
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("databases.insightsNoSizes")}</p>
+          )}
         </Section>
 
         {/* Active processes */}

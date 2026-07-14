@@ -1,0 +1,17 @@
+# bex-api's single-deploy read (internal/deploys/graphql.go, w9/m1/t001) — the
+# by-id twin of services/api/events.graphql's list-oriented `deploys(serviceId)`.
+# Feeds the deploy detail page's header; field selection mirrors what the
+# triggerDeploy/rollbackService mutations already return.
+query Deploy($serviceId: String!, $deployId: String!) {
+  deploy(serviceId: $serviceId, deployId: $deployId) {
+    id
+    status
+    trigger
+    image
+    rollbackOf
+    createdAt
+    startedAt
+    finishedAt
+    preDeployStatus
+  }
+}

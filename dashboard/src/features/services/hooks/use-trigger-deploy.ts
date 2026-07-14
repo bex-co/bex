@@ -18,8 +18,13 @@ export interface TriggerOptions {
 export interface UseTriggerDeployResult {
   /** True while the deploy mutation (and its Events refetch) is in flight. */
   deploying: boolean;
-  /** Trigger a manual deploy of `serviceId`, toasting the outcome. */
-  trigger: (serviceId: string, opts?: TriggerOptions) => Promise<void>;
+  /**
+   * Trigger a manual deploy of `serviceId`, toasting the outcome. Resolves the
+   * new deploy's id on success (w9/m1/t004 — callers navigate to its page), or
+   * null on failure (the toast already reported it; the caller shouldn't also
+   * navigate).
+   */
+  trigger: (serviceId: string, opts?: TriggerOptions) => Promise<string | null>;
 }
 
 /**
@@ -39,9 +44,12 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
     awaitRefetchQueries: true,
   });
 
-  async function trigger(serviceId: string, opts?: TriggerOptions) {
+  async function trigger(
+    serviceId: string,
+    opts?: TriggerOptions,
+  ): Promise<string | null> {
     try {
-      await triggerDeploy({
+      const { data } = await triggerDeploy({
         variables: {
           serviceId,
           commitId: opts?.commitId,
@@ -49,8 +57,10 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
         },
       });
       toast.success(t("services.triggerDeploySuccess"));
+      return data?.triggerDeploy?.id ?? null;
     } catch {
       toast.error(t("services.triggerDeployError"));
+      return null;
     }
   }
 

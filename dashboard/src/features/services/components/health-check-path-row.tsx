@@ -93,7 +93,7 @@ export function HealthCheckPathRow({
           <Button
             size="icon"
             variant="ghost"
-            aria-label={t("services.buildDeployEdit")}
+            aria-label={t("services.settingsHealthCheckPathEdit")}
             onClick={startEdit}
           >
             <Pencil />

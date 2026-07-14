@@ -57,6 +57,14 @@ func logFilterArgs() graphql.FieldConfigArgument {
 		"method":     list,
 		"path":       list,
 		"direction":  &graphql.ArgumentConfig{Type: graphql.String},
+		// startTime/endTime (w9/m1/t002): the RFC3339 window REST (?startTime=…&
+		// endTime=…) and MCP (list_logs) already accept — the deploy detail page
+		// scopes its log query to a deploy's createdAt..finishedAt window. Absent
+		// ⇒ prior unbounded behavior; BEX_MAX_QUERY_HOURS is enforced by the
+		// resolvers below (s.checkWindow), the same call REST's logsQuery/
+		// logsValues make — not duplicated here as a second cap.
+		"startTime": &graphql.ArgumentConfig{Type: graphql.String},
+		"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
 	}
 }
 
@@ -81,6 +89,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if n, ok := p.Args["limit"].(int); ok {
 					q.Limit = int64(n)
 				}
+				if err := s.checkWindow(q); err != nil {
+					return nil, err
+				}
 				return s.QueryLogs(p.Context, q)
 			},
 		},
@@ -92,6 +103,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				q, err := logQueryFromArgs(p.Args)
 				if err != nil {
+					return nil, err
+				}
+				if err := s.checkWindow(q); err != nil {
 					return nil, err
 				}
 				label, _ := p.Args["label"].(string)
@@ -125,5 +139,12 @@ func logQueryFromArgs(args map[string]any) (LogQuery, error) {
 	q.StatusCode = gqlutil.StringList(args["statusCode"])
 	q.Method = gqlutil.StringList(args["method"])
 	q.Path = gqlutil.StringList(args["path"])
+	startTime, _ := args["startTime"].(string)
+	endTime, _ := args["endTime"].(string)
+	since, end, err := parseTimeWindow(startTime, endTime)
+	if err != nil {
+		return LogQuery{}, err
+	}
+	q.Since, q.End = since, end
 	return q, nil
 }
