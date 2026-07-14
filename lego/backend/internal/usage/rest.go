@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
 
 // rest.go is the usage REST fragment. GET /v1/usage returns the calling
@@ -46,9 +47,10 @@ type usageServiceEntry struct {
 // usageResponse is the shared JSON envelope for GET /v1/usage and the MCP
 // get_usage tool — both surfaces answer identical JSON so diffing is trivial.
 type usageResponse struct {
-	WorkspaceID string              `json:"workspaceId"`
-	Period      string              `json:"period"` // "YYYY-MM"
-	Services    []usageServiceEntry `json:"services"`
+	WorkspaceID   string                `json:"workspaceId"`
+	Period        string                `json:"period"` // "YYYY-MM"
+	Services      []usageServiceEntry   `json:"services"`
+	EstimatedCost pricing.EstimatedCost `json:"estimatedCost"`
 }
 
 // RegisterREST mounts the usage REST endpoint on the shared mux.
@@ -76,7 +78,12 @@ func toUsageResponse(sum Summary) usageResponse {
 		}
 		svcs = append(svcs, usageServiceEntry{ServiceID: svc.ServiceID, ResourceKind: svc.ResourceKind, Rows: rows})
 	}
-	return usageResponse{WorkspaceID: sum.WorkspaceID, Period: period, Services: svcs}
+	return usageResponse{
+		WorkspaceID:   sum.WorkspaceID,
+		Period:        period,
+		Services:      svcs,
+		EstimatedCost: sum.EstimatedCost,
+	}
 }
 
 // resolvePeriodEnd maps an optional "YYYY-MM" period string to the effective

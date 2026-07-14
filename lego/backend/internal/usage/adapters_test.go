@@ -445,6 +445,77 @@ func TestGraphQLPeriodInResponse(t *testing.T) {
 	}
 }
 
+// TestRESTAdapterEstimatedCostPresent verifies that the REST response includes a
+// non-zero estimatedCost when there is billable usage (seedMixedStore has
+// service + postgres + key_value rows with known ResourceKind).
+func TestRESTAdapterEstimatedCostPresent(t *testing.T) {
+	svc := svcWithTenant(seedMixedStore(), "tea-mix")
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	req := httptest.NewRequest("GET", "/v1/usage", nil)
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user:alice"}))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.EstimatedCost.TotalUSD == "" {
+		t.Error("estimatedCost.totalUsd is empty")
+	}
+	if resp.EstimatedCost.TotalUSD == "0.00" {
+		t.Errorf("estimatedCost.totalUsd: expected non-zero, got %q", resp.EstimatedCost.TotalUSD)
+	}
+	if resp.EstimatedCost.Meters == nil {
+		t.Error("estimatedCost.meters is nil; want non-nil slice")
+	}
+	if len(resp.EstimatedCost.Meters) != 3 {
+		t.Errorf("estimatedCost.meters: want 3, got %d", len(resp.EstimatedCost.Meters))
+	}
+}
+
+// TestGraphQLAdapterEstimatedCostPresent verifies that the GraphQL surface
+// returns estimatedCost fields when queried.
+func TestGraphQLAdapterEstimatedCostPresent(t *testing.T) {
+	svc := svcWithTenant(seedMixedStore(), "tea-mix")
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("build schema: %v", err)
+	}
+
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+	result := graphql.Do(graphql.Params{
+		Schema: schema,
+		RequestString: `{ usage { estimatedCost {
+			totalUsd
+			meters { kind tier resourceKind costUsd }
+		} } }`,
+		Context: ctx,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", result.Errors)
+	}
+	data, _ := result.Data.(map[string]any)
+	usageData, _ := data["usage"].(map[string]any)
+	ec, _ := usageData["estimatedCost"].(map[string]any)
+	if ec == nil {
+		t.Fatal("estimatedCost is nil in GraphQL response")
+	}
+	totalUsd, _ := ec["totalUsd"].(string)
+	if totalUsd == "" || totalUsd == "0.00" {
+		t.Errorf("estimatedCost.totalUsd: expected non-zero, got %q", totalUsd)
+	}
+	meters, _ := ec["meters"].([]any)
+	if len(meters) != 3 {
+		t.Errorf("estimatedCost.meters: want 3, got %d", len(meters))
+	}
+}
+
 // --- cross-adapter consistency ---
 
 // TestAdapterConsistency verifies that the REST and GraphQL adapters return the

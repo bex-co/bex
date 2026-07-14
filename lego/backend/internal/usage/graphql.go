@@ -20,12 +20,14 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // graphql.go is the usage GraphQL fragment. The `usage` query is a bex
 // dashboard companion alongside `monthToDateBandwidth` — workspace-scoped (no
-// per-resource filter needed) and returning the same data as GET /v1/usage.
+// per-resource filter needed) and returning the same data as GET /v1/usage,
+// including the estimatedCost breakdown (w8/m7).
 
 var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageRow",
@@ -45,12 +47,31 @@ var serviceUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var meterEstimateGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MeterEstimate",
+	Fields: graphql.Fields{
+		"kind":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.Kind })},
+		"tier":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.Tier })},
+		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.ResourceKind })},
+		"costUsd":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.CostUSD })},
+	},
+})
+
+var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EstimatedCost",
+	Fields: graphql.Fields{
+		"totalUsd": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e pricing.EstimatedCost) any { return e.TotalUSD })},
+		"meters":   &graphql.Field{Type: graphql.NewList(meterEstimateGQLType), Resolve: gqlutil.Field(func(e pricing.EstimatedCost) any { return e.Meters })},
+	},
+})
+
 var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
-		"workspaceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.WorkspaceID })},
-		"period":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
-		"services":    &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
+		"workspaceId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.WorkspaceID })},
+		"period":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
+		"services":      &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
+		"estimatedCost": &graphql.Field{Type: estimatedCostGQLType, Resolve: gqlutil.Field(func(s Summary) any { return s.EstimatedCost })},
 	},
 })
 

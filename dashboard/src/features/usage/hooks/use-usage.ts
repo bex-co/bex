@@ -28,10 +28,23 @@ export interface ServiceUsage {
   rows: UsageRow[];
 }
 
+export interface MeterEstimate {
+  kind: string;
+  tier: string;
+  resourceKind: string;
+  costUsd: string;
+}
+
+export interface EstimatedCost {
+  totalUsd: string;
+  meters: MeterEstimate[];
+}
+
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
   services: ServiceUsage[];
+  estimatedCost: EstimatedCost | null;
 }
 
 export interface UseUsageResult {
@@ -70,6 +83,19 @@ export function useUsage(period?: string): UseUsageResult {
                     total: r!.total ?? 0,
                   })),
               })),
+            estimatedCost: raw.estimatedCost
+              ? {
+                  totalUsd: raw.estimatedCost.totalUsd ?? "0.00",
+                  meters: (raw.estimatedCost.meters ?? [])
+                    .filter(Boolean)
+                    .map((m) => ({
+                      kind: m!.kind ?? "",
+                      tier: m!.tier ?? "",
+                      resourceKind: m!.resourceKind ?? "",
+                      costUsd: m!.costUsd ?? "0.00",
+                    })),
+                }
+              : null,
           }
         : null,
     [raw],

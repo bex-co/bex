@@ -3,6 +3,8 @@
 # build_seconds (CI/build) — displayed as hours, MB/GB, and minutes respectively.
 # resourceKind distinguishes App services from managed Postgres/KeyValue instances.
 # period: optional calendar month YYYY-MM; defaults to the current month.
+# estimatedCost: USD estimate (30% below Render on compute/Postgres/KV/build,
+# 90% below on bandwidth). Estimate only — not an invoice.
 query Usage($period: String) {
   usage(period: $period) {
     workspaceId
@@ -14,6 +16,15 @@ query Usage($period: String) {
         kind
         tier
         total
+      }
+    }
+    estimatedCost {
+      totalUsd
+      meters {
+        kind
+        tier
+        resourceKind
+        costUsd
       }
     }
   }

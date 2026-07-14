@@ -178,6 +178,45 @@ describe("UsagePage", () => {
     expect(totals).toHaveLength(3);
   });
 
+  it("renders the Estimated Cost section heading", () => {
+    mockUseUsage.mockReturnValue(emptyState());
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("Estimated Cost")).toBeInTheDocument();
+  });
+
+  it("shows the no-billable-usage empty state when estimatedCost is null", () => {
+    // emptyState() has no estimatedCost field → null in the component
+    mockUseUsage.mockReturnValue(emptyState());
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("No billable usage this period.")).toBeInTheDocument();
+  });
+
+  it("shows totalUsd and per-meter rows when estimatedCost is present", () => {
+    mockUseUsage.mockReturnValue({
+      ...dataState(),
+      summary: {
+        ...dataState().summary!,
+        estimatedCost: {
+          totalUsd: "4.90",
+          meters: [
+            { kind: "instance_seconds", tier: "starter", resourceKind: "service", costUsd: "4.90" },
+          ],
+        },
+      },
+    });
+
+    render(<UsagePage />);
+
+    // $4.90 appears in both the summary total span and the meter table cell
+    expect(screen.getAllByText("$4.90").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Estimate only — not an invoice")).toBeInTheDocument();
+    expect(screen.getByText("instance_seconds")).toBeInTheDocument();
+  });
+
   it("shows an error alert when the query fails and no summary is available", () => {
     mockUseUsage.mockReturnValue({
       summary: null,

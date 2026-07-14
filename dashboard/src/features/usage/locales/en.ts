@@ -85,6 +85,30 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Total per meter over the last three calendar months",
     description: "Subtitle for the trend charts on the Usage page",
   },
+  "usage.estimatedCostTitle": {
+    message: "Estimated Cost",
+    description: "Estimated cost section heading on the Usage page",
+  },
+  "usage.estimatedCostDescription": {
+    message: "30% below Render on compute, Postgres, and key-value; 90% below on bandwidth. Estimate only — not an invoice.",
+    description: "Estimated cost section description explaining the pricing policy",
+  },
+  "usage.estimatedCostNote": {
+    message: "Estimate only — not an invoice",
+    description: "Short disclaimer shown next to the estimated cost total",
+  },
+  "usage.colMeter": {
+    message: "Meter",
+    description: "Table column header for the meter kind (instance_seconds / egress_bytes / build_seconds)",
+  },
+  "usage.colEstimate": {
+    message: "Estimate",
+    description: "Table column header for the estimated USD cost per meter",
+  },
+  "usage.estimatedCostUnavailable": {
+    message: "No billable usage this period.",
+    description: "Empty-state message when there is no billable usage to estimate",
+  },
 };
 
 export default enUsage;

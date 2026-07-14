@@ -74,6 +74,7 @@ describe("useUsage", () => {
           rows: [{ kind: "build_seconds", tier: "", total: 600 }],
         },
       ],
+      estimatedCost: null,
     });
   });
 

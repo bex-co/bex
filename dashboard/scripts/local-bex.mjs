@@ -730,6 +730,20 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const currentMm = new Date().getMonth() + 1;
       const monthsBack = ((currentMm - mm + 12) % 12);
       const scale = Math.max(0.3, 1 - monthsBack * 0.25);
+      // Compute a synthetic estimatedCost matching the price sheet (pricing.yaml):
+      // starter compute: $4.90/mo per 2,628,000 s; egress: $0.01/GB; build: $0.0035/min
+      const starterSecs = Math.round((432000 + 216000) * scale); // eden-cms + email-worker
+      const egressBytes = Math.round(524288000 * scale);
+      const buildSecs = Math.round((1800 + 900 + 300) * scale);
+      const computeCost = (starterSecs * 0.000001864554).toFixed(2);
+      const bandwidthCost = (egressBytes * 0.000000000009313226).toFixed(2);
+      const buildCost = (buildSecs * 0.000058333333).toFixed(2);
+      const totalCost = (starterSecs * 0.000001864554 + egressBytes * 0.000000000009313226 + buildSecs * 0.000058333333).toFixed(2);
+      const meters = [
+        parseFloat(computeCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "instance_seconds", tier: "starter", resourceKind: "service", costUsd: computeCost } : null,
+        parseFloat(bandwidthCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "egress_bytes", tier: "", resourceKind: "service", costUsd: bandwidthCost } : null,
+        parseFloat(buildCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "build_seconds", tier: "", resourceKind: "service", costUsd: buildCost } : null,
+      ].filter(Boolean);
       return {
         usage: {
           __typename: "UsageSummary",
@@ -762,6 +776,11 @@ function resolveGraphQL({ operationName, variables = {} }) {
               ],
             },
           ],
+          estimatedCost: {
+            __typename: "EstimatedCost",
+            totalUsd: totalCost,
+            meters,
+          },
         },
       };
     }

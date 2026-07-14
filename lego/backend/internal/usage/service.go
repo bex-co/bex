@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -94,9 +95,10 @@ func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client
 // three adapters present. Total values are in the natural unit of each kind
 // (seconds/bytes/seconds).
 type Summary struct {
-	WorkspaceID string
-	Period      string // "YYYY-MM" — the calendar month this summary covers
-	Services    []ServiceUsage
+	WorkspaceID   string
+	Period        string // "YYYY-MM" — the calendar month this summary covers
+	Services      []ServiceUsage
+	EstimatedCost pricing.EstimatedCost
 }
 
 // ServiceUsage is one service's contribution to the workspace's month-to-date
@@ -131,6 +133,7 @@ func (s *Service) monthToDateAt(ctx context.Context, now time.Time) (Summary, er
 	}
 	sum := summarise(tenantID, rows)
 	sum.Period = now.Format("2006-01")
+	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	return sum, nil
 }
 

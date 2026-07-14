@@ -85,6 +85,30 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "近三个自然月的各计量指标合计",
     description: "Subtitle for the trend charts on the Usage page",
   },
+  "usage.estimatedCostTitle": {
+    message: "预估费用",
+    description: "Estimated cost section heading on the Usage page",
+  },
+  "usage.estimatedCostDescription": {
+    message: "计算、Postgres 及 Key Value 比 Render 低 30%；带宽低 90%。仅供参考，非正式账单。",
+    description: "Estimated cost section description explaining the pricing policy",
+  },
+  "usage.estimatedCostNote": {
+    message: "仅供参考，非正式账单",
+    description: "Short disclaimer shown next to the estimated cost total",
+  },
+  "usage.colMeter": {
+    message: "计量项",
+    description: "Table column header for the meter kind (instance_seconds / egress_bytes / build_seconds)",
+  },
+  "usage.colEstimate": {
+    message: "预估",
+    description: "Table column header for the estimated USD cost per meter",
+  },
+  "usage.estimatedCostUnavailable": {
+    message: "本期无计费用量。",
+    description: "Empty-state message when there is no billable usage to estimate",
+  },
 };
 
 export default zhUsage;

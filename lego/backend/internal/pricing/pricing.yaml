@@ -1,0 +1,61 @@
+# bex price sheet — 30% off Render on compute/Postgres/KeyValue/build-minute,
+# 90% off on bandwidth.
+# Source: docs/render-artifacts/pricing.md (captured 2026-07-13)
+# Policy: docs/ADR030-pricing.md
+#
+# All rates are in USD per unit of the matching meter kind:
+#   instance_seconds → usdPerSecond
+#   egress_bytes     → bandwidth.usdPerByte
+#   build_seconds    → build.usdPerSecond
+#
+# Derivation for per-second rates:
+#   bex_monthly = render_monthly × discount
+#   usdPerSecond = bex_monthly / (730 h/mo × 3600 s/h)   [2,628,000 s/mo]
+#
+# "estimate only" policy: these numbers are purely informational cost estimates;
+# bex has no billing system (docs/ADR030-pricing.md § no-payment boundary).
+
+version: "1"
+
+# instance_seconds rates for App (web-service / worker / cron) services
+compute:
+  - tier: free
+    usdPerSecond: 0.0
+  - tier: starter
+    usdPerSecond: 0.000001864554   # $4.90/mo  (Render $7.00 × 0.70)
+  - tier: standard
+    usdPerSecond: 0.000006658363   # $17.50/mo (Render $25.00 × 0.70)
+  - tier: pro
+    usdPerSecond: 0.000022643435   # $59.50/mo (Render $85.00 × 0.70)
+  - tier: pro-plus
+    usdPerSecond: 0.000046616482   # $122.50/mo (Render $175.00 × 0.70)
+  - tier: pro-max
+    usdPerSecond: 0.000059936332   # $157.50/mo (Render $225.00 × 0.70)
+  - tier: pro-ultra
+    usdPerSecond: 0.000119872664   # $315.00/mo (Render $450.00 × 0.70)
+
+# instance_seconds rates for managed Postgres (Database CR)
+postgres:
+  - tier: free
+    usdPerSecond: 0.0
+  - tier: basic-256mb
+    usdPerSecond: 0.000001864554   # $4.90/mo  (Render $7.00 × 0.70)
+  - tier: basic-1gb
+    usdPerSecond: 0.000005326725   # $14.00/mo (Render $20.00 × 0.70)
+
+# instance_seconds rates for managed Key Value / Valkey (KeyValue CR)
+keyvalue:
+  - tier: free
+    usdPerSecond: 0.0
+  - tier: starter
+    usdPerSecond: 0.000002663649   # $7.00/mo  (Render $10.00 × 0.70)
+  - tier: standard
+    usdPerSecond: 0.000007990948   # $21.00/mo (Render $30.00 × 0.70)
+
+# egress_bytes rate: $0.01/GB (Render $0.10/GB × 0.10 = 90% off)
+bandwidth:
+  usdPerByte: 0.000000000009313226   # $0.01 / 1,073,741,824 bytes
+
+# build_seconds rate: $0.0035/min (Render $0.005/min × 0.70 = 30% off)
+build:
+  usdPerSecond: 0.000058333333   # $0.0035 / 60 s

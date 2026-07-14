@@ -46,7 +46,7 @@ import {
 import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { periodFor, periodLabel } from "@/features/usage/lib/period";
-import { useUsage, type ServiceUsage, type UsageRow } from "../hooks/use-usage";
+import { useUsage, type ServiceUsage, type UsageRow, type EstimatedCost } from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 
 // --- unit conversion helpers ---
@@ -307,6 +307,76 @@ function BuildSection({
   );
 }
 
+// --- estimated cost section ---
+
+function EstimatedCostSection({
+  estimatedCost,
+  loading,
+}: {
+  estimatedCost: EstimatedCost | null;
+  loading: boolean;
+}) {
+  const { t } = useTranslations();
+  const hasCost = estimatedCost && estimatedCost.meters.length > 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("usage.estimatedCostTitle")}</CardTitle>
+        <CardDescription>{t("usage.estimatedCostDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading && !estimatedCost ? (
+          <SkeletonTable cols={4} />
+        ) : !hasCost ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t("usage.estimatedCostUnavailable")}
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tabular-nums">
+                ${estimatedCost.totalUsd}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("usage.estimatedCostNote")}
+              </span>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("usage.colMeter")}</TableHead>
+                  <TableHead>{t("usage.colPlan")}</TableHead>
+                  <TableHead>{t("usage.colKind")}</TableHead>
+                  <TableHead className="text-right tabular-nums">
+                    {t("usage.colEstimate")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {estimatedCost.meters.map((m, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{m.kind}</TableCell>
+                    <TableCell className="text-muted-foreground capitalize">
+                      {m.tier || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {m.resourceKind || "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ${m.costUsd}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- trend section ---
 
 function scaledSeries(points: TrendPoint[], key: keyof TrendPoint, divisor: number) {
@@ -432,6 +502,7 @@ export function UsagePage() {
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />
           <BuildSection rows={buildRows} loading={loading} />
+          <EstimatedCostSection estimatedCost={summary?.estimatedCost ?? null} loading={loading} />
           <TrendSection points={trendPoints} loading={trendLoading} />
         </div>
       </div>
