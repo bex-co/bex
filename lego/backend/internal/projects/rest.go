@@ -115,4 +115,47 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, p)
 	})
+
+	// PUT /v1/projects/{id}/database-links replaces the full list of managed
+	// Postgres databases in a project. Body: {"databaseIds": ["name1", "name2"]}
+	// where databaseIds are Database CR names (w1/m31 extension).
+	mux.HandleFunc("PUT /v1/projects/{id}/database-links", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			DatabaseIDs []string `json:"databaseIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		if req.DatabaseIDs == nil {
+			req.DatabaseIDs = []string{}
+		}
+		p, err := s.SetDatabases(r.Context(), r.PathValue("id"), req.DatabaseIDs)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, p)
+	})
+
+	// PUT /v1/projects/{id}/keyvalue-links is database-links' KeyValue-CR
+	// counterpart. Body: {"keyValueIds": ["name1", "name2"]}.
+	mux.HandleFunc("PUT /v1/projects/{id}/keyvalue-links", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			KeyValueIDs []string `json:"keyValueIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		if req.KeyValueIDs == nil {
+			req.KeyValueIDs = []string{}
+		}
+		p, err := s.SetKeyValues(r.Context(), r.PathValue("id"), req.KeyValueIDs)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, p)
+	})
 }

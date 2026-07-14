@@ -47,22 +47,37 @@ const VERSIONS = ["18", "17", "16", "15", "14", "13"] as const;
 export interface CreateDatabaseDialogProps {
   /** Called with the new database id once creation is accepted. */
   onCreated: (id: string) => void;
+  /**
+   * Controlled variant: when both are provided, the dialog's open state is
+   * driven externally (e.g. the unified Projects page's shared "+ New" menu,
+   * w1/m31) and it renders no trigger of its own. Omitted, it manages its own
+   * state behind its default trigger button — the `/databases` list page's
+   * original self-contained usage.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
  * Render's "New Postgres" create form, bex's subset: name, plan (from the shared
  * tiers catalog — never a hardcoded ladder), version, disk size, and the public
  * (external endpoint) toggle. The deferred axes (region, HA, backups) are
- * omitted, not faked. Self-contained: owns its trigger button and resets on
- * close.
+ * omitted, not faked. Self-contained by default: owns its trigger button and
+ * resets on close; pass `open`/`onOpenChange` to drive it externally instead.
  */
-export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
+export function CreateDatabaseDialog({
+  onCreated,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+}: CreateDatabaseDialogProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { instanceTypes } = useDatabaseInstanceTypes();
   const { create, busy, capLimit } = useCreateDatabase();
 
-  const [open, setOpen] = useState(false);
+  const controlled = openProp !== undefined;
+  const [openState, setOpenState] = useState(false);
+  const open = controlled ? openProp : openState;
   const [name, setName] = useState("");
   // Only an explicit user pick is stored; the effective plan defaults to the
   // catalog's first (default) tier, so no effect is needed to seed it once the
@@ -91,7 +106,8 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
   }
 
   function handleOpenChange(next: boolean) {
-    setOpen(next);
+    if (controlled) onOpenChangeProp?.(next);
+    else setOpenState(next);
     if (!next) reset();
   }
 
@@ -112,12 +128,14 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          {t("databases.createButton")}
-        </Button>
-      </DialogTrigger>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus />
+            {t("databases.createButton")}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("databases.createTitle")}</DialogTitle>

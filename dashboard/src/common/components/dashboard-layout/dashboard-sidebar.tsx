@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, Database, LayoutGrid, MemoryStick, Settings } from "lucide-react";
+import { BarChart3, FolderKanban, Settings } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Sidebar,
@@ -14,12 +14,12 @@ import {
 } from "@/common/components/ui/sidebar.tsx";
 import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
 
-// The dashboard's live resources (Services + Databases + Key Value + Usage) plus
-// account settings. Each is a client of bex-api's GraphQL (see docs/ADR006-bex-api.md).
+// Render parity: one "Projects" entry groups every resource type (services,
+// databases, key value) on a single page (`routes/index.tsx`), rather than a
+// separate nav item per resource kind — `/databases`/`/keyvalue` still exist as
+// routes (detail pages, deep links) but no longer get their own sidebar entry.
 const NAV_ITEMS = [
-  { labelKey: "common.navServices", to: "/", icon: LayoutGrid },
-  { labelKey: "common.navDatabases", to: "/databases", icon: Database },
-  { labelKey: "common.navKeyValue", to: "/keyvalue", icon: MemoryStick },
+  { labelKey: "common.navProjects", to: "/", icon: FolderKanban },
   { labelKey: "common.navUsage", to: "/usage", icon: BarChart3 },
   { labelKey: "common.navSettings", to: "/settings", icon: Settings },
 ] as const;

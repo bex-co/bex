@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -42,10 +44,32 @@ type ProjectStore interface {
 	ListProjectServices(ctx context.Context, projectID string) ([]string, error)
 }
 
+// DatabaseIndex is the narrow contract projects needs from managed Postgres to
+// group Database CRs into a project (w1/m31 extension) — unlike services,
+// Databases have no control-plane row, so membership is a label
+// (core.LabelProject), read via ListPostgres and written via SetProjectID.
+// *postgres.Service satisfies this structurally.
+type DatabaseIndex interface {
+	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
+	SetProjectID(ctx context.Context, name, projectID string) error
+}
+
+// KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
+// satisfies this structurally.
+type KeyValueIndex interface {
+	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
+	SetProjectID(ctx context.Context, name, projectID string) error
+}
+
 // Service is the projects feature service. Store nil => ErrProjectsUnavailable.
+// Databases/KeyValues nil => the corresponding *Ids field resolves empty and
+// SetDatabases/SetKeyValues report ErrProjectsUnavailable — Store is the only
+// hard dependency (matching every other verb here).
 type Service struct {
 	*core.Base
 	Store      ProjectStore
+	Databases  DatabaseIndex
+	KeyValues  KeyValueIndex
 	Selections core.WorkspaceSelectionReader
 }
 
@@ -55,14 +79,55 @@ var ErrProjectsUnavailable = errors.New("projects store not configured")
 
 // ProjectView is the API shape for a project — all three surfaces return this.
 type ProjectView struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	OwnerID    string    `json:"ownerId"`
-	CreatedAt  time.Time `json:"createdAt"`
-	ServiceIDs []string  `json:"serviceIds"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	OwnerID     string    `json:"ownerId"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ServiceIDs  []string  `json:"serviceIds"`
+	DatabaseIDs []string  `json:"databaseIds"`
+	KeyValueIDs []string  `json:"keyValueIds"`
 }
 
-// List returns all projects in a workspace, each with its current service list.
+// databaseIDsForProject lists workspaceID's Databases and returns the ids of
+// the ones currently labeled with projectID. Databases unwired (s.Databases
+// nil) => empty, matching Store-unwired's ErrProjectsUnavailable degrade for
+// the feature as a whole rather than failing just this piece.
+func (s *Service) databaseIDsForProject(ctx context.Context, workspaceID, projectID string) ([]string, error) {
+	if s.Databases == nil {
+		return nil, nil
+	}
+	dbs, err := s.Databases.ListPostgres(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for _, d := range dbs {
+		if d.ProjectID == projectID {
+			ids = append(ids, d.ID)
+		}
+	}
+	return ids, nil
+}
+
+// keyValueIDsForProject is databaseIDsForProject's KeyValue-CR counterpart.
+func (s *Service) keyValueIDsForProject(ctx context.Context, workspaceID, projectID string) ([]string, error) {
+	if s.KeyValues == nil {
+		return nil, nil
+	}
+	kvs, err := s.KeyValues.ListKeyValues(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for _, kv := range kvs {
+		if kv.ProjectID == projectID {
+			ids = append(ids, kv.ID)
+		}
+	}
+	return ids, nil
+}
+
+// List returns all projects in a workspace, each with its current resource lists.
 func (s *Service) List(ctx context.Context, workspaceID string) ([]ProjectView, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
 		return nil, err
@@ -80,7 +145,15 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]ProjectView, 
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, toView(p, sids))
+		dids, err := s.databaseIDsForProject(ctx, workspaceID, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		kids, err := s.keyValueIDsForProject(ctx, workspaceID, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, toView(p, sids, dids, kids))
 	}
 	return out, nil
 }
@@ -101,7 +174,15 @@ func (s *Service) Get(ctx context.Context, id string) (ProjectView, error) {
 	if err != nil {
 		return ProjectView{}, err
 	}
-	return toView(p, sids), nil
+	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return toView(p, sids, dids, kids), nil
 }
 
 // Create creates a new project in the workspace named by workspaceID.
@@ -116,7 +197,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 	if err != nil {
 		return ProjectView{}, mapStoreErr(err)
 	}
-	return toView(p, nil), nil
+	return toView(p, nil, nil, nil), nil
 }
 
 // Rename renames a project.
@@ -139,7 +220,15 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	if err != nil {
 		return ProjectView{}, err
 	}
-	return toView(p, sids), nil
+	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return toView(p, sids, dids, kids), nil
 }
 
 // Delete removes a project (its services' project_id is set to NULL by the DB cascade).
@@ -177,19 +266,140 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err != nil {
 		return ProjectView{}, err
 	}
-	return toView(p, sids), nil
+	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return toView(p, sids, dids, kids), nil
 }
 
-func toView(p store.Project, serviceIDs []string) ProjectView {
+// SetDatabases replaces the full list of managed Postgres databases in a
+// project. databaseIDs are Database CR names (e.g. "mydb"), not store rows —
+// unlike SetServices' apps.project_id column, a Database's membership is
+// purely the core.LabelProject label (w1/m31 extension), so this diffs the
+// current label state against the wanted set and calls SetProjectID per
+// change instead of a single bulk store UPDATE.
+func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []string) (ProjectView, error) {
+	if s.Store == nil {
+		return ProjectView{}, ErrProjectsUnavailable
+	}
+	if s.Databases == nil {
+		return ProjectView{}, ErrProjectsUnavailable
+	}
+	p, err := s.Store.GetProject(ctx, id)
+	if err != nil {
+		return ProjectView{}, mapStoreErr(err)
+	}
+	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
+		return ProjectView{}, err
+	}
+	existing, err := s.Databases.ListPostgres(ctx, p.TenantID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	want := make(map[string]bool, len(databaseIDs))
+	for _, did := range databaseIDs {
+		want[did] = true
+	}
+	for _, d := range existing {
+		switch {
+		case d.ProjectID == p.ID && !want[d.ID]:
+			if err := s.Databases.SetProjectID(ctx, d.ID, ""); err != nil {
+				return ProjectView{}, err
+			}
+		case d.ProjectID != p.ID && want[d.ID]:
+			if err := s.Databases.SetProjectID(ctx, d.ID, p.ID); err != nil {
+				return ProjectView{}, err
+			}
+		}
+	}
+	sids, err := s.Store.ListProjectServices(ctx, id)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return toView(p, sids, dids, kids), nil
+}
+
+// SetKeyValues is SetDatabases' KeyValue-CR counterpart.
+func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []string) (ProjectView, error) {
+	if s.Store == nil {
+		return ProjectView{}, ErrProjectsUnavailable
+	}
+	if s.KeyValues == nil {
+		return ProjectView{}, ErrProjectsUnavailable
+	}
+	p, err := s.Store.GetProject(ctx, id)
+	if err != nil {
+		return ProjectView{}, mapStoreErr(err)
+	}
+	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(p.TenantID)); err != nil {
+		return ProjectView{}, err
+	}
+	existing, err := s.KeyValues.ListKeyValues(ctx, p.TenantID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	want := make(map[string]bool, len(keyValueIDs))
+	for _, kid := range keyValueIDs {
+		want[kid] = true
+	}
+	for _, kv := range existing {
+		switch {
+		case kv.ProjectID == p.ID && !want[kv.ID]:
+			if err := s.KeyValues.SetProjectID(ctx, kv.ID, ""); err != nil {
+				return ProjectView{}, err
+			}
+		case kv.ProjectID != p.ID && want[kv.ID]:
+			if err := s.KeyValues.SetProjectID(ctx, kv.ID, p.ID); err != nil {
+				return ProjectView{}, err
+			}
+		}
+	}
+	sids, err := s.Store.ListProjectServices(ctx, id)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	dids, err := s.databaseIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	kids, err := s.keyValueIDsForProject(ctx, p.TenantID, p.ID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	return toView(p, sids, dids, kids), nil
+}
+
+func toView(p store.Project, serviceIDs, databaseIDs, keyValueIDs []string) ProjectView {
 	if serviceIDs == nil {
 		serviceIDs = []string{}
 	}
+	if databaseIDs == nil {
+		databaseIDs = []string{}
+	}
+	if keyValueIDs == nil {
+		keyValueIDs = []string{}
+	}
 	return ProjectView{
-		ID:         p.ID,
-		Name:       p.Name,
-		OwnerID:    p.TenantID,
-		CreatedAt:  p.CreatedAt,
-		ServiceIDs: serviceIDs,
+		ID:          p.ID,
+		Name:        p.Name,
+		OwnerID:     p.TenantID,
+		CreatedAt:   p.CreatedAt,
+		ServiceIDs:  serviceIDs,
+		DatabaseIDs: databaseIDs,
+		KeyValueIDs: keyValueIDs,
 	}
 }
 

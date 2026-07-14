@@ -53,7 +53,7 @@ export function DatabaseDetailPage() {
         {database ? (
           <DatabaseRowActions
             database={database}
-            onDeleted={() => void navigate({ to: "/databases" })}
+            onDeleted={() => void navigate({ to: "/" })}
             lifecycle={lifecycle}
           />
         ) : null}

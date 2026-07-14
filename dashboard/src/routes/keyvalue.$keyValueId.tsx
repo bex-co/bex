@@ -49,7 +49,7 @@ export function KeyValueDetailPage() {
         {keyValue ? (
           <KeyValueRowActions
             keyValue={keyValue}
-            onDeleted={() => void navigate({ to: "/keyvalue" })}
+            onDeleted={() => void navigate({ to: "/" })}
           />
         ) : null}
       </div>

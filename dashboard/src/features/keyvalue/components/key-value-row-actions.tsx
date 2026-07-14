@@ -20,6 +20,7 @@ import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-value";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 
 export interface KeyValueRowActionsProps {
   keyValue: KeyValueView;
@@ -80,6 +81,12 @@ export function KeyValueRowActions({
           >
             {t("keyvalue.actionDelete")}
           </DropdownMenuItem>
+          <MoveToProjectMenu
+            kind="keyvalue"
+            resourceId={keyValue.id}
+            resourceName={keyValue.name}
+            disabled={busy}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
 

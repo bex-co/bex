@@ -8,12 +8,16 @@ export interface ProjectView {
   name: string;
   ownerId: string;
   serviceIds: string[];
+  databaseIds: string[];
+  keyValueIds: string[];
 }
 
 export interface UseProjectsResult {
   projects: ProjectView[];
   loading: boolean;
   error: Error | undefined;
+  /** Re-run the query (fire-and-forget; callers refresh after a create/rename/move). */
+  refetch: () => Promise<unknown>;
 }
 
 /**
@@ -23,7 +27,7 @@ export interface UseProjectsResult {
 export function useProjects(): UseProjectsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
-  const { data, loading, error } = useQuery(ProjectsDocument, {
+  const { data, loading, error, refetch } = useQuery(ProjectsDocument, {
     variables: { ownerId: currentWorkspaceId! },
     skip: !resolved,
     fetchPolicy: "cache-and-network",
@@ -39,8 +43,14 @@ export function useProjects(): UseProjectsResult {
         name: p.name ?? "",
         ownerId: p.ownerId ?? "",
         serviceIds: (p.serviceIds ?? []).filter((s): s is string => s != null),
+        databaseIds: (p.databaseIds ?? []).filter(
+          (s): s is string => s != null,
+        ),
+        keyValueIds: (p.keyValueIds ?? []).filter(
+          (s): s is string => s != null,
+        ),
       }));
   }, [data]);
 
-  return { projects, loading: !resolved || loading, error };
+  return { projects, loading: !resolved || loading, error, refetch };
 }

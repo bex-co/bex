@@ -9,6 +9,20 @@ vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove, deleting: null }),
 }));
 
+// DatabaseRowActions renders a "Move to project" submenu via useMoveToProject,
+// which needs an ApolloProvider + workspace context neither this render nor
+// the component under test cares about — stub it to the empty-projects shape
+// (the submenu renders nothing when there are no projects).
+vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
+  useMoveToProject: () => ({
+    projects: [],
+    currentProjectId: () => null,
+    moveTo: vi.fn(),
+    removeFromProject: vi.fn(),
+    busyId: null,
+  }),
+}));
+
 const DB: DatabaseView = {
   id: "shop-db",
   name: "shop-db",

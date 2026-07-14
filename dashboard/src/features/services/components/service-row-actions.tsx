@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu.tsx";
+import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,6 +98,12 @@ export function ServiceRowActions({
               {t(ACTION_LABEL[action])}
             </DropdownMenuItem>
           ))}
+          <MoveToProjectMenu
+            kind="service"
+            resourceId={service.id}
+            resourceName={service.name}
+            disabled={busy}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
 

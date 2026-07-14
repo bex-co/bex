@@ -92,6 +92,14 @@ const LabelTenant = "bex.co/tenant"
 // import the operator (same pattern as LabelTenant / store.LabelTenant).
 const LabelWorkspace = "app.bex.co/workspace"
 
+// LabelProject carries a Database or KeyValue CR's project assignment (w1/m31
+// extension): the owning Project's id (prj-<xid>), or absent when unassigned.
+// Services group into a project via the control-plane store's apps.project_id
+// column instead (internal/store/projects.go) since they have a store row;
+// Database/KeyValue CRs have none, so this label is their only association —
+// set/cleared by postgres.Service.SetProjectID / keyvalue.Service.SetProjectID.
+const LabelProject = "app.bex.co/project-id"
+
 // WorkspaceResolver maps an authenticated caller to its workspace: the tenant
 // id ("tea-<id>") for a tenant member or a bound API key (ok=true). ok=false
 // means the store is on but the caller resolves to no tenant — an unbound

@@ -50,6 +50,16 @@ type setProjectServicesArgs struct {
 	ServiceIDs []string `json:"serviceIds" jsonschema:"App CR names (same as the id field on a service) to assign to the project — replaces the full list"`
 }
 
+type setProjectDatabasesArgs struct {
+	ID          string   `json:"id" jsonschema:"the project id (prj-…)"`
+	DatabaseIDs []string `json:"databaseIds" jsonschema:"Database CR names (same as the id field on a postgres instance) to assign to the project — replaces the full list"`
+}
+
+type setProjectKeyValuesArgs struct {
+	ID          string   `json:"id" jsonschema:"the project id (prj-…)"`
+	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the project — replaces the full list"`
+}
+
 type projectsResult struct {
 	Projects []ProjectView `json:"projects"`
 }
@@ -93,9 +103,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "delete_project",
 		Description: "Delete a project; its services become unassigned. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct{ ID string `json:"id"` }, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct {
+		ID string `json:"id"`
+	}, error) {
 		err := s.Delete(ctx, in.ID)
-		return nil, struct{ ID string `json:"id"` }{ID: in.ID}, err
+		return nil, struct {
+			ID string `json:"id"`
+		}{ID: in.ID}, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -106,6 +120,28 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			in.ServiceIDs = []string{}
 		}
 		p, err := s.SetServices(ctx, in.ID, in.ServiceIDs)
+		return nil, p, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_project_databases",
+		Description: "Assign managed Postgres databases to a project (replaces the full list). Pass databaseIds as Database CR names — the same id shown by list_postgres_instances. bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectDatabasesArgs) (*mcp.CallToolResult, ProjectView, error) {
+		if in.DatabaseIDs == nil {
+			in.DatabaseIDs = []string{}
+		}
+		p, err := s.SetDatabases(ctx, in.ID, in.DatabaseIDs)
+		return nil, p, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_project_keyvalues",
+		Description: "Assign managed key-value instances to a project (replaces the full list). Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value_instances. bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectKeyValuesArgs) (*mcp.CallToolResult, ProjectView, error) {
+		if in.KeyValueIDs == nil {
+			in.KeyValueIDs = []string{}
+		}
+		p, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
 		return nil, p, err
 	})
 }

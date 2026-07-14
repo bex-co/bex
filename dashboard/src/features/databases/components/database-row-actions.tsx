@@ -21,6 +21,7 @@ import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteDatabase } from "@/features/databases/hooks/use-delete-database";
 import { isSuspended } from "@/features/databases/lib/status";
+import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 import type {
   DatabaseLifecycleAction,
   UseDatabaseLifecycleResult,
@@ -119,6 +120,12 @@ export function DatabaseRowActions({
           >
             {t("databases.actionDelete")}
           </DropdownMenuItem>
+          <MoveToProjectMenu
+            kind="database"
+            resourceId={database.id}
+            resourceName={database.name}
+            disabled={busy}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
 

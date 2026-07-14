@@ -90,6 +90,11 @@ type KeyValueView struct {
 	// CreateKeyValue with the store on; a hand-applied CR without the label
 	// still reads as unowned.
 	OwnerID string `json:"ownerId,omitempty"`
+
+	// ProjectID is the owning Project's id (w1/m31 extension), read from the
+	// KeyValue CR's core.LabelProject label. Empty means unassigned. Set via
+	// SetProjectID; the projects feature is the only writer.
+	ProjectID string `json:"projectId,omitempty"`
 }
 
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
@@ -164,6 +169,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		ExternalHost:    kv.Status.ExternalHost,
 		Public:          kv.Spec.Public,
 		OwnerID:         kv.Labels[core.LabelTenant],
+		ProjectID:       kv.Labels[core.LabelProject],
 	}
 }
 
@@ -347,6 +353,29 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		}
 	}
 	return kvView(kv), nil
+}
+
+// SetProjectID assigns (or, with an empty projectID, clears) this KeyValue's
+// project (w1/m31 extension) — the internal/projects feature's write path,
+// mirroring postgres.Service.SetProjectID. Authorized the same as the other
+// tenant-mutating verbs on a named KeyValue (RelCanCreate, matching DeleteKeyValue).
+func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if projectID == "" {
+		delete(kv.Labels, core.LabelProject)
+	} else {
+		if kv.Labels == nil {
+			kv.Labels = map[string]string{}
+		}
+		kv.Labels[core.LabelProject] = projectID
+	}
+	return s.Client.Update(ctx, kv)
 }
 
 // GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty

@@ -13,17 +13,10 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Dashboard",
     description: "Sidebar nav section label",
   },
-  "common.navServices": {
-    message: "Services",
-    description: "Sidebar nav link to the services list page",
-  },
-  "common.navDatabases": {
-    message: "Databases",
-    description: "Sidebar nav link to the databases list page",
-  },
-  "common.navKeyValue": {
-    message: "Key Value",
-    description: "Sidebar nav link to the Key Value list page",
+  "common.navProjects": {
+    message: "Projects",
+    description:
+      "Sidebar nav link to the unified projects page (services, databases, key value grouped together)",
   },
   "common.navUsage": {
     message: "Usage",

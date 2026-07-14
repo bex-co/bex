@@ -27,11 +27,13 @@ import (
 var projectGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Project",
 	Fields: graphql.Fields{
-		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.ID })},
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.Name })},
-		"ownerId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.OwnerID })},
-		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.CreatedAt })},
-		"serviceIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p ProjectView) any { return p.ServiceIDs })},
+		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.ID })},
+		"name":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.Name })},
+		"ownerId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.OwnerID })},
+		"createdAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.CreatedAt })},
+		"serviceIds":  &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p ProjectView) any { return p.ServiceIDs })},
+		"databaseIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p ProjectView) any { return p.DatabaseIDs })},
+		"keyValueIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p ProjectView) any { return p.KeyValueIDs })},
 	},
 })
 
@@ -108,6 +110,36 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					names[i], _ = v.(string)
 				}
 				return s.SetServices(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		"setProjectDatabases": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"databaseIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["databaseIds"].([]any)
+				names := make([]string, len(raw))
+				for i, v := range raw {
+					names[i], _ = v.(string)
+				}
+				return s.SetDatabases(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		"setProjectKeyValues": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"keyValueIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["keyValueIds"].([]any)
+				names := make([]string, len(raw))
+				for i, v := range raw {
+					names[i], _ = v.(string)
+				}
+				return s.SetKeyValues(p.Context, p.Args["id"].(string), names)
 			},
 		},
 	}

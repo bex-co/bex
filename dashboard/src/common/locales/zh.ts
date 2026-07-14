@@ -13,17 +13,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "仪表盘",
     description: "Sidebar nav section label",
   },
-  "common.navServices": {
-    message: "服务",
-    description: "Sidebar nav link to the services list page",
-  },
-  "common.navDatabases": {
-    message: "数据库",
-    description: "Sidebar nav link to the databases list page",
-  },
-  "common.navKeyValue": {
-    message: "键值存储",
-    description: "Sidebar nav link to the Key Value list page",
+  "common.navProjects": {
+    message: "项目",
+    description:
+      "Sidebar nav link to the unified projects page (services, databases, key value grouped together)",
   },
   "common.navUsage": {
     message: "用量",

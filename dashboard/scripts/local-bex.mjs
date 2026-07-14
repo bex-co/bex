@@ -412,6 +412,24 @@ const KEY_VALUES = [
   }),
 ];
 
+// Projects (w1/m31, bex extension — an interactive in-memory store, mirroring
+// Databases/KeyValues above). One seeded project spanning all three resource
+// kinds (a service + a database) so the unified dashboard Projects page's
+// merged grouping is visibly exercised offline; "rate-limiter" and the
+// worker/cron services are left ungrouped for the "No Project" section.
+const PROJECTS = [
+  {
+    __typename: "Project",
+    id: "prj-local0001",
+    name: "storefront",
+    ownerId: WORKSPACE_DEFAULT,
+    createdAt: "2026-06-25T09:00:00Z",
+    serviceIds: ["eden-cms-v2"],
+    databaseIds: ["orders-db"],
+    keyValueIds: ["sessions-cache"],
+  },
+];
+
 // Workspace audit trail (w4/m10 surface, w6/m14 workspace scoping) — the shape
 // of internal/audit/graphql.go's AuditLog type. Every event is tagged with the
 // workspace that owns it, and the two workspaces' events are deliberately
@@ -968,6 +986,57 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (!k) return { resumeKeyValue: null };
       k.suspended = "not_suspended";
       return { resumeKeyValue: k };
+    }
+    // Projects (w1/m31, bex extension) — an interactive in-memory store,
+    // mirroring the Databases/KeyValues stubs above. Set*/Create/Rename/Delete
+    // mutate PROJECTS in place so the unified dashboard Projects page's
+    // grouping + "Move to project" actions are exercised offline.
+    case "Projects":
+      return { projects: byOwner(PROJECTS, variables.ownerId) };
+    case "Project":
+      return { project: PROJECTS.find((p) => p.id === variables.id) ?? null };
+    case "CreateProject": {
+      const created = {
+        __typename: "Project",
+        id: `prj-local${Date.now().toString(36)}`,
+        name: variables.name,
+        ownerId: variables.ownerId,
+        createdAt: new Date().toISOString(),
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+      };
+      PROJECTS.push(created);
+      return { createProject: created };
+    }
+    case "RenameProject": {
+      const p = PROJECTS.find((pr) => pr.id === variables.id);
+      if (!p) return { renameProject: null };
+      p.name = variables.name;
+      return { renameProject: p };
+    }
+    case "DeleteProject": {
+      const i = PROJECTS.findIndex((p) => p.id === variables.id);
+      if (i >= 0) PROJECTS.splice(i, 1);
+      return { deleteProject: variables.id };
+    }
+    case "SetProjectServices": {
+      const p = PROJECTS.find((pr) => pr.id === variables.id);
+      if (!p) return { setProjectServices: null };
+      p.serviceIds = variables.serviceIds ?? [];
+      return { setProjectServices: p };
+    }
+    case "SetProjectDatabases": {
+      const p = PROJECTS.find((pr) => pr.id === variables.id);
+      if (!p) return { setProjectDatabases: null };
+      p.databaseIds = variables.databaseIds ?? [];
+      return { setProjectDatabases: p };
+    }
+    case "SetProjectKeyValues": {
+      const p = PROJECTS.find((pr) => pr.id === variables.id);
+      if (!p) return { setProjectKeyValues: null };
+      p.keyValueIds = variables.keyValueIds ?? [];
+      return { setProjectKeyValues: p };
     }
     case "CustomDomains":
       return { customDomains: domainsFor(variables.id) };

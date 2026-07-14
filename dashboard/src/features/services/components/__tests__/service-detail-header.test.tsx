@@ -4,6 +4,20 @@ import userEvent from "@testing-library/user-event";
 import { ServiceDetailHeader } from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
 
+// ServiceDetailHeader renders ServiceRowActions, which renders a "Move to
+// project" submenu via useMoveToProject — needs an ApolloProvider + workspace
+// context neither this render nor the component under test cares about; stub
+// it to the empty-projects shape (the submenu renders nothing with no projects).
+vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
+  useMoveToProject: () => ({
+    projects: [],
+    currentProjectId: () => null,
+    moveTo: vi.fn(),
+    removeFromProject: vi.fn(),
+    busyId: null,
+  }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",

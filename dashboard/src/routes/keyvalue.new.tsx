@@ -280,7 +280,7 @@ export function NewKeyValuePage() {
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => void navigate({ to: "/keyvalue" })}
+                  onClick={() => void navigate({ to: "/" })}
                   disabled={busy}
                 >
                   {t("keyvalue.createCancel")}

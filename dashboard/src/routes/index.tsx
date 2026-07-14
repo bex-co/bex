@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -7,34 +7,34 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card.tsx";
 import { Button } from "@/common/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/common/components/ui/table.tsx";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/common/components/ui/dropdown-menu.tsx";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert.tsx";
-import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
-import { computeStats } from "@/features/services/lib/status";
-import { formatRelativeAge } from "@/features/services/lib/format";
-import { ServiceRowActions } from "@/features/services/components/service-row-actions";
-import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
-import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
-import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import { useDatabases } from "@/features/databases/hooks/use-databases";
+import { computeStats as computeDatabaseStats } from "@/features/databases/lib/status";
+import { CreateDatabaseDialog } from "@/features/databases/components/create-database-dialog";
+import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
+import { computeStats as computeKeyValueStats } from "@/features/keyvalue/lib/status";
 import { useProjects } from "@/features/projects/hooks/use-projects";
+import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
+import { ProjectSection } from "@/features/projects/components/project-section";
+import { ResourceTable } from "@/features/projects/components/resource-table";
+import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -46,254 +46,159 @@ export const Route = createFileRoute("/")({
 
 export function HomePage() {
   const { t } = useTranslations();
-  const { services, loading, error, refetch } = useServices();
-  const { projects } = useProjects();
-  const { pending, run } = useServiceLifecycle({ refetch });
+  const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices();
+  const {
+    databases,
+    loading: databasesLoading,
+    error: databasesError,
+    refetch: refetchDatabases,
+    startPolling: startDatabasePolling,
+    stopPolling: stopDatabasePolling,
+  } = useDatabases();
+  const {
+    keyValues,
+    loading: keyValuesLoading,
+    error: keyValuesError,
+    refetch: refetchKeyValues,
+    startPolling: startKeyValuePolling,
+    stopPolling: stopKeyValuePolling,
+  } = useKeyValues();
+  const { projects, loading: projectsLoading, refetch: refetchProjects } = useProjects();
+  const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
+  const [newDatabaseOpen, setNewDatabaseOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
 
-  const stats = useMemo(() => computeStats(services), [services]);
-  const serviceStats = [
-    { labelKey: "services.statTotal", value: stats.total },
-    { labelKey: "services.statRunning", value: stats.running },
-    { labelKey: "services.statSuspended", value: stats.suspended },
-  ] as const;
+  const databaseStats = useMemo(() => computeDatabaseStats(databases), [databases]);
+  const keyValueStats = useMemo(() => computeKeyValueStats(keyValues), [keyValues]);
 
-  // Build project-grouped display when projects exist; fall back to flat list.
-  const grouped = useMemo(() => {
-    if (projects.length === 0) return null;
-    const byId = new Map(services.map((s) => [s.id, s]));
-    const assignedIds = new Set<string>();
-    const groups: Array<{ id: string; name: string; services: ServiceView[] }> =
-      projects.map((p) => {
-        const svc = p.serviceIds
-          .map((sid) => byId.get(sid))
-          .filter((s): s is ServiceView => s != null);
-        svc.forEach((s) => assignedIds.add(s.id));
-        return { id: p.id, name: p.name, services: svc };
-      });
-    const ungrouped = services.filter((s) => !assignedIds.has(s.id));
-    return { groups, ungrouped };
-  }, [projects, services]);
+  // Poll while a just-created database/key-value is still provisioning, so it
+  // converges to Available on its own.
+  useEffect(() => {
+    if (databaseStats.creating > 0) startDatabasePolling(3000);
+    else stopDatabasePolling();
+    return () => stopDatabasePolling();
+  }, [databaseStats.creating, startDatabasePolling, stopDatabasePolling]);
+  useEffect(() => {
+    if (keyValueStats.creating > 0) startKeyValuePolling(3000);
+    else stopKeyValuePolling();
+    return () => stopKeyValuePolling();
+  }, [keyValueStats.creating, startKeyValuePolling, stopKeyValuePolling]);
+
+  const { groups, ungrouped } = useGroupedResources({
+    projects,
+    services,
+    databases,
+    keyValues,
+  });
+
+  const loading = servicesLoading || databasesLoading || keyValuesLoading || projectsLoading;
+  const error = servicesError || databasesError || keyValuesError;
+  const totalResources = services.length + databases.length + keyValues.length;
 
   // Only treat loading/error as page-level states while there's nothing to show;
   // a transient poll error or background refetch must not blank an existing list.
-  const showSkeleton = loading && services.length === 0;
-  const showError = !loading && error && services.length === 0;
-  const showEmpty = !loading && !error && services.length === 0;
+  const showSkeleton = loading && totalResources === 0;
+  const showError = !loading && error && totalResources === 0;
+  const showEmpty = !loading && !error && totalResources === 0;
 
-  const tableHeader = (
-    <TableHeader>
-      <TableRow>
-        <TableHead>{t("services.colName")}</TableHead>
-        <TableHead>{t("services.colType")}</TableHead>
-        <TableHead>{t("services.colStatus")}</TableHead>
-        <TableHead className="text-right tabular-nums">
-          {t("services.colInstances")}
-        </TableHead>
-        <TableHead>{t("services.colRevision")}</TableHead>
-        <TableHead>{t("services.colCreated")}</TableHead>
-        <TableHead>{t("services.colUrl")}</TableHead>
-        <TableHead className="w-0 text-right">
-          <span className="sr-only">{t("services.colActions")}</span>
-        </TableHead>
-      </TableRow>
-    </TableHeader>
-  );
+  function refetchAll() {
+    void refetchServices();
+    void refetchDatabases();
+    void refetchKeyValues();
+    void refetchProjects();
+  }
 
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {serviceStats.map((stat) => (
-              <Card key={stat.labelKey}>
-                <CardHeader>
-                  <CardDescription>{t(stat.labelKey)}</CardDescription>
-                  <CardTitle className="text-2xl tabular-nums">
-                    {stat.value}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>{t("services.cardTitle")}</CardTitle>
-              <Button asChild size="sm">
-                <Link to="/services/new">
-                  <Plus className="size-4" />
-                  {t("services.newServiceButton")}
-                </Link>
-              </Button>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle>{t("projects.cardTitle")}</CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="size-4" />
+                    {t("projects.newButton")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/services/new">{t("projects.newService")}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
+                    {t("projects.newDatabase")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
+                    {t("projects.newProjectButton")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             <CardContent>
               {showError ? (
                 <Alert variant="destructive">
-                  <AlertTitle>{t("services.errorTitle")}</AlertTitle>
-                  <AlertDescription>{t("services.errorBody")}</AlertDescription>
+                  <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
+                  <AlertDescription>{t("projects.errorBody")}</AlertDescription>
                 </Alert>
               ) : showEmpty ? (
                 <div className="py-10 text-center">
-                  <p className="font-medium">{t("services.emptyTitle")}</p>
+                  <p className="font-medium">{t("projects.emptyTitle")}</p>
                   <p className="text-sm text-muted-foreground">
-                    {t("services.emptyBody")}
+                    {t("projects.emptyBody")}
                   </p>
                 </div>
-              ) : grouped ? (
+              ) : (
                 <div className="space-y-4">
-                  {grouped.groups.map((g) => (
-                    <div key={g.id}>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {t("projects.groupLabel")}: {g.name}
-                      </p>
-                      <Table>
-                        {tableHeader}
-                        <TableBody>
-                          {showSkeleton
-                            ? Array.from({ length: 2 }).map((_, i) => (
-                                <ServiceSkeletonRow key={i} />
-                              ))
-                            : g.services.map((service) => (
-                                <ServiceRow
-                                  key={service.id}
-                                  service={service}
-                                  pending={
-                                    pending?.id === service.id
-                                      ? pending.action
-                                      : null
-                                  }
-                                  onRun={run}
-                                />
-                              ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                  {groups.map((g) => (
+                    <ProjectSection
+                      key={g.id}
+                      id={g.id}
+                      name={g.name}
+                      rows={g.rows}
+                      loading={showSkeleton}
+                      servicePending={pending}
+                      onRunServiceAction={run}
+                      onDatabaseDeleted={refetchAll}
+                      onKeyValueDeleted={refetchAll}
+                      onChanged={refetchAll}
+                    />
                   ))}
-                  {grouped.ungrouped.length > 0 && (
+                  {(ungrouped.length > 0 || groups.length === 0) && (
                     <div>
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {t("projects.ungroupedLabel")}
                       </p>
-                      <Table>
-                        {tableHeader}
-                        <TableBody>
-                          {grouped.ungrouped.map((service) => (
-                            <ServiceRow
-                              key={service.id}
-                              service={service}
-                              pending={
-                                pending?.id === service.id
-                                  ? pending.action
-                                  : null
-                              }
-                              onRun={run}
-                            />
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <ResourceTable
+                        rows={ungrouped}
+                        loading={showSkeleton}
+                        servicePending={pending}
+                        onRunServiceAction={run}
+                        onDatabaseDeleted={refetchAll}
+                        onKeyValueDeleted={refetchAll}
+                      />
                     </div>
                   )}
                 </div>
-              ) : (
-                <Table>
-                  {tableHeader}
-                  <TableBody>
-                    {showSkeleton
-                      ? Array.from({ length: 3 }).map((_, i) => (
-                          <ServiceSkeletonRow key={i} />
-                        ))
-                      : services.map((service) => (
-                          <ServiceRow
-                            key={service.id}
-                            service={service}
-                            pending={
-                              pending?.id === service.id ? pending.action : null
-                            }
-                            onRun={run}
-                          />
-                        ))}
-                  </TableBody>
-                </Table>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+      <CreateDatabaseDialog
+        open={newDatabaseOpen}
+        onOpenChange={setNewDatabaseOpen}
+        onCreated={() => void refetchDatabases()}
+      />
+      <NewProjectDialog
+        open={newProjectOpen}
+        onOpenChange={setNewProjectOpen}
+        onCreated={() => void refetchProjects()}
+      />
     </DashboardLayout>
-  );
-}
-
-function ServiceRow({
-  service,
-  pending,
-  onRun,
-}: {
-  service: ServiceView;
-  pending: LifecycleAction | null;
-  onRun: (action: LifecycleAction, service: ServiceView) => void;
-}) {
-  return (
-    <TableRow>
-      <TableCell className="font-medium">
-        <Link
-          to="/services/$serviceId"
-          params={{ serviceId: service.id }}
-          className="hover:underline"
-        >
-          {service.name}
-        </Link>
-      </TableCell>
-      <TableCell>
-        <ServiceTypeBadge service={service} />
-      </TableCell>
-      <TableCell>
-        <ServiceStatusBadge service={service} />
-      </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {service.replicas ?? "—"}
-      </TableCell>
-      <TableCell className="font-mono text-xs text-muted-foreground">
-        {service.revision || "—"}
-      </TableCell>
-      <TableCell className="tabular-nums text-muted-foreground">
-        {formatRelativeAge(service.createdAt)}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {service.url ?? "—"}
-      </TableCell>
-      <TableCell className="text-right">
-        <ServiceRowActions service={service} pending={pending} onRun={onRun} />
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function ServiceSkeletonRow() {
-  return (
-    <TableRow>
-      <TableCell>
-        <Skeleton className="h-4 w-32" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-20 rounded-md" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-16 rounded-md" />
-      </TableCell>
-      <TableCell className="text-right">
-        <Skeleton className="ml-auto h-4 w-6" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-10" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-48" />
-      </TableCell>
-      <TableCell className="text-right">
-        <Skeleton className="ml-auto size-8 rounded-md" />
-      </TableCell>
-    </TableRow>
   );
 }

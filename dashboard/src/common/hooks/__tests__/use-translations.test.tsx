@@ -30,7 +30,7 @@ describe("useTranslations", () => {
     });
 
     expect(result.current.t("common.appName")).toBe("bex");
-    expect(result.current.t("common.navServices")).toBe("服务");
+    expect(result.current.t("common.navProjects")).toBe("项目");
   });
 
   describe("dev-only key validation", () => {

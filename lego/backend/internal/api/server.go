@@ -293,6 +293,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// above. Always non-nil; its verbs 503 until the control-plane store +
 	// OpenBao are both wired.
 	rc := &registrycreds.Service{Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets}
+	// pg and kv are also the projects feature's Database/KeyValue grouping seam
+	// (w1/m31 extension, internal/projects.DatabaseIndex/KeyValueIndex) — built
+	// once and shared, same as gh/rc above.
+	pg := &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres}
+	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
 	return &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
@@ -309,8 +314,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			KeyValueStats:              d.KeyValueStats,
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
-		Postgres:  &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres},
-		KeyValue:  &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues},
+		Postgres:  pg,
+		KeyValue:  kv,
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
 		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore, BuildNamespace: d.DeployBuildNamespace},
@@ -346,6 +351,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Projects: &projects.Service{
 			Base:       base,
 			Store:      d.ProjectsStore,
+			Databases:  pg,
+			KeyValues:  kv,
 			Selections: selections,
 		},
 		Environments: &environments.Service{
