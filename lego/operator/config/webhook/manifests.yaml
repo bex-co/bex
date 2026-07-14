@@ -31,25 +31,29 @@ metadata:
   name: validating-webhook-configuration
   annotations:
     cert-manager.io/inject-ca-from: system/serving-cert
-spec:
-  webhooks:
-    - name: vpod.kb.io
-      admissionReviewVersions: ["v1"]
-      sideEffects: None
-      failurePolicy: Ignore
-      namespaceSelector:
-        matchExpressions:
-          - key: bex.co/workspace
-            operator: Exists
-      rules:
-        - apiGroups: [""]
-          apiVersions: ["v1"]
-          operations: ["CREATE", "UPDATE"]
-          resources: ["pods"]
-          scope: Namespaced
-      clientConfig:
-        service:
-          namespace: system
-          name: webhook-service
-          path: /validate-v1-pod
-          port: 443
+# webhooks is a TOP-LEVEL field on ValidatingWebhookConfiguration (like
+# ClusterRole/ClusterRoleBinding, this kind has no .spec) — nesting it under
+# spec: is rejected by the real apiserver's OpenAPI schema (server-side
+# apply: ".spec: field not declared in schema"), which is why ArgoCD could
+# never actually sync this resource.
+webhooks:
+  - name: vpod.kb.io
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    namespaceSelector:
+      matchExpressions:
+        - key: bex.co/workspace
+          operator: Exists
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: Namespaced
+    clientConfig:
+      service:
+        namespace: system
+        name: webhook-service
+        path: /validate-v1-pod
+        port: 443
