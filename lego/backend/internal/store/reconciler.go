@@ -244,6 +244,16 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 // logged, not fatal: a deploy-bookkeeping hiccup must never block App CR
 // reconciliation.
 func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App) {
+	// Project the pre-deploy step's outcome (w1/m33) onto the open row first, so a
+	// migration failure is recorded even on the same pass that closes the deploy
+	// update_failed — that's what lets a client tell a failed migration apart from
+	// a failed health check. SetDeployPreDeployStatus is a no-op when unchanged.
+	if pds := preDeployStatusFor(cur); pds != "" {
+		if _, err := r.Store.SetDeployPreDeployStatus(ctx, open.ID, pds); err != nil {
+			log.Printf("controlplane: set pre-deploy status %s: %v", open.ID, err)
+		}
+	}
+
 	status := ""
 	switch {
 	case cur.Status.Phase == appv1alpha1.PhaseRunning:
@@ -279,6 +289,28 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// slow relay would otherwise get to send.
 	if ok && r.DeployNotifier != nil {
 		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), d.TenantID, d.Name, status)
+	}
+}
+
+// preDeployStatusFor maps the App CR's pre-deploy step status (status.preDeploy,
+// set by the operator) to the deploy row's lowercase pre_deploy_status
+// vocabulary, but only for the CR's CURRENT generation — a status left over from
+// a superseded revision must not be projected onto the open deploy. Empty means
+// no pre-deploy step applies to this rollout.
+func preDeployStatusFor(app *appv1alpha1.App) string {
+	pd := app.Status.PreDeploy
+	if pd == nil || pd.Generation != app.Generation {
+		return ""
+	}
+	switch pd.Status {
+	case appv1alpha1.PreDeployRunning:
+		return PreDeployRunning
+	case appv1alpha1.PreDeploySucceeded:
+		return PreDeploySucceeded
+	case appv1alpha1.PreDeployFailed:
+		return PreDeployFailed
+	default:
+		return ""
 	}
 }
 

@@ -104,6 +104,11 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-3", DeployStatus: "failed"},
 	}, {
+		name:        "deploy failed on its pre-deploy step carries preDeployStatus (w1/m33)",
+		row:         store.ServiceEventRow{Key: "dep-4:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-4", Status: store.DeployUpdateFailed, PreDeployStatus: store.PreDeployFailed},
+		wantType:    TypeDeployEnded,
+		wantDetails: Details{DeployID: "dep-4", DeployStatus: "failed", PreDeployStatus: store.PreDeployFailed},
+	}, {
 		name:        "suspend names its actor",
 		row:         store.ServiceEventRow{Key: "aud-1:", Source: store.EventSourceAudit, Verb: "apps.Suspend", Caller: "user-x"},
 		wantType:    TypeSuspenderAdded,
@@ -153,6 +158,7 @@ func TestViewMapsEverySource(t *testing.T) {
 			}
 			if got.Details.DeployID != tc.wantDetails.DeployID ||
 				got.Details.DeployStatus != tc.wantDetails.DeployStatus ||
+				got.Details.PreDeployStatus != tc.wantDetails.PreDeployStatus ||
 				got.Details.Actor != tc.wantDetails.Actor ||
 				got.Details.TriggeredByUser != tc.wantDetails.TriggeredByUser {
 				t.Errorf("details = %+v, want %+v", got.Details, tc.wantDetails)

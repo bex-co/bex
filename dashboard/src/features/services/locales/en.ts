@@ -1184,6 +1184,36 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.preDeployLabel": {
+    message: "Pre-Deploy Command",
+    description: "Build & Deploy: label for the pre-deploy command field",
+  },
+  "services.preDeployHint": {
+    message:
+      "Runs once against the new image before it serves traffic (e.g. a database migration). A non-zero exit fails the deploy and keeps the previous version live.",
+    description: "Build & Deploy: help text for the pre-deploy command field",
+  },
+  "services.preDeployPlaceholder": {
+    message: "e.g. npm run migrate",
+    description: "Build & Deploy: placeholder for the pre-deploy command input",
+  },
+  "services.preDeployEmpty": {
+    message: "No pre-deploy command",
+    description: "Build & Deploy: empty state for the pre-deploy command field",
+  },
+  "services.preDeployEdit": {
+    message: "Edit Pre-Deploy Command",
+    description:
+      "Build & Deploy: accessible label for the pre-deploy edit-pencil button",
+  },
+  "services.preDeploySuccess": {
+    message: "Pre-Deploy Command updated.",
+    description: "Toast after setPreDeployCommand succeeds",
+  },
+  "services.preDeployError": {
+    message: "Couldn't update the Pre-Deploy Command. Please try again.",
+    description: "Toast after setPreDeployCommand fails",
+  },
   "services.autoDeployLabel": {
     message: "Auto-Deploy",
     description: "Build & Deploy: label for the auto-deploy toggle",
@@ -1904,6 +1934,18 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsStatusCanceled": {
     message: "Canceled",
     description: "Deploy status: canceled",
+  },
+  "services.eventsPreDeployRunning": {
+    message: "Pre-deploy command running",
+    description: "Deploy row: the pre-deploy step is in progress",
+  },
+  "services.eventsPreDeploySucceeded": {
+    message: "Pre-deploy command succeeded",
+    description: "Deploy row: the pre-deploy step passed",
+  },
+  "services.eventsPreDeployFailed": {
+    message: "Pre-deploy command failed",
+    description: "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
   },
   "services.eventsRolledBackFrom": {
     message: "Rolled back from {target}",

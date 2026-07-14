@@ -12,6 +12,9 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
     cursor
     details {
       deployStatus
+      # preDeployStatus is the deploy's pre-deploy step outcome (w1/m33):
+      # running | succeeded | failed; empty when no pre-deploy step ran.
+      preDeployStatus
       actor
       triggeredByUser
       trigger {

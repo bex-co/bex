@@ -108,6 +108,12 @@ type healthCheckPathArgs struct {
 	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with / or be empty to restore the platform default /"`
 }
 
+// preDeployCommandArgs is set_pre_deploy_command's input.
+type preDeployCommandArgs struct {
+	ServiceID        string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	PreDeployCommand string `json:"preDeployCommand" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); empty clears the step"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -115,24 +121,25 @@ type healthCheckPathArgs struct {
 // contract; builder and image are bex extensions. Region remains a one-region
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
-	OwnerID         string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name            string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Type            string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo            string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image           string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch          string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir         string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime         string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand    string      `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
-	StartCommand    string      `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
-	Builder         string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan            string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars         []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	AutoDeploy      string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	HealthCheckPath string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
-	Port            int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
-	Replicas        int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
-	DryRun          bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID          string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name             string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type             string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
+	Repo             string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image            string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch           string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir          string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Runtime          string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand     string      `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
+	StartCommand     string      `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
+	Builder          string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan             string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars          []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	AutoDeploy       string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	HealthCheckPath  string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
+	PreDeployCommand string      `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
+	Port             int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Replicas         int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	DryRun           bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -143,24 +150,25 @@ type envVarArg struct {
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:         a.OwnerID,
-		Name:            a.Name,
-		Type:            a.Type,
-		Repo:            a.Repo,
-		Image:           a.Image,
-		Branch:          a.Branch,
-		RootDir:         a.RootDir,
-		Runtime:         a.Runtime,
-		BuildCommand:    a.BuildCommand,
-		StartCommand:    a.StartCommand,
-		Builder:         a.Builder,
-		Plan:            a.Plan,
-		Env:             toEnvVars(a.EnvVars),
-		AutoDeploy:      parseYesNo(a.AutoDeploy),
-		HealthCheckPath: a.HealthCheckPath,
-		Port:            a.Port,
-		Replicas:        a.Replicas,
-		DryRun:          a.DryRun,
+		OwnerID:          a.OwnerID,
+		Name:             a.Name,
+		Type:             a.Type,
+		Repo:             a.Repo,
+		Image:            a.Image,
+		Branch:           a.Branch,
+		RootDir:          a.RootDir,
+		Runtime:          a.Runtime,
+		BuildCommand:     a.BuildCommand,
+		StartCommand:     a.StartCommand,
+		Builder:          a.Builder,
+		Plan:             a.Plan,
+		Env:              toEnvVars(a.EnvVars),
+		AutoDeploy:       parseYesNo(a.AutoDeploy),
+		HealthCheckPath:  a.HealthCheckPath,
+		PreDeployCommand: a.PreDeployCommand,
+		Port:             a.Port,
+		Replicas:         a.Replicas,
+		DryRun:           a.DryRun,
 	}
 }
 
@@ -610,6 +618,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath → ReadinessProbe). A 2xx/3xx response marks the pod ready. Pass an empty string to restore the platform default /. Has no effect on cron_job or background_worker services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_pre_deploy_command",
+		Description: "Change the pre-deploy command (spec.preDeployCommand → Render's Pre-Deploy Command): a command run to completion against the new revision's image before it serves traffic (typically a database migration). A non-zero exit fails the deploy and leaves the previous revision serving. Pass an empty string to clear the step. Has no effect on cron_job or static_site services.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in preDeployCommandArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetPreDeployCommand(ctx, in.ServiceID, in.PreDeployCommand)
 		if err != nil {
 			return nil, renderService{}, err
 		}

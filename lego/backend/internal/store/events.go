@@ -77,6 +77,9 @@ type ServiceEventRow struct {
 	DeployID string
 	Trigger  string // "create" (the app's first deploy) | "api"; the started phase only
 	Status   string // the deploy's terminal status; the ended phase only
+	// PreDeployStatus is the deploy's pre-deploy step outcome (w1/m33): '' |
+	// 'running' | 'succeeded' | 'failed'; the ended phase only.
+	PreDeployStatus string
 
 	// Audit rows only.
 	Verb   string // e.g. "apps.Suspend"
@@ -139,6 +142,7 @@ WITH feed AS (
            d.id                                AS deploy_id,
            d.trigger                           AS trigger,
            ''::text                            AS status,
+           ''::text                            AS pre_deploy_status,
            ''::text                            AS verb,
            ''::text                            AS caller
     FROM deploys d
@@ -151,6 +155,7 @@ WITH feed AS (
            d.id,
            ''::text,
            d.status,
+           d.pre_deploy_status,
            ''::text,
            ''::text
     FROM deploys d
@@ -163,6 +168,7 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           ''::text,
            a.verb,
            a.caller
     FROM audit_events a
@@ -171,7 +177,7 @@ WITH feed AS (
       AND a.workspace_id = ANY($3)
       AND a.verb = ANY($4)
 )
-SELECT key, at, source, phase, deploy_id, trigger, status, verb, caller
+SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller
 FROM feed
 WHERE ($6::timestamptz IS NULL OR at >= $6)
   AND ($7::timestamptz IS NULL OR at <= $7)
@@ -231,6 +237,6 @@ func nullTime(t time.Time) *time.Time {
 
 func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 	var r ServiceEventRow
-	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.Verb, &r.Caller)
+	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller)
 	return r, err
 }

@@ -98,6 +98,12 @@ vi.mock("@/features/services/hooks/use-cron-job", () => ({
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir: vi.fn(async () => true), busy: false }),
 }));
+vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
+  usePreDeployCommand: () => ({
+    setPreDeployCommand: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
 vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
   useAutoDeploy: () => ({
     setAutoDeploy: vi.fn(async () => true),

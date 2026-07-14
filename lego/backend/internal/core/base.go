@@ -35,6 +35,11 @@ import (
 const (
 	PodLabelApp  = "app.bex.co/app"
 	AppContainer = "app"
+	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
+	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
+	// migration's output. Kept in sync by hand, like PodLabelApp above.
+	PodLabelPreDeploy  = "app.bex.co/predeploy"
+	PreDeployContainer = "predeploy"
 )
 
 // Checker is the feature services' seam to the authorization service
@@ -711,6 +716,24 @@ func (b *Base) AppPods(ctx context.Context, app string) ([]corev1.Pod, error) {
 	if err := b.Client.List(ctx, &pods,
 		client.InNamespace(b.Namespace),
 		client.MatchingLabels{PodLabelApp: app}); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
+// PreDeployPods lists an App's pre-deploy Job pods (the app.bex.co/predeploy
+// label, w1/m33) in namespace — the logs feature reads a migration's output from
+// these. namespace is the operator's build namespace (BEX_BUILD_NAMESPACE, where
+// the Job runs); empty falls back to the API's own namespace, the operator's
+// default when that env is unset.
+func (b *Base) PreDeployPods(ctx context.Context, app, namespace string) ([]corev1.Pod, error) {
+	if namespace == "" {
+		namespace = b.Namespace
+	}
+	var pods corev1.PodList
+	if err := b.Client.List(ctx, &pods,
+		client.InNamespace(namespace),
+		client.MatchingLabels{PodLabelPreDeploy: app}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

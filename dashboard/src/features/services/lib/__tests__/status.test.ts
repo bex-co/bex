@@ -90,6 +90,7 @@ describe("toServiceView", () => {
       rootDir: null,
       autoDeploy: null,
       healthCheckPath: null,
+      preDeployCommand: null,
       publishPath: null,
       routes: [],
       headers: [],

@@ -612,3 +612,15 @@ func (m *memStore) CloseDeploy(_ context.Context, id, status, resolvedImage stri
 	m.deploys[id] = d
 	return true, nil
 }
+
+func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	d, ok := m.deploys[id]
+	if !ok || d.PreDeployStatus == status {
+		return false, nil
+	}
+	d.PreDeployStatus = status
+	m.deploys[id] = d
+	return true, nil
+}

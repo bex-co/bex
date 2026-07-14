@@ -81,18 +81,26 @@ type DeployView struct {
 	CreatedAt  time.Time
 	StartedAt  *time.Time
 	FinishedAt *time.Time
+	// PreDeployStatus is the pre-deploy command's outcome for this deploy (w1/m33):
+	// "" (no step) | "running" | "succeeded" | "failed". A deploy that fails its
+	// migration is update_failed with PreDeployStatus "failed"; one that fails its
+	// health check is update_failed with PreDeployStatus "" — the field is how a
+	// client tells the two apart. Its logs are retrievable via the logs surface
+	// (`type=predeploy`).
+	PreDeployStatus string
 }
 
 func view(d store.Deploy) DeployView {
 	return DeployView{
-		ID:         d.ID,
-		Status:     d.Status,
-		Image:      d.Image,
-		Trigger:    d.Trigger,
-		RollbackOf: d.RollbackOf,
-		CreatedAt:  d.CreatedAt,
-		StartedAt:  d.StartedAt,
-		FinishedAt: d.FinishedAt,
+		ID:              d.ID,
+		Status:          d.Status,
+		Image:           d.Image,
+		Trigger:         d.Trigger,
+		RollbackOf:      d.RollbackOf,
+		CreatedAt:       d.CreatedAt,
+		StartedAt:       d.StartedAt,
+		FinishedAt:      d.FinishedAt,
+		PreDeployStatus: d.PreDeployStatus,
 	}
 }
 

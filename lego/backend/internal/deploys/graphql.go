@@ -43,6 +43,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
 		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
 		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
+		// Pre-deploy step outcome (w1/m33): "running"|"succeeded"|"failed", empty
+		// when no pre-deploy step ran. Distinguishes a migration failure from a
+		// health-check failure (both status=update_failed).
+		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.PreDeployStatus })},
 	},
 })
 

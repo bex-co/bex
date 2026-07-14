@@ -69,6 +69,7 @@ type renderEvent struct {
 type renderDetails struct {
 	DeployID        string         `json:"deployId,omitempty"`
 	DeployStatus    string         `json:"deployStatus,omitempty"`
+	PreDeployStatus string         `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
 	Trigger         *renderTrigger `json:"trigger,omitempty"`
 	Actor           string         `json:"actor,omitempty"`
 	TriggeredByUser string         `json:"triggeredByUser,omitempty"`
@@ -89,6 +90,7 @@ func toRenderEvent(e Event) renderEvent {
 	d := renderDetails{
 		DeployID:        e.Details.DeployID,
 		DeployStatus:    e.Details.DeployStatus,
+		PreDeployStatus: e.Details.PreDeployStatus,
 		Actor:           e.Details.Actor,
 		TriggeredByUser: e.Details.TriggeredByUser,
 	}

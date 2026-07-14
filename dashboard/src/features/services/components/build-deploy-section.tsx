@@ -23,6 +23,7 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
+import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 
@@ -36,6 +37,14 @@ export interface BuildDeploySectionProps {
   rootDir: string | null;
   /** spec.autoDeploy — whether a signed git push redeploys this App. */
   autoDeploy: boolean;
+  /** spec.preDeployCommand; empty/null means no pre-deploy step (w1/m33). */
+  preDeployCommand: string | null;
+  /**
+   * Whether to show the Pre-Deploy Command field — true for web/private/worker,
+   * false for cron_job/static_site (the pre-deploy step doesn't apply there, and
+   * the backend rejects setPreDeployCommand for them).
+   */
+  showPreDeployCommand: boolean;
 }
 
 /**
@@ -53,9 +62,12 @@ export function BuildDeploySection({
   branch,
   rootDir,
   autoDeploy,
+  preDeployCommand,
+  showPreDeployCommand,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   const { setRootDir, busy } = useRootDir();
+  const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
   const { connection } = useGitConnection();
   // Optimistic switch state — reverted on a failed mutation.
@@ -65,6 +77,11 @@ export function BuildDeploySection({
   // "confirming" can't drift out of sync.
   const [mode, setMode] = useState<"view" | "editing" | "confirming">("view");
   const [draft, setDraft] = useState("");
+  // Pre-deploy command inline edit (w1/m33): a plain pencil→input→save flow, no
+  // confirm dialog — Render edits this field inline with a Save button, and it
+  // has its own state so it can't collide with the Root Directory edit above.
+  const [preMode, setPreMode] = useState<"view" | "editing">("view");
+  const [preDraft, setPreDraft] = useState("");
 
   // A repo hosted on the connected GitHub account auto-deploys hands-free via
   // the app's app-wide webhook; otherwise a push needs the manual HMAC webhook.
@@ -89,6 +106,19 @@ export function BuildDeploySection({
     setMode("editing");
     const ok = await setRootDir(serviceId, draft.trim());
     if (ok) setMode("view");
+  }
+
+  const preCurrent = preDeployCommand ?? "";
+  const preCanSave = preDraft.trim() !== preCurrent;
+
+  function startPreEdit() {
+    setPreDraft(preCurrent);
+    setPreMode("editing");
+  }
+
+  async function handlePreSave() {
+    const ok = await setPreDeployCommand(serviceId, preDraft.trim());
+    if (ok) setPreMode("view");
   }
 
   return (
@@ -178,6 +208,74 @@ export function BuildDeploySection({
             </div>
           )}
         </div>
+
+        {showPreDeployCommand && (
+          <div>
+            <div className="text-sm text-muted-foreground">
+              {t("services.preDeployLabel")}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {t("services.preDeployHint")}
+            </div>
+            {preMode === "editing" ? (
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  value={preDraft}
+                  onChange={(e) => setPreDraft(e.target.value)}
+                  placeholder={t("services.preDeployPlaceholder")}
+                  autoFocus
+                  className="font-mono text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && preCanSave) void handlePreSave();
+                    if (e.key === "Escape") setPreMode("view");
+                  }}
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t("services.buildDeploySave")}
+                  disabled={preDeployBusy || !preCanSave}
+                  onClick={() => void handlePreSave()}
+                >
+                  {preDeployBusy ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Check className="text-emerald-600" />
+                  )}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t("services.buildDeployCancel")}
+                  disabled={preDeployBusy}
+                  onClick={() => setPreMode("view")}
+                >
+                  <X />
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-2 flex items-center gap-2">
+                {preCurrent ? (
+                  <span className="font-mono text-sm break-all">
+                    {preCurrent}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground italic">
+                    {t("services.preDeployEmpty")}
+                  </span>
+                )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t("services.preDeployEdit")}
+                  onClick={startPreEdit}
+                >
+                  <Pencil />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">

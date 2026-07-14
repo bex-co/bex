@@ -109,6 +109,10 @@ export function ServiceSettingsPage() {
               branch={service.branch}
               rootDir={service.rootDir}
               autoDeploy={service.autoDeploy ?? false}
+              preDeployCommand={service.preDeployCommand}
+              // A cron_job runs its own Command; the pre-deploy step doesn't
+              // apply (the backend rejects it), so hide the field here.
+              showPreDeployCommand={false}
             />
           )}
         </>
@@ -121,6 +125,10 @@ export function ServiceSettingsPage() {
               branch={service.branch}
               rootDir={service.rootDir}
               autoDeploy={service.autoDeploy ?? false}
+              preDeployCommand={service.preDeployCommand}
+              // Pre-Deploy Command applies to web/private/worker; a static_site
+              // has no running container, so hide the field for it (w1/m33).
+              showPreDeployCommand={!staticSite}
             />
           )}
           {staticSite && service && (

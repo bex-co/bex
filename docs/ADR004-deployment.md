@@ -154,6 +154,21 @@ Setting `App.spec.repo` builds the image **on the cluster**, so there is no lapt
 
 The tag is the App's **generation**, so any spec change — including a webhook redeploy that stamps `spec.restartedAt` — yields a new build and re-pull. Config: `BEX_REGISTRY` (canonical Zot host), optional `BEX_KPACK_REGISTRY` (kpack-only endpoint alias), `BEX_CNB_BUILDER` (the builder imported into the `ClusterStore`/`ClusterBuilder`), and `BEX_BUILD_NAMESPACE` (default the App namespace). The operator has `batch/jobs`, `kpack.io` Image/Build, and namespaced build-credential RBAC. `scripts/registry-secrets.sh` creates the Docker config variants used by BuildKit, kpack, and workload pulls without storing credentials in git.
 
+## Pre-deploy command (gate a rollout on a migration) — w1/m33
+
+Setting `App.spec.preDeployCommand` makes the operator run that command **to completion against the new revision's image before the Deployment rolls to it** (Render's Pre-Deploy Command — typically a database migration). This is real health-gating, not a cosmetic field: the rollout waits on the step, and a non-zero exit **fails the deploy and leaves the previous revision live and serving**.
+
+Mechanism (`internal/predeploy`, dispatched from `reconcileKubernetes`'s `reconcilePreDeploy`), mirroring the build plane's Job-and-poll shape but with deploy-safe differences:
+
+1. The operator runs the command as a Kubernetes **Job** (`predeploy-<name>-gen-<generation>`, in `BEX_BUILD_NAMESPACE`) whose single container **is the new image**, wrapped in a shell (`sh -c <command>`), with the **same env, envFrom (the `<name>-env` Secret a migration reads `DATABASE_URL` from), image-pull secrets, security context, tier resources, and `/etc/secrets` volume** as the app pod — so a migration runs against exactly what will serve.
+2. It **never retries** (`BackoffLimit 0`): re-running a partially applied migration can corrupt data, so a failed pre-deploy is terminal until the user pushes a new revision. A bounded `activeDeadlineSeconds` reaps a hung migration as failed.
+3. The operator observes the Job **non-blocking** — one `Get` per reconcile, then `RequeueAfter` — so the App CR reports the step `Running`/`Succeeded`/`Failed` on `status.preDeploy` while it runs; the Deployment is **not created or updated** until the step succeeds, which is what keeps the old revision live.
+4. The step is gated **per generation** (bex treats every spec change as a new revision — a repo-backed App already rebuilds per generation), so it runs once per rollout, exactly like Render, and never re-runs a migration that already passed or failed for the same revision (which also guards against re-creating the Job after its TTL reap).
+
+Skipped when there is no rollout to gate (suspended / auto-hibernating, both scaling to 0) and for `cron_job`/`static_site` (a cron runs its own `command`; a static site has no running container). Unset `preDeployCommand` is byte-identical to prior behavior — no Job, no gate.
+
+The step's outcome and logs are visible on the deploy record: `preDeployStatus` (`internal/store`/`internal/deploys`) distinguishes a migration failure from a health-check failure, and the `predeploy` log type ([ADR006](ADR006-bex-api.md), [ADR010](ADR010-observability.md)) reads the Job pod's logs.
+
 ## Gotchas
 
 - **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/ADR003-control-plane.md`](ADR003-control-plane.md) for the planned Postgres source of truth.

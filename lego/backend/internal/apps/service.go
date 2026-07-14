@@ -212,6 +212,12 @@ type AppView struct {
 	// Render's healthCheckPath). Empty means the default "/". The Settings →
 	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
+	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
+	// command run to completion against the new revision's image before it serves
+	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
+	// means no pre-deploy step. The Settings → Build & Deploy section reads/writes
+	// it via SetPreDeployCommand.
+	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 	// PublishPath is the built output directory a static_site serves as its
 	// document root (spec.publishPath, Render's "Publish Directory"). Empty for
 	// every other type.
@@ -283,37 +289,38 @@ func view(a *appv1alpha1.App) AppView {
 		asView = &v
 	}
 	return AppView{
-		Name:            publicName(a),
-		DisplayName:     a.Spec.DisplayName,
-		Type:            svcType,
-		Phase:           string(a.Status.Phase),
-		URL:             a.Status.URL,
-		URLs:            a.Status.URLs,
-		Image:           a.Status.Image,
-		Runtime:         a.Spec.Runtime,
-		BuildCommand:    a.Spec.BuildCommand,
-		StartCommand:    a.Spec.StartCommand,
-		Builder:         a.Spec.Builder,
-		Replicas:        a.Spec.Replicas,
-		Suspended:       a.Spec.Suspended,
-		Schedule:        a.Spec.Schedule,
-		Command:         a.Spec.Command,
-		Runs:            cronRunViews(a.Status.Runs),
-		Plan:            plan,
-		Revision:        a.Status.ActiveRevision,
-		CreatedAt:       created,
-		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
-		OwnerID:         a.Labels[core.LabelTenant],
-		RootDir:         a.Spec.RootDir,
-		DockerfilePath:  a.Spec.DockerfilePath,
-		Repo:            a.Spec.Repo,
-		Branch:          a.Spec.Branch,
-		Autoscaling:     asView,
-		AutoDeploy:      a.Spec.AutoDeploy,
-		HealthCheckPath: a.Spec.HealthCheckPath,
-		PublishPath:     a.Spec.PublishPath,
-		Routes:          staticRouteViews(a.Spec.Routes),
-		Headers:         staticHeaderViews(a.Spec.Headers),
+		Name:             publicName(a),
+		DisplayName:      a.Spec.DisplayName,
+		Type:             svcType,
+		Phase:            string(a.Status.Phase),
+		URL:              a.Status.URL,
+		URLs:             a.Status.URLs,
+		Image:            a.Status.Image,
+		Runtime:          a.Spec.Runtime,
+		BuildCommand:     a.Spec.BuildCommand,
+		StartCommand:     a.Spec.StartCommand,
+		Builder:          a.Spec.Builder,
+		Replicas:         a.Spec.Replicas,
+		Suspended:        a.Spec.Suspended,
+		Schedule:         a.Spec.Schedule,
+		Command:          a.Spec.Command,
+		Runs:             cronRunViews(a.Status.Runs),
+		Plan:             plan,
+		Revision:         a.Status.ActiveRevision,
+		CreatedAt:        created,
+		IdleTTLSeconds:   a.Spec.IdleTTLSeconds,
+		OwnerID:          a.Labels[core.LabelTenant],
+		RootDir:          a.Spec.RootDir,
+		DockerfilePath:   a.Spec.DockerfilePath,
+		Repo:             a.Spec.Repo,
+		Branch:           a.Spec.Branch,
+		Autoscaling:      asView,
+		AutoDeploy:       a.Spec.AutoDeploy,
+		HealthCheckPath:  a.Spec.HealthCheckPath,
+		PreDeployCommand: a.Spec.PreDeployCommand,
+		PublishPath:      a.Spec.PublishPath,
+		Routes:           staticRouteViews(a.Spec.Routes),
+		Headers:          staticHeaderViews(a.Spec.Headers),
 	}
 }
 
@@ -472,6 +479,11 @@ type CreateRequest struct {
 	// repo-backed service (Render's default too), off for an image-backed one
 	// (nothing to rebuild on push).
 	AutoDeploy *bool
+	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
+	// command run to completion against the new revision's image before it serves
+	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
+	// means no pre-deploy step. Ignored for cron_job/static_site.
+	PreDeployCommand string
 	// PublishPath is the built output directory a static_site serves (Render's
 	// "Publish Directory", spec.publishPath). Required when Type is static_site,
 	// ignored otherwise.
@@ -929,22 +941,23 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		autoDeploy = *req.AutoDeploy
 	}
 	spec := appv1alpha1.AppSpec{
-		Type:            svcType,
-		Repo:            req.Repo,
-		Image:           req.Image,
-		Branch:          branch,
-		Runtime:         runtime,
-		BuildCommand:    req.BuildCommand,
-		StartCommand:    req.StartCommand,
-		Builder:         builder,
-		RootDir:         req.RootDir,
-		DockerfilePath:  req.DockerfilePath,
-		Port:            port,
-		Replicas:        replicas,
-		Tier:            tier,
-		HealthCheckPath: req.HealthCheckPath,
-		Env:             req.Env,
-		AutoDeploy:      autoDeploy,
+		Type:             svcType,
+		Repo:             req.Repo,
+		Image:            req.Image,
+		Branch:           branch,
+		Runtime:          runtime,
+		BuildCommand:     req.BuildCommand,
+		StartCommand:     req.StartCommand,
+		Builder:          builder,
+		RootDir:          req.RootDir,
+		DockerfilePath:   req.DockerfilePath,
+		Port:             port,
+		Replicas:         replicas,
+		Tier:             tier,
+		HealthCheckPath:  req.HealthCheckPath,
+		Env:              req.Env,
+		AutoDeploy:       autoDeploy,
+		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
@@ -1005,6 +1018,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.HealthCheckPath = want.HealthCheckPath
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
+	dst.PreDeployCommand = want.PreDeployCommand
 	dst.Expose = want.Expose
 	dst.Host = want.Host
 	dst.Hosts = want.Hosts
@@ -1207,6 +1221,27 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// SetPreDeployCommand changes the pre-deploy command (spec.preDeployCommand,
+// Render's Pre-Deploy Command) — a command run to completion against the new
+// revision's image before it serves traffic (typically a migration). An empty
+// command clears the step. Rejected for cron_job (its own Command already runs
+// the image) and static_site (no running container) — the operator ignores the
+// field there, so accepting it would be a silent no-op. Direct CR patch, not
+// projection-owned (mirrors Builder/RootDir); the spec change bumps generation,
+// so the command runs on the resulting rollout with no explicit restart.
+func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeStaticSite {
+		return AppView{}, fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, a.Spec.Type)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.PreDeployCommand = strings.TrimSpace(command)
 	})
 }
 

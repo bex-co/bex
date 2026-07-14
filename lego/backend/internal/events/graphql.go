@@ -54,7 +54,11 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"deployId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.DeployID })},
 		"deployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.DeployStatus })},
-		"actor":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
+		// preDeployStatus is the deploy's pre-deploy step outcome (w1/m33) — the
+		// dashboard's Events tab shows it to tell a migration failure apart from a
+		// health-check failure. Empty when no pre-deploy step ran.
+		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PreDeployStatus })},
+		"actor":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
 		},

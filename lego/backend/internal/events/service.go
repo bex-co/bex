@@ -51,6 +51,7 @@ limitations under the License.
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
 //	display_name_changed        apps.SetDisplayName
+//	pre_deploy_command_changed  apps.SetPreDeployCommand
 //	publish_path_changed        apps.SetPublishPath
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
@@ -136,6 +137,7 @@ const (
 	TypeIdleTimeoutChanged   = "idle_timeout_changed"
 	TypeRootDirectoryChanged = "root_directory_changed"
 	TypeDisplayNameChanged   = "display_name_changed"
+	TypePreDeployChanged     = "pre_deploy_command_changed"
 	TypePublishPathChanged   = "publish_path_changed"
 	TypeRoutesChanged        = "routes_changed"
 	TypeHeadersChanged       = "headers_changed"
@@ -156,28 +158,29 @@ const (
 //   - deploys.Trigger — the deploys row it opens IS the deploy_started event;
 //     mapping the verb too would show every API deploy twice.
 var eventTypes = map[string]string{
-	"apps.Suspend":            TypeSuspenderAdded,
-	"apps.Resume":             TypeSuspenderRemoved,
-	"apps.Restart":            TypeServerRestarted,
-	"apps.SetPlan":            TypePlanChanged,
-	"apps.Scale":              TypeInstanceCountChanged,
-	"apps.SetAutoscaling":     TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":  TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":     TypeCronJobRunStarted,
-	"apps.SetAutoDeploy":      TypeAutoDeployChanged,
-	"apps.SetIdleTTL":         TypeIdleTimeoutChanged,
-	"apps.SetRootDir":         TypeRootDirectoryChanged,
-	"apps.SetDisplayName":     TypeDisplayNameChanged,
-	"apps.SetPublishPath":     TypePublishPathChanged,
-	"apps.SetRoutes":          TypeRoutesChanged,
-	"apps.SetHeaders":         TypeHeadersChanged,
-	"apps.AddDomain":          TypeCustomDomainAdded,
-	"apps.DeleteDomain":       TypeCustomDomainRemoved,
-	"secrets.SetEnvVars":      TypeEnvVarsChanged,
-	"secrets.SetEnvVar":       TypeEnvVarsChanged,
-	"secrets.DeleteEnvVar":    TypeEnvVarsChanged,
-	"envgroups.LinkService":   TypeEnvGroupLinked,
-	"envgroups.UnlinkService": TypeEnvGroupUnlinked,
+	"apps.Suspend":             TypeSuspenderAdded,
+	"apps.Resume":              TypeSuspenderRemoved,
+	"apps.Restart":             TypeServerRestarted,
+	"apps.SetPlan":             TypePlanChanged,
+	"apps.Scale":               TypeInstanceCountChanged,
+	"apps.SetAutoscaling":      TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":   TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":      TypeCronJobRunStarted,
+	"apps.SetAutoDeploy":       TypeAutoDeployChanged,
+	"apps.SetIdleTTL":          TypeIdleTimeoutChanged,
+	"apps.SetRootDir":          TypeRootDirectoryChanged,
+	"apps.SetDisplayName":      TypeDisplayNameChanged,
+	"apps.SetPreDeployCommand": TypePreDeployChanged,
+	"apps.SetPublishPath":      TypePublishPathChanged,
+	"apps.SetRoutes":           TypeRoutesChanged,
+	"apps.SetHeaders":          TypeHeadersChanged,
+	"apps.AddDomain":           TypeCustomDomainAdded,
+	"apps.DeleteDomain":        TypeCustomDomainRemoved,
+	"secrets.SetEnvVars":       TypeEnvVarsChanged,
+	"secrets.SetEnvVar":        TypeEnvVarsChanged,
+	"secrets.DeleteEnvVar":     TypeEnvVarsChanged,
+	"envgroups.LinkService":    TypeEnvGroupLinked,
+	"envgroups.UnlinkService":  TypeEnvGroupUnlinked,
 }
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —
@@ -240,8 +243,12 @@ type Trigger struct {
 type Details struct {
 	// deploy_started / deploy_ended
 	DeployID     string
-	DeployStatus string   // "succeeded" | "failed" — Render's deployStatus enum
-	Trigger      *Trigger // deploy_started only
+	DeployStatus string // "succeeded" | "failed" — Render's deployStatus enum
+	// PreDeployStatus is the deploy's pre-deploy step outcome (w1/m33): "running"
+	// | "succeeded" | "failed"; empty when no pre-deploy step ran. deploy_ended
+	// only. Distinguishes a migration failure from a health-check failure.
+	PreDeployStatus string
+	Trigger         *Trigger // deploy_started only
 	// suspender_added / suspender_removed
 	Actor string
 	// server_restarted
@@ -400,6 +407,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		} else {
 			ev.Type = TypeDeployEnded
 			ev.Details.DeployStatus = deployStatus(r.Status)
+			ev.Details.PreDeployStatus = r.PreDeployStatus
 		}
 	case store.EventSourceAudit:
 		ev.Type = eventTypes[r.Verb]

@@ -43,6 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -507,6 +508,20 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if autoHibernating {
 		replicas = 0
 	}
+
+	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
+	// the new revision's image before rolling the Deployment to it. A non-zero
+	// exit fails the deploy and leaves the previous revision serving (the
+	// Deployment below is never touched). Skipped when there is no rollout to
+	// gate — suspended or auto-hibernating both scale to 0. When the step is still
+	// running or has failed, reconcilePreDeploy halts this reconcile before the
+	// Deployment update, which is what keeps the old revision live.
+	if !app.Spec.Suspended && !autoHibernating {
+		if res, halt, err := r.reconcilePreDeploy(ctx, app, image, port); halt || err != nil {
+			return res, err
+		}
+	}
+
 	labels := map[string]string{labelApp: app.Name}
 	// Propagate the workspace label to pod templates so NetworkPolicy selectors
 	// can express "allow same-workspace" rules. The selector stays stable
@@ -1420,6 +1435,134 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	})
 	_ = r.Status().Update(ctx, app)
 	return ctrl.Result{}, err
+}
+
+// reconcilePreDeploy runs spec.preDeployCommand to completion against image
+// before the caller rolls the Deployment to it (w1/m33, docs/ADR004-deployment.md).
+// It returns halt=true when the caller must stop this reconcile and return
+// (res, err): either the step failed (err set — the previous revision keeps
+// serving because the Deployment update below never runs) or it is still running
+// (requeue). halt=false lets the rollout proceed — the step is unset or already
+// succeeded for this revision.
+//
+// The step is gated per generation (bex treats every spec change as a new
+// revision — a repo-backed App already rebuilds per generation), so it runs once
+// per rollout, exactly like Render's Pre-Deploy Command, and never re-runs a
+// migration that already passed or failed for the same revision. That terminal
+// bookkeeping also guards against re-creating the Job after its TTL reap.
+func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
+	if app.Spec.PreDeployCommand == "" {
+		return ctrl.Result{}, false, nil
+	}
+	gen := app.Generation
+
+	// firstForGen is the first reconcile that runs this revision's step; started
+	// is preserved across the requeues that follow. Terminal per generation: a
+	// completed step for this revision is decisive, so we never touch the Job
+	// again (no re-run, no re-create after TTL reap).
+	firstForGen := true
+	started := time.Now().UTC().Format(time.RFC3339)
+	if pd := app.Status.PreDeploy; pd != nil && pd.Generation == gen {
+		firstForGen = false
+		if pd.StartedAt != "" {
+			started = pd.StartedAt
+		}
+		switch pd.Status {
+		case appv1alpha1.PreDeploySucceeded:
+			return ctrl.Result{}, false, nil // passed — proceed to the rollout
+		case appv1alpha1.PreDeployFailed:
+			return r.failPreDeploy(ctx, app, pd, fmt.Errorf("pre-deploy command failed: %s", pd.Message))
+		}
+		// Running/Pending: fall through to re-check the live Job.
+	}
+
+	ns := r.buildNamespace(app.Namespace)
+	rev := fmt.Sprintf("gen-%d", gen)
+	jobName := predeploy.JobName(app.Name, rev)
+
+	// Newest-wins: cancel any older-revision migration still in flight — but only
+	// on the FIRST pass for this revision. Re-checking a running migration has
+	// nothing newer to supersede (a newer generation would have reset firstForGen),
+	// so this avoids a wasted List on every requeue.
+	if firstForGen {
+		if err := predeploy.CancelSuperseded(ctx, app.Name, ns, jobName, r.Client); err != nil {
+			return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
+				Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+				StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
+			}, fmt.Errorf("pre-deploy: %w", err))
+		}
+	}
+
+	// The step's container mirrors the app pod: same env, envFrom (the app's
+	// "<name>-env" Secret a migration reads DATABASE_URL from), pull secrets,
+	// security context, tier resources, and secret-file volume.
+	var vols []corev1.Volume
+	var mounts []corev1.VolumeMount
+	if vol, mount := secretFileMounts(app); vol != nil {
+		vols = []corev1.Volume{*vol}
+		mounts = []corev1.VolumeMount{*mount}
+	}
+	job, err := predeploy.Ensure(ctx, predeploy.Options{
+		Name:             app.Name,
+		Namespace:        ns,
+		Workspace:        app.Labels[labelWorkspace],
+		Image:            image,
+		Command:          app.Spec.PreDeployCommand,
+		Revision:         rev,
+		Generation:       gen,
+		Env:              appEnv(app, port),
+		EnvFrom:          envFromSources(app),
+		ImagePullSecrets: r.imagePullSecrets(app, image),
+		SecurityContext:  tenantSecCtx(),
+		Resources:        resourcesForTier(app.Spec.Tier),
+		Volumes:          vols,
+		VolumeMounts:     mounts,
+		Client:           r.Client,
+	})
+	if err != nil {
+		// A transient API error (create/get) — requeue without marking the deploy
+		// failed; the migration itself hasn't reported an outcome.
+		return ctrl.Result{}, true, err
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	switch state, msg := predeploy.Observe(job); state {
+	case predeploy.StateSucceeded:
+		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeploySucceeded,
+			StartedAt: started, FinishedAt: now,
+		}
+		_ = r.Status().Update(ctx, app)
+		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
+		return ctrl.Result{}, false, nil // proceed to the rollout
+	case predeploy.StateFailed:
+		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
+			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+			StartedAt: started, FinishedAt: now, Message: msg,
+		}, fmt.Errorf("pre-deploy command failed: %s", msg))
+	default: // Pending/Running — keep the old revision serving and requeue
+		app.Status.Phase = appv1alpha1.PhaseDeploying
+		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployRunning,
+			StartedAt: started,
+		}
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "PreDeploy",
+			Message: "running pre-deploy command", ObservedGeneration: gen,
+		})
+		_ = r.Status().Update(ctx, app)
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
+	}
+}
+
+// failPreDeploy records the failed pre-deploy step (status.preDeploy = pd, phase
+// Failed) and blocks the rollout — the one place the three failure paths (a
+// persisted-Failed re-check, the Job's non-zero exit, and a cancel-superseded
+// error) converge, so the status shape can't drift between them.
+func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App, pd *appv1alpha1.PreDeployStatus, err error) (ctrl.Result, bool, error) {
+	app.Status.PreDeploy = pd
+	res, ferr := r.fail(ctx, app, "PreDeployFailed", err)
+	return res, true, ferr
 }
 
 // reconcileNetworkPolicy creates or updates the per-App NetworkPolicy that

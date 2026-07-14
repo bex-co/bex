@@ -1165,6 +1165,36 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
+  "services.preDeployLabel": {
+    message: "预部署命令",
+    description: "Build & Deploy: label for the pre-deploy command field",
+  },
+  "services.preDeployHint": {
+    message:
+      "在新镜像开始接收流量前运行一次（例如数据库迁移）。非零退出会使部署失败，并保持上一个版本继续运行。",
+    description: "Build & Deploy: help text for the pre-deploy command field",
+  },
+  "services.preDeployPlaceholder": {
+    message: "例如 npm run migrate",
+    description: "Build & Deploy: placeholder for the pre-deploy command input",
+  },
+  "services.preDeployEmpty": {
+    message: "无预部署命令",
+    description: "Build & Deploy: empty state for the pre-deploy command field",
+  },
+  "services.preDeployEdit": {
+    message: "编辑预部署命令",
+    description:
+      "Build & Deploy: accessible label for the pre-deploy edit-pencil button",
+  },
+  "services.preDeploySuccess": {
+    message: "预部署命令已更新。",
+    description: "Toast after setPreDeployCommand succeeds",
+  },
+  "services.preDeployError": {
+    message: "无法更新预部署命令，请重试。",
+    description: "Toast after setPreDeployCommand fails",
+  },
   "services.autoDeployLabel": {
     message: "自动部署",
     description: "Build & Deploy: label for the auto-deploy toggle",
@@ -1874,6 +1904,18 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsStatusCanceled": {
     message: "已取消",
     description: "Deploy status: canceled",
+  },
+  "services.eventsPreDeployRunning": {
+    message: "预部署命令运行中",
+    description: "Deploy row: the pre-deploy step is in progress",
+  },
+  "services.eventsPreDeploySucceeded": {
+    message: "预部署命令成功",
+    description: "Deploy row: the pre-deploy step passed",
+  },
+  "services.eventsPreDeployFailed": {
+    message: "预部署命令失败",
+    description: "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
   },
   "services.eventsRolledBackFrom": {
     message: "从 {target} 回滚",

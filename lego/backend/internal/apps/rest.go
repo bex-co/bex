@@ -60,6 +60,9 @@ type patchServiceRequest struct {
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001 +
 	// w5/009). A pointer so "absent" is distinct from an explicit "" (reset to "/").
 	HealthCheckPath *string `json:"healthCheckPath"`
+	// PreDeployCommand is Render's Pre-Deploy Command (w1/m33). A pointer so
+	// "absent" (leave unchanged) is distinct from an explicit "" (clear the step).
+	PreDeployCommand *string `json:"preDeployCommand"`
 	// DryRun, when true, previews the plan change without writing (w2/m29).
 	// Honored when serviceDetails.plan is set; other PATCH fields are not previewed.
 	// Can also be set via the ?dryRun=true query parameter.
@@ -110,6 +113,9 @@ type createServiceRequest struct {
 	// PublishPath is a static_site's publish directory; a top-level convenience
 	// mirroring serviceDetails.publishPath (top level wins).
 	PublishPath string `json:"publishPath"`
+	// PreDeployCommand is Render's Pre-Deploy Command (w1/m33); a top-level
+	// convenience mirroring serviceDetails.preDeployCommand (top level wins).
+	PreDeployCommand string `json:"preDeployCommand"`
 	// Routes/Headers are a static_site's edge rules at create time (Render sets
 	// these via separate endpoints; bex also accepts them in the create body).
 	Routes  []renderRoute  `json:"routes"`
@@ -150,6 +156,10 @@ type serviceDetailsReq struct {
 	// directory a static_site serves. Accepted here or at the top level (top
 	// level wins), mirroring schedule/command.
 	PublishPath string `json:"publishPath"`
+	// PreDeployCommand is Render's serviceDetails.preDeployCommand — the command
+	// run against the new image before it serves traffic (w1/m33). Accepted here
+	// (Render-faithful) or at the top level (top level wins).
+	PreDeployCommand string `json:"preDeployCommand"`
 }
 
 type envSpecificDetailsReq struct {
@@ -168,6 +178,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
 	var runtime, buildCommand, startCommand, dockerfilePath string
+	preDeploy := r.PreDeployCommand
 	var replicas int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
@@ -199,6 +210,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		if publishPath == "" {
 			publishPath = r.ServiceDetails.PublishPath // top-level publishPath wins over the nested one
 		}
+		if preDeploy == "" {
+			preDeploy = r.ServiceDetails.PreDeployCommand // top-level preDeployCommand wins over the nested one
+		}
 	}
 	image := ""
 	if r.Image != nil {
@@ -209,31 +223,32 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
 	return CreateRequest{
-		OwnerID:         r.OwnerID,
-		Name:            r.Name,
-		Type:            r.Type,
-		Schedule:        schedule,
-		Command:         command,
-		Repo:            r.Repo,
-		Image:           image,
-		Branch:          r.Branch,
-		Builder:         r.Builder,
-		Runtime:         runtime,
-		BuildCommand:    buildCommand,
-		StartCommand:    startCommand,
-		RootDir:         rootDir,
-		DockerfilePath:  dockerfilePath,
-		Port:            r.Port,
-		Replicas:        replicas,
-		Plan:            plan,
-		HealthCheckPath: health,
-		Env:             env,
-		Hosts:           r.Domains,
-		AutoDeploy:      parseYesNo(r.AutoDeploy),
-		PublishPath:     publishPath,
-		Routes:          routeViewsFromRender(r.Routes),
-		Headers:         headerViewsFromRender(r.Headers),
-		DryRun:          r.DryRun,
+		OwnerID:          r.OwnerID,
+		Name:             r.Name,
+		Type:             r.Type,
+		Schedule:         schedule,
+		Command:          command,
+		Repo:             r.Repo,
+		Image:            image,
+		Branch:           r.Branch,
+		Builder:          r.Builder,
+		Runtime:          runtime,
+		BuildCommand:     buildCommand,
+		StartCommand:     startCommand,
+		RootDir:          rootDir,
+		DockerfilePath:   dockerfilePath,
+		Port:             r.Port,
+		Replicas:         replicas,
+		Plan:             plan,
+		HealthCheckPath:  health,
+		Env:              env,
+		Hosts:            r.Domains,
+		AutoDeploy:       parseYesNo(r.AutoDeploy),
+		PreDeployCommand: preDeploy,
+		PublishPath:      publishPath,
+		Routes:           routeViewsFromRender(r.Routes),
+		Headers:          headerViewsFromRender(r.Headers),
+		DryRun:           r.DryRun,
 	}
 }
 
@@ -350,7 +365,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil {
+		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -396,6 +411,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.HealthCheckPath != nil {
 			if app, err = s.SetHealthCheckPath(r.Context(), id, *req.HealthCheckPath); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.PreDeployCommand != nil {
+			if app, err = s.SetPreDeployCommand(r.Context(), id, *req.PreDeployCommand); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

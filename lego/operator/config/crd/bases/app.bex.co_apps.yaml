@@ -351,6 +351,21 @@ spec:
                 description: Port the application listens on (PORT is injected).
                 format: int32
                 type: integer
+              preDeployCommand:
+                description: |-
+                  PreDeployCommand is a command run to completion against the new revision's
+                  image before that revision serves traffic (Render's Pre-Deploy Command —
+                  typically a database migration or other one-off setup step). The operator
+                  runs it as a Kubernetes Job whose container is the newly built/pulled image
+                  with the same env as the app pod, wrapped in a shell ("sh -c <command>").
+                  The rollout is gated on its outcome: a zero exit rolls the Deployment to the
+                  new revision; a non-zero exit fails the deploy and leaves the previous
+                  revision live and serving. Empty means no pre-deploy step (today's behavior,
+                  unchanged). Applies to web_service/private_service/background_worker; ignored
+                  for cron_job (its own Command already runs the image) and static_site (no
+                  running container). See docs/ADR004-deployment.md.
+                maxLength: 4096
+                type: string
               publishPath:
                 description: |-
                   PublishPath is the built output directory a static_site serves as its
@@ -600,6 +615,43 @@ spec:
                 - Hibernated
                 - Failed
                 type: string
+              preDeploy:
+                description: |-
+                  PreDeploy is the outcome of the pre-deploy command for the revision the
+                  operator is currently rolling out (nil when no pre-deploy step is
+                  configured or none has run yet). See spec.preDeployCommand.
+                properties:
+                  finishedAt:
+                    description: FinishedAt is when it completed or failed (RFC3339);
+                      empty while running.
+                    type: string
+                  generation:
+                    description: |-
+                      Generation is the spec generation this pre-deploy step ran for, so a stale
+                      status from an earlier revision is distinguishable from the current one.
+                    format: int64
+                    type: integer
+                  job:
+                    description: |-
+                      Job is the Kubernetes Job name backing this pre-deploy run
+                      ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.
+                    type: string
+                  message:
+                    description: Message is a short human-readable detail, e.g. the
+                      failure reason.
+                    type: string
+                  startedAt:
+                    description: StartedAt is when the pre-deploy Job began (RFC3339);
+                      empty before it starts.
+                    type: string
+                  status:
+                    description: 'Status is the step outcome: Running, Succeeded,
+                      or Failed.'
+                    type: string
+                required:
+                - job
+                - status
+                type: object
               runs:
                 description: |-
                   Runs is the recent run history of a cron_job (newest first), populated from

@@ -94,6 +94,17 @@ const (
 	DeployCanceled         = "canceled"
 )
 
+// Pre-deploy step status vocabulary — the deploy row's pre_deploy_status column
+// (w1/m33). The lowercase projection of the App CR's status.preDeploy.Status,
+// distinct from the overall deploy status: a deploy can be update_failed with
+// pre_deploy_status 'failed' (its migration failed) or ” (its health check
+// failed). Empty means no pre-deploy step ran.
+const (
+	PreDeployRunning   = "running"
+	PreDeploySucceeded = "succeeded"
+	PreDeployFailed    = "failed"
+)
+
 // The deploy `trigger` vocabulary — what caused a rollout. One place, since
 // both the writers (CreateApp, deploys.Trigger/Rollback) and the readers (the
 // events feed's deploy_started trigger flags, internal/events) spell it.
@@ -130,6 +141,11 @@ type Deploy struct {
 	CreatedAt     time.Time  `json:"createdAt"`
 	StartedAt     *time.Time `json:"startedAt,omitempty"`
 	FinishedAt    *time.Time `json:"finishedAt,omitempty"`
+	// PreDeployStatus is the pre-deploy command's outcome for this deploy
+	// (w1/m33): '' (no step) | 'running' | 'succeeded' | 'failed'. The reconciler
+	// projects it from the App CR's status.preDeploy so a migration failure is
+	// distinguishable from a health-check failure (both close as update_failed).
+	PreDeployStatus string `json:"preDeployStatus,omitempty"`
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -287,6 +303,11 @@ type Store interface {
 	// non-empty, backfills the deploy's ResolvedImage (Rollback's restore
 	// target) — pass "" to leave it untouched (Cancel never has one to give).
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
+	// SetDeployPreDeployStatus records the pre-deploy step's outcome ('' |
+	// 'running' | 'succeeded' | 'failed') on a deploy row (w1/m33), projected from
+	// the App CR's status.preDeploy by the reconciler. No-op when unchanged;
+	// returns whether a row was updated.
+	SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error)
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business
@@ -854,11 +875,11 @@ func pageNewestFirst(query string, args []any, table, sortCol, cursor string, li
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, status, created_at, started_at, finished_at`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, status, created_at, started_at, finished_at, pre_deploy_status`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
 	return d, err
 }
 
@@ -930,6 +951,21 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 		`UPDATE deploys SET status = $2, resolved_image = COALESCE(NULLIF($3, ''), resolved_image), finished_at = now()
 		 WHERE id = $1 AND finished_at IS NULL`,
 		id, status, resolvedImage)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy
+// row (w1/m33), no-op when unchanged (IS DISTINCT FROM guards the write so the
+// reconciler's every-pass projection doesn't churn the row). Returns whether a
+// row was updated.
+func (s *PGStore) SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE deploys SET pre_deploy_status = $2
+		 WHERE id = $1 AND pre_deploy_status IS DISTINCT FROM $2`,
+		id, status)
 	if err != nil {
 		return false, err
 	}

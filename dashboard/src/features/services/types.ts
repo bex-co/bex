@@ -74,6 +74,13 @@ export interface ServiceView {
    */
   healthCheckPath: string | null;
   /**
+   * Render's Pre-Deploy Command (`spec.preDeployCommand`, w1/m33): a command run
+   * to completion against the new image before it serves traffic (typically a DB
+   * migration). null/empty means no pre-deploy step; null when not selected (list
+   * query). Read/written by the Settings → Build & Deploy section.
+   */
+  preDeployCommand: string | null;
+  /**
    * Built output directory a `static_site` serves (`spec.publishPath`, Render's
    * Publish Directory); null for other types / when not selected. Only the detail
    * `server` query selects it.

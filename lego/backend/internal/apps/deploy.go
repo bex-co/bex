@@ -124,6 +124,7 @@ type bexService struct {
 	HealthCheckPath   string      `json:"healthCheckPath"`
 	Domains           []string    `json:"domains"`
 	Schedule          string      `json:"schedule"`          // cron expression, required when type is cron
+	PreDeployCommand  string      `json:"preDeployCommand"`  // render.yaml Pre-Deploy Command (spec.preDeployCommand)
 	AutoDeploy        *bool       `json:"autoDeploy"`        // deprecated render.yaml bool; nil => default
 	AutoDeployTrigger string      `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
 	StaticPublishPath string      `json:"staticPublishPath"` // render.yaml static-site publish dir
@@ -476,25 +477,26 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, []bexEnvVar, 
 	}
 
 	return CreateRequest{
-		Name:            a.Name,
-		Type:            svcType,
-		Schedule:        a.Schedule,
-		Repo:            repo,
-		Image:           image,
-		Branch:          branch,
-		Builder:         a.Builder,
-		Runtime:         runtime,
-		BuildCommand:    a.BuildCommand,
-		StartCommand:    a.StartCommand,
-		RootDir:         a.RootDir,
-		Port:            a.Port,
-		Replicas:        replicas,
-		Plan:            plan,
-		HealthCheckPath: a.HealthCheckPath,
-		Env:             literal,
-		Hosts:           a.Domains,
-		AutoDeploy:      autoDeploy,
-		PublishPath:     publish,
+		Name:             a.Name,
+		Type:             svcType,
+		Schedule:         a.Schedule,
+		Repo:             repo,
+		Image:            image,
+		Branch:           branch,
+		Builder:          a.Builder,
+		Runtime:          runtime,
+		BuildCommand:     a.BuildCommand,
+		StartCommand:     a.StartCommand,
+		RootDir:          a.RootDir,
+		Port:             a.Port,
+		Replicas:         replicas,
+		Plan:             plan,
+		HealthCheckPath:  a.HealthCheckPath,
+		Env:              literal,
+		Hosts:            a.Domains,
+		AutoDeploy:       autoDeploy,
+		PreDeployCommand: a.PreDeployCommand,
+		PublishPath:      publish,
 	}, refs, nil
 }
 

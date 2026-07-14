@@ -133,6 +133,9 @@ func toRenderService(a AppView) renderService {
 	if a.PublishPath != "" {
 		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
 	}
+	if a.PreDeployCommand != "" {
+		set("preDeployCommand", a.PreDeployCommand) // webServiceDetails.preDeployCommand (w1/m33)
+	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {
 		ras = &renderAutoscaling{

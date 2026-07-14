@@ -110,13 +110,14 @@ The REST log object is Render's public-API `log` (all fields required): `{id, me
 
 ### Log types
 
-Render's `type` is `app`/`request`/`build`, and bex now serves all three (w7/m28):
+Render's `type` is `app`/`request`/`build`, and bex serves all three (w7/m28) plus a bex-native `predeploy` (w1/m33):
 
 - **`app`** — the App's own container stdout/stderr, from every replica pod (label `app.bex.co/app=<name>`), aggregated. `application` is accepted as an input alias.
 - **`request`** — Traefik's access log for that App (see [Log labels](#log-labels-and-the-cardinality-budget)), with truthful `method`/`statusCode` and a searchable `path`/`host`.
 - **`build`** — the in-cluster BuildKit Job's output for a git-backed deploy, shipped by the `build_pods` pipeline in `deploy/gitops/base/log-shipper.yaml`. Build pods carry `app.bex.co/component=build` + `app.bex.co/build=<name>` (w7/m28); the shipper attributes them to the App and pushes `{namespace, app, pod, container, type="build"}` streams. Without the durable store (`BEX_LOKI_URL` unset) a `type=build` query returns **503**, not a silent empty — the same honesty rule as `type=request`.
+- **`predeploy`** (bex extension, w1/m33) — the **pre-deploy step's Job-pod logs** (`spec.preDeployCommand`, [ADR004](ADR004-deployment.md)): a **live** read of the `predeploy` container on the pod labelled `app.bex.co/predeploy=<name>` in `BEX_BUILD_NAMESPACE` — never the durable store (Loki has no `predeploy` stream), the same pod-log path the SSE tail always uses. It is a **distinct source**, so it is requested **on its own** (mixing it with `app`/`request`/`build` is a 400 rather than a silent drop), and it is live-only: a Job pod TTL-reaped after its hour is simply gone (an empty read), the same ephemerality as build logs.
 
-Asking for no type (or `all`) unions app + request — the default a Render client sees. Build logs are only included when the caller explicitly requests `type=build`.
+Asking for no type (or `all`) unions app + request — the default a Render client sees. Build logs are only included when the caller explicitly requests `type=build`; `predeploy` is likewise a separate, explicitly-requested source, never in that union.
 
 ### Live tail (SSE)
 

@@ -53,6 +53,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
+    preDeployCommand:
+      "preDeployCommand" in s ? (s.preDeployCommand ?? null) : null,
     publishPath: "publishPath" in s ? (s.publishPath ?? null) : null,
     routes: "routes" in s ? toStaticRoutes(s.routes) : [],
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],

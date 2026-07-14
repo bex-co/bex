@@ -46,6 +46,11 @@ const (
 	LogTypeApp     = "app"
 	LogTypeRequest = "request"
 	LogTypeBuild   = "build"
+	// LogTypePreDeploy selects the pre-deploy step's Job-pod logs (w1/m33) — a
+	// distinct LIVE source (the migration's own container), read directly rather
+	// than from the durable store, so it is requested alone (validate() rejects
+	// mixing it with app/request/build).
+	LogTypePreDeploy = "predeploy"
 
 	// logTypeApplicationAlias is the long spelling of LogTypeApp that bex's own
 	// surfaces have always accepted.
@@ -143,6 +148,11 @@ type Service struct {
 	// MaxSSEConns, when positive, caps concurrent GET /v1/logs/subscribe SSE
 	// connections. Excess connections receive 429. 0 = unlimited.
 	MaxSSEConns int64
+	// BuildNamespace is BEX_BUILD_NAMESPACE — where the operator runs pre-deploy
+	// (and build) Job pods, so `type=predeploy` reads a migration's logs from the
+	// right namespace (w1/m33). Empty falls back to the API's own namespace, the
+	// operator's default when the env is unset.
+	BuildNamespace string
 
 	sseConns atomic.Int64
 }
@@ -194,9 +204,15 @@ func (q LogQuery) validate() error {
 		return fmt.Errorf("%w: unknown direction %q (want %s|%s)", core.ErrBadRequest, q.Direction, DirectionBackward, DirectionForward)
 	}
 	for _, t := range q.Types {
-		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild {
-			return fmt.Errorf("%w: unknown log type %q (want %s|%s|%s)", core.ErrBadRequest, t, LogTypeApp, LogTypeRequest, LogTypeBuild)
+		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild && t != LogTypePreDeploy {
+			return fmt.Errorf("%w: unknown log type %q (want %s|%s|%s|%s)", core.ErrBadRequest, t, LogTypeApp, LogTypeRequest, LogTypeBuild, LogTypePreDeploy)
 		}
+	}
+	// Pre-deploy logs are a distinct live source (the migration Job's pod, w1/m33),
+	// not merged with app/request/build — so it must be requested alone rather than
+	// silently ignored inside a mixed query.
+	if slices.Contains(q.Types, LogTypePreDeploy) && len(q.Types) > 1 {
+		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypePreDeploy)
 	}
 	return nil
 }
@@ -295,8 +311,10 @@ func NormalizeTypes(types []string) ([]string, error) {
 			out = append(out, LogTypeRequest)
 		case LogTypeBuild:
 			out = append(out, LogTypeBuild)
+		case LogTypePreDeploy:
+			out = append(out, LogTypePreDeploy)
 		default:
-			return nil, fmt.Errorf("%w: unknown log type %q (want app|request|build)", core.ErrBadRequest, t)
+			return nil, fmt.Errorf("%w: unknown log type %q (want app|request|build|predeploy)", core.ErrBadRequest, t)
 		}
 	}
 	return slices.Compact(slices.Sorted(slices.Values(out))), nil
@@ -360,6 +378,13 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
+	// pod), read directly from the build namespace — never the durable store, which
+	// has no predeploy stream — like the SSE tail always reads pod logs. validate()
+	// guarantees predeploy is requested alone, so it owns the whole response.
+	if slices.Contains(q.Types, LogTypePreDeploy) {
+		return s.collectPreDeployLogs(ctx, q)
+	}
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
@@ -372,7 +397,13 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err != nil {
 		return nil, err
 	}
-	// Filter in place; skip the pass entirely on the common no-filter query.
+	return q.filterAndCap(entries), nil
+}
+
+// filterAndCap applies the line-level search/time filters (in place — skipping
+// the pass entirely on the common no-filter query) and clamps to q.Limit. The
+// pod-log path's shared tail, used by both the app and pre-deploy reads.
+func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
 	if q.hasFilters() {
 		kept := entries[:0]
 		for _, e := range entries {
@@ -382,7 +413,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		}
 		entries = kept
 	}
-	return q.capToLimit(entries), nil
+	return q.capToLimit(entries)
 }
 
 // LogLabelValues lists the values a log label takes for one App — Render's
@@ -523,7 +554,14 @@ func (s *Service) appPodNames(ctx context.Context, q LogQuery) ([]string, error)
 }
 
 func (s *Service) readPodLogs(ctx context.Context, service, pod string, tail int64) ([]LogEntry, error) {
-	rc, err := s.PodLogs(ctx, s.Namespace, pod, core.AppContainer, tail)
+	return s.readContainerLogs(ctx, s.Namespace, service, pod, core.AppContainer, tail)
+}
+
+// readContainerLogs reads up to tail lines from one pod's container, tagged with
+// service+pod. Generalizes readPodLogs so the pre-deploy path can read the
+// "predeploy" container in the build namespace with the same parsing.
+func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod, container string, tail int64) ([]LogEntry, error) {
+	rc, err := s.PodLogs(ctx, namespace, pod, container, tail)
 	if err != nil {
 		return nil, err
 	}
@@ -536,6 +574,38 @@ func (s *Service) readPodLogs(ctx context.Context, service, pod string, tail int
 		entries = append(entries, parseLogLine(service, pod, sc.Text()))
 	}
 	return entries, sc.Err()
+}
+
+// collectPreDeployLogs reads the pre-deploy step's Job-pod logs (w1/m33) for an
+// App, oldest-first and capped at q.Limit, applying the same text/time filters
+// the app pod-log path does. Live-only: a Job pod that has been TTL-reaped is
+// simply gone (an empty read), never an error — the same ephemerality as build
+// logs. Requires PodLogs to be wired (ErrLogsUnavailable otherwise).
+func (s *Service) collectPreDeployLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	if s.PodLogs == nil {
+		return nil, core.ErrLogsUnavailable
+	}
+	pods, err := s.PreDeployPods(ctx, q.App, s.BuildNamespace)
+	if err != nil {
+		return nil, err
+	}
+	ns := s.BuildNamespace
+	if ns == "" {
+		ns = s.Namespace
+	}
+	var out []LogEntry
+	for i := range pods {
+		pod := pods[i].Name
+		entries, err := s.readContainerLogs(ctx, ns, q.App, pod, core.PreDeployContainer, q.Limit)
+		if err != nil {
+			// A reaped pod (or a container that never produced logs) drops out of
+			// the read rather than failing the whole query.
+			continue
+		}
+		out = append(out, entries...)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return q.filterAndCap(out), nil
 }
 
 // streamPodLogs follows one pod's log into ch until ctx ends or the stream

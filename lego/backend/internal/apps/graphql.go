@@ -220,6 +220,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"branch":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
 		"autoDeploy":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
 		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
+		// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand);
+		// the Settings → Build & Deploy section reads it and writes via
+		// setPreDeployCommand (w1/m33).
+		"preDeployCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PreDeployCommand })},
 		// autoscaling is the per-service autoscaling config (Render's Scaling tab).
 		// Null when spec.autoscaling is unset (autoscaling never configured).
 		"autoscaling": &graphql.Field{
@@ -612,35 +616,38 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"routes":          &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
 				"headers":         &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
 				"healthCheckPath": &graphql.ArgumentConfig{Type: graphql.String},
+				// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand, w1/m33).
+				"preDeployCommand": &graphql.ArgumentConfig{Type: graphql.String},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				dryRun, _ := p.Args["dryRun"].(bool)
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:         gqlStr(p.Args, "ownerId"),
-					Name:            p.Args["name"].(string),
-					Type:            gqlStr(p.Args, "type"),
-					Schedule:        gqlStr(p.Args, "schedule"),
-					Command:         gqlStr(p.Args, "command"),
-					Repo:            gqlStr(p.Args, "repo"),
-					Image:           gqlStr(p.Args, "image"),
-					Branch:          gqlStr(p.Args, "branch"),
-					RootDir:         gqlStr(p.Args, "rootDir"),
-					Runtime:         gqlStr(p.Args, "runtime"),
-					BuildCommand:    gqlStr(p.Args, "buildCommand"),
-					StartCommand:    gqlStr(p.Args, "startCommand"),
-					Builder:         gqlStr(p.Args, "builder"),
-					Plan:            gqlStr(p.Args, "plan"),
-					AutoDeploy:      gqlBoolPtr(p.Args, "autoDeploy"),
-					Port:            int32(gqlInt(p.Args, "port")),
-					Replicas:        int32(gqlInt(p.Args, "replicas")),
-					Env:             gqlEnvVarInputs(p.Args, "envVars"),
-					PublishPath:     gqlStr(p.Args, "publishPath"),
-					Routes:          gqlRouteInputs(p.Args, "routes"),
-					Headers:         gqlHeaderInputs(p.Args, "headers"),
-					HealthCheckPath: gqlStr(p.Args, "healthCheckPath"),
-					DryRun:          dryRun,
+					OwnerID:          gqlStr(p.Args, "ownerId"),
+					Name:             p.Args["name"].(string),
+					Type:             gqlStr(p.Args, "type"),
+					Schedule:         gqlStr(p.Args, "schedule"),
+					Command:          gqlStr(p.Args, "command"),
+					Repo:             gqlStr(p.Args, "repo"),
+					Image:            gqlStr(p.Args, "image"),
+					Branch:           gqlStr(p.Args, "branch"),
+					RootDir:          gqlStr(p.Args, "rootDir"),
+					Runtime:          gqlStr(p.Args, "runtime"),
+					BuildCommand:     gqlStr(p.Args, "buildCommand"),
+					StartCommand:     gqlStr(p.Args, "startCommand"),
+					Builder:          gqlStr(p.Args, "builder"),
+					Plan:             gqlStr(p.Args, "plan"),
+					AutoDeploy:       gqlBoolPtr(p.Args, "autoDeploy"),
+					Port:             int32(gqlInt(p.Args, "port")),
+					Replicas:         int32(gqlInt(p.Args, "replicas")),
+					Env:              gqlEnvVarInputs(p.Args, "envVars"),
+					PublishPath:      gqlStr(p.Args, "publishPath"),
+					Routes:           gqlRouteInputs(p.Args, "routes"),
+					Headers:          gqlHeaderInputs(p.Args, "headers"),
+					HealthCheckPath:  gqlStr(p.Args, "healthCheckPath"),
+					PreDeployCommand: gqlStr(p.Args, "preDeployCommand"),
+					DryRun:           dryRun,
 				})
 			},
 		},
@@ -759,6 +766,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetHealthCheckPath(p.Context, p.Args["id"].(string), p.Args["path"].(string))
+			},
+		},
+		// setPreDeployCommand: the Settings → Build & Deploy Pre-Deploy Command
+		// field (w1/m33). Changes spec.preDeployCommand — the command run against
+		// the new image before it serves traffic. An empty command clears the
+		// step. Rejected for cron_job/static_site (the field doesn't apply).
+		"setPreDeployCommand": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetPreDeployCommand(p.Context, p.Args["id"].(string), p.Args["command"].(string))
 			},
 		},
 		// setAutoDeploy: the Settings → Build & Deploy Auto-Deploy toggle (w2/m9)

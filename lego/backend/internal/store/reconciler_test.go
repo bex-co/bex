@@ -315,6 +315,75 @@ func TestRecordDeployClosesLiveBackfillsResolvedImage(t *testing.T) {
 	}
 }
 
+// TestRecordDeployProjectsPreDeployStatus covers w1/m33: the reconciler projects
+// the App CR's status.preDeploy onto the open deploy row so a client can watch
+// the pre-deploy step and, crucially, tell a migration failure apart from a
+// health-check failure — a failed pre-deploy closes the deploy update_failed
+// AND carries pre_deploy_status "failed".
+func TestRecordDeployProjectsPreDeployStatus(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	if err := rec.ReconcileOnce(ctx); err != nil { // pass 1: creates the CR + opens a deploy
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	// The migration is running: status.preDeploy for the CR's current generation.
+	app := getApp(t, cl)
+	app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+		Job: "predeploy-acme-web-gen-1", Generation: app.Generation,
+		Status: appv1alpha1.PreDeployRunning,
+	}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil { // projects "running"; deploy stays open
+		t.Fatalf("reconcile: %v", err)
+	}
+	open, ok, _ := openDeployFor(ctx, store, row.ID)
+	if !ok || open.PreDeployStatus != PreDeployRunning {
+		t.Fatalf("open deploy = %+v ok=%v, want pre_deploy_status=running, still open", open, ok)
+	}
+
+	// The migration fails: the CR reaches Failed with status.preDeploy failed.
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	app.Status.PreDeploy.Status = appv1alpha1.PreDeployFailed
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil { // closes update_failed, records pre_deploy_status failed
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 {
+		t.Fatalf("deploys = %+v (err %v), want exactly one", deploys, err)
+	}
+	d := deploys[0]
+	if d.Status != DeployUpdateFailed || d.PreDeployStatus != PreDeployFailed {
+		t.Errorf("deploy = %+v, want update_failed with pre_deploy_status=failed (migration failure, not health check)", d)
+	}
+}
+
+// TestPreDeployStatusForIgnoresStaleGeneration guards the projection's
+// generation gate: a status.preDeploy left over from a superseded revision must
+// not be projected onto the current rollout's deploy.
+func TestPreDeployStatusForIgnoresStaleGeneration(t *testing.T) {
+	app := &appv1alpha1.App{}
+	app.Generation = 5
+	app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Generation: 4, Status: appv1alpha1.PreDeploySucceeded}
+	if got := preDeployStatusFor(app); got != "" {
+		t.Errorf("stale-generation pre-deploy projected %q, want empty", got)
+	}
+	app.Status.PreDeploy.Generation = 5
+	if got := preDeployStatusFor(app); got != PreDeploySucceeded {
+		t.Errorf("current-generation pre-deploy = %q, want succeeded", got)
+	}
+}
+
 // TestRecordDeployClosesFailedOnCRFailed mirrors the above for the CR's own
 // Failed phase (a build error, say) — closes update_failed immediately, no
 // need to wait out the gate window.

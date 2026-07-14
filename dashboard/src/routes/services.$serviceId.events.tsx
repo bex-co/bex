@@ -71,6 +71,22 @@ function statusKey(status: string): string {
   }
 }
 
+// The pre-deploy step's own status line (w1/m33), shown under the deploy badge
+// so a migration failure reads distinctly from a health-check failure. Only
+// running/succeeded/failed carry a label; "" (no pre-deploy step) shows nothing.
+function preDeployKey(status: string): string | null {
+  switch (status) {
+    case "running":
+      return "services.eventsPreDeployRunning";
+    case "succeeded":
+      return "services.eventsPreDeploySucceeded";
+    case "failed":
+      return "services.eventsPreDeployFailed";
+    default:
+      return null;
+  }
+}
+
 // ServiceEventDetails.trigger is the Trigger object (boolean flags), a
 // different shape from Deploy.trigger's plain string — derive a short label
 // from whichever flag is set, first-match-wins.
@@ -187,6 +203,7 @@ export function ServiceEventsPage() {
                   details?.deployStatus === "update_in_progress";
                 const canRollback = details?.deployStatus === "live";
                 const label = triggerLabel(details?.trigger ?? null);
+                const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
                 return (
                   <div
                     key={evt.id}
@@ -209,6 +226,17 @@ export function ServiceEventsPage() {
                           </span>
                         )}
                       </div>
+                      {preDeploy && (
+                        <p
+                          className={`mt-1 text-xs ${
+                            details?.preDeployStatus === "failed"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {t(preDeploy as Parameters<typeof t>[0])}
+                        </p>
+                      )}
                       {evt.timestamp && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           {new Date(evt.timestamp).toLocaleString()}

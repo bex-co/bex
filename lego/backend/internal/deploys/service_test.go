@@ -205,6 +205,46 @@ func TestListEmptyForHandAppliedApp(t *testing.T) {
 	}
 }
 
+// TestDeployRecordSurfacesPreDeployStatus covers w1/m33: a deploy that failed
+// its migration carries pre_deploy_status "failed" through DeployView and onto
+// the REST JSON — the field that tells it apart from a health-check failure.
+func TestDeployRecordSurfacesPreDeployStatus(t *testing.T) {
+	ds := newFakeStore()
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-1", AppID: "srv-1", Status: store.DeployUpdateFailed,
+		PreDeployStatus: store.PreDeployFailed,
+	}}
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+
+	got, err := svc.List(context.Background(), "web", ListFilter{})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("List = %+v (err %v), want one deploy", got, err)
+	}
+	if got[0].PreDeployStatus != store.PreDeployFailed {
+		t.Errorf("DeployView.PreDeployStatus = %q, want failed", got[0].PreDeployStatus)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/deploys", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list deploys => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var out []struct {
+		Deploy struct {
+			Status          string `json:"status"`
+			PreDeployStatus string `json:"preDeployStatus"`
+		} `json:"deploy"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || len(out) != 1 {
+		t.Fatalf("decode = %v, body %s", err, rec.Body)
+	}
+	if out[0].Deploy.Status != store.DeployUpdateFailed || out[0].Deploy.PreDeployStatus != store.PreDeployFailed {
+		t.Errorf("REST deploy = %+v, want update_failed with preDeployStatus failed", out[0].Deploy)
+	}
+}
+
 func TestListGetTriggerLifecycle(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)

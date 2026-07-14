@@ -270,6 +270,21 @@ type AppSpec struct {
 	// +optional
 	AutoDeploy bool `json:"autoDeploy,omitempty"`
 
+	// PreDeployCommand is a command run to completion against the new revision's
+	// image before that revision serves traffic (Render's Pre-Deploy Command —
+	// typically a database migration or other one-off setup step). The operator
+	// runs it as a Kubernetes Job whose container is the newly built/pulled image
+	// with the same env as the app pod, wrapped in a shell ("sh -c <command>").
+	// The rollout is gated on its outcome: a zero exit rolls the Deployment to the
+	// new revision; a non-zero exit fails the deploy and leaves the previous
+	// revision live and serving. Empty means no pre-deploy step (today's behavior,
+	// unchanged). Applies to web_service/private_service/background_worker; ignored
+	// for cron_job (its own Command already runs the image) and static_site (no
+	// running container). See docs/ADR004-deployment.md.
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	PreDeployCommand string `json:"preDeployCommand,omitempty"`
+
 	// IdleTTLSeconds before the service hibernates ("sleep = free"). 0 = controller default.
 	// +optional
 	IdleTTLSeconds int32 `json:"idleTTLSeconds,omitempty"`
@@ -510,11 +525,61 @@ type CronRun struct {
 	Status string `json:"status"`
 }
 
+// Pre-deploy step outcomes, shared by the operator (which writes
+// AppStatus.PreDeploy.Status) and the backend (which projects it onto the
+// deploy record). Mirror the CronRun.Status vocabulary.
+const (
+	PreDeployRunning   = "Running"
+	PreDeploySucceeded = "Succeeded"
+	PreDeployFailed    = "Failed"
+)
+
+// PreDeployStatus records the outcome of the pre-deploy command
+// (spec.preDeployCommand) for the revision the operator is currently rolling
+// out. It is populated only when a pre-deploy step is configured, and lets the
+// deploy record show that step's progress — and tell a pre-deploy failure apart
+// from a health-check failure — without a client having to list Jobs. Mirrors
+// the CronRun precedent (a Job's outcome recorded in status). See
+// docs/ADR004-deployment.md.
+type PreDeployStatus struct {
+	// Job is the Kubernetes Job name backing this pre-deploy run
+	// ("pre-<name>-gen-<generation>"); the API reads its pod logs from it.
+	// +required
+	Job string `json:"job"`
+
+	// Generation is the spec generation this pre-deploy step ran for, so a stale
+	// status from an earlier revision is distinguishable from the current one.
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+
+	// StartedAt is when the pre-deploy Job began (RFC3339); empty before it starts.
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
+
+	// FinishedAt is when it completed or failed (RFC3339); empty while running.
+	// +optional
+	FinishedAt string `json:"finishedAt,omitempty"`
+
+	// Status is the step outcome: Running, Succeeded, or Failed.
+	// +required
+	Status string `json:"status"`
+
+	// Message is a short human-readable detail, e.g. the failure reason.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
 // AppStatus is the observed state of a App.
 type AppStatus struct {
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase AppPhase `json:"phase,omitempty"`
+
+	// PreDeploy is the outcome of the pre-deploy command for the revision the
+	// operator is currently rolling out (nil when no pre-deploy step is
+	// configured or none has run yet). See spec.preDeployCommand.
+	// +optional
+	PreDeploy *PreDeployStatus `json:"preDeploy,omitempty"`
 
 	// Runs is the recent run history of a cron_job (newest first), populated from
 	// the Jobs the CronJob schedule and one-off RunAt triggers create. Empty for

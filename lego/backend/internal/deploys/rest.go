@@ -50,6 +50,11 @@ type renderDeploy struct {
 	CreatedAt  string `json:"createdAt,omitempty"`
 	StartedAt  string `json:"startedAt,omitempty"`
 	FinishedAt string `json:"finishedAt,omitempty"`
+	// PreDeployStatus is the pre-deploy command's outcome (bex extra, w1/m33):
+	// "running" | "succeeded" | "failed"; omitted when no pre-deploy step ran.
+	// Distinguishes a migration failure from a health-check failure (both
+	// status=update_failed). Logs: GET /v1/logs?service=<id>&type=predeploy.
+	PreDeployStatus string `json:"preDeployStatus,omitempty"`
 }
 
 func formatTime(t time.Time) string {
@@ -68,14 +73,15 @@ func formatTimePtr(t *time.Time) string {
 
 func toRenderDeploy(d DeployView) renderDeploy {
 	return renderDeploy{
-		ID:         d.ID,
-		Status:     d.Status,
-		Trigger:    d.Trigger,
-		Image:      d.Image,
-		RollbackOf: d.RollbackOf,
-		CreatedAt:  formatTime(d.CreatedAt),
-		StartedAt:  formatTimePtr(d.StartedAt),
-		FinishedAt: formatTimePtr(d.FinishedAt),
+		ID:              d.ID,
+		Status:          d.Status,
+		Trigger:         d.Trigger,
+		Image:           d.Image,
+		RollbackOf:      d.RollbackOf,
+		CreatedAt:       formatTime(d.CreatedAt),
+		StartedAt:       formatTimePtr(d.StartedAt),
+		FinishedAt:      formatTimePtr(d.FinishedAt),
+		PreDeployStatus: d.PreDeployStatus,
 	}
 }
 

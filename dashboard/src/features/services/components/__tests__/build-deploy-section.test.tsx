@@ -5,9 +5,14 @@ import { BuildDeploySection } from "@/features/services/components/build-deploy-
 
 const setRootDir = vi.fn(async () => true);
 const setAutoDeploy = vi.fn(async () => true);
+const setPreDeployCommand = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
+  usePreDeployCommand: () => ({ setPreDeployCommand, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
@@ -29,6 +34,8 @@ beforeEach(() => {
   setRootDir.mockResolvedValue(true);
   setAutoDeploy.mockClear();
   setAutoDeploy.mockResolvedValue(true);
+  setPreDeployCommand.mockClear();
+  setPreDeployCommand.mockResolvedValue(true);
   connectionState.connection = undefined;
 });
 
@@ -41,6 +48,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
     expect(screen.getByText("https://github.com/x/mono")).toBeInTheDocument();
@@ -55,6 +64,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
     expect(screen.getByText("Repository root")).toBeInTheDocument();
@@ -68,6 +79,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir="backend"
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
     expect(screen.getByText("backend")).toBeInTheDocument();
@@ -82,6 +95,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -110,6 +125,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir="backend"
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -137,6 +154,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir="backend"
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -155,6 +174,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -177,6 +198,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -194,6 +217,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={true}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
 
@@ -217,6 +242,8 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={true}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
     expect(
@@ -232,10 +259,85 @@ describe("BuildDeploySection", () => {
         branch="main"
         rootDir={null}
         autoDeploy={true}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
       />,
     );
     expect(
       screen.getByText(/manual git webhook/),
     ).toBeInTheDocument();
+  });
+
+  // Pre-Deploy Command field (w1/m33).
+  it("hides the Pre-Deploy Command field when showPreDeployCommand is false", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand="npm run migrate"
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.queryByText("Pre-Deploy Command")).not.toBeInTheDocument();
+    expect(screen.queryByText("npm run migrate")).not.toBeInTheDocument();
+  });
+
+  it("shows the current pre-deploy command, or an empty state when unset", () => {
+    const { unmount } = render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand="npm run migrate"
+        showPreDeployCommand={true}
+      />,
+    );
+    expect(screen.getByText("Pre-Deploy Command")).toBeInTheDocument();
+    expect(screen.getByText("npm run migrate")).toBeInTheDocument();
+    unmount();
+
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={true}
+      />,
+    );
+    expect(screen.getByText("No pre-deploy command")).toBeInTheDocument();
+  });
+
+  it("edits and saves the pre-deploy command via setPreDeployCommand (no confirm)", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={true}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Pre-Deploy Command" }),
+    );
+    const input = screen.getByPlaceholderText("e.g. npm run migrate");
+    await user.type(input, "  npm run migrate  ");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Trimmed before the mutation; no confirm dialog for this field.
+    expect(setPreDeployCommand).toHaveBeenCalledWith("app", "npm run migrate");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 });

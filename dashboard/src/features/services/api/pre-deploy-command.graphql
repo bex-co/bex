@@ -1,0 +1,12 @@
+# setPreDeployCommand is Render's Pre-Deploy Command (w1/m33): a command run to
+# completion against the new revision's image before it serves traffic (typically
+# a DB migration); a non-zero exit fails the deploy. An empty command clears the
+# step. Backs the Settings tab's Build & Deploy section save flow
+# (backend/internal/apps/graphql.go).
+mutation SetPreDeployCommand($id: String!, $command: String!) {
+  setPreDeployCommand(id: $id, command: $command) {
+    id
+    preDeployCommand
+    phase
+  }
+}
