@@ -214,6 +214,28 @@ func toRenderStack(res StackResult) renderStack {
 	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases}
 }
 
+// validateBlueprintArgs is validate_bex_yml's input (w2/m15).
+type validateBlueprintArgs struct {
+	BexYAML string `json:"bexYaml" jsonschema:"the bex.yml content to validate (render.yaml Blueprint shape); parsed and checked for per-entry errors with no apply"`
+}
+
+// listBlueprintsArgs is list_blueprints' input (w2/m15).
+type listBlueprintsArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict to this workspace id (tea-...); omit to use the session's selected workspace"`
+}
+
+// listBlueprintsResult wraps the array — MCP tool outputs must be JSON objects.
+type listBlueprintsResult struct {
+	Blueprints []BlueprintView `json:"blueprints"`
+}
+
+// syncBlueprintArgs is sync_blueprint's input (w2/m15).
+type syncBlueprintArgs struct {
+	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
+	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated bex.yml to store and apply; omit to re-apply the stored manifest unchanged"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
+}
+
 // autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
 // /v1/services/{id}/autoscaling request body (minInstances / maxInstances /
 // targetCPUPercent / targetMemoryPercent).
@@ -657,6 +679,31 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, renderService{}, err
 		}
 		return nil, toRenderService(app), nil
+	})
+
+	// Blueprint verbs (w2/m15): validate_bex_yml · list_blueprints · sync_blueprint.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "validate_bex_yml",
+		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return per-entry errors without applying anything — the safe pre-flight check before a deploy call. Returns {valid: bool, errors: [string]}. Requires no store; always available. bex extension (pillar 4 agent safety).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
+		v, err := s.ValidateBlueprint(ctx, in.BexYAML)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_blueprints",
+		Description: "List known bex.yml stack sources (blueprints) for a workspace. Blueprints are auto-registered on the first deploy call that includes a repo+bexYaml. Returns {blueprints: [{id, name, repo, branch, status, createdAt, updatedAt}]}. bex extension.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
+		views, err := s.ListBlueprints(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		return nil, listBlueprintsResult{Blueprints: views}, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "sync_blueprint",
+		Description: "Re-apply a stored blueprint idempotently — same all-or-nothing semantics as deploy, but sourced from the stored manifest. If bex_yaml is provided, the stored manifest is replaced before re-apply. Returns {blueprint, stack: {services, databases}}. Use validate_bex_yml first to catch errors with no side effects. bex extension (pillar 4, validate-then-deploy flow).",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
+		res, err := s.SyncBlueprint(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML)
+		return nil, res, err
 	})
 }
 

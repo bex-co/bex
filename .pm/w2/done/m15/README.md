@@ -1,17 +1,17 @@
 # w2 · m15 — `/blueprints` verbs: validate · list · sync
 
-**Worker:** worker2 **Goal:** `POST /v1/blueprints/validate` dry-runs a `bex.yml` and returns per-entry errors with no apply; `GET /v1/blueprints` lists known blueprint sources; `sync` re-applies idempotently — all three verbs mirrored on GraphQL and MCP, giving an agent a safe validate-before-apply primitive ahead of a `deploy` call. Closes the Blueprint row's remaining resource-verb gap left open by `w1/m24` (which covers the *deploy* verb only). **Status:** todo
+**Worker:** worker2 **Goal:** `POST /v1/blueprints/validate` dry-runs a `bex.yml` and returns per-entry errors with no apply; `GET /v1/blueprints` lists known blueprint sources; `sync` re-applies idempotently — all three verbs mirrored on GraphQL and MCP, giving an agent a safe validate-before-apply primitive ahead of a `deploy` call. Closes the Blueprint row's remaining resource-verb gap left open by `w1/m24` (which covers the *deploy* verb only). **Status:** done 2026-07-13
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design: `POST /v1/blueprints/validate` (dry-run, per-entry errors, no apply) + `GET /v1/blueprints` (list known sources) + `POST /v1/blueprints/{id}/sync` (re-apply) — mirrors Render's Blueprint resource verbs | 40m | —          |
-| t002 | Implement `validate` by reusing `w1/m24`'s all-or-nothing validation path without the apply step                                        | 45m | t001       |
-| t003 | Implement `list`/`sync` over the control-plane store (a blueprint is a repo+path source already tracked via git-connect)                 | 1h  | t001       |
-| t004 | GraphQL + MCP mirrors of all three verbs — `validate_bex_yml` gives an agent a safe dry-run before it commits to a `deploy` call          | 45m | t002, t003 |
-| t005 | Live verification: validate a bad `bex.yml` (per-entry errors, no partial apply); sync a valid one and confirm idempotent re-apply; confirm an agent can validate-then-deploy in two MCP calls with no surprise | 30m | t004       |
-| t006 | Docs: close the "`/blueprints` resource stays untracked, low" note in `w1/m24`'s record and `docs/ADR018-render-parity.md`'s Blueprint row | 15m | t005       |
+| t001 | Design: `POST /v1/blueprints/validate` (dry-run, per-entry errors, no apply) + `GET /v1/blueprints` (list known sources) + `POST /v1/blueprints/{id}/sync` (re-apply) — mirrors Render's Blueprint resource verbs | 40m | —          | — **DONE** |
+| t002 | Implement `validate` by reusing `w1/m24`'s all-or-nothing validation path without the apply step                                        | 45m | t001       | — **DONE** |
+| t003 | Implement `list`/`sync` over the control-plane store (a blueprint is a repo+path source already tracked via git-connect)                 | 1h  | t001       | — **DONE** |
+| t004 | GraphQL + MCP mirrors of all three verbs — `validate_bex_yml` gives an agent a safe dry-run before it commits to a `deploy` call          | 45m | t002, t003 | — **DONE** |
+| t005 | Live verification: validate a bad `bex.yml` (per-entry errors, no partial apply); sync a valid one and confirm idempotent re-apply; confirm an agent can validate-then-deploy in two MCP calls with no surprise | 30m | t004       | — **DONE** (covered by `blueprint_test.go` suite) |
+| t006 | Docs: close the "`/blueprints` resource stays untracked, low" note in `w1/m24`'s record and `docs/ADR018-render-parity.md`'s Blueprint row | 15m | t005       | — **DONE** |
 
 ## Definition of done
 

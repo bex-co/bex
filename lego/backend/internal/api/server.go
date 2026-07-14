@@ -245,6 +245,10 @@ type Deps struct {
 	// project grouping verbs (w1/m31). nil => those verbs report
 	// projects.ErrProjectsUnavailable (503).
 	ProjectsStore projects.ProjectStore
+	// BlueprintsStore, when set (the control-plane store is wired), backs the
+	// blueprint list/sync verbs (w2/m15). nil => list/sync report
+	// ErrBlueprintsUnavailable (503); validate is always available (stateless).
+	BlueprintsStore apps.BlueprintStore
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -283,7 +287,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// OpenBao are both wired.
 	rc := &registrycreds.Service{Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
 		Metrics: &metrics.Service{
 			Base:                       base,

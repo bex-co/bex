@@ -304,6 +304,12 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		}
 		res.Services = append(res.Services, v)
 	}
+	// Auto-register a blueprint row when called with a repo (w2/m15): lets
+	// list_blueprints surface it and sync_blueprint re-apply it later without
+	// the caller needing to register it separately.
+	if req.Repo != "" {
+		s.upsertBlueprint(ctx, req)
+	}
 	return res, nil
 }
 

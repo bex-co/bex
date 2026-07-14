@@ -73,12 +73,13 @@ var (
 	// RegistryCredential is a bex-chosen prefix — Render's own id spelling for
 	// this resource isn't confirmed against a live capture (w2/m14).
 	RegistryCredential = Kind{prefix: "rgc", desc: "external image registry credential"}
+	Blueprint          = Kind{prefix: "blp", desc: "blueprint (bex.yml stack source)"} // w2/m15
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential, Blueprint}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

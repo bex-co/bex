@@ -85,6 +85,11 @@ type Service struct {
 	// operator or an unbound caller skips the check, consistent with the
 	// per-workspace design (w7/m9).
 	MaxServices int
+	// Blueprints, when set (the control-plane store is wired), persists blueprint
+	// rows (w2/m15): auto-upserted on every repo-backed deploy, and queried by the
+	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
+	// is always available (stateless).
+	Blueprints BlueprintStore
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept

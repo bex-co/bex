@@ -399,6 +399,46 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 	return r.SecretFileContent(p.Context, a.Name, p.Args["name"].(string))
 }
 
+// blueprintGQLType is the GraphQL shape for a BlueprintView (w2/m15).
+var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Blueprint",
+	Fields: graphql.Fields{
+		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.ID })},
+		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Name })},
+		"repo":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Repo })},
+		"branch":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
+		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
+		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.CreatedAt })},
+		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.UpdatedAt })},
+	},
+})
+
+// blueprintValidationGQLType is the GraphQL shape for BlueprintValidation.
+var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintValidation",
+	Fields: graphql.Fields{
+		"valid":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Valid })},
+		"errors": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Errors })},
+	},
+})
+
+// syncBlueprintResultGQLType is the GraphQL shape for SyncBlueprintResult.
+var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SyncBlueprintResult",
+	Fields: graphql.Fields{
+		"blueprint": &graphql.Field{Type: blueprintGQLType, Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Blueprint })},
+		// services and databases from the stack apply — summary only (poll via server/postgres for full state).
+		"services":  &graphql.Field{Type: graphql.NewList(serviceGQLType), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Stack.Services })},
+		"databases": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
+			names := make([]string, len(r.Stack.Databases))
+			for i, d := range r.Stack.Databases {
+				names[i] = d.Name
+			}
+			return names
+		})},
+	},
+})
+
 // GraphQLQuery returns the App read fields (Render dashboard names services /
 // server(id)) for the composition root to merge into the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -458,6 +498,26 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.GetDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
+		// blueprints: list known bex.yml stack sources for a workspace (w2/m15).
+		"blueprints": &graphql.Field{
+			Type: graphql.NewList(blueprintGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListBlueprints(p.Context, gqlStr(p.Args, "ownerId"))
+			},
+		},
+		// validateBlueprint: dry-run parse a bex.yml — per-entry errors, no apply (w2/m15).
+		"validateBlueprint": &graphql.Field{
+			Type: blueprintValidationGQLType,
+			Args: graphql.FieldConfigArgument{
+				"bexYaml": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ValidateBlueprint(p.Context, p.Args["bexYaml"].(string))
 			},
 		},
 	}
@@ -746,6 +806,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteAutoscaling(p.Context, p.Args["id"].(string))
 				return err == nil, err
+			},
+		},
+		// syncBlueprint: re-apply a stored blueprint idempotently (w2/m15).
+		// If bexYaml is provided, the stored manifest is replaced before re-apply.
+		"syncBlueprint": &graphql.Field{
+			Type: syncBlueprintResultGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"bexYaml": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
+					gqlStr(p.Args, "ownerId"), gqlStr(p.Args, "bexYaml"))
 			},
 		},
 	}

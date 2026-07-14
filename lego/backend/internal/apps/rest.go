@@ -519,6 +519,47 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderHeaders(app.Headers))
 	}
 
+	// Blueprint routes (w2/m15): validate · list · sync.
+	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
+	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
+	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			BexYAML string `json:"bexYaml"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.BexYAML == "" {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		v, err := s.ValidateBlueprint(r.Context(), body.BexYAML)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("GET /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
+		ownerID := r.URL.Query().Get("ownerId")
+		views, err := s.ListBlueprints(r.Context(), ownerID)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, views)
+	})
+	mux.HandleFunc("POST /v1/blueprints/{id}/sync", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			BexYAML string `json:"bexYaml"`
+			OwnerID string `json:"ownerId"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		res, err := s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, res)
+	})
+
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base, list)
