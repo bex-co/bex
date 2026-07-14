@@ -72,7 +72,7 @@ type DeployRequest struct {
 // databases are applied first (dependents reference them via fromDatabase),
 // then services. Both are individually pollable to Ready via their status.
 type StackResult struct {
-	Services  []AppView          `json:"services"`
+	Services  []AppView           `json:"services"`
 	Databases []StackDatabaseView `json:"databases"`
 }
 
@@ -105,28 +105,28 @@ type bexManifest struct {
 // Fields bex does not honor are parsed elsewhere or rejected with a clear error
 // (see docs/ADR018-render-parity.md's Blueprint row for the field-by-field map).
 type bexService struct {
-	Name            string      `json:"name"`
-	Type            string      `json:"type"`            // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
-	Runtime         string      `json:"runtime"`         // render.yaml runtime; "static" selects static_site, "image" => prebuilt
-	Plan            string      `json:"plan"`            // render.yaml plan (Render spelling)
-	Tier            string      `json:"tier"`            // bex alias for plan
-	Repo            string      `json:"repo"`
-	Branch          string      `json:"branch"`
-	Image           *bexImage   `json:"image,omitempty"` // render.yaml image: {url} OR a bare image string (legacy)
-	ImagePath       string      `json:"imagePath"`       // bex alias: bare prebuilt image
-	Builder         string      `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
-	RootDir         string      `json:"rootDir"`
-	NumInstances    int32       `json:"numInstances"`    // render.yaml; alias for replicas
-	Replicas        int32       `json:"replicas"`        // bex alias
-	Port            int32       `json:"port"`            // bex (Render infers PORT env)
-	HealthCheckPath string      `json:"healthCheckPath"`
-	Domains         []string    `json:"domains"`
-	Schedule        string      `json:"schedule"`        // cron expression, required when type is cron
-	AutoDeploy      *bool       `json:"autoDeploy"`      // deprecated render.yaml bool; nil => default
-	AutoDeployTrigger string    `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
-	StaticPublishPath string    `json:"staticPublishPath"` // render.yaml static-site publish dir
-	PublishPath     string      `json:"publishPath"`     // bex alias
-	EnvVars         []bexEnvVar `json:"envVars"`
+	Name              string      `json:"name"`
+	Type              string      `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
+	Runtime           string      `json:"runtime"` // render.yaml runtime; "static" selects static_site, "image" => prebuilt
+	Plan              string      `json:"plan"`    // render.yaml plan (Render spelling)
+	Tier              string      `json:"tier"`    // bex alias for plan
+	Repo              string      `json:"repo"`
+	Branch            string      `json:"branch"`
+	Image             *bexImage   `json:"image,omitempty"` // render.yaml image: {url} OR a bare image string (legacy)
+	ImagePath         string      `json:"imagePath"`       // bex alias: bare prebuilt image
+	Builder           string      `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
+	RootDir           string      `json:"rootDir"`
+	NumInstances      int32       `json:"numInstances"` // render.yaml; alias for replicas
+	Replicas          int32       `json:"replicas"`     // bex alias
+	Port              int32       `json:"port"`         // bex (Render infers PORT env)
+	HealthCheckPath   string      `json:"healthCheckPath"`
+	Domains           []string    `json:"domains"`
+	Schedule          string      `json:"schedule"`          // cron expression, required when type is cron
+	AutoDeploy        *bool       `json:"autoDeploy"`        // deprecated render.yaml bool; nil => default
+	AutoDeployTrigger string      `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
+	StaticPublishPath string      `json:"staticPublishPath"` // render.yaml static-site publish dir
+	PublishPath       string      `json:"publishPath"`       // bex alias
+	EnvVars           []bexEnvVar `json:"envVars"`
 }
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
@@ -160,13 +160,13 @@ func (i *bexImage) UnmarshalJSON(data []byte) error {
 // highAvailability and documents the rest (databaseName, user, region,
 // storageAutoscalingEnabled) as omissions.
 type bexDatabase struct {
-	Name                string       `json:"name"`
-	Plan                string       `json:"plan"`
-	DiskSizeGB          int32        `json:"diskSizeGB"`
-	PostgresMajorVersion string      `json:"postgresMajorVersion"`
-	IPAllowList         []bexIPEntry `json:"ipAllowList"`
-	ReadReplicas        []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
-	HighAvailability    *bexHA       `json:"highAvailability"`
+	Name                 string                            `json:"name"`
+	Plan                 string                            `json:"plan"`
+	DiskSizeGB           int32                             `json:"diskSizeGB"`
+	PostgresMajorVersion string                            `json:"postgresMajorVersion"`
+	IPAllowList          []bexIPEntry                      `json:"ipAllowList"`
+	ReadReplicas         []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
+	HighAvailability     *bexHA                            `json:"highAvailability"`
 }
 
 // bexIPEntry is one CIDR in render.yaml's ipAllowList: [{source, description}].
@@ -187,13 +187,13 @@ type bexHA struct {
 // named error — bex can't honor them at blueprint time, and silently dropping a
 // variable the app needs is worse than a clear all-or-nothing rejection.
 type bexEnvVar struct {
-	Key          string      `json:"key"`
-	Value        string      `json:"value"`
-	GenerateValue bool       `json:"generateValue"`
-	Sync         *bool       `json:"sync"`
-	FromDatabase *bexFromRef `json:"fromDatabase"`
-	FromService  *bexFromRef `json:"fromService"`
-	FromGroup    string      `json:"fromGroup"`
+	Key           string      `json:"key"`
+	Value         string      `json:"value"`
+	GenerateValue bool        `json:"generateValue"`
+	Sync          *bool       `json:"sync"`
+	FromDatabase  *bexFromRef `json:"fromDatabase"`
+	FromService   *bexFromRef `json:"fromService"`
+	FromGroup     string      `json:"fromGroup"`
 }
 
 // bexFromRef is the fromDatabase / fromService target. property is the

@@ -106,15 +106,15 @@ type healthCheckPathArgs struct {
 // repo/image is required. Render's runtime/buildCommand/startCommand/region are
 // omitted — bex builds via Dockerfile/CNB auto-detection, one region.
 type createWebServiceArgs struct {
-	OwnerID    string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name       string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Type       string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo       string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image      string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch     string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir    string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	OwnerID         string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name            string      `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type            string      `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
+	Repo            string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image           string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch          string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir         string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Plan            string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars         []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	AutoDeploy      string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
 	HealthCheckPath string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
 	Port            int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
@@ -129,15 +129,15 @@ type envVarArg struct {
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:    a.OwnerID,
-		Name:       a.Name,
-		Type:       a.Type,
-		Repo:       a.Repo,
-		Image:      a.Image,
-		Branch:     a.Branch,
-		RootDir:    a.RootDir,
-		Plan:       a.Plan,
-		Env:        toEnvVars(a.EnvVars),
+		OwnerID:         a.OwnerID,
+		Name:            a.Name,
+		Type:            a.Type,
+		Repo:            a.Repo,
+		Image:           a.Image,
+		Branch:          a.Branch,
+		RootDir:         a.RootDir,
+		Plan:            a.Plan,
+		Env:             toEnvVars(a.EnvVars),
 		AutoDeploy:      parseYesNo(a.AutoDeploy),
 		HealthCheckPath: a.HealthCheckPath,
 		Port:            a.Port,
@@ -205,8 +205,8 @@ type deployArgs struct {
 // bex.yml returns a one-element services list and no databases. Poll each
 // service to a live URL via get_service; poll databases via get_postgres.
 type renderStack struct {
-	Services  []renderService      `json:"services"`
-	Databases []StackDatabaseView  `json:"databases,omitempty"`
+	Services  []renderService     `json:"services"`
+	Databases []StackDatabaseView `json:"databases,omitempty"`
 }
 
 // toRenderStack maps a StackResult onto the MCP deploy result shape.

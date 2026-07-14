@@ -204,11 +204,11 @@ services:
 
 func TestParseStackRejectsUnsupportedEnvForms(t *testing.T) {
 	cases := map[string]string{
-		"generateValue":        "services:\n  - {name: web, image: x, envVars: [{key: S, generateValue: true}]}\n",
-		"sync false":           "services:\n  - {name: web, image: x, envVars: [{key: S, sync: false}]}\n",
-		"fromGroup":            "services:\n  - {name: web, image: x, envVars: [{key: S, fromGroup: g}]}\n",
+		"generateValue":         "services:\n  - {name: web, image: x, envVars: [{key: S, generateValue: true}]}\n",
+		"sync false":            "services:\n  - {name: web, image: x, envVars: [{key: S, sync: false}]}\n",
+		"fromGroup":             "services:\n  - {name: web, image: x, envVars: [{key: S, fromGroup: g}]}\n",
 		"fromService envVarKey": "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: X}}]}\n",
-		"bad db property":      "services:\n  - {name: web, image: x, envVars: [{key: S, fromDatabase: {name: db, property: url}}]}\ndatabases:\n  - {name: db}\n",
+		"bad db property":       "services:\n  - {name: web, image: x, envVars: [{key: S, fromDatabase: {name: db, property: url}}]}\ndatabases:\n  - {name: db}\n",
 	}
 	for name, manifest := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -49,6 +49,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -552,6 +553,7 @@ func sweepableServices(base *core.Base) []any {
 		&deploys.Service{Base: base},
 		&audit.Service{Base: base},
 		&github.Service{Base: base},
+		&registrycreds.Service{Base: base},
 	}
 }
 

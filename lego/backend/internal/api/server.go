@@ -49,6 +49,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
+	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -82,6 +83,7 @@ type Server struct {
 	GitHub        *github.Service
 	Notifications *notifications.Service
 	Projects      *projects.Service
+	RegistryCreds *registrycreds.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -150,7 +152,7 @@ type Deps struct {
 	DBConnections  metrics.DBConnectionsSource
 	ReplicationLag metrics.ReplicationLagSource
 	APIKeys        apikeys.APIKeyStore
-	Store                apps.IntentStore
+	Store          apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -218,6 +220,13 @@ type Deps struct {
 	GitHubStore  github.ConnectionStore
 	DashboardURL string
 
+	// RegistryCredsStore, when set (the control-plane store is wired), backs
+	// the registry-credentials feature (w2/m14) — CRUD for a workspace's
+	// stored external-registry credentials. nil => those verbs report
+	// core.ErrRegistryCredentialsUnavailable. The secret store is the shared
+	// `Secrets` field above (same OpenBao instance the env-vars feature uses).
+	RegistryCredsStore registrycreds.CredentialStore
+
 	// Per-workspace resource caps (w7/m9). 0 = unlimited (default; byte-identical
 	// to before). Only enforced when the caller's tenant is resolvable (store on +
 	// bound caller). Render-Hobby-anchored defaults set via BEX_MAX_SERVICES (25),
@@ -268,8 +277,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Store:        d.GitHubStore,
 		DashboardURL: d.DashboardURL,
 	}
+	// The registry-credentials service is also the apps deploy path's
+	// pull-secret seam (w2/m14), so build it once and share it, same as gh
+	// above. Always non-nil; its verbs 503 until the control-plane store +
+	// OpenBao are both wired.
+	rc := &registrycreds.Service{Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), MaxServices: d.MaxServices},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -319,10 +333,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Store:      d.ProjectsStore,
 			Selections: selections,
 		},
-		GitHub:  gh,
-		Onboard: d.Onboard,
-		Usage:   d.Usage,
-		Audit:   d.Audit,
+		GitHub:        gh,
+		RegistryCreds: rc,
+		Onboard:       d.Onboard,
+		Usage:         d.Usage,
+		Audit:         d.Audit,
 	}
 }
 
@@ -407,6 +422,9 @@ func (s *Server) features() []any {
 	}
 	if s.Projects != nil {
 		out = append(out, s.Projects)
+	}
+	if s.RegistryCreds != nil {
+		out = append(out, s.RegistryCreds)
 	}
 	return out
 }

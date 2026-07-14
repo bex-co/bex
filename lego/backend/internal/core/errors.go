@@ -92,6 +92,12 @@ var (
 	// when the control-plane store isn't wired (BEX_CP_DB_URI unset); adapters
 	// surface it as 503 (w3/m9, the deploy-history precedent).
 	ErrNotificationsUnavailable = errors.New("notification settings store not configured")
+	// ErrRegistryCredentialsUnavailable is returned by the registry-credentials
+	// verbs when the control-plane store (BEX_CP_DB_URI) or the secret store
+	// (BEX_OPENBAO_URL) isn't wired — either is required, since a credential's
+	// metadata lives in one and its secret in the other; adapters surface it
+	// as 503.
+	ErrRegistryCredentialsUnavailable = errors.New("registry credential store not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

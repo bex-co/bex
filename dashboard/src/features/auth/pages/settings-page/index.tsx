@@ -14,6 +14,7 @@ import { NotificationSettingsPanel } from "@/features/notifications/components/n
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
+import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -55,6 +56,7 @@ export default function SettingsPage() {
           )}
           <TeamPanel />
           <ConnectGithubCard />
+          <RegistryCredentialsPanel />
           <ApiKeysPanel />
           <NotificationSettingsPanel />
           <SecurityComplianceSection />

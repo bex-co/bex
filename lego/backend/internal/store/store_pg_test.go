@@ -92,7 +92,87 @@ func TestPGStore(t *testing.T) {
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
+	assertRegistryCredentials(ctx, t, s, ten)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+// assertRegistryCredentials exercises w2/m14's registry_credentials store
+// methods against real Postgres: Create/List/Get/GetByHost/Update/Delete, the
+// cross-workspace scoping guard (a caller can never fetch/delete another
+// workspace's row even by guessing its id), and newest-first host-lookup
+// ordering — things that depend on Postgres's WHERE/ORDER BY, not just Go logic.
+func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, ten Tenant) {
+	t.Helper()
+	other, err := s.CreateTenant(ctx, "other-workspace", PlanPro)
+	if err != nil {
+		t.Fatalf("create other tenant: %v", err)
+	}
+
+	c, err := s.CreateRegistryCredential(ctx, ten.ID, "", "ghcr.io", "alice", "alice@example.com", nil)
+	if err != nil {
+		t.Fatalf("create registry credential: %v", err)
+	}
+	if len(c.ID) < 4 || c.ID[:4] != "rgc-" {
+		t.Errorf("id not Render-style: %q", c.ID)
+	}
+	if c.CreatedAt.IsZero() || c.UpdatedAt.IsZero() {
+		t.Errorf("timestamps not set: %+v", c)
+	}
+	if c.Name != "ghcr.io" {
+		t.Errorf("empty name should default to host: %q", c.Name)
+	}
+
+	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	c2, err := s.CreateRegistryCredential(ctx, ten.ID, "Docker Hub prod", "docker.io", "bob", "bob@example.com", &expires)
+	if err != nil {
+		t.Fatalf("create second registry credential: %v", err)
+	}
+	if c2.Name != "Docker Hub prod" {
+		t.Errorf("explicit name not stored: %q", c2.Name)
+	}
+
+	list, err := s.ListRegistryCredentials(ctx, ten.ID)
+	if err != nil || len(list) != 2 || list[0].ID != c2.ID {
+		t.Fatalf("list (want newest first) = %+v (err %v)", list, err)
+	}
+
+	got, err := s.GetRegistryCredential(ctx, ten.ID, c.ID)
+	if err != nil || got.Host != "ghcr.io" || got.Username != "alice" {
+		t.Fatalf("get = %+v (err %v)", got, err)
+	}
+	if _, err := s.GetRegistryCredential(ctx, other.ID, c.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("get scoped to the wrong workspace: want ErrNotFound, got %v", err)
+	}
+
+	byHost, err := s.GetRegistryCredentialByHost(ctx, ten.ID, "docker.io")
+	if err != nil || byHost.ID != c2.ID {
+		t.Fatalf("get by host = %+v (err %v)", byHost, err)
+	}
+	if _, err := s.GetRegistryCredentialByHost(ctx, ten.ID, "no-such-host.example"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("get by unknown host: want ErrNotFound, got %v", err)
+	}
+
+	updated, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "GHCR alice", "alice2", &expires)
+	if err != nil || updated.Name != "GHCR alice" || updated.Username != "alice2" || updated.ExpiresAt == nil || !updated.ExpiresAt.Equal(expires) {
+		t.Fatalf("update = %+v (err %v)", updated, err)
+	}
+
+	if err := s.TouchRegistryCredential(ctx, ten.ID, c.ID); err != nil {
+		t.Fatalf("touch: %v", err)
+	}
+	if err := s.TouchRegistryCredential(ctx, other.ID, c.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("touch scoped to the wrong workspace: want ErrNotFound, got %v", err)
+	}
+
+	if err := s.DeleteRegistryCredential(ctx, other.ID, c.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("delete scoped to the wrong workspace: want ErrNotFound, got %v", err)
+	}
+	if err := s.DeleteRegistryCredential(ctx, ten.ID, c.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := s.GetRegistryCredential(ctx, ten.ID, c.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("get after delete: want ErrNotFound, got %v", err)
+	}
 }
 
 // assertDeployLifecycle exercises w2/m5's deploy history against real

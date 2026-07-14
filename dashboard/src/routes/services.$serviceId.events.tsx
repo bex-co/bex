@@ -36,7 +36,7 @@ export const Route = createFileRoute("/services/$serviceId/events")({
   }),
 });
 
-// Map wire status to badge variant + locale key
+// Map wire deployStatus to badge variant + locale key
 function statusVariant(
   status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -69,6 +69,29 @@ function statusKey(status: string): string {
   }
 }
 
+// ServiceEventDetails.trigger is the Trigger object (boolean flags), a
+// different shape from Deploy.trigger's plain string — derive a short label
+// from whichever flag is set, first-match-wins.
+type TriggerFlags = {
+  firstBuild?: boolean | null;
+  envUpdated?: boolean | null;
+  manual?: boolean | null;
+  deployedByRender?: boolean | null;
+  clearCache?: boolean | null;
+  rollback?: boolean | null;
+} | null;
+
+function triggerLabel(trigger: TriggerFlags): string | null {
+  if (!trigger) return null;
+  if (trigger.rollback) return "rollback";
+  if (trigger.firstBuild) return "first build";
+  if (trigger.manual) return "manual";
+  if (trigger.envUpdated) return "env updated";
+  if (trigger.clearCache) return "clear cache";
+  if (trigger.deployedByRender) return "deployed by render";
+  return null;
+}
+
 type ConfirmAction =
   | { kind: "manual" }
   | { kind: "cancel"; deployId: string }
@@ -94,13 +117,15 @@ export function ServiceEventsPage() {
 
   const busy = triggering || canceling || rollingBack;
 
-  const events = (data?.serviceEvents?.events ?? []).filter((e) => e != null);
+  const events = (data?.serviceEvents ?? []).filter(
+    (e): e is NonNullable<typeof e> & { id: string } => e != null && !!e.id,
+  );
 
   async function handleConfirm() {
     if (!confirm) return;
     try {
       if (confirm.kind === "manual") {
-        await triggerDeploy({ variables: { id: serviceId } });
+        await triggerDeploy({ variables: { serviceId } });
         toast.success(t("services.triggerDeploySuccess"));
       } else if (confirm.kind === "cancel") {
         await cancelDeploy({
@@ -167,9 +192,10 @@ export function ServiceEventsPage() {
             <div className="divide-y">
               {events.map((evt) => {
                 const details = evt.details;
-                const isInProgress = details?.status === "update_in_progress";
-                const canRollback = details?.status === "live";
-                const isRollback = details?.trigger === "rollback";
+                const isInProgress =
+                  details?.deployStatus === "update_in_progress";
+                const canRollback = details?.deployStatus === "live";
+                const label = triggerLabel(details?.trigger ?? null);
                 return (
                   <div
                     key={evt.id}
@@ -177,31 +203,21 @@ export function ServiceEventsPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Badge variant={statusVariant(details?.status ?? "")}>
+                        <Badge
+                          variant={statusVariant(details?.deployStatus ?? "")}
+                        >
                           {t(
                             statusKey(
-                              details?.status ?? "",
+                              details?.deployStatus ?? "",
                             ) as Parameters<typeof t>[0],
                           )}
                         </Badge>
-                        {details?.trigger && (
+                        {label && (
                           <span className="text-xs capitalize text-muted-foreground">
-                            {details.trigger.replace(/_/g, " ")}
+                            {label}
                           </span>
                         )}
                       </div>
-                      {details?.image && (
-                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                          {details.image}
-                        </p>
-                      )}
-                      {isRollback && details?.rollbackTarget && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t("services.eventsRolledBackFrom", {
-                            target: details.rollbackTarget,
-                          })}
-                        </p>
-                      )}
                       {evt.timestamp && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           {new Date(evt.timestamp).toLocaleString()}

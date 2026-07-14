@@ -67,6 +67,12 @@ type Service struct {
 	// trigger whose repo belongs to the workspace's connection, so private repos
 	// clone (docs/ADR026-github-integration.md). nil => public-clone only, unchanged.
 	GitHub CloneTokenSource
+	// RegistryCreds, when set (registrycreds.Service is wired), materializes a
+	// dockerconfigjson pull Secret for an image-backed App whose image's
+	// registry host matches a workspace-stored credential (w2/m14). nil =>
+	// registry credentials are off, unchanged (no external pull secret is
+	// ever set).
+	RegistryCreds PullSecretSource
 	// Kick, when set (the reconciler is wired), schedules an immediate projection
 	// pass after a store-managed create/redeploy so intent reaches the cluster in
 	// milliseconds instead of on the next resync period. nil => no nudge (store off
@@ -258,25 +264,25 @@ func view(a *appv1alpha1.App) AppView {
 		asView = &v
 	}
 	return AppView{
-		Name:           a.Name,
-		Type:           svcType,
-		Phase:          string(a.Status.Phase),
-		URL:            a.Status.URL,
-		URLs:           a.Status.URLs,
-		Image:          a.Status.Image,
-		Replicas:       a.Spec.Replicas,
-		Suspended:      a.Spec.Suspended,
-		Schedule:       a.Spec.Schedule,
-		Command:        a.Spec.Command,
-		Runs:           cronRunViews(a.Status.Runs),
-		Plan:           plan,
-		Revision:       a.Status.ActiveRevision,
-		CreatedAt:      created,
-		IdleTTLSeconds: a.Spec.IdleTTLSeconds,
-		OwnerID:        a.Labels[core.LabelTenant],
-		RootDir:        a.Spec.RootDir,
-		Repo:           a.Spec.Repo,
-		Branch:         a.Spec.Branch,
+		Name:            a.Name,
+		Type:            svcType,
+		Phase:           string(a.Status.Phase),
+		URL:             a.Status.URL,
+		URLs:            a.Status.URLs,
+		Image:           a.Status.Image,
+		Replicas:        a.Spec.Replicas,
+		Suspended:       a.Spec.Suspended,
+		Schedule:        a.Spec.Schedule,
+		Command:         a.Spec.Command,
+		Runs:            cronRunViews(a.Status.Runs),
+		Plan:            plan,
+		Revision:        a.Status.ActiveRevision,
+		CreatedAt:       created,
+		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
+		OwnerID:         a.Labels[core.LabelTenant],
+		RootDir:         a.Spec.RootDir,
+		Repo:            a.Spec.Repo,
+		Branch:          a.Spec.Branch,
 		Autoscaling:     asView,
 		AutoDeploy:      a.Spec.AutoDeploy,
 		HealthCheckPath: a.Spec.HealthCheckPath,
@@ -566,6 +572,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 			}
 			a.Spec.CloneSecret = secretName
 		}
+		pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
+		if err != nil {
+			return AppView{}, err
+		}
+		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		if err := s.Client.Create(ctx, a); err != nil {
 			return AppView{}, err
 		}
@@ -593,6 +604,14 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if secretName != "" {
 			existing.Spec.CloneSecret = secretName
 		}
+		// Re-resolve the external-registry pull secret too — a redeploy is also
+		// how an image-backed App picks up a credential stored after its first
+		// create, or drops one that's since been deleted.
+		pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, existing)
+		if err != nil {
+			return AppView{}, err
+		}
+		existing.Spec.ExternalRegistryPullSecret = pullSecretName
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return AppView{}, err
@@ -675,6 +694,11 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		}
 		a.Spec.CloneSecret = secretName
 	}
+	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
+	if err != nil {
+		return AppView{}, err
+	}
+	a.Spec.ExternalRegistryPullSecret = pullSecretName
 	if err := s.Client.Create(ctx, a); err != nil {
 		return AppView{}, err
 	}
@@ -719,6 +743,11 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// delete cascade wouldn't. Best-effort: an absent Secret (public app) is fine.
 	if err := s.deleteCloneSecret(ctx, a.Namespace, a.Name); err != nil {
 		return fmt.Errorf("delete clone secret: %w", err)
+	}
+	// Same for the external-registry pull Secret (w2/m14) — no ownerRef (see
+	// pullsecret.go), so it needs the same explicit delete.
+	if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
+		return fmt.Errorf("delete registry pull secret: %w", err)
 	}
 	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a
 	// store-managed App whose row delete triggered a Kick) — the end state is
@@ -913,10 +942,15 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 	if err != nil {
 		return AppView{}, err
 	}
+	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
+	if err != nil {
+		return AppView{}, err
+	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
+		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }

@@ -225,6 +225,17 @@ spec:
                   App at the platform hostname "<name>.<BEX_BASE_DOMAIN>" (in addition to Host
                   and Hosts, if given). Requires wildcard DNS for the base domain.
                 type: boolean
+              externalRegistryPullSecret:
+                description: |-
+                  ExternalRegistryPullSecret names a `kubernetes.io/dockerconfigjson` Secret
+                  in the App's namespace, materialized by bex-api from a workspace's stored
+                  registry credential (w2/m14) whose host matches Image's registry. Added to
+                  the pod's imagePullSecrets alongside (not instead of) the operator's own
+                  internal-registry pull secret. Empty means no external-registry credential
+                  applies — today's behavior, unchanged. The operator is registry-unaware:
+                  it only references the Secret; bex-api resolves which credential (if any)
+                  matches and keeps the Secret's contents current.
+                type: string
               filesFromSecrets:
                 description: |-
                   FilesFromSecrets names Secrets whose keys are projected as files under

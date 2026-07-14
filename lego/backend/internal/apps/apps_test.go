@@ -351,11 +351,11 @@ type recordingStore struct {
 		id      string
 		seconds int32
 	}
-	domainAdds   []struct{ id, host string }
-	domainRems   []struct{ id, host string }
-	deleteCalls  []string
-	appCreates   []store.App
-	deployCalls  []store.Deploy
+	domainAdds  []struct{ id, host string }
+	domainRems  []struct{ id, host string }
+	deleteCalls []string
+	appCreates  []store.App
+	deployCalls []store.Deploy
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool

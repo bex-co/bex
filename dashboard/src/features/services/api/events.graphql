@@ -1,28 +1,38 @@
+# serviceEvents returns a flat [ServiceEvent] (no cursor/events envelope) —
+# each event carries its OWN cursor (backend/internal/events/graphql.go).
+# ServiceEventDetails has no image/rollbackTarget/message fields and its
+# `trigger` is the Trigger object (boolean flags), not a plain string — a
+# different shape from Deploy.trigger (a plain string) the mutations below
+# return.
 query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
   serviceEvents(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    id
+    type
+    timestamp
     cursor
-    events {
-      id
-      type
-      timestamp
-      details {
-        status
-        image
-        trigger
-        rollbackTarget
-        message
+    details {
+      deployStatus
+      actor
+      triggeredByUser
+      trigger {
+        firstBuild
+        envUpdated
+        manual
+        deployedByRender
+        clearCache
+        rollback
       }
     }
   }
 }
 
-mutation TriggerDeploy($id: String!) {
-  triggerDeploy(id: $id) {
+mutation TriggerDeploy($serviceId: String!) {
+  triggerDeploy(serviceId: $serviceId) {
     id
     status
     createdAt
     trigger
-    rollbackTarget
+    rollbackOf
     image
   }
 }
@@ -40,7 +50,7 @@ mutation RollbackService($serviceId: String!, $deployId: String!) {
     status
     createdAt
     trigger
-    rollbackTarget
+    rollbackOf
     image
   }
 }

@@ -141,6 +141,17 @@ type AppSpec struct {
 	// +optional
 	CloneSecret string `json:"cloneSecret,omitempty"`
 
+	// ExternalRegistryPullSecret names a `kubernetes.io/dockerconfigjson` Secret
+	// in the App's namespace, materialized by bex-api from a workspace's stored
+	// registry credential (w2/m14) whose host matches Image's registry. Added to
+	// the pod's imagePullSecrets alongside (not instead of) the operator's own
+	// internal-registry pull secret. Empty means no external-registry credential
+	// applies — today's behavior, unchanged. The operator is registry-unaware:
+	// it only references the Secret; bex-api resolves which credential (if any)
+	// matches and keeps the Secret's contents current.
+	// +optional
+	ExternalRegistryPullSecret string `json:"externalRegistryPullSecret,omitempty"`
+
 	// Builder selects how the image is built:
 	// "auto" (Dockerfile if present, else Cloud Native Buildpacks), "buildpack", or "dockerfile".
 	// +optional

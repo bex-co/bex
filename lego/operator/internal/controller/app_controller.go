@@ -301,16 +301,23 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 }
 
 // imagePullSecrets returns the imagePullSecrets a tenant pod carries so kubelet
-// pulls authenticate against the auth-enabled registry (w7/m8, docs/ADR022-
-// tenant-isolation.md § Registry access control). It is nil — and therefore
-// omitted from the pod spec — when no pull secret is configured OR the image is
-// not hosted in the in-cluster registry (a prebuilt public/external image is
-// left untouched, so the registry cred is never sent to a foreign registry).
-func (r *AppReconciler) imagePullSecrets(image string) []corev1.LocalObjectReference {
-	if r.RegistryPullSecret == "" || r.Registry == "" || !strings.HasPrefix(image, r.Registry+"/") {
-		return nil
+// pulls authenticate. Two independent sources, both additive (w2/m14 extends,
+// doesn't replace, w7/m8's internal-registry path):
+//   - the operator's own internal-registry secret (docs/ADR022-tenant-isolation.md
+//     § Registry access control) — included only when the image is actually
+//     hosted in that registry, so it's never sent to a foreign registry;
+//   - app.Spec.ExternalRegistryPullSecret, when bex-api has materialized one for
+//     this App's image host (w2/m14) — the operator just references it by name,
+//     unaware of which registry or credential it corresponds to.
+func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []corev1.LocalObjectReference {
+	var out []corev1.LocalObjectReference
+	if r.RegistryPullSecret != "" && r.Registry != "" && strings.HasPrefix(image, r.Registry+"/") {
+		out = append(out, corev1.LocalObjectReference{Name: r.RegistryPullSecret})
 	}
-	return []corev1.LocalObjectReference{{Name: r.RegistryPullSecret}}
+	if app.Spec.ExternalRegistryPullSecret != "" {
+		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
+	}
+	return out
 }
 
 // copyCloneSecret relocates an opaque git-credential Secret from srcNS to dstNS
@@ -490,7 +497,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		// Authenticate kubelet pulls against the auth-enabled registry (w7/m8). nil
 		// when no pull secret is configured or the image isn't registry-hosted, so a
 		// prebuilt public image is left untouched.
-		dep.Spec.Template.Spec.ImagePullSecrets = r.imagePullSecrets(image)
+		dep.Spec.Template.Spec.ImagePullSecrets = r.imagePullSecrets(app, image)
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
@@ -1038,7 +1045,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	spec.Containers = []corev1.Container{container}
 	// Authenticate the pull under an auth-enabled registry (w7/m8) — owned here so
 	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
-	spec.ImagePullSecrets = r.imagePullSecrets(image)
+	spec.ImagePullSecrets = r.imagePullSecrets(app, image)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Labels: labels},
 		Spec:       spec,
