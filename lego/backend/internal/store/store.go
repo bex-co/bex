@@ -581,7 +581,7 @@ func (s *PGStore) GetApp(ctx context.Context, id string) (App, error) {
 // its Environment (w6/m19, apps.Service's destructive-verb guard,
 // apps/protection.go): "unprotected" when the App has no environment_id, or
 // its environment's own protected_status column otherwise. "unprotected" is
-// the same literal 0023_environment_acl.up.sql defaults protected_status to
+// the same literal 0024_environment_acl.up.sql defaults protected_status to
 // — an App outside any environment behaves exactly like one in a freshly
 // created, unprotected environment.
 func (s *PGStore) GetAppProtectedStatus(ctx context.Context, appID string) (string, error) {
