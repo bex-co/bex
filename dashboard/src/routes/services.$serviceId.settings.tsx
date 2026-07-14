@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Card,
@@ -26,7 +25,6 @@ import {
   isStaticSite,
   isWorker,
 } from "@/features/services/lib/service-type";
-import type { en } from "@/i18n";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -40,15 +38,6 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
  * Instance Type section Render's settings page leads with, then Build & Deploy
  * (repo-backed Apps only — Source/Branch read-only, Root Directory editable),
  * Custom Domains, and the platform subdomain (Render parity).
- *
- * Render parity (captured live from dashboard.render.com/web/.../settings):
- * a right-side sticky "Table of contents" nav, one anchor per section, while
- * the section cards themselves take the full remaining width instead of the
- * narrow centered `max-w-4xl` every other tab uses (opted out in the shared
- * `services.$serviceId.tsx` layout for this one route). The nav only lists
- * sections bex actually renders for this service's type — never a link to a
- * Render section (PR Previews, Log Stream, Maintenance Mode…) bex doesn't
- * have, which would 404 on click.
  */
 export function ServiceSettingsPage() {
   const { serviceId } = Route.useParams();
@@ -57,184 +46,118 @@ export function ServiceSettingsPage() {
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
   const worker = service ? isWorker(service) : false;
-  const repoBacked = !!service?.repo;
-
-  const sections = useMemo(() => {
-    const list: { id: string; labelKey: keyof typeof en }[] = [
-      { id: "general", labelKey: "services.settingsNavGeneral" },
-    ];
-    if (cron) {
-      list.push({ id: "deploy", labelKey: "services.deployTitle" });
-      if (repoBacked) {
-        list.push({ id: "build", labelKey: "services.buildDeployTitle" });
-      }
-    } else {
-      if (repoBacked) {
-        list.push({ id: "build", labelKey: "services.buildDeployTitle" });
-      }
-      if (staticSite) {
-        list.push({ id: "static-site", labelKey: "services.staticTitle" });
-      }
-      if (!worker && !staticSite) {
-        list.push({
-          id: "health-checks",
-          labelKey: "services.settingsHealthChecksTitle",
-        });
-      }
-      list.push({ id: "custom-domains", labelKey: "services.domainsTitle" });
-    }
-    list.push({ id: "delete", labelKey: "services.dangerZoneTitle" });
-    return list;
-  }, [cron, staticSite, worker, repoBacked]);
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_200px]">
-      <div className="min-w-0 space-y-6">
-        <Card id="general">
-          <CardHeader>
-            <CardTitle>{t("services.settingsTitle")}</CardTitle>
-            <CardDescription>
-              {t("services.settingsDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!service && loading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : (
-              <div className="space-y-6">
-                <DisplayNameRow
-                  serviceId={serviceId}
-                  displayName={service?.displayName}
-                  onChanged={() => void refetch()}
-                />
-                <InstanceTypeRow
-                  serviceId={serviceId}
-                  plan={service?.plan ?? null}
-                />
-                {/* Idle timeout and manual scaling only apply to running-container
-                    services — a cron_job has no idle traffic to sleep on, and a
-                    static_site serves from the object store with no pod to
-                    hibernate or scale (Render parity, w5/m11, w1/m21, w5/m16). */}
-                {!cron && !staticSite && (
-                  <>
-                    <IdleTimeoutRow
-                      serviceId={serviceId}
-                      plan={service?.plan ?? null}
-                      idleTTLSeconds={service?.idleTTLSeconds ?? 0}
-                    />
-                    <ScalingRow
-                      serviceId={serviceId}
-                      replicas={service?.replicas ?? null}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {cron ? (
-          <>
-            <div id="deploy">
-              <CronDeploySection
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("services.settingsTitle")}</CardTitle>
+          <CardDescription>{t("services.settingsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!service && loading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <div className="space-y-6">
+              <DisplayNameRow
                 serviceId={serviceId}
-                schedule={service?.schedule ?? null}
-                command={service?.command ?? null}
+                displayName={service?.displayName}
+                onChanged={() => void refetch()}
               />
-            </div>
-            {/* A git-sourced cron job still builds from a repo, so it keeps the
-                Build & Deploy section — Root Directory + the Auto Deploy toggle,
-                whose setAutoDeploy path is type-agnostic (w2/m9, w5/010). An
-                image-backed cron has nothing to build, so it renders neither.
-                Build Command / Log Stream stay deferred (ADR018 cron row). */}
-            {service?.repo && (
-              <div id="build">
-                <BuildDeploySection
-                  serviceId={serviceId}
-                  repo={service.repo}
-                  branch={service.branch}
-                  rootDir={service.rootDir}
-                  autoDeploy={service.autoDeploy ?? false}
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {service?.repo && (
-              <div id="build">
-                <BuildDeploySection
-                  serviceId={serviceId}
-                  repo={service.repo}
-                  branch={service.branch}
-                  rootDir={service.rootDir}
-                  autoDeploy={service.autoDeploy ?? false}
-                />
-              </div>
-            )}
-            {staticSite && service && (
-              <div id="static-site">
-                <StaticSiteSection
-                  serviceId={serviceId}
-                  service={service}
-                  refetch={refetch}
-                />
-              </div>
-            )}
-            {/* Health Checks: own section (Render parity — Render places this
-                under a dedicated "Health Checks" heading in Settings, separate
-                from the General card). Only web_service/private_service receive
-                HTTP traffic and can have a ReadinessProbe path. */}
-            {!worker && !staticSite && (
-              <Card id="health-checks">
-                <CardHeader>
-                  <CardTitle>
-                    {t("services.settingsHealthChecksTitle")}
-                  </CardTitle>
-                  <CardDescription>
-                    {t("services.settingsHealthChecksDescription")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <HealthCheckPathRow
+              <InstanceTypeRow
+                serviceId={serviceId}
+                plan={service?.plan ?? null}
+              />
+              {/* Idle timeout and manual scaling only apply to running-container
+                  services — a cron_job has no idle traffic to sleep on, and a
+                  static_site serves from the object store with no pod to
+                  hibernate or scale (Render parity, w5/m11, w1/m21, w5/m16). */}
+              {!cron && !staticSite && (
+                <>
+                  <IdleTimeoutRow
                     serviceId={serviceId}
-                    healthCheckPath={service?.healthCheckPath}
+                    plan={service?.plan ?? null}
+                    idleTTLSeconds={service?.idleTTLSeconds ?? 0}
                   />
-                </CardContent>
-              </Card>
-            )}
-            <div id="custom-domains" className="space-y-6">
-              <CustomDomainsSection serviceId={serviceId} />
-              <PlatformSubdomainSection url={service?.url ?? null} />
+                  <ScalingRow
+                    serviceId={serviceId}
+                    replicas={service?.replicas ?? null}
+                  />
+                </>
+              )}
             </div>
-          </>
-        )}
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Danger zone: type-to-confirm delete (every service type). Only once the
-            service has loaded — the confirm matches against its immutable id. */}
-        {service && (
-          <div id="delete">
-            <DeleteServiceCard service={service} />
-          </div>
-        )}
-      </div>
+      {cron ? (
+        <>
+          <CronDeploySection
+            serviceId={serviceId}
+            schedule={service?.schedule ?? null}
+            command={service?.command ?? null}
+          />
+          {/* A git-sourced cron job still builds from a repo, so it keeps the
+              Build & Deploy section — Root Directory + the Auto Deploy toggle,
+              whose setAutoDeploy path is type-agnostic (w2/m9, w5/010). An
+              image-backed cron has nothing to build, so it renders neither.
+              Build Command / Log Stream stay deferred (ADR018 cron row). */}
+          {service?.repo && (
+            <BuildDeploySection
+              serviceId={serviceId}
+              repo={service.repo}
+              branch={service.branch}
+              rootDir={service.rootDir}
+              autoDeploy={service.autoDeploy ?? false}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {service?.repo && (
+            <BuildDeploySection
+              serviceId={serviceId}
+              repo={service.repo}
+              branch={service.branch}
+              rootDir={service.rootDir}
+              autoDeploy={service.autoDeploy ?? false}
+            />
+          )}
+          {staticSite && service && (
+            <StaticSiteSection
+              serviceId={serviceId}
+              service={service}
+              refetch={refetch}
+            />
+          )}
+          {/* Health Checks: own section (Render parity — Render places this
+              under a dedicated "Health Checks" heading in Settings, separate
+              from the General card). Only web_service/private_service receive
+              HTTP traffic and can have a ReadinessProbe path. */}
+          {!worker && !staticSite && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("services.settingsHealthChecksTitle")}</CardTitle>
+                <CardDescription>
+                  {t("services.settingsHealthChecksDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HealthCheckPathRow
+                  serviceId={serviceId}
+                  healthCheckPath={service?.healthCheckPath}
+                />
+              </CardContent>
+            </Card>
+          )}
+          <CustomDomainsSection serviceId={serviceId} />
+          <PlatformSubdomainSection url={service?.url ?? null} />
+        </>
+      )}
 
-      <nav
-        aria-label={t("services.settingsNavLabel")}
-        className="hidden lg:block"
-      >
-        <div className="sticky top-6 space-y-1">
-          {sections.map((section) => (
-            <a
-              key={section.id}
-              href={`#${section.id}`}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground block rounded-md px-2 py-1.5 text-sm transition-colors"
-            >
-              {t(section.labelKey)}
-            </a>
-          ))}
-        </div>
-      </nav>
+      {/* Danger zone: type-to-confirm delete (every service type). Only once the
+          service has loaded — the confirm matches against its immutable id. */}
+      {service && <DeleteServiceCard service={service} />}
     </div>
   );
 }
