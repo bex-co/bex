@@ -417,8 +417,9 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.ID })},
 		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Name })},
 		"repo":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Repo })},
-		"branch":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
-		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
+		"branch":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
+		"manifest": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Manifest })},
+		"status":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
 		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.CreatedAt })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.UpdatedAt })},
 	},
@@ -531,6 +532,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListBlueprints(p.Context, gqlStr(p.Args, "ownerId"))
+			},
+		},
+		// blueprint: fetch a single blueprint by id (w7/m27 — dashboard detail page).
+		"blueprint": &graphql.Field{
+			Type: blueprintGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlStr(p.Args, "ownerId"))
 			},
 		},
 		// validateBlueprint: dry-run parse a bex.yml — per-entry errors, no apply (w2/m15).

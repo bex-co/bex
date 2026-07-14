@@ -15,6 +15,7 @@
 - [x] **m9** — Per-workspace abuse limits (creation caps + build concurrency) (7 tasks) ← from `/pm-brainstorm more for w7` round 2, 2026-07-12
 - [x] **m10** — Security hygiene: image CVE scanning in CI + HTTP hardening headers (7 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `001`, `002` (each sub-hour)
 - [x] **m11** — Admission-time tenant-image signature verification (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`w6/006` shipped signing, verification was deferred and never picked back up — flagged three times across two workstreams)
+- [x] **m27** — Blueprints dashboard surface (list · manifest · validate · sync) (10 tasks) ← from `/pm-brainstorm more tasks for w5` 2026-07-13; closes last ✖ UI cell in parity ledger
 
 ## Inbox
 

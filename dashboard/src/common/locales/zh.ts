@@ -22,6 +22,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "用量",
     description: "Sidebar nav link to the workspace usage page",
   },
+  "common.navBlueprints": {
+    message: "蓝图",
+    description: "Sidebar nav link to the blueprints management page (IaC stacks auto-registered on deploy)",
+  },
   "common.navSettings": {
     message: "设置",
     description:

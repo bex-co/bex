@@ -50,6 +50,7 @@ type BlueprintView struct {
 	Name      string    `json:"name"`
 	Repo      string    `json:"repo"`
 	Branch    string    `json:"branch"`
+	Manifest  string    `json:"manifest"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -204,12 +205,33 @@ func repoName(repo string) string {
 	return strings.TrimSuffix(base, ".git")
 }
 
+// GetBlueprint returns a single blueprint by id, scoped to the caller's workspace.
+// ownerID is optional — empty resolves to the caller's default workspace.
+func (s *Service) GetBlueprint(ctx context.Context, id, ownerID string) (BlueprintView, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return BlueprintView{}, err
+	}
+	if s.Blueprints == nil {
+		return BlueprintView{}, ErrBlueprintsUnavailable
+	}
+	tenantID := s.resolveTenantID(ctx)
+	b, err := s.Blueprints.GetBlueprint(ctx, id, tenantID)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	return toBlueprintView(b), nil
+}
+
 func toBlueprintView(b store.Blueprint) BlueprintView {
 	return BlueprintView{
 		ID:        b.ID,
 		Name:      b.Name,
 		Repo:      b.Repo,
 		Branch:    b.Branch,
+		Manifest:  b.Manifest,
 		Status:    b.Status,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
