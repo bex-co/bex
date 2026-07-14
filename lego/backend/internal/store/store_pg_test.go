@@ -93,6 +93,7 @@ func TestPGStore(t *testing.T) {
 	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertRegistryCredentials(ctx, t, s, ten)
+	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
 
@@ -172,6 +173,100 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 	}
 	if _, err := s.GetRegistryCredential(ctx, ten.ID, c.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get after delete: want ErrNotFound, got %v", err)
+	}
+}
+
+// assertProjectsAndEnvironments exercises the environments store layer
+// (layered on top of w1/m31's projects table) against real Postgres: creating
+// an environment under a project, service assignment (which also joins the
+// service to the environment's project), reassignment, delete cascades, and
+// the defensive project_id+environment_id filter ListEnvironmentServices
+// applies against drift from the independent SetProjectServices verb.
+func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool, ten Tenant, app App) {
+	t.Helper()
+	proj, err := s.CreateProject(ctx, ten.ID, "web-stack")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	env, err := s.CreateEnvironment(ctx, proj.ID, ten.ID, "staging")
+	if err != nil {
+		t.Fatalf("create environment: %v", err)
+	}
+	if len(env.ID) != 24 || env.ID[:4] != "env-" {
+		t.Errorf("environment id not Render-style: %q", env.ID)
+	}
+	prod, err := s.CreateEnvironment(ctx, proj.ID, ten.ID, "production")
+	if err != nil {
+		t.Fatalf("create second environment: %v", err)
+	}
+	if _, err := s.CreateEnvironment(ctx, proj.ID, ten.ID, "staging"); !errors.Is(err, ErrConflict) {
+		t.Errorf("duplicate environment name: want ErrConflict, got %v", err)
+	}
+
+	if list, err := s.ListEnvironments(ctx, proj.ID); err != nil || len(list) != 2 {
+		t.Fatalf("ListEnvironments = %+v (err %v), want 2", list, err)
+	}
+
+	// Assigning to an environment also joins the service to its project.
+	if err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+		t.Fatalf("set environment services: %v", err)
+	}
+	var gotProjectID *string
+	if err := pool.QueryRow(ctx, `SELECT project_id FROM apps WHERE id = $1`, app.ID).Scan(&gotProjectID); err != nil {
+		t.Fatal(err)
+	}
+	if gotProjectID == nil || *gotProjectID != proj.ID {
+		t.Errorf("assigning to an environment should also set apps.project_id = %q, got %v", proj.ID, gotProjectID)
+	}
+	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.Name {
+		t.Fatalf("ListEnvironmentServices(staging) = %+v (err %v), want [%s]", ids, err, app.Name)
+	}
+
+	// Reassignment (a service belongs to at most one environment at a time).
+	if err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}); err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 0 {
+		t.Fatalf("ListEnvironmentServices(staging) after reassign = %+v (err %v), want empty", ids, err)
+	}
+	if ids, err := s.ListEnvironmentServices(ctx, prod.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.Name {
+		t.Fatalf("ListEnvironmentServices(production) = %+v (err %v), want [%s]", ids, err, app.Name)
+	}
+
+	if err := s.RenameEnvironment(ctx, env.ID, "staging-v2"); err != nil {
+		t.Fatalf("rename environment: %v", err)
+	}
+	if got, err := s.GetEnvironment(ctx, env.ID); err != nil || got.Name != "staging-v2" {
+		t.Fatalf("get after rename = %+v (err %v)", got, err)
+	}
+
+	// Deleting an environment un-assigns its services but leaves their
+	// project membership untouched (only setProjectServices/deleting the
+	// PROJECT does that).
+	if err := s.DeleteEnvironment(ctx, prod.ID); err != nil {
+		t.Fatalf("delete environment: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT project_id FROM apps WHERE id = $1`, app.ID).Scan(&gotProjectID); err != nil {
+		t.Fatal(err)
+	}
+	if gotProjectID == nil || *gotProjectID != proj.ID {
+		t.Errorf("deleting the environment should NOT clear apps.project_id, got %v", gotProjectID)
+	}
+	if err := s.DeleteEnvironment(ctx, prod.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("re-delete environment: want ErrNotFound, got %v", err)
+	}
+
+	// Deleting the project cascades its remaining environment (staging) too.
+	if err := s.DeleteProject(ctx, proj.ID); err != nil {
+		t.Fatalf("delete project: %v", err)
+	}
+	var remaining int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM environments WHERE project_id = $1`, proj.ID).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Errorf("environments not cascaded on project delete: %d rows remain", remaining)
 	}
 }
 

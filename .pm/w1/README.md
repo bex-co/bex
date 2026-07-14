@@ -37,6 +37,7 @@
 - [x] **m29** — Managed Postgres external connectivity: SNI proxy for preamble-mode TLS clients (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`docs/ADR009-postgresql-management.md:53` names the fix, never built) — done 2026-07-13, moved to `done/m29/`
 - [ ] **m30** — SIGTERM shutdown fix + Dependabot residual watch (6 tasks) ← groups `018`, `019` 2026-07-13 (each sub-hour), same pattern as `m23`/`w6/m15`/`w7/m10`
 - [x] **m31** — Projects: group services within a workspace (6 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (verified live via search that Render's Projects feature is real — render.com/docs/projects; scoped to grouping only, Environments deliberately deferred as a much larger follow-on)
+- [x] **m32** — Environments: named subsets of a Project's services (11 tasks) ← follow-on to m31, closing the Environments half it deferred; rebuilt after an independent same-feature implementation on `w6/m16` collided with this milestone on `/ship` and was discarded in favor of composing with what had already shipped here — done 2026-07-13 (`internal/environments` layered on `internal/projects`; REST/GraphQL/MCP full CRUD; assignment auto-joins the project; live-verified against the CAPD mock cluster, `scripts/environments-verify.sh`; also fixed a 500-vs-503 gap `ErrEnvironmentsUnavailable` would have inherited from `projects.ErrProjectsUnavailable`'s equivalent unfixed gap), moved to `done/m32/`
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

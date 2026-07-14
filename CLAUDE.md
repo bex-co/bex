@@ -123,6 +123,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR022-tenant-isolation.md](docs/ADR022-tenant-isolation.md) — ADR: east-west network enforcement — threat model, label-scoped NetworkPolicy mechanism, dialect choice, reachability matrix.
 - [docs/ADR028-security-review.md](docs/ADR028-security-review.md) — evidence-backed audit (RBAC, supply chain, injection surface, network isolation, secrets hygiene, OAuth) with severities, remediation status, and a follow-up register.
 - [docs/ADR031-platform-data-backup.md](docs/ADR031-platform-data-backup.md) — consolidated platform data-backup policy: etcd, OpenBao, and bex-db backup mechanisms, one-time setup, restore runbooks, drill records, and re-drill cadence.
+- [docs/ADR032-environments.md](docs/ADR032-environments.md) — Environments: named subsets of a Project's services (staging/production), layered on `internal/projects` (w1/m31); assignment auto-joins the project, REST/GraphQL/MCP surface, MVP scope (no protected-environment ACLs, no dashboard UX).
 
 ## Rules
 

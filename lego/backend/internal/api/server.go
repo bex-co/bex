@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
@@ -83,6 +84,7 @@ type Server struct {
 	GitHub        *github.Service
 	Notifications *notifications.Service
 	Projects      *projects.Service
+	Environments  *environments.Service
 	RegistryCreds *registrycreds.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
@@ -245,6 +247,10 @@ type Deps struct {
 	// project grouping verbs (w1/m31). nil => those verbs report
 	// projects.ErrProjectsUnavailable (503).
 	ProjectsStore projects.ProjectStore
+	// EnvironmentsStore, when set (the control-plane store is wired), backs the
+	// environment grouping verbs layered on top of Projects. nil => those
+	// verbs report environments.ErrEnvironmentsUnavailable (503).
+	EnvironmentsStore environments.EnvironmentStore
 	// BlueprintsStore, when set (the control-plane store is wired), backs the
 	// blueprint list/sync verbs (w2/m15). nil => list/sync report
 	// ErrBlueprintsUnavailable (503); validate is always available (stateless).
@@ -337,6 +343,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Store:      d.ProjectsStore,
 			Selections: selections,
 		},
+		Environments: &environments.Service{
+			Base:  base,
+			Store: d.EnvironmentsStore,
+		},
 		GitHub:        gh,
 		RegistryCreds: rc,
 		Onboard:       d.Onboard,
@@ -426,6 +436,9 @@ func (s *Server) features() []any {
 	}
 	if s.Projects != nil {
 		out = append(out, s.Projects)
+	}
+	if s.Environments != nil {
+		out = append(out, s.Environments)
 	}
 	if s.RegistryCreds != nil {
 		out = append(out, s.RegistryCreds)

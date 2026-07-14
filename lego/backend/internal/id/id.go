@@ -74,12 +74,17 @@ var (
 	// this resource isn't confirmed against a live capture (w2/m14).
 	RegistryCredential = Kind{prefix: "rgc", desc: "external image registry credential"}
 	Blueprint          = Kind{prefix: "blp", desc: "blueprint (bex.yml stack source)"} // w2/m15
+	// Environment is a named subset of a Project's services (e.g. staging/
+	// production) — the second half of w1/m31's grouping feature, layered on
+	// afterward. "env" (not "evg" — that's the pre-existing, unrelated EnvGroup
+	// env-var-grouping feature).
+	Environment = Kind{prefix: "env", desc: "environment (named subset of a project's services)"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential, Blueprint}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential, Blueprint, Environment}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }
