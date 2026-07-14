@@ -45,8 +45,25 @@ jobs:
   test-dashboard:
     uses: ./.github/workflows/dashboard-test.yml
 
+  # --- secret scanning: gitleaks over the pushed commits (w7/002) ---
+  # Runs in parallel with the test gates. FAIL_ON_SECRET: false = warn-first:
+  # reports any credential hits as annotations but never blocks CI until the
+  # baseline is tuned (flip to true once false-positive rate is acceptable).
+  # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
+  # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so gitleaks can walk the pushed commit range
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAIL_ON_SECRET: false  # warn-first — tighten to true once baseline is tuned
+
   build-and-deploy:
-    needs: [test-backend, test-operator, test-dashboard]
+    needs: [test-backend, test-operator, test-dashboard, secret-scan]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
