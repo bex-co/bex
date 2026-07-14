@@ -23,6 +23,7 @@
 - [x] **m15** — `/blueprints` verbs: validate · list · sync (DONE 2026-07-13 — REST+GraphQL+MCP, `blueprint_test.go`, ADR018 updated) ← from `/pm-brainstorm more for w2` 2026-07-13, re-homed from an earlier `w1`-targeted proposal (the validate-before-apply shape is agent-safety work, not platform infra); needs `w1/m24`
 - [x] **m16** — Managed datastore plan/instance-type updates: Postgres + Key Value (11 tasks; DONE 2026-07-13 — `SetPlan` verb for Postgres + Key Value on REST/GraphQL/MCP + dashboard plan-picker cards; operator envtests confirm CNPG/Valkey resources re-reconcile on plan change; ADR018 parity rows updated) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`docs/ADR018-render-parity.md` Managed Postgres row, "No `PATCH` update yet (◐, low)"); mirrors the `apps.SetPlan` pattern already shipped for App services
 - [x] **m28** — Typed error codes: general envelope + plan-limit as first consumer (10 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, promotes `w6/014` (filed by `w6/m15`'s `/simplify` pass); materialized under `w2` per user direction (originally proposed for `w6`, where the plan-limit case originates)
+- [ ] **m29** — Dry-run/preview mode for service, Postgres, and Key Value create/update (9 tasks) ← from `/pm-brainstorm more milestones to work on for each everyone of workers` 2026-07-13; extends `w2/m15`'s `validate_bex_yml` dry-run idiom from the `bex.yml` path to direct create/update calls
 
 ## Inbox
 
