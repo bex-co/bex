@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -77,5 +78,50 @@ func TestCheckOwnershipAfterMigration(t *testing.T) {
 	defer pool.Close()
 	if err := CheckOwnership(ctx, pool); err != nil {
 		t.Errorf("CheckOwnership after clean migration: %v", err)
+	}
+}
+
+// TestMigrationNumbersAreUnique guards against a bug class that has bitten
+// this migrations directory repeatedly: golang-migrate keys a migration off
+// its leading NNNN_ number, so two files sharing one is at best a refused
+// Migrate() (a duplicate-version error) and at worst — after a manual
+// renumber — a SILENTLY skipped migration on a database whose
+// schema_migrations version is already past it (see 0012_audit_target.up.sql's
+// "HAZARD WORTH KNOWING" comment: two earlier collision-fixes renumbered
+// migrations downward, and this exact class of collision has recurred on
+// concurrent, independently-authored feature branches converging onto main —
+// most recently 0013 (fix_ownership vs notification_settings) and 0014
+// (projects vs registry_credentials), each pair authored minutes apart by
+// separate work, neither aware of the other). This test is DB-less (a plain
+// directory listing), so it runs on every `go test ./...`, not just the
+// opt-in BEX_TEST_DB_URI path — the two prior incidents both shipped through
+// review because nothing checked for the collision until a live database hit it.
+func TestMigrationNumbersAreUnique(t *testing.T) {
+	entries, err := migrationsFS.ReadDir("migrations")
+	if err != nil {
+		t.Fatalf("read embedded migrations: %v", err)
+	}
+	numberRE := regexp.MustCompile(`^(\d+)_`)
+	seen := map[string]string{} // version -> the first filename that claimed it
+	for _, e := range entries {
+		// Each migration is a .up/.down PAIR sharing one version by design —
+		// count the version once per migration, not once per file.
+		if !strings.HasSuffix(e.Name(), ".up.sql") {
+			continue
+		}
+		m := numberRE.FindStringSubmatch(e.Name())
+		if m == nil {
+			t.Errorf("migration file %q doesn't start with a NNNN_ version prefix", e.Name())
+			continue
+		}
+		version := m[1]
+		if first, dup := seen[version]; dup {
+			t.Errorf("migration version %s is used by both %q and %q — renumber one (see 0012_audit_target.up.sql for why a silent skip is worse than this test failing)", version, first, e.Name())
+			continue
+		}
+		seen[version] = e.Name()
+	}
+	if len(seen) == 0 {
+		t.Fatal("no migration files found — the embed pattern or directory is broken")
 	}
 }
