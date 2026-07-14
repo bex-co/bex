@@ -33,6 +33,7 @@
 - [x] **m27** — ~~Blueprints dashboard surface~~ **stale entry, fixed 2026-07-13**: this scope shipped as `w7/m27` (done 2026-07-13, list/detail/manifest/validate/sync, live-verified) — a concurrent `/pm-brainstorm` session materialized the identical proposal under `w7` before this README line was ever promoted to a real `w5/m27/` directory. No `w5/m27/` directory ever existed; nothing to move. See `w7/README.md`'s `m27` entry for the actual work.
 - [ ] **m28** — Dashboard SQL console for managed Postgres (8 tasks) ← from `/pm-brainstorm more` 2026-07-13 (second pass; `docs/ADR018-render-parity.md` "Read-only SQL query" row, UI cell)
 - [ ] **m29** — Deploy detail page: build log + status timeline (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (Render's per-deploy page; w5/m21 shipped the list only); build-log pane gated on `w7/m28`, coordinates with w2/m30–m32's deploy-object deepening
+- [ ] **m30** — Dockerfile path + start command in Build & Deploy settings (7 tasks) ← promotes `w6/015.md` (filed by `w6/m21`'s parity check) via `/pm-brainstorm` round 5, 2026-07-14; dashboard-only (backend shipped `w6/m21`) — `dockerfilePath` settable nowhere in the UI + `startCommand` create-only; the last unowned non-anti-goal ADR018 gap
 
 ## Inbox
 
