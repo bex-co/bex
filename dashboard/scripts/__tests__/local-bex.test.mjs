@@ -66,9 +66,13 @@ const WORKSPACE_MEMBERS_QUERY = `
 
 describe("local-bex.mjs workspaceMembers", () => {
   it("returns enriched member rows (userId + email) for the default workspace", async () => {
-    const { data, errors } = await graphql("WorkspaceMembers", WORKSPACE_MEMBERS_QUERY, {
-      workspaceId: "tea-localdefault00000001",
-    });
+    const { data, errors } = await graphql(
+      "WorkspaceMembers",
+      WORKSPACE_MEMBERS_QUERY,
+      {
+        workspaceId: "tea-localdefault00000001",
+      },
+    );
 
     expect(errors).toBeUndefined();
     expect(Array.isArray(data.workspaceMembers)).toBe(true);
@@ -95,20 +99,66 @@ describe("local-bex.mjs workspaceMembers", () => {
   });
 
   it("scopes members per workspace — an unseeded workspace returns none, not another workspace's rows", async () => {
-    const { data, errors } = await graphql("WorkspaceMembers", WORKSPACE_MEMBERS_QUERY, {
-      workspaceId: "tea-localsecond000000002",
-    });
+    const { data, errors } = await graphql(
+      "WorkspaceMembers",
+      WORKSPACE_MEMBERS_QUERY,
+      {
+        workspaceId: "tea-localsecond000000002",
+      },
+    );
 
     expect(errors).toBeUndefined();
     expect(data.workspaceMembers).toEqual([]);
   });
 
   it("returns an empty list for an unknown workspace id rather than erroring", async () => {
-    const { data, errors } = await graphql("WorkspaceMembers", WORKSPACE_MEMBERS_QUERY, {
-      workspaceId: "tea-does-not-exist",
-    });
+    const { data, errors } = await graphql(
+      "WorkspaceMembers",
+      WORKSPACE_MEMBERS_QUERY,
+      {
+        workspaceId: "tea-does-not-exist",
+      },
+    );
 
     expect(errors).toBeUndefined();
     expect(data.workspaceMembers).toEqual([]);
+  });
+});
+
+const DEPLOY_HOOK_QUERY = `
+  query DeployHook($serviceId: String!) {
+    deployHook(serviceId: $serviceId) { url }
+  }
+`;
+
+const REGENERATE_DEPLOY_HOOK_MUTATION = `
+  mutation RegenerateDeployHook($serviceId: String!) {
+    regenerateDeployHook(serviceId: $serviceId) { url }
+  }
+`;
+
+describe("local-bex.mjs deploy hooks", () => {
+  it("triggers without auth and invalidates the old URL after regeneration", async () => {
+    const firstResult = await graphql("DeployHook", DEPLOY_HOOK_QUERY, {
+      serviceId: "eden-cms-v2",
+    });
+    const firstURL = firstResult.data.deployHook.url;
+
+    const firstTrigger = await fetch(firstURL, { method: "POST" });
+    expect(firstTrigger.status).toBe(200);
+    await expect(firstTrigger.json()).resolves.toMatchObject({
+      deploy: { id: expect.stringMatching(/^dep-local-hook-/) },
+    });
+
+    const rotatedResult = await graphql(
+      "RegenerateDeployHook",
+      REGENERATE_DEPLOY_HOOK_MUTATION,
+      { serviceId: "eden-cms-v2" },
+    );
+    const rotatedURL = rotatedResult.data.regenerateDeployHook.url;
+    expect(rotatedURL).not.toBe(firstURL);
+
+    expect((await fetch(firstURL)).status).toBe(404);
+    expect((await fetch(rotatedURL)).status).toBe(200);
   });
 });

@@ -130,19 +130,20 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged       = "env_vars_changed"
-	TypeEnvGroupLinked       = "env_group_linked"
-	TypeEnvGroupUnlinked     = "env_group_unlinked"
-	TypeAutoDeployChanged    = "auto_deploy_changed"
-	TypeIdleTimeoutChanged   = "idle_timeout_changed"
-	TypeRootDirectoryChanged = "root_directory_changed"
-	TypeDisplayNameChanged   = "display_name_changed"
-	TypePreDeployChanged     = "pre_deploy_command_changed"
-	TypePublishPathChanged   = "publish_path_changed"
-	TypeRoutesChanged        = "routes_changed"
-	TypeHeadersChanged       = "headers_changed"
-	TypeCustomDomainAdded    = "custom_domain_added"
-	TypeCustomDomainRemoved  = "custom_domain_removed"
+	TypeEnvVarsChanged        = "env_vars_changed"
+	TypeEnvGroupLinked        = "env_group_linked"
+	TypeEnvGroupUnlinked      = "env_group_unlinked"
+	TypeAutoDeployChanged     = "auto_deploy_changed"
+	TypeIdleTimeoutChanged    = "idle_timeout_changed"
+	TypeRootDirectoryChanged  = "root_directory_changed"
+	TypeDisplayNameChanged    = "display_name_changed"
+	TypePreDeployChanged      = "pre_deploy_command_changed"
+	TypePublishPathChanged    = "publish_path_changed"
+	TypeRoutesChanged         = "routes_changed"
+	TypeHeadersChanged        = "headers_changed"
+	TypeCustomDomainAdded     = "custom_domain_added"
+	TypeCustomDomainRemoved   = "custom_domain_removed"
+	TypeDeployHookRegenerated = "deploy_hook_regenerated"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -158,29 +159,30 @@ const (
 //   - deploys.Trigger — the deploys row it opens IS the deploy_started event;
 //     mapping the verb too would show every API deploy twice.
 var eventTypes = map[string]string{
-	"apps.Suspend":             TypeSuspenderAdded,
-	"apps.Resume":              TypeSuspenderRemoved,
-	"apps.Restart":             TypeServerRestarted,
-	"apps.SetPlan":             TypePlanChanged,
-	"apps.Scale":               TypeInstanceCountChanged,
-	"apps.SetAutoscaling":      TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":   TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":      TypeCronJobRunStarted,
-	"apps.SetAutoDeploy":       TypeAutoDeployChanged,
-	"apps.SetIdleTTL":          TypeIdleTimeoutChanged,
-	"apps.SetRootDir":          TypeRootDirectoryChanged,
-	"apps.SetDisplayName":      TypeDisplayNameChanged,
-	"apps.SetPreDeployCommand": TypePreDeployChanged,
-	"apps.SetPublishPath":      TypePublishPathChanged,
-	"apps.SetRoutes":           TypeRoutesChanged,
-	"apps.SetHeaders":          TypeHeadersChanged,
-	"apps.AddDomain":           TypeCustomDomainAdded,
-	"apps.DeleteDomain":        TypeCustomDomainRemoved,
-	"secrets.SetEnvVars":       TypeEnvVarsChanged,
-	"secrets.SetEnvVar":        TypeEnvVarsChanged,
-	"secrets.DeleteEnvVar":     TypeEnvVarsChanged,
-	"envgroups.LinkService":    TypeEnvGroupLinked,
-	"envgroups.UnlinkService":  TypeEnvGroupUnlinked,
+	"apps.Suspend":                 TypeSuspenderAdded,
+	"apps.Resume":                  TypeSuspenderRemoved,
+	"apps.Restart":                 TypeServerRestarted,
+	"apps.SetPlan":                 TypePlanChanged,
+	"apps.Scale":                   TypeInstanceCountChanged,
+	"apps.SetAutoscaling":          TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":       TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":          TypeCronJobRunStarted,
+	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
+	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
+	"apps.SetRootDir":              TypeRootDirectoryChanged,
+	"apps.SetDisplayName":          TypeDisplayNameChanged,
+	"apps.SetPreDeployCommand":     TypePreDeployChanged,
+	"apps.SetPublishPath":          TypePublishPathChanged,
+	"apps.SetRoutes":               TypeRoutesChanged,
+	"apps.SetHeaders":              TypeHeadersChanged,
+	"apps.AddDomain":               TypeCustomDomainAdded,
+	"apps.DeleteDomain":            TypeCustomDomainRemoved,
+	"secrets.SetEnvVars":           TypeEnvVarsChanged,
+	"secrets.SetEnvVar":            TypeEnvVarsChanged,
+	"secrets.DeleteEnvVar":         TypeEnvVarsChanged,
+	"envgroups.LinkService":        TypeEnvGroupLinked,
+	"envgroups.UnlinkService":      TypeEnvGroupUnlinked,
+	"deploys.RegenerateDeployHook": TypeDeployHookRegenerated,
 }
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —
@@ -401,7 +403,7 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Type = TypeDeployStarted
 			ev.Details.Trigger = &Trigger{
 				FirstBuild: r.Trigger == store.TriggerCreate,
-				Manual:     r.Trigger == store.TriggerAPI,
+				Manual:     r.Trigger == store.TriggerAPI || r.Trigger == store.TriggerDeployHook,
 				Rollback:   r.Trigger == store.TriggerRollback,
 			}
 		} else {

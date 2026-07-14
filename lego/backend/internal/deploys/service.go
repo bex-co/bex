@@ -110,6 +110,15 @@ func view(d store.Deploy) DeployView {
 type Service struct {
 	*core.Base
 	Store DeployStore
+	// DeployHookBaseURL is BEX_API_PUBLIC_URL (for example
+	// "https://api.bex.co"). It prefixes the secret trigger path returned by the
+	// authenticated REST/GraphQL/MCP management surfaces. Empty keeps the path
+	// relative, which is useful for local tests but not a copy-ready CI URL.
+	DeployHookBaseURL string
+	// DeployHookLimiter is the token-keyed limiter for the unauthenticated deploy
+	// hook endpoint. It is deliberately separate from api.RateLimiter, whose
+	// buckets are keyed by authenticated caller. Nil uses the fixed v1 default.
+	DeployHookLimiter *DeployHookRateLimiter
 	// BuildNamespace is BEX_BUILD_NAMESPACE — the namespace Cancel looks for a
 	// repo-backed App's in-flight build Job in (lego/operator's own build
 	// namespace, must match so the Job identity resolves); empty falls back to
@@ -296,6 +305,14 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	if err != nil {
 		return DeployView{}, err
 	}
+	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
+}
+
+// triggerFetched is the one deploy-trigger implementation shared by the
+// authenticated Trigger verb and the secret-URL deploy hook. The caller owns
+// the authentication boundary and supplies an already-resolved App; everything
+// after that boundary (validation, CR patch, deploy-history row) is identical.
+func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1alpha1.App, p TriggerParams, trigger string) (DeployView, error) {
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
@@ -326,7 +343,7 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateDeploy(ctx, appID, store.TriggerAPI, a.Spec.Image, a.Generation)
+	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, a.Generation)
 	if err != nil {
 		return DeployView{}, err
 	}

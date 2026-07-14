@@ -1,0 +1,13 @@
+# Deploy Hook management (w2/m33). Both operations return the same sensitive
+# {url} shape as REST/MCP; the URL itself triggers a deploy without an API key.
+query DeployHook($serviceId: String!) {
+  deployHook(serviceId: $serviceId) {
+    url
+  }
+}
+
+mutation RegenerateDeployHook($serviceId: String!) {
+  regenerateDeployHook(serviceId: $serviceId) {
+    url
+  }
+}

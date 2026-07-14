@@ -208,6 +208,16 @@ const CRON = {
 
 const SERVICES = [SERVICE, WORKER, CRON];
 
+// Secret Deploy Hook URLs (w2/m33). These are synthetic dev-only values, kept
+// per service so the Settings control can reveal/copy/rotate offline.
+const DEPLOY_HOOKS = new Map(
+  SERVICES.map((service) => [
+    service.id,
+    `http://localhost:${PORT}/v1/deploy-hooks/dhk-local-${service.id}-1`,
+  ]),
+);
+let deployHookGeneration = 1;
+
 // Per-service deploy-event history (w5/m7). Seeded with a few realistic entries
 // for the web service; other services start empty. TriggerDeploy/Cancel/Rollback
 // prepend to the appropriate list so the Events tab reflects mutations. Shape
@@ -293,7 +303,12 @@ function domainTypeFor(name) {
 // platform host. Mirrors lego/backend/internal/apps/domains.go dnsRecordFor.
 function dnsRecordFor(name, platformHost) {
   if (domainTypeFor(name) === "apex") {
-    return { __typename: "DNSRecord", type: "ALIAS", name: "@", value: platformHost };
+    return {
+      __typename: "DNSRecord",
+      type: "ALIAS",
+      name: "@",
+      value: platformHost,
+    };
   }
   // Subdomain (>= 3 labels here — apex returned above): strip the trailing two
   // labels (the root zone) to get the record name (www.example.com -> "www").
@@ -611,7 +626,9 @@ function history(count, resource) {
   const now = Date.now();
   const out = [];
   for (let i = count - 1; i >= 0; i--) {
-    out.push(line(new Date(now - i * 3000).toISOString(), count - 1 - i, resource));
+    out.push(
+      line(new Date(now - i * 3000).toISOString(), count - 1 - i, resource),
+    );
   }
   return out;
 }
@@ -764,14 +781,40 @@ function resolveGraphQL({ operationName, variables = {} }) {
         image: variables.image ?? null,
       };
       SERVICES.push(svc);
+      DEPLOY_HOOKS.set(
+        svc.id,
+        `http://localhost:${PORT}/v1/deploy-hooks/dhk-local-${svc.id}-1`,
+      );
       // Simulate async rollout: transition Pending → Building → Running.
-      setTimeout(() => { svc.phase = "Building"; }, 2000);
-      setTimeout(() => { svc.phase = "Running"; }, 6000);
+      setTimeout(() => {
+        svc.phase = "Building";
+      }, 2000);
+      setTimeout(() => {
+        svc.phase = "Running";
+      }, 6000);
       return { createService: svc };
     }
     case "Server":
       // null for an unknown id — never borrow another service's object.
       return { server: serviceById(variables.id) };
+    case "DeployHook": {
+      const service = serviceById(variables.serviceId);
+      return {
+        deployHook: service
+          ? { __typename: "DeployHook", url: DEPLOY_HOOKS.get(service.id) }
+          : null,
+      };
+    }
+    case "RegenerateDeployHook": {
+      const service = serviceById(variables.serviceId);
+      if (!service) throw new Error("not found");
+      deployHookGeneration += 1;
+      const url = `http://localhost:${PORT}/v1/deploy-hooks/dhk-local-${service.id}-${deployHookGeneration}`;
+      DEPLOY_HOOKS.set(service.id, url);
+      return {
+        regenerateDeployHook: { __typename: "DeployHook", url },
+      };
+    }
     case "SetDisplayName": {
       const svc = serviceById(variables.id);
       if (!svc) throw new Error("not found");
@@ -783,6 +826,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
       // from the in-memory store so a subsequent Services list omits it.
       const i = SERVICES.findIndex((s) => s.id === variables.id);
       if (i >= 0) SERVICES.splice(i, 1);
+      DEPLOY_HOOKS.delete(variables.id);
       return { deleteService: true };
     }
     case "ScaleService": {
@@ -838,14 +882,16 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // Bandwidth; build_seconds drives Build Minutes. Values vary by period so the
     // trend view shows distinct bars across the last 3 months.
     case "Usage": {
-      const period = variables.period || (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      })();
+      const period =
+        variables.period ||
+        (() => {
+          const d = new Date();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        })();
       // Scale values by month offset so historical periods show lower totals.
       const [, mm] = period.split("-").map(Number);
       const currentMm = new Date().getMonth() + 1;
-      const monthsBack = ((currentMm - mm + 12) % 12);
+      const monthsBack = (currentMm - mm + 12) % 12;
       const scale = Math.max(0.3, 1 - monthsBack * 0.25);
       // Compute a synthetic estimatedCost matching the price sheet (pricing.yaml):
       // starter compute: $4.90/mo per 2,628,000 s; egress: $0.01/GB; build: $0.0035/min
@@ -855,11 +901,39 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const computeCost = (starterSecs * 0.000001864554).toFixed(2);
       const bandwidthCost = (egressBytes * 0.000000000009313226).toFixed(2);
       const buildCost = (buildSecs * 0.000058333333).toFixed(2);
-      const totalCost = (starterSecs * 0.000001864554 + egressBytes * 0.000000000009313226 + buildSecs * 0.000058333333).toFixed(2);
+      const totalCost = (
+        starterSecs * 0.000001864554 +
+        egressBytes * 0.000000000009313226 +
+        buildSecs * 0.000058333333
+      ).toFixed(2);
       const meters = [
-        parseFloat(computeCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "instance_seconds", tier: "starter", resourceKind: "service", costUsd: computeCost } : null,
-        parseFloat(bandwidthCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "egress_bytes", tier: "", resourceKind: "service", costUsd: bandwidthCost } : null,
-        parseFloat(buildCost) >= 0.005 ? { __typename: "MeterEstimate", kind: "build_seconds", tier: "", resourceKind: "service", costUsd: buildCost } : null,
+        parseFloat(computeCost) >= 0.005
+          ? {
+              __typename: "MeterEstimate",
+              kind: "instance_seconds",
+              tier: "starter",
+              resourceKind: "service",
+              costUsd: computeCost,
+            }
+          : null,
+        parseFloat(bandwidthCost) >= 0.005
+          ? {
+              __typename: "MeterEstimate",
+              kind: "egress_bytes",
+              tier: "",
+              resourceKind: "service",
+              costUsd: bandwidthCost,
+            }
+          : null,
+        parseFloat(buildCost) >= 0.005
+          ? {
+              __typename: "MeterEstimate",
+              kind: "build_seconds",
+              tier: "",
+              resourceKind: "service",
+              costUsd: buildCost,
+            }
+          : null,
       ].filter(Boolean);
       return {
         usage: {
@@ -872,9 +946,24 @@ function resolveGraphQL({ operationName, variables = {} }) {
               serviceId: "eden-cms-v2",
               resourceKind: "service",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(432000 * scale) },
-                { __typename: "UsageRow", kind: "egress_bytes", tier: "", total: Math.round(524288000 * scale) },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(1800 * scale) },
+                {
+                  __typename: "UsageRow",
+                  kind: "instance_seconds",
+                  tier: "starter",
+                  total: Math.round(432000 * scale),
+                },
+                {
+                  __typename: "UsageRow",
+                  kind: "egress_bytes",
+                  tier: "",
+                  total: Math.round(524288000 * scale),
+                },
+                {
+                  __typename: "UsageRow",
+                  kind: "build_seconds",
+                  tier: "",
+                  total: Math.round(1800 * scale),
+                },
               ],
             },
             {
@@ -882,8 +971,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
               serviceId: "email-worker",
               resourceKind: "service",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(216000 * scale) },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(900 * scale) },
+                {
+                  __typename: "UsageRow",
+                  kind: "instance_seconds",
+                  tier: "starter",
+                  total: Math.round(216000 * scale),
+                },
+                {
+                  __typename: "UsageRow",
+                  kind: "build_seconds",
+                  tier: "",
+                  total: Math.round(900 * scale),
+                },
               ],
             },
             {
@@ -891,8 +990,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
               serviceId: "nightly-report",
               resourceKind: "service",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "free", total: Math.round(3600 * scale) },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(300 * scale) },
+                {
+                  __typename: "UsageRow",
+                  kind: "instance_seconds",
+                  tier: "free",
+                  total: Math.round(3600 * scale),
+                },
+                {
+                  __typename: "UsageRow",
+                  kind: "build_seconds",
+                  tier: "",
+                  total: Math.round(300 * scale),
+                },
               ],
             },
           ],
@@ -907,10 +1016,34 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "InstanceTypes":
       return {
         instanceTypes: [
-          { __typename: "InstanceType", id: "free", name: "Free", cpu: "0.1", memory: "512Mi" },
-          { __typename: "InstanceType", id: "starter", name: "Starter", cpu: "0.5", memory: "1Gi" },
-          { __typename: "InstanceType", id: "standard", name: "Standard", cpu: "1", memory: "2Gi" },
-          { __typename: "InstanceType", id: "pro", name: "Pro", cpu: "2", memory: "4Gi" },
+          {
+            __typename: "InstanceType",
+            id: "free",
+            name: "Free",
+            cpu: "0.1",
+            memory: "512Mi",
+          },
+          {
+            __typename: "InstanceType",
+            id: "starter",
+            name: "Starter",
+            cpu: "0.5",
+            memory: "1Gi",
+          },
+          {
+            __typename: "InstanceType",
+            id: "standard",
+            name: "Standard",
+            cpu: "1",
+            memory: "2Gi",
+          },
+          {
+            __typename: "InstanceType",
+            id: "pro",
+            name: "Pro",
+            cpu: "2",
+            memory: "4Gi",
+          },
         ],
       };
     case "EnvVarKeys":
@@ -919,7 +1052,11 @@ function resolveGraphQL({ operationName, variables = {} }) {
       };
     case "SecretFileNames":
       return {
-        service: { __typename: "Service", id: variables.id, secretFileNames: [] },
+        service: {
+          __typename: "Service",
+          id: variables.id,
+          secretFileNames: [],
+        },
       };
     case "EnvGroups":
       return { envGroups: [] };
@@ -976,7 +1113,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // empty invites list with no error, so the page still renders read-write
     // controls (`canManage` only goes false on an actual GraphQL error).
     case "WorkspaceMembers":
-      return { workspaceMembers: byOwner(WORKSPACE_MEMBERS, variables.workspaceId) };
+      return {
+        workspaceMembers: byOwner(WORKSPACE_MEMBERS, variables.workspaceId),
+      };
     // No pending invites seeded — an empty list renders the Team page's real
     // empty state instead of a console warning.
     case "WorkspaceInvites":
@@ -1081,7 +1220,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "KeyValues":
       return { keyValues: KEY_VALUES };
     case "KeyValue":
-      return { keyValue: KEY_VALUES.find((k) => k.id === variables.id) ?? null };
+      return {
+        keyValue: KEY_VALUES.find((k) => k.id === variables.id) ?? null,
+      };
     case "KeyValueInstanceTypes":
       return { keyValueInstanceTypes: KV_INSTANCE_TYPES };
     case "KeyValueIpAllowList":
@@ -1191,10 +1332,14 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // exercised offline (docs/ADR032-environments.md).
     case "Environments":
       return {
-        environments: ENVIRONMENTS.filter((e) => e.projectId === variables.projectId),
+        environments: ENVIRONMENTS.filter(
+          (e) => e.projectId === variables.projectId,
+        ),
       };
     case "Environment":
-      return { environment: ENVIRONMENTS.find((e) => e.id === variables.id) ?? null };
+      return {
+        environment: ENVIRONMENTS.find((e) => e.id === variables.id) ?? null,
+      };
     case "CreateEnvironment": {
       const project = PROJECTS.find((p) => p.id === variables.projectId);
       const created = {
@@ -1229,7 +1374,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
       // assigning it here evicts it from every other environment.
       for (const other of ENVIRONMENTS) {
         if (other.id !== e.id) {
-          other.serviceIds = other.serviceIds.filter((s) => !wanted.includes(s));
+          other.serviceIds = other.serviceIds.filter(
+            (s) => !wanted.includes(s),
+          );
         }
       }
       // Auto-join the parent project (docs/ADR032): a service "in an
@@ -1321,7 +1468,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
       const e = evts.find((ev) => ev.id === variables.deployId);
       if (e) e.details.deployStatus = "canceled";
-      return { cancelDeploy: { __typename: "Deploy", id: variables.deployId, status: "canceled" } };
+      return {
+        cancelDeploy: {
+          __typename: "Deploy",
+          id: variables.deployId,
+          status: "canceled",
+        },
+      };
     }
     // RollbackService: prepend a rollback-triggered deploy event.
     case "RollbackService": {
@@ -1364,7 +1517,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "SetHealthCheckPath": {
       const svc = serviceById(variables.id);
       if (svc) svc.healthCheckPath = variables.path || "/";
-      return { setHealthCheckPath: { __typename: "Service", id: variables.id, healthCheckPath: svc?.healthCheckPath ?? variables.path } };
+      return {
+        setHealthCheckPath: {
+          __typename: "Service",
+          id: variables.id,
+          healthCheckPath: svc?.healthCheckPath ?? variables.path,
+        },
+      };
     }
     // Blueprints (w7/m27) — no seeded blueprints in the dev stub; return an
     // empty list so Apollo's InMemoryCache doesn't log "Missing field" warnings
@@ -1374,7 +1533,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "Blueprint":
       return { blueprint: null };
     case "ValidateBlueprint":
-      return { validateBlueprint: { __typename: "BlueprintValidationResult", valid: true, errors: [] } };
+      return {
+        validateBlueprint: {
+          __typename: "BlueprintValidationResult",
+          valid: true,
+          errors: [],
+        },
+      };
     case "SyncBlueprint":
       return { syncBlueprint: null };
     default:
@@ -1448,7 +1613,14 @@ const server = createServer((req, res) => {
               node_type: "input",
             },
             messages: [],
-            meta: { label: { id: 1070002, text: "E-Mail", type: "info", context: { title: "E-Mail" } } },
+            meta: {
+              label: {
+                id: 1070002,
+                text: "E-Mail",
+                type: "info",
+                context: { title: "E-Mail" },
+              },
+            },
           },
           {
             type: "input",
@@ -1477,6 +1649,22 @@ const server = createServer((req, res) => {
         id: "local-dev-user",
         traits: { email: "dev@localhost" },
       },
+    });
+  }
+
+  // Open Deploy Hook trigger (w2/m33): credential is the full secret URL, so
+  // no session/API-key check applies in either the real API or this dev stub.
+  if (
+    url.pathname.startsWith("/v1/deploy-hooks/") &&
+    (req.method === "GET" || req.method === "POST")
+  ) {
+    const hook = [...DEPLOY_HOOKS.entries()].find(([, value]) => {
+      const hookURL = new URL(value);
+      return hookURL.pathname === url.pathname;
+    });
+    if (!hook) return json(res, 404, { error: "app not found" });
+    return json(res, 200, {
+      deploy: { id: `dep-local-hook-${Date.now().toString(36)}` },
     });
   }
 
@@ -1523,7 +1711,9 @@ const server = createServer((req, res) => {
     const timer = setInterval(() => {
       const entry = line(new Date().toISOString(), seq, resource);
       if (!text || entry.message.toLowerCase().includes(text)) {
-        res.write(`data: ${JSON.stringify(renderLog(entry, seq, resource))}\n\n`);
+        res.write(
+          `data: ${JSON.stringify(renderLog(entry, seq, resource))}\n\n`,
+        );
       }
       seq++;
     }, 1500);

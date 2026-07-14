@@ -1222,6 +1222,75 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更改自动部署，请重试。",
     description: "Toast after setAutoDeploy fails",
   },
+  "services.deployHookTitle": {
+    message: "部署钩子",
+    description: "Settings tab: secret Deploy Hook section title",
+  },
+  "services.deployHookDescription": {
+    message: "使用一个机密 URL 从 CI 触发部署。",
+    description: "Settings tab: Deploy Hook section description",
+  },
+  "services.deployHookURLLabel": {
+    message: "部署钩子 URL",
+    description: "Accessible label for the secret Deploy Hook URL field",
+  },
+  "services.deployHookReveal": {
+    message: "显示部署钩子 URL",
+    description: "Accessible label for the reveal-secret button",
+  },
+  "services.deployHookHide": {
+    message: "隐藏部署钩子 URL",
+    description: "Accessible label for the hide-secret button",
+  },
+  "services.deployHookCopy": {
+    message: "复制部署钩子 URL",
+    description: "Accessible label for the Deploy Hook copy button",
+  },
+  "services.deployHookCopied": {
+    message: "已复制部署钩子 URL。",
+    description: "Toast after copying the Deploy Hook URL",
+  },
+  "services.deployHookCopyError": {
+    message: "无法复制部署钩子 URL。",
+    description: "Toast after Deploy Hook URL clipboard failure",
+  },
+  "services.deployHookSecretHint": {
+    message: "请保密此 URL。任何持有它的人无需 API 密钥即可部署此服务。",
+    description: "Security warning below the Deploy Hook URL",
+  },
+  "services.deployHookRegenerate": {
+    message: "重新生成钩子",
+    description: "Deploy Hook rotation button",
+  },
+  "services.deployHookRegenerateTitle": {
+    message: "重新生成部署钩子？",
+    description: "Deploy Hook rotation confirmation title",
+  },
+  "services.deployHookRegenerateWarning": {
+    message:
+      "当前 URL 将立即失效。请更新使用它的所有 CI 系统、定时任务和集成。",
+    description: "Deploy Hook rotation confirmation warning",
+  },
+  "services.deployHookCancel": {
+    message: "取消",
+    description: "Deploy Hook rotation confirmation cancel button",
+  },
+  "services.deployHookRegenerateConfirm": {
+    message: "重新生成",
+    description: "Deploy Hook rotation confirmation action",
+  },
+  "services.deployHookRegenerated": {
+    message: "部署钩子已重新生成，旧 URL 已失效。",
+    description: "Toast after successful Deploy Hook rotation",
+  },
+  "services.deployHookRegenerateError": {
+    message: "无法重新生成部署钩子，请重试。",
+    description: "Toast after Deploy Hook rotation fails",
+  },
+  "services.deployHookLoadError": {
+    message: "无法加载部署钩子 URL。",
+    description: "Deploy Hook section query error",
+  },
   "services.colType": {
     message: "类型",
     description: "Services table column header (service type)",
@@ -1915,7 +1984,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsPreDeployFailed": {
     message: "预部署命令失败",
-    description: "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
+    description:
+      "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
   },
   "services.eventsRolledBackFrom": {
     message: "从 {target} 回滚",

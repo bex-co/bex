@@ -50,6 +50,17 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var deployHookGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DeployHook",
+	Fields: graphql.Fields{
+		"url": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h DeployHookView) any { return h.URL })},
+	},
+})
+
+var deployHookArgs = graphql.FieldConfigArgument{
+	"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+}
+
 // GraphQLQuery returns the deploys(serviceId, …) field for the composition
 // root to merge into the root Query. The filter arguments (w2/m31) mirror the
 // REST query params 1:1 — status/createdBefore/createdAfter/cursor/limit —
@@ -57,6 +68,15 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 // differently; all absent means the full history, the pre-m31 contract.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
+		// deployHook is the sensitive settings read. It lazily mints the service's
+		// stable secret URL and returns the same {url} shape as REST/MCP.
+		"deployHook": &graphql.Field{
+			Type: deployHookGQLType,
+			Args: deployHookArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetDeployHook(p.Context, p.Args["serviceId"].(string))
+			},
+		},
 		"deploys": &graphql.Field{
 			Type: graphql.NewList(deployGQLType),
 			Args: graphql.FieldConfigArgument{
@@ -124,6 +144,13 @@ var deployMutationArgs = graphql.FieldConfigArgument{
 // cancelDeploy/rollbackService follow the suspendService/resumeService convention.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
+		"regenerateDeployHook": &graphql.Field{
+			Type: deployHookGQLType,
+			Args: deployHookArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.RegenerateDeployHook(p.Context, p.Args["serviceId"].(string))
+			},
+		},
 		"triggerDeploy": &graphql.Field{
 			Type: deployGQLType,
 			Args: graphql.FieldConfigArgument{

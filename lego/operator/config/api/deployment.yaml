@@ -41,6 +41,8 @@ spec:
           env:
             - name: BEX_API_ADDR
               value: ":8090"
+            - name: BEX_API_PUBLIC_URL # public origin used in copy-ready deploy-hook URLs
+              value: https://api.bex.co
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's

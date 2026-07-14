@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -87,6 +88,42 @@ func staticLogs(lines map[string][]string) logs.PodLogSource {
 	return func(_ context.Context, _, pod, _ string, _ int64) (io.ReadCloser, error) {
 		return io.NopCloser(strings.NewReader(strings.Join(lines[pod], "\n"))), nil
 	}
+}
+
+// deployHookStore is the smallest control-plane store needed to prove the
+// composed public Deploy Hook route reaches the shared deploy trigger. The
+// other methods satisfy deploys.DeployStore but are not part of this test.
+type deployHookStore struct{}
+
+func (deployHookStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (store.Deploy, error) {
+	return store.Deploy{
+		ID:         "dep-public-hook",
+		AppID:      appID,
+		Trigger:    trigger,
+		Image:      image,
+		Generation: generation,
+		Status:     store.DeployUpdateInProgress,
+	}, nil
+}
+
+func (deployHookStore) CreateRollbackDeploy(context.Context, string, string, string) (store.Deploy, error) {
+	return store.Deploy{}, errors.New("unexpected CreateRollbackDeploy")
+}
+
+func (deployHookStore) ListDeploys(context.Context, string, store.DeployFilter) ([]store.Deploy, error) {
+	return nil, errors.New("unexpected ListDeploys")
+}
+
+func (deployHookStore) GetDeploy(context.Context, string, string) (store.Deploy, error) {
+	return store.Deploy{}, errors.New("unexpected GetDeploy")
+}
+
+func (deployHookStore) CloseDeploy(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("unexpected CloseDeploy")
+}
+
+func (deployHookStore) SetAppImage(context.Context, string, string) error {
+	return errors.New("unexpected SetAppImage")
 }
 
 // serverWith builds a fully wired, auth-gated handler over the given base + deps.
@@ -252,6 +289,47 @@ func TestGitWebhookBypassesAuthGate(t *testing.T) {
 	// webhook is not gated, so it answers its own 503 (secret unset).
 	if code := do(t, h, "POST", "/v1/webhooks/git", "", "{}").Code; code != 503 {
 		t.Errorf("webhook with no secret => 503 (reached, ungated), got %d", code)
+	}
+}
+
+// TestDeployHookBypassesAuthGate proves the hook's secret URL is its complete
+// credential at the composed server boundary. It must reach the deploy handler
+// without OAuth while ordinary /v1 routes remain protected by Hydra.
+func TestDeployHookBypassesAuthGate(t *testing.T) {
+	a := sampleApp("web")
+	a.Labels = map[string]string{store.LabelAppID: "srv-web"}
+	srv := NewServer(&core.Base{Client: fakeClient(a), Namespace: "default"}, Deps{
+		DeployStore: deployHookStore{},
+	})
+	// One request exhausts the authenticated caller limiter. Both hook calls
+	// below must still pass through their separate two-request hook bucket.
+	srv.RateLimiter = NewRateLimiter(0.01, 1)
+	// No bearer request in this test needs introspection; a non-empty URL is
+	// enough to build the auth gate without opening an unnecessary test socket.
+	srv.HydraAdminURL = "http://hydra.invalid"
+
+	hook, err := srv.Deploys.GetDeployHook(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("GetDeployHook: %v", err)
+	}
+	h := buildHandler(t, srv)
+
+	for i := range 2 {
+		if w := do(t, h, http.MethodPost, hook.URL, "", ""); w.Code != http.StatusOK {
+			t.Fatalf("public hook call %d without OAuth = %d %s, want 200", i+1, w.Code, w.Body.String())
+		}
+	}
+	for _, path := range []string{
+		"/v1/deploy-hooks/not-a-token",
+		"/v1/deploy-hooks/not/even/one/segment",
+		"/v1/deploy-hooks",
+	} {
+		if w := do(t, h, http.MethodPost, path, "", ""); w.Code != http.StatusNotFound {
+			t.Fatalf("invalid hook %q without OAuth = %d %s, want handler 404", path, w.Code, w.Body.String())
+		}
+	}
+	if w := do(t, h, http.MethodGet, "/v1/services", "", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("ordinary /v1 route without OAuth = %d, want 401", w.Code)
 	}
 }
 

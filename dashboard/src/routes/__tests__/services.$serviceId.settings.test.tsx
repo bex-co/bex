@@ -87,6 +87,19 @@ vi.mock("@/features/services/hooks/use-display-name", () => ({
   }),
 }));
 
+// DeployHookSection (w2/m33) owns an Apollo query/mutation pair. Keep this page
+// test on section composition while the component/hook suites cover the real
+// reveal, copy, rotation, and failure behavior.
+vi.mock("@/features/services/hooks/use-deploy-hook", () => ({
+  useDeployHook: () => ({
+    url: "https://api.bex.co/v1/deploy-hooks/dhk-test",
+    loading: false,
+    error: undefined,
+    regenerate: vi.fn(async () => true),
+    regenerating: false,
+  }),
+}));
+
 // CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
 vi.mock("@/features/services/hooks/use-cron-job", () => ({
   useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),
@@ -186,6 +199,7 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
     expect(screen.getByText("Instance count")).toBeInTheDocument();
+    expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
 

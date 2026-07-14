@@ -49,6 +49,10 @@ type getDeployArgs struct {
 	DeployID  string `json:"deployId" jsonschema:"the deploy id (dep-…), as returned by list_deploys"`
 }
 
+type serviceArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+}
+
 // listDeploysResult wraps the array — MCP tool outputs must be JSON objects.
 // Cursor (w2/m31) is the bex-shaped equivalent of Render's trailing
 // `cursor: <value>` text marker (its tool appends it after the deploys JSON;
@@ -62,6 +66,22 @@ type listDeploysResult struct {
 
 // RegisterMCP adds the deploy-history tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_deploy_hook",
+		Description: "Get (or lazily create) a service's secret deploy-hook URL. Anyone holding the URL can trigger a deploy without an API key; treat it as a credential and do not log it. bex extension: Render exposes this only in its dashboard.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, DeployHookView, error) {
+		hook, err := s.GetDeployHook(ctx, in.ServiceID)
+		return nil, hook, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "regenerate_deploy_hook",
+		Description: "Rotate a service's secret deploy-hook URL. The old URL stops working immediately, so update every CI system that used it. bex extension: Render exposes this only in its dashboard.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, DeployHookView, error) {
+		hook, err := s.RegenerateDeployHook(ctx, in.ServiceID)
+		return nil, hook, err
+	})
+
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
 		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live, *_failed, or canceled. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",

@@ -169,6 +169,9 @@ type Deps struct {
 	// the operator's own BEX_BUILD_NAMESPACE for the Job identity to resolve.
 	// Empty falls back to the App's own namespace (the operator's own default).
 	DeployBuildNamespace string
+	// DeployHookBaseURL is BEX_API_PUBLIC_URL — the externally reachable API
+	// origin used to make secret deploy-hook URLs copy-ready for CI systems.
+	DeployHookBaseURL string
 	// EventStore, when set (the control-plane store is wired), backs the
 	// per-service events feed (w3/m7) — a VIEW over the deploys + audit_events
 	// rows the store already holds, adding no writes of its own. nil => the feed
@@ -328,8 +331,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 		KeyValue:  kv,
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
 		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
-		Deploys:   &deploys.Service{Base: base, Store: d.DeployStore, BuildNamespace: d.DeployBuildNamespace},
-		Events:    &events.Service{Base: base, Store: d.EventStore},
+		Deploys: &deploys.Service{
+			Base:              base,
+			Store:             d.DeployStore,
+			BuildNamespace:    d.DeployBuildNamespace,
+			DeployHookBaseURL: d.DeployHookBaseURL,
+			DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
+		},
+		Events: &events.Service{Base: base, Store: d.EventStore},
 		Workspaces: &workspaces.Service{
 			Base:         base,
 			Store:        d.WorkspaceStore,
@@ -499,6 +508,15 @@ func (s *Server) Handler() (http.Handler, error) {
 	// wins in net/http's mux). A git host can't present a bearer token.
 	if s.Apps != nil {
 		mux.Handle("POST /v1/webhooks/git", &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret})
+	}
+	// Deploy hooks authenticate with the unguessable URL token itself. Mount the
+	// whole prefix outside OAuth so malformed credentials containing an extra
+	// slash still reach the hook handler's uniform 404 instead of falling through
+	// to the authenticated /v1 wildcard and becoming a distinguishing 401.
+	if s.Deploys != nil {
+		hook := s.Deploys.DeployHookHandler()
+		mux.Handle("/v1/deploy-hooks", hook)
+		mux.Handle("/v1/deploy-hooks/", hook)
 	}
 	// All three adapters sit behind the same auth gate, with rate limiting inside
 	// the auth wrapper so the limiter keys on the resolved caller Identity.

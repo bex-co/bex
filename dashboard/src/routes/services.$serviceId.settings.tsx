@@ -20,6 +20,7 @@ import { StaticSiteSection } from "@/features/services/components/static-site-se
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
+import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import {
   isCron,
   isStaticSite,
@@ -162,6 +163,8 @@ export function ServiceSettingsPage() {
           <PlatformSubdomainSection url={service?.url ?? null} />
         </>
       )}
+
+      <DeployHookSection serviceId={serviceId} />
 
       {/* Danger zone: type-to-confirm delete (every service type). Only once the
           service has loaded — the confirm matches against its immutable id. */}

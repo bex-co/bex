@@ -1242,6 +1242,76 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't change Auto-Deploy. Please try again.",
     description: "Toast after setAutoDeploy fails",
   },
+  "services.deployHookTitle": {
+    message: "Deploy Hook",
+    description: "Settings tab: secret Deploy Hook section title",
+  },
+  "services.deployHookDescription": {
+    message: "Trigger a deploy from CI with a single secret URL.",
+    description: "Settings tab: Deploy Hook section description",
+  },
+  "services.deployHookURLLabel": {
+    message: "Deploy Hook URL",
+    description: "Accessible label for the secret Deploy Hook URL field",
+  },
+  "services.deployHookReveal": {
+    message: "Reveal Deploy Hook URL",
+    description: "Accessible label for the reveal-secret button",
+  },
+  "services.deployHookHide": {
+    message: "Hide Deploy Hook URL",
+    description: "Accessible label for the hide-secret button",
+  },
+  "services.deployHookCopy": {
+    message: "Copy Deploy Hook URL",
+    description: "Accessible label for the Deploy Hook copy button",
+  },
+  "services.deployHookCopied": {
+    message: "Deploy Hook URL copied.",
+    description: "Toast after copying the Deploy Hook URL",
+  },
+  "services.deployHookCopyError": {
+    message: "Couldn't copy the Deploy Hook URL.",
+    description: "Toast after Deploy Hook URL clipboard failure",
+  },
+  "services.deployHookSecretHint": {
+    message:
+      "Keep this URL secret. Anyone who has it can deploy this service without an API key.",
+    description: "Security warning below the Deploy Hook URL",
+  },
+  "services.deployHookRegenerate": {
+    message: "Regenerate Hook",
+    description: "Deploy Hook rotation button",
+  },
+  "services.deployHookRegenerateTitle": {
+    message: "Regenerate the Deploy Hook?",
+    description: "Deploy Hook rotation confirmation title",
+  },
+  "services.deployHookRegenerateWarning": {
+    message:
+      "The current URL will stop working immediately. Update every CI system, cron job, and integration that uses it.",
+    description: "Deploy Hook rotation confirmation warning",
+  },
+  "services.deployHookCancel": {
+    message: "Cancel",
+    description: "Deploy Hook rotation confirmation cancel button",
+  },
+  "services.deployHookRegenerateConfirm": {
+    message: "Regenerate",
+    description: "Deploy Hook rotation confirmation action",
+  },
+  "services.deployHookRegenerated": {
+    message: "Deploy Hook regenerated. The old URL no longer works.",
+    description: "Toast after successful Deploy Hook rotation",
+  },
+  "services.deployHookRegenerateError": {
+    message: "Couldn't regenerate the Deploy Hook. Please try again.",
+    description: "Toast after Deploy Hook rotation fails",
+  },
+  "services.deployHookLoadError": {
+    message: "Couldn't load the Deploy Hook URL.",
+    description: "Deploy Hook section query error",
+  },
   "services.colType": {
     message: "Type",
     description: "Services table column header (service type)",
@@ -1945,7 +2015,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsPreDeployFailed": {
     message: "Pre-deploy command failed",
-    description: "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
+    description:
+      "Deploy row: the pre-deploy step failed (distinct from a health-check failure)",
   },
   "services.eventsRolledBackFrom": {
     message: "Rolled back from {target}",

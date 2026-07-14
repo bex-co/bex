@@ -109,16 +109,18 @@ const (
 // both the writers (CreateApp, deploys.Trigger/Rollback) and the readers (the
 // events feed's deploy_started trigger flags, internal/events) spell it.
 const (
-	TriggerCreate   = "create"   // the app's first deploy, opened by CreateApp
-	TriggerAPI      = "api"      // an explicit POST .../deploys
-	TriggerRollback = "rollback" // a deploy created by Rollback (w2/m10), restoring an earlier image
+	TriggerCreate     = "create"      // the app's first deploy, opened by CreateApp
+	TriggerAPI        = "api"         // an authenticated POST .../deploys
+	TriggerDeployHook = "deploy_hook" // the App's unauthenticated secret-URL trigger
+	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
 )
 
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
 // first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),
-// or "rollback" (w2/m10: a deploy created by Rollback, RollbackOf naming the
-// source deploy it restores). Commit is omitted here — it stays empty until
+// "deploy_hook" (the service's secret URL), or "rollback" (w2/m10: a deploy
+// created by Rollback, RollbackOf naming the source deploy it restores). Commit
+// is omitted here — it stays empty until
 // w1/m5 tracks build-from-git commits; callers project it out rather than
 // surface an always-empty field. ResolvedImage is the image this deploy
 // actually put into the cluster (backfilled by CloseDeploy once the deploy

@@ -32,7 +32,7 @@ A named workspace is honored **only after** `WorkspaceResolver.IsMember` confirm
 
 ## Auth
 
-Every route except `GET /healthz` requires real, per-client credentials from the auth substrate ([ADR012-auth.md](ADR012-auth.md)) — **there is no shared static token**:
+Every route except `GET /healthz` and the two narrowly credential-gated callbacks (`POST /v1/webhooks/git`, authenticated by HMAC, and `GET`/`POST /v1/deploy-hooks/{token}`, authenticated by the secret URL token) requires real, per-client credentials from the auth substrate ([ADR012-auth.md](ADR012-auth.md)) — **there is no shared static token**:
 
 - **API keys (machines)** — an API key _is_ an OAuth2 client (`client_credentials` grant). Exchange it for a short-lived bearer token, then call the API:
 
@@ -68,6 +68,9 @@ Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the 
 | `POST /v1/services/{id}/suspend` | `spec.suspended = true` | 202 |
 | `POST /v1/services/{id}/resume` | `spec.suspended = false` | 202 |
 | `POST /v1/services/{id}/scale` | `spec.replicas = numInstances` | 202 |
+| `GET /v1/services/{id}/deploy-hook` | reveal or lazily mint the secret deploy-hook URL (sensitive-read permission) | 200 |
+| `POST /v1/services/{id}/deploy-hook/regenerate` | rotate the secret deploy-hook URL; the old URL immediately becomes unknown | 200 |
+| `GET` / `POST /v1/deploy-hooks/{token}` | trigger a deploy with the URL credential itself; no API key | 200 |
 | `POST /v1/cron-jobs/{id}/runs` | trigger a one-off run of a `cron_job` (`spec.runAt = now`); also `POST /v1/services/{id}/runs` | 201 |
 | `POST /v1/webhooks/git` | HMAC-verified push → redeploy (ungated) | 200 |
 
@@ -124,7 +127,7 @@ A `bex.yml` is render.yaml's Blueprint shape: a top-level **`services:`** list +
 | `generateValue`, `sync:false` | ✖ | rejected (named error) — bex secrets come via the env-vars API, not blueprint-time |
 | `fromGroup`, `envVarGroups` | ✖ | rejected — m16 env-groups exist but aren't name-keyed the Blueprint way (documented omission) |
 | `fromService.envVarKey`, keyvalue `fromService`, self-reference | ✖ | rejected — needs cross-service secret plumbing (documented omission) |
-| `region`, `databaseName`, `user`, `disk`, `scaling`, `buildFilter`, `previews`, `maintenanceMode`, `renderSubdomainPolicy`, `maxShutdownDelaySeconds`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked) |
+| `region`, `databaseName`, `user`, `disk`, `scaling`, `buildFilter`, `previews`, `maintenanceMode`, `renderSubdomainPolicy`, `maxShutdownDelaySeconds`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
 | sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
 | `projects`, `ungrouped`, `previews` (PR preview environments) | ✖ | non-goal (PR previews explicitly rejected, [DO_NOT_DO](../.pm/DO_NOT_DO.md)) |
 
@@ -145,7 +148,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 The request matches Render's OpenAPI (`list-events`) field-for-field: `type` (one event type), `startTime` (**defaults to one hour ago**, Render's own default — ask for more explicitly), `endTime`, `cursor`, `limit` (20, clamped to 100). The response is Render's **bare array** of `{event, cursor}`, where `event` is `{id, timestamp, serviceId, type, details}` — all five always present. Event ids are `evt-…` and **derived**, not minted: an id is a deterministic hash of the source row (`id.Derive`), so the same event has the same id on every read, which is what lets a client page and dedupe on it. The cursor is the keyset (`timestamp` + row key), base64url-encoded and opaque — unlike bex's other lists it is not the row id, because a composed feed has two key spaces and because the audit retention sweep may delete the very row a cursor names (an id-as-cursor would then silently return an empty page and look like the end of the feed).
 
-Event types use **Render's vocabulary where its enum defines one** — `deploy_started`, `deploy_ended` (with `details.deployStatus`), `suspender_added`/`suspender_removed` (with `details.actor`), `server_restarted` (`details.triggeredByUser`), `plan_changed`, `instance_count_changed`, `autoscaling_config_changed`, `cron_job_run_started` — and bex-named types for writes Render has no name for: `env_vars_changed`, `env_group_linked`/`env_group_unlinked`, `auto_deploy_changed`, `idle_timeout_changed`, `root_directory_changed`, `display_name_changed`, `publish_path_changed`, `routes_changed`, `headers_changed`, `custom_domain_added`/`custom_domain_removed`.
+Event types use **Render's vocabulary where its enum defines one** — `deploy_started`, `deploy_ended` (with `details.deployStatus`), `suspender_added`/`suspender_removed` (with `details.actor`), `server_restarted` (`details.triggeredByUser`), `plan_changed`, `instance_count_changed`, `autoscaling_config_changed`, `cron_job_run_started` — and bex-named types for writes Render has no name for: `env_vars_changed`, `env_group_linked`/`env_group_unlinked`, `auto_deploy_changed`, `idle_timeout_changed`, `root_directory_changed`, `display_name_changed`, `pre_deploy_command_changed`, `publish_path_changed`, `routes_changed`, `headers_changed`, `custom_domain_added`/`custom_domain_removed`, `deploy_hook_regenerated`.
 
 **No value can appear in an event, by construction.** An audit row has never carried a verb's arguments — only the verb name, the caller, and (now) the target resource name. So an env-var write is visible as _who changed env vars, and when_, and cannot be anything more, however the feed is queried. The price is paid honestly: `plan_changed`, `instance_count_changed` and `autoscaling_config_changed` **omit** the `from`/`to` fields Render marks required, because carrying them would mean a free-form details column on `audit_events` — precisely the hole w4/m10 closed to make that guarantee structural. Also omitted: Render's `auto_deploy_enabled`/`auto_deploy_disabled` (the two types are discriminated by the verb's argument, which is not recorded — bex emits one honest `auto_deploy_changed`), and **auto-sleep/wake and autoscaler-driven replica changes** (the operator drives them and is DB-free by architecture — giving it a control-plane write path would invert the layering, so these are omitted until an operator→API event channel exists; manual scale _is_ covered). Store-less (`BEX_CP_DB_URI` unset) both sources are gone, so the endpoint is **503** — omitted, not faked as an empty history.
 
@@ -160,11 +163,23 @@ Proven end-to-end by `scripts/events-verify.sh`: a scripted suspend/resume/scale
 
 `POST /v1/webhooks/git` is the git-host push webhook. It sits **outside the OAuth gate** — a git host can't present a bearer token, so its authentication is an HMAC-SHA256 signature over the raw body (`X-Hub-Signature-256: sha256=<hex>`, GitHub/Gitea style) verified in constant time against the shared secret `BEX_WEBHOOK_SECRET`. A valid push redeploys every App whose `spec.repo` matches the pushed repository (compared across the payload's clone/ssh/html/api URL forms, canonicalized) and whose tracked branch matches the pushed ref; an absent or mismatched signature is **401** with no action, and an unset secret makes the endpoint **503**.
 
+### Deploy hooks (w2/m33)
+
+Every service can expose a stable, rotatable secret URL for CI systems that cannot or should not hold a general API key. An authorized sensitive read lazily mints a 256-bit `crypto/rand` token and persists it in the App's `bex.co/deploy-hook-token` annotation. Annotation storage avoids a CRD/operator change and keeps the credential next to either a store-projected or hand-applied App, while tenants still have no Kubernetes credentials with which to read it. Triggering inherits the existing deploy-history feature's honest availability rule: the App must be store-managed and `BEX_CP_DB_URI` must be configured; otherwise it returns the same 400/503 as authenticated `triggerDeploy` rather than inventing an unqueryable deploy id. `BEX_API_PUBLIC_URL` supplies the externally reachable origin (`https://api.bex.co` in the production manifest); when it is unset the management surfaces return the stable relative path.
+
+The authenticated management shape is identical everywhere: REST `GET /v1/services/{id}/deploy-hook` and `POST /v1/services/{id}/deploy-hook/regenerate`, GraphQL `deployHook(serviceId)` and `regenerateDeployHook(serviceId)`, and MCP `get_deploy_hook` / `regenerate_deploy_hook` all return `{url}`. Rotation replaces the annotation with an optimistic-lock patch, so a concurrent first read cannot publish two competing credentials; calls made with the old URL after rotation complete collapse to the same **404** as any malformed or unknown token. The dashboard Settings page masks the value until reveal, copies it without reformatting, and warns that regeneration breaks existing integrations.
+
+The open trigger accepts both `GET` and `POST /v1/deploy-hooks/{token}` and calls the same `deploys.Service` implementation as authenticated `triggerDeploy`: it bumps the App generation and opens a deploy-history row with trigger `deploy_hook`. Success mirrors Render's `200 {"deploy":{"id":"dep-…"}}`; suspended services return 409. Render's `ref` query parameter maps to the existing commit override. `imgURL` is rejected with 400 until bex has a safe registry-origin matching/override verb—never silently ignored.
+
+**Rate limit:** the open endpoint has its own per-token, in-process bucket: six requests/minute with a burst of two, then **429** plus `Retry-After`. It does not consume or depend on the authenticated `BEX_RATE_LIMIT` caller bucket. Like the main limiter, it is replica-local; bex-api currently runs one replica.
+
+**Render parity and deliberate drift.** [Render's Deploy Hook documentation](https://render.com/docs/deploy-hooks) confirms the secret URL, GET/POST methods, `{deploy:{id}}` response, `ref`, rotation, and dashboard placement. Render spells its URL `/deploy/{serviceId}?key=…`, reports a bad key as 401, and exposes the credential only in its dashboard. bex uses an opaque-token-only path and 404 for malformed/unknown/stale credentials so it does not disclose whether any service id exists; it additionally exposes authenticated REST/GraphQL/MCP management surfaces, required for an AI-native control plane. Render's optional overlapping-deploy 202 behavior and image `imgURL` override are not modeled.
+
 ## GraphQL (Render dashboard compatible)
 
 `POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `setDisplayName(id, displayName)`, `updateServicePlan(id, plan)`, `scaleService(id, numInstances)`, `setIdleTimeout(id, idleTTLSeconds)` (the free-tier auto-sleep window — no Render counterpart, w1/m4.5), `createService(name, type?, schedule?, command?, repo?, image?, branch?, plan?, port?, replicas?)` (create-only since w4/m19 — a same-workspace duplicate `name` errors rather than upserting; its name/shape unconfirmed against a live Render capture, like the two before it), `deleteService(id)` (delete the service, returning a success boolean like `deleteCustomDomain` — there is no object left to return) and `runCronJob(id)` (trigger a one-off cron run); type `Service` with immutable `id`/`name`, mutable `displayName`, the string `suspended` enum, the `type` serviceType, the bex-native `idleTTLSeconds` field, and — for a `cron_job` — `schedule`, `command` (entrypoint override, empty runs the image's own command), and `runs { name startedAt finishedAt status }`. Every resolver delegates to the same feature `Service`.
 
-`deploys(serviceId)` (w2/m5) reads a service's deploy history for the dashboard's Deploys/Events tab: type `Deploy { id status trigger image createdAt startedAt finishedAt }`, same store-only/503-without-`BEX_CP_DB_URI` rule as the REST endpoint. Read-only — triggering a deploy is REST-only for now (`POST .../deploys`).
+`deploys(serviceId)` (w2/m5) reads a service's deploy history for the dashboard's Deploys/Events tab: type `Deploy { id status trigger image createdAt startedAt finishedAt }`, same store-only/503-without-`BEX_CP_DB_URI` rule as the REST endpoint. `triggerDeploy(serviceId, commitId?, deployMode?)` starts one through the same service verb. Deploy-hook management adds `deployHook(serviceId) { url }` and `regenerateDeployHook(serviceId) { url }`; the unauthenticated trigger remains an HTTP URL by design, not a GraphQL operation.
 
 `serviceEvents(serviceId, type, startTime, endTime, cursor, limit)` (w3/m7) is the activity feed for the dashboard's Events tab (`w5/007`): type `ServiceEvent { id type serviceId timestamp cursor details { deployId deployStatus actor triggeredByUser trigger { firstBuild envUpdated manual deployedByRender clearCache rollback } } }`. Same arguments, same defaults (including the now-1h window), same events as the REST endpoint — both go through the one `events.Service.List`, which `TestEventSurfaceParity` holds them to.
 
@@ -378,7 +393,7 @@ The read surface (`lego/backend/internal/audit`) is admin-scoped (`can_manage` �
 
 ## Deploy
 
-Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `lego/operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. No token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
+Ships in the operator image (`Dockerfile` builds a second `/api` binary); the api Deployment overrides `command: ["/api"]`, so Argo's existing image override covers it with no CI change. Manifests: `lego/operator/config/api/` (Deployment, Service, Ingress `api.bex.co` + cert-manager TLS, least-privilege RBAC — Apps, Databases and their CNPG connection Secrets, plus read-only `pods`/`pods/log` for the logs verb and `metrics.k8s.io` for resource metrics), wired from `config/default`. The deployment sets `BEX_API_PUBLIC_URL=https://api.bex.co` so deploy-hook management returns copy-ready external URLs. No general API token Secret exists — credentials live in Hydra; the bootstrap key is seeded by `scripts/auth-bootstrap-client.sh` (deploy.yml does this automatically).
 
 ## Rate limits
 
@@ -396,7 +411,7 @@ bex matches this contract with a per-caller token-bucket at the shared mux, keye
 | GraphQL | `{"data": null, "errors": [{"message": "rate limit exceeded", "extensions": {"code": "RATE_LIMITED"}}]}` + `Retry-After` |
 | MCP (HTTP) | Same as REST (HTTP-level 429) + `Retry-After` |
 
-Exemptions: `GET /healthz` (liveness) and `POST /v1/webhooks/git` (HMAC-authed, pre-auth, own budget) are outside the rate-limit gate.
+Exemptions: `GET /healthz` (liveness), `POST /v1/webhooks/git` (HMAC-authed), and `/v1/deploy-hooks/{token}` (secret-URL-authed) are outside the authenticated rate-limit gate. Deploy hooks enforce their own fixed per-token budget of six/minute with a burst of two and the same 429 + `Retry-After` contract.
 
 **Request caps** (companion limits that rate-limiting alone doesn't catch):
 

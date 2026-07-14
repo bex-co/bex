@@ -44,7 +44,7 @@ import (
 type renderDeploy struct {
 	ID         string `json:"id"`
 	Status     string `json:"status"`
-	Trigger    string `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "rollback"
+	Trigger    string `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "deploy_hook" | "rollback"
 	Image      string `json:"image,omitempty"`      // bex extra
 	RollbackOf string `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
 	CreatedAt  string `json:"createdAt,omitempty"`
@@ -127,6 +127,27 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 // these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
+		// Deploy-hook management is authenticated like every other service setting.
+		// The URL itself is the credential, so prevent intermediary/browser caches
+		// from retaining either a read or a newly rotated value.
+		mux.HandleFunc("GET "+base+"/{id}/deploy-hook", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			hook, err := s.GetDeployHook(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, hook)
+		})
+		mux.HandleFunc("POST "+base+"/{id}/deploy-hook/regenerate", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			hook, err := s.RegenerateDeployHook(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, hook)
+		})
 		mux.HandleFunc("GET "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
 			filter, err := filterFromQuery(r.URL.Query())
 			if err != nil {
