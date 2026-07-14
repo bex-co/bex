@@ -1,6 +1,6 @@
 # w4 · m11 — MFA: TOTP + passkeys via Kratos
 
-**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** shipped + deployed to prod (Argo auto-sync, Kratos `1/1`, no crashloop); prod smoke green (`auth-mfa-e2e.sh` exit 0 against `auth.bex.co`); only the manual browser WebAuthn ceremony remains — see the 2026-07-11 completion note below
+**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** TOTP + recovery codes shipped, deployed, and prod-verified (`auth-mfa-e2e.sh` exit 0 against `auth.bex.co`). WebAuthn/passkey was live-attempted 2026-07-14 (Playwright + a CDP virtual authenticator against prod) and found **actively broken by two real bugs** — a dashboard CSP blocking Kratos's WebAuthn script, and Kratos's identity schema missing the `webauthn` identifier trait. Both root-caused and fixed in source (see the 2026-07-14 note below) but **unshipped** — t008 stays open until deployed and re-verified live
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t007 | Render parity — MFA surface check vs Render's 2FA; update the parity matrix row (retrofit 2026-07-09)                      | 15m | t004       | — **DONE** |
 | t005 | Simplify — `/simplify` over the code this milestone changed                                                                | 20m | t007       | — **DONE** |
 | t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                   | 30m | t007       | — **DONE** |
-| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                       | 10m | t006       | open — awaits live DoD |
+| t009 | Fix WebAuthn — dashboard CSP + Kratos identity-schema bugs found via live browser reproduction (2026-07-14)                | 1h  | t002       | fixes in source, unshipped — awaits `/ship` + live re-verification |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                       | 10m | t006, t009 | open — awaits live DoD |
 
 ## Definition of done
 
@@ -44,6 +45,19 @@ Prod verification also corrected two script assumptions that never fired until a
 - Browser WebAuthn enroll/challenge — a real browser + authenticator ceremony (can't be scripted over curl). Everything else in the DoD is verified.
 
 **Follow-up (non-blocking):** consider lifting aal2 detection out of the login page into the session fetch (the t005 altitude finding) — surface `session_aal2_required` from `fetchSession` and redirect with an explicit `aal=aal2` param, so the hook stops rediscovering the step-up need by trial-and-error.
+
+## Investigation note (2026-07-14) — t009: WebAuthn is broken, not just unverified
+
+Attempted the outstanding manual check with Playwright driving a real Chrome session against **prod** (`dashboard.bex.co`), with a CDP `WebAuthn.addVirtualAuthenticator` standing in for a physical security key (Chrome's own WebAuthn testing API — the standard way to automate this ceremony without hardware). Registered a throwaway account (`mfa-webauthn-verify-1752522000@bex.co`, left in place — no self-service account deletion exists, mirroring `auth-mfa-e2e.sh`'s own prod throwaway accounts) and opened Settings → "Add security key."
+
+**Found two real, independent bugs, both now fixed in source (uncommitted):**
+
+1. **Dashboard CSP silently blocked Kratos's WebAuthn glue script.** `dashboard/vite.config.ts`'s `script-src 'self' 'unsafe-inline'` has no allowance for `auth.bex.co`, so the `<script src="https://auth.bex.co/.well-known/ory/webauthn.js">` node Ory Elements injects (defining `window.__oryWebAuthnRegistration`/`__oryWebAuthnLogin`) never loads — confirmed via a CSP violation in the browser console, and via `@ory/elements-react`'s own source (`triggerToWindowCall` polls 10s for the global function, then throws "Unable to load Ory's WebAuthn script. Is it being blocked...?"). **Fixed:** `script-src` now includes the Kratos public origin (derived from `VITE_KRATOS_PUBLIC_URL`, same fallback `src/common/lib/ory/config.ts` uses).
+2. **Kratos's identity schema never marked `email` as a WebAuthn identifier.** `deploy/gitops/base/values/kratos.values.yaml`'s `identity.schema.json` had `"credentials": { "password": { "identifier": true } }` only. Manually completing a real WebAuthn ceremony (bypassing bug 1 by injecting the fetched script content inline, then POSTing the real browser-produced attestation straight to Kratos's settings-flow API) returned Kratos error `4000009`: "Could not find any login identifiers. Did you forget to set them? This could also be caused by a server misconfiguration." **Fixed:** added `"webauthn": { "identifier": true }` alongside `password`; `helm template`/`helm lint` against the pinned chart (`ory/kratos@0.62.1`) confirm it renders correctly, and the local overlay inherits the fix unmodified (no shadowing `identitySchemas` block there).
+
+**Why WebAuthn was never caught broken until now:** every prior verification pass (t002's original work, the 2026-07-11 prod smoke) exercised TOTP/recovery-codes end-to-end but explicitly deferred WebAuthn as "can't be scripted over curl" — nobody had driven an actual browser through the ceremony against the real deployed stack until this session.
+
+**Status:** both fixes are source-only, **not deployed**. Per this repo's rules only `/ship` commits/pushes, so getting them live (and re-verifying the full enroll → logout → aal2-challenge ceremony in a real browser) is the one thing left. See `t009` for the full writeup.
 
 ## Source + Goal linkage
 

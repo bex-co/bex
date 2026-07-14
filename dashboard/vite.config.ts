@@ -167,6 +167,18 @@ function graphqlDevProxy(target = "https://api.bex.co/graphql"): Plugin {
   };
 }
 
+// Kratos's settings/login flows return a UiNodeScriptAttributes node
+// (`<script src="{KRATOS_PUBLIC_URL}/.well-known/ory/webauthn.js">`) that Ory
+// Elements injects to drive the actual navigator.credentials WebAuthn
+// ceremony — cross-origin from the dashboard, so it needs its own script-src
+// allowance (w4/m11 follow-up: 'self' 'unsafe-inline' alone silently blocked
+// it, breaking passkey/security-key enroll AND the aal2 login challenge).
+// Mirrors src/common/lib/ory/config.ts's own KRATOS_PUBLIC_URL fallback so a
+// build without the env var still gets the right origin in prod.
+const kratosOrigin = new URL(
+  process.env.VITE_KRATOS_PUBLIC_URL || "https://auth.bex.co",
+).origin;
+
 // Standard hardening headers for every SSR response. HSTS only in production
 // (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
 // HSTS there would break the dev server.
@@ -183,7 +195,7 @@ const securityHeaders: Record<string, string> = {
   // blocks that fetch and every page hangs on "Select a workspace".
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'unsafe-inline' ${kratosOrigin}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
