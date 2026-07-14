@@ -1,0 +1,13 @@
+# Teach kustomize that a Certificate's spec.issuerRef.name references an Issuer,
+# so config/default's `namePrefix: bex-` rewrites the reference too. Without this,
+# the Issuer is renamed to `bex-selfsigned-issuer` but the Certificate keeps
+# issuerRef.name: selfsigned-issuer, and cert-manager can't find the issuer
+# ("Referenced Issuer not found") — the webhook-server-cert Secret is never
+# issued and the operator pod hangs in ContainerCreating on the missing mount.
+nameReference:
+  - kind: Issuer
+    group: cert-manager.io
+    fieldSpecs:
+      - kind: Certificate
+        group: cert-manager.io
+        path: spec/issuerRef/name

@@ -1,2 +1,6 @@
 resources:
 - certificate.yaml
+
+# Rewrite Certificate.issuerRef.name when the Issuer is renamed by namePrefix.
+configurations:
+- kustomizeconfig.yaml
