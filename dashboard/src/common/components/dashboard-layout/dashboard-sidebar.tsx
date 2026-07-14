@@ -12,9 +12,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/common/components/ui/sidebar.tsx";
-import { WorkspaceSwitcher } from "@/features/workspaces/components/workspace-switcher";
 import { isNavItemActive } from "./nav-active";
 import { ProjectSidebar } from "./project-sidebar";
+import { SidebarBrand } from "./sidebar-brand";
 
 // Render parity: one "Projects" entry groups every resource type (services,
 // databases, key value) on a single page (`routes/index.tsx`), rather than a
@@ -43,7 +43,7 @@ export function DashboardSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader>
-        <WorkspaceSwitcher />
+        <SidebarBrand />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

@@ -158,9 +158,30 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Service navigation",
     description: "Accessible label for the service-detail tab nav",
   },
-  "services.navOverview": {
-    message: "Overview",
-    description: "Service-detail nav item + overview panel title",
+  "services.headerServiceId": {
+    message: "Service ID:",
+    description: "Service-detail header metadata label for the service id",
+  },
+  "services.headerSchedule": {
+    message: "Schedule:",
+    description:
+      "Service-detail header metadata label for a cron job's schedule",
+  },
+  "services.headerCopyServiceId": {
+    message: "Copy service ID",
+    description: "Accessible label for the header's service-id copy button",
+  },
+  "services.headerCopyUrl": {
+    message: "Copy service URL",
+    description: "Accessible label for the header's live-URL copy button",
+  },
+  "services.headerCopied": {
+    message: "Copied to clipboard",
+    description: "Toast after copying a value from the service-detail header",
+  },
+  "services.headerCopyError": {
+    message: "Couldn't copy to clipboard",
+    description: "Toast when a service-detail header copy fails",
   },
   "services.navLogs": {
     message: "Logs",
@@ -261,22 +282,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.scalingSaveChanges": {
     message: "Save Changes",
     description: "Autoscaling form save-changes button",
-  },
-  "services.overviewPhase": {
-    message: "Phase",
-    description: "Overview panel field label (operator phase, verbatim)",
-  },
-  "services.overviewSuspended": {
-    message: "Suspended",
-    description: "Overview panel field label (suspend state)",
-  },
-  "services.overviewYes": {
-    message: "Yes",
-    description: "Overview panel value for a true boolean field",
-  },
-  "services.overviewNo": {
-    message: "No",
-    description: "Overview panel value for a false boolean field",
   },
   "services.notFoundTitle": {
     message: "Service not found",
@@ -1325,14 +1330,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Service",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.overviewType": {
-    message: "Type",
-    description: "Overview tab row label for the service type",
-  },
-  "services.overviewSchedule": {
-    message: "Schedule",
-    description: "Overview tab row label for a cron job's schedule",
-  },
   "services.cronRunsTitle": {
     message: "Recent Runs",
     description: "Cron job overview: recent-runs section title",
@@ -1716,6 +1713,39 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsManualDeploy": {
     message: "Manual Deploy",
     description: "Button to trigger a new deploy",
+  },
+  "services.deployMenuLatestCommit": {
+    message: "Deploy latest commit",
+    description:
+      "Manual Deploy dropdown item, repo-backed service: rebuild and redeploy from the branch's HEAD",
+  },
+  "services.deployMenuLatestImage": {
+    message: "Deploy latest image",
+    description:
+      "Manual Deploy dropdown item, image-backed service (no repo to rebuild from)",
+  },
+  "services.deployMenuRestart": {
+    message: "Restart service",
+    description:
+      "Manual Deploy dropdown item: roll the service's pods without rebuilding",
+  },
+  "services.deployConfirmCommitTitle": {
+    message: "Deploy the latest commit on {branch}?",
+    description: "Confirm dialog title for a repo-backed manual deploy",
+  },
+  "services.deployConfirmCommitBody": {
+    message:
+      "Rebuilds {name} from the latest commit on {branch} and redeploys it.",
+    description: "Confirm dialog body for a repo-backed manual deploy",
+  },
+  "services.deployConfirmImageTitle": {
+    message: "Redeploy {name}?",
+    description: "Confirm dialog title for an image-backed manual deploy",
+  },
+  "services.deployConfirmImageBody": {
+    message:
+      "Restarts {name} using its current image. There's no source repo to rebuild from.",
+    description: "Confirm dialog body for an image-backed manual deploy",
   },
   "services.eventsManualDeployConfirmTitle": {
     message: "Trigger a new deploy?",

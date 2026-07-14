@@ -4,7 +4,6 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   ServiceEventsDocument,
-  TriggerDeployDocument,
   CancelDeployDocument,
   RollbackServiceDocument,
 } from "@/graphql/definitions";
@@ -28,6 +27,9 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useServer } from "@/features/services/hooks/use-server";
+import { CronRunsSection } from "@/features/services/components/cron-runs-section";
+import { isCron } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
@@ -92,8 +94,10 @@ function triggerLabel(trigger: TriggerFlags): string | null {
   return null;
 }
 
+// Manual Deploy is not here: it's a header verb on Render, so it lives in
+// ServiceDetailHeader (via ManualDeployButton) and refetches this page's
+// `ServiceEvents` query by name when it fires.
 type ConfirmAction =
-  | { kind: "manual" }
   | { kind: "cancel"; deployId: string }
   | { kind: "rollback"; deployId: string };
 
@@ -107,15 +111,18 @@ export function ServiceEventsPage() {
     fetchPolicy: "cache-and-network",
   });
 
-  const [triggerDeploy, { loading: triggering }] =
-    useMutation(TriggerDeployDocument);
+  // A cron_job's run history hangs off the same landing tab (it was the retired
+  // Overview panel's second card); `server(id)` is already in Apollo's cache
+  // from the detail shell's own read, so this doesn't cost a second request.
+  const { service } = useServer(serviceId);
+
   const [cancelDeploy, { loading: canceling }] =
     useMutation(CancelDeployDocument);
   const [rollbackService, { loading: rollingBack }] = useMutation(
     RollbackServiceDocument,
   );
 
-  const busy = triggering || canceling || rollingBack;
+  const busy = canceling || rollingBack;
 
   const events = (data?.serviceEvents ?? []).filter(
     (e): e is NonNullable<typeof e> & { id: string } => e != null && !!e.id,
@@ -124,15 +131,12 @@ export function ServiceEventsPage() {
   async function handleConfirm() {
     if (!confirm) return;
     try {
-      if (confirm.kind === "manual") {
-        await triggerDeploy({ variables: { serviceId } });
-        toast.success(t("services.triggerDeploySuccess"));
-      } else if (confirm.kind === "cancel") {
+      if (confirm.kind === "cancel") {
         await cancelDeploy({
           variables: { serviceId, deployId: confirm.deployId },
         });
         toast.success(t("services.cancelDeploySuccess"));
-      } else if (confirm.kind === "rollback") {
+      } else {
         await rollbackService({
           variables: { serviceId, deployId: confirm.deployId },
         });
@@ -140,9 +144,7 @@ export function ServiceEventsPage() {
       }
       void refetch();
     } catch {
-      if (confirm.kind === "manual")
-        toast.error(t("services.triggerDeployError"));
-      else if (confirm.kind === "cancel")
+      if (confirm.kind === "cancel")
         toast.error(t("services.cancelDeployError"));
       else toast.error(t("services.rollbackError"));
     } finally {
@@ -151,31 +153,20 @@ export function ServiceEventsPage() {
   }
 
   const confirmTitle =
-    confirm?.kind === "manual"
-      ? t("services.eventsManualDeployConfirmTitle")
-      : confirm?.kind === "cancel"
-        ? t("services.eventsCancelConfirmTitle")
-        : t("services.eventsRollbackConfirmTitle");
+    confirm?.kind === "cancel"
+      ? t("services.eventsCancelConfirmTitle")
+      : t("services.eventsRollbackConfirmTitle");
 
   const confirmBody =
-    confirm?.kind === "manual"
-      ? t("services.eventsManualDeployConfirmBody")
-      : confirm?.kind === "cancel"
-        ? t("services.eventsCancelConfirmBody")
-        : t("services.eventsRollbackConfirmBody");
+    confirm?.kind === "cancel"
+      ? t("services.eventsCancelConfirmBody")
+      : t("services.eventsRollbackConfirmBody");
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>{t("services.eventsTitle")}</CardTitle>
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => setConfirm({ kind: "manual" })}
-          >
-            {t("services.eventsManualDeploy")}
-          </Button>
         </CardHeader>
         <CardContent>
           {loading && events.length === 0 ? (
@@ -257,6 +248,10 @@ export function ServiceEventsPage() {
           )}
         </CardContent>
       </Card>
+
+      {service && isCron(service) ? (
+        <CronRunsSection service={service} />
+      ) : null}
 
       <AlertDialog
         open={confirm !== null}

@@ -1,3 +1,5 @@
+import { Box, Clock, Cog, FileCode, Globe, Lock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { en } from "@/i18n";
 import type { ServiceView, ServiceTypeKey } from "@/features/services/types";
 
@@ -24,6 +26,19 @@ export const SERVICE_TYPE_LABEL: Record<ServiceTypeKey, keyof typeof en> = {
   cron: "services.typeCron",
   static: "services.typeStatic",
   unknown: "services.typeUnknown",
+};
+
+/**
+ * The glyph shown next to a type label — Render's service-header eyebrow pairs
+ * its uppercase type name with the same icon its sidebar uses for the type.
+ */
+export const SERVICE_TYPE_ICON: Record<ServiceTypeKey, LucideIcon> = {
+  web: Globe,
+  private: Lock,
+  worker: Cog,
+  cron: Clock,
+  static: FileCode,
+  unknown: Box,
 };
 
 /** True for a cron_job — the type whose detail shows a schedule + run history. */

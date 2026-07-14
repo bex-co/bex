@@ -50,21 +50,33 @@ export interface ServiceRowActionsProps {
   /** The action in flight for this row, or null. Disables the control. */
   pending: LifecycleAction | null;
   onRun: (action: LifecycleAction, service: ServiceView) => void;
+  /**
+   * Omit "Restart" from this menu (Render parity, service-detail header
+   * only): the header's `ManualDeployButton` dropdown already carries
+   * "Restart service" grouped with the deploy verbs, Render's own placement
+   * — showing it here too would offer the same action under two different
+   * menus. The services list still gets the full set; only the header opts in.
+   */
+  hideRestart?: boolean;
 }
 
 export function ServiceRowActions({
   service,
   pending,
   onRun,
+  hideRestart = false,
 }: ServiceRowActionsProps) {
   const { t } = useTranslations();
   const [confirm, setConfirm] = useState<LifecycleAction | null>(null);
   const busy = pending !== null;
 
-  // A suspended App can only be resumed; a live one can be suspended or restarted.
+  // A suspended App can only be resumed; a live one can be suspended or
+  // restarted (restart omitted when the caller already surfaces it elsewhere).
   const actions: LifecycleAction[] = service.suspended
     ? ["resume"]
-    : ["suspend", "restart"];
+    : hideRestart
+      ? ["suspend"]
+      : ["suspend", "restart"];
 
   function handleSelect(action: LifecycleAction) {
     if (CONFIRM[action]) {

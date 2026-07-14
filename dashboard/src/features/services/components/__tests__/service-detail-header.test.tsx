@@ -1,8 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {
+  RouterProvider,
+  createRouter,
+  createRootRoute,
+  createRoute,
+  createMemoryHistory,
+} from "@tanstack/react-router";
 import { ServiceDetailHeader } from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
+import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 
 // ServiceDetailHeader renders ServiceRowActions, which renders a "Move to
 // project" submenu via useMoveToProject — needs an ApolloProvider + workspace
@@ -18,31 +26,184 @@ vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
   }),
 }));
 
+// The instance-type chip and the Manual Deploy button both go through Apollo;
+// stub them at the hook boundary (the pattern every other panel's test uses) so
+// this render needs no ApolloProvider.
+const STARTER: InstanceTypeView = {
+  id: "starter",
+  name: "Starter",
+  cpu: "500m",
+  memory: "512Mi",
+};
+vi.mock("@/features/services/hooks/use-instance-types", () => ({
+  useInstanceTypes: () => ({
+    instanceTypes: [STARTER],
+    loading: false,
+    error: undefined,
+    byID: (id: string | null | undefined) =>
+      id === "starter" ? STARTER : undefined,
+  }),
+}));
+const triggerDeploy = vi.fn(async () => {});
+vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
+  useTriggerDeploy: () => ({ deploying: false, trigger: triggerDeploy }),
+}));
+
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
     name: "app",
+    type: "web_service",
     suspended: false,
     phase: "Running",
     url: "https://app.onbex.co",
     createdAt: "2026-01-01T00:00:00Z",
     replicas: 1,
     revision: "r1",
+    plan: "starter",
+    repo: "https://github.com/bex-co/hello-go.git",
+    branch: "main",
+    schedule: null,
     ...overrides,
-  };
+  } as ServiceView;
+}
+
+// The header links to the plan tab, so it needs a router around it.
+function renderHeader(
+  service: ServiceView,
+  props: Partial<{ pending: null | "restart"; onRun: () => void }> = {},
+) {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <ServiceDetailHeader
+        service={service}
+        pending={props.pending ?? null}
+        onRun={props.onRun ?? vi.fn()}
+      />
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+    context: { client: {} as never, session: null },
+  });
+  return render(<RouterProvider router={router} />);
 }
 
 describe("ServiceDetailHeader", () => {
-  it("renders the service identity, status badge, and live URL", () => {
-    render(
-      <ServiceDetailHeader service={svc()} pending={null} onRun={vi.fn()} />,
-    );
+  it("renders the service identity, status badge, and live URL", async () => {
+    renderHeader(svc());
 
-    expect(screen.getByRole("heading", { name: "app" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "app" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Web Service")).toBeInTheDocument();
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "https://app.onbex.co" }),
     ).toHaveAttribute("href", "https://app.onbex.co");
+  });
+
+  it("carries the facts the retired Overview tab showed: id, source, instance type, revision", async () => {
+    renderHeader(svc());
+
+    // service id + its copy affordance (Render's header metadata stack)
+    expect(await screen.findByText("Service ID:")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy service ID" }),
+    ).toBeInTheDocument();
+
+    // source repo links to the branch tree, with the branch beside it
+    expect(
+      screen.getByRole("link", { name: "bex-co / hello-go" }),
+    ).toHaveAttribute("href", "https://github.com/bex-co/hello-go/tree/main");
+    expect(screen.getByText("main")).toBeInTheDocument();
+
+    // instance-type chip deep-links to the plan tab
+    expect(screen.getByRole("link", { name: "Starter" })).toHaveAttribute(
+      "href",
+      "/services/app/plan",
+    );
+
+    // the bex-native facts line
+    expect(screen.getByText("Instances")).toBeInTheDocument();
+    expect(screen.getByText("Revision")).toBeInTheDocument();
+    expect(screen.getByText("r1")).toBeInTheDocument();
+  });
+
+  it("shows a cron job's schedule in place of the URL row", async () => {
+    renderHeader(
+      svc({ type: "cron_job", url: null, schedule: "*/5 * * * *", plan: null }),
+    );
+
+    expect(await screen.findByText("Cron Job")).toBeInTheDocument();
+    expect(screen.getByText("*/5 * * * *")).toBeInTheDocument();
+    expect(screen.queryByText("https://app.onbex.co")).not.toBeInTheDocument();
+  });
+
+  it("deploys the latest commit from the Manual Deploy dropdown, behind a confirm naming the branch", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc());
+
+    await user.click(
+      await screen.findByRole("button", { name: "Manual Deploy" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Deploy latest commit" }),
+    );
+    expect(
+      screen.getByText("Deploy the latest commit on main?"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Proceed" }));
+
+    expect(triggerDeploy).toHaveBeenCalledWith("app");
+  });
+
+  it("labels the deploy item for an image-backed service (no repo to rebuild from)", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ repo: null, branch: null }));
+
+    await user.click(
+      await screen.findByRole("button", { name: "Manual Deploy" }),
+    );
+
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy latest image" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Deploy latest commit" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("restarts through the Manual Deploy dropdown, not a duplicate control in the \"•••\" menu", async () => {
+    const onRun = vi.fn();
+    const user = userEvent.setup();
+    renderHeader(svc(), { onRun });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Manual Deploy" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Restart service" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Proceed" }));
+
+    expect(onRun).toHaveBeenCalledWith("restart", svc());
+
+    // the "•••" menu keeps Suspend but no longer offers Restart — it's owned
+    // by Manual Deploy on this page (Render's own grouping)
+    await user.click(
+      screen.getByRole("button", { name: "Open actions menu" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Suspend" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Restart" }),
+    ).not.toBeInTheDocument();
   });
 
   it("fires a lifecycle action through the reused row-actions control", async () => {
@@ -50,23 +211,21 @@ describe("ServiceDetailHeader", () => {
     const suspended = svc({ suspended: true, phase: "Hibernated", url: null });
     const user = userEvent.setup();
 
-    render(
-      <ServiceDetailHeader service={suspended} pending={null} onRun={onRun} />,
-    );
+    renderHeader(suspended, { onRun });
 
     // a suspended service exposes only Resume, which runs without a confirm
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Open actions menu" }),
+    );
     await user.click(screen.getByRole("menuitem", { name: "Resume" }));
 
     expect(onRun).toHaveBeenCalledWith("resume", suspended);
   });
 
-  it("disables the actions control while an action is in flight (poll-to-converge)", () => {
-    render(
-      <ServiceDetailHeader service={svc()} pending="restart" onRun={vi.fn()} />,
-    );
+  it("disables the actions control while an action is in flight (poll-to-converge)", async () => {
+    renderHeader(svc(), { pending: "restart" });
     expect(
-      screen.getByRole("button", { name: "Open actions menu" }),
+      await screen.findByRole("button", { name: "Open actions menu" }),
     ).toBeDisabled();
   });
 });

@@ -157,9 +157,30 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务导航",
     description: "Accessible label for the service-detail tab nav",
   },
-  "services.navOverview": {
-    message: "概览",
-    description: "Service-detail nav item + overview panel title",
+  "services.headerServiceId": {
+    message: "服务 ID：",
+    description: "Service-detail header metadata label for the service id",
+  },
+  "services.headerSchedule": {
+    message: "调度：",
+    description:
+      "Service-detail header metadata label for a cron job's schedule",
+  },
+  "services.headerCopyServiceId": {
+    message: "复制服务 ID",
+    description: "Accessible label for the header's service-id copy button",
+  },
+  "services.headerCopyUrl": {
+    message: "复制服务 URL",
+    description: "Accessible label for the header's live-URL copy button",
+  },
+  "services.headerCopied": {
+    message: "已复制到剪贴板",
+    description: "Toast after copying a value from the service-detail header",
+  },
+  "services.headerCopyError": {
+    message: "无法复制到剪贴板",
+    description: "Toast when a service-detail header copy fails",
   },
   "services.navLogs": {
     message: "日志",
@@ -258,22 +279,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.scalingSaveChanges": {
     message: "保存更改",
     description: "Autoscaling form save-changes button",
-  },
-  "services.overviewPhase": {
-    message: "阶段",
-    description: "Overview panel field label (operator phase, verbatim)",
-  },
-  "services.overviewSuspended": {
-    message: "已暂停",
-    description: "Overview panel field label (suspend state)",
-  },
-  "services.overviewYes": {
-    message: "是",
-    description: "Overview panel value for a true boolean field",
-  },
-  "services.overviewNo": {
-    message: "否",
-    description: "Overview panel value for a false boolean field",
   },
   "services.notFoundTitle": {
     message: "未找到服务",
@@ -1306,14 +1311,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务",
     description: "Service-type badge fallback for an unrecognized type",
   },
-  "services.overviewType": {
-    message: "类型",
-    description: "Overview tab row label for the service type",
-  },
-  "services.overviewSchedule": {
-    message: "计划",
-    description: "Overview tab row label for a cron job's schedule",
-  },
   "services.cronRunsTitle": {
     message: "最近运行",
     description: "Cron job overview: recent-runs section title",
@@ -1692,6 +1689,37 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsManualDeploy": {
     message: "手动部署",
     description: "Button to trigger a new deploy",
+  },
+  "services.deployMenuLatestCommit": {
+    message: "部署最新提交",
+    description:
+      "Manual Deploy dropdown item, repo-backed service: rebuild and redeploy from the branch's HEAD",
+  },
+  "services.deployMenuLatestImage": {
+    message: "部署最新镜像",
+    description:
+      "Manual Deploy dropdown item, image-backed service (no repo to rebuild from)",
+  },
+  "services.deployMenuRestart": {
+    message: "重启服务",
+    description:
+      "Manual Deploy dropdown item: roll the service's pods without rebuilding",
+  },
+  "services.deployConfirmCommitTitle": {
+    message: "部署 {branch} 分支的最新提交？",
+    description: "Confirm dialog title for a repo-backed manual deploy",
+  },
+  "services.deployConfirmCommitBody": {
+    message: "将使用 {branch} 分支的最新提交重新构建并部署「{name}」。",
+    description: "Confirm dialog body for a repo-backed manual deploy",
+  },
+  "services.deployConfirmImageTitle": {
+    message: "重新部署「{name}」？",
+    description: "Confirm dialog title for an image-backed manual deploy",
+  },
+  "services.deployConfirmImageBody": {
+    message: "将使用当前镜像重启「{name}」。没有可重新构建的源代码仓库。",
+    description: "Confirm dialog body for an image-backed manual deploy",
   },
   "services.eventsManualDeployConfirmTitle": {
     message: "触发新的部署？",

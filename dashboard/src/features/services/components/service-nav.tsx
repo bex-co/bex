@@ -4,10 +4,10 @@ import { cn } from "@/common/lib/utils/utils.ts";
 import type { en } from "@/i18n";
 
 // bex's subset of Render's service sidebar (docs .pm/w5/m5 "Render reference"):
-// an Overview landing (bex addition — Render's root lands on Events/deploys), the
-// Environment tab (env vars, w4/m6.5), the Monitor-group Logs + Metrics items,
-// and Settings (Instance Type, w5/m7). Events comes later. `exact` keeps
-// Overview from staying active on the nested routes.
+// Events is the landing tab (Render's service root lands on Events/deploys too —
+// there is no Overview page; the identity facts live in the detail header), then
+// the Environment tab (env vars, w4/m6.5), the Monitor-group Logs + Metrics
+// items, Scaling, and Settings (Instance Type, w5/m7).
 interface ServiceNavItem {
   labelKey: keyof typeof en;
   to: string;
@@ -15,7 +15,6 @@ interface ServiceNavItem {
 }
 
 const ITEMS: ServiceNavItem[] = [
-  { labelKey: "services.navOverview", to: "/services/$serviceId", exact: true },
   {
     labelKey: "services.navEvents",
     to: "/services/$serviceId/events",
