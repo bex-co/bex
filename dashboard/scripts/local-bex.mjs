@@ -1425,6 +1425,35 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { databaseTableScans: [] };
     case "DatabaseParameterOverrides":
       return { databaseParameterOverrides: [] };
+    case "ExecuteDatabaseQuery": {
+      const statement = String(variables.sql ?? "").trim();
+      if (!statement) throw new Error("sql is required");
+      if (variables.allowWrites) {
+        return {
+          executeDatabaseQuery: {
+            __typename: "DatabaseQueryResult",
+            columns: [],
+            rows: [],
+            rowCount: 1,
+            truncated: false,
+          },
+        };
+      }
+      return {
+        executeDatabaseQuery: {
+          __typename: "DatabaseQueryResult",
+          columns: ["database", "statement", "ok"],
+          rows: [
+            {
+              __typename: "DatabaseQueryRow",
+              values: [variables.id, statement, "true"],
+            },
+          ],
+          rowCount: 1,
+          truncated: false,
+        },
+      };
+    }
     case "DatastoreMetrics":
       return { datastoreMetrics: [] };
     // Managed Key Value (w5/m12) — an interactive in-memory store, mirroring

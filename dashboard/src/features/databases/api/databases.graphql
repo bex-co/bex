@@ -305,3 +305,21 @@ mutation SetDatabaseParameterOverrides(
     name
   }
 }
+
+# bex dashboard extension: SELECT/SHOW/EXPLAIN use the same read-only path as
+# query_render_postgres. The console only sends allowWrites=true after an
+# explicit destructive-query confirmation; the backend then requires can_create.
+mutation ExecuteDatabaseQuery(
+  $id: String!
+  $sql: String!
+  $allowWrites: Boolean
+) {
+  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {
+    columns
+    rows {
+      values
+    }
+    rowCount
+    truncated
+  }
+}

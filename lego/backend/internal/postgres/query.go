@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// query.go is the read-only SQL execution path behind the MCP query_render_postgres
-// tool. The safety rails are enforced by the database session, not by parsing the
-// caller's SQL (agents write creative queries; denylists are not the mechanism):
-// the connection starts with default_transaction_read_only=on and a statement
-// timeout, and every statement runs inside an explicit BEGIN READ ONLY transaction.
-// Errors are mapped to fixed, value-free messages — a query's text and its result
-// values never reach a log line or an error string (the env-var-values rule).
+// query.go is the shared SQL execution path behind Render-compatible MCP reads
+// and the dashboard SQL console. The safety rails are enforced by the database
+// session, not by parsing the caller's SQL: every statement has a server-side
+// timeout and bounded result set. MCP and ordinary dashboard reads additionally
+// run inside an explicit read-only transaction; the dashboard can explicitly
+// opt into a write transaction after its confirmation step. Errors are mapped to
+// fixed, value-free messages — SQL text and result values never reach logs or
+// error strings (the env-var-values rule).
 package postgres
 
 import (
@@ -34,13 +35,17 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Read-only query safety rails. A statement that runs longer than the timeout is
+// Shared query safety rails. A statement that runs longer than the timeout is
 // cancelled server-side; a result set larger than the row cap is truncated and
-// flagged rather than streamed unbounded into an agent's context.
+// flagged rather than streamed unbounded into an agent or browser.
 const (
 	queryStatementTimeout = 10 * time.Second
 	queryRowCap           = 500
@@ -70,37 +75,91 @@ type QueryResult struct {
 }
 
 // queryLimits parameterizes the rails so tests can exercise the timeout and cap
-// quickly; Query uses defaultQueryLimits.
+// quickly; Query and ExecuteQuery use the package defaults above.
 type queryLimits struct {
 	statementTimeout time.Duration
 	rowCap           int
 }
+
+type queryExecutor func(context.Context, string, string, queryLimits, bool) (QueryResult, error)
 
 // Query runs a single read-only SQL statement against a managed database and
 // returns its columns and rows. It connects over CNPG's internal URI (bex-api runs
 // in-cluster next to the databases) inside a hard read-only envelope; writes, DDL,
 // multi-statement escapes and over-long queries are rejected by Postgres itself.
 func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, error) {
-	_, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, dbID)
+	db, err := s.AuthorizeDatabase(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
 		return QueryResult{}, err // core.ErrNotFound for an unknown/unprovisioned db
 	}
+	return s.executeAuthorizedQuery(ctx, db, sql, true)
+}
+
+// ExecuteQuery powers the dashboard/REST SQL console. Reads use the exact
+// can_view_sensitive + read-only contract as Query (and therefore the MCP tool).
+// allowWrites is an explicit opt-in used only after the dashboard confirmation;
+// it requires developer-level can_create and runs one read-write transaction.
+// Both modes share the same timeout, row cap, secret resolution, and error map.
+func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrites bool) (QueryResult, error) {
+	relation := core.RelCanViewSensitive
+	if allowWrites {
+		relation = core.RelCanCreate
+	}
+	db, err := s.AuthorizeDatabase(ctx, relation, dbID)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites)
+}
+
+func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Database, sql string, readOnly bool) (QueryResult, error) {
 	if strings.TrimSpace(sql) == "" {
 		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
+	}
+	sec, err := s.databaseSecret(ctx, db)
+	if err != nil {
+		return QueryResult{}, err
 	}
 	uri := string(sec.Data["uri"])
 	if uri == "" {
 		return QueryResult{}, core.ErrNotFound
 	}
-	return runReadOnlyQuery(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap})
+	executor := s.queryExecutor
+	if executor == nil {
+		executor = runSQLQuery
+	}
+	return executor(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}, readOnly)
 }
 
-// runReadOnlyQuery dials connString and executes sql read-only. The read-only
-// guarantee is layered: default_transaction_read_only=on at session startup, a
-// server-side statement_timeout, and an explicit BEGIN READ ONLY transaction — so
-// a SET transaction_read_write escape and multi-statement payloads both fail at
-// the database, no SQL parsing required.
+// databaseSecret resolves a previously-authorized Database's CNPG application
+// Secret without performing a second, potentially drifting authorization check.
+func (s *Service) databaseSecret(ctx context.Context, db *appv1alpha1.Database) (*corev1.Secret, error) {
+	secretName := db.Status.SecretName
+	if secretName == "" {
+		secretName = db.Name + "-app"
+	}
+	var sec corev1.Secret
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, core.ErrNotFound
+		}
+		return nil, err
+	}
+	return &sec, nil
+}
+
+// runReadOnlyQuery is retained as the focused MCP/test helper. It delegates to
+// the shared executor with the strongest transaction envelope enabled.
 func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimits) (QueryResult, error) {
+	return runSQLQuery(ctx, connString, sql, lim, true)
+}
+
+// runSQLQuery dials connString and executes one statement. In read-only mode the
+// guarantee is layered: default_transaction_read_only=on at session startup and
+// BEGIN READ ONLY block SET transaction_read_write escapes. Writable mode still
+// gets the same statement_timeout, request deadline, single-statement extended
+// protocol, and row cap, but commits the transaction on success.
+func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, readOnly bool) (QueryResult, error) {
 	cfg, err := pgx.ParseConfig(connString)
 	if err != nil {
 		return QueryResult{}, errQueryConnClose
@@ -108,7 +167,9 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 	if cfg.RuntimeParams == nil {
 		cfg.RuntimeParams = map[string]string{}
 	}
-	cfg.RuntimeParams["default_transaction_read_only"] = "on"
+	if readOnly {
+		cfg.RuntimeParams["default_transaction_read_only"] = "on"
+	}
 	cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
 
 	// Bound the whole round-trip a little past the server-side timeout so a hung
@@ -122,7 +183,11 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 	}
 	defer func() { _ = conn.Close(ctx) }()
 
-	tx, err := conn.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	txOptions := pgx.TxOptions{}
+	if readOnly {
+		txOptions.AccessMode = pgx.ReadOnly
+	}
+	tx, err := conn.BeginTx(ctx, txOptions)
 	if err != nil {
 		return QueryResult{}, mapPGError(err)
 	}
@@ -155,7 +220,16 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 	if err := rows.Err(); err != nil {
 		return QueryResult{}, mapPGError(err)
 	}
+	rows.Close()
 	out.RowCount = len(out.Rows)
+	if !readOnly && len(cols) == 0 {
+		out.RowCount = int(rows.CommandTag().RowsAffected())
+	}
+	if !readOnly {
+		if err := tx.Commit(ctx); err != nil {
+			return QueryResult{}, mapPGError(err)
+		}
+	}
 	return out, nil
 }
 

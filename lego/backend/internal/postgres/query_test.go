@@ -20,11 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -35,6 +39,16 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+type queryAuthzChecker struct {
+	allow     bool
+	relations []string
+}
+
+func (c *queryAuthzChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	c.relations = append(c.relations, relation)
+	return c.allow, nil
+}
 
 // TestMapPGError checks the driver-error → value-free sentinel mapping without a
 // database: read-only and timeout classes get their own sentinels; any other DB
@@ -128,6 +142,111 @@ func TestMCPQueryToolAdvertised(t *testing.T) {
 	}
 }
 
+func TestExecuteQueryAuthorization(t *testing.T) {
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "auth-db", "postgres://resolved/uri")
+	called := false
+	svc.queryExecutor = func(_ context.Context, uri, sql string, lim queryLimits, readOnly bool) (QueryResult, error) {
+		called = true
+		if uri != "postgres://resolved/uri" || sql != "SELECT 1" {
+			t.Fatalf("executor args uri=%q sql=%q", uri, sql)
+		}
+		if lim.statementTimeout != queryStatementTimeout || lim.rowCap != queryRowCap {
+			t.Fatalf("executor limits = %+v", lim)
+		}
+		return QueryResult{Columns: []string{"one"}, Rows: [][]any{{1}}, RowCount: 1}, nil
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1", Method: "session"})
+
+	deny := &queryAuthzChecker{allow: false}
+	svc.Authz = deny
+	if _, err := svc.ExecuteQuery(ctx, "auth-db", "SELECT 1", false); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("denied read => %v, want ErrForbidden", err)
+	}
+	if called {
+		t.Fatal("executor ran after denied authorization")
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/postgres/auth-db/query", strings.NewReader(`{"sql":"SELECT 1"}`)).WithContext(ctx)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("denied REST query => %d, want 403", rec.Code)
+	}
+
+	allow := &queryAuthzChecker{allow: true}
+	svc.Authz = allow
+	if _, err := svc.ExecuteQuery(ctx, "auth-db", "SELECT 1", false); err != nil {
+		t.Fatalf("allowed read: %v", err)
+	}
+	if _, err := svc.ExecuteQuery(ctx, "auth-db", "SELECT 1", true); err != nil {
+		t.Fatalf("allowed write: %v", err)
+	}
+	if got, want := strings.Join(allow.relations, ","), core.RelCanViewSensitive+","+core.RelCanCreate; got != want {
+		t.Fatalf("relations = %q, want %q", got, want)
+	}
+}
+
+func TestExecuteQueryRESTAndGraphQL(t *testing.T) {
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "surface-db", "postgres://resolved/uri")
+	var modes []bool
+	svc.queryExecutor = func(_ context.Context, _, _ string, _ queryLimits, readOnly bool) (QueryResult, error) {
+		modes = append(modes, readOnly)
+		return QueryResult{
+			Columns:   []string{"id", "note"},
+			Rows:      [][]any{{int64(7), nil}},
+			RowCount:  1,
+			Truncated: true,
+		}, nil
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/surface-db/query", strings.NewReader(`{"sql":"SELECT 7"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("REST query => %d: %s", rec.Code, rec.Body)
+	}
+	var restResult QueryResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &restResult); err != nil {
+		t.Fatalf("decode REST result: %v", err)
+	}
+	if restResult.RowCount != 1 || !restResult.Truncated || len(restResult.Rows) != 1 {
+		t.Fatalf("REST result = %+v", restResult)
+	}
+
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	gqlResult := graphql.Do(graphql.Params{
+		Schema: schema,
+		RequestString: `mutation {
+          executeDatabaseQuery(id:"surface-db", sql:"DELETE FROM things", allowWrites:true) {
+            columns rows { values } rowCount truncated
+          }
+        }`,
+		Context: context.Background(),
+	})
+	if len(gqlResult.Errors) > 0 {
+		t.Fatalf("GraphQL query: %v", gqlResult.Errors)
+	}
+	result := gqlResult.Data.(map[string]any)["executeDatabaseQuery"].(map[string]any)
+	if result["rowCount"] != 1 || result["truncated"] != true {
+		t.Fatalf("GraphQL result = %+v", result)
+	}
+	rows := result["rows"].([]any)
+	values := rows[0].(map[string]any)["values"].([]any)
+	if values[0] != "7" || values[1] != nil {
+		t.Fatalf("GraphQL values = %#v", values)
+	}
+	if got, want := fmt.Sprint(modes), "[true false]"; got != want {
+		t.Fatalf("read-only modes = %s, want %s", got, want)
+	}
+}
+
 // --- Live-Postgres integration (hermetic-by-default) ---------------------------
 
 // BEX_TEST_DB_URI points at a throwaway database, e.g.
@@ -164,7 +283,7 @@ func seedDatabaseAt(t *testing.T, svc *Service, name, uri string) {
 	}
 }
 
-func TestQueryReadOnlyIntegration(t *testing.T) {
+func TestQueryIntegration(t *testing.T) {
 	uri := testDBURI(t)
 	ctx := context.Background()
 
@@ -228,5 +347,23 @@ func TestQueryReadOnlyIntegration(t *testing.T) {
 	}
 	if capped.RowCount != 10 || !capped.Truncated {
 		t.Fatalf("cap result = %+v, want 10 rows truncated", capped)
+	}
+
+	// The dashboard's explicitly confirmed write mode commits one transaction,
+	// reports affected rows for a command without RETURNING, and is then visible
+	// through the unchanged MCP/read-only path.
+	written, err := svc.ExecuteQuery(ctx, "live-db", "INSERT INTO q_test VALUES (4)", true)
+	if err != nil {
+		t.Fatalf("confirmed insert: %v", err)
+	}
+	if written.RowCount != 1 || len(written.Columns) != 0 {
+		t.Fatalf("confirmed insert result = %+v, want one affected row", written)
+	}
+	verify, err := svc.Query(ctx, "live-db", "SELECT count(*) FROM q_test WHERE id = 4")
+	if err != nil {
+		t.Fatalf("verify committed insert: %v", err)
+	}
+	if verify.RowCount != 1 || fmt.Sprint(verify.Rows[0][0]) != "1" {
+		t.Fatalf("committed insert verification = %+v", verify)
 	}
 }

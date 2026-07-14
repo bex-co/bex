@@ -117,6 +117,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			core.WriteJSON(w, http.StatusOK, info)
 		})
+		mux.HandleFunc("POST "+base+"/{id}/query", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				SQL         string `json:"sql"`
+				AllowWrites bool   `json:"allowWrites"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				return
+			}
+			result, err := s.ExecuteQuery(r.Context(), r.PathValue("id"), req.SQL, req.AllowWrites)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, result)
+		})
 
 		// --- lifecycle (Render: POST /postgres/{id}/{suspend,resume,restart,failover}) ---
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))

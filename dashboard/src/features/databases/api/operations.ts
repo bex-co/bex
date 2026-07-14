@@ -424,7 +424,10 @@ export interface SetDatabaseParameterOverridesMutation {
   } | null;
 }
 export const SetDatabaseParameterOverridesDocument = gql`
-  mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {
+  mutation SetDatabaseParameterOverrides(
+    $id: String!
+    $parameters: [ParameterInput!]
+  ) {
     setDatabaseParameterOverrides(id: $id, parameters: $parameters) {
       id
       name
@@ -433,6 +436,42 @@ export const SetDatabaseParameterOverridesDocument = gql`
 ` as unknown as TypedDocumentNode<
   SetDatabaseParameterOverridesMutation,
   SetDatabaseParameterOverridesVars
+>;
+
+// --- SQL console (w5/m28) ---
+
+export interface DatabaseQueryResult {
+  columns: Array<string | null> | null;
+  rows: Array<{ values: Array<string | null> | null } | null> | null;
+  rowCount: number | null;
+  truncated: boolean | null;
+}
+export interface ExecuteDatabaseQueryVars {
+  id: string;
+  sql: string;
+  allowWrites?: boolean | null;
+}
+export interface ExecuteDatabaseQueryMutation {
+  executeDatabaseQuery: DatabaseQueryResult | null;
+}
+export const ExecuteDatabaseQueryDocument = gql`
+  mutation ExecuteDatabaseQuery(
+    $id: String!
+    $sql: String!
+    $allowWrites: Boolean
+  ) {
+    executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {
+      columns
+      rows {
+        values
+      }
+      rowCount
+      truncated
+    }
+  }
+` as unknown as TypedDocumentNode<
+  ExecuteDatabaseQueryMutation,
+  ExecuteDatabaseQueryVars
 >;
 
 // --- plan update (m16) ---

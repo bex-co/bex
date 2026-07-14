@@ -27,7 +27,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -48,6 +47,10 @@ type Service struct {
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).
 	MaxPostgres int
+	// queryExecutor is the SQL transport seam used by Query and ExecuteQuery.
+	// Production leaves it nil and uses pgx; tests replace it so the REST and
+	// GraphQL adapters can exercise authz + secret resolution without a live DB.
+	queryExecutor queryExecutor
 }
 
 // PostgresView is the Render-shaped "postgres" object.
@@ -255,18 +258,11 @@ func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*ap
 	if err != nil {
 		return nil, nil, err
 	}
-	secretName := d.Status.SecretName
-	if secretName == "" {
-		secretName = name + "-app"
-	}
-	var sec corev1.Secret
-	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: secretName}, &sec); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, nil, core.ErrNotFound // not provisioned yet
-		}
+	sec, err := s.databaseSecret(ctx, d)
+	if err != nil {
 		return nil, nil, err
 	}
-	return d, &sec, nil
+	return d, sec, nil
 }
 
 // ListPostgres returns every managed Postgres in the namespace, optionally

@@ -813,6 +813,96 @@ const enDatabases: Record<string, TranslationEntry> = {
     description:
       "Insights parameter-overrides column header (pg_settings.source)",
   },
+  "databases.sqlTitle": {
+    message: "SQL console",
+    description: "Database detail SQL console card title",
+  },
+  "databases.sqlDescription": {
+    message:
+      "Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.",
+    description: "Database SQL console safety summary",
+  },
+  "databases.sqlEditorLabel": {
+    message: "SQL query",
+    description: "Accessible label for the SQL editor",
+  },
+  "databases.sqlShortcut": {
+    message: "Press Ctrl+Enter or ⌘+Enter to run",
+    description: "SQL console keyboard shortcut hint",
+  },
+  "databases.sqlRun": {
+    message: "Run query",
+    description: "SQL console run button",
+  },
+  "databases.sqlRunning": {
+    message: "Running…",
+    description: "SQL console run button while a query is executing",
+  },
+  "databases.sqlUnknownError": {
+    message: "The query failed. Check the statement and try again.",
+    description: "SQL console fallback error",
+  },
+  "databases.sqlReturnedRows": {
+    message: "{count} rows returned",
+    description: "SQL console SELECT result count",
+  },
+  "databases.sqlAffectedRows": {
+    message: "{count} rows affected",
+    description: "SQL console write result count",
+  },
+  "databases.sqlTruncated": {
+    message: "Result capped at {limit} rows",
+    description: "SQL console backend row-cap notice",
+  },
+  "databases.sqlNull": {
+    message: "NULL",
+    description: "SQL console null cell value",
+  },
+  "databases.sqlNoRows": {
+    message: "The query returned no rows.",
+    description: "SQL console empty result message",
+  },
+  "databases.sqlPrevious": {
+    message: "Previous",
+    description: "SQL result pagination previous button",
+  },
+  "databases.sqlNext": {
+    message: "Next",
+    description: "SQL result pagination next button",
+  },
+  "databases.sqlPage": {
+    message: "Page {page} of {pages}",
+    description: "SQL result pagination position",
+  },
+  "databases.sqlHistory": {
+    message: "Query history",
+    description: "SQL console session history heading",
+  },
+  "databases.sqlClearHistory": {
+    message: "Clear",
+    description: "SQL console clear-history button",
+  },
+  "databases.sqlNoHistory": {
+    message: "Queries run in this browser session appear here.",
+    description: "SQL console empty history message",
+  },
+  "databases.sqlConfirmTitle": {
+    message: "Run a statement that can modify data?",
+    description: "SQL console write confirmation title",
+  },
+  "databases.sqlConfirmDescription": {
+    message:
+      "This statement is not recognized as read-only. It can change or delete database data and cannot be undone by bex.",
+    description: "SQL console write confirmation warning",
+  },
+  "databases.sqlConfirmCancel": {
+    message: "Cancel",
+    description: "SQL console write confirmation cancel button",
+  },
+  "databases.sqlConfirmRun": {
+    message: "Run statement",
+    description: "SQL console confirmed write action",
+  },
 };
 
 export default enDatabases;

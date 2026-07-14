@@ -799,6 +799,96 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "Insights parameter-overrides column header (pg_settings.source)",
   },
+  "databases.sqlTitle": {
+    message: "SQL 控制台",
+    description: "Database detail SQL console card title",
+  },
+  "databases.sqlDescription": {
+    message:
+      "对该数据库运行一条 SQL 语句。结果最多返回 500 行，查询将在 10 秒后超时。",
+    description: "Database SQL console safety summary",
+  },
+  "databases.sqlEditorLabel": {
+    message: "SQL 查询",
+    description: "Accessible label for the SQL editor",
+  },
+  "databases.sqlShortcut": {
+    message: "按 Ctrl+Enter 或 ⌘+Enter 运行",
+    description: "SQL console keyboard shortcut hint",
+  },
+  "databases.sqlRun": {
+    message: "运行查询",
+    description: "SQL console run button",
+  },
+  "databases.sqlRunning": {
+    message: "运行中…",
+    description: "SQL console run button while a query is executing",
+  },
+  "databases.sqlUnknownError": {
+    message: "查询失败。请检查语句后重试。",
+    description: "SQL console fallback error",
+  },
+  "databases.sqlReturnedRows": {
+    message: "返回 {count} 行",
+    description: "SQL console SELECT result count",
+  },
+  "databases.sqlAffectedRows": {
+    message: "影响 {count} 行",
+    description: "SQL console write result count",
+  },
+  "databases.sqlTruncated": {
+    message: "结果已限制为 {limit} 行",
+    description: "SQL console backend row-cap notice",
+  },
+  "databases.sqlNull": {
+    message: "NULL",
+    description: "SQL console null cell value",
+  },
+  "databases.sqlNoRows": {
+    message: "查询未返回任何行。",
+    description: "SQL console empty result message",
+  },
+  "databases.sqlPrevious": {
+    message: "上一页",
+    description: "SQL result pagination previous button",
+  },
+  "databases.sqlNext": {
+    message: "下一页",
+    description: "SQL result pagination next button",
+  },
+  "databases.sqlPage": {
+    message: "第 {page} 页，共 {pages} 页",
+    description: "SQL result pagination position",
+  },
+  "databases.sqlHistory": {
+    message: "查询历史",
+    description: "SQL console session history heading",
+  },
+  "databases.sqlClearHistory": {
+    message: "清除",
+    description: "SQL console clear-history button",
+  },
+  "databases.sqlNoHistory": {
+    message: "本次浏览器会话中运行的查询会显示在这里。",
+    description: "SQL console empty history message",
+  },
+  "databases.sqlConfirmTitle": {
+    message: "运行可能修改数据的语句？",
+    description: "SQL console write confirmation title",
+  },
+  "databases.sqlConfirmDescription": {
+    message:
+      "该语句未被识别为只读语句。它可能更改或删除数据库数据，且 bex 无法撤销。",
+    description: "SQL console write confirmation warning",
+  },
+  "databases.sqlConfirmCancel": {
+    message: "取消",
+    description: "SQL console write confirmation cancel button",
+  },
+  "databases.sqlConfirmRun": {
+    message: "运行语句",
+    description: "SQL console confirmed write action",
+  },
 };
 
 export default zhDatabases;

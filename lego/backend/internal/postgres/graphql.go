@@ -17,6 +17,11 @@ limitations under the License.
 package postgres
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"time"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
@@ -241,6 +246,71 @@ var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"description": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Description })},
 	},
 })
+
+type databaseQueryRow struct {
+	Values []any
+}
+
+type databaseQueryResult struct {
+	Columns   []string
+	Rows      []databaseQueryRow
+	RowCount  int
+	Truncated bool
+}
+
+var databaseQueryRowGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseQueryRow",
+	Fields: graphql.Fields{
+		"values": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v databaseQueryRow) any { return v.Values })},
+	},
+})
+
+var databaseQueryResultGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseQueryResult",
+	Fields: graphql.Fields{
+		"columns":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Columns })},
+		"rows":      &graphql.Field{Type: graphql.NewList(databaseQueryRowGQLType), Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Rows })},
+		"rowCount":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.RowCount })},
+		"truncated": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Truncated })},
+	},
+})
+
+func queryResultForGraphQL(result QueryResult) databaseQueryResult {
+	rows := make([]databaseQueryRow, len(result.Rows))
+	for i, row := range result.Rows {
+		values := make([]any, len(row))
+		for j, value := range row {
+			values[j] = queryCellString(value)
+		}
+		rows[i] = databaseQueryRow{Values: values}
+	}
+	return databaseQueryResult{
+		Columns:   result.Columns,
+		Rows:      rows,
+		RowCount:  result.RowCount,
+		Truncated: result.Truncated,
+	}
+}
+
+// queryCellString preserves NULL while rendering pgx values deterministically
+// for GraphQL's tabular string cells. REST and MCP retain the native JSON values.
+func queryCellString(value any) any {
+	if value == nil {
+		return nil
+	}
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return base64.StdEncoding.EncodeToString(v)
+	case time.Time:
+		return v.Format(time.RFC3339Nano)
+	}
+	if encoded, err := json.Marshal(value); err == nil {
+		return string(encoded)
+	}
+	return fmt.Sprint(value)
+}
 
 // GraphQLQuery returns the database read fields (Render dashboard nouns).
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -525,6 +595,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					}
 				}
 				return s.SetParameterOverrides(p.Context, p.Args["id"].(string), params)
+			},
+		},
+		"executeDatabaseQuery": &graphql.Field{
+			Type: databaseQueryResultGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"sql":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"allowWrites": &graphql.ArgumentConfig{Type: graphql.Boolean},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				allowWrites, _ := p.Args["allowWrites"].(bool)
+				result, err := s.ExecuteQuery(p.Context, p.Args["id"].(string), p.Args["sql"].(string), allowWrites)
+				if err != nil {
+					return nil, err
+				}
+				return queryResultForGraphQL(result), nil
 			},
 		},
 	}

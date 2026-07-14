@@ -16,6 +16,7 @@ import { AccessControlPanel } from "@/features/databases/components/access-contr
 import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
+import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
@@ -72,6 +73,7 @@ export function DatabaseDetailPage() {
             <>
               <MetadataCard database={database} />
               <ConnectionInfoPanel id={database.id} />
+              <SQLConsole key={database.id} id={database.id} />
               <HAPanel database={database} refetch={refetch} />
               <DatastoreMetricsPanel
                 kind="database"
