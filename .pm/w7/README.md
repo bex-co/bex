@@ -16,12 +16,13 @@
 - [x] **m10** — Security hygiene: image CVE scanning in CI + HTTP hardening headers (7 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `001`, `002` (each sub-hour)
 - [x] **m11** — Admission-time tenant-image signature verification (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`w6/006` shipped signing, verification was deferred and never picked back up — flagged three times across two workstreams)
 - [x] **m27** — Blueprints dashboard surface (list · manifest · validate · sync) (10 tasks) ← from `/pm-brainstorm more tasks for w5` 2026-07-13; closes last ✖ UI cell in parity ledger
+- [ ] **m12** — Delete really deletes: purge orphaned tenant artifacts on service/Postgres/Key Value deletion (12 tasks) ← from `/pm service deletion across all service, db, key value types` 2026-07-14 (verbs shipped in w2/m4 + w5/m14; this closes the delete-time teardown gaps)
 - [ ] **m28** — Build logs: ship `type=build` into the log store (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (ADR018 §Logs "`type=build` stays empty by design"; unblocks `w5/m29`); placed here for capacity — topical owner w3 has 4 open milestones (the m27 precedent)
 - [ ] **m29** — Execute and record the ADR031 restore drills (7 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (`w2/done/m27`'s "operational drills require live cluster execution" residual — etcd, OpenBao, and bex-db restores have never actually been run)
 
 ## Inbox
 
-_(empty — `001.md`, `002.md` grouped into **m10** 2026-07-13)_
+- `003.md` — Secret scanning in CI (gitleaks over pushed diffs/history) — renumbered from `002.md` 2026-07-14: it had collided with the done HTTP-headers note (`done/002.md`, grouped into m10); this one was never done and stays open
 
 ## Not in w7 (deliberate)
 
