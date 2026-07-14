@@ -510,7 +510,7 @@ func (s *Server) Handler() (http.Handler, error) {
 		})
 	}
 
-	return withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux)), nil
+	return withSecurityHeaders(withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux))), nil
 }
 
 // rateLimitMiddleware returns the rate-limiting middleware when a RateLimiter

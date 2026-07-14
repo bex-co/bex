@@ -167,6 +167,30 @@ function graphqlDevProxy(target = "https://api.bex.co/graphql"): Plugin {
   };
 }
 
+// Standard hardening headers for every SSR response. HSTS only in production
+// (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
+// HSTS there would break the dev server.
+const securityHeaders: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  // TanStack Start SSR injects inline hydration scripts; inline styles come from
+  // Tailwind and shadcn/Radix. connect-src https: covers the API and auth
+  // origins (api.bex.co, auth.bex.co) without hard-coding their values here.
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self' https:",
+    "frame-ancestors 'none'",
+  ].join("; "),
+};
+if (process.env.NODE_ENV === "production") {
+  securityHeaders["Strict-Transport-Security"] =
+    "max-age=63072000; includeSubDomains";
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -177,7 +201,7 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
-    nitro(),
+    nitro({ routeRules: { "/**": { headers: securityHeaders } } }),
   ],
   ssr: {
     // @ory/elements-react ships extensionless relative imports

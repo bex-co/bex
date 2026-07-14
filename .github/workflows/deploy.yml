@@ -118,7 +118,49 @@ jobs:
             cosign attest --yes --type spdxjson --predicate /tmp/sbom.spdx.json "$ref"
           done
 
-      # --- 1d. GitOps write-back: pin BOTH images to their immutable digests (w1/m7 t002) ---
+      # --- 1d. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
+      # Trivy scans both built+pushed images for known CVEs. Two passes per image:
+      # a non-blocking HIGH+CRITICAL report (always exits 0, shows the full picture)
+      # and a blocking CRITICAL-only gate (exit-code 1 if any CRITICAL is found).
+      # `ignore-unfixed: true` suppresses findings where no fix is yet available
+      # (noise without an actionable path — revisit when vendor ships a patch).
+      - uses: aquasecurity/trivy-action@0.30.0
+        name: CVE scan — operator image HIGH+CRITICAL (report)
+        with:
+          image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
+          format: table
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - uses: aquasecurity/trivy-action@0.30.0
+        name: CVE scan — operator image CRITICAL (gate)
+        with:
+          image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL
+
+      - uses: aquasecurity/trivy-action@0.30.0
+        name: CVE scan — dashboard image HIGH+CRITICAL (report)
+        with:
+          image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
+          format: table
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - uses: aquasecurity/trivy-action@0.30.0
+        name: CVE scan — dashboard image CRITICAL (gate)
+        with:
+          image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL
+
+      # --- 1e. GitOps write-back: pin BOTH images to their immutable digests (w1/m7 t002) ---
       # Argo syncs git, not image tags, so a mutable :latest override never rolls pods on
       # its own AND leaves the running Deployment pinned to a tag whose contents can change
       # under it. Rewrite the kustomize image overrides in deploy/gitops to the exact
