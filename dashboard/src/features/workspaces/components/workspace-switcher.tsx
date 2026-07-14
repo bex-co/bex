@@ -43,10 +43,7 @@ export function WorkspaceSwitcher() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
+            <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
               <Building2 className="size-4 shrink-0" />
               <span className="truncate font-medium">
                 {currentWorkspace?.name ?? t("workspaces.switcherEmpty")}
