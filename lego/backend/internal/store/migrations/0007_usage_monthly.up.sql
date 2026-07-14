@@ -1,6 +1,6 @@
 -- w8/m4: usage retention — monthly aggregates for compacted hourly detail.
 --
--- usage_hourly grows without bound (one row per service × kind × tier ×
+-- usage_hourly grows without bound (one row per resource × kind × tier ×
 -- hour). Months older than the hot window (BEX_USAGE_RETENTION_MONTHS,
 -- default 3, docs/ADR023-usage-metering.md) are compacted into this table — a
 -- lossless SUM per calendar month — and the hourly rows purged, so the
@@ -8,9 +8,9 @@
 --
 -- Mirrors usage_hourly's conventions (0006_usage.up.sql): same kind CHECK,
 -- same empty-string tier for non-compute meters, same tenant FK. month is the
--- first day of the calendar month (UTC). The primary key lets the compaction
--- upsert additively (ON CONFLICT … DO UPDATE quantity + EXCLUDED.quantity):
--- a straggler hourly row compacted later adds to the month it belongs to.
+-- first day of the calendar month (UTC). Migration 0021 later extends the
+-- original primary key with resource_kind. The key lets compaction upsert
+-- additively: a straggler hourly row compacted later adds to its month.
 
 CREATE TABLE usage_monthly (
     workspace_id text   NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,

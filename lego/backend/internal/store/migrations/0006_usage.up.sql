@@ -6,7 +6,8 @@
 --   build_seconds    — build-Job duration (Render's "pipeline minutes")
 --
 -- window_start is the start of the closed hourly window (truncated to the
--- hour). Each (service_id, kind, tier, window_start) is unique so the
+-- hour). Migration 0021 later extends this original key with resource_kind so
+-- different resource kinds may share a service_id without colliding. The
 -- rollup loop can re-evaluate any window idempotently via ON CONFLICT … DO
 -- UPDATE without double-counting.
 --

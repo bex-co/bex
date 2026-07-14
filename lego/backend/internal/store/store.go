@@ -237,10 +237,11 @@ type Store interface {
 	// UPDATE) — the write path for the metering loop (w8/m1). Re-processing
 	// the same window is safe.
 	UpsertUsageHourly(ctx context.Context, row HourlyRow) error
-	// LatestUsageWindow returns the most-recent window_start for a service so
+	// LatestUsageWindow returns the most-recent window_start for a resource so
 	// the metering loop can catch up from where it left off after a restart.
+	// resourceKind disambiguates resources of different kinds with the same id.
 	// Returns zero time when no rows exist yet.
-	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
+	LatestUsageWindow(ctx context.Context, resourceKind, serviceID string) (time.Time, error)
 	// UsageMonthToDate returns month-to-date aggregates (grouped by service /
 	// kind / tier) for a workspace, bounded by the caller-supplied now so tests
 	// don't depend on wall time. Sums usage_hourly and usage_monthly together,

@@ -12,7 +12,7 @@
 | t004 | Adapter-consistency tests: REST/GraphQL/MCP all return the new rows identically (thin-adapter design — no adapter code expected to change)                          | 30m | t003 | — **DONE** |
 | t005 | Dashboard: Compute section labels resource kind next to `serviceId` so Postgres/Key Value rows aren't read as web services                                          | 35m | t004 | — **DONE** |
 | t006 | Render parity: compare against Render's billing usage view for Postgres/Key Value compute; flag any field/semantic drift                                            | 30m | t005 | — **DONE** |
-| t007 | Simplify — `/simplify` over the code this milestone changed                                                                                                          | 20m | t006 | — skipped (no simplifications identified) |
+| t007 | Simplify — `/simplify` over the code this milestone changed                                                                                                          | 20m | t006 | — **DONE** (manual Codex review; no further simplifications) |
 | t008 | Test coverage — rollup + acceptance tests for Database/KeyValue windows                                                                                              | 35m | t006 | — **DONE** |
 | t009 | Closeout — DoD met → move milestone to `done/`                                                                                                                       | 10m | t008 | — **DONE** |
 
@@ -20,7 +20,7 @@
 
 A workspace with a managed Postgres and/or Key Value instance sees `instance_seconds` rows for them in `GET /v1/usage`, the GraphQL `usage` query, MCP `get_usage`, and the dashboard Usage page — same totals across all four, tier = the resource's plan.
 
-✅ DoD met: `resource_kind` column added to `usage_hourly`/`usage_monthly`, rollup extended to Database/KeyValue CRs, REST/GraphQL/MCP/dashboard all surface `resourceKind`, tests pass.
+✅ DoD met: `resource_kind` column added to `usage_hourly`/`usage_monthly`, rollup extended to Database/KeyValue CRs, REST/GraphQL/MCP/dashboard all surface `resourceKind`, tests pass. Completion audit 2026-07-13 added migration `0021_usage_resource_identity` so same-name Postgres/Key Value resources cannot overwrite or merge, exercised the real MCP tool in adapter parity, and passed the real-Postgres acceptance suite.
 
 ## Source + Goal linkage
 

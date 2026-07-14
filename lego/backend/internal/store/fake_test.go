@@ -391,19 +391,21 @@ func (m *memStore) SetAppImage(_ context.Context, id string, image string) error
 
 // usageKey is the composite primary key of usage_hourly.
 type usageKey struct {
-	serviceID   string
-	kind        string
-	tier        string
-	windowStart time.Time
+	resourceKind string
+	serviceID    string
+	kind         string
+	tier         string
+	windowStart  time.Time
 }
 
 // monthKey is the composite primary key of usage_monthly; month is the first
 // day of the calendar month (UTC).
 type monthKey struct {
-	serviceID string
-	kind      string
-	tier      string
-	month     time.Time
+	resourceKind string
+	serviceID    string
+	kind         string
+	tier         string
+	month        time.Time
 }
 
 // monthlyRow is one usage_monthly aggregate value.
@@ -416,17 +418,19 @@ type monthlyRow struct {
 func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	k := usageKey{row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
+	row.ResourceKind = NormalizeResourceKind(row.ResourceKind)
+	k := usageKey{row.ResourceKind, row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
 	m.usage[k] = row
 	return nil
 }
 
-func (m *memStore) LatestUsageWindow(_ context.Context, serviceID string) (time.Time, error) {
+func (m *memStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID string) (time.Time, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	resourceKind = NormalizeResourceKind(resourceKind)
 	var latest time.Time
 	for k := range m.usage {
-		if k.serviceID == serviceID && k.windowStart.After(latest) {
+		if k.resourceKind == resourceKind && k.serviceID == serviceID && k.windowStart.After(latest) {
 			latest = k.windowStart
 		}
 	}
@@ -485,7 +489,7 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 		}
 		ws := k.windowStart.UTC()
 		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
-		mk := monthKey{k.serviceID, k.kind, k.tier, month}
+		mk := monthKey{k.resourceKind, k.serviceID, k.kind, k.tier, month}
 		m.monthly[mk] = monthlyRow{
 			workspaceID:  row.WorkspaceID,
 			resourceKind: row.ResourceKind,

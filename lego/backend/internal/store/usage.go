@@ -29,16 +29,25 @@ const (
 	UsageKindBuildSeconds    = "build_seconds"
 )
 
+// NormalizeResourceKind preserves the pre-resource-kind behavior for callers
+// that omit the field. Persisted rows always carry an explicit kind.
+func NormalizeResourceKind(kind string) string {
+	if kind == "" {
+		return ResourceKindService
+	}
+	return kind
+}
+
 // ResourceKind identifies what type of resource a usage row belongs to.
 // "service" is the default (App CRs); "postgres" and "key_value" are the
-// managed-datastore kinds added in w7/m5.
+// managed-datastore kinds added in w8/m5.
 const (
 	ResourceKindService  = "service"   // App (web/worker/cron/static)
 	ResourceKindPostgres = "postgres"  // Database CR → CNPG Cluster
 	ResourceKindKeyValue = "key_value" // KeyValue CR → Valkey StatefulSet
 )
 
-// HourlyRow is one window of usage for one service + kind.
+// HourlyRow is one window of usage for one resource + meter kind.
 type HourlyRow struct {
 	WorkspaceID  string
 	ServiceID    string
@@ -49,7 +58,7 @@ type HourlyRow struct {
 	Quantity     int64
 }
 
-// UsageSummaryRow is one service/kind/tier aggregate as returned by
+// UsageSummaryRow is one resource/meter-kind/tier aggregate as returned by
 // UsageMonthToDate — the raw numbers m2's core verb formats for adapters.
 type UsageSummaryRow struct {
 	ServiceID    string
@@ -67,31 +76,29 @@ type UsageCompaction struct {
 }
 
 // UpsertUsageHourly writes one window row, creating it or updating the
-// quantity to the new value if the (service_id, kind, tier, window_start)
-// key already exists. The ON CONFLICT … DO UPDATE makes the rollup loop
-// idempotent: re-processing a window never double-counts.
+// quantity to the new value if the
+// (resource_kind, service_id, kind, tier, window_start) key already exists.
+// The ON CONFLICT … DO UPDATE makes the rollup loop idempotent.
 func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
-	rk := row.ResourceKind
-	if rk == "" {
-		rk = ResourceKindService
-	}
+	rk := NormalizeResourceKind(row.ResourceKind)
 	_, err := s.Pool.Exec(ctx, `
 		INSERT INTO usage_hourly (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (service_id, kind, tier, window_start)
-		DO UPDATE SET quantity = EXCLUDED.quantity, resource_kind = EXCLUDED.resource_kind`,
+		ON CONFLICT (resource_kind, service_id, kind, tier, window_start)
+		DO UPDATE SET quantity = EXCLUDED.quantity`,
 		row.WorkspaceID, row.ServiceID, row.Kind, row.Tier, rk, row.WindowStart, row.Quantity)
 	return err
 }
 
 // LatestUsageWindow returns the most recent window_start for any usage row
-// across all kinds for a given service, or zero time if none exist. The
-// rollup loop uses this to find the catch-up start point on restart.
-func (s *PGStore) LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error) {
+// across all meter kinds for a given resource, or zero time if none exist.
+// resourceKind is part of the identity because different Kubernetes resource
+// kinds may legally share the same name.
+func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID string) (time.Time, error) {
 	var t time.Time
 	err := s.Pool.QueryRow(ctx,
-		`SELECT COALESCE(MAX(window_start), 'epoch') FROM usage_hourly WHERE service_id = $1`,
-		serviceID,
+		`SELECT COALESCE(MAX(window_start), 'epoch') FROM usage_hourly WHERE resource_kind = $1 AND service_id = $2`,
+		NormalizeResourceKind(resourceKind), serviceID,
 	).Scan(&t)
 	if err != nil {
 		return time.Time{}, err
@@ -100,9 +107,9 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, serviceID string) (time
 }
 
 // UsageMonthToDate returns month-to-date totals for all services in a
-// workspace, grouped by (service_id, kind, tier). now is the caller-supplied
-// clock value so tests can drive it without real time. "Month to date" is
-// calendar-month-start (UTC) to now.
+// workspace, grouped by (resource_kind, service_id, kind, tier). now is the
+// caller-supplied clock value so tests can drive it without real time. "Month
+// to date" is calendar-month-start (UTC) to now.
 //
 // The query sums usage_hourly and usage_monthly together (w8/m4): a hot month
 // has only hourly rows, a compacted month has only its monthly aggregate, and
@@ -163,7 +170,7 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 			FROM purged
 			GROUP BY workspace_id, service_id, kind, tier, resource_kind,
 			         date_trunc('month', window_start AT TIME ZONE 'UTC')
-			ON CONFLICT (service_id, kind, tier, month)
+			ON CONFLICT (resource_kind, service_id, kind, tier, month)
 			DO UPDATE SET quantity = usage_monthly.quantity + EXCLUDED.quantity
 			RETURNING month
 		)

@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -294,8 +296,16 @@ func seedMixedStore() *memUsageStore {
 	return st
 }
 
-// TestResourceKindSurfacesAcrossAdapters verifies that REST and GraphQL return
-// the correct resourceKind for App, Database, and KeyValue rows — the t004 DoD.
+func entriesByResource(entries []usageServiceEntry) map[string]usageServiceEntry {
+	out := make(map[string]usageServiceEntry, len(entries))
+	for _, entry := range entries {
+		out[entry.ResourceKind+"/"+entry.ServiceID] = entry
+	}
+	return out
+}
+
+// TestResourceKindSurfacesAcrossAdapters verifies that REST, GraphQL, and MCP
+// return identical App, Database, and KeyValue entries — the t004 DoD.
 func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	svc := svcWithTenant(seedMixedStore(), "tea-mix")
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
@@ -331,14 +341,14 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 		t.Errorf("REST: mykv resourceKind: want %q, got %q", store.ResourceKindKeyValue, restKinds["mykv"])
 	}
 
-	// GraphQL — same service count and resourceKind values.
+	// GraphQL — same complete entries, modulo its envelope.
 	schema, err := buildTestSchema(svc)
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
 	gql := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `{ usage { services { serviceId resourceKind } } }`,
+		RequestString: `{ usage { services { serviceId resourceKind rows { kind tier total } } } }`,
 		Context:       ctx,
 	})
 	if len(gql.Errors) > 0 {
@@ -350,17 +360,54 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	if len(gqlServices) != 3 {
 		t.Fatalf("GraphQL: expected 3 services, got %d", len(gqlServices))
 	}
-	gqlKinds := map[string]string{}
+	gqlEntries := make([]usageServiceEntry, 0, len(gqlServices))
 	for _, raw := range gqlServices {
 		s := raw.(map[string]any)
 		sid, _ := s["serviceId"].(string)
 		rk, _ := s["resourceKind"].(string)
-		gqlKinds[sid] = rk
-	}
-	for id, wantKind := range restKinds {
-		if gqlKinds[id] != wantKind {
-			t.Errorf("GraphQL: %s resourceKind mismatch: REST=%q GraphQL=%q", id, wantKind, gqlKinds[id])
+		entry := usageServiceEntry{ServiceID: sid, ResourceKind: rk}
+		for _, rawRow := range s["rows"].([]any) {
+			row := rawRow.(map[string]any)
+			entry.Rows = append(entry.Rows, usageRow{
+				Kind:  row["kind"].(string),
+				Tier:  row["tier"].(string),
+				Total: int64(row["total"].(int)),
+			})
 		}
+		gqlEntries = append(gqlEntries, entry)
+	}
+	wantEntries := entriesByResource(restResp.Services)
+	if got := entriesByResource(gqlEntries); !reflect.DeepEqual(got, wantEntries) {
+		t.Errorf("GraphQL entries differ from REST:\nREST: %+v\nGraphQL: %+v", wantEntries, got)
+	}
+
+	// MCP — invoke the actual tool over an in-memory transport and compare its
+	// shared JSON response to REST, including rows, tiers, and totals.
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	defer cs.Close()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_usage: err=%v result=%+v", err, result)
+	}
+	rawMCP, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("MCP marshal: %v", err)
+	}
+	var mcpResp usageResponse
+	if err := json.Unmarshal(rawMCP, &mcpResp); err != nil {
+		t.Fatalf("MCP decode: %v (%s)", err, rawMCP)
+	}
+	if got := entriesByResource(mcpResp.Services); !reflect.DeepEqual(got, wantEntries) {
+		t.Errorf("MCP entries differ from REST:\nREST: %+v\nMCP: %+v", wantEntries, got)
 	}
 }
 

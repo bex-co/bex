@@ -46,16 +46,18 @@ type memUsageStore struct {
 	apps     []store.App
 	rows     map[usageKey]store.HourlyRow
 	monthly  map[monthKey]monthlyVal
-	latestBy map[string]time.Time // serviceID -> latest window_start
+	latestBy map[string]time.Time // resourceKind/serviceID -> latest window_start
 	compacts []time.Time          // boundaries CompactUsage was called with
 }
 
 type usageKey struct {
+	resourceKind          string
 	serviceID, kind, tier string
 	windowStart           time.Time
 }
 
 type monthKey struct {
+	resourceKind          string
 	serviceID, kind, tier string
 	month                 time.Time // first of the calendar month (UTC)
 }
@@ -82,18 +84,20 @@ func (m *memUsageStore) ListApps(_ context.Context) ([]store.App, error) {
 func (m *memUsageStore) UpsertUsageHourly(_ context.Context, row store.HourlyRow) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	k := usageKey{row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
+	row.ResourceKind = store.NormalizeResourceKind(row.ResourceKind)
+	k := usageKey{row.ResourceKind, row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
 	m.rows[k] = row
-	if row.WindowStart.After(m.latestBy[row.ServiceID]) {
-		m.latestBy[row.ServiceID] = row.WindowStart
+	resourceID := row.ResourceKind + "/" + row.ServiceID
+	if row.WindowStart.After(m.latestBy[resourceID]) {
+		m.latestBy[resourceID] = row.WindowStart
 	}
 	return nil
 }
 
-func (m *memUsageStore) LatestUsageWindow(_ context.Context, serviceID string) (time.Time, error) {
+func (m *memUsageStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID string) (time.Time, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.latestBy[serviceID], nil
+	return m.latestBy[store.NormalizeResourceKind(resourceKind)+"/"+serviceID], nil
 }
 
 // UsageMonthToDate mirrors PGStore's two-table read: hourly rows in
@@ -150,7 +154,7 @@ func (m *memUsageStore) CompactUsage(_ context.Context, before time.Time) (store
 		}
 		ws := k.windowStart.UTC()
 		month := time.Date(ws.Year(), ws.Month(), 1, 0, 0, 0, 0, time.UTC)
-		mk := monthKey{k.serviceID, k.kind, k.tier, month}
+		mk := monthKey{k.resourceKind, k.serviceID, k.kind, k.tier, month}
 		m.monthly[mk] = monthlyVal{
 			workspaceID:  row.WorkspaceID,
 			resourceKind: row.ResourceKind,
@@ -265,6 +269,28 @@ func TestMonthToDateEmptyMonth(t *testing.T) {
 	}
 	if len(rows) != 0 {
 		t.Errorf("empty month: expected 0 rows, got %d", len(rows))
+	}
+}
+
+func TestSummariseKeepsSameNameResourceKindsSeparate(t *testing.T) {
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "shared", ResourceKind: store.ResourceKindPostgres, Kind: store.UsageKindInstanceSeconds, Tier: "free", Total: 3600},
+		{ServiceID: "shared", ResourceKind: store.ResourceKindKeyValue, Kind: store.UsageKindInstanceSeconds, Tier: "free", Total: 1800},
+	}
+
+	summary := summarise("tea-shared", rows)
+	if len(summary.Services) != 2 {
+		t.Fatalf("same-name resources: want 2 service entries, got %+v", summary.Services)
+	}
+	totals := map[string]int64{}
+	for _, resource := range summary.Services {
+		if len(resource.Rows) != 1 {
+			t.Fatalf("%s rows merged: %+v", resource.ResourceKind, resource.Rows)
+		}
+		totals[resource.ResourceKind] = resource.Rows[0].Total
+	}
+	if totals[store.ResourceKindPostgres] != 3600 || totals[store.ResourceKindKeyValue] != 1800 {
+		t.Errorf("same-name totals merged or mislabeled: %+v", totals)
 	}
 }
 
@@ -399,7 +425,7 @@ func TestCompactFoldsOldMonthsAndPurges(t *testing.T) {
 
 	st.mu.Lock()
 	hourlyLeft, monthlyRows := len(st.rows), len(st.monthly)
-	april := st.monthly[monthKey{"srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
+	april := st.monthly[monthKey{store.ResourceKindService, "srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
 	st.mu.Unlock()
 
 	if hourlyLeft != 2 {
@@ -415,7 +441,7 @@ func TestCompactFoldsOldMonthsAndPurges(t *testing.T) {
 	// Idempotency: a second pass finds nothing older than the boundary.
 	svc.compact(context.Background())
 	st.mu.Lock()
-	hourlyAfter, aprilAfter := len(st.rows), st.monthly[monthKey{"srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
+	hourlyAfter, aprilAfter := len(st.rows), st.monthly[monthKey{store.ResourceKindService, "srv-001", store.UsageKindInstanceSeconds, "starter", time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)}]
 	st.mu.Unlock()
 	if hourlyAfter != hourlyLeft || aprilAfter.quantity != 5400 {
 		t.Errorf("re-run not a no-op: hourly %d→%d, April %d→%d", hourlyLeft, hourlyAfter, april.quantity, aprilAfter.quantity)
@@ -627,7 +653,7 @@ func TestProcessDatastoreWindowUpsertInstanceSeconds(t *testing.T) {
 	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
 	svc.processDatastoreWindow(context.Background(), ds, window)
 
-	k := usageKey{"mydb", store.UsageKindInstanceSeconds, "basic-256mb", window}
+	k := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindInstanceSeconds, "basic-256mb", window}
 	st.mu.Lock()
 	row, ok := st.rows[k]
 	st.mu.Unlock()
@@ -810,4 +836,3 @@ func TestRollupCoversDatastoreWindow(t *testing.T) {
 		t.Error("rollup: no KeyValue rows written")
 	}
 }
-

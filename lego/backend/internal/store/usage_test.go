@@ -101,7 +101,7 @@ func TestMemStoreLatestUsageWindow(t *testing.T) {
 	ctx := context.Background()
 
 	// Unknown service → zero time.
-	got, err := st.LatestUsageWindow(ctx, "srv-unknown")
+	got, err := st.LatestUsageWindow(ctx, ResourceKindService, "srv-unknown")
 	if err != nil {
 		t.Fatalf("LatestUsageWindow (unknown): %v", err)
 	}
@@ -119,12 +119,41 @@ func TestMemStoreLatestUsageWindow(t *testing.T) {
 		})
 	}
 
-	got, err = st.LatestUsageWindow(ctx, "srv-003")
+	got, err = st.LatestUsageWindow(ctx, ResourceKindService, "srv-003")
 	if err != nil {
 		t.Fatalf("LatestUsageWindow: %v", err)
 	}
 	if !got.Equal(w2.UTC()) {
 		t.Errorf("expected latest window %v, got %v", w2, got)
+	}
+}
+
+func TestMemStoreUsageIdentityIncludesResourceKind(t *testing.T) {
+	st := newMemStore()
+	ctx := context.Background()
+	window := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
+	for _, row := range []HourlyRow{
+		{WorkspaceID: "tea-identity", ServiceID: "shared", ResourceKind: ResourceKindPostgres, Kind: UsageKindInstanceSeconds, Tier: "free", WindowStart: window, Quantity: 3600},
+		{WorkspaceID: "tea-identity", ServiceID: "shared", ResourceKind: ResourceKindKeyValue, Kind: UsageKindInstanceSeconds, Tier: "free", WindowStart: window, Quantity: 1800},
+	} {
+		if err := st.UpsertUsageHourly(ctx, row); err != nil {
+			t.Fatalf("upsert %s: %v", row.ResourceKind, err)
+		}
+	}
+
+	rows, err := st.UsageMonthToDate(ctx, "tea-identity", window.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("same-name resources: want 2 rows, got %+v", rows)
+	}
+	totals := map[string]int64{}
+	for _, row := range rows {
+		totals[row.ResourceKind] = row.Total
+	}
+	if totals[ResourceKindPostgres] != 3600 || totals[ResourceKindKeyValue] != 1800 {
+		t.Errorf("same-name totals merged or overwritten: %+v", totals)
 	}
 }
 

@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
 Copyright 2026.
 
@@ -14,13 +16,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:build integration
-
 // Local acceptance for w8/m1: proves the metering pipeline writes durable
 // usage_hourly rows for all three kinds against a real Postgres, and that
 // re-processing the same window is idempotent. w8/m4 adds the retention
 // acceptance: compaction folds old months into usage_monthly, purges the
-// hourly detail, and period queries return byte-identical totals.
+// hourly detail, and period queries return byte-identical totals. w8/m5 adds
+// same-name Postgres/KeyValue windows to prove resource-kind isolation through
+// the real schema and MonthToDate query.
 //
 // Run with:
 //
@@ -80,8 +82,8 @@ func setupAcceptance(t *testing.T, tenantID, serviceID, appName string) (*pgxpoo
 		t.Fatalf("insert tenant: %v", err)
 	}
 	if _, err := pool.Exec(ctx,
-		`INSERT INTO apps (id, tenant_id, name, image, tier)
-		 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
+		`INSERT INTO apps (id, tenant_id, name, slug, image, tier)
+		 VALUES ($1, $2, $3, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
 		serviceID, tenantID, appName, "ghcr.io/bex-co/hello-go:latest", "starter",
 	); err != nil {
 		t.Fatalf("insert app: %v", err)
@@ -173,7 +175,7 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	t.Logf("build_seconds (no k8s client, expected 0): %d", countByKind[buildKey])
 
 	// --- LatestUsageWindow must reflect w2 ---
-	latest, err := st.LatestUsageWindow(ctx, "srv-acc-001")
+	latest, err := st.LatestUsageWindow(ctx, store.ResourceKindService, "srv-acc-001")
 	if err != nil {
 		t.Fatalf("LatestUsageWindow: %v", err)
 	}
@@ -254,6 +256,53 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	fmt.Printf("  build_seconds:    %d s (no k8s client — expected 0)\n", countByKind[buildKey])
 	fmt.Printf("  idempotency:      confirmed (re-process w1 unchanged)\n")
 	fmt.Printf("  catch-up no-op:   confirmed (no spurious rows)\n")
+}
+
+// TestAcceptance_DatastoreUsageIdentity proves the managed-datastore path
+// against the real schema. A Database and KeyValue may share a Kubernetes
+// name, meter, plan, and hour; resource_kind must keep both rows and summaries
+// distinct rather than letting one upsert overwrite the other.
+func TestAcceptance_DatastoreUsageIdentity(t *testing.T) {
+	ctx := context.Background()
+	pool, st := setupAcceptance(t, "tea-acc-ds", "srv-acc-ds", "datastore-usage")
+	prom := fakeProm(1.0)
+	defer prom.Close()
+
+	svc := NewService(&core.Base{Namespace: "default"}, st, prom.URL, nil)
+	window := time.Now().UTC().Truncate(time.Hour).Add(-time.Hour)
+	for _, ds := range []datastoreEntry{
+		{ID: "shared", Name: "shared", TenantID: "tea-acc-ds", Plan: "free", Kind: store.ResourceKindPostgres},
+		{ID: "shared", Name: "shared", TenantID: "tea-acc-ds", Plan: "free", Kind: store.ResourceKindKeyValue},
+	} {
+		svc.processDatastoreWindow(ctx, ds, window)
+	}
+
+	var persisted int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM usage_hourly
+		WHERE workspace_id = 'tea-acc-ds' AND service_id = 'shared'
+		  AND kind = 'instance_seconds' AND tier = 'free' AND window_start = $1`,
+		window,
+	).Scan(&persisted); err != nil {
+		t.Fatalf("count datastore rows: %v", err)
+	}
+	if persisted != 2 {
+		t.Fatalf("same-name datastore rows: want 2, got %d", persisted)
+	}
+
+	rows, err := st.UsageMonthToDate(ctx, "tea-acc-ds", window.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("UsageMonthToDate: %v", err)
+	}
+	totals := map[string]int64{}
+	for _, row := range rows {
+		if row.ServiceID == "shared" {
+			totals[row.ResourceKind] = row.Total
+		}
+	}
+	if totals[store.ResourceKindPostgres] != 3600 || totals[store.ResourceKindKeyValue] != 3600 {
+		t.Errorf("same-name datastore totals: want 3600 each, got %+v", totals)
+	}
 }
 
 // TestAcceptance_UsageCompaction is the w8/m4 acceptance (t006): seed hourly

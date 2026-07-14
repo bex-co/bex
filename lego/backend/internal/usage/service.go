@@ -53,7 +53,7 @@ import (
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
-	LatestUsageWindow(ctx context.Context, serviceID string) (time.Time, error)
+	LatestUsageWindow(ctx context.Context, resourceKind, serviceID string) (time.Time, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 }
@@ -143,22 +143,29 @@ func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
 	return s.monthToDateAt(ctx, s.Now().UTC())
 }
 
-// summarise groups flat summary rows by service, carrying the resource kind
-// from the first row per service (all rows for a service_id share the same kind).
+// summarise groups flat summary rows by resource identity. ResourceKind is
+// required because different Kubernetes kinds may legally share a service_id.
 func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
-	var order []string
-	byID := map[string][]store.UsageSummaryRow{}
-	kindByID := map[string]string{}
+	type resourceKey struct {
+		serviceID, resourceKind string
+	}
+	var order []resourceKey
+	byResource := map[resourceKey][]store.UsageSummaryRow{}
 	for _, r := range rows {
-		if _, seen := byID[r.ServiceID]; !seen {
-			order = append(order, r.ServiceID)
-			kindByID[r.ServiceID] = r.ResourceKind
+		r.ResourceKind = store.NormalizeResourceKind(r.ResourceKind)
+		key := resourceKey{r.ServiceID, r.ResourceKind}
+		if _, seen := byResource[key]; !seen {
+			order = append(order, key)
 		}
-		byID[r.ServiceID] = append(byID[r.ServiceID], r)
+		byResource[key] = append(byResource[key], r)
 	}
 	svcs := make([]ServiceUsage, 0, len(order))
-	for _, id := range order {
-		svcs = append(svcs, ServiceUsage{ServiceID: id, ResourceKind: kindByID[id], Rows: byID[id]})
+	for _, key := range order {
+		svcs = append(svcs, ServiceUsage{
+			ServiceID:    key.serviceID,
+			ResourceKind: key.resourceKind,
+			Rows:         byResource[key],
+		})
 	}
 	return Summary{WorkspaceID: workspaceID, Services: svcs}
 }
@@ -329,7 +336,7 @@ func (s *Service) catchUp(ctx context.Context) {
 	now := time.Now().UTC()
 	floor := now.Add(-catchupLimit).Truncate(time.Hour)
 	for _, app := range apps {
-		latest, err := s.Store.LatestUsageWindow(ctx, app.ID)
+		latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID)
 		if err != nil {
 			log.Printf("usage: catch-up: latest window for %s: %v", app.ID, err)
 			continue
@@ -349,7 +356,7 @@ func (s *Service) catchUp(ctx context.Context) {
 		log.Printf("usage: catch-up: list datastores: %v", err)
 	}
 	for _, ds := range datastores {
-		latest, err := s.Store.LatestUsageWindow(ctx, ds.ID)
+		latest, err := s.Store.LatestUsageWindow(ctx, ds.Kind, ds.ID)
 		if err != nil {
 			log.Printf("usage: catch-up: latest window for datastore %s: %v", ds.ID, err)
 			continue
@@ -398,7 +405,10 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 		wg                                   sync.WaitGroup
 	)
 	wg.Add(3)
-	go func() { defer wg.Done(); instanceSecs = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end) }()
+	go func() {
+		defer wg.Done()
+		instanceSecs = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end)
+	}()
 	go func() { defer wg.Done(); egressBytes = s.queryEgressBytes(ctx, app.Name, window, end) }()
 	go func() { defer wg.Done(); buildSecs = s.queryBuildSeconds(ctx, app.Name, window, end) }()
 	wg.Wait()

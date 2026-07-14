@@ -15,3 +15,4 @@
 ## Inbox
 
 - `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gated on m1 producing ~a month of real data
+- `002.md` — Meter managed Postgres storage usage separately from compute (Render drift follow-up from m5)

@@ -39,9 +39,27 @@ const mockUseUsageTrend = vi.mocked(useUsageTrend);
 function emptyTrendState() {
   return {
     points: [
-      { period: "2026-05", timestamp: new Date(2026, 4, 1).toISOString(), compute: 0, bandwidth: 0, build: 0 },
-      { period: "2026-06", timestamp: new Date(2026, 5, 1).toISOString(), compute: 0, bandwidth: 0, build: 0 },
-      { period: "2026-07", timestamp: new Date(2026, 6, 1).toISOString(), compute: 0, bandwidth: 0, build: 0 },
+      {
+        period: "2026-05",
+        timestamp: new Date(2026, 4, 1).toISOString(),
+        compute: 0,
+        bandwidth: 0,
+        build: 0,
+      },
+      {
+        period: "2026-06",
+        timestamp: new Date(2026, 5, 1).toISOString(),
+        compute: 0,
+        bandwidth: 0,
+        build: 0,
+      },
+      {
+        period: "2026-07",
+        timestamp: new Date(2026, 6, 1).toISOString(),
+        compute: 0,
+        bandwidth: 0,
+        build: 0,
+      },
     ],
     loading: false,
   };
@@ -52,7 +70,11 @@ function loadingState() {
 }
 
 function emptyState() {
-  return { summary: { workspaceId: "ws", period: "2026-07", services: [] }, loading: false, error: undefined };
+  return {
+    summary: { workspaceId: "ws", period: "2026-07", services: [] },
+    loading: false,
+    error: undefined,
+  };
 }
 
 function dataState() {
@@ -63,6 +85,7 @@ function dataState() {
       services: [
         {
           serviceId: "eden-cms-v2",
+          resourceKind: "service",
           rows: [
             { kind: "instance_seconds", tier: "starter", total: 7200 },
             { kind: "egress_bytes", tier: "", total: 524288000 },
@@ -71,9 +94,18 @@ function dataState() {
         },
         {
           serviceId: "email-worker",
-          rows: [
-            { kind: "instance_seconds", tier: "hobby", total: 3600 },
-          ],
+          resourceKind: "service",
+          rows: [{ kind: "instance_seconds", tier: "hobby", total: 3600 }],
+        },
+        {
+          serviceId: "shared",
+          resourceKind: "postgres",
+          rows: [{ kind: "instance_seconds", tier: "free", total: 3600 }],
+        },
+        {
+          serviceId: "shared",
+          resourceKind: "key_value",
+          rows: [{ kind: "instance_seconds", tier: "free", total: 1800 }],
         },
       ],
     },
@@ -94,8 +126,12 @@ describe("UsagePage", () => {
 
     render(<UsagePage />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Usage");
-    expect(screen.getByText("Month-to-date workspace consumption")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Usage",
+    );
+    expect(
+      screen.getByText("Month-to-date workspace consumption"),
+    ).toBeInTheDocument();
   });
 
   it("renders three section cards — Compute, Bandwidth, Build Minutes", () => {
@@ -107,7 +143,9 @@ describe("UsagePage", () => {
     // meter labels — use getAllByText and verify at least one match each.
     expect(screen.getAllByText("Compute").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Bandwidth").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Build Minutes").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Build Minutes").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   it("shows skeleton rows while loading and no summary is available", () => {
@@ -116,7 +154,9 @@ describe("UsagePage", () => {
     const { container } = render(<UsagePage />);
 
     // Skeleton elements are rendered as animated divs
-    const skeletons = container.querySelectorAll("[class*='animate-pulse'], [data-slot='skeleton']");
+    const skeletons = container.querySelectorAll(
+      "[class*='animate-pulse'], [data-slot='skeleton']",
+    );
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
@@ -137,7 +177,7 @@ describe("UsagePage", () => {
     // 7200 seconds → 2.00 hours
     expect(screen.getByText("2.00")).toBeInTheDocument();
     // 3600 seconds → 1.00 hours
-    expect(screen.getByText("1.00")).toBeInTheDocument();
+    expect(screen.getAllByText("1.00").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows the tier/plan in the Compute table", () => {
@@ -147,6 +187,17 @@ describe("UsagePage", () => {
 
     expect(screen.getByText("starter")).toBeInTheDocument();
     expect(screen.getByText("hobby")).toBeInTheDocument();
+  });
+
+  it("labels App, Postgres, and Key Value compute rows by resource kind", () => {
+    mockUseUsage.mockReturnValue(dataState());
+
+    render(<UsagePage />);
+
+    expect(screen.getAllByText("service")).toHaveLength(2);
+    expect(screen.getByText("postgres")).toBeInTheDocument();
+    expect(screen.getByText("key_value")).toBeInTheDocument();
+    expect(screen.getAllByText("shared")).toHaveLength(2);
   });
 
   it("converts egress_bytes to MB in the Bandwidth table", () => {
@@ -192,7 +243,9 @@ describe("UsagePage", () => {
 
     render(<UsagePage />);
 
-    expect(screen.getByText("No billable usage this period.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No billable usage this period."),
+    ).toBeInTheDocument();
   });
 
   it("shows totalUsd and per-meter rows when estimatedCost is present", () => {
@@ -203,7 +256,12 @@ describe("UsagePage", () => {
         estimatedCost: {
           totalUsd: "4.90",
           meters: [
-            { kind: "instance_seconds", tier: "starter", resourceKind: "service", costUsd: "4.90" },
+            {
+              kind: "instance_seconds",
+              tier: "starter",
+              resourceKind: "service",
+              costUsd: "4.90",
+            },
           ],
         },
       },
@@ -213,7 +271,9 @@ describe("UsagePage", () => {
 
     // $4.90 appears in both the summary total span and the meter table cell
     expect(screen.getAllByText("$4.90").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Estimate only — not an invoice")).toBeInTheDocument();
+    expect(
+      screen.getByText("Estimate only — not an invoice"),
+    ).toBeInTheDocument();
     expect(screen.getByText("instance_seconds")).toBeInTheDocument();
   });
 

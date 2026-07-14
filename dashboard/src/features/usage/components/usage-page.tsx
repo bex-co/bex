@@ -46,7 +46,12 @@ import {
 import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { periodFor, periodLabel } from "@/features/usage/lib/period";
-import { useUsage, type ServiceUsage, type UsageRow, type EstimatedCost } from "../hooks/use-usage";
+import {
+  useUsage,
+  type ServiceUsage,
+  type UsageRow,
+  type EstimatedCost,
+} from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 
 // --- unit conversion helpers ---
@@ -168,7 +173,7 @@ function ComputeSection({
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
-                <TableRow key={`${r.serviceId}:${r.tier}`}>
+                <TableRow key={`${r.resourceKind}:${r.serviceId}:${r.tier}`}>
                   <TableCell className="font-medium">{r.serviceId}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.resourceKind || "service"}
@@ -379,7 +384,11 @@ function EstimatedCostSection({
 
 // --- trend section ---
 
-function scaledSeries(points: TrendPoint[], key: keyof TrendPoint, divisor: number) {
+function scaledSeries(
+  points: TrendPoint[],
+  key: keyof TrendPoint,
+  divisor: number,
+) {
   return [
     {
       color: seriesColor(0),
@@ -391,7 +400,13 @@ function scaledSeries(points: TrendPoint[], key: keyof TrendPoint, divisor: numb
   ];
 }
 
-function TrendSection({ points, loading }: { points: TrendPoint[]; loading: boolean }) {
+function TrendSection({
+  points,
+  loading,
+}: {
+  points: TrendPoint[];
+  loading: boolean;
+}) {
   const { t } = useTranslations();
 
   return (
@@ -413,19 +428,28 @@ function TrendSection({ points, loading }: { points: TrendPoint[]; loading: bool
               <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {t("usage.computeTitle")}
               </p>
-              <SvgLineChart unit="h" series={scaledSeries(points, "compute", 3600)} />
+              <SvgLineChart
+                unit="h"
+                series={scaledSeries(points, "compute", 3600)}
+              />
             </div>
             <div>
               <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {t("usage.bandwidthTitle")}
               </p>
-              <SvgLineChart unit="MB" series={scaledSeries(points, "bandwidth", 1024 * 1024)} />
+              <SvgLineChart
+                unit="MB"
+                series={scaledSeries(points, "bandwidth", 1024 * 1024)}
+              />
             </div>
             <div>
               <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {t("usage.buildTitle")}
               </p>
-              <SvgLineChart unit="min" series={scaledSeries(points, "build", 60)} />
+              <SvgLineChart
+                unit="min"
+                series={scaledSeries(points, "build", 60)}
+              />
             </div>
           </div>
         )}
@@ -442,27 +466,42 @@ const CURRENT_MONTH_SENTINEL = "__current__";
 
 export function UsagePage() {
   const { t } = useTranslations();
-  const [selectedPeriod, setSelectedPeriod] = useState<string>(CURRENT_MONTH_SENTINEL);
-  const period = selectedPeriod === CURRENT_MONTH_SENTINEL ? undefined : selectedPeriod;
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    CURRENT_MONTH_SENTINEL,
+  );
+  const period =
+    selectedPeriod === CURRENT_MONTH_SENTINEL ? undefined : selectedPeriod;
 
   const { summary, loading, error } = useUsage(period);
   const { points: trendPoints, loading: trendLoading } = useUsageTrend();
 
   const services = summary?.services ?? [];
-  const computeRows = extractRows<ComputeRow>(services, "instance_seconds", (svc, r) => ({
-    serviceId: svc.serviceId,
-    resourceKind: svc.resourceKind,
-    tier: r.tier,
-    total: r.total,
-  }));
-  const bandwidthRows = extractRows<ServiceTotalRow>(services, "egress_bytes", (svc, r) => ({
-    serviceId: svc.serviceId,
-    total: r.total,
-  }));
-  const buildRows = extractRows<ServiceTotalRow>(services, "build_seconds", (svc, r) => ({
-    serviceId: svc.serviceId,
-    total: r.total,
-  }));
+  const computeRows = extractRows<ComputeRow>(
+    services,
+    "instance_seconds",
+    (svc, r) => ({
+      serviceId: svc.serviceId,
+      resourceKind: svc.resourceKind,
+      tier: r.tier,
+      total: r.total,
+    }),
+  );
+  const bandwidthRows = extractRows<ServiceTotalRow>(
+    services,
+    "egress_bytes",
+    (svc, r) => ({
+      serviceId: svc.serviceId,
+      total: r.total,
+    }),
+  );
+  const buildRows = extractRows<ServiceTotalRow>(
+    services,
+    "build_seconds",
+    (svc, r) => ({
+      serviceId: svc.serviceId,
+      total: r.total,
+    }),
+  );
 
   return (
     <DashboardLayout>
@@ -476,7 +515,11 @@ export function UsagePage() {
               </p>
             </div>
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger size="sm" className="w-44" aria-label={t("usage.monthPickerLabel")}>
+              <SelectTrigger
+                size="sm"
+                className="w-44"
+                aria-label={t("usage.monthPickerLabel")}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -502,7 +545,10 @@ export function UsagePage() {
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />
           <BuildSection rows={buildRows} loading={loading} />
-          <EstimatedCostSection estimatedCost={summary?.estimatedCost ?? null} loading={loading} />
+          <EstimatedCostSection
+            estimatedCost={summary?.estimatedCost ?? null}
+            loading={loading}
+          />
           <TrendSection points={trendPoints} loading={trendLoading} />
         </div>
       </div>
