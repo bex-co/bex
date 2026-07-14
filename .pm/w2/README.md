@@ -27,6 +27,8 @@
 - [ ] **m30** — Manual Deploy body: commitId, clearCache, deployMode, restart consolidation (10 tasks) ← from `/pm-brainstorm` 2026-07-14 (live audit of `POST .../deploys` against Render's real `CreateDeployJSONBody`, found the handler reads no request body at all; also surfaced that `apps.Restart` bypasses deploy history entirely)
 - [ ] **m31** — ListDeploys pagination + filtering (REST/GraphQL/MCP) (8 tasks) ← from `/pm-brainstorm` 2026-07-14 (same audit as m30; bex's `list_deploys` MCP tool is less complete than Render's own real MCP tool, not just the REST/GraphQL surface)
 - [ ] **m32** — DeployStatus/DeployTrigger enum completeness + updatedAt (8 tasks) ← from `/pm-brainstorm` 2026-07-14 (same audit as m30/m31; bex tracks 4 of Render's 11 real deploy statuses, collapsing build failures and rollout failures into the same `update_failed`; `w1/m5`'s in-cluster build shipped since the store comment that deferred this)
+- [ ] **m33** — Deploy Hook: secret-URL deploy trigger (9 tasks) ← from `/pm-brainstorm more` 2026-07-13 (third pass; `docs/ADR006-bex-api.md:124` `initialDeployHook` field, "ignored"); numbered m33 not m30 — a concurrent session claimed m30-m32 first
+- [ ] **m34** — Fix GitHub Connect: browser install-callback can't record the connection (10 tasks) ← from `/pm-brainstorm more` 2026-07-13 (fifth pass; `docs/ADR026-github-integration.md` line 88 "Known limitation," discovered live during `m8`'s DoD run 2026-07-12, never given a follow-up milestone); numbered m34 not m31 — a concurrent session claimed m30-m32 first
 
 ## Inbox
 

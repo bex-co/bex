@@ -31,6 +31,6 @@
 
 ## Inbox
 
-_(empty)_
+- `001.md` — Record read-verb (view) denials in the audit log (sub-hour) ← from `/pm-brainstorm more` 2026-07-13 (third pass, confirmed still real and unfiled during the fifth pass)
 
 > `002.md` (MFA) promoted to **m11** 2026-07-08; `004.md` (credential hygiene) promoted to **m13** 2026-07-09; `003.md` (GitHub social login) implemented directly 2026-07-11 (Kratos `oidc` + Dex e2e, docs/ADR012-auth.md §10); `007.md` (Audit Log IA placement) promoted to **m15** 2026-07-12; `010.md` promoted to **m17** with `009.md` folded in as its aal2-altitude task, and `006.md` (session management) folded into **m18** as its active-sessions task, 2026-07-12 — notes moved to `done/`.
