@@ -473,9 +473,6 @@ func (s *Service) patchDatabase(ctx context.Context, relation, name string, muta
 // mirroring keyvalue.Service.SetProjectID. Authorized the same as the other
 // tenant-mutating verbs on a named Database (RelCanCreate, matching DeletePostgres).
 func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
-	}
 	_, err := s.patchDatabase(ctx, core.RelCanCreate, name, func(d *appv1alpha1.Database) {
 		if projectID == "" {
 			delete(d.Labels, core.LabelProject)

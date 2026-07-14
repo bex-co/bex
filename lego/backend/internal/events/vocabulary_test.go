@@ -69,9 +69,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"postgres.Suspend", "postgres.Resume", "postgres.Restart", "postgres.Failover",
 		"postgres.SetPlan", "postgres.DeletePostgres", "postgres.SetIPAllowList",
 		"postgres.CreateUser", "postgres.DeleteUser", "postgres.Recover",
-		"postgres.CreateExport", "postgres.SetParameterOverrides",
+		"postgres.CreateExport", "postgres.SetParameterOverrides", "postgres.SetProjectID",
 		"keyvalue.Suspend", "keyvalue.Resume", "keyvalue.SetPlan",
-		"keyvalue.DeleteKeyValue", "keyvalue.SetIPAllowList",
+		"keyvalue.DeleteKeyValue", "keyvalue.SetIPAllowList", "keyvalue.SetProjectID",
 	} {
 		excusedVerbs[verb] = "w6/m17 seam collapse newly targets it; not yet given an event type"
 	}

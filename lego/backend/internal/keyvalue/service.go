@@ -347,9 +347,6 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // mirroring postgres.Service.SetProjectID. Authorized the same as the other
 // tenant-mutating verbs on a named KeyValue (RelCanCreate, matching DeleteKeyValue).
 func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
-	}
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
