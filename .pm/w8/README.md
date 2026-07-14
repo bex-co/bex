@@ -16,9 +16,11 @@
 - [ ] **m10** — Env vars: `generateValue` + cursor pagination (8 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (the ADR006/ADR018 env-vars row's two documented omissions; `w1/m35`'s generateValue prerequisite). Not usage work — placed under w8 for capacity per the m8 precedent
 - [x] **m11** — Reliable usage windows: durable zeroes + gap-free per-meter cursors (7 tasks) ← prerequisite split from `001` 2026-07-14; cap enforcement stays gated — done 2026-07-14
 - [ ] **m12** — Managed Postgres major-version upgrade (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 2, 2026-07-14 (`database_types.go:35` — `Version` exists at create, no upgrade verb anywhere; Render ships version upgrades as a first-class flow; rides CNPG's declarative major-upgrade path, verified first by t002). Placed under w8 for capacity per the m8 precedent; numbered m12 not m11 — a concurrent session claimed m11 mid-rebase
+- [ ] **m13** — Datastore list pagination: Postgres + Key Value (7 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (`core.PageParams` in `apps/rest.go:309` but nowhere in `postgres/rest.go`/`keyvalue/rest.go`; Render's `GET /postgres` + `GET /key-value` both page); datastore-family placement per the m12 precedent
 
 ## Inbox
 
 - `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gate audited 2026-07-14: not ready; `m11` first makes collector coverage provable, then the note needs 28 days of real rows and an explicit decision on incomplete outbound-egress coverage
+- `003.md` — Key Value (Valkey) version upgrade assessment: does Render support KV version changes at all? If yes, mirror the m12 pattern; if no, record and close ← from `/pm-brainstorm` round 3, 2026-07-14
 
 > `002.md` promoted to **m9** 2026-07-13; note moved to `done/`.
