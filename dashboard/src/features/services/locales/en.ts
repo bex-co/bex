@@ -998,6 +998,16 @@ const enServices: Record<string, TranslationEntry> = {
       "Create this record at your DNS provider to finish connecting your domain.",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
+  "services.domainPairedWith": {
+    message: "Paired with {sibling} — bex added it automatically",
+    description:
+      "Note under a domain row's name when bex auto-added its www<->apex sibling (w6/m23)",
+  },
+  "services.domainPairedDnsTitle": {
+    message: "{sibling} was added automatically — set up its DNS too",
+    description:
+      "Heading of the second DNS-record block in the add dialog when the add auto-paired a www<->apex sibling (w6/m23)",
+  },
   "services.domainDone": {
     message: "Done",
     description: "Button closing the post-add DNS-record step",

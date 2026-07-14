@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/net/publicsuffix"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -55,13 +56,57 @@ type DNSRecordView struct {
 	Value string // the target the record points to: the platform host <app>.<base-domain>
 }
 
-// domainType classifies a hostname as "apex" (root domain, two DNS labels) or
-// "subdomain". This is a heuristic — dots == 1 means two labels, e.g. example.com.
+// registrableDomain returns the eTLD+1 (registrable domain) of host — e.g.
+// "example.co.uk" for both "example.co.uk" and "www.example.co.uk" — backed by
+// the real public-suffix list (golang.org/x/net/publicsuffix) rather than a
+// dots-count heuristic, so multi-label public suffixes (co.uk, com.au, …) are
+// classified correctly. Empty if host has no registrable domain (a bare public
+// suffix like "com", an IP literal, or an unrecognized single-label host).
+func registrableDomain(host string) string {
+	etldPlus1, err := publicsuffix.EffectiveTLDPlusOne(strings.ToLower(host))
+	if err != nil {
+		return ""
+	}
+	return etldPlus1
+}
+
+// isApex reports whether host IS its own registrable domain, i.e. it has no
+// label below the eTLD+1 — "example.com" and "example.co.uk" are apexes,
+// "www.example.com" and "app.example.co.uk" are not.
+func isApex(host string) bool {
+	reg := registrableDomain(host)
+	return reg != "" && reg == strings.ToLower(host)
+}
+
+// domainType classifies a hostname as "apex" (registrable domain itself) or
+// "subdomain" (anything below it), via isApex/registrableDomain (the real PSL,
+// not a dots-count heuristic — see registrableDomain).
 func domainType(hostname string) string {
-	if strings.Count(hostname, ".") == 1 {
+	if isApex(hostname) {
 		return "apex"
 	}
 	return "subdomain"
+}
+
+// wwwSibling returns the www<->apex pairing partner Render auto-adds when a
+// tenant registers host (docs/render-artifacts/custom-domain-pairing.md, w6/m23
+// t001): an apex's sibling is "www."+apex; "www."+apex's sibling is the apex;
+// any other host (a non-www subdomain, or a host with no registrable domain)
+// has no sibling and returns "".
+func wwwSibling(host string) string {
+	reg := registrableDomain(host)
+	if reg == "" {
+		return ""
+	}
+	lower := strings.ToLower(host)
+	switch lower {
+	case reg:
+		return "www." + reg
+	case "www." + reg:
+		return reg
+	default:
+		return ""
+	}
 }
 
 // platformHost returns the App's platform hostname `<subdomain>.<base-domain>`
@@ -234,10 +279,16 @@ func errDomainInUse() error {
 }
 
 // hostClaimedElsewhere reports whether host is already registered (as spec.host
-// or in spec.hosts[]) on a *different* App in the namespace — the cross-App,
-// cross-tenant collision Render blocks with "this domain already exists on
-// another site." The owning App's name is deliberately not returned: a caller
-// must not learn another tenant's service name from the rejection.
+// or in spec.hosts[]) — or is the www<->apex sibling (wwwSibling, t002) of a host
+// already registered — on a *different* App in the namespace. The sibling check
+// is what closes w7/m6's documented blind spot (w6/m23 t004): registering
+// `www.foo.com` on app A now also reserves `foo.com` against app B, and vice
+// versa, matching the cross-App, cross-tenant collision Render blocks with
+// "this domain already exists on another site." wwwSibling is its own inverse
+// for a valid pair, so a single `wwwSibling(h) == host` check (no need to also
+// compute wwwSibling(host)) catches both add orders. The owning App's name is
+// deliberately not returned: a caller must not learn another tenant's service
+// name from the rejection.
 func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
 	var list appv1alpha1.AppList
 	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
@@ -248,11 +299,9 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 		if a.Name == appName {
 			continue
 		}
-		if a.Spec.Host == host {
-			return true, nil
-		}
-		for _, h := range a.Spec.Hosts {
-			if h == host {
+		claimed := append([]string{a.Spec.Host}, a.Spec.Hosts...)
+		for _, h := range claimed {
+			if h != "" && (h == host || wwwSibling(h) == host) {
 				return true, nil
 			}
 		}
@@ -260,53 +309,92 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 	return false, nil
 }
 
-// AddDomain appends hostname to App.spec.hosts[] if not already present.
-// Idempotent — returns the existing view if the hostname is already registered
-// on this App. Rejects a hostname that is platform-reserved (core.ErrBadRequest)
-// or already registered on another App (core.ErrConflict, Render's "already in
-// use"). For store-managed Apps the row is written first (same rationale as Suspend).
+// AddDomain appends hostname (lowercased, so casing can't split one logical
+// host into two spec.hosts[] entries) to App.spec.hosts[] if not already
+// present, then auto-pairs its www<->apex sibling (wwwSibling, t002) the way
+// Render's capture documents (docs/render-artifacts/custom-domain-pairing.md,
+// w6/m23 t001): adding `foo.com` also adds `www.foo.com`, and vice versa — one
+// hop only, so the sibling add never re-pairs. Pairing is attempted only when
+// the primary host was newly added (addOne's `added` result) — re-adding an
+// already-registered host is a pure no-op and never resurrects a sibling the
+// tenant deliberately deleted (docs/render-artifacts/custom-domain-pairing.md's
+// delete semantics: each half is independent once added). Idempotent — returns
+// the existing view if the hostname is already registered on this App (that
+// includes a host that was itself auto-added as someone else's sibling — it's a
+// first-class spec.hosts[] entry once added, indistinguishable from an
+// explicitly-added one). Rejects a hostname that is platform-reserved
+// (core.ErrBadRequest) or already registered — directly or via its sibling —
+// on another App (core.ErrConflict, Render's "already in use"). The sibling add
+// is best-effort: a reserved or (defensively, given the symmetric guard in
+// hostClaimedElsewhere) elsewhere-claimed sibling is skipped silently rather
+// than failing the caller's own successful add.
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
+	view, added, err := s.addOne(ctx, appName, hostname)
+	if err != nil || !added {
+		return view, err
+	}
+	if sib := wwwSibling(hostname); sib != "" {
+		_, _, _ = s.addOne(ctx, appName, sib)
+	}
+	return view, nil
+}
+
+// addOne adds a single host, with no sibling pairing of its own — AddDomain
+// calls it once for the primary host and, on a fresh add, once more for the
+// sibling. added reports whether this call actually wrote a new host (false
+// for the idempotent already-present path), so AddDomain knows whether pairing
+// applies. For store-managed Apps the row is written first (same rationale as
+// Suspend).
+func (s *Service) addOne(ctx context.Context, appName, hostname string) (view DomainView, added bool, err error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
-		return DomainView{}, err
+		return DomainView{}, false, err
 	}
 	if hostname == "" {
-		return DomainView{}, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
+		return DomainView{}, false, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
 	}
+	hostname = strings.ToLower(hostname)
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
-			return s.domainView(ctx, app, hostname, s.platformHost(app)), nil // already present
+			return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil // already present
 		}
 	}
 	if s.reservedHost(appName, hostname) {
-		return DomainView{}, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
+		return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 	}
 	if claimed, err := s.hostClaimedElsewhere(ctx, appName, hostname); err != nil {
-		return DomainView{}, err
+		return DomainView{}, false, err
 	} else if claimed {
-		return DomainView{}, errDomainInUse()
+		return DomainView{}, false, errDomainInUse()
 	}
 	if s.Store != nil {
 		if id := app.Labels[store.LabelAppID]; id != "" {
 			if err := s.Store.AddDomain(ctx, id, hostname); err != nil {
 				if errors.Is(err, store.ErrConflict) { // lost a race to another App's add
-					return DomainView{}, errDomainInUse()
+					return DomainView{}, false, errDomainInUse()
 				}
-				return DomainView{}, fmt.Errorf("update source of truth: %w", err)
+				return DomainView{}, false, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = append(app.Spec.Hosts, hostname)
 	if err := s.Client.Patch(ctx, app, base); err != nil {
-		return DomainView{}, err
+		return DomainView{}, false, err
 	}
-	return s.domainView(ctx, app, hostname, s.platformHost(app)), nil
+	return s.domainView(ctx, app, hostname, s.platformHost(app)), true, nil
 }
 
 // DeleteDomain removes hostname from App.spec.hosts[]. Idempotent — removing a
 // hostname not in spec.hosts[] is a no-op. For store-managed Apps the row is
 // deleted first (same row-first rationale as the other intent verbs).
+//
+// Deleting one half of an auto-paired www<->apex sibling (AddDomain) leaves the
+// other half untouched: Render's docs don't specify sibling-delete semantics
+// (docs/render-artifacts/custom-domain-pairing.md, w6/m23 t001), so bex defines
+// its own — a paired sibling became a first-class spec.hosts[] entry at add
+// time, indistinguishable from an explicitly-added one, and deletion only ever
+// acts on the single hostname named. A tenant who wants both gone deletes both.
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
@@ -337,8 +425,11 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 
 // renderCustomDomain mirrors components.schemas.customDomain from Render's
 // public OpenAPI spec (fields bex has real equivalents for). publicSuffix and
-// redirectForName require a public-suffix list and redirect mapping bex doesn't
-// maintain — omitted rather than faked, as a safe superset.
+// redirectForName are omitted rather than faked: bex now computes the same PSL
+// data internally (registrableDomain, w6/m23 t002) to drive sibling pairing, but
+// has no redirect mechanism to report a redirect target through, so exposing
+// these two Render-specific wire fields would still be dishonest — a safe
+// superset either way.
 type renderCustomDomain struct {
 	ID                 string `json:"id"`   // hostname used as opaque id (Render ids are opaque)
 	Name               string `json:"name"` // the FQDN

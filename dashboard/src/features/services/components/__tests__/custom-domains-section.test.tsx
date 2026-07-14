@@ -62,6 +62,24 @@ const pendingDomain: CustomDomainView = {
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
 };
 
+// w6/m23: an auto-paired www<->apex pair, as ListDomains returns after AddDomain
+// auto-adds the sibling.
+const apexDomain: CustomDomainView = {
+  name: "foo.com",
+  domainType: "apex",
+  verified: false,
+  active: false,
+  dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
+};
+
+const wwwSiblingDomain: CustomDomainView = {
+  name: "www.foo.com",
+  domainType: "subdomain",
+  verified: false,
+  active: false,
+  dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
+};
+
 // Radix's DropdownMenu relies on pointer-capture APIs jsdom doesn't implement.
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -74,7 +92,9 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockUseCustomDomains.mockReset();
-  mockAddDomain.mockReset().mockResolvedValue(pendingDomain);
+  mockAddDomain
+    .mockReset()
+    .mockResolvedValue({ primary: pendingDomain, sibling: null });
   mockDeleteDomain.mockReset().mockResolvedValue(true);
   mockVerifyDomain.mockReset().mockResolvedValue(pendingDomain);
 });
@@ -165,9 +185,7 @@ describe("CustomDomainsSection", () => {
     expect(screen.getByText("api")).toBeInTheDocument();
     expect(screen.getByText("web.onbex.co")).toBeInTheDocument();
     // Copy affordances for the host + target (labels double as aria-labels).
-    expect(
-      screen.getByRole("button", { name: "Target" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Target" })).toBeInTheDocument();
   });
 
   it("shows apex guidance for an apex domain", () => {
@@ -184,7 +202,9 @@ describe("CustomDomainsSection", () => {
     );
     render(<CustomDomainsSection serviceId="web" />);
     expect(screen.getByText("ALIAS")).toBeInTheDocument();
-    expect(screen.getByText(/Apex domains can't use a plain CNAME/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Apex domains can't use a plain CNAME/),
+    ).toBeInTheDocument();
   });
 
   it("re-checks a pending domain from the DNS panel", async () => {
@@ -206,13 +226,55 @@ describe("CustomDomainsSection", () => {
     await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Name"), "api.example.com");
-    await user.click(within(dialog).getByRole("button", { name: "Add Domain" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add Domain" }),
+    );
 
     // The dialog swaps to the DNS-record step (mockAddDomain resolves a domain view).
     expect(
       await within(dialog).findByText("Domain added — set up DNS"),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("web.onbex.co")).toBeInTheDocument();
+  });
+
+  it("shows DNS instructions for both halves of an auto-paired add (w6/m23)", async () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    mockAddDomain.mockResolvedValue({
+      primary: apexDomain,
+      sibling: wwwSiblingDomain,
+    });
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "foo.com");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add Domain" }),
+    );
+
+    expect(
+      await within(dialog).findByText(
+        "www.foo.com was added automatically — set up its DNS too",
+      ),
+    ).toBeInTheDocument();
+    // Both records' host fields are shown: "@" for the apex, "www" for the sibling.
+    expect(within(dialog).getByText("@")).toBeInTheDocument();
+    expect(within(dialog).getByText("www")).toBeInTheDocument();
+  });
+
+  it("notes the auto-paired sibling on each row of a www<->apex pair (w6/m23)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+
+    expect(
+      screen.getByText("Paired with www.foo.com — bex added it automatically"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Paired with foo.com — bex added it automatically"),
+    ).toBeInTheDocument();
   });
 
   it("deletes a domain after confirming from the row menu", async () => {

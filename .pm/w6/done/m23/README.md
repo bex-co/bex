@@ -1,21 +1,21 @@
 # w6 · m23 — Custom domains: www↔apex sibling pairing
 
-**Worker:** worker6 **Goal:** Adding a custom domain pairs its www/apex sibling the way Render does — built honestly on a real public-suffix list — and the collision guard covers the sibling, closing w7/m6's documented per-host limitation. **Status:** todo
+**Worker:** worker6 **Goal:** Adding a custom domain pairs its www/apex sibling the way Render does — built honestly on a real public-suffix list — and the collision guard covers the sibling, closing w7/m6's documented per-host limitation. **Status:** done 2026-07-14
 
 ## Tasks (in order)
 
-| id   | title                                                | est | depends_on |
-| ---- | ---------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's pairing behavior live               | 30m | —          |
-| t002 | Registrable-domain helper on `publicsuffix`          | 30m | t001       |
-| t003 | Auto-pair sibling on add/delete per the capture      | 45m | t002       |
-| t004 | Collision guard covers the sibling                   | 30m | t003       |
-| t005 | DNS instructions for both records                    | 30m | t003       |
-| t006 | Dashboard: paired-domain display                     | 30m | t005       |
-| t007 | Render parity                                        | 30m | t004, t006 |
-| t008 | Simplify                                             | 30m | t007       |
-| t009 | Test coverage                                        | 45m | t007       |
-| t010 | Closeout                                             | 15m | t009       |
+| id   | title                                                | est | depends_on | status |
+| ---- | ---------------------------------------------------- | --- | ---------- | ------ |
+| t001 | Capture Render's pairing behavior live               | 30m | —          | — **DONE** |
+| t002 | Registrable-domain helper on `publicsuffix`          | 30m | t001       | — **DONE** |
+| t003 | Auto-pair sibling on add/delete per the capture      | 45m | t002       | — **DONE** |
+| t004 | Collision guard covers the sibling                   | 30m | t003       | — **DONE** |
+| t005 | DNS instructions for both records                    | 30m | t003       | — **DONE** |
+| t006 | Dashboard: paired-domain display                     | 30m | t005       | — **DONE** |
+| t007 | Render parity                                        | 30m | t004, t006 | — **DONE** |
+| t008 | Simplify                                             | 30m | t007       | — **DONE** |
+| t009 | Test coverage                                        | 45m | t007       | — **DONE** |
+| t010 | Closeout                                             | 15m | t009       | — **DONE** |
 
 ## Definition of done
 

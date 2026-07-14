@@ -8,7 +8,10 @@ import {
   VerifyCustomDomainDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import type { CustomDomainView } from "@/features/services/types";
+import {
+  pairedSibling,
+  type CustomDomainView,
+} from "@/features/services/types";
 
 // bex-api's custom-domains GraphQL is a thin veneer over App.spec.hosts[]
 // (docs/ADR006-bex-api.md): the operator reconciles Traefik + cert-manager per host, so
@@ -103,10 +106,18 @@ export function useCustomDomains(serviceId: string): UseCustomDomainsResult {
   };
 }
 
+/** The result of a successful add: the domain the tenant asked for, plus its
+ *  www<->apex auto-paired sibling (w6/m23) when one was added alongside it. */
+export interface AddedDomain {
+  primary: CustomDomainView;
+  sibling: CustomDomainView | null;
+}
+
 export interface UseCustomDomainMutationsResult {
-  /** Add a custom domain; resolves to the created domain (with its DNS record) on
-   *  success so the caller can show the DNS instructions immediately, or null on error. */
-  addDomain: (name: string) => Promise<CustomDomainView | null>;
+  /** Add a custom domain; resolves to the created domain (with its DNS record) —
+   *  and its auto-paired sibling, if any — on success so the caller can show the
+   *  DNS instructions for both immediately, or null on error. */
+  addDomain: (name: string) => Promise<AddedDomain | null>;
   /** Remove a custom domain; resolves true on success. */
   deleteDomain: (name: string) => Promise<boolean>;
   /** Re-check a domain's DNS/cert state now; resolves to the fresh domain, or null on error. */
@@ -136,12 +147,20 @@ export function useCustomDomainMutations(
     async (name: string) => {
       setBusy(true);
       try {
-        const res = await addCustomDomain({ variables: { id: serviceId, name } });
-        await refetch();
+        const res = await addCustomDomain({
+          variables: { id: serviceId, name },
+        });
+        // refetch() resolves to the freshly-mapped list (UseCustomDomainsResult),
+        // so the auto-paired sibling (if any) is looked up from data guaranteed to
+        // include it — no race against the parent's next render.
+        const fresh = await refetch();
+        const primary = mapRaw(res.data?.addCustomDomain ?? null);
         toast.success(t("services.domainAddSuccess", { name }), {
           description: t("services.domainPropagateNote"),
         });
-        return mapRaw(res.data?.addCustomDomain ?? null);
+        return primary
+          ? { primary, sibling: pairedSibling(primary, fresh) }
+          : null;
       } catch (e) {
         toast.error(t(addDomainErrorKey(e), { name }));
         return null;
@@ -174,7 +193,9 @@ export function useCustomDomainMutations(
     async (name: string) => {
       setBusy(true);
       try {
-        const res = await verifyCustomDomain({ variables: { id: serviceId, name } });
+        const res = await verifyCustomDomain({
+          variables: { id: serviceId, name },
+        });
         await refetch();
         const view = mapRaw(res.data?.verifyCustomDomain ?? null);
         if (view?.verified) {

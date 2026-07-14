@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -96,29 +97,32 @@ func TestGetDomainFoundAndNotFound(t *testing.T) {
 	}
 }
 
+// app.example.com is a deep subdomain — wwwSibling returns "" for it (t002), so
+// these generic add tests stay about a single, unpaired host. Paired-add
+// behavior gets its own tests below (TestAddDomainAutoPairsSibling etc).
 func TestAddDomainAppendsToHosts(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 
-	d, err := svc.AddDomain(context.Background(), "web", "www.example.com")
+	d, err := svc.AddDomain(context.Background(), "web", "app.example.com")
 	if err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	if d.Name != "www.example.com" {
+	if d.Name != "app.example.com" {
 		t.Errorf("returned name = %q", d.Name)
 	}
-	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "www.example.com" {
-		t.Errorf("spec.hosts = %v, want [www.example.com]", got)
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "app.example.com" {
+		t.Errorf("spec.hosts = %v, want [app.example.com]", got)
 	}
 }
 
 func TestAddDomainIdempotent(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 
-	if _, err := svc.AddDomain(context.Background(), "web", "www.example.com"); err != nil {
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
 		t.Fatalf("first add: %v", err)
 	}
 	// Second add of the same hostname must be a no-op (still one entry).
-	if _, err := svc.AddDomain(context.Background(), "web", "www.example.com"); err != nil {
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
 		t.Fatalf("second add: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 {
@@ -207,13 +211,138 @@ func TestAddDomainReservedDashboardHost(t *testing.T) {
 	}
 }
 
-// TestAddDomainNoWwwApexPairing pins the conscious divergence from Render: bex
-// does NOT auto-pair www/apex, so registering www.foo.com on one App does not
-// reserve foo.com — a different App can still claim the apex sibling.
-func TestAddDomainNoWwwApexPairing(t *testing.T) {
-	svc, _ := newService(nil, appWithHosts("a", "www.foo.com"), sampleApp("b"))
-	if _, err := svc.AddDomain(context.Background(), "b", "foo.com"); err != nil {
-		t.Errorf("apex sibling must remain claimable (no pairing), got %v", err)
+// --- w6/m23: www<->apex sibling pairing ---
+
+// TestAddDomainAutoPairsWwwSibling: adding an apex auto-adds its www sibling,
+// per the Render capture (docs/render-artifacts/custom-domain-pairing.md).
+func TestAddDomainAutoPairsWwwSibling(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "foo.com" || got[1] != "www.foo.com" {
+		t.Errorf("spec.hosts = %v, want [foo.com www.foo.com]", got)
+	}
+}
+
+// TestAddDomainNormalizesCaseBeforePairing: a mixed-case add is lowercased
+// before the sibling is computed and stored, so the pair (and any later
+// cross-app collision match against it) can't be split by casing.
+func TestAddDomainNormalizesCaseBeforePairing(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "Foo.COM"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "foo.com" || got[1] != "www.foo.com" {
+		t.Errorf("spec.hosts = %v, want [foo.com www.foo.com] (lowercased)", got)
+	}
+}
+
+// TestAddDomainAutoPairsApexSibling: adding www auto-adds the apex, the
+// symmetric direction.
+func TestAddDomainAutoPairsApexSibling(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "www.foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "www.foo.com" || got[1] != "foo.com" {
+		t.Errorf("spec.hosts = %v, want [www.foo.com foo.com]", got)
+	}
+}
+
+// TestAddDomainReAddingPairedSiblingIsIdempotent: once a pair exists, adding
+// either half again — including the auto-added one directly — is a no-op, not
+// a duplicate or a conflict against its own sibling.
+func TestAddDomainReAddingPairedSiblingIsIdempotent(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("first add: %v", err)
+	}
+	if _, err := svc.AddDomain(context.Background(), "web", "www.foo.com"); err != nil {
+		t.Errorf("re-adding the auto-added sibling directly must be idempotent, got %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 {
+		t.Errorf("still just the pair, got %v", got)
+	}
+}
+
+// TestAddDomainNoAutoPairForNonWwwSubdomain: a deep subdomain (wwwSibling
+// returns "", t002) gets no auto-added sibling — only www<->apex pairs.
+func TestAddDomainNoAutoPairForNonWwwSubdomain(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "app.foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "app.foo.com" {
+		t.Errorf("spec.hosts = %v, want [app.foo.com] (no pairing)", got)
+	}
+}
+
+// TestAddDomainAutoPairsPublicSuffixApex: the DoD's public-suffix claim,
+// exercised through AddDomain itself (not just the wwwSibling unit tests) — a
+// multi-label public suffix like .co.uk pairs on its registrable domain, not
+// on the last two labels ("co.uk" is not itself an apex).
+func TestAddDomainAutoPairsPublicSuffixApex(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.co.uk"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "foo.co.uk" || got[1] != "www.foo.co.uk" {
+		t.Errorf("spec.hosts = %v, want [foo.co.uk www.foo.co.uk]", got)
+	}
+}
+
+// TestAddDomainSiblingClaimedElsewhereIsConflict closes w7/m6's documented
+// blind spot (w6/m23 t004): registering www.foo.com on app A now reserves
+// foo.com against app B too, with the same 409 the per-host guard uses — and
+// the reverse direction (apex reserving www).
+func TestAddDomainSiblingClaimedElsewhereIsConflict(t *testing.T) {
+	cases := []struct{ existing, add string }{
+		{"www.foo.com", "foo.com"},
+		{"foo.com", "www.foo.com"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.add, func(t *testing.T) {
+			svc, cl := newService(nil, appWithHosts("a", tc.existing), sampleApp("b"))
+			if _, err := svc.AddDomain(context.Background(), "b", tc.add); !errors.Is(err, core.ErrConflict) {
+				t.Errorf("sibling of another App's %q => ErrConflict, got %v", tc.existing, err)
+			}
+			if got := getApp(t, cl, "b").Spec.Hosts; len(got) != 0 {
+				t.Errorf("rejected add must not touch spec.hosts, got %v", got)
+			}
+		})
+	}
+}
+
+// TestAddDomainSiblingReservedIsSkippedNotFailed: if the auto-paired sibling
+// happens to be a platform-reserved host, the primary add still succeeds — the
+// sibling pairing is best-effort (domains.go AddDomain doc comment). Uses
+// DashboardHost (an exact-match reserved host, unrelated to BaseDomain) set to
+// exactly the sibling "www.foo.com", so "foo.com" itself is unreserved.
+func TestAddDomainSiblingReservedIsSkippedNotFailed(t *testing.T) {
+	svc, cl := newBaseDomainService("", "www.foo.com", sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "foo.com" {
+		t.Errorf("spec.hosts = %v, want [foo.com] (reserved sibling www.foo.com skipped)", got)
+	}
+}
+
+// TestDeleteDomainLeavesSiblingUntouched pins bex's documented delete
+// semantics (docs/render-artifacts/custom-domain-pairing.md, w6/m23 t001):
+// Render doesn't specify sibling-delete behavior, so bex treats each half as
+// an independent spec.hosts[] entry — deleting one never removes the other.
+func TestDeleteDomainLeavesSiblingUntouched(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if err := svc.DeleteDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("DeleteDomain: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "www.foo.com" {
+		t.Errorf("spec.hosts = %v, want [www.foo.com] (sibling survives the delete)", got)
 	}
 }
 
@@ -250,14 +379,33 @@ func TestAddDomainManagedAppWritesRowThenCR(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
 
-	if _, err := svc.AddDomain(context.Background(), "web", "www.example.com"); err != nil {
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	if len(rec.domainAdds) != 1 || rec.domainAdds[0].id != "srv-1" || rec.domainAdds[0].host != "www.example.com" {
-		t.Fatalf("want row write [srv-1 www.example.com], got %v", rec.domainAdds)
+	if len(rec.domainAdds) != 1 || rec.domainAdds[0].id != "srv-1" || rec.domainAdds[0].host != "app.example.com" {
+		t.Fatalf("want row write [srv-1 app.example.com], got %v", rec.domainAdds)
 	}
-	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "www.example.com" {
-		t.Errorf("CR spec.hosts = %v, want [www.example.com]", got)
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "app.example.com" {
+		t.Errorf("CR spec.hosts = %v, want [app.example.com]", got)
+	}
+}
+
+// TestAddDomainPairedSiblingWritesStoreRowToo: the auto-added sibling goes
+// through the store write-through too — it becomes a first-class domain row,
+// not a synthetic display-only record (so it participates in the domains.host
+// UNIQUE index the collision guard's store-race backstop leans on, w6/m23 t004).
+func TestAddDomainPairedSiblingWritesStoreRowToo(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if len(rec.domainAdds) != 2 || rec.domainAdds[0].host != "foo.com" || rec.domainAdds[1].host != "www.foo.com" {
+		t.Fatalf("want row writes [foo.com www.foo.com], got %v", rec.domainAdds)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 {
+		t.Errorf("CR spec.hosts = %v, want the pair", got)
 	}
 }
 
@@ -280,13 +428,13 @@ func TestAddDomainUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec, sampleApp("hand"))
 
-	if _, err := svc.AddDomain(context.Background(), "hand", "www.example.com"); err != nil {
+	if _, err := svc.AddDomain(context.Background(), "hand", "app.example.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
 	if len(rec.domainAdds) != 0 {
 		t.Fatalf("unmanaged app must not touch the store, got %v", rec.domainAdds)
 	}
-	if got := getApp(t, cl, "hand").Spec.Hosts; len(got) != 1 || got[0] != "www.example.com" {
+	if got := getApp(t, cl, "hand").Spec.Hosts; len(got) != 1 || got[0] != "app.example.com" {
 		t.Errorf("CR spec.hosts = %v", got)
 	}
 }
@@ -384,18 +532,71 @@ func TestTLSSecretForFirstHostWhenNoPrimaryHost(t *testing.T) {
 	}
 }
 
-// --- domainType heuristic ---
+// --- domainType / PSL helpers (w6/m23 t002) ---
 
 func TestDomainTypeClassification(t *testing.T) {
 	cases := map[string]string{
-		"example.com":     "apex",
-		"www.example.com": "subdomain",
-		"api.example.com": "subdomain",
-		"a.b.example.com": "subdomain",
+		"example.com":       "apex",
+		"www.example.com":   "subdomain",
+		"api.example.com":   "subdomain",
+		"a.b.example.com":   "subdomain",
+		"example.co.uk":     "apex", // multi-label public suffix — the dots-count heuristic gets this wrong
+		"www.example.co.uk": "subdomain",
+		"app.example.co.uk": "subdomain",
 	}
 	for hostname, want := range cases {
 		if got := domainType(hostname); got != want {
 			t.Errorf("domainType(%q) = %q, want %q", hostname, got, want)
+		}
+	}
+}
+
+func TestRegistrableDomain(t *testing.T) {
+	cases := map[string]string{
+		"example.com":              "example.com",
+		"www.example.com":          "example.com",
+		"a.b.example.com":          "example.com",
+		"example.co.uk":            "example.co.uk",
+		"www.example.co.uk":        "example.co.uk",
+		"xn--80akhbyknj4f.com":     "xn--80akhbyknj4f.com", // IDN punycode passthrough
+		"www.xn--80akhbyknj4f.com": "xn--80akhbyknj4f.com",
+		"com":                      "", // bare public suffix — no registrable domain
+	}
+	for host, want := range cases {
+		if got := registrableDomain(host); got != want {
+			t.Errorf("registrableDomain(%q) = %q, want %q", host, got, want)
+		}
+	}
+}
+
+func TestIsApex(t *testing.T) {
+	cases := map[string]bool{
+		"example.com":       true,
+		"www.example.com":   false,
+		"example.co.uk":     true,
+		"www.example.co.uk": false,
+		"app.example.co.uk": false,
+	}
+	for host, want := range cases {
+		if got := isApex(host); got != want {
+			t.Errorf("isApex(%q) = %v, want %v", host, got, want)
+		}
+	}
+}
+
+func TestWwwSibling(t *testing.T) {
+	cases := map[string]string{
+		"example.com":             "www.example.com",
+		"www.example.com":         "example.com",
+		"example.co.uk":           "www.example.co.uk",
+		"www.example.co.uk":       "example.co.uk",
+		"app.example.com":         "", // deep subdomain — no pairing
+		"api.staging.example.com": "",
+		"www.app.example.com":     "", // "www" not immediately below the registrable domain
+	}
+	for host, want := range cases {
+		if got := wwwSibling(host); got != want {
+			t.Errorf("wwwSibling(%q) = %q, want %q", host, got, want)
 		}
 	}
 }
@@ -478,10 +679,12 @@ func TestRESTCustomDomains(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	// POST adds and returns 201.
+	// POST adds and returns 201. app.example.com is a deep subdomain — no
+	// sibling pairing (t002) — so this stays a single-domain lifecycle test;
+	// the paired case gets its own test (TestRESTCustomDomainsPairedAdd).
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
-		strings.NewReader(`{"name":"www.example.com"}`)))
+		strings.NewReader(`{"name":"app.example.com"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -489,19 +692,19 @@ func TestRESTCustomDomains(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if created.Name != "www.example.com" {
+	if created.Name != "app.example.com" {
 		t.Errorf("name = %q", created.Name)
 	}
 	if created.DomainType != "subdomain" {
 		t.Errorf("domainType = %q, want subdomain", created.DomainType)
 	}
-	if created.DNSRecord.Type != "CNAME" || created.DNSRecord.Name != "www" {
-		t.Errorf("dnsRecord = %+v, want CNAME/www", created.DNSRecord)
+	if created.DNSRecord.Type != "CNAME" || created.DNSRecord.Name != "app" {
+		t.Errorf("dnsRecord = %+v, want CNAME/app", created.DNSRecord)
 	}
 
 	// POST …/verify re-checks and returns 200 with the fresh domain.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/www.example.com/verify", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/app.example.com/verify", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST verify => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -509,7 +712,7 @@ func TestRESTCustomDomains(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &verified); err != nil {
 		t.Fatalf("decode verify: %v", err)
 	}
-	if verified.Name != "www.example.com" || verified.DNSRecord.Type != "CNAME" {
+	if verified.Name != "app.example.com" || verified.DNSRecord.Type != "CNAME" {
 		t.Errorf("verify result wrong: %+v", verified)
 	}
 
@@ -523,20 +726,20 @@ func TestRESTCustomDomains(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 {
 		t.Fatalf("list: %v len=%d", err, len(list))
 	}
-	if list[0].CustomDomain.Name != "www.example.com" || list[0].Cursor == "" {
+	if list[0].CustomDomain.Name != "app.example.com" || list[0].Cursor == "" {
 		t.Errorf("list item wrong: %+v", list[0])
 	}
 
 	// GET single returns the domain.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/www.example.com", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET single => 200, got %d", rec.Code)
 	}
 
 	// DELETE returns 204 No Content.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/www.example.com", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("DELETE => 204, got %d", rec.Code)
 	}
@@ -546,9 +749,59 @@ func TestRESTCustomDomains(t *testing.T) {
 
 	// GET single after delete => 404.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/www.example.com", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("deleted domain => 404, got %d", rec.Code)
+	}
+}
+
+// TestRESTCustomDomainsPairedAdd: adding an apex over REST returns the primary
+// domain (201, as before) and the list surfaces both paired hosts, each with
+// its own DNS instructions — w6/m23 t005.
+func TestRESTCustomDomainsPairedAdd(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	svc.BaseDomain = "onbex.co"
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+		strings.NewReader(`{"name":"foo.com"}`)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	var list []customDomainWithCursor
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 2 {
+		t.Fatalf("list: %v len=%d, want 2 (the pair)", err, len(list))
+	}
+	byName := map[string]renderCustomDomain{}
+	for _, item := range list {
+		byName[item.CustomDomain.Name] = item.CustomDomain
+	}
+	if r := byName["foo.com"].DNSRecord; r.Type != "ALIAS" || r.Name != "@" {
+		t.Errorf("foo.com dnsRecord = %+v, want ALIAS/@", r)
+	}
+	if r := byName["www.foo.com"].DNSRecord; r.Type != "CNAME" || r.Name != "www" {
+		t.Errorf("www.foo.com dnsRecord = %+v, want CNAME/www", r)
+	}
+}
+
+// TestRESTCustomDomainsSiblingConflict: registering www.foo.com on one service
+// blocks foo.com on another over REST too, with the same 409 the per-host
+// guard uses (w6/m23 t004/t009 — "on every surface").
+func TestRESTCustomDomainsSiblingConflict(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("owner", "www.foo.com"), sampleApp("web"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+		strings.NewReader(`{"name":"foo.com"}`)))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("POST sibling of another service's host => 409, got %d: %s", rec.Code, rec.Body)
 	}
 }
 
@@ -590,14 +843,16 @@ func TestGraphQLCustomDomains(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 
-	// addCustomDomain mutation.
+	// addCustomDomain mutation. app.example.com is a deep subdomain — no
+	// sibling pairing (t002) — so this stays a single-domain lifecycle test;
+	// the paired case gets its own test (TestGraphQLCustomDomainsPairedAdd).
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `mutation { addCustomDomain(id: "web", name: "www.example.com") { name domainType verificationStatus } }`})
+		RequestString: `mutation { addCustomDomain(id: "web", name: "app.example.com") { name domainType verificationStatus } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("addCustomDomain: %v", res.Errors)
 	}
 	added := res.Data.(map[string]any)["addCustomDomain"].(map[string]any)
-	if added["name"] != "www.example.com" || added["domainType"] != "subdomain" {
+	if added["name"] != "app.example.com" || added["domainType"] != "subdomain" {
 		t.Errorf("addCustomDomain result wrong: %v", added)
 	}
 
@@ -614,34 +869,156 @@ func TestGraphQLCustomDomains(t *testing.T) {
 
 	// customDomain query (single) — including the nested dnsRecord.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ customDomain(id: "web", name: "www.example.com") { name dnsRecord { type name value } } }`})
+		RequestString: `{ customDomain(id: "web", name: "app.example.com") { name dnsRecord { type name value } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("customDomain: %v", res.Errors)
 	}
 	single := res.Data.(map[string]any)["customDomain"].(map[string]any)
 	rec := single["dnsRecord"].(map[string]any)
-	if rec["type"] != "CNAME" || rec["name"] != "www" {
-		t.Errorf("dnsRecord = %v, want CNAME/www", rec)
+	if rec["type"] != "CNAME" || rec["name"] != "app" {
+		t.Errorf("dnsRecord = %v, want CNAME/app", rec)
 	}
 
 	// verifyCustomDomain mutation — re-check returns the fresh domain.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `mutation { verifyCustomDomain(id: "web", name: "www.example.com") { name verificationStatus dnsRecord { type } } }`})
+		RequestString: `mutation { verifyCustomDomain(id: "web", name: "app.example.com") { name verificationStatus dnsRecord { type } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("verifyCustomDomain: %v", res.Errors)
 	}
-	if v := res.Data.(map[string]any)["verifyCustomDomain"].(map[string]any); v["name"] != "www.example.com" {
+	if v := res.Data.(map[string]any)["verifyCustomDomain"].(map[string]any); v["name"] != "app.example.com" {
 		t.Errorf("verifyCustomDomain result wrong: %v", v)
 	}
 
 	// deleteCustomDomain mutation.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `mutation { deleteCustomDomain(id: "web", name: "www.example.com") }`})
+		RequestString: `mutation { deleteCustomDomain(id: "web", name: "app.example.com") }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("deleteCustomDomain: %v", res.Errors)
 	}
 	if deleted := res.Data.(map[string]any)["deleteCustomDomain"]; deleted != true {
 		t.Errorf("deleteCustomDomain should return true on success, got %v", deleted)
+	}
+}
+
+// TestGraphQLCustomDomainsPairedAdd: addCustomDomain on an apex auto-pairs the
+// www sibling, and customDomains surfaces both with their own dnsRecord —
+// w6/m23 t005.
+func TestGraphQLCustomDomainsPairedAdd(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	svc.BaseDomain = "onbex.co"
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { addCustomDomain(id: "web", name: "foo.com") { name } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("addCustomDomain: %v", res.Errors)
+	}
+
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `{ customDomains(id: "web") { name dnsRecord { type name } } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("customDomains: %v", res.Errors)
+	}
+	domains := res.Data.(map[string]any)["customDomains"].([]any)
+	if len(domains) != 2 {
+		t.Fatalf("want 2 domains (the pair), got %d", len(domains))
+	}
+	byName := map[string]map[string]any{}
+	for _, d := range domains {
+		m := d.(map[string]any)
+		byName[m["name"].(string)] = m
+	}
+	if rec := byName["foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "ALIAS" || rec["name"] != "@" {
+		t.Errorf("foo.com dnsRecord = %v, want ALIAS/@", rec)
+	}
+	if rec := byName["www.foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "CNAME" || rec["name"] != "www" {
+		t.Errorf("www.foo.com dnsRecord = %v, want CNAME/www", rec)
+	}
+}
+
+// TestGraphQLCustomDomainsSiblingConflict: the sibling collision guard surfaces
+// as a GraphQL error too (w6/m23 t004/t009 — "on every surface").
+func TestGraphQLCustomDomainsSiblingConflict(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("owner", "www.foo.com"), sampleApp("web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { addCustomDomain(id: "web", name: "foo.com") { name } }`})
+	if len(res.Errors) == 0 {
+		t.Fatal("addCustomDomain sibling of another service's host: want a GraphQL error, got none")
+	}
+}
+
+// --- MCP ---
+
+// TestMCPCustomDomainsPairedAdd: add_custom_domain over MCP auto-pairs the
+// sibling and list_custom_domains surfaces both with their own DNS record
+// (w6/m23 t005 — "on every surface").
+func TestMCPCustomDomainsPairedAdd(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	svc.BaseDomain = "onbex.co"
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+
+	call("add_custom_domain", map[string]any{"serviceId": "web", "name": "foo.com"})
+
+	list := call("list_custom_domains", map[string]any{"serviceId": "web"})
+	domains, _ := list["customDomains"].([]any)
+	if len(domains) != 2 {
+		t.Fatalf("list_custom_domains: want 2 domains (the pair), got %v", list)
+	}
+	byName := map[string]map[string]any{}
+	for _, d := range domains {
+		m := d.(map[string]any)
+		byName[m["name"].(string)] = m
+	}
+	if rec, _ := byName["foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "ALIAS" || rec["name"] != "@" {
+		t.Errorf("foo.com dnsRecord = %v, want ALIAS/@", rec)
+	}
+	if rec, _ := byName["www.foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "CNAME" || rec["name"] != "www" {
+		t.Errorf("www.foo.com dnsRecord = %v, want CNAME/www", rec)
+	}
+}
+
+// TestMCPCustomDomainsSiblingConflict: the sibling collision guard rejects a
+// second service's add as an MCP tool error, not a transport error (w6/m23
+// t004/t009 — "on every surface").
+func TestMCPCustomDomainsSiblingConflict(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("owner", "www.foo.com"), sampleApp("web"))
+	ctx := context.Background()
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "add_custom_domain",
+		Arguments: map[string]any{"serviceId": "web", "name": "foo.com"},
+	})
+	if err != nil {
+		t.Fatalf("add_custom_domain sibling conflict: transport err=%v", err)
+	}
+	if !res.IsError {
+		t.Errorf("add_custom_domain sibling of another service's host: want a tool error, got %+v", res)
 	}
 }
 

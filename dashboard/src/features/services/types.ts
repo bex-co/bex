@@ -206,6 +206,33 @@ export interface CustomDomainView {
   dnsRecord: DnsRecordView | null;
 }
 
+/**
+ * Finds domain's www<->apex auto-pairing sibling (w6/m23) within the same
+ * domains list, if present — a display-only mirror of the backend's wwwSibling
+ * (lego/backend/internal/apps/domains.go), built on the backend-computed
+ * `domainType` (the real public-suffix list) rather than reimplementing PSL
+ * client-side: an apex's sibling is "www."+name; a "www."+X domain's sibling is
+ * X, but only when X is present AND itself marked "apex" (guards against
+ * mis-pairing an unrelated "www.foo" whose "foo" happens to be someone else's
+ * subdomain, not X's own registrable domain).
+ */
+export function pairedSibling(
+  domain: CustomDomainView,
+  domains: CustomDomainView[],
+): CustomDomainView | null {
+  if (domain.domainType === "apex") {
+    return domains.find((d) => d.name === `www.${domain.name}`) ?? null;
+  }
+  if (domain.name.startsWith("www.")) {
+    const apexName = domain.name.slice(4);
+    return (
+      domains.find((d) => d.name === apexName && d.domainType === "apex") ??
+      null
+    );
+  }
+  return null;
+}
+
 /** A resolved status key (i18n label) + the badge variant it renders as. */
 export type ServiceStatusKey =
   | "running"

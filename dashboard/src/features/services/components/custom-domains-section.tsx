@@ -56,14 +56,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
+import { Separator } from "@/common/components/ui/separator";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useCustomDomains,
   useCustomDomainMutations,
+  type AddedDomain,
 } from "@/features/services/hooks/use-custom-domains";
 import { CenteredState } from "@/features/services/components/centered-state";
-import type { CustomDomainView } from "@/features/services/types";
+import {
+  pairedSibling,
+  type CustomDomainView,
+} from "@/features/services/types";
 
 // A hostname bex-api (and the operator's Ingress) will accept: optional wildcard
 // label, then dot-separated labels, ending in a 2+ char TLD. Reject bad input
@@ -131,6 +136,7 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
                 <CustomDomainRow
                   key={domain.name}
                   domain={domain}
+                  sibling={pairedSibling(domain, domains)}
                   onDelete={deleteDomain}
                   onVerify={verifyDomain}
                   busy={busy}
@@ -145,14 +151,19 @@ export function CustomDomainsSection({ serviceId }: { serviceId: string }) {
 }
 
 /** One domain row: the FQDN as an external link, the two status badges, a DNS-setup
- *  disclosure toggle + kebab menu, and (when expanded) the DNS-instructions panel. */
+ *  disclosure toggle + kebab menu, and (when expanded) the DNS-instructions panel.
+ *  `sibling` is the www<->apex domain bex auto-paired alongside this one (w6/m23,
+ *  null if this domain wasn't part of an auto-pair) — surfaced as a small note so a
+ *  tenant who only typed one hostname understands where the second row came from. */
 function CustomDomainRow({
   domain,
+  sibling,
   onDelete,
   onVerify,
   busy,
 }: {
   domain: CustomDomainView;
+  sibling: CustomDomainView | null;
   onDelete: (name: string) => Promise<boolean>;
   onVerify: (name: string) => Promise<CustomDomainView | null>;
   busy: boolean;
@@ -176,6 +187,11 @@ function CustomDomainRow({
             {domain.name}
             <ExternalLink className="text-muted-foreground size-3" />
           </a>
+          {sibling && (
+            <p className="text-muted-foreground text-xs font-normal">
+              {t("services.domainPairedWith", { sibling: sibling.name })}
+            </p>
+          )}
         </TableCell>
         <TableCell>
           <StatusBadge
@@ -232,7 +248,9 @@ function CustomDomainRow({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {t("services.domainDeleteConfirmTitle", { name: domain.name })}
+                  {t("services.domainDeleteConfirmTitle", {
+                    name: domain.name,
+                  })}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {t("services.domainDeleteConfirmBody")}
@@ -394,21 +412,24 @@ function StatusBadge({
 }
 
 /** The "Add Custom Domain" affordance: a button that opens an FQDN-input dialog,
- *  then — on a successful add — swaps to the DNS record the tenant must create. */
+ *  then — on a successful add — swaps to the DNS record(s) the tenant must
+ *  create: just the domain they typed, or both halves of a www<->apex pair
+ *  bex auto-added alongside it (w6/m23). */
 function AddDomainButton({
   addDomain,
   disabled,
 }: {
-  addDomain: (name: string) => Promise<CustomDomainView | null>;
+  addDomain: (name: string) => Promise<AddedDomain | null>;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState(false);
-  // The just-added domain: on success the dialog swaps the input for its DNS record
-  // so the tenant sees exactly what to create without hunting for the new row.
-  const [added, setAdded] = useState<CustomDomainView | null>(null);
+  // The just-added domain (+ auto-paired sibling, if any): on success the dialog
+  // swaps the input for the DNS record(s) so the tenant sees exactly what to
+  // create without hunting for the new row(s).
+  const [added, setAdded] = useState<AddedDomain | null>(null);
 
   function reset() {
     setName("");
@@ -453,7 +474,18 @@ function AddDomainButton({
                 {t("services.domainAddedDescription")}
               </DialogDescription>
             </DialogHeader>
-            <DnsRecordFields domain={added} />
+            <DnsRecordFields domain={added.primary} />
+            {added.sibling && (
+              <>
+                <Separator />
+                <p className="text-sm font-medium">
+                  {t("services.domainPairedDnsTitle", {
+                    sibling: added.sibling.name,
+                  })}
+                </p>
+                <DnsRecordFields domain={added.sibling} />
+              </>
+            )}
             <DialogFooter>
               <Button onClick={reset}>{t("services.domainDone")}</Button>
             </DialogFooter>

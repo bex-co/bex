@@ -982,6 +982,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请在你的 DNS 服务商处创建此记录，以完成域名连接。",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
+  "services.domainPairedWith": {
+    message: "已与 {sibling} 配对 — bex 已自动添加",
+    description:
+      "Note under a domain row's name when bex auto-added its www<->apex sibling (w6/m23)",
+  },
+  "services.domainPairedDnsTitle": {
+    message: "{sibling} 已自动添加 — 也请为它配置 DNS",
+    description:
+      "Heading of the second DNS-record block in the add dialog when the add auto-paired a www<->apex sibling (w6/m23)",
+  },
   "services.domainDone": {
     message: "完成",
     description: "Button closing the post-add DNS-record step",
