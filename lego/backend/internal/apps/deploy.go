@@ -125,9 +125,10 @@ type bexService struct {
 	RootDir           string      `json:"rootDir"`
 	BuildCommand      string      `json:"buildCommand"`
 	StartCommand      string      `json:"startCommand"`
-	NumInstances      int32       `json:"numInstances"` // render.yaml; alias for replicas
-	Replicas          int32       `json:"replicas"`     // bex alias
-	Port              int32       `json:"port"`         // bex (Render infers PORT env)
+	DockerfilePath    string      `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
+	NumInstances      int32       `json:"numInstances"`   // render.yaml; alias for replicas
+	Replicas          int32       `json:"replicas"`       // bex alias
+	Port              int32       `json:"port"`           // bex (Render infers PORT env)
 	HealthCheckPath   string      `json:"healthCheckPath"`
 	Domains           []string    `json:"domains"`
 	Schedule          string      `json:"schedule"`          // cron expression, required when type is cron
@@ -499,6 +500,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, []bexEnvVar, 
 		BuildCommand:     a.BuildCommand,
 		StartCommand:     a.StartCommand,
 		RootDir:          a.RootDir,
+		DockerfilePath:   a.DockerfilePath,
 		Port:             a.Port,
 		Replicas:         replicas,
 		Plan:             plan,

@@ -213,6 +213,28 @@ func TestDeployMapsManifest(t *testing.T) {
 	}
 }
 
+func TestDeployMapsDockerfilePathAndStartCommand(t *testing.T) {
+	svc, cl := newService(nil)
+	manifest := `
+services:
+  - name: hello-docker
+    repo: https://github.com/bex/hello
+    runtime: docker
+    dockerfilePath: docker/Dockerfile.prod
+    startCommand: bin/server
+`
+	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("Deploy: %v", err)
+	}
+	a := getApp(t, cl, "hello-docker")
+	if a.Spec.DockerfilePath != "docker/Dockerfile.prod" {
+		t.Errorf("dockerfilePath = %q, want docker/Dockerfile.prod", a.Spec.DockerfilePath)
+	}
+	if a.Spec.StartCommand != "bin/server" {
+		t.Errorf("startCommand = %q, want bin/server", a.Spec.StartCommand)
+	}
+}
+
 func TestDeployRepoOverrideWins(t *testing.T) {
 	svc, cl := newService(nil)
 	if _, err := svc.Deploy(context.Background(), DeployRequest{

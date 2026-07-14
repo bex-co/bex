@@ -580,7 +580,12 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			Resources:       resourcesForTier(app.Spec.Tier),
 			SecurityContext: tenantSecCtx(),
 		}
-		if app.Spec.Runtime == runtimeDocker && app.Spec.StartCommand != "" {
+		// StartCommand overrides the running container's entrypoint whenever the
+		// image comes from an opaque Dockerfile (or a prebuilt image) — bex has
+		// no control over that image's own ENTRYPOINT/CMD. A native-runtime or
+		// buildpack build instead bakes the command into the image's own CMD at
+		// build time, so no Deployment-level override is needed there.
+		if b := effectiveBuilder(app.Spec); b != build.BuilderNative && b != build.BuilderBuildpack && app.Spec.StartCommand != "" {
 			container.Command = []string{"/bin/sh", "-c", app.Spec.StartCommand}
 		}
 		// Health-gating: a non-worker service speaks HTTP, so gate pod
@@ -1144,7 +1149,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		SecurityContext: tenantSecCtx(),
 	}
 	command := app.Spec.Command
-	if command == "" && app.Spec.Runtime == runtimeDocker {
+	if b := effectiveBuilder(app.Spec); command == "" && b != build.BuilderNative && b != build.BuilderBuildpack {
 		command = app.Spec.StartCommand
 	}
 	if command != "" {

@@ -120,7 +120,7 @@ type Options struct {
 	// Empty or equal to Namespace = label omitted (the shipper uses the pod's own
 	// namespace, which already matches the App's).
 	AppNamespace string
-	Client    client.Client // cluster client used to create + watch the Job
+	Client       client.Client // cluster client used to create + watch the Job
 	// CloneSecret names a Secret (in Namespace, key "token") whose value is
 	// passed to BuildKit as the GIT_AUTH_TOKEN build secret so a private Repo's
 	// https git context authenticates (App.spec.cloneSecret). Empty = public

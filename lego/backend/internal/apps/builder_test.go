@@ -130,6 +130,46 @@ func TestRenderDockerDetailsMapToDockerfileBuild(t *testing.T) {
 	}
 }
 
+// TestDockerfilePathAcrossCreateSurfaces pins that dockerfilePath (Render's
+// Dockerfile Path, relative to rootDir) round-trips identically through
+// GraphQL's createService mutation and MCP's create_web_service tool — REST's
+// equivalent is already covered by TestRenderDockerDetailsMapToDockerfileBuild.
+func TestDockerfilePathAcrossCreateSurfaces(t *testing.T) {
+	t.Run("graphql", func(t *testing.T) {
+		svc, cl := newService(nil)
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { createService(name:"web", repo:"https://github.com/x/web", runtime:"docker", dockerfilePath:"docker/Dockerfile.prod") { dockerfilePath } }`})
+		if len(res.Errors) > 0 {
+			t.Fatal(res.Errors)
+		}
+		app := getApp(t, cl, "web")
+		if app.Spec.DockerfilePath != "docker/Dockerfile.prod" {
+			t.Fatalf("spec.dockerfilePath = %q, want docker/Dockerfile.prod", app.Spec.DockerfilePath)
+		}
+		data, _ := res.Data.(map[string]any)
+		created, _ := data["createService"].(map[string]any)
+		if created["dockerfilePath"] != "docker/Dockerfile.prod" {
+			t.Fatalf("response dockerfilePath = %v", created["dockerfilePath"])
+		}
+	})
+
+	t.Run("mcp", func(t *testing.T) {
+		req := createWebServiceArgs{
+			Name: "web", Repo: "https://github.com/x/web", Runtime: "docker",
+			DockerfilePath: "docker/Dockerfile.prod",
+		}.toCreateRequest()
+		if req.DockerfilePath != "docker/Dockerfile.prod" {
+			t.Fatalf("request.DockerfilePath = %q", req.DockerfilePath)
+		}
+	})
+}
+
 func TestCreateRejectsUnknownBuilder(t *testing.T) {
 	svc, _ := newService(nil)
 	_, err := svc.Create(context.Background(), CreateRequest{Name: "web", Repo: "https://github.com/x/web", Builder: "magic"})

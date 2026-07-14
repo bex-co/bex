@@ -131,6 +131,7 @@ type createWebServiceArgs struct {
 	Runtime          string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
 	BuildCommand     string      `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
 	StartCommand     string      `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
+	DockerfilePath   string      `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
 	Builder          string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan             string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars          []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
@@ -160,6 +161,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Runtime:          a.Runtime,
 		BuildCommand:     a.BuildCommand,
 		StartCommand:     a.StartCommand,
+		DockerfilePath:   a.DockerfilePath,
 		Builder:          a.Builder,
 		Plan:             a.Plan,
 		Env:              toEnvVars(a.EnvVars),
@@ -176,43 +178,45 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
-	OwnerID      string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name         string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
-	Schedule     string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
-	Command      string      `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
-	Repo         string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image        string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch       string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir      string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime      string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand string      `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
-	StartCommand string      `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
-	Builder      string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan         string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
-	EnvVars      []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
-	AutoDeploy   string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	DryRun       bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID        string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name           string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
+	Schedule       string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Command        string      `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
+	Repo           string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image          string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch         string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir        string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Runtime        string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand   string      `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
+	StartCommand   string      `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
+	DockerfilePath string      `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder        string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan           string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	EnvVars        []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
+	AutoDeploy     string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	DryRun         bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:      a.OwnerID,
-		Name:         a.Name,
-		Type:         appv1alpha1.TypeCronJob,
-		Schedule:     a.Schedule,
-		Command:      a.Command,
-		Repo:         a.Repo,
-		Image:        a.Image,
-		Branch:       a.Branch,
-		RootDir:      a.RootDir,
-		Runtime:      a.Runtime,
-		BuildCommand: a.BuildCommand,
-		StartCommand: a.StartCommand,
-		Builder:      a.Builder,
-		Plan:         a.Plan,
-		Env:          toEnvVars(a.EnvVars),
-		AutoDeploy:   parseYesNo(a.AutoDeploy),
-		DryRun:       a.DryRun,
+		OwnerID:        a.OwnerID,
+		Name:           a.Name,
+		Type:           appv1alpha1.TypeCronJob,
+		Schedule:       a.Schedule,
+		Command:        a.Command,
+		Repo:           a.Repo,
+		Image:          a.Image,
+		Branch:         a.Branch,
+		RootDir:        a.RootDir,
+		Runtime:        a.Runtime,
+		BuildCommand:   a.BuildCommand,
+		StartCommand:   a.StartCommand,
+		DockerfilePath: a.DockerfilePath,
+		Builder:        a.Builder,
+		Plan:           a.Plan,
+		Env:            toEnvVars(a.EnvVars),
+		AutoDeploy:     parseYesNo(a.AutoDeploy),
+		DryRun:         a.DryRun,
 	}
 }
 

@@ -214,7 +214,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"runtime":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Runtime })},
 		"buildCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.BuildCommand })},
 		"startCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.StartCommand })},
-		"builder":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Builder })},
+		// dockerfilePath is Render's Dockerfile Path setting, relative to rootDir;
+		// applies only when runtime is docker.
+		"dockerfilePath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DockerfilePath })},
+		"builder":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Builder })},
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
 		"branch":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
@@ -612,11 +615,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"runtime":      &graphql.ArgumentConfig{Type: graphql.String}, // Render runtime: native language | docker | image
 				"buildCommand": &graphql.ArgumentConfig{Type: graphql.String},
 				"startCommand": &graphql.ArgumentConfig{Type: graphql.String},
-				"builder":      &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
-				"plan":         &graphql.ArgumentConfig{Type: graphql.String},
-				"autoDeploy":   &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"port":         &graphql.ArgumentConfig{Type: graphql.Int},
-				"replicas":     &graphql.ArgumentConfig{Type: graphql.Int},
+				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
+				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.String},
+				"builder":        &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
+				"plan":           &graphql.ArgumentConfig{Type: graphql.String},
+				"autoDeploy":     &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"port":           &graphql.ArgumentConfig{Type: graphql.Int},
+				"replicas":       &graphql.ArgumentConfig{Type: graphql.Int},
 				// envVars sets literal (non-secret) environment variables at create time
 				// (Render parity, w5/m19): REST/MCP parity — those surfaces accepted
 				// envVars at create since w2/m2; GraphQL now reaches the same shape.
@@ -648,6 +653,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Runtime:          gqlStr(p.Args, "runtime"),
 					BuildCommand:     gqlStr(p.Args, "buildCommand"),
 					StartCommand:     gqlStr(p.Args, "startCommand"),
+					DockerfilePath:   gqlStr(p.Args, "dockerfilePath"),
 					Builder:          gqlStr(p.Args, "builder"),
 					Plan:             gqlStr(p.Args, "plan"),
 					AutoDeploy:       gqlBoolPtr(p.Args, "autoDeploy"),
