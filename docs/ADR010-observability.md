@@ -71,7 +71,7 @@ Every filter Render's logs API documents is honored, and each maps to exactly on
 
 | filter | mechanism | notes |
 | --- | --- | --- |
-| `type` | stream selection | `app` ∪ `request`; `build` is empty by design (below) |
+| `type` | stream selection | `app` ∪ `request` ∪ `build`; default (no filter) = `app` ∪ `request` |
 | `level` | label matcher | app logs; `unknown` is a real, queryable value |
 | `instance` | label matcher (`pod`) | app logs — a request line comes from the edge, not a replica |
 | `statusCode` | label matcher (`status`) | exact (`404`) or class (`4xx`) |
@@ -86,7 +86,7 @@ Multiple values for one filter OR together (Render's arrays); different filters 
 
 **Nothing is accepted and ignored.** A filter bex cannot honor is refused where it is asked for:
 
-- **Pod-log fallback mode** (`BEX_LOKI_URL` unset): the labels live in the store, not in a pod's stdout — so `type=request` and the `level`/`statusCode`/`method`/`path`/`host` filters return **503** (`ErrLogStoreUnavailable`), rather than quietly answering a narrow question with unfiltered lines. `type=app`, `text`, `instance`, time and `direction` still work, unchanged.
+- **Pod-log fallback mode** (`BEX_LOKI_URL` unset): the labels live in the store, not in a pod's stdout — so `type=request`, `type=build`, and the `level`/`statusCode`/`method`/`path`/`host` filters return **503** (`ErrLogStoreUnavailable`), rather than quietly answering a narrow question with unfiltered lines. `type=app`, `text`, `instance`, time and `direction` still work, unchanged.
 - **The SSE live tail** reads pod logs by design (see above), so it honors the same subset and refuses the store-only filters with a terminal SSE `event: error` frame (its headers are already on the wire, so a status code is no longer available).
 - **An unknown `type`, `direction` or label** is a **400** naming the value — never a silently widened query.
 
@@ -110,13 +110,13 @@ The REST log object is Render's public-API `log` (all fields required): `{id, me
 
 ### Log types
 
-Render's `type` is `app`/`request`/`build`, and bex serves the first two:
+Render's `type` is `app`/`request`/`build`, and bex now serves all three (w7/m28):
 
 - **`app`** — the App's own container stdout/stderr, from every replica pod (label `app.bex.co/app=<name>`), aggregated. `application` is accepted as an input alias.
 - **`request`** — Traefik's access log for that App (see [Log labels](#log-labels-and-the-cardinality-budget)), with truthful `method`/`statusCode` and a searchable `path`/`host`.
-- **`build`** — **empty by design, and the only one.** bex builds run in a separate plane ([go-and-gitops](ADR001-go-and-gitops.md)) with no shipper into this store, so `type=build` resolves to an empty page rather than an error: a Render-shaped client filtering by it sees an empty result, never a break. This is the single remaining "accepted-but-empty" type, stated here rather than hidden.
+- **`build`** — the in-cluster BuildKit Job's output for a git-backed deploy, shipped by the `build_pods` pipeline in `deploy/gitops/base/log-shipper.yaml`. Build pods carry `app.bex.co/component=build` + `app.bex.co/build=<name>` (w7/m28); the shipper attributes them to the App and pushes `{namespace, app, pod, container, type="build"}` streams. Without the durable store (`BEX_LOKI_URL` unset) a `type=build` query returns **503**, not a silent empty — the same honesty rule as `type=request`.
 
-Asking for no type (or `all`) unions app + request — the default a Render client sees.
+Asking for no type (or `all`) unions app + request — the default a Render client sees. Build logs are only included when the caller explicitly requests `type=build`.
 
 ### Live tail (SSE)
 
@@ -129,7 +129,7 @@ Shapes verified against `render-public-api-1.json` and `render-oss/render-mcp-se
 - **subscribe transport** — SSE vs Render's WebSocket (`101` upgrade).
 - **`ownerId`** — Render requires it; bex is single-tenant and omits it.
 - **wildcards, not regex** — Render's filters accept full regex; bex honors `*` wildcards and treats everything else as a literal (see [Log filters](#log-filters)).
-- **`type=build`** — empty by design (no build-log shipper); every other filter is honored or refused, never ignored.
+- **`type=build`** — requires the durable store (`BEX_LOKI_URL`); without it returns 503 (w7/m28 — the same honesty rule as `type=request`).
 - **request-line message** — the raw JSON access line, not a rendered request summary.
 - **GraphQL arity** — `logs(type:)`/`logs(text:)` stay single-valued strings (the shape the dashboard sends); REST and MCP take Render's arrays. The request filters are lists on all three.
 

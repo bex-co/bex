@@ -192,7 +192,9 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 		fmt.Sprintf("namespace=%q", namespace),
 		fmt.Sprintf("app=%q", q.App),
 	}
-	matchers = append(matchers, lokiTypeMatcher(q))
+	if m := lokiTypeMatcher(q); m != "" {
+		matchers = append(matchers, m)
+	}
 	// The labels the shipper attaches; `path`/`host` are deliberately absent —
 	// they are line-only (see the cardinality budget in log-shipper.yaml) and are
 	// applied as line filters by lokiQueryFor instead.
@@ -217,15 +219,31 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 // query still finds history the shipper labelled the old way. Request streams —
 // Traefik's access log, attributed to the App — carry no container label at all,
 // which is what `container=~"app|"` (match "app" OR absent) unions in when the
-// caller asks for both.
+// caller asks for both. Build streams carry type="build" (w7/m28 — shipped by
+// the build_pods pipeline in log-shipper.yaml). Returns "" when all three types
+// are wanted (no restriction — all streams for this App).
 func lokiTypeMatcher(q LogQuery) string {
-	wantApp, wantRequest := q.wants(LogTypeApp), q.wants(LogTypeRequest)
+	if len(q.Types) == 0 {
+		// No explicit type filter: backward-compat union of app + request
+		// (the default Render clients see). Build logs are only included when
+		// the caller explicitly requests them — `type=build` or `type=all`.
+		return fmt.Sprintf("container=~%q", core.AppContainer+"|")
+	}
+	wantApp, wantRequest, wantBuild := q.wants(LogTypeApp), q.wants(LogTypeRequest), q.wants(LogTypeBuild)
 	switch {
+	case wantApp && wantRequest && wantBuild:
+		return "" // explicit all-three: no type restriction
 	case wantApp && wantRequest:
 		return fmt.Sprintf("container=~%q", core.AppContainer+"|")
+	case wantApp && wantBuild:
+		return fmt.Sprintf("type=~%q", "app|build")
+	case wantRequest && wantBuild:
+		return fmt.Sprintf("type=~%q", "request|build")
+	case wantBuild:
+		return fmt.Sprintf("type=%q", LogTypeBuild)
 	case wantRequest:
 		return fmt.Sprintf("type=%q", LogTypeRequest)
-	default:
+	default: // app only
 		return fmt.Sprintf("container=%q", core.AppContainer)
 	}
 }

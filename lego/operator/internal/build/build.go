@@ -113,6 +113,13 @@ type Options struct {
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
 	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).
 	Workspace string
+	// AppNamespace is the namespace the App CR lives in — which may differ from
+	// Namespace (the build Job's namespace) when BEX_BUILD_NAMESPACE is set. When
+	// set and different from Namespace, it is stamped as app.bex.co/app-namespace
+	// on the build pod so the log-shipper can attribute logs to the right stream.
+	// Empty or equal to Namespace = label omitted (the shipper uses the pod's own
+	// namespace, which already matches the App's).
+	AppNamespace string
 	Client    client.Client // cluster client used to create + watch the Job
 	// CloneSecret names a Secret (in Namespace, key "token") whose value is
 	// passed to BuildKit as the GIT_AUTH_TOKEN build secret so a private Repo's
@@ -406,6 +413,16 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.Workspace != "" {
 		labels["app.bex.co/workspace"] = o.Workspace
 	}
+	// Pod labels: carry build + component so the log-shipper can select and
+	// attribute build pods. app-namespace overrides the shipper's namespace label
+	// only when the build namespace differs from the App's namespace (w7/m28).
+	podLabels := map[string]string{
+		"app.bex.co/build":     o.Name,
+		"app.bex.co/component": "build",
+	}
+	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
+		podLabels["app.bex.co/app-namespace"] = o.AppNamespace
+	}
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
@@ -418,7 +435,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      map[string]string{"app.bex.co/build": o.Name},
+					Labels:      podLabels,
 					Annotations: annotations,
 				},
 				Spec: podSpec,

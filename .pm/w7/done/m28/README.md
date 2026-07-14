@@ -1,20 +1,20 @@
 # w7 · m28 — Build logs: ship `type=build` into the log store
 
-**Worker:** worker7 **Goal:** Build Job output ships into the Loki pipeline attributed to the owning App, so a failed or in-flight build is debuggable through the existing logs API and `type=build` stops being "empty by design". **Status:** todo
+**Worker:** worker7 **Goal:** Build Job output ships into the Loki pipeline attributed to the owning App, so a failed or in-flight build is debuggable through the existing logs API and `type=build` stops being "empty by design". **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                          | est | depends_on |
 | ---- | -------------------------------------------------------------- | --- | ---------- |
-| t001 | Label build Jobs/pods for log attribution                      | 40m | —          |
-| t002 | Ship build-namespace logs through the shipper as `type=build`  | 40m | t001       |
-| t003 | Backend: serve `type=build` via `QueryLogs` (store-less ⇒ 503) | 30m | t002       |
-| t004 | Tenant scoping: build streams + label-discovery leak check     | 30m | t003       |
-| t005 | Docs: close the ADR010/ADR018 build-logs divergence            | 20m | t004       |
-| t006 | Render parity                                                  | 30m | t005       |
-| t007 | Simplify                                                       | 30m | t006       |
-| t008 | Test coverage                                                  | 45m | t006       |
-| t009 | Closeout                                                       | 15m | t008       |
+| t001 | Label build Jobs/pods for log attribution                      | 40m | —          | — **DONE**
+| t002 | Ship build-namespace logs through the shipper as `type=build`  | 40m | t001       | — **DONE**
+| t003 | Backend: serve `type=build` via `QueryLogs` (store-less ⇒ 503) | 30m | t002       | — **DONE**
+| t004 | Tenant scoping: build streams + label-discovery leak check     | 30m | t003       | — **DONE**
+| t005 | Docs: close the ADR010/ADR018 build-logs divergence            | 20m | t004       | — **DONE**
+| t006 | Render parity                                                  | 30m | t005       | — **DONE**
+| t007 | Simplify                                                       | 30m | t006       | — **DONE**
+| t008 | Test coverage                                                  | 45m | t006       | — **DONE**
+| t009 | Closeout                                                       | 15m | t008       | — **DONE**
 
 ## Definition of done
 

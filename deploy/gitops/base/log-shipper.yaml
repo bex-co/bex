@@ -148,6 +148,70 @@ spec:
                 forward_to = [loki.write.default.receiver]
               }
 
+              // --- type=build: build Job pod logs ---
+              //
+              // Build pods carry app.bex.co/component=build (set by the operator
+              // on every build Job's pod template, w7/m28). The `app` label is
+              // derived from app.bex.co/build (the service name), and `namespace`
+              // from the pod's own namespace — overridden by app.bex.co/app-namespace
+              // when the build Job runs in a separate BEX_BUILD_NAMESPACE so the
+              // stream lands under the App's namespace, not the build namespace.
+
+              discovery.relabel "build_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                // Keep only build Job pods.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_component"]
+                  regex         = "build"
+                  action        = "keep"
+                }
+                // Default: use the pod's actual namespace.
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                // Override with the App's namespace when the build namespace
+                // differs (BEX_BUILD_NAMESPACE != App namespace); absent = same,
+                // no override needed. The regex (.+) skips empty/absent labels.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app_namespace"]
+                  regex         = "(.+)"
+                  target_label  = "namespace"
+                  replacement   = "$1"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_build"]
+                  target_label  = "app"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+              }
+
+              loki.source.kubernetes "build_pods" {
+                targets    = discovery.relabel.build_pods.output
+                forward_to = [loki.process.build_logs.receiver]
+              }
+
+              loki.process "build_logs" {
+                // Drop pods that somehow lack a build label (defensive guard).
+                stage.drop {
+                  source              = "app"
+                  expression          = "^$"
+                  drop_counter_reason = "not_a_build_pod"
+                }
+                stage.static_labels {
+                  values = { type = "build" }
+                }
+                forward_to = [loki.write.default.receiver]
+              }
+
               // --- type=request: Traefik access logs ---
 
               discovery.relabel "traefik" {

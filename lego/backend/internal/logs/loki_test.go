@@ -104,6 +104,33 @@ func TestLokiQueryFor(t *testing.T) {
 			want: `{namespace="default", app="web", type="request"} | json request_path="RequestPath", request_host="RequestHost" | request_path=~"^(/api/.*)$"`,
 		},
 		{
+			// w7/m28: build pod logs ship with type="build"; lokiTypeMatcher must
+			// select them by that label, not by container (they aren't "app").
+			name: "type=build selects build pod streams",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeBuild}},
+			want: `{namespace="default", app="web", type="build"}`,
+		},
+		{
+			name: "type=app+build unions app and build streams",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp, LogTypeBuild}},
+			want: `{namespace="default", app="web", type=~"app|build"}`,
+		},
+		{
+			name: "type=request+build unions request and build streams",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeBuild, LogTypeRequest}},
+			want: `{namespace="default", app="web", type=~"request|build"}`,
+		},
+		{
+			// All three explicit types: no type restriction, no container filter.
+			name: "type=app+request+build: no type matcher",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp, LogTypeBuild, LogTypeRequest}},
+			want: `{namespace="default", app="web"}`,
+		},
+		{
 			// A service name carrying LogQL/regex metacharacters must not break out
 			// of the label matcher or inject a selector — label injection guard.
 			name: "label injection is escaped",
@@ -370,6 +397,43 @@ func TestQueryLogsRoutesToHistory(t *testing.T) {
 	}
 }
 
+// w7/m28: type=build with the store routes to Loki with type="build" selector;
+// without the store it returns ErrLogStoreUnavailable (not a silent empty).
+func TestQueryLogsBuildType(t *testing.T) {
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"app":"web","pod":"bld-web-gen-7-abc","container":"buildkitd","type":"build"}`,
+		"values": `[["1751673601000000000","Step 1/4 : FROM alpine"]]`,
+	}))
+	defer f.srv.Close()
+
+	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z not this"}},
+		sampleApp("web"), podFor("web", webInst))
+	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
+
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
+	if err != nil {
+		t.Fatalf("QueryLogs type=build with store: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Message != "Step 1/4 : FROM alpine" {
+		t.Fatalf("want one build log entry, got %+v", entries)
+	}
+	if entries[0].Labels["type"] != LogTypeBuild {
+		t.Errorf("entry label type = %q, want %q", entries[0].Labels["type"], LogTypeBuild)
+	}
+	// The Loki query used the type="build" selector.
+	if q := f.lastValues.Get("query"); q != `{namespace="default", app="web", type="build"}` {
+		t.Errorf("Loki query wrong: %s", q)
+	}
+
+	// Without the store: type=build => ErrLogStoreUnavailable (never silent empty).
+	svcNoDB := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", webInst))
+	_, err = svcNoDB.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
+	if !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Errorf("type=build without store => ErrLogStoreUnavailable, got %v", err)
+	}
+}
+
 func TestLogsAvailableWithHistoryOnly(t *testing.T) {
 	// History wired but PodLogs nil: the read verbs are available (not 503) and
 	// serve from Loki — a Loki-only deployment is valid.
@@ -601,9 +665,9 @@ func TestFallbackRefusesStoreOnlyFilters(t *testing.T) {
 		t.Errorf("tail + level WITH the store wired => ErrBadRequest (transport limit), got %v", err)
 	}
 
-	// A build-only query is empty by design (no backend anywhere), not an error.
-	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
-	if err != nil || len(entries) != 0 {
-		t.Errorf("type=build => empty, got %+v (err %v)", entries, err)
+	// type=build without the store is ErrLogStoreUnavailable (w7/m28 — same honesty rule as request).
+	_, err = svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
+	if !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Errorf("type=build without store => ErrLogStoreUnavailable, got %v", err)
 	}
 }

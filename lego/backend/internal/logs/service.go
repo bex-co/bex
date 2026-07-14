@@ -233,11 +233,12 @@ func (q LogQuery) wants(t string) bool {
 }
 
 // needsStore reports whether the query asks for something only the durable log
-// store can answer: request logs, or a structured filter over labels the shipper
-// attaches. The pod-log fallback has neither — it reads one container's stdout —
-// so these must be refused there rather than quietly ignored.
+// store can answer: request logs, build logs, or a structured filter over labels
+// the shipper attaches. The pod-log fallback has neither — it reads one
+// container's stdout — so these must be refused there rather than quietly ignored.
 func (q LogQuery) needsStore() bool {
 	return slices.Contains(q.Types, LogTypeRequest) || // asked for request logs explicitly
+		slices.Contains(q.Types, LogTypeBuild) || // build logs live only in the store
 		len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
 		len(q.Method) > 0 || len(q.Path) > 0
 }
@@ -250,7 +251,7 @@ func (q LogQuery) needsStore() bool {
 // query API answers these, the tail says so, and neither silently ignores them.
 func (q LogQuery) tailSupports() error {
 	if q.needsStore() {
-		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
+		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request or build logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -343,10 +344,11 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 }
 
 // QueryLogs returns an App's log lines matching the filter set, oldest-first and
-// capped at Limit. With the durable store wired it serves both log types (app +
-// request) and every structured filter; in pod-log fallback mode it serves app
-// logs and refuses what it cannot honor (ErrLogStoreUnavailable) rather than
-// returning unfiltered lines. `build` has no backend either way: an honest empty.
+// capped at Limit. With the durable store wired it serves all log types (app +
+// request + build) and every structured filter; in pod-log fallback mode it
+// serves app logs and refuses what it cannot honor (ErrLogStoreUnavailable)
+// rather than returning unfiltered lines. `type=build` without the store is a
+// 503, not a silent empty — the same honesty rule as request logs.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
 	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App); err != nil {
 		return nil, err
@@ -358,11 +360,6 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
-	// A build-only query has no source anywhere in bex — the one empty-by-design
-	// answer (docs/ADR010-observability.md § Log types).
-	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
-		return []LogEntry{}, nil
-	}
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.

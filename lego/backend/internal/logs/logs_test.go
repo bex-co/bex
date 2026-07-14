@@ -240,14 +240,11 @@ func TestRESTLogsTypeAndErrors(t *testing.T) {
 	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
 		sampleApp("web"), podFor("web", "web-1"))
 
-	// `build` has no backend anywhere in bex — the one empty-by-design type.
-	rec := serveREST(svc, "GET", "/v1/logs?resource=web&type=build")
-	var env renderLogList
-	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 0 {
-		t.Errorf("type=build => 200 empty, got %d %+v", rec.Code, env.Logs)
+	// `build` and `request` both live in the durable log store; without it the API
+	// says so — 503 — instead of serving a fake empty page (w7/m28).
+	if got := serveREST(svc, "GET", "/v1/logs?resource=web&type=build").Code; got != 503 {
+		t.Errorf("type=build without the store => 503, got %d", got)
 	}
-	// `request` lives in the durable store; without it (pod-log fallback) the API
-	// says so — a 503 — instead of serving a fake empty page.
 	if got := serveREST(svc, "GET", "/v1/logs?resource=web&type=request").Code; got != 503 {
 		t.Errorf("type=request without the store => 503, got %d", got)
 	}

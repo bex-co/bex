@@ -270,6 +270,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			RuntimeEnvSecret: app.Spec.EnvFromSecret,
 			Revision:         fmt.Sprintf("gen-%d", app.Generation),
 			Namespace:        buildNs,
+			AppNamespace:     app.Namespace,
 			Workspace:        app.Labels[labelWorkspace],
 			CloneSecret:      app.Spec.CloneSecret,
 			SignKeySecret:    r.TenantSignKeySecret,
