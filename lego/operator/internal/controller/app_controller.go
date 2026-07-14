@@ -1141,8 +1141,17 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 
 // effectiveHosts resolves every external FQDN an App serves, in canonical order:
 // spec.host first (the legacy single host — first position keeps existing Apps'
-// TLS secret name stable), then the platform hostname "<name>.<BaseDomain>" when
-// exposed, then spec.hosts (custom domains). Deduplicated, empties dropped.
+// TLS secret name stable), then the platform hostname
+// "<subdomain-or-name>.<BaseDomain>" when exposed, then spec.hosts (custom
+// domains). Deduplicated, empties dropped.
+//
+// The platform hostname prefers spec.subdomain (w4/m19): the control plane
+// mints it as a globally-unique slug, so two Apps sharing a workspace-scoped
+// name (bex.co/m19's whole point) never claim the same host. spec.subdomain
+// is empty on any App the control plane hasn't stamped — a pre-migration
+// store-managed App, or one applied directly (examples/whoami-app.yaml) — so
+// falling back to app.Name keeps those byte-identical to before this field
+// existed.
 func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	var hosts []string
 	seen := map[string]bool{}
@@ -1154,7 +1163,11 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	}
 	add(app.Spec.Host)
 	if app.Spec.Expose && baseDomain != "" {
-		add(fmt.Sprintf("%s.%s", app.Name, baseDomain))
+		subdomain := app.Spec.Subdomain
+		if subdomain == "" {
+			subdomain = app.Name
+		}
+		add(fmt.Sprintf("%s.%s", subdomain, baseDomain))
 	}
 	for _, h := range app.Spec.Hosts {
 		add(h)

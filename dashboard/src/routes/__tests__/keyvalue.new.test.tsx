@@ -72,9 +72,11 @@ describe("NewKeyValuePage", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: must start with a letter — the inline error shows, submit stays off.
-    await user.type(screen.getByLabelText("Name"), "1bad");
-    expect(screen.getByText(/must start with a letter/i)).toBeInTheDocument();
+    // Invalid: can't start with a hyphen — the inline error shows, submit stays off.
+    await user.type(screen.getByLabelText("Name"), "-bad");
+    expect(
+      screen.getByText(/can't start or end with a hyphen/i),
+    ).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
     // Valid name enables submit.

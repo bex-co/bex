@@ -194,6 +194,17 @@ func (m *memStore) UnbindClient(_ context.Context, clientID string) error {
 	return nil // idempotent — never bound is not an error
 }
 
+// slugTaken mirrors PGStore's apps_slug_idx: a slug is global, spanning every
+// tenant, unlike the tenant-scoped name check above it.
+func (m *memStore) slugTaken(slug string) bool {
+	for _, other := range m.apps {
+		if other.Slug == slug {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -206,6 +217,13 @@ func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 		}
 	}
 	a.ID = ids.New(ids.Service)
+	a.Slug = a.Name
+	for attempt := 0; m.slugTaken(a.Slug) && attempt < maxSlugMintAttempts; attempt++ {
+		a.Slug = a.Name + "-" + randomSlugSuffix()
+	}
+	if m.slugTaken(a.Slug) {
+		return App{}, fmt.Errorf("app: %w", ErrConflict)
+	}
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: "create", Image: a.Image, Status: DeployUpdateInProgress, CreatedAt: time.Now()}

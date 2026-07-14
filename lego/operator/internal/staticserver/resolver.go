@@ -117,10 +117,13 @@ func (c *CachedResolver) Run(ctx context.Context, interval time.Duration, onErr 
 	}
 }
 
-// effectiveHosts mirrors the reconciler's host resolution for static sites so the
-// resolver and the Ingress agree on which hosts route here: spec.host, the
-// computed platform hostname when Expose is set, then spec.hosts (deduped, order
-// preserved).
+// effectiveHosts mirrors the controller's host resolution for static sites so
+// the resolver and the Ingress agree on which hosts route here: spec.host, the
+// computed platform hostname when Expose is set, then spec.hosts (deduped,
+// order preserved). The platform hostname prefers spec.subdomain — the
+// control plane's globally-unique slug (w4/m19) — falling back to app.Name
+// when unset (pre-migration or hand-applied Apps), same as
+// controller.effectiveHosts.
 func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	var hosts []string
 	seen := map[string]bool{}
@@ -132,7 +135,11 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	}
 	add(app.Spec.Host)
 	if app.Spec.Expose && baseDomain != "" {
-		add(fmt.Sprintf("%s.%s", app.Name, baseDomain))
+		subdomain := app.Spec.Subdomain
+		if subdomain == "" {
+			subdomain = app.Name
+		}
+		add(fmt.Sprintf("%s.%s", subdomain, baseDomain))
 	}
 	for _, h := range app.Spec.Hosts {
 		add(h)

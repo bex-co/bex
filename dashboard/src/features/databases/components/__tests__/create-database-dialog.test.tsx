@@ -52,10 +52,10 @@ describe("CreateDatabaseDialog", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: must start with a letter — the inline error shows, submit stays off.
-    await user.type(within(dialog).getByLabelText("Name"), "1bad");
+    // Invalid: can't start with a hyphen — the inline error shows, submit stays off.
+    await user.type(within(dialog).getByLabelText("Name"), "-bad");
     expect(
-      within(dialog).getByText(/must start with a letter/i),
+      within(dialog).getByText(/can't start or end with a hyphen/i),
     ).toBeInTheDocument();
     expect(submit).toBeDisabled();
 

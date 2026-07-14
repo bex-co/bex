@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -86,6 +88,7 @@ func TestPGStore(t *testing.T) {
 	}
 
 	assertErrorTaxonomy(ctx, t, s, ten)
+	assertSlugMinting(ctx, t, s, app)
 	assertProjectionJoin(ctx, t, s, app)
 	assertDeployLifecycle(ctx, t, s, app)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
@@ -829,6 +832,71 @@ func assertErrorTaxonomy(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	}
 	if _, err := s.GetApp(ctx, "garbage-id"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get with unknown id: want ErrNotFound, got %v", err)
+	}
+}
+
+// dnsLabelRE is a loose DNS-1123 label check (lowercase alphanumerics and
+// interior hyphens) — good enough to catch a slug that broke the hostname
+// contract without re-implementing RFC 1123 in the test.
+var dnsLabelRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+// assertSlugMinting exercises w4/m19 t002: CreateApp mints apps.slug, the
+// globally-unique public subdomain, alongside the workspace-scoped name. app
+// (created at the top of TestPGStore, name "web") is the first-ever claimant
+// of that name, so it holds the bare slug; this proves a second tenant
+// claiming the SAME name gets a random "-xxxx" suffix instead of a conflict,
+// and that a max-length name still yields a slug that fits a DNS label.
+func assertSlugMinting(ctx context.Context, t *testing.T, s *PGStore, app App) {
+	t.Helper()
+	if app.Slug != app.Name {
+		t.Errorf("first claimant of a free name: slug = %q, want bare name %q", app.Slug, app.Name)
+	}
+
+	other, err := s.CreateTenant(ctx, "slug-collider", PlanPro)
+	if err != nil {
+		t.Fatalf("create second tenant: %v", err)
+	}
+	collided, err := s.CreateApp(ctx, App{
+		TenantID: other.ID, Name: app.Name, Image: "traefik/whoami",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("cross-tenant same-name create: %v", err)
+	}
+	wantPrefix := app.Name + "-"
+	if !strings.HasPrefix(collided.Slug, wantPrefix) || len(collided.Slug) != len(wantPrefix)+4 {
+		t.Errorf("collided slug = %q, want %q + 4 random chars", collided.Slug, wantPrefix)
+	}
+
+	// Max-length name (30 chars, the ValidAppName cap): the suffixed slug (35
+	// chars) must still be a valid DNS label — comfortably under the 63-char
+	// limit a hostname combined with BEX_BASE_DOMAIN must respect.
+	longName := strings.Repeat("a", 30)
+	longFirst, err := s.CreateApp(ctx, App{
+		TenantID: app.TenantID, Name: longName, Image: "traefik/whoami",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create app with max-length name: %v", err)
+	}
+	longCollided, err := s.CreateApp(ctx, App{
+		TenantID: other.ID, Name: longName, Image: "traefik/whoami",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create second app with max-length name: %v", err)
+	}
+	if len(longCollided.Slug) > 63 || !dnsLabelRE.MatchString(longCollided.Slug) {
+		t.Errorf("suffixed max-length slug not a valid DNS label: %q", longCollided.Slug)
+	}
+
+	// Clean up the extra apps this helper minted — each opened a deploy row
+	// (CreateApp's own invariant), and assertDeleteCascades later asserts the
+	// deploys table is empty after it deletes the ONE app it knows about.
+	for _, extra := range []App{collided, longFirst, longCollided} {
+		if err := s.DeleteApp(ctx, extra.ID); err != nil {
+			t.Fatalf("cleanup delete %s: %v", extra.ID, err)
+		}
 	}
 }
 

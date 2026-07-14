@@ -265,10 +265,22 @@ type AppSpec struct {
 	Host string `json:"host,omitempty"`
 
 	// Expose, when true and the controller's BEX_BASE_DOMAIN env is set, serves the
-	// App at the platform hostname "<name>.<BEX_BASE_DOMAIN>" (in addition to Host
-	// and Hosts, if given). Requires wildcard DNS for the base domain.
+	// App at the platform hostname "<subdomain-or-name>.<BEX_BASE_DOMAIN>" (in
+	// addition to Host and Hosts, if given). Requires wildcard DNS for the base
+	// domain.
 	// +optional
 	Expose bool `json:"expose,omitempty"`
+
+	// Subdomain is the globally-unique slug the platform hostname is built from
+	// (Render's "slug", distinct from the CR's own Name — a workspace's chosen
+	// name is only workspace-unique, but the public host must be unique across
+	// every workspace on the platform). The control plane mints and sets this
+	// (w4/m19); it is the bare service name when free platform-wide, or
+	// "<name>-<4-char suffix>" when a cross-tenant collision required one. Empty
+	// falls back to the CR's Name — a hand-applied App (e.g. examples/whoami-app.yaml)
+	// with no control plane behind it keeps working unchanged.
+	// +optional
+	Subdomain string `json:"subdomain,omitempty"`
 
 	// Hosts are additional external FQDNs to serve this App at — typically tenants'
 	// custom domains, CNAME'd to the platform hostname. Every effective host gets its

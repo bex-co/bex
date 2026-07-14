@@ -142,7 +142,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.fieldNameError": {
     message:
-      "Use lowercase letters, digits and hyphens; must start with a letter.",
+      "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
     description: "Create-database name validation message",
   },
   "databases.fieldPlan": {
@@ -192,11 +192,13 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.capLimitTitle": {
     message: "Postgres limit reached",
-    description: "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
   },
   "databases.capLimitUpgrade": {
     message: "Upgrade plan",
-    description: "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
+    description:
+      "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
   },
   // --- Detail metadata ---
   "databases.metaTitle": {
@@ -789,19 +791,23 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.insightsColLiveRows": {
     message: "Live rows",
-    description: "Insights table-scans column header (estimated live row count)",
+    description:
+      "Insights table-scans column header (estimated live row count)",
   },
   "databases.insightsColParam": {
     message: "Parameter",
-    description: "Insights parameter-overrides column header (pg_settings.name)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.name)",
   },
   "databases.insightsColSetting": {
     message: "Setting",
-    description: "Insights parameter-overrides column header (pg_settings.setting)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.setting)",
   },
   "databases.insightsColSource": {
     message: "Source",
-    description: "Insights parameter-overrides column header (pg_settings.source)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.source)",
   },
 };
 

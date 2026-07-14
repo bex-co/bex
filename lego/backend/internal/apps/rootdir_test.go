@@ -238,22 +238,26 @@ func TestMCPSetRootDirectory(t *testing.T) {
 	}
 }
 
-func TestRedeployReappliesRootDir(t *testing.T) {
-	// applyCreateToSpec re-applies every create-owned field wholesale on a
-	// repeat Create (redeploy) — the same rule Repo/Branch/Builder already
-	// follow, not a merge. Resending rootDir on redeploy keeps it in place.
+// TestCreateWithRootDirConflictsOnExistingApp is the w4/m19 update: a repeat
+// Create — even one resending the same rootDir — is a conflict, not a
+// redeploy; applyCreateToSpec's wholesale (not merge) re-apply of rootDir
+// still matters for the paths that legitimately redeploy in place (Deploy,
+// the stack path's applyCreate — see TestDeployStackChangedServiceRedeploys),
+// just not for Create anymore.
+func TestCreateWithRootDirConflictsOnExistingApp(t *testing.T) {
 	existing := sampleApp("web")
 	existing.Spec.Repo = "https://github.com/x/mono"
 	existing.Spec.RootDir = "services/api"
 	existing.Spec.Image = ""
 	svc, cl := newService(nil, existing)
 
-	if _, err := svc.Create(context.Background(), CreateRequest{
-		Name: "web", Repo: "https://github.com/x/mono", RootDir: "services/api",
-	}); err != nil {
-		t.Fatalf("Create (update): %v", err)
+	_, err := svc.Create(context.Background(), CreateRequest{
+		Name: "web", Repo: "https://github.com/x/mono", RootDir: "services/other",
+	})
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Create on an existing name: got %v, want ErrConflict", err)
 	}
 	if got := getApp(t, cl, "web").Spec.RootDir; got != "services/api" {
-		t.Errorf("redeploy must re-apply the resent rootDir: got %q", got)
+		t.Errorf("a rejected create must not touch the existing App's rootDir: got %q", got)
 	}
 }

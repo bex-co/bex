@@ -78,6 +78,26 @@ func createdApp(t *testing.T, s *Service, name string) *appv1alpha1.App {
 	return a
 }
 
+// createdTenantApp reads back the App CR belonging to exactly tenantID,
+// bypassing GetApp's cross-workspace search entirely — needed once two of
+// dana's workspaces can share a name (w4/m19): a plain createdApp(t, svc,
+// "web") would be ambiguous about which "web" it means. Tries the tenant-
+// scoped object name (core.CRName) first, then the bare name IF it belongs to
+// tenantID — a fixture seeded with tenantApp (pre-migration bare-named shape)
+// is found the second way.
+func createdTenantApp(t *testing.T, s *Service, tenantID, name string) *appv1alpha1.App {
+	t.Helper()
+	var a appv1alpha1.App
+	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: s.Namespace, Name: core.CRName(tenantID, name)}, &a); err == nil {
+		return &a
+	}
+	if err := s.Client.Get(context.Background(), client.ObjectKey{Namespace: s.Namespace, Name: name}, &a); err == nil && a.Labels[core.LabelTenant] == tenantID {
+		return &a
+	}
+	t.Fatalf("reading back %s/%s: not found under either object-naming scheme", tenantID, name)
+	return nil
+}
+
 func TestCreate_OwnerIDLandsInTheNamedWorkspace(t *testing.T) {
 	svc := danaService()
 
@@ -229,37 +249,45 @@ func TestGraphQL_CreateServiceWithANonMemberOwnerIDErrors(t *testing.T) {
 	}
 }
 
-// TestCreate_NameTakenByAnotherWorkspaceIsAConflict is a regression test for a
-// bug w6/m14 nearly shipped: because GetApp now serves an App from ANY workspace
-// the caller has the relation in (which is what lifts the m11 403), the create
-// path's "does this name exist?" probe started finding OTHER workspaces' Apps —
-// so `ownerId: tea-2` on a name already used in tea-1 silently REDEPLOYED tea-1's
-// service and created nothing in tea-2. A name is claimed per workspace: the
-// create must refuse, loudly.
-func TestCreate_NameTakenByAnotherWorkspaceIsAConflict(t *testing.T) {
+// TestCreate_NameTakenByAnotherWorkspaceStillSucceeds is w4/m19's whole point:
+// a name is claimed per workspace, not platform-wide, so `ownerId: tea-2` on a
+// name already used in tea-1 must create tea-2's OWN "web" — leaving tea-1's
+// untouched — never silently redeploy tea-1's service (the bug w6/m14 nearly
+// shipped, back when GetApp's cross-workspace serving doubled as the create
+// path's existence probe) and never refuse outright either (the milestone this
+// test now guards: two workspaces coexisting under the same name).
+func TestCreate_NameTakenByAnotherWorkspaceStillSucceeds(t *testing.T) {
 	svc := danaService(tenantApp("web", "tea-1")) // "web" already exists in tea-1
-	before := createdApp(t, svc, "web").Spec.Image
+	before := createdTenantApp(t, svc, "tea-1", "web").Spec.Image
 
-	_, err := svc.Create(ctxAs("dana"), CreateRequest{Name: "web", Image: "evil", OwnerID: "tea-2"})
-	if !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("Create(name=web, ownerId=tea-2) with web already in tea-1: got %v, want ErrConflict", err)
+	view, err := svc.Create(ctxAs("dana"), CreateRequest{Name: "web", Image: "nginx:2", OwnerID: "tea-2"})
+	if err != nil {
+		t.Fatalf("Create(name=web, ownerId=tea-2) with web already in tea-1: %v, want success", err)
 	}
-	a := createdApp(t, svc, "web")
-	if a.Labels[core.LabelTenant] != "tea-1" || a.Spec.Image != before {
+	if view.OwnerID != "tea-2" {
+		t.Errorf("returned ownerId = %q, want tea-2", view.OwnerID)
+	}
+	tea1 := createdTenantApp(t, svc, "tea-1", "web")
+	if tea1.Labels[core.LabelTenant] != "tea-1" || tea1.Spec.Image != before {
 		t.Errorf("tea-1's App was mutated by a create aimed at tea-2: tenant=%q image=%q (was %q)",
-			a.Labels[core.LabelTenant], a.Spec.Image, before)
+			tea1.Labels[core.LabelTenant], tea1.Spec.Image, before)
+	}
+	tea2 := createdTenantApp(t, svc, "tea-2", "web")
+	if tea2.Labels[core.LabelTenant] != "tea-2" || tea2.Spec.Image != "nginx:2" {
+		t.Errorf("tea-2's App = %+v, want tenant=tea-2 image=nginx:2", tea2)
 	}
 }
 
-// The same name in the SAME workspace is still an update-in-place (redeploy) —
-// the create-or-update contract Deploy and push-to-deploy both ride.
-func TestCreate_SameNameSameWorkspaceStillRedeploys(t *testing.T) {
+// The same name in the SAME workspace is a conflict, not an update-in-place —
+// Create never redeploys (w4/m19); Deploy and push-to-deploy own that.
+func TestCreate_SameNameSameWorkspaceIsAConflict(t *testing.T) {
 	svc := danaService(tenantApp("web", "tea-1"))
 
-	if _, err := svc.Create(ctxAs("dana"), CreateRequest{Name: "web", Image: "nginx:2", OwnerID: "tea-1"}); err != nil {
-		t.Fatalf("re-create in the SAME workspace: %v, want an in-place redeploy", err)
+	_, err := svc.Create(ctxAs("dana"), CreateRequest{Name: "web", Image: "nginx:2", OwnerID: "tea-1"})
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("re-create in the SAME workspace: got %v, want ErrConflict", err)
 	}
-	if got := createdApp(t, svc, "web").Spec.Image; got != "nginx:2" {
-		t.Errorf("image = %q, want nginx:2 (the redeploy must apply)", got)
+	if got := createdTenantApp(t, svc, "tea-1", "web").Spec.Image; got == "nginx:2" {
+		t.Error("a rejected create must not have applied its image to the existing App")
 	}
 }

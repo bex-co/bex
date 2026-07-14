@@ -265,6 +265,17 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// nameAvailabilityGQLType backs serviceNameAvailable — the create form's
+// debounced availability check (w4/m19), a bex extension (Render has no
+// public availability API, docs/render-artifacts/duplicate-service-names.md).
+var nameAvailabilityGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "NameAvailability",
+	Fields: graphql.Fields{
+		"available":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a NameAvailability) any { return a.Available })},
+		"suggestion": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a NameAvailability) any { return a.Suggestion })},
+	},
+})
+
 // envVarGQLType renders the kernel's neutral core.EnvVar ({id,key,value}), the
 // object Render's dashboard nests under a service. bex has no separate id (the
 // key is unique within a service), so id == key; the keys-only list leaves value
@@ -428,7 +439,7 @@ var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"blueprint": &graphql.Field{Type: blueprintGQLType, Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Blueprint })},
 		// services and databases from the stack apply — summary only (poll via server/postgres for full state).
-		"services":  &graphql.Field{Type: graphql.NewList(serviceGQLType), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Stack.Services })},
+		"services": &graphql.Field{Type: graphql.NewList(serviceGQLType), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Stack.Services })},
 		"databases": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
 			names := make([]string, len(r.Stack.Databases))
 			for i, d := range r.Stack.Databases {
@@ -481,6 +492,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"instanceTypes": &graphql.Field{ // bex extension backing the plan picker (see InstanceType)
 			Type:    graphql.NewList(instanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
+		},
+		// serviceNameAvailable: the create form's debounced availability check
+		// (w4/m19), a bex extension backing the "Name is already in use" +
+		// suggestion UX.
+		"serviceNameAvailable": &graphql.Field{
+			Type: nameAvailabilityGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.NameAvailable(p.Context, p.Args["name"].(string))
+			},
 		},
 		// Custom domains — Render-dashboard-shaped queries.
 		"customDomains": &graphql.Field{

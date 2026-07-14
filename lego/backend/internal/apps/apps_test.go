@@ -72,6 +72,15 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	return &a
 }
 
+// getTenantApp fetches an App CR created for tenantID by its public name:
+// core.CRName(tenantID, name) is the collision-free object name a
+// tenant-scoped create stamps (w4/m19) — plain getApp only still works for a
+// tenant-less (store-off) create.
+func getTenantApp(t *testing.T, cl client.Client, tenantID, name string) *appv1alpha1.App {
+	t.Helper()
+	return getApp(t, cl, core.CRName(tenantID, name))
+}
+
 // --- Read + write verbs ---
 
 func TestServiceListGetVerbs(t *testing.T) {
@@ -192,7 +201,7 @@ func TestCreateStampsCallerTenantLabel(t *testing.T) {
 	if _, err := svc.create(ctx, CreateRequest{Name: "fresh", Image: "img:1"}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	a := getApp(t, cl, "fresh")
+	a := getTenantApp(t, cl, "tea-a", "fresh")
 	if a.Labels[core.LabelTenant] != "tea-a" {
 		t.Fatalf("created App tenant label = %q, want tea-a", a.Labels[core.LabelTenant])
 	}
@@ -270,7 +279,7 @@ func TestCreateWritesStoreRowWhenStoreAndTenantResolved(t *testing.T) {
 		t.Errorf("store row = %+v", got)
 	}
 	// CR must carry the three store labels (managed-by, app-id, tenant).
-	a := getApp(t, cl, "web")
+	a := getTenantApp(t, cl, "tea-a", "web")
 	if a.Labels[store.LabelManagedBy] != store.ManagedByValue {
 		t.Errorf("CR missing managed-by label: %v", a.Labels)
 	}
@@ -301,34 +310,31 @@ func TestCreateSkipsStoreRowWhenNoTenant(t *testing.T) {
 	}
 }
 
-func TestRedeployStoreManagedAppWritesDeployRow(t *testing.T) {
+// TestCreateConflictsOnExistingStoreManagedAppWritesNoDeployRow is the w4/m19
+// replacement for the old "create redeploys a store-managed app" contract:
+// Create now rejects the existing name outright, and — unlike a real redeploy
+// (Deploy/Restart) — must never open a deploy row for a create it refused.
+func TestCreateConflictsOnExistingStoreManagedAppWritesNoDeployRow(t *testing.T) {
 	rec := &recordingStore{}
-	// No workspace on the service (store-off-ish path for the tenant gate) —
-	// the key invariant here is that the store row is written when the app has
-	// LabelAppID, regardless of tenant resolution.
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
 
-	if _, err := svc.create(context.Background(), CreateRequest{Name: "web", Image: "nginx:2"}); err != nil {
-		t.Fatalf("redeploy: %v", err)
+	if _, err := svc.create(context.Background(), CreateRequest{Name: "web", Image: "nginx:2"}); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("create on existing name: got %v, want ErrConflict", err)
 	}
-	if len(rec.deployCalls) != 1 {
-		t.Fatalf("want 1 deploy row, got %d", len(rec.deployCalls))
-	}
-	d := rec.deployCalls[0]
-	if d.AppID != "srv-1" || d.Trigger != "api" {
-		t.Errorf("deploy row = %+v, want appID=srv-1 trigger=api", d)
+	if len(rec.deployCalls) != 0 {
+		t.Errorf("a rejected create must not open a deploy row, got %d", len(rec.deployCalls))
 	}
 }
 
-func TestRedeployUnmanagedAppSkipsDeployRow(t *testing.T) {
+func TestCreateConflictsOnExistingUnmanagedApp(t *testing.T) {
 	rec := &recordingStore{}
 	svc, _ := newService(rec, sampleApp("hand"))
 
-	if _, err := svc.create(context.Background(), CreateRequest{Name: "hand", Image: "nginx:2"}); err != nil {
-		t.Fatalf("redeploy: %v", err)
+	if _, err := svc.create(context.Background(), CreateRequest{Name: "hand", Image: "nginx:2"}); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("create on existing name: got %v, want ErrConflict", err)
 	}
 	if len(rec.deployCalls) != 0 {
-		t.Errorf("unmanaged app must not open a deploy row, got %d", len(rec.deployCalls))
+		t.Errorf("a rejected create must not open a deploy row, got %d", len(rec.deployCalls))
 	}
 }
 
@@ -1146,11 +1152,13 @@ func TestServiceCapEnforcement(t *testing.T) {
 		t.Errorf("store-off cap: %v, want success (no workspace to count against)", err)
 	}
 
-	// Redeploy of an existing service never triggers the cap.
+	// Create on an existing name is a conflict, not the cap — the existence
+	// check runs first, so it's ErrConflict even at (or over) cap, never
+	// ErrBadRequest and never a silent redeploy (w4/m19).
 	svc4, _ := newTenantService(ws, tenantApp("a1", "tea-a"), tenantApp("a2", "tea-a"))
 	svc4.MaxServices = 2
-	if _, err := svc4.create(ctx("user-a"), CreateRequest{Name: "a1", Image: "img:2"}); err != nil {
-		t.Errorf("redeploy at cap: %v, want success (cap is new-service only)", err)
+	if _, err := svc4.create(ctx("user-a"), CreateRequest{Name: "a1", Image: "img:2"}); !errors.Is(err, core.ErrConflict) {
+		t.Errorf("create on existing name at cap: got %v, want ErrConflict", err)
 	}
 }
 

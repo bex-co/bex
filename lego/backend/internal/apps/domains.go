@@ -64,16 +64,27 @@ func domainType(hostname string) string {
 	return "subdomain"
 }
 
-// platformHost returns the App's platform hostname `<app>.<base-domain>` — the
-// CNAME/ALIAS target a custom domain points at. Prefers BEX_BASE_DOMAIN (the same
-// value the operator computes URLs from, so it's correct even before the operator
-// has written status), falling back to the `<app>.<something>` entry in the App's
-// status URLs (the Expose-generated host). Empty if neither is available.
+// platformHost returns the App's platform hostname `<subdomain>.<base-domain>`
+// — the CNAME/ALIAS target a custom domain points at. Prefers BEX_BASE_DOMAIN
+// (the same value the operator computes URLs from, so it's correct even
+// before the operator has written status), falling back to the
+// `<subdomain>.<something>` entry in the App's status URLs (the
+// Expose-generated host). Empty if neither is available.
+//
+// subdomain is spec.subdomain — the control plane's globally-unique slug
+// (w4/m19), the SAME value the operator's effectiveHosts prefers — falling
+// back to app.Name for an App the control plane hasn't stamped (pre-migration
+// or hand-applied). Never app.Name alone: two workspaces' same-named Apps
+// would otherwise get identical, colliding DNS instructions.
 func (s *Service) platformHost(app *appv1alpha1.App) string {
-	if s.BaseDomain != "" {
-		return app.Name + "." + s.BaseDomain
+	subdomain := app.Spec.Subdomain
+	if subdomain == "" {
+		subdomain = app.Name
 	}
-	prefix := app.Name + "."
+	if s.BaseDomain != "" {
+		return subdomain + "." + s.BaseDomain
+	}
+	prefix := subdomain + "."
 	for _, u := range append([]string{app.Status.URL}, app.Status.URLs...) {
 		h := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(u, "https://"), "http://"), "/")
 		if strings.HasPrefix(h, prefix) {

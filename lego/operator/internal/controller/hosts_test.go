@@ -32,6 +32,15 @@ func mkApp(name, host string, expose bool, hosts ...string) *appv1alpha1.App {
 	}
 }
 
+// mkAppSubdomain is mkApp plus spec.subdomain — the w4/m19 case where the
+// control plane minted a slug distinct from the App's own (workspace-scoped)
+// name.
+func mkAppSubdomain(name, subdomain, host string, expose bool, hosts ...string) *appv1alpha1.App {
+	a := mkApp(name, host, expose, hosts...)
+	a.Spec.Subdomain = subdomain
+	return a
+}
+
 func TestEffectiveHosts(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -39,6 +48,15 @@ func TestEffectiveHosts(t *testing.T) {
 		baseDomain string
 		want       []string
 	}{
+		// w4/m19: the platform host prefers spec.subdomain (the control plane's
+		// globally-unique slug) over app.Name when set.
+		{"subdomain preferred over name", mkAppSubdomain("beancount-cms", "beancount-cms-bkxk", "", true), "onbex.co",
+			[]string{"beancount-cms-bkxk.onbex.co"}},
+		// An App the control plane hasn't stamped (pre-migration, or hand-applied
+		// like examples/whoami-app.yaml) has no spec.subdomain — byte-identical
+		// legacy behavior.
+		{"empty subdomain falls back to name", mkAppSubdomain("a", "", "", true), "onbex.co",
+			[]string{"a.onbex.co"}},
 		// The live-App invariant: host-only spec must resolve to exactly that host,
 		// first, regardless of base domain being configured on the controller.
 		{"legacy host only", mkApp("beancount-cms", "beancount-cms-v2.onbex.co", false), "onbex.co",

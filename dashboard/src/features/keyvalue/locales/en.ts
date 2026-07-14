@@ -139,7 +139,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.fieldNameError": {
     message:
-      "Use lowercase letters, digits and hyphens; must start with a letter.",
+      "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -219,7 +219,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.capLimitTitle": {
     message: "Key-value limit reached",
-    description: "Alert title when the workspace's KV creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's KV creation cap is hit (w7/m9)",
   },
   "keyvalue.capLimitUpgrade": {
     message: "Upgrade plan",

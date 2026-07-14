@@ -137,7 +137,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name input placeholder",
   },
   "keyvalue.fieldNameError": {
-    message: "只能使用小写字母、数字和连字符，且必须以字母开头。",
+    message:
+      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -217,7 +218,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.capLimitTitle": {
     message: "已达到键值存储上限",
-    description: "Alert title when the workspace's KV creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's KV creation cap is hit (w7/m9)",
   },
   "keyvalue.capLimitUpgrade": {
     message: "升级方案",
@@ -370,7 +372,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
-    message: "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+    message:
+      "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planPickerSave": {
@@ -386,7 +389,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker confirm dialog title",
   },
   "keyvalue.planPickerConfirmBody": {
-    message: "操作员将在下次协调时调整存储的计算资源，滚动重启期间连接会短暂中断。",
+    message:
+      "操作员将在下次协调时调整存储的计算资源，滚动重启期间连接会短暂中断。",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.planPickerSuccess": {

@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -144,6 +145,43 @@ func TestMCP_WorkspaceSelectionScopesListServices(t *testing.T) {
 	}
 }
 
+// TestMCP_CreateDuplicateNameErrors is w4/m19's MCP leg: create_web_service
+// twice with the same name in the same (default) workspace must reject the
+// second call as a tool error — never a silent redeploy, matching the
+// REST/GraphQL 409 shape (TestREST_CreateDuplicateNameIs409,
+// TestGraphQL_CreateServiceDuplicateNameErrors in the apps package).
+func TestMCP_CreateDuplicateNameErrors(t *testing.T) {
+	st := newFakeWSStore()
+	mustCreate(t, st, "acme", "hobby", "client-1")
+
+	cl := fakeClient()
+	base := &core.Base{Client: cl, Namespace: "default", Workspace: &apiFakeResolver{store: st}}
+	srv := NewServer(base, Deps{WorkspaceStore: st})
+	cs := mcpSessionAs(t, srv, "client-1")
+
+	callTool[struct{ ID string }](t, cs, "create_web_service",
+		map[string]any{"name": "web", "image": "nginx"})
+
+	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "create_web_service", Arguments: map[string]any{"name": "web", "image": "nginx"},
+	})
+	if err != nil {
+		t.Fatalf("create_web_service duplicate: transport error %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("create_web_service duplicate: want a tool error, got a normal result")
+	}
+	var msg string
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			msg += tc.Text
+		}
+	}
+	if !strings.Contains(strings.ToLower(msg), "already in use") {
+		t.Errorf("tool error = %q, want it to say the name is already in use", msg)
+	}
+}
+
 // appWithOwnerLabel builds an App CR carrying the tenant-id label the ownerId
 // field/filter reads.
 func appWithOwnerLabel(name, ownerID string) *appv1alpha1.App {
@@ -205,11 +243,19 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 }
 
 // appTenant reads back the tenant label the create stamped on the App CR.
+// appTenant reads back which workspace a create landed an App in, by its
+// public name — object.Name itself is no longer that name for a store-managed
+// App (it's core.CRName(tenant, name), w4/m19), so this lists by
+// LabelServiceName instead of a direct Get.
 func appTenant(t *testing.T, cl client.Client, name string) string {
 	t.Helper()
-	var a appv1alpha1.App
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a); err != nil {
-		t.Fatalf("reading back App %s: %v", name, err)
+	var list appv1alpha1.AppList
+	if err := cl.List(context.Background(), &list,
+		client.InNamespace("default"), client.MatchingLabels{core.LabelServiceName: name}); err != nil {
+		t.Fatalf("list Apps named %s: %v", name, err)
 	}
-	return a.Labels[core.LabelTenant]
+	if len(list.Items) != 1 {
+		t.Fatalf("Apps named %s = %d, want 1", name, len(list.Items))
+	}
+	return list.Items[0].Labels[core.LabelTenant]
 }

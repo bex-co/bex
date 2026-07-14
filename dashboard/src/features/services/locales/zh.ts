@@ -992,7 +992,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.deployEdit": {
     message: "编辑定时任务设置",
-    description: "Cron job Deploy section: accessible label for the edit-pencil button",
+    description:
+      "Cron job Deploy section: accessible label for the edit-pencil button",
   },
   "services.deploySave": {
     message: "保存",
@@ -1008,7 +1009,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.deployConverging": {
     message: "操作器将在下一次协调时应用新计划。",
-    description: "Toast description after a cron job schedule change (async convergence)",
+    description:
+      "Toast description after a cron job schedule change (async convergence)",
   },
   "services.deployError": {
     message: "无法保存定时任务设置，请重试。",
@@ -1383,7 +1385,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.newServiceButton": {
     message: "新建服务",
-    description: "Button on the services list page that opens the create wizard",
+    description:
+      "Button on the services list page that opens the create wizard",
   },
   "services.createTitle": {
     message: "新建服务",
@@ -1475,8 +1478,24 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard name input placeholder",
   },
   "services.createFieldNameError": {
-    message: "请使用小写字母、数字和连字符，且不能以连字符开头或结尾。",
+    message:
+      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Create-wizard name validation message",
+  },
+  "services.createFieldNameTaken": {
+    message: "该名称已被使用",
+    description:
+      "Create-wizard inline error when the service name is already taken in the current workspace (w4/m19)",
+  },
+  "services.createFieldNameUseSuggestion": {
+    message: "使用 {name}",
+    description:
+      "Create-wizard button offering the suggested free name in place of a taken one (w4/m19)",
+  },
+  "services.createFieldNameChecking": {
+    message: "正在检查可用性…",
+    description:
+      "Create-wizard transient message while the debounced name-availability check is in flight (w4/m19)",
   },
   "services.createFieldBranch": {
     message: "分支",
@@ -1528,7 +1547,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.scalingInstanceCount": {
     message: "实例数量",
-    description: "Settings row label for the manual instance-count stepper (w5/m16)",
+    description:
+      "Settings row label for the manual instance-count stepper (w5/m16)",
   },
   "services.scalingInstanceCountHint": {
     message: "同时运行的实例数量。",
@@ -1560,7 +1580,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createTypeWebDesc": {
     message: "在公共 URL 上公开您的服务",
-    description: "Description shown under the Web Service type card in the create wizard",
+    description:
+      "Description shown under the Web Service type card in the create wizard",
   },
   "services.createTypePrivateDesc": {
     message: "仅在平台网络内部可访问",
@@ -1620,7 +1641,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createNoPublicUrlNote": {
     message: "此服务类型没有公共 URL。",
-    description: "Note shown for private/worker types that don't produce a public URL",
+    description:
+      "Note shown for private/worker types that don't produce a public URL",
   },
   "services.createFieldEnvVarsTitle": {
     message: "环境变量",
@@ -1652,7 +1674,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldEnvVarsKeyError": {
     message: "键名必须以字母或下划线开头，只能包含字母、数字和下划线。",
-    description: "Error shown when an env var key is invalid in the create wizard",
+    description:
+      "Error shown when an env var key is invalid in the create wizard",
   },
   "services.navEvents": {
     message: "事件",
@@ -1756,7 +1779,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.capLimitTitle": {
     message: "已达到服务上限",
-    description: "Alert title when the workspace's service creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's service creation cap is hit (w7/m9)",
   },
   "services.capLimitUpgrade": {
     message: "升级方案",

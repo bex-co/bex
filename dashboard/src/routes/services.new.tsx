@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers, Plus, Trash2, ArrowUpRight } from "lucide-react";
+import {
+  Github,
+  GitBranch,
+  Box,
+  Loader2,
+  Globe,
+  Lock,
+  Cpu,
+  Clock,
+  Layers,
+  Plus,
+  Trash2,
+  ArrowUpRight,
+} from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -37,6 +50,7 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
+import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
 import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
@@ -66,7 +80,6 @@ export const Route = createFileRoute("/services/new")({
 function isValidGitUrl(url: string): boolean {
   return /^(https?:\/\/|git@|git:\/\/)/.test(url.trim());
 }
-
 
 /**
  * The service-creation plan picker for the create wizard — a radio-group of
@@ -105,7 +118,8 @@ function ServicePlanPicker({
           >
             <div className="font-medium">{it.name}</div>
             <div className="text-sm text-muted-foreground">
-              {formatInstanceMemory(it.memory)} RAM · {formatInstanceCPU(it.cpu)}
+              {formatInstanceMemory(it.memory)} RAM ·{" "}
+              {formatInstanceCPU(it.cpu)}
             </div>
           </button>
         );
@@ -178,7 +192,9 @@ function ServiceTypePicker({
                 : "border-border hover:border-muted-foreground/50",
             )}
           >
-            <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
+            <span className="mt-0.5 shrink-0 text-muted-foreground">
+              {icon}
+            </span>
             <div>
               <div className="text-sm font-medium">{t(labelKey)}</div>
               <div className="text-xs text-muted-foreground">{t(descKey)}</div>
@@ -282,7 +298,8 @@ export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { instanceTypes } = useInstanceTypes();
-  const { create, busy, capLimit } = useCreateService();
+  const { create, busy, capLimit, nameConflict, clearNameConflict } =
+    useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
 
@@ -337,16 +354,49 @@ export function NewServicePage() {
   }, [tab, selectedRepo, gitUrl, imageVal, nameEdited]);
 
   const nameValid = isValidDnsLabel(name);
+  const {
+    taken: nameTaken,
+    suggestion: nameSuggestion,
+    checking: checkingName,
+  } = useServiceNameAvailability(nameValid ? name : "");
+
+  // Same repo connected twice (or any other auto-filled slug that's already
+  // taken): prefill the suggested free name instead of leaving the user to
+  // notice and fix it by hand — the auto-fill effect above just set `name` to
+  // a taken slug, this swaps it for the free alternative once the check
+  // settles. Never fires once the user has actually typed (nameEdited).
+  // Adjusted during render — React's own "store information from previous
+  // renders" pattern (state, not a ref: refs can't be read/written during
+  // render either) — rather than a useEffect, so it swaps at most once per
+  // taken name instead of looping.
+  const [lastAutoSwappedName, setLastAutoSwappedName] = useState<string | null>(
+    null,
+  );
+  if (
+    !nameEdited &&
+    nameTaken &&
+    nameSuggestion &&
+    name !== nameSuggestion &&
+    lastAutoSwappedName !== name
+  ) {
+    setLastAutoSwappedName(name);
+    setName(nameSuggestion);
+  }
+
   const showNameError = name.length > 0 && !nameValid;
+  const showNameTaken = nameValid && (nameTaken || nameConflict);
 
   const sourceValid =
     (tab === "github" && selectedRepo != null) ||
     (tab === "git" && isValidGitUrl(gitUrl)) ||
     (tab === "image" && imageVal.trim().length > 0);
 
-  const envVarsValid = envVars.every((r) => r.key === "" || VALID_KEY.test(r.key));
+  const envVarsValid = envVars.every(
+    (r) => r.key === "" || VALID_KEY.test(r.key),
+  );
   const canSubmit =
     nameValid &&
+    !showNameTaken &&
     sourceValid &&
     !busy &&
     envVarsValid &&
@@ -401,7 +451,8 @@ export function NewServicePage() {
     }
   }
 
-  const gitHubDisconnected = !connectionLoading && connection?.connected !== true;
+  const gitHubDisconnected =
+    !connectionLoading && connection?.connected !== true;
 
   return (
     <DashboardLayout>
@@ -410,13 +461,18 @@ export function NewServicePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t("services.createTitle")}</CardTitle>
-              <CardDescription>{t("services.createDescription")}</CardDescription>
+              <CardDescription>
+                {t("services.createDescription")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Service type picker */}
               <div className="space-y-3">
                 <Label>{t("services.createTypePickerTitle")}</Label>
-                <ServiceTypePicker value={serviceType} onChange={setServiceType} />
+                <ServiceTypePicker
+                  value={serviceType}
+                  onChange={setServiceType}
+                />
               </div>
 
               {/* Source picker */}
@@ -483,7 +539,10 @@ export function NewServicePage() {
                         <div className="max-h-64 overflow-y-auto rounded-md border divide-y">
                           {reposLoading ? (
                             Array.from({ length: 3 }).map((_, i) => (
-                              <div key={i} className="flex items-center gap-3 p-3">
+                              <div
+                                key={i}
+                                className="flex items-center gap-3 p-3"
+                              >
                                 <Skeleton className="h-4 w-full" />
                               </div>
                             ))
@@ -585,14 +644,39 @@ export function NewServicePage() {
                     onChange={(e) => {
                       setName(e.target.value);
                       setNameEdited(e.target.value !== "");
+                      clearNameConflict();
                     }}
                     placeholder={t("services.createFieldNamePlaceholder")}
                     autoComplete="off"
-                    aria-invalid={showNameError}
+                    aria-invalid={showNameError || showNameTaken}
                   />
                   {showNameError ? (
                     <p className="text-sm text-destructive">
                       {t("services.createFieldNameError")}
+                    </p>
+                  ) : showNameTaken ? (
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+                      <span>{t("services.createFieldNameTaken")}</span>
+                      {nameTaken && nameSuggestion ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            setName(nameSuggestion);
+                            setNameEdited(true);
+                          }}
+                        >
+                          {t("services.createFieldNameUseSuggestion", {
+                            name: nameSuggestion,
+                          })}
+                        </Button>
+                      ) : null}
+                    </p>
+                  ) : checkingName ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("services.createFieldNameChecking")}
                     </p>
                   ) : null}
                 </div>

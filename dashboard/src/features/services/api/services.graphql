@@ -111,3 +111,15 @@ mutation CreateService(
     phase
   }
 }
+
+# The create form's debounced availability check (w4/m19) — a bex extension,
+# Render has no public availability API. Scoped to the caller's own workspace
+# (the resolved default; the form has no ownerId argument to override it with
+# yet, matching bex-api's own core method). available=false carries a concrete
+# next-free-name suggestion ("beancount-cms-v2" taken -> "beancount-cms-v2-1").
+query ServiceNameAvailable($name: String!) {
+  serviceNameAvailable(name: $name) {
+    available
+    suggestion
+  }
+}

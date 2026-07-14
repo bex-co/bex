@@ -1007,7 +1007,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.deployEdit": {
     message: "Edit cron settings",
-    description: "Cron job Deploy section: accessible label for the edit-pencil button",
+    description:
+      "Cron job Deploy section: accessible label for the edit-pencil button",
   },
   "services.deploySave": {
     message: "Save",
@@ -1022,8 +1023,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast after updateCronJob succeeds",
   },
   "services.deployConverging": {
-    message: "The operator will apply the new schedule on its next reconcile pass.",
-    description: "Toast description after a cron job schedule change (async convergence)",
+    message:
+      "The operator will apply the new schedule on its next reconcile pass.",
+    description:
+      "Toast description after a cron job schedule change (async convergence)",
   },
   "services.deployError": {
     message: "Couldn't save cron job settings. Please try again.",
@@ -1058,7 +1061,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Cron job Deploy section: command input placeholder",
   },
   "services.deployCommandHint": {
-    message: "Overrides the image's default entry point. Leave blank to run the image's own command.",
+    message:
+      "Overrides the image's default entry point. Leave blank to run the image's own command.",
     description: "Cron job Deploy section: command field help text",
   },
   "services.deployCommandEmpty": {
@@ -1389,7 +1393,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.deleteConfirm": {
     message: "Delete Service",
-    description: "Delete-confirm dialog submit button (armed once the name matches)",
+    description:
+      "Delete-confirm dialog submit button (armed once the name matches)",
   },
   "services.deleteSuccess": {
     message: "Deleted {name}",
@@ -1401,7 +1406,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.newServiceButton": {
     message: "New Service",
-    description: "Button on the services list page that opens the create wizard",
+    description:
+      "Button on the services list page that opens the create wizard",
   },
   "services.createTitle": {
     message: "New Service",
@@ -1495,8 +1501,23 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldNameError": {
     message:
-      "Use lowercase letters, digits, and hyphens; can't start or end with a hyphen.",
+      "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
     description: "Create-wizard name validation message",
+  },
+  "services.createFieldNameTaken": {
+    message: "Name is already in use",
+    description:
+      "Create-wizard inline error when the service name is already taken in the current workspace (w4/m19)",
+  },
+  "services.createFieldNameUseSuggestion": {
+    message: "Use {name}",
+    description:
+      "Create-wizard button offering the suggested free name in place of a taken one (w4/m19)",
+  },
+  "services.createFieldNameChecking": {
+    message: "Checking availability…",
+    description:
+      "Create-wizard transient message while the debounced name-availability check is in flight (w4/m19)",
   },
   "services.createFieldBranch": {
     message: "Branch",
@@ -1515,8 +1536,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard root-directory input placeholder",
   },
   "services.createFieldRootDirHint": {
-    message:
-      "Subdirectory to build from. Leave blank to use the repo root.",
+    message: "Subdirectory to build from. Leave blank to use the repo root.",
     description: "Create-wizard root-directory input hint text",
   },
   "services.createFieldPlan": {
@@ -1549,7 +1569,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.scalingInstanceCount": {
     message: "Instance count",
-    description: "Settings row label for the manual instance-count stepper (w5/m16)",
+    description:
+      "Settings row label for the manual instance-count stepper (w5/m16)",
   },
   "services.scalingInstanceCountHint": {
     message: "Number of instances to run simultaneously.",
@@ -1581,7 +1602,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createTypeWebDesc": {
     message: "Expose your service on a public URL",
-    description: "Description shown under the Web Service type card in the create wizard",
+    description:
+      "Description shown under the Web Service type card in the create wizard",
   },
   "services.createTypePrivateDesc": {
     message: "Accessible only within the platform network",
@@ -1636,12 +1658,14 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the publish directory field",
   },
   "services.createFieldPublishPathHint": {
-    message: "The built output directory to serve as the site root (e.g. dist, build, public).",
+    message:
+      "The built output directory to serve as the site root (e.g. dist, build, public).",
     description: "Hint text under the publish directory field",
   },
   "services.createNoPublicUrlNote": {
     message: "This service type has no public URL.",
-    description: "Note shown for private/worker types that don't produce a public URL",
+    description:
+      "Note shown for private/worker types that don't produce a public URL",
   },
   "services.createFieldEnvVarsTitle": {
     message: "Environment Variables",
@@ -1672,8 +1696,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the env var value input in the create wizard",
   },
   "services.createFieldEnvVarsKeyError": {
-    message: "Keys must start with a letter or underscore and contain only letters, digits, and underscores.",
-    description: "Error shown when an env var key is invalid in the create wizard",
+    message:
+      "Keys must start with a letter or underscore and contain only letters, digits, and underscores.",
+    description:
+      "Error shown when an env var key is invalid in the create wizard",
   },
   "services.navEvents": {
     message: "Events",
@@ -1696,7 +1722,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Manual deploy confirm dialog title",
   },
   "services.eventsManualDeployConfirmBody": {
-    message: "This will rebuild and redeploy the service from its current image or branch.",
+    message:
+      "This will rebuild and redeploy the service from its current image or branch.",
     description: "Manual deploy confirm dialog body",
   },
   "services.eventsCancelDeploy": {
@@ -1708,7 +1735,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Cancel deploy confirm dialog title",
   },
   "services.eventsCancelConfirmBody": {
-    message: "The in-progress deploy will be stopped. The last successful deploy remains live.",
+    message:
+      "The in-progress deploy will be stopped. The last successful deploy remains live.",
     description: "Cancel deploy confirm dialog body",
   },
   "services.eventsRollback": {
@@ -1777,7 +1805,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.capLimitTitle": {
     message: "Service limit reached",
-    description: "Alert title when the workspace's service creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's service creation cap is hit (w7/m9)",
   },
   "services.capLimitUpgrade": {
     message: "Upgrade plan",

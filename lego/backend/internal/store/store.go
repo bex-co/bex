@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mathrand "math/rand/v2"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -61,9 +62,15 @@ type Tenant struct {
 // reconciler projects into an App CR. Observed state (phase, url) is NOT stored
 // here: it lives on the App CR's status, which bex-api reads at query time.
 type App struct {
-	ID             string    `json:"id"`
-	TenantID       string    `json:"tenantId"`
-	Name           string    `json:"name"`
+	ID       string `json:"id"`
+	TenantID string `json:"tenantId"`
+	Name     string `json:"name"`
+	// Slug is the globally-unique public subdomain (Render's "slug", distinct
+	// from Name which is only workspace-unique): the bare Name when free
+	// platform-wide, or "<name>-<4-char suffix>" when CreateApp had to mint one
+	// to avoid a cross-tenant collision (w4/m19). The operator reads this —
+	// never Name — to derive the platform host.
+	Slug           string    `json:"slug"`
 	Repo           string    `json:"repo,omitempty"`
 	Image          string    `json:"image,omitempty"`
 	Branch         string    `json:"branch"`
@@ -449,6 +456,36 @@ func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
 	return nil // idempotent — a key that was never bound is not an error
 }
 
+// maxSlugMintAttempts bounds CreateApp's collision-retry loop for a fresh
+// random slug suffix (w4/m19 t002). Each attempt draws from a 36^4 space, so
+// exhausting this many is a practical impossibility short of a bug — treat it
+// as a real conflict rather than loop forever.
+const maxSlugMintAttempts = 5
+
+const slugSuffixAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+// randomSlugSuffix mints a 4-char base36 suffix ("-xxxx" once joined), the
+// same shape Render's own onrender.com suffix uses
+// (docs/render-artifacts/duplicate-service-names.md). Not a resource id — the
+// slug is a hostname fragment, so it is minted here rather than through
+// internal/id (docs/ADR020-identifiers.md scopes that package to id columns).
+func randomSlugSuffix() string {
+	b := make([]byte, 4)
+	for i := range b {
+		b[i] = slugSuffixAlphabet[mathrand.IntN(len(slugSuffixAlphabet))]
+	}
+	return string(b)
+}
+
+// isSlugConflict reports whether err is a unique-violation on apps_slug_idx
+// specifically — the signal CreateApp retries on with a suffixed slug, as
+// opposed to a tenant_id+name conflict (a real same-workspace duplicate,
+// which must surface to the caller, not be silently retried away).
+func isSlugConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "apps_slug_idx"
+}
+
 // CreateApp inserts the app row and opens its first deploy row (trigger
 // "create") in one transaction — every store-managed app has exactly one
 // deploy the instant it exists, so ListDeploys is never truthfully empty for
@@ -458,37 +495,51 @@ func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
 // tenant plus its owner membership, one transaction) — an invariant the type
 // itself guarantees is safer here than trusting every future caller to
 // remember a second call.
+//
+// The slug (the globally-unique public subdomain, w4/m19 t002) starts as the
+// bare name; a apps_slug_idx collision (some other tenant already claimed
+// that bare name) makes this retry with a random "-xxxx" suffix, matching
+// Render's own onrender.com behavior. A tenant_id+name collision (the
+// caller's own workspace already has this name) is a real conflict and is
+// never retried — it classifies straight to ErrConflict.
 func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	a.ID = ids.New(ids.Service)
-	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if err := tx.QueryRow(ctx,
-			`INSERT INTO apps (id, tenant_id, name, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended)
-			 VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6, $7, $8, $9, $10, $11)
-			 RETURNING created_at`,
-			a.ID, a.TenantID, a.Name, a.Repo, a.Image, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended,
-		).Scan(&a.CreatedAt); err != nil {
+	a.Slug = a.Name
+	for attempt := 0; ; attempt++ {
+		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+			if err := tx.QueryRow(ctx,
+				`INSERT INTO apps (id, tenant_id, name, slug, repo, image, branch, port, replicas, tier, idle_ttl_seconds, suspended)
+				 VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7, $8, $9, $10, $11, $12)
+				 RETURNING created_at`,
+				a.ID, a.TenantID, a.Name, a.Slug, a.Repo, a.Image, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended,
+			).Scan(&a.CreatedAt); err != nil {
+				return err
+			}
+			// generation is always 1: the reconciler projects this row into a
+			// brand-new App CR, and a freshly created Kubernetes object always
+			// starts at metadata.generation 1.
+			_, err := tx.Exec(ctx,
+				`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, 1, $5)`,
+				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, DeployUpdateInProgress)
 			return err
+		})
+		if err == nil {
+			return a, nil
 		}
-		// generation is always 1: the reconciler projects this row into a
-		// brand-new App CR, and a freshly created Kubernetes object always
-		// starts at metadata.generation 1.
-		_, err := tx.Exec(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, 1, $5)`,
-			ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, DeployUpdateInProgress)
-		return err
-	})
-	if err != nil {
+		if isSlugConflict(err) && attempt < maxSlugMintAttempts {
+			a.Slug = a.Name + "-" + randomSlugSuffix()
+			continue
+		}
 		return App{}, classify("app", err)
 	}
-	return a, nil
 }
 
-const appColumns = `a.id, a.tenant_id, a.name, COALESCE(a.repo,''), COALESCE(a.image,''),
+const appColumns = `a.id, a.tenant_id, a.name, a.slug, COALESCE(a.repo,''), COALESCE(a.image,''),
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended, a.created_at`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
-	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Repo, &a.Image,
+	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Repo, &a.Image,
 		&a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended, &a.CreatedAt)
 	return a, err
 }
@@ -607,7 +658,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	index := map[string]int{}
 	for rows.Next() {
 		var d DesiredApp
-		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Repo, &d.Image,
+		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Repo, &d.Image,
 			&d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.CreatedAt, &d.TenantName)
 		if err != nil {

@@ -284,12 +284,19 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 
 // CRName is the projected CR's name, "<tenant>-<app>". Both parts are
 // API-validated DNS labels of ≤30 chars, so the result always fits the
-// 63-char object-name limit.
-func CRName(tenant, app string) string { return tenant + "-" + app }
+// 63-char object-name limit. Delegates to core.CRName — the apps feature's
+// create path (w4/m19) computes the identical name for the same row, so
+// whichever side (bex-api's direct Create or this reconciler's own
+// fallback-create) gets there first, the other recognizes the CR by its
+// LabelAppID rather than re-creating it under a different name.
+func CRName(tenant, app string) string { return core.CRName(tenant, app) }
 
-// stampLabels ensures cur carries the projection's three labels (managed-by,
-// app-id, tenant-id), returning whether any changed. Called on both Create and
-// Update so a LabelTenant value change (name → id) converges on the next resync.
+// stampLabels ensures cur carries the projection's labels (managed-by, app-id,
+// tenant-id, public name), returning whether any changed. Called on both
+// Create and Update so a LabelTenant value change (name → id) converges on the
+// next resync — and, for any App still on its pre-w4/m19 bare object name,
+// this is what backfills LabelServiceName without ever renaming the object
+// (core.GetApp's cross-workspace fallback needs the label to find it).
 func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 	if cur.Labels == nil {
 		cur.Labels = map[string]string{}
@@ -303,8 +310,9 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 	}
 	set(LabelManagedBy, ManagedByValue)
 	set(LabelAppID, d.ID)
-	set(LabelTenant, d.TenantID)    // the tenant id (tea-<id>), what List/Get filter on
-	set(LabelWorkspace, d.TenantID) // workspace identity for NetworkPolicy selectors (t002)
+	set(LabelTenant, d.TenantID)       // the tenant id (tea-<id>), what List/Get filter on
+	set(LabelWorkspace, d.TenantID)    // workspace identity for NetworkPolicy selectors (t002)
+	set(core.LabelServiceName, d.Name) // the public name — see core.GetApp's cross-workspace fallback
 	return changed
 }
 
@@ -345,6 +353,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		IdleTTLSeconds: d.IdleTTLSeconds,
 		Suspended:      d.Suspended,
 		Expose:         true,
+		Subdomain:      d.Slug,
 	}
 	if len(d.Hosts) > 0 {
 		s.Host = d.Hosts[0]
@@ -370,6 +379,7 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	set(&dst.Branch, want.Branch)
 	set(&dst.Tier, want.Tier)
 	set(&dst.Host, want.Host)
+	set(&dst.Subdomain, want.Subdomain)
 	if dst.Replicas != want.Replicas {
 		dst.Replicas, changed = want.Replicas, true
 	}

@@ -68,39 +68,31 @@ func TestCreateRepoDefaultsBranchMain(t *testing.T) {
 	}
 }
 
-func TestCreateIsUpsertRedeploy(t *testing.T) {
-	// An existing App + a repeat Create for the same name updates it (redeploy),
-	// bumping restartedAt so a repo-backed App rebuilds — never a duplicate.
+// TestCreateNeverUpsertsExistingApp is the w4/m19 replacement for the old
+// "Create is upsert" contract: a repeat Create for a name that already exists
+// is a clean conflict, never a silent redeploy — spec.RestartedAt is
+// untouched. Redeploying a repo-backed App runs through Deploy/Restart (or
+// the stack path's applyCreate, still an idempotent upsert by design — see
+// TestDeployStackChangedServiceRedeploys for its EnvFromSecret-preservation
+// coverage).
+func TestCreateNeverUpsertsExistingApp(t *testing.T) {
 	existing := sampleApp("web")
 	existing.Spec.Repo = "https://github.com/x/y"
 	existing.Spec.Image = ""
 	svc, cl := newService(nil, existing)
 
-	if _, err := svc.Create(context.Background(), CreateRequest{
+	_, err := svc.Create(context.Background(), CreateRequest{
 		Name: "web", Repo: "https://github.com/x/y", Plan: "standard",
-	}); err != nil {
-		t.Fatalf("Create (update): %v", err)
+	})
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Create on an existing name: got %v, want ErrConflict", err)
 	}
 	a := getApp(t, cl, "web")
-	if a.Spec.RestartedAt == "" {
-		t.Error("a repeat create must bump restartedAt to force a redeploy")
+	if a.Spec.RestartedAt != "" {
+		t.Error("a rejected create must not bump restartedAt")
 	}
-	if a.Spec.Tier != "standard" {
-		t.Errorf("update should apply the new plan: tier=%q", a.Spec.Tier)
-	}
-}
-
-func TestCreateUpdatePreservesEnvFromSecret(t *testing.T) {
-	// The secrets feature owns spec.envFromSecret; a create update must not wipe it.
-	existing := sampleApp("web")
-	existing.Spec.EnvFromSecret = "web-env"
-	svc, cl := newService(nil, existing)
-
-	if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:2"}); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	if got := getApp(t, cl, "web").Spec.EnvFromSecret; got != "web-env" {
-		t.Errorf("envFromSecret = %q, want web-env (must survive an update)", got)
+	if a.Spec.Tier == "standard" {
+		t.Error("a rejected create must not apply the request's fields to the existing App")
 	}
 }
 

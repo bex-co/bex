@@ -31,8 +31,28 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
 }));
 
 const create = vi.fn();
+const clearNameConflict = vi.fn();
+const createServiceState: { capLimit: string | null; nameConflict: boolean } = {
+  capLimit: null,
+  nameConflict: false,
+};
 vi.mock("@/features/services/hooks/use-create-service", () => ({
-  useCreateService: () => ({ create, busy: false }),
+  useCreateService: () => ({
+    create,
+    busy: false,
+    capLimit: createServiceState.capLimit,
+    nameConflict: createServiceState.nameConflict,
+    clearNameConflict,
+  }),
+}));
+
+const nameAvailabilityState: {
+  taken: boolean;
+  suggestion: string | null;
+  checking: boolean;
+} = { taken: false, suggestion: null, checking: false };
+vi.mock("@/features/services/hooks/use-service-name-availability", () => ({
+  useServiceNameAvailability: () => nameAvailabilityState,
 }));
 
 const reposState: {
@@ -46,7 +66,11 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
 }));
 
 const connectionState: {
-  connection: { connected: boolean; accountLogin: string; installUrl: string } | null;
+  connection: {
+    connected: boolean;
+    accountLogin: string;
+    installUrl: string;
+  } | null;
   loading: boolean;
 } = { connection: null, loading: false };
 
@@ -56,8 +80,18 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
 
 // ── fixtures ─────────────────────────────────────────────────────────────────
 
-const FREE: InstanceTypeView = { id: "free", name: "Free", cpu: "0.1", memory: "512Mi" };
-const STARTER: InstanceTypeView = { id: "starter", name: "Starter", cpu: "0.5", memory: "1Gi" };
+const FREE: InstanceTypeView = {
+  id: "free",
+  name: "Free",
+  cpu: "0.1",
+  memory: "512Mi",
+};
+const STARTER: InstanceTypeView = {
+  id: "starter",
+  name: "Starter",
+  cpu: "0.5",
+  memory: "1Gi",
+};
 
 const REPO: RepoView = {
   id: 1001,
@@ -90,10 +124,20 @@ function renderPage() {
 beforeEach(() => {
   instanceTypesState.instanceTypes = [FREE, STARTER];
   reposState.repos = [REPO];
-  connectionState.connection = { connected: true, accountLogin: "acme-corp", installUrl: "" };
+  connectionState.connection = {
+    connected: true,
+    accountLogin: "acme-corp",
+    installUrl: "",
+  };
   connectionState.loading = false;
   create.mockReset();
   create.mockResolvedValue("srv-abc123");
+  clearNameConflict.mockReset();
+  createServiceState.capLimit = null;
+  createServiceState.nameConflict = false;
+  nameAvailabilityState.taken = false;
+  nameAvailabilityState.suggestion = null;
+  nameAvailabilityState.checking = false;
 });
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -111,7 +155,9 @@ describe("NewServicePage", () => {
     it("switches to Public Git URL tab and shows the URL input", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("tab", { name: /Public Git URL/i }));
+      await user.click(
+        await screen.findByRole("tab", { name: /Public Git URL/i }),
+      );
       expect(
         screen.getByPlaceholderText("https://github.com/you/your-repo"),
       ).toBeInTheDocument();
@@ -120,7 +166,9 @@ describe("NewServicePage", () => {
     it("switches to Existing Image tab and shows the image input", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("tab", { name: /Existing Image/i }));
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
       expect(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
@@ -164,7 +212,9 @@ describe("NewServicePage", () => {
   describe("form validation", () => {
     it("keeps Deploy disabled when no repo is selected", async () => {
       renderPage();
-      const deploy = await screen.findByRole("button", { name: /Deploy Service/i });
+      const deploy = await screen.findByRole("button", {
+        name: /Deploy Service/i,
+      });
       expect(deploy).toBeDisabled();
     });
 
@@ -176,7 +226,7 @@ describe("NewServicePage", () => {
       );
       const nameInput = screen.getByLabelText("Name");
       await user.clear(nameInput);
-      await user.type(nameInput, "1invalid");
+      await user.type(nameInput, "-invalid");
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),
       ).toBeDisabled();
@@ -219,6 +269,47 @@ describe("NewServicePage", () => {
     });
   });
 
+  describe("name availability (w4/m19)", () => {
+    it("shows 'Name is already in use' with a working suggestion that fills the name on accept", async () => {
+      nameAvailabilityState.taken = true;
+      nameAvailabilityState.suggestion = "web-1";
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+
+      expect(screen.getByText("Name is already in use")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeDisabled();
+
+      await user.click(screen.getByRole("button", { name: "Use web-1" }));
+      expect(screen.getByLabelText("Name")).toHaveValue("web-1");
+
+      // The mocked check is static (doesn't recompute per keystroke, unlike
+      // the real debounced hook) — flip it to free and force one more render
+      // to see accepting the suggestion actually clears the blocked state.
+      nameAvailabilityState.taken = false;
+      nameAvailabilityState.suggestion = null;
+      await user.type(screen.getByLabelText("Name"), "!");
+      await user.keyboard("{Backspace}");
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeEnabled();
+    });
+
+    it("maps a raced create-mutation conflict to the same inline message", async () => {
+      createServiceState.nameConflict = true;
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      expect(screen.getByText("Name is already in use")).toBeInTheDocument();
+    });
+  });
+
   describe("plan picker", () => {
     it("renders a card per catalog tier, defaulting to the first", async () => {
       renderPage();
@@ -226,9 +317,10 @@ describe("NewServicePage", () => {
       await screen.findAllByRole("radiogroup");
       expect(screen.getByText("Free")).toBeInTheDocument();
       expect(screen.getByText("Starter")).toBeInTheDocument();
-      expect(
-        screen.getByRole("radio", { name: /Free/i }),
-      ).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("radio", { name: /Free/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
     });
   });
 
@@ -240,9 +332,7 @@ describe("NewServicePage", () => {
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.click(screen.getByRole("radio", { name: /Starter/i }));
-      await user.click(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "web-frontend",
@@ -256,11 +346,11 @@ describe("NewServicePage", () => {
     it("shows the image field but no branch/autoDeploy when on Existing Image tab", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("tab", { name: /Existing Image/i }));
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
       expect(screen.queryByLabelText("Branch")).not.toBeInTheDocument();
-      expect(
-        screen.queryByLabelText(/Auto-deploy/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Auto-deploy/i)).not.toBeInTheDocument();
       expect(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
@@ -271,11 +361,21 @@ describe("NewServicePage", () => {
     it("renders all five service types", async () => {
       renderPage();
       await screen.findAllByRole("radiogroup");
-      expect(screen.getByRole("radio", { name: /Web Service/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /Private Service/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /Background Worker/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /Cron Job/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /Static Site/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Web Service/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Private Service/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Cron Job/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: /Static Site/i }),
+      ).toBeInTheDocument();
     });
 
     it("defaults to Web Service selected", async () => {
@@ -299,7 +399,9 @@ describe("NewServicePage", () => {
     it("shows publish directory for static site and hides plan picker", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Static Site/i }));
+      await user.click(
+        await screen.findByRole("radio", { name: /Static Site/i }),
+      );
       expect(screen.getByLabelText("Publish Directory")).toBeInTheDocument();
       expect(screen.queryByText("Free")).not.toBeInTheDocument();
     });
@@ -307,14 +409,18 @@ describe("NewServicePage", () => {
     it("shows no-public-url note for private service", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Private Service/i }));
+      await user.click(
+        await screen.findByRole("radio", { name: /Private Service/i }),
+      );
       expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
     });
 
     it("shows no-public-url note for background worker", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Background Worker/i }));
+      await user.click(
+        await screen.findByRole("radio", { name: /Background Worker/i }),
+      );
       expect(screen.getByText(/no public URL/i)).toBeInTheDocument();
     });
 
@@ -323,7 +429,9 @@ describe("NewServicePage", () => {
       await screen.findAllByRole("radiogroup");
       expect(screen.queryByLabelText("Schedule")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Command")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Publish Directory")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Publish Directory"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -351,7 +459,9 @@ describe("NewServicePage", () => {
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),
       ).toBeDisabled();
-      expect(screen.getByText(/valid 5-field cron expression/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/valid 5-field cron expression/i),
+      ).toBeInTheDocument();
     });
 
     it("enables Deploy when schedule is a valid 5-field cron expression", async () => {
@@ -391,7 +501,9 @@ describe("NewServicePage", () => {
     it("submits with type=static_site and publishPath but no schedule or command", async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(await screen.findByRole("radio", { name: /Static Site/i }));
+      await user.click(
+        await screen.findByRole("radio", { name: /Static Site/i }),
+      );
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );

@@ -141,7 +141,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database name input placeholder",
   },
   "databases.fieldNameError": {
-    message: "只能使用小写字母、数字和连字符，且必须以字母开头。",
+    message:
+      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Create-database name validation message",
   },
   "databases.fieldPlan": {
@@ -191,11 +192,13 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.capLimitTitle": {
     message: "已达到 Postgres 上限",
-    description: "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
+    description:
+      "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
   },
   "databases.capLimitUpgrade": {
     message: "升级方案",
-    description: "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
+    description:
+      "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
   },
   // --- Detail metadata ---
   "databases.metaTitle": {
@@ -646,7 +649,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
-    message: "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+    message:
+      "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -662,7 +666,8 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Database plan-picker confirm dialog title",
   },
   "databases.planPickerConfirmBody": {
-    message: "操作员将在下次协调时调整数据库的计算资源，滚动重启期间连接会短暂中断。",
+    message:
+      "操作员将在下次协调时调整数据库的计算资源，滚动重启期间连接会短暂中断。",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerSuccess": {
@@ -772,19 +777,23 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.insightsColLiveRows": {
     message: "活跃行数",
-    description: "Insights table-scans column header (estimated live row count)",
+    description:
+      "Insights table-scans column header (estimated live row count)",
   },
   "databases.insightsColParam": {
     message: "参数",
-    description: "Insights parameter-overrides column header (pg_settings.name)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.name)",
   },
   "databases.insightsColSetting": {
     message: "值",
-    description: "Insights parameter-overrides column header (pg_settings.setting)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.setting)",
   },
   "databases.insightsColSource": {
     message: "来源",
-    description: "Insights parameter-overrides column header (pg_settings.source)",
+    description:
+      "Insights parameter-overrides column header (pg_settings.source)",
   },
 };
 

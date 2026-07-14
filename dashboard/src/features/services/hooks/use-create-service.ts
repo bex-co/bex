@@ -35,6 +35,16 @@ export interface UseCreateServiceResult {
    * when the last attempt failed for another reason (toasted) or hasn't failed.
    */
   capLimit: string | null;
+  /**
+   * The name was already in use in the target workspace (w4/m19) — the race
+   * window between the debounced availability check and submit (someone else
+   * claimed it in between, or the check hadn't settled yet). Shown inline,
+   * same shape as the live check, rather than a generic toast. Null when the
+   * last attempt failed for another reason (toasted) or hasn't failed.
+   */
+  nameConflict: boolean;
+  /** Clears nameConflict — call when the user edits the name away from it. */
+  clearNameConflict: () => void;
 }
 
 /**
@@ -50,6 +60,7 @@ export function useCreateService(): UseCreateServiceResult {
   const { currentWorkspaceId } = useWorkspace();
   const [mutate, { loading: busy }] = useMutation(CreateServiceDocument);
   const [capLimit, setCapLimit] = useState<string | null>(null);
+  const [nameConflict, setNameConflict] = useState(false);
 
   const create = useCallback(
     async (input: CreateServiceInput) => {
@@ -58,6 +69,7 @@ export function useCreateService(): UseCreateServiceResult {
         return null;
       }
       setCapLimit(null);
+      setNameConflict(false);
       try {
         const res = await mutate({
           variables: {
@@ -82,9 +94,13 @@ export function useCreateService(): UseCreateServiceResult {
       } catch (err) {
         // "workspace is limited to N services" — surface inline with upgrade CTA
         // rather than a toast that leaves the user with nowhere to go (w7/m9).
+        // "name ... is already in use" (w4/m19) — a raced duplicate the
+        // debounced check missed; same inline treatment, not a toast.
         const msg = graphQLErrorMessage(err) ?? "";
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
+        } else if (msg.toLowerCase().includes("already in use")) {
+          setNameConflict(true);
         } else {
           toast.error(t("services.createError", { name: input.name }));
         }
@@ -94,5 +110,7 @@ export function useCreateService(): UseCreateServiceResult {
     [mutate, t, currentWorkspaceId],
   );
 
-  return { create, busy, capLimit };
+  const clearNameConflict = useCallback(() => setNameConflict(false), []);
+
+  return { create, busy, capLimit, nameConflict, clearNameConflict };
 }

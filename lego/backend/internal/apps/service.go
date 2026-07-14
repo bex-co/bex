@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -488,10 +489,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	return s.create(ctx, req)
 }
 
-// create is the unauthorized core of Create — shared with Deploy, which
-// authorizes once before mapping the bex.yml. An update-in-place is always a
-// redeploy here (the interactive intent): the stack path's idempotent no-op
-// variant is applyCreate (deploy.go).
+// create is the unauthorized core of Create — a same-workspace duplicate name
+// is rejected (Render-style, w4/m19), never silently redeployed; that's what
+// the deploy/restart verbs and the stack path's applyCreate (deploy.go, an
+// idempotent upsert by design) are for.
 func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
 	desired, err := specFromCreate(req)
 	if err != nil {
@@ -503,140 +504,145 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
 
-	existing, err := s.GetApp(ctx, core.RelCanCreate, req.Name)
-	// An App name is unique across the namespace, but a create targets ONE
-	// workspace — so a name already taken by a DIFFERENT workspace is a conflict,
-	// not an update. Without this, a caller who belongs to both workspaces would
-	// silently redeploy the other workspace's service while believing they had
-	// created one in the workspace they named (GetApp serves an App from any
-	// workspace the caller has the relation in — which is right for reaching a
-	// service by name, and wrong for claiming a name).
-	if err == nil && tenantID != "" && existing.Labels[core.LabelTenant] != tenantID {
-		return AppView{}, fmt.Errorf("%w: the name %q is already taken by another workspace", core.ErrConflict, req.Name)
-	}
-	switch {
-	case errors.Is(err, core.ErrNotFound):
-		a := &appv1alpha1.App{}
-		a.Name = req.Name
-		a.Namespace = s.Namespace
-		a.Spec = desired
-		// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
-		// service is refused across all three surfaces. Counted against tenantID —
-		// the workspace this create TARGETS (w6/m14's ownerId), not whichever one
-		// the caller happens to resolve to, so naming a workspace charges its cap
-		// and not another's. Skipped when cap is 0 (unlimited) or the caller has no
-		// resolved tenant (store off / unbound).
-		if s.MaxServices > 0 && tenantID != "" {
-			var existing appv1alpha1.AppList
-			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
-				return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
-			}
-			if len(existing.Items) >= s.MaxServices {
-				return AppView{}, fmt.Errorf("%w: workspace is limited to %d services; delete an existing service to create another", core.ErrBadRequest, s.MaxServices)
-			}
-		}
-		if tenantID != "" {
-			a.Labels = map[string]string{core.LabelTenant: tenantID}
-		}
-		// Write the store row when the store is on + a tenant is resolved, so the
-		// create populates deploy history and the projector recognises the CR as
-		// store-managed (unified create path, w2/m11).
-		if s.Store != nil && tenantID != "" {
-			row, err := s.Store.CreateApp(ctx, store.App{
-				TenantID: tenantID,
-				Name:     req.Name,
-				Repo:     req.Repo,
-				Image:    req.Image,
-				Branch:   desired.Branch,
-				Port:     desired.Port,
-				Replicas: desired.Replicas,
-				Tier:     desired.Tier,
-			})
-			if err != nil {
-				return AppView{}, fmt.Errorf("creating service record: %w", err)
-			}
-			// Stamp the managed-by + app-id labels so the projector's byID index
-			// finds this CR on its next pass (avoiding a duplicate create) and
-			// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
-			if a.Labels == nil {
-				a.Labels = map[string]string{}
-			}
-			a.Labels[store.LabelManagedBy] = store.ManagedByValue
-			a.Labels[store.LabelAppID] = row.ID
-			a.Labels[store.LabelWorkspace] = tenantID
-		}
-		// A private-connection repo gets a fresh clone token + spec.cloneSecret so
-		// its first build authenticates. create-owned only: never set on a spec
-		// that already hand-pointed cloneSecret elsewhere.
-		if desired.CloneSecret == "" {
-			secretName, err := s.ensureCloneSecret(ctx, a)
-			if err != nil {
-				return AppView{}, err
-			}
-			a.Spec.CloneSecret = secretName
-		}
-		pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
-		if err != nil {
-			return AppView{}, err
-		}
-		a.Spec.ExternalRegistryPullSecret = pullSecretName
-		if err := s.Client.Create(ctx, a); err != nil {
-			return AppView{}, err
-		}
-		if s.Kick != nil {
-			s.Kick()
-		}
-		return view(a), nil
-	case err != nil:
+	// Duplicate check, scoped to exactly the target workspace (w4/m19) —
+	// deliberately NOT GetApp, whose cross-workspace fallback exists so a
+	// caller can reach one of their OTHER workspaces' Apps by bare name; reused
+	// here it would make a create in workspace B see workspace A's same-named
+	// App as "taken" merely because the caller also belongs to A, refusing a
+	// creation the milestone exists to allow (two workspaces both owning
+	// "web").
+	taken, err := s.nameTaken(ctx, tenantID, req.Name)
+	if err != nil {
 		return AppView{}, err
-	default:
-		// Update-in-place = redeploy: re-apply the request's owned fields onto the
-		// live spec (leaving operator/other-feature fields like EnvFromSecret
-		// intact), then bump restartedAt so a repo-backed App rebuilds even when
-		// no other field changed.
-		base := client.MergeFrom(existing.DeepCopy())
-		applyCreateToSpec(&existing.Spec, desired)
-		// Refresh the clone token so the rebuild starts with a token minted
-		// seconds ago. ensureCloneSecret reads the just-applied repo; it returns
-		// "" for an unconnected repo, so a hand-set cloneSecret pointing elsewhere
-		// is left untouched.
-		secretName, err := s.ensureCloneSecret(ctx, existing)
-		if err != nil {
-			return AppView{}, err
-		}
-		if secretName != "" {
-			existing.Spec.CloneSecret = secretName
-		}
-		// Re-resolve the external-registry pull secret too — a redeploy is also
-		// how an image-backed App picks up a credential stored after its first
-		// create, or drops one that's since been deleted.
-		pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, existing)
-		if err != nil {
-			return AppView{}, err
-		}
-		existing.Spec.ExternalRegistryPullSecret = pullSecretName
-		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
-		if err := s.Client.Patch(ctx, existing, base); err != nil {
-			return AppView{}, err
-		}
-		// For store-managed apps, open a deploy row so the redeploy surfaces in
-		// the deploys API — stamped with the CR's now-bumped generation (patch
-		// before create, w2/m10: a spec write always increments
-		// metadata.generation, and Cancel needs the exact value this deploy
-		// runs under). The reconciler's write-back closes the row when the CR
-		// converges to Running or fails to launch.
-		if s.Store != nil {
-			if id := existing.Labels[store.LabelAppID]; id != "" {
-				if _, err := s.Store.CreateDeploy(ctx, id, "api", existing.Spec.Image, existing.Generation); err != nil {
-					return AppView{}, fmt.Errorf("recording redeploy: %w", err)
-				}
-			}
-		}
-		if s.Kick != nil {
-			s.Kick()
-		}
-		return view(existing), nil
 	}
+	if taken {
+		return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+	}
+
+	a := &appv1alpha1.App{}
+	a.Name = req.Name
+	if tenantID != "" {
+		// Collision-free object name (w4/m19): all tenants' Apps share one
+		// namespace, so two tenants both naming a service "web" must not
+		// collide on the bare name the way the pre-migration scheme did.
+		a.Name = core.CRName(tenantID, req.Name)
+	}
+	a.Namespace = s.Namespace
+	a.Spec = desired
+	// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
+	// service is refused across all three surfaces. Counted against tenantID —
+	// the workspace this create TARGETS (w6/m14's ownerId), not whichever one
+	// the caller happens to resolve to, so naming a workspace charges its cap
+	// and not another's. Skipped when cap is 0 (unlimited) or the caller has no
+	// resolved tenant (store off / unbound).
+	if s.MaxServices > 0 && tenantID != "" {
+		var existing appv1alpha1.AppList
+		if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
+			return AppView{}, fmt.Errorf("checking service cap: %w", listErr)
+		}
+		if len(existing.Items) >= s.MaxServices {
+			return AppView{}, fmt.Errorf("%w: workspace is limited to %d services; delete an existing service to create another", core.ErrBadRequest, s.MaxServices)
+		}
+	}
+	if tenantID != "" {
+		// LabelServiceName is what lets GetApp find this App from one of the
+		// caller's OTHER workspaces by its public name (w4/m19) — metadata.Name
+		// alone no longer serves that purpose once it's tenant-prefixed.
+		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
+	}
+	// Write the store row when the store is on + a tenant is resolved, so the
+	// create populates deploy history and the projector recognises the CR as
+	// store-managed (unified create path, w2/m11). The store's own
+	// UNIQUE(tenant_id, name) constraint is the race-safe backstop behind the
+	// GetApp pre-check above: a concurrent duplicate create that slips past it
+	// still surfaces as ErrConflict here, never an unclassified 500.
+	if s.Store != nil && tenantID != "" {
+		row, err := s.Store.CreateApp(ctx, store.App{
+			TenantID: tenantID,
+			Name:     req.Name,
+			Repo:     req.Repo,
+			Image:    req.Image,
+			Branch:   desired.Branch,
+			Port:     desired.Port,
+			Replicas: desired.Replicas,
+			Tier:     desired.Tier,
+		})
+		if err != nil {
+			if errors.Is(err, store.ErrConflict) {
+				return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+			}
+			return AppView{}, fmt.Errorf("creating service record: %w", err)
+		}
+		// Stamp the managed-by + app-id labels so the projector's byID index
+		// finds this CR on its next pass (avoiding a duplicate create) and
+		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
+		if a.Labels == nil {
+			a.Labels = map[string]string{}
+		}
+		a.Labels[store.LabelManagedBy] = store.ManagedByValue
+		a.Labels[store.LabelAppID] = row.ID
+		a.Labels[store.LabelWorkspace] = tenantID
+		// The globally-unique slug (w4/m19) drives the platform host
+		// (operator effectiveHosts) — never req.Name, which is only
+		// workspace-unique and can collide across tenants.
+		a.Spec.Subdomain = row.Slug
+	}
+	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
+	// its first build authenticates. create-owned only: never set on a spec
+	// that already hand-pointed cloneSecret elsewhere.
+	if desired.CloneSecret == "" {
+		secretName, err := s.ensureCloneSecret(ctx, a)
+		if err != nil {
+			return AppView{}, err
+		}
+		a.Spec.CloneSecret = secretName
+	}
+	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
+	if err != nil {
+		return AppView{}, err
+	}
+	a.Spec.ExternalRegistryPullSecret = pullSecretName
+	if err := s.Client.Create(ctx, a); err != nil {
+		return AppView{}, err
+	}
+	if s.Kick != nil {
+		s.Kick()
+	}
+	return view(a), nil
+}
+
+// nameTaken reports whether name is already claimed in the exactly-one
+// workspace this create targets (w4/m19): tenantID's own object name
+// (CRName(tenantID, name)) first, then the bare name IF it belongs to that
+// SAME tenant — a store-managed App created before this scheme shipped is
+// still object-named bare (never renamed in place), so its own workspace must
+// still see it as taken; a bare-named App belonging to a DIFFERENT tenant (or
+// none) must not. tenantID == "" (store off / unbound caller) falls back to
+// the single flat bare-name probe, the pre-migration behavior for that mode.
+func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, error) {
+	get := func(objName string) (*appv1alpha1.App, error) {
+		var a appv1alpha1.App
+		err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: objName}, &a)
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &a, nil
+	}
+	if tenantID == "" {
+		a, err := get(name)
+		return a != nil, err
+	}
+	if a, err := get(core.CRName(tenantID, name)); a != nil || err != nil {
+		return a != nil, err
+	}
+	a, err := get(name)
+	if err != nil {
+		return false, err
+	}
+	return a != nil && a.Labels[core.LabelTenant] == tenantID, nil
 }
 
 // createNewApp writes a brand-new App CR (the not-found path both create and the
@@ -658,7 +664,11 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		}
 	}
 	if tenantID != "" {
-		a.Labels = map[string]string{core.LabelTenant: tenantID}
+		// Collision-free object name (w4/m19) — see create's identical stamp;
+		// the stack path shares this helper so it never re-introduces the
+		// bare-name collision create() just closed.
+		a.Name = core.CRName(tenantID, req.Name)
+		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
@@ -686,6 +696,10 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		a.Labels[store.LabelManagedBy] = store.ManagedByValue
 		a.Labels[store.LabelAppID] = row.ID
 		a.Labels[store.LabelWorkspace] = tenantID
+		// The globally-unique slug (w4/m19) drives the platform host (operator
+		// effectiveHosts) — never req.Name, which is only workspace-unique and
+		// can collide across tenants.
+		a.Spec.Subdomain = row.Slug
 	}
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 	// its first build authenticates. create-owned only: never set on a spec

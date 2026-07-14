@@ -28,7 +28,7 @@ If GitHub is not connected, Render shows a "Connect GitHub" button inline; once 
 
 | Field | Default / behavior |
 | --- | --- |
-| **Name** | Auto-filled from repo name slug; user can override |
+| **Name** | Auto-filled from repo name slug; user can override; must be unique within the workspace — see [`duplicate-service-names.md`](duplicate-service-names.md) for the reject + suggest behavior on collision |
 | **Region** | Dropdown of Render's hosting regions (Oregon, Frankfurt, etc.) |
 | **Branch** | Auto-filled from repo's default branch |
 | **Root directory** | Empty (repo root) |

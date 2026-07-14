@@ -942,6 +942,7 @@ export type Query = {
   server: Maybe<Service>;
   service: Maybe<Service>;
   serviceEvents: Maybe<Array<Maybe<ServiceEvent>>>;
+  serviceNameAvailable: Maybe<NameAvailability>;
   services: Maybe<Array<Maybe<Service>>>;
   usage: Maybe<UsageSummary>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
@@ -1142,6 +1143,11 @@ export type QueryServiceEventsArgs = {
   serviceId: Scalars['String']['input'];
   startTime?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryServiceNameAvailableArgs = {
+  name: Scalars['String']['input'];
 };
 
 
@@ -2329,6 +2335,28 @@ export type UpdateNotificationSettingsMutation = { updateNotificationSettings: {
 
 export const NotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<NotificationSettingsQuery, NotificationSettingsQueryVariables>;
 export const UpdateNotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateNotificationSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateNotificationSettings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deploySucceeded"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deploySucceeded"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployFailed"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployFailed"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploySucceeded"}},{"kind":"Field","name":{"kind":"Name","value":"deployFailed"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationSettingsMutation, UpdateNotificationSettingsMutationVariables>;
+
+// --- w4/m19: serviceNameAvailable (hand-added, same reason as
+// notificationSettings/datastoreMetrics above: full codegen against
+// src/**/*.graphql currently drifts on unrelated pre-existing operations
+// without a live bex-api to reconcile against — this is copied verbatim from
+// an offline SCHEMA_JSON-driven codegen run. See
+// lego/backend/internal/apps/graphql.go's serviceNameAvailable field and
+// lego/backend/internal/apps/nameavailable.go). ---
+
+export type NameAvailability = {
+  __typename: 'NameAvailability';
+  available: Maybe<Scalars['Boolean']['output']>;
+  suggestion: Maybe<Scalars['String']['output']>;
+};
+
+export type ServiceNameAvailableQueryVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+export type ServiceNameAvailableQuery = { serviceNameAvailable: { __typename: 'NameAvailability', available: boolean | null, suggestion: string | null } | null };
+
+export const ServiceNameAvailableDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ServiceNameAvailable"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceNameAvailable"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"available"}},{"kind":"Field","name":{"kind":"Name","value":"suggestion"}}]}}]}}]} as unknown as DocumentNode<ServiceNameAvailableQuery, ServiceNameAvailableQueryVariables>;
 
 // --- w3/m10: datastoreMetrics (hand-added, same reason as notificationSettings
 // above: full codegen against src/**/*.graphql currently drifts on unrelated
