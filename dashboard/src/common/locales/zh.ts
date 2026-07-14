@@ -62,6 +62,10 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "主题",
     description: "User menu submenu label for theme selection",
   },
+  "common.userMenuLanguage": {
+    message: "语言",
+    description: "User menu submenu label for language selection",
+  },
   "common.userMenuThemeLight": {
     message: "浅色",
     description: "Light theme option label",

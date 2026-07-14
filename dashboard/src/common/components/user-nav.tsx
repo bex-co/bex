@@ -1,5 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut, Settings, Palette, Sun, Moon, Monitor } from "lucide-react";
+import {
+  LogOut,
+  Settings,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+  Globe,
+  Check,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +26,12 @@ import { useRootContext } from "@/common/hooks/use-root-context";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button.tsx";
 import { Avatar, AvatarFallback } from "@/common/components/ui/avatar.tsx";
+import {
+  LANGUAGE_NAMES,
+  SUPPORTED_LANGUAGES,
+  persistLanguage,
+  type SupportedLanguage,
+} from "@/i18n";
 
 interface UserAvatarButtonProps {
   userInitial: string;
@@ -59,7 +74,7 @@ type IdentityTraits = { email?: string; name?: { first?: string } };
 
 /**
  * User navigation dropdown — shows the signed-in user's avatar and provides
- * access to settings, theme, and logout. Session comes from Kratos (root
+ * access to settings, theme, language, and logout. Session comes from Kratos (root
  * route's beforeLoad → sessions/whoami), not a GraphQL user query.
  */
 export function UserNav() {
@@ -67,7 +82,13 @@ export function UserNav() {
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const { session } = useRootContext();
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
+
+  const currentLanguage = i18n.language as SupportedLanguage;
+  const handleLanguage = (lang: SupportedLanguage) => {
+    void i18n.changeLanguage(lang);
+    persistLanguage(lang);
+  };
 
   const identity = session?.identity;
   const traits = identity?.traits as IdentityTraits | undefined;
@@ -144,6 +165,29 @@ export function UserNav() {
               <Monitor className="mr-2 h-4 w-4" />
               <span>{t("common.userMenuThemeSystem")}</span>
             </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Globe className="mr-2 h-4 w-4" />
+            <div className="flex flex-col">
+              <span>{t("common.userMenuLanguage")}</span>
+              <span className="text-xs text-muted-foreground">
+                {LANGUAGE_NAMES[currentLanguage]}
+              </span>
+            </div>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <DropdownMenuItem
+                key={lang}
+                onClick={() => handleLanguage(lang)}
+                className={lang === currentLanguage ? "bg-accent" : ""}
+              >
+                <span className="flex-1">{LANGUAGE_NAMES[lang]}</span>
+                {lang === currentLanguage && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />

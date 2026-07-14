@@ -62,6 +62,10 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Theme",
     description: "User menu submenu label for theme selection",
   },
+  "common.userMenuLanguage": {
+    message: "Language",
+    description: "User menu submenu label for language selection",
+  },
   "common.userMenuThemeLight": {
     message: "Light",
     description: "Light theme option label",
