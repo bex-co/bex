@@ -48,6 +48,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -80,6 +81,7 @@ type Server struct {
 	Audit         *audit.Service
 	GitHub        *github.Service
 	Notifications *notifications.Service
+	Projects      *projects.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -230,6 +232,10 @@ type Deps struct {
 	// notifications.Mailer structurally) — nil Mailer leaves NotifyDeploy a
 	// silent no-op, same degrade-quietly shape as invite delivery.
 	NotificationsStore notifications.NotificationsStore
+	// ProjectsStore, when set (the control-plane store is wired), backs the
+	// project grouping verbs (w1/m31). nil => those verbs report
+	// projects.ErrProjectsUnavailable (503).
+	ProjectsStore projects.ProjectStore
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -307,6 +313,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Store:      d.NotificationsStore,
 			Mailer:     d.Mailer,
 			Identities: identityEmailLookup{d.Identities},
+		},
+		Projects: &projects.Service{
+			Base:       base,
+			Store:      d.ProjectsStore,
+			Selections: selections,
 		},
 		GitHub:  gh,
 		Onboard: d.Onboard,
@@ -393,6 +404,9 @@ func (s *Server) features() []any {
 	}
 	if s.Notifications != nil {
 		out = append(out, s.Notifications)
+	}
+	if s.Projects != nil {
+		out = append(out, s.Projects)
 	}
 	return out
 }

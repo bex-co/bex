@@ -34,6 +34,7 @@ import { ServiceRowActions } from "@/features/services/components/service-row-ac
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import { useProjects } from "@/features/projects/hooks/use-projects";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/")({
 export function HomePage() {
   const { t } = useTranslations();
   const { services, loading, error, refetch } = useServices();
+  const { projects } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch });
 
   const stats = useMemo(() => computeStats(services), [services]);
@@ -55,11 +57,47 @@ export function HomePage() {
     { labelKey: "services.statSuspended", value: stats.suspended },
   ] as const;
 
+  // Build project-grouped display when projects exist; fall back to flat list.
+  const grouped = useMemo(() => {
+    if (projects.length === 0) return null;
+    const byId = new Map(services.map((s) => [s.id, s]));
+    const assignedIds = new Set<string>();
+    const groups: Array<{ id: string; name: string; services: ServiceView[] }> =
+      projects.map((p) => {
+        const svc = p.serviceIds
+          .map((sid) => byId.get(sid))
+          .filter((s): s is ServiceView => s != null);
+        svc.forEach((s) => assignedIds.add(s.id));
+        return { id: p.id, name: p.name, services: svc };
+      });
+    const ungrouped = services.filter((s) => !assignedIds.has(s.id));
+    return { groups, ungrouped };
+  }, [projects, services]);
+
   // Only treat loading/error as page-level states while there's nothing to show;
   // a transient poll error or background refetch must not blank an existing list.
   const showSkeleton = loading && services.length === 0;
   const showError = !loading && error && services.length === 0;
   const showEmpty = !loading && !error && services.length === 0;
+
+  const tableHeader = (
+    <TableHeader>
+      <TableRow>
+        <TableHead>{t("services.colName")}</TableHead>
+        <TableHead>{t("services.colType")}</TableHead>
+        <TableHead>{t("services.colStatus")}</TableHead>
+        <TableHead className="text-right tabular-nums">
+          {t("services.colInstances")}
+        </TableHead>
+        <TableHead>{t("services.colRevision")}</TableHead>
+        <TableHead>{t("services.colCreated")}</TableHead>
+        <TableHead>{t("services.colUrl")}</TableHead>
+        <TableHead className="w-0 text-right">
+          <span className="sr-only">{t("services.colActions")}</span>
+        </TableHead>
+      </TableRow>
+    </TableHeader>
+  );
 
   return (
     <DashboardLayout>
@@ -100,26 +138,64 @@ export function HomePage() {
                     {t("services.emptyBody")}
                   </p>
                 </div>
+              ) : grouped ? (
+                <div className="space-y-4">
+                  {grouped.groups.map((g) => (
+                    <div key={g.id}>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("projects.groupLabel")}: {g.name}
+                      </p>
+                      <Table>
+                        {tableHeader}
+                        <TableBody>
+                          {showSkeleton
+                            ? Array.from({ length: 2 }).map((_, i) => (
+                                <ServiceSkeletonRow key={i} />
+                              ))
+                            : g.services.map((service) => (
+                                <ServiceRow
+                                  key={service.id}
+                                  service={service}
+                                  pending={
+                                    pending?.id === service.id
+                                      ? pending.action
+                                      : null
+                                  }
+                                  onRun={run}
+                                />
+                              ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                  {grouped.ungrouped.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("projects.ungroupedLabel")}
+                      </p>
+                      <Table>
+                        {tableHeader}
+                        <TableBody>
+                          {grouped.ungrouped.map((service) => (
+                            <ServiceRow
+                              key={service.id}
+                              service={service}
+                              pending={
+                                pending?.id === service.id
+                                  ? pending.action
+                                  : null
+                              }
+                              onRun={run}
+                            />
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("services.colName")}</TableHead>
-                      <TableHead>{t("services.colType")}</TableHead>
-                      <TableHead>{t("services.colStatus")}</TableHead>
-                      <TableHead className="text-right tabular-nums">
-                        {t("services.colInstances")}
-                      </TableHead>
-                      <TableHead>{t("services.colRevision")}</TableHead>
-                      <TableHead>{t("services.colCreated")}</TableHead>
-                      <TableHead>{t("services.colUrl")}</TableHead>
-                      <TableHead className="w-0 text-right">
-                        <span className="sr-only">
-                          {t("services.colActions")}
-                        </span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  {tableHeader}
                   <TableBody>
                     {showSkeleton
                       ? Array.from({ length: 3 }).map((_, i) => (

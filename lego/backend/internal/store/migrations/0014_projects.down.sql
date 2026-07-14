@@ -1,0 +1,2 @@
+ALTER TABLE apps DROP COLUMN IF EXISTS project_id;
+DROP TABLE IF EXISTS projects;

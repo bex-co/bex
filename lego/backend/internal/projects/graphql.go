@@ -1,0 +1,114 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package projects
+
+import (
+	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+)
+
+// graphql.go is the projects GraphQL fragment (bex extension).
+
+var projectGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Project",
+	Fields: graphql.Fields{
+		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.ID })},
+		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.Name })},
+		"ownerId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.OwnerID })},
+		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p ProjectView) any { return p.CreatedAt })},
+		"serviceIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p ProjectView) any { return p.ServiceIDs })},
+	},
+})
+
+// GraphQLQuery contributes the projects reads to the root Query.
+func (s *Service) GraphQLQuery() graphql.Fields {
+	return graphql.Fields{
+		"projects": &graphql.Field{
+			Type: graphql.NewList(projectGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.List(p.Context, p.Args["ownerId"].(string))
+			},
+		},
+		"project": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(p.Context, p.Args["id"].(string))
+			},
+		},
+	}
+}
+
+// GraphQLMutation contributes the project write verbs to the root Mutation.
+func (s *Service) GraphQLMutation() graphql.Fields {
+	return graphql.Fields{
+		"createProject": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"name":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Create(p.Context, p.Args["ownerId"].(string), p.Args["name"].(string))
+			},
+		},
+		"renameProject": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Rename(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
+		"deleteProject": &graphql.Field{
+			Type: graphql.String,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				id := p.Args["id"].(string)
+				if err := s.Delete(p.Context, id); err != nil {
+					return nil, err
+				}
+				return id, nil
+			},
+		},
+		"setProjectServices": &graphql.Field{
+			Type: projectGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["serviceIds"].([]any)
+				names := make([]string, len(raw))
+				for i, v := range raw {
+					names[i], _ = v.(string)
+				}
+				return s.SetServices(p.Context, p.Args["id"].(string), names)
+			},
+		},
+	}
+}

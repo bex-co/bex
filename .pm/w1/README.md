@@ -36,7 +36,7 @@
 - [ ] **m28** — Gate deploys on real CI test runs (10 tasks) ← from a CI-workflow audit during `/pm-brainstorm more milestones to work on` 2026-07-13 (no `.github/workflows/*.yml` anywhere runs `go test`/`make test`/`yarn test`; `deploy.yml` builds+pushes+deploys on every push to `main` with zero test gate); not Render parity — pursued on reliability merits per user decision 2026-07-13
 - [ ] **m29** — Managed Postgres external connectivity: SNI proxy for preamble-mode TLS clients (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`docs/ADR009-postgresql-management.md:53` names the fix, never built)
 - [ ] **m30** — SIGTERM shutdown fix + Dependabot residual watch (6 tasks) ← groups `018`, `019` 2026-07-13 (each sub-hour), same pattern as `m23`/`w6/m15`/`w7/m10`
-- [ ] **m31** — Projects: group services within a workspace (6 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (verified live via search that Render's Projects feature is real — render.com/docs/projects; scoped to grouping only, Environments deliberately deferred as a much larger follow-on)
+- [x] **m31** — Projects: group services within a workspace (6 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (verified live via search that Render's Projects feature is real — render.com/docs/projects; scoped to grouping only, Environments deliberately deferred as a much larger follow-on)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 

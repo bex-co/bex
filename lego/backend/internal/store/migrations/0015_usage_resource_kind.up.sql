@@ -6,5 +6,5 @@
 -- per resource type (App ids are typed opaque srv-<xid>; Database/KeyValue ids
 -- are the CR name). Backward-compatible: existing rows default to 'service'.
 
-ALTER TABLE usage_hourly  ADD COLUMN resource_kind text NOT NULL DEFAULT 'service';
-ALTER TABLE usage_monthly ADD COLUMN resource_kind text NOT NULL DEFAULT 'service';
+ALTER TABLE usage_hourly  ADD COLUMN IF NOT EXISTS resource_kind text NOT NULL DEFAULT 'service';
+ALTER TABLE usage_monthly ADD COLUMN IF NOT EXISTS resource_kind text NOT NULL DEFAULT 'service';
