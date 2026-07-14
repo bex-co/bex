@@ -143,11 +143,14 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	call := func(subject, method, path, body string) *httptest.ResponseRecorder {
 		return e2eCall(mux, ctx, subject, method, path, body)
 	}
-	appTenantOf := func(t *testing.T, name string) string {
+	// appTenantOf reads back an App by its exact tenant-scoped object name
+	// (core.CRName, w4/m19) — a store-managed App's object name is no longer
+	// its public name, since two workspaces may now legitimately share one.
+	appTenantOf := func(t *testing.T, tenantID, name string) string {
 		t.Helper()
 		var a appv1alpha1.App
-		if err := cl.Get(ctx, k8sKey(name), &a); err != nil {
-			t.Fatalf("App %s: %v", name, err)
+		if err := cl.Get(ctx, k8sKey(core.CRName(tenantID, name)), &a); err != nil {
+			t.Fatalf("App %s/%s: %v", tenantID, name, err)
 		}
 		return a.Labels[core.LabelTenant]
 	}
@@ -173,7 +176,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if created.OwnerID != wsB.ID {
 		t.Errorf("response ownerId = %q, want bravo %q", created.OwnerID, wsB.ID)
 	}
-	if got := appTenantOf(t, bravoWeb); got != wsB.ID {
+	if got := appTenantOf(t, wsB.ID, bravoWeb); got != wsB.ID {
 		t.Errorf("App landed in %q, want bravo %q", got, wsB.ID)
 	}
 
@@ -195,7 +198,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("POST ownerId=echo (not dana's): %d %s, want 403", rec.Code, rec.Body.String())
 	}
 	var stray appv1alpha1.App
-	if err := cl.Get(ctx, k8sKey(stolen), &stray); err == nil {
+	if err := cl.Get(ctx, k8sKey(core.CRName(wsE.ID, stolen)), &stray); err == nil {
 		t.Errorf("the refused create still wrote an App, labeled %q — it must write nothing", stray.Labels[core.LabelTenant])
 	}
 
@@ -211,7 +214,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 		t.Errorf("carl (viewer of bravo, admin of charlie) DELETE bravo-web: %d %s, want 403 — a role must not leak across workspaces",
 			rec.Code, rec.Body.String())
 	}
-	if err := cl.Get(ctx, k8sKey(bravoWeb), &stray); err != nil {
+	if err := cl.Get(ctx, k8sKey(core.CRName(wsB.ID, bravoWeb)), &stray); err != nil {
 		t.Errorf("bravo-web was deleted by a viewer: %v", err)
 	}
 	// ...and he cannot read its env vars either (can_view_sensitive: developer+).
