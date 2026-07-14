@@ -15,6 +15,7 @@
 - [x] **m9** — Meter managed Postgres & Key Value storage separately from compute (9 tasks) ← promotes `002` 2026-07-13 (Render drift follow-up from m5, named directly in `docs/ADR018-render-parity.md`'s usage-metering row)
 - [ ] **m10** — Env vars: `generateValue` + cursor pagination (8 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (the ADR006/ADR018 env-vars row's two documented omissions; `w1/m35`'s generateValue prerequisite). Not usage work — placed under w8 for capacity per the m8 precedent
 - [x] **m11** — Reliable usage windows: durable zeroes + gap-free per-meter cursors (7 tasks) ← prerequisite split from `001` 2026-07-14; cap enforcement stays gated — done 2026-07-14
+- [ ] **m12** — Managed Postgres major-version upgrade (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 2, 2026-07-14 (`database_types.go:35` — `Version` exists at create, no upgrade verb anywhere; Render ships version upgrades as a first-class flow; rides CNPG's declarative major-upgrade path, verified first by t002). Placed under w8 for capacity per the m8 precedent; numbered m12 not m11 — a concurrent session claimed m11 mid-rebase
 
 ## Inbox
 

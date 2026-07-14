@@ -41,6 +41,7 @@
 - [x] **m33** — Pre-Deploy Command: gate rollout on a setup/migration step (9 tasks) ← from `/pm-brainstorm more` 2026-07-13 (`docs/ADR006-bex-api.md:124` lists `preDeployCommand` as an "ignored" bex.yml field — Render's Deploy section confirmed live via `w5/done/m13`; no overlap with `w6/m21`'s `dockerfilePath`/`startCommand` scope)
 - [ ] **m34** — Build filters: `buildFilter.paths` + `ignoredPaths` (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (`docs/ADR018-render-parity.md` "buildFilter is not editable — ◐" row understates it: zero hits in `lego/`, the field is entirely unbuilt); generalizes w1/m18's `rootDirMatches` webhook path filter
 - [ ] **m35** — Blueprint field completeness: envVarGroups · fromGroup · sync:false · fromService (10 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (ADR018 Blueprint row's named-error rejections; every ingredient shipped — m16 env groups, m24 stacks, w2/m15 verbs); `generateValue` acceptance rides `w8/m10`'s core verb
+- [ ] **m36** — Node bring-up efficiency: baked snapshot image + trimmed provisioning (8 tasks) ← promotes `.pm/FUTURE-MAYBE.md`'s node-bring-up entry 2026-07-14 — its trigger ("app images move into a pullable registry — zot wired end-to-end") fired when `w1/m26` closed 2026-07-13; the roll-safety condition that deferred it is gone for the same reason
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
