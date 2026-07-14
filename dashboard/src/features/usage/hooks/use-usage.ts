@@ -70,19 +70,15 @@ export function useUsage(period?: string): UseUsageResult {
         ? {
             workspaceId: raw.workspaceId ?? "",
             period: raw.period ?? "",
-            services: (raw.services ?? [])
-              .filter(Boolean)
-              .map((s) => ({
-                serviceId: s!.serviceId ?? "",
-                resourceKind: s!.resourceKind ?? "service",
-                rows: (s!.rows ?? [])
-                  .filter(Boolean)
-                  .map((r) => ({
-                    kind: r!.kind ?? "",
-                    tier: r!.tier ?? "",
-                    total: r!.total ?? 0,
-                  })),
+            services: (raw.services ?? []).filter(Boolean).map((s) => ({
+              serviceId: s!.serviceId ?? "",
+              resourceKind: s!.resourceKind ?? "service",
+              rows: (s!.rows ?? []).filter(Boolean).map((r) => ({
+                kind: r!.kind ?? "",
+                tier: r!.tier ?? "",
+                total: r!.total ?? 0,
               })),
+            })),
             estimatedCost: raw.estimatedCost
               ? {
                   totalUsd: raw.estimatedCost.totalUsd ?? "0.00",

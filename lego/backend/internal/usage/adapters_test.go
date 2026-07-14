@@ -288,10 +288,22 @@ func seedMixedStore() *memUsageStore {
 		WindowStart: window, Quantity: 3600,
 	})
 	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "mydb",
+		ResourceKind: store.ResourceKindPostgres,
+		Kind:         store.UsageKindStorageGBSeconds,
+		WindowStart:  window, Quantity: 2628000,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
 		WorkspaceID: "tea-mix", ServiceID: "mykv",
 		ResourceKind: store.ResourceKindKeyValue,
 		Kind:         store.UsageKindInstanceSeconds, Tier: "starter",
 		WindowStart: window, Quantity: 3600,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "mykv",
+		ResourceKind: store.ResourceKindKeyValue,
+		Kind:         store.UsageKindStorageGBSeconds,
+		WindowStart:  window, Quantity: 2628000,
 	})
 	return st
 }
@@ -371,7 +383,7 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 			entry.Rows = append(entry.Rows, usageRow{
 				Kind:  row["kind"].(string),
 				Tier:  row["tier"].(string),
-				Total: int64(row["total"].(int)),
+				Total: int64(row["total"].(float64)),
 			})
 		}
 		gqlEntries = append(gqlEntries, entry)
@@ -408,6 +420,32 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	if got := entriesByResource(mcpResp.Services); !reflect.DeepEqual(got, wantEntries) {
 		t.Errorf("MCP entries differ from REST:\nREST: %+v\nMCP: %+v", wantEntries, got)
+	}
+}
+
+func TestGraphQLStorageTotalSupportsTerabyteMonth(t *testing.T) {
+	st := newMemUsageStore()
+	window := time.Date(2026, 7, 12, 8, 0, 0, 0, time.UTC)
+	const total = int64(2_628_000_000) // 1 TB-month; exceeds GraphQL Int32.
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-large", ServiceID: "db", ResourceKind: store.ResourceKindPostgres,
+		Kind: store.UsageKindStorageGBSeconds, WindowStart: window, Quantity: total,
+	})
+	svc := svcWithTenant(st, "tea-large")
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := graphql.Do(graphql.Params{
+		Schema: schema, RequestString: `{ usage { services { rows { kind total } } } }`,
+		Context: core.WithIdentity(context.Background(), core.Identity{Subject: "user:large"}),
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("GraphQL errors for large storage total: %v", result.Errors)
+	}
+	rows := result.Data.(map[string]any)["usage"].(map[string]any)["services"].([]any)[0].(map[string]any)["rows"].([]any)
+	if got := int64(rows[0].(map[string]any)["total"].(float64)); got != total {
+		t.Fatalf("large storage total: want %d, got %d", total, got)
 	}
 }
 
@@ -461,7 +499,7 @@ func TestGraphQLPeriodArg(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("rows: want 1 (June only), got %d", len(rows))
 	}
-	if total, _ := rows[0].(map[string]any)["total"].(int); total != 5400 {
+	if total, _ := rows[0].(map[string]any)["total"].(float64); total != 5400 {
 		t.Errorf("total: want 5400, got %v", rows[0].(map[string]any)["total"])
 	}
 }
@@ -521,8 +559,8 @@ func TestRESTAdapterEstimatedCostPresent(t *testing.T) {
 	if resp.EstimatedCost.Meters == nil {
 		t.Error("estimatedCost.meters is nil; want non-nil slice")
 	}
-	if len(resp.EstimatedCost.Meters) != 3 {
-		t.Errorf("estimatedCost.meters: want 3, got %d", len(resp.EstimatedCost.Meters))
+	if len(resp.EstimatedCost.Meters) != 5 {
+		t.Errorf("estimatedCost.meters: want 5, got %d", len(resp.EstimatedCost.Meters))
 	}
 }
 
@@ -558,8 +596,8 @@ func TestGraphQLAdapterEstimatedCostPresent(t *testing.T) {
 		t.Errorf("estimatedCost.totalUsd: expected non-zero, got %q", totalUsd)
 	}
 	meters, _ := ec["meters"].([]any)
-	if len(meters) != 3 {
-		t.Errorf("estimatedCost.meters: want 3, got %d", len(meters))
+	if len(meters) != 5 {
+		t.Errorf("estimatedCost.meters: want 5, got %d", len(meters))
 	}
 }
 

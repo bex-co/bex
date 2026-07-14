@@ -215,6 +215,31 @@ func TestEstimateKeyValueStarterOneMonth(t *testing.T) {
 	}
 }
 
+func TestEstimateOneGBMonthStorage(t *testing.T) {
+	// 1 GB used continuously for a 730-hour pricing month is 2,628,000
+	// GB-seconds. bex applies 30% off Render Postgres's $0.30/GB-month.
+	rows := []store.UsageSummaryRow{
+		{Kind: store.UsageKindStorageGBSeconds, ResourceKind: store.ResourceKindPostgres, Total: 2628000},
+	}
+	est := Default.Estimate(rows)
+	got := parseUSD(t, est.TotalUSD)
+	if math.Abs(got-0.21) > 0.01 {
+		t.Errorf("1 GB-month storage: want ~$0.21, got %s", est.TotalUSD)
+	}
+	if len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindStorageGBSeconds {
+		t.Fatalf("storage meter missing from estimate: %+v", est.Meters)
+	}
+}
+
+func TestEstimateStorageOnlyForDatastores(t *testing.T) {
+	rows := []store.UsageSummaryRow{
+		{Kind: store.UsageKindStorageGBSeconds, ResourceKind: store.ResourceKindService, Total: 2628000},
+	}
+	if got := Default.Estimate(rows).TotalUSD; got != "0.00" {
+		t.Errorf("service storage is not a managed-datastore meter: got %s", got)
+	}
+}
+
 func TestEstimateMixedMeters(t *testing.T) {
 	// compute starter + 1 GB bandwidth + 17 min build
 	// ≈ $4.90 + $0.01 + $0.06 = $4.97
@@ -274,11 +299,11 @@ func TestFormatUSD(t *testing.T) {
 		want  string
 	}{
 		{0, "0.00"},
-		{1.005, "1.00"},   // float64: 1.005*100 = 100.4999... rounds down
+		{1.005, "1.00"}, // float64: 1.005*100 = 100.4999... rounds down
 		{1.004, "1.00"},
 		{4.9004878, "4.90"},
-		{0.0049, "0.00"},  // sub-cent
-		{0.005, "0.01"},   // exactly half a cent rounds up
+		{0.0049, "0.00"}, // sub-cent
+		{0.005, "0.01"},  // exactly half a cent rounds up
 	}
 	for _, c := range cases {
 		if got := formatUSD(c.input); got != c.want {

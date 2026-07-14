@@ -101,7 +101,7 @@ func TestMemStoreLatestUsageWindow(t *testing.T) {
 	ctx := context.Background()
 
 	// Unknown service → zero time.
-	got, err := st.LatestUsageWindow(ctx, ResourceKindService, "srv-unknown")
+	got, err := st.LatestUsageWindow(ctx, ResourceKindService, "srv-unknown", UsageKindBuildSeconds)
 	if err != nil {
 		t.Fatalf("LatestUsageWindow (unknown): %v", err)
 	}
@@ -118,8 +118,13 @@ func TestMemStoreLatestUsageWindow(t *testing.T) {
 			Kind: UsageKindBuildSeconds, Tier: "", WindowStart: w, Quantity: 60,
 		})
 	}
+	// A newer row for another meter must not advance build_seconds' cursor.
+	_ = st.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID: "tea-003", ServiceID: "srv-003",
+		Kind: UsageKindInstanceSeconds, Tier: "starter", WindowStart: w2.Add(time.Hour), Quantity: 3600,
+	})
 
-	got, err = st.LatestUsageWindow(ctx, ResourceKindService, "srv-003")
+	got, err = st.LatestUsageWindow(ctx, ResourceKindService, "srv-003", UsageKindBuildSeconds)
 	if err != nil {
 		t.Fatalf("LatestUsageWindow: %v", err)
 	}
@@ -231,6 +236,28 @@ func TestMemStoreCompactUsage(t *testing.T) {
 	again, _ := st.UsageMonthToDate(ctx, "tea-004", aprilEnd)
 	if len(again) != 1 || again[0].Total != 5400 {
 		t.Errorf("re-run drifted April totals: %+v", again)
+	}
+}
+
+func TestMemStoreCompactStorageUsage(t *testing.T) {
+	st := newMemStore()
+	ctx := context.Background()
+	month := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	for i, quantity := range []int64{3600, 7200} {
+		_ = st.UpsertUsageHourly(ctx, HourlyRow{
+			WorkspaceID: "tea-storage", ServiceID: "db", ResourceKind: ResourceKindPostgres,
+			Kind: UsageKindStorageGBSeconds, WindowStart: month.Add(time.Duration(i) * time.Hour), Quantity: quantity,
+		})
+	}
+	if _, err := st.CompactUsage(ctx, month.AddDate(0, 1, 0)); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.UsageMonthToDate(ctx, "tea-storage", month.AddDate(0, 1, 0).Add(-time.Nanosecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Kind != UsageKindStorageGBSeconds || rows[0].Total != 10800 {
+		t.Fatalf("compacted storage total: want 10800, got %+v", rows)
 	}
 }
 

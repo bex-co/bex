@@ -45,6 +45,7 @@ function emptyTrendState() {
         compute: 0,
         bandwidth: 0,
         build: 0,
+        storage: 0,
       },
       {
         period: "2026-06",
@@ -52,6 +53,7 @@ function emptyTrendState() {
         compute: 0,
         bandwidth: 0,
         build: 0,
+        storage: 0,
       },
       {
         period: "2026-07",
@@ -59,6 +61,7 @@ function emptyTrendState() {
         compute: 0,
         bandwidth: 0,
         build: 0,
+        storage: 0,
       },
     ],
     loading: false,
@@ -100,12 +103,18 @@ function dataState() {
         {
           serviceId: "shared",
           resourceKind: "postgres",
-          rows: [{ kind: "instance_seconds", tier: "free", total: 3600 }],
+          rows: [
+            { kind: "instance_seconds", tier: "free", total: 3600 },
+            { kind: "storage_gb_seconds", tier: "", total: 7200 },
+          ],
         },
         {
           serviceId: "shared",
           resourceKind: "key_value",
-          rows: [{ kind: "instance_seconds", tier: "free", total: 1800 }],
+          rows: [
+            { kind: "instance_seconds", tier: "free", total: 1800 },
+            { kind: "storage_gb_seconds", tier: "", total: 3600 },
+          ],
         },
       ],
     },
@@ -134,7 +143,7 @@ describe("UsagePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders three section cards — Compute, Bandwidth, Build Minutes", () => {
+  it("renders all quantity section cards", () => {
     mockUseUsage.mockReturnValue(emptyState());
 
     render(<UsagePage />);
@@ -146,6 +155,7 @@ describe("UsagePage", () => {
     expect(screen.getAllByText("Build Minutes").length).toBeGreaterThanOrEqual(
       1,
     );
+    expect(screen.getAllByText("Storage").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows skeleton rows while loading and no summary is available", () => {
@@ -166,7 +176,7 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     const empties = screen.getAllByText("No usage recorded this month.");
-    expect(empties).toHaveLength(3);
+    expect(empties).toHaveLength(4);
   });
 
   it("converts instance_seconds to hours (÷ 3600) in the Compute table", () => {
@@ -175,7 +185,7 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     // 7200 seconds → 2.00 hours
-    expect(screen.getByText("2.00")).toBeInTheDocument();
+    expect(screen.getAllByText("2.00").length).toBeGreaterThanOrEqual(1);
     // 3600 seconds → 1.00 hours
     expect(screen.getAllByText("1.00").length).toBeGreaterThanOrEqual(1);
   });
@@ -195,9 +205,9 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     expect(screen.getAllByText("service")).toHaveLength(2);
-    expect(screen.getByText("postgres")).toBeInTheDocument();
-    expect(screen.getByText("key_value")).toBeInTheDocument();
-    expect(screen.getAllByText("shared")).toHaveLength(2);
+    expect(screen.getAllByText("postgres").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("key_value").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("shared")).toHaveLength(4);
   });
 
   it("converts egress_bytes to MB in the Bandwidth table", () => {
@@ -220,13 +230,23 @@ describe("UsagePage", () => {
     expect(cells.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("converts storage_gb_seconds to GB-hours and labels datastore kinds", () => {
+    mockUseUsage.mockReturnValue(dataState());
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("3.00")).toBeInTheDocument();
+    expect(screen.getAllByText("postgres").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("key_value").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("renders Total rows summing each section", () => {
     mockUseUsage.mockReturnValue(dataState());
 
     render(<UsagePage />);
 
     const totals = screen.getAllByText("Total");
-    expect(totals).toHaveLength(3);
+    expect(totals).toHaveLength(4);
   });
 
   it("renders the Estimated Cost section heading", () => {
@@ -305,8 +325,8 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     expect(screen.getByText("3-Month Trend")).toBeInTheDocument();
-    // Three trend charts — one per meter kind.
-    expect(screen.getAllByTestId("svg-line-chart")).toHaveLength(3);
+    // Four trend charts — one per meter kind.
+    expect(screen.getAllByTestId("svg-line-chart")).toHaveLength(4);
   });
 
   it("shows trend skeleton while trend data is loading", () => {

@@ -21,12 +21,13 @@ import (
 	"time"
 )
 
-// UsageKind names the three metering dimensions — identical to Render's three
-// billing meters (per-second compute, bandwidth, pipeline minutes).
+// UsageKind names the metering dimensions. storage_gb_seconds is the average
+// used datastore volume size in decimal GB multiplied by window seconds.
 const (
-	UsageKindInstanceSeconds = "instance_seconds"
-	UsageKindEgressBytes     = "egress_bytes"
-	UsageKindBuildSeconds    = "build_seconds"
+	UsageKindInstanceSeconds  = "instance_seconds"
+	UsageKindEgressBytes      = "egress_bytes"
+	UsageKindBuildSeconds     = "build_seconds"
+	UsageKindStorageGBSeconds = "storage_gb_seconds"
 )
 
 // NormalizeResourceKind preserves the pre-resource-kind behavior for callers
@@ -90,15 +91,15 @@ func (s *PGStore) UpsertUsageHourly(ctx context.Context, row HourlyRow) error {
 	return err
 }
 
-// LatestUsageWindow returns the most recent window_start for any usage row
-// across all meter kinds for a given resource, or zero time if none exist.
-// resourceKind is part of the identity because different Kubernetes resource
-// kinds may legally share the same name.
-func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID string) (time.Time, error) {
+// LatestUsageWindow returns the most recent window_start for one resource and
+// meter kind, or zero time if none exist. Tracking each meter independently
+// lets a newly-added or temporarily unavailable meter catch up without being
+// hidden by a newer row for another meter.
+func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error) {
 	var t time.Time
 	err := s.Pool.QueryRow(ctx,
-		`SELECT COALESCE(MAX(window_start), 'epoch') FROM usage_hourly WHERE resource_kind = $1 AND service_id = $2`,
-		NormalizeResourceKind(resourceKind), serviceID,
+		`SELECT COALESCE(MAX(window_start), 'epoch') FROM usage_hourly WHERE resource_kind = $1 AND service_id = $2 AND kind = $3`,
+		NormalizeResourceKind(resourceKind), serviceID, kind,
 	).Scan(&t)
 	if err != nil {
 		return time.Time{}, err

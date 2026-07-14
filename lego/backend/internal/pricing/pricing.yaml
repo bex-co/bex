@@ -1,5 +1,5 @@
-# bex price sheet — 30% off Render on compute/Postgres/KeyValue/build-minute,
-# 90% off on bandwidth.
+# bex price sheet — 30% off Render on compute/Postgres/KeyValue/build-minute
+# and Postgres storage, 90% off on bandwidth.
 # Source: docs/render-artifacts/pricing.md (captured 2026-07-13)
 # Policy: docs/ADR030-pricing.md
 #
@@ -7,6 +7,7 @@
 #   instance_seconds → usdPerSecond
 #   egress_bytes     → bandwidth.usdPerByte
 #   build_seconds    → build.usdPerSecond
+#   storage_gb_seconds → storage.usdPerGBSecond
 #
 # Derivation for per-second rates:
 #   bex_monthly = render_monthly × discount
@@ -15,7 +16,7 @@
 # "estimate only" policy: these numbers are purely informational cost estimates;
 # bex has no billing system (docs/ADR030-pricing.md § no-payment boundary).
 
-version: "1"
+version: "2"
 
 # instance_seconds rates for App (web-service / worker / cron) services
 compute:
@@ -59,3 +60,10 @@ bandwidth:
 # build_seconds rate: $0.0035/min (Render $0.005/min × 0.70 = 30% off)
 build:
   usdPerSecond: 0.000058333333   # $0.0035 / 60 s
+
+# storage_gb_seconds rate: $0.21/GB-month (Render Postgres $0.30 × 0.70).
+# One pricing month is 730 h = 2,628,000 seconds. Render has no separate Key
+# Value storage line; bex deliberately applies the same transparent rate to
+# actual used PVC bytes for both managed datastore kinds.
+storage:
+  usdPerGBSecond: 0.000000079908676   # $0.21 / 2,628,000 GB-seconds

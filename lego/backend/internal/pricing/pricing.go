@@ -16,8 +16,8 @@ limitations under the License.
 
 // Package pricing is bex's price sheet: per-unit USD rates derived from
 // Render's captured public pricing (docs/render-artifacts/pricing.md) at a
-// fixed discount — 30% off compute/Postgres/KeyValue/build-minute lines, 90%
-// off bandwidth. It is backend-only (the operator never imports it) and
+// fixed discount — 30% off compute/Postgres/KeyValue/build-minute/Postgres
+// storage lines, 90% off bandwidth. It is backend-only (the operator never imports it) and
 // produces cost estimates only; bex has no billing or payment system
 // (docs/ADR030-pricing.md § no-payment boundary).
 //
@@ -52,6 +52,7 @@ type Sheet struct {
 	keyvalue  map[string]float64 // tier ID → $/second for instance_seconds (key_value)
 	bandwidth float64            // $/byte for egress_bytes
 	build     float64            // $/second for build_seconds
+	storage   float64            // $/GB-second for storage_gb_seconds
 }
 
 // EstimatedCost is the workspace-level cost estimate for a period.
@@ -67,10 +68,11 @@ type EstimatedCost struct {
 
 // MeterEstimate is one meter dimension's contribution to the estimated total.
 type MeterEstimate struct {
-	// Kind is "instance_seconds", "egress_bytes", or "build_seconds".
+	// Kind is "instance_seconds", "egress_bytes", "build_seconds", or
+	// "storage_gb_seconds".
 	Kind string `json:"kind"`
 	// Tier is the plan/tier id for instance_seconds meters; empty for flat-rate
-	// meters (egress_bytes, build_seconds).
+	// meters (egress_bytes, build_seconds, storage_gb_seconds).
 	Tier string `json:"tier,omitempty"`
 	// ResourceKind is "service", "postgres", or "key_value".
 	ResourceKind string `json:"resourceKind,omitempty"`
@@ -136,6 +138,10 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		return s.bandwidth
 	case store.UsageKindBuildSeconds:
 		return s.build
+	case store.UsageKindStorageGBSeconds:
+		if resourceKind == store.ResourceKindPostgres || resourceKind == store.ResourceKindKeyValue {
+			return s.storage
+		}
 	}
 	return 0
 }
@@ -148,8 +154,8 @@ func formatUSD(v float64) string {
 // --- YAML loading ---
 
 type sheetFile struct {
-	Version  string `json:"version"`
-	Compute  []struct {
+	Version string `json:"version"`
+	Compute []struct {
 		Tier         string  `json:"tier"`
 		USDPerSecond float64 `json:"usdPerSecond"`
 	} `json:"compute"`
@@ -167,6 +173,9 @@ type sheetFile struct {
 	Build struct {
 		USDPerSecond float64 `json:"usdPerSecond"`
 	} `json:"build"`
+	Storage struct {
+		USDPerGBSecond float64 `json:"usdPerGBSecond"`
+	} `json:"storage"`
 }
 
 func mustLoad(raw []byte) *Sheet {
@@ -191,6 +200,7 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		keyvalue:  make(map[string]float64, len(f.KeyValue)),
 		bandwidth: f.Bandwidth.USDPerByte,
 		build:     f.Build.USDPerSecond,
+		storage:   f.Storage.USDPerGBSecond,
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {

@@ -24,15 +24,18 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 
 ### 2. Discount policy
 
-| Meter         | Render rate        | bex rate      | Discount |
-| ------------- | ------------------ | ------------- | -------- |
-| Compute       | per instance-month | Render × 0.70 | 30% off  |
-| Postgres      | per instance-month | Render × 0.70 | 30% off  |
-| Key Value     | per instance-month | Render × 0.70 | 30% off  |
-| Build minutes | $0.005/min         | $0.0035/min   | 30% off  |
-| Bandwidth     | $0.10/GB           | $0.01/GB      | 90% off  |
+| Meter            | Render rate        | bex rate       | Discount |
+| ---------------- | ------------------ | -------------- | -------- |
+| Compute          | per instance-month | Render × 0.70  | 30% off  |
+| Postgres         | per instance-month | Render × 0.70  | 30% off  |
+| Key Value        | per instance-month | Render × 0.70  | 30% off  |
+| Build minutes    | $0.005/min         | $0.0035/min    | 30% off  |
+| Postgres storage | $0.30/GB-month     | $0.21/GB-month | 30% off  |
+| Bandwidth        | $0.10/GB           | $0.01/GB       | 90% off  |
 
 Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13).
+
+The storage estimate prices `storage_gb_seconds`, using a 730-hour pricing month. Render bills provisioned Postgres capacity; bex's collector measures actual used PVC bytes. Render does not list a separate Key Value storage charge, so applying this same used-storage rate to Valkey is a deliberate bex extension rather than a claim of exact Render shape.
 
 Bandwidth is discounted 90% rather than 30% because:
 
@@ -69,7 +72,7 @@ A tier ID not in `pricing.yaml` is priced at $0 (not an error). This means:
 
 ## Consequences
 
-- **Backend:** `internal/pricing` is a new, operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`.
+- **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.
 - **REST:** `GET /v1/usage` returns `estimatedCost` at the top level.
 - **GraphQL:** `usage.estimatedCost { totalUsd meters { ... } }` is a new selection on `UsageSummary`.
 - **MCP:** `get_usage` returns the same `estimatedCost` field; its description is updated to mention the estimate.

@@ -33,13 +33,22 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Pipeline minutes consumed by builds",
     description: "Build section description",
   },
+  "usage.storageTitle": {
+    message: "Storage",
+    description: "Managed datastore storage section heading on the Usage page",
+  },
+  "usage.storageDescription": {
+    message: "Actual Postgres and Key Value volume usage",
+    description: "Storage section description",
+  },
   "usage.colService": {
     message: "Service",
     description: "Table column header: service name",
   },
   "usage.colKind": {
     message: "Kind",
-    description: "Table column header: resource kind (service/postgres/key_value)",
+    description:
+      "Table column header: resource kind (service/postgres/key_value)",
   },
   "usage.colPlan": {
     message: "Plan",
@@ -56,6 +65,10 @@ const enUsage: Record<string, TranslationEntry> = {
   "usage.colMinutes": {
     message: "Minutes",
     description: "Table column header: build minutes",
+  },
+  "usage.colGBHours": {
+    message: "GB-hours",
+    description: "Table column header: storage gigabyte-hours",
   },
   "usage.totalRow": {
     message: "Total",
@@ -75,7 +88,8 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.currentMonth": {
     message: "Current month",
-    description: "Default option in the month picker meaning the current calendar month",
+    description:
+      "Default option in the month picker meaning the current calendar month",
   },
   "usage.trendTitle": {
     message: "3-Month Trend",
@@ -90,8 +104,10 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Estimated cost section heading on the Usage page",
   },
   "usage.estimatedCostDescription": {
-    message: "30% below Render on compute, Postgres, and key-value; 90% below on bandwidth. Estimate only — not an invoice.",
-    description: "Estimated cost section description explaining the pricing policy",
+    message:
+      "30% below Render on compute, Postgres, key-value, and Postgres storage; 90% below on bandwidth. Estimate only — not an invoice.",
+    description:
+      "Estimated cost section description explaining the pricing policy",
   },
   "usage.estimatedCostNote": {
     message: "Estimate only — not an invoice",
@@ -99,7 +115,7 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.colMeter": {
     message: "Meter",
-    description: "Table column header for the meter kind (instance_seconds / egress_bytes / build_seconds)",
+    description: "Table column header for the usage meter kind",
   },
   "usage.colEstimate": {
     message: "Estimate",
@@ -107,7 +123,8 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.estimatedCostUnavailable": {
     message: "No billable usage this period.",
-    description: "Empty-state message when there is no billable usage to estimate",
+    description:
+      "Empty-state message when there is no billable usage to estimate",
   },
 };
 

@@ -33,6 +33,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,7 +54,7 @@ import (
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
-	LatestUsageWindow(ctx context.Context, resourceKind, serviceID string) (time.Time, error)
+	LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error)
 	UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]store.UsageSummaryRow, error)
 	CompactUsage(ctx context.Context, before time.Time) (store.UsageCompaction, error)
 }
@@ -93,7 +94,7 @@ func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client
 
 // Summary is the month-to-date usage for one workspace — the core result the
 // three adapters present. Total values are in the natural unit of each kind
-// (seconds/bytes/seconds).
+// (seconds/bytes/seconds/GB-seconds).
 type Summary struct {
 	WorkspaceID   string
 	Period        string // "YYYY-MM" — the calendar month this summary covers
@@ -146,13 +147,29 @@ func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
 // summarise groups flat summary rows by resource identity. ResourceKind is
 // required because different Kubernetes kinds may legally share a service_id.
 func summarise(workspaceID string, rows []store.UsageSummaryRow) Summary {
+	rows = append([]store.UsageSummaryRow(nil), rows...)
+	for i := range rows {
+		rows[i].ResourceKind = store.NormalizeResourceKind(rows[i].ResourceKind)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if a.ServiceID != b.ServiceID {
+			return a.ServiceID < b.ServiceID
+		}
+		if a.ResourceKind != b.ResourceKind {
+			return a.ResourceKind < b.ResourceKind
+		}
+		if a.Kind != b.Kind {
+			return a.Kind < b.Kind
+		}
+		return a.Tier < b.Tier
+	})
 	type resourceKey struct {
 		serviceID, resourceKind string
 	}
 	var order []resourceKey
 	byResource := map[resourceKey][]store.UsageSummaryRow{}
 	for _, r := range rows {
-		r.ResourceKind = store.NormalizeResourceKind(r.ResourceKind)
 		key := resourceKey{r.ServiceID, r.ResourceKind}
 		if _, seen := byResource[key]; !seen {
 			order = append(order, key)
@@ -302,14 +319,29 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 	return out, nil
 }
 
-// processDatastoreWindow measures instance_seconds for one (datastore, window)
-// pair and upserts the row. Only instance_seconds applies to managed datastores
-// (see docs/ADR023-usage-metering.md § Meter applicability for Database/KeyValue):
-// egress_bytes is N/A (Traefik TCP/SNI doesn't emit the HTTP frontend metric)
-// and build_seconds is N/A (no build Jobs for managed data stores).
-func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) {
+// processDatastoreWindow measures compute and used-storage time for one
+// (datastore, window) pair and upserts both rows. The independent meter keys
+// make reprocessing idempotent. egress_bytes is N/A (Traefik TCP/SNI doesn't
+// emit the HTTP frontend metric) and build_seconds is N/A (no build Jobs).
+func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) bool {
 	end := window.Add(time.Hour)
-	instanceSecs := s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+	var (
+		instanceSecs int64
+		storageSecs  int64
+		storageOK    bool
+		wg           sync.WaitGroup
+	)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		instanceSecs = s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+	}()
+	go func() {
+		defer wg.Done()
+		storageSecs, storageOK = s.queryStorageGBSeconds(ctx, ds, window, end)
+	}()
+	wg.Wait()
+
 	if instanceSecs > 0 || ds.Plan != "" {
 		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
 			WorkspaceID:  ds.TenantID,
@@ -321,6 +353,47 @@ func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry,
 			Quantity:     instanceSecs,
 		}); err != nil {
 			log.Printf("usage: upsert instance_seconds datastore %s: %v", ds.ID, err)
+		}
+	}
+	// A successful empty query is a real zero and is persisted. A failed query
+	// is not written, so the per-meter catch-up cursor can retry it later.
+	if storageOK {
+		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+			WorkspaceID:  ds.TenantID,
+			ServiceID:    ds.ID,
+			ResourceKind: ds.Kind,
+			Kind:         store.UsageKindStorageGBSeconds,
+			Tier:         "",
+			WindowStart:  window,
+			Quantity:     storageSecs,
+		}); err != nil {
+			log.Printf("usage: upsert storage_gb_seconds datastore %s: %v", ds.ID, err)
+			return false
+		}
+	}
+	return storageOK
+}
+
+// catchUpDatastoreThrough fills every missing storage window through last.
+// It stops at the first failed storage query, preserving a contiguous cursor;
+// the next collector run retries that window before advancing, so a transient
+// Prometheus failure cannot leave a permanent hole hidden by newer rows.
+func (s *Service) catchUpDatastoreThrough(ctx context.Context, ds datastoreEntry, last time.Time) {
+	latest, err := s.Store.LatestUsageWindow(ctx, ds.Kind, ds.ID, store.UsageKindStorageGBSeconds)
+	if err != nil {
+		log.Printf("usage: catch-up: latest storage window for datastore %s: %v", ds.ID, err)
+		return
+	}
+	floor := last.Add(time.Hour - catchupLimit)
+	start := latest.UTC().Truncate(time.Hour)
+	if start.IsZero() || start.Before(floor) {
+		start = floor
+	} else {
+		start = start.Add(time.Hour)
+	}
+	for w := start; !w.After(last); w = w.Add(time.Hour) {
+		if !s.processDatastoreWindow(ctx, ds, w) {
+			return
 		}
 	}
 }
@@ -336,7 +409,7 @@ func (s *Service) catchUp(ctx context.Context) {
 	now := time.Now().UTC()
 	floor := now.Add(-catchupLimit).Truncate(time.Hour)
 	for _, app := range apps {
-		latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID)
+		latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds)
 		if err != nil {
 			log.Printf("usage: catch-up: latest window for %s: %v", app.ID, err)
 			continue
@@ -356,20 +429,7 @@ func (s *Service) catchUp(ctx context.Context) {
 		log.Printf("usage: catch-up: list datastores: %v", err)
 	}
 	for _, ds := range datastores {
-		latest, err := s.Store.LatestUsageWindow(ctx, ds.Kind, ds.ID)
-		if err != nil {
-			log.Printf("usage: catch-up: latest window for datastore %s: %v", ds.ID, err)
-			continue
-		}
-		start := latest.UTC().Truncate(time.Hour)
-		if start.IsZero() || start.Before(floor) {
-			start = floor
-		} else {
-			start = start.Add(time.Hour)
-		}
-		for w := start; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
-			s.processDatastoreWindow(ctx, ds, w)
-		}
+		s.catchUpDatastoreThrough(ctx, ds, now.Truncate(time.Hour).Add(-time.Hour))
 	}
 }
 
@@ -389,7 +449,7 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 		log.Printf("usage: rollup: list datastores: %v", err)
 	}
 	for _, ds := range datastores {
-		s.processDatastoreWindow(ctx, ds, window)
+		s.catchUpDatastoreThrough(ctx, ds, window)
 	}
 	log.Printf("usage: rolled up window %s for %d services + %d datastores",
 		window.Format(time.RFC3339), len(apps), len(datastores))
@@ -483,6 +543,39 @@ func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namesp
 		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
 		namespace, promEscape(name))
 	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
+}
+
+const bytesPerDecimalGB = 1_000_000_000
+
+// queryStorageGBSeconds returns average used PVC bytes over [start,end),
+// converted to decimal GB and multiplied by window seconds. kubelet volume
+// stats are already scraped cluster-wide for datastore metrics. CNPG PVCs are
+// named <name>-<ordinal>; Valkey's volumeClaimTemplate produces
+// data-<name>-<ordinal>. The sum includes every CNPG instance/replica PVC.
+//
+// The bool distinguishes a successful zero (persist it) from an unavailable
+// Prometheus query (leave the row absent so catch-up can retry).
+func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, start, end time.Time) (int64, bool) {
+	if s.PromBase == "" {
+		return 0, false
+	}
+	pattern := fmt.Sprintf(`^%s-[0-9]+$`, promEscape(ds.Name))
+	if ds.Kind == store.ResourceKindKeyValue {
+		pattern = fmt.Sprintf(`^data-%s-[0-9]+$`, promEscape(ds.Name))
+	}
+	windowSecs := int64(end.Sub(start) / time.Second)
+	q := fmt.Sprintf(
+		`sum(avg_over_time(kubelet_volume_stats_used_bytes{namespace=%q,persistentvolumeclaim=~%q}[%ds]))`,
+		s.Namespace, pattern, windowSecs)
+	usedBytes, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
+	if err != nil {
+		log.Printf("usage: storage_gb_seconds for %s: %v", ds.Name, err)
+		return 0, false
+	}
+	if usedBytes < 0 {
+		usedBytes = 0
+	}
+	return int64(math.Round(usedBytes * float64(windowSecs) / bytesPerDecimalGB)), true
 }
 
 // queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body.

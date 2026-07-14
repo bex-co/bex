@@ -40,6 +40,7 @@ describe("useUsage", () => {
               rows: [
                 { kind: "instance_seconds", tier: "starter", total: 7200 },
                 { kind: "egress_bytes", tier: "", total: 1048576 },
+                { kind: "storage_gb_seconds", tier: "", total: 3600 },
               ],
             },
             {
@@ -66,6 +67,7 @@ describe("useUsage", () => {
           rows: [
             { kind: "instance_seconds", tier: "starter", total: 7200 },
             { kind: "egress_bytes", tier: "", total: 1048576 },
+            { kind: "storage_gb_seconds", tier: "", total: 3600 },
           ],
         },
         {
@@ -79,9 +81,7 @@ describe("useUsage", () => {
   });
 
   it("returns null summary when usage is null (empty workspace / no metered period)", () => {
-    mockUseQuery.mockReturnValue(
-      createSuccessQueryResult({ usage: null }),
-    );
+    mockUseQuery.mockReturnValue(createSuccessQueryResult({ usage: null }));
 
     const { result } = renderHook(() => useUsage());
 
@@ -99,7 +99,10 @@ describe("useUsage", () => {
             null,
             {
               serviceId: "api",
-              rows: [null, { kind: "instance_seconds", tier: "hobby", total: 3600 }],
+              rows: [
+                null,
+                { kind: "instance_seconds", tier: "hobby", total: 3600 },
+              ],
             },
           ],
         },
@@ -114,9 +117,7 @@ describe("useUsage", () => {
   });
 
   it("surfaces a query error as error, leaving summary null", () => {
-    mockUseQuery.mockReturnValue(
-      createErrorQueryResult("network error"),
-    );
+    mockUseQuery.mockReturnValue(createErrorQueryResult("network error"));
 
     const { result } = renderHook(() => useUsage());
 

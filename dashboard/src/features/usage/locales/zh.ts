@@ -33,13 +33,22 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "构建消耗的流水线分钟数",
     description: "Build section description",
   },
+  "usage.storageTitle": {
+    message: "存储",
+    description: "Managed datastore storage section heading on the Usage page",
+  },
+  "usage.storageDescription": {
+    message: "Postgres 与 Key Value 卷的实际用量",
+    description: "Storage section description",
+  },
   "usage.colService": {
     message: "服务",
     description: "Table column header: service name",
   },
   "usage.colKind": {
     message: "类型",
-    description: "Table column header: resource kind (service/postgres/key_value)",
+    description:
+      "Table column header: resource kind (service/postgres/key_value)",
   },
   "usage.colPlan": {
     message: "套餐",
@@ -56,6 +65,10 @@ const zhUsage: Record<string, TranslationEntry> = {
   "usage.colMinutes": {
     message: "分钟数",
     description: "Table column header: build minutes",
+  },
+  "usage.colGBHours": {
+    message: "GB 小时",
+    description: "Table column header: storage gigabyte-hours",
   },
   "usage.totalRow": {
     message: "合计",
@@ -75,7 +88,8 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.currentMonth": {
     message: "当月",
-    description: "Default option in the month picker meaning the current calendar month",
+    description:
+      "Default option in the month picker meaning the current calendar month",
   },
   "usage.trendTitle": {
     message: "近三月趋势",
@@ -90,8 +104,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Estimated cost section heading on the Usage page",
   },
   "usage.estimatedCostDescription": {
-    message: "计算、Postgres 及 Key Value 比 Render 低 30%；带宽低 90%。仅供参考，非正式账单。",
-    description: "Estimated cost section description explaining the pricing policy",
+    message:
+      "计算、Postgres、Key Value 及 Postgres 存储比 Render 低 30%；带宽低 90%。仅供参考，非正式账单。",
+    description:
+      "Estimated cost section description explaining the pricing policy",
   },
   "usage.estimatedCostNote": {
     message: "仅供参考，非正式账单",
@@ -99,7 +115,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.colMeter": {
     message: "计量项",
-    description: "Table column header for the meter kind (instance_seconds / egress_bytes / build_seconds)",
+    description: "Table column header for the usage meter kind",
   },
   "usage.colEstimate": {
     message: "预估",
@@ -107,7 +123,8 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.estimatedCostUnavailable": {
     message: "本期无计费用量。",
-    description: "Empty-state message when there is no billable usage to estimate",
+    description:
+      "Empty-state message when there is no billable usage to estimate",
   },
 };
 

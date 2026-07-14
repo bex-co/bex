@@ -26,6 +26,7 @@ export interface TrendPoint {
   compute: number; // total instance_seconds
   bandwidth: number; // total egress_bytes
   build: number; // total build_seconds
+  storage: number; // total storage_gb_seconds
 }
 
 const TREND_QUERY_OPTS = {
@@ -55,9 +56,18 @@ export function useUsageTrend(): { points: TrendPoint[]; loading: boolean } {
   const p1 = periodFor(1); // 1 month ago
   const p2 = periodFor(2); // 2 months ago
 
-  const r0 = useQuery(UsageDocument, { variables: { period: p0 }, ...TREND_QUERY_OPTS });
-  const r1 = useQuery(UsageDocument, { variables: { period: p1 }, ...TREND_QUERY_OPTS });
-  const r2 = useQuery(UsageDocument, { variables: { period: p2 }, ...TREND_QUERY_OPTS });
+  const r0 = useQuery(UsageDocument, {
+    variables: { period: p0 },
+    ...TREND_QUERY_OPTS,
+  });
+  const r1 = useQuery(UsageDocument, {
+    variables: { period: p1 },
+    ...TREND_QUERY_OPTS,
+  });
+  const r2 = useQuery(UsageDocument, {
+    variables: { period: p2 },
+    ...TREND_QUERY_OPTS,
+  });
 
   const loading = r0.loading || r1.loading || r2.loading;
 
@@ -74,6 +84,7 @@ export function useUsageTrend(): { points: TrendPoint[]; loading: boolean } {
         compute: sumKind(services, "instance_seconds"),
         bandwidth: sumKind(services, "egress_bytes"),
         build: sumKind(services, "build_seconds"),
+        storage: sumKind(services, "storage_gb_seconds"),
       };
     });
   }, [r0.data, r1.data, r2.data, p0, p1, p2]);

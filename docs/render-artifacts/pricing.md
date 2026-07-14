@@ -1,6 +1,6 @@
 # Render Pricing Snapshot — 2026-07-13
 
-Captured from render.com public pricing pages and docs. Used as the baseline for bex's price sheet (docs/ADR030-pricing.md): 30% off every compute / Postgres / KeyValue / build-minute line, 90% off bandwidth.
+Captured from render.com public pricing pages and docs. Used as the baseline for bex's price sheet (docs/ADR030-pricing.md): 30% off every compute / Postgres / KeyValue / build-minute / Postgres-storage line, 90% off bandwidth.
 
 ---
 
@@ -34,6 +34,14 @@ Source: render.com/docs/postgresql
 
 Free tier is ephemeral (expires after 90 days, no backups).
 
+### Flexible-plan storage (re-verified 2026-07-14)
+
+Source: render.com/docs/postgresql-refresh
+
+- `$0.30` per provisioned GB per month, prorated to the second.
+- Storage is selected independently from compute on paid flexible plans.
+- bex's 30%-lower reference rate is `$0.21/GB-month`.
+
 ---
 
 ## Managed Key Value (Redis-compatible)
@@ -45,6 +53,8 @@ Source: render.com/docs/redis
 | Free     | $0        | 25 MB  |
 | Starter  | $10       | 256 MB |
 | Standard | $30       | 1 GB   |
+
+Render does not publish a separate Key Value storage price: persistence is a plan feature. bex's separately-metered Valkey PVC usage is therefore a deliberate extension priced at the same transparent `$0.21/GB-month` used-storage rate as Postgres.
 
 ---
 

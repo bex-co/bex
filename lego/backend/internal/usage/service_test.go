@@ -20,9 +20,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -46,7 +48,7 @@ type memUsageStore struct {
 	apps     []store.App
 	rows     map[usageKey]store.HourlyRow
 	monthly  map[monthKey]monthlyVal
-	latestBy map[string]time.Time // resourceKind/serviceID -> latest window_start
+	latestBy map[string]time.Time // resourceKind/serviceID/kind -> latest window_start
 	compacts []time.Time          // boundaries CompactUsage was called with
 }
 
@@ -87,17 +89,17 @@ func (m *memUsageStore) UpsertUsageHourly(_ context.Context, row store.HourlyRow
 	row.ResourceKind = store.NormalizeResourceKind(row.ResourceKind)
 	k := usageKey{row.ResourceKind, row.ServiceID, row.Kind, row.Tier, row.WindowStart.UTC().Truncate(time.Hour)}
 	m.rows[k] = row
-	resourceID := row.ResourceKind + "/" + row.ServiceID
+	resourceID := row.ResourceKind + "/" + row.ServiceID + "/" + row.Kind
 	if row.WindowStart.After(m.latestBy[resourceID]) {
 		m.latestBy[resourceID] = row.WindowStart
 	}
 	return nil
 }
 
-func (m *memUsageStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID string) (time.Time, error) {
+func (m *memUsageStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID, kind string) (time.Time, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.latestBy[store.NormalizeResourceKind(resourceKind)+"/"+serviceID], nil
+	return m.latestBy[store.NormalizeResourceKind(resourceKind)+"/"+serviceID+"/"+kind], nil
 }
 
 // UsageMonthToDate mirrors PGStore's two-table read: hourly rows in
@@ -669,9 +671,102 @@ func TestProcessDatastoreWindowUpsertInstanceSeconds(t *testing.T) {
 	}
 }
 
-// TestProcessDatastoreWindowNoEgressOrBuild verifies that
-// processDatastoreWindow writes ONLY instance_seconds — never egress_bytes or
-// build_seconds — for a Database or KeyValue resource.
+func TestQueryStorageGBSecondsUsesPVCUsedBytes(t *testing.T) {
+	tests := []struct {
+		name, kind, wantPattern string
+	}{
+		{"postgres", store.ResourceKindPostgres, `^mydb-[0-9]+$`},
+		{"key_value", store.ResourceKindKeyValue, `^data-mydb-[0-9]+$`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var query string
+			prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				query = r.URL.Query().Get("query")
+				_, _ = w.Write([]byte(`{"status":"success","data":{"result":[{"value":[0,"2000000000"]}]}}`))
+			}))
+			defer prom.Close()
+
+			svc := NewService(&core.Base{Namespace: "default"}, nil, prom.URL, prom.Client())
+			start := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+			got, ok := svc.queryStorageGBSeconds(context.Background(), datastoreEntry{Name: "mydb", Kind: tt.kind}, start, start.Add(time.Hour))
+			if !ok || got != 7200 { // 2 decimal GB × 3600 seconds
+				t.Fatalf("storage GB-seconds: want 7200,true; got %d,%v", got, ok)
+			}
+			if !strings.Contains(query, "kubelet_volume_stats_used_bytes") || !strings.Contains(query, tt.wantPattern) {
+				t.Errorf("unexpected storage query: %s", query)
+			}
+		})
+	}
+}
+
+func TestProcessDatastoreWindowUpsertsStorage(t *testing.T) {
+	prom := fakeProm(1_000_000_000) // 1 decimal GB average over an hour
+	defer prom.Close()
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{}, st, prom.URL, prom.Client())
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	svc.processDatastoreWindow(context.Background(), datastoreEntry{
+		ID: "mydb", Name: "mydb", TenantID: "tea-ds", Plan: "basic-256mb", Kind: store.ResourceKindPostgres,
+	}, window)
+
+	k := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, "", window}
+	st.mu.Lock()
+	row, ok := st.rows[k]
+	st.mu.Unlock()
+	if !ok || row.Quantity != 3600 {
+		t.Fatalf("storage row: want 3600 GB-seconds, got %+v (present=%v)", row, ok)
+	}
+}
+
+func TestDatastoreStorageCatchUpRetriesWithoutGaps(t *testing.T) {
+	var mu sync.Mutex
+	storageCalls := 0
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		value := "1"
+		if strings.Contains(query, "kubelet_volume_stats_used_bytes") {
+			mu.Lock()
+			storageCalls++
+			call := storageCalls
+			mu.Unlock()
+			if call == 1 {
+				http.Error(w, "temporary", http.StatusServiceUnavailable)
+				return
+			}
+			value = "1000000000"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+
+	st := newMemUsageStore()
+	svc := NewService(&core.Base{}, st, prom.URL, prom.Client())
+	ds := datastoreEntry{ID: "mydb", Name: "mydb", TenantID: "tea-ds", Plan: "basic-256mb", Kind: store.ResourceKindPostgres}
+	previous := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: ds.TenantID, ServiceID: ds.ID, ResourceKind: ds.Kind,
+		Kind: store.UsageKindStorageGBSeconds, WindowStart: previous,
+	})
+
+	// First pass fails at 10:00 and must not advance the storage cursor.
+	svc.catchUpDatastoreThrough(context.Background(), ds, previous.Add(time.Hour))
+	// Next pass retries 10:00 before writing 11:00.
+	svc.catchUpDatastoreThrough(context.Background(), ds, previous.Add(2*time.Hour))
+
+	for _, window := range []time.Time{previous.Add(time.Hour), previous.Add(2 * time.Hour)} {
+		key := usageKey{store.ResourceKindPostgres, "mydb", store.UsageKindStorageGBSeconds, "", window}
+		st.mu.Lock()
+		row, ok := st.rows[key]
+		st.mu.Unlock()
+		if !ok || row.Quantity != 3600 {
+			t.Errorf("storage window %s: want 3600 GB-seconds, got %+v (present=%v)", window, row, ok)
+		}
+	}
+}
+
+// TestProcessDatastoreWindowNoEgressOrBuild verifies that datastore rollup
+// writes compute + storage, but never service-only egress/build meters.
 func TestProcessDatastoreWindowNoEgressOrBuild(t *testing.T) {
 	prom := fakeProm(1.0)
 	defer prom.Close()

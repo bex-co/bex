@@ -424,13 +424,13 @@ func (m *memStore) UpsertUsageHourly(_ context.Context, row HourlyRow) error {
 	return nil
 }
 
-func (m *memStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID string) (time.Time, error) {
+func (m *memStore) LatestUsageWindow(_ context.Context, resourceKind, serviceID, kind string) (time.Time, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	resourceKind = NormalizeResourceKind(resourceKind)
 	var latest time.Time
 	for k := range m.usage {
-		if k.resourceKind == resourceKind && k.serviceID == serviceID && k.windowStart.After(latest) {
+		if k.resourceKind == resourceKind && k.serviceID == serviceID && k.kind == kind && k.windowStart.After(latest) {
 			latest = k.windowStart
 		}
 	}

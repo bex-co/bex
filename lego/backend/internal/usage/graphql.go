@@ -32,9 +32,12 @@ import (
 var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageRow",
 	Fields: graphql.Fields{
-		"kind":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Kind })},
-		"tier":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Tier })},
-		"total": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Total })},
+		"kind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Kind })},
+		"tier": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Tier })},
+		// GraphQL Int is signed 32-bit. Storage GB-seconds (and egress bytes)
+		// routinely exceed that, so expose the int64 quantity through Float;
+		// IEEE-754 remains exact for every realistic monthly counter here.
+		"total": &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Total })},
 	},
 })
 

@@ -70,6 +70,10 @@ function buildSecondsToMinutes(seconds: number): string {
   return (seconds / 60).toFixed(1);
 }
 
+function storageGBSecondsToGBHours(gbSeconds: number): string {
+  return (gbSeconds / 3600).toFixed(2);
+}
+
 // --- month picker helpers ---
 
 /** Build options for `count` months starting `startFrom` months back (oldest first in JSX, but here newest-first). */
@@ -95,6 +99,10 @@ interface ComputeRow {
 interface ServiceTotalRow {
   serviceId: string;
   total: number;
+}
+
+interface StorageRow extends ServiceTotalRow {
+  resourceKind: string;
 }
 
 function extractRows<T>(
@@ -312,6 +320,66 @@ function BuildSection({
   );
 }
 
+function StorageSection({
+  rows,
+  loading,
+}: {
+  rows: StorageRow[];
+  loading: boolean;
+}) {
+  const { t } = useTranslations();
+  const totalGBSeconds = rows.reduce((s, r) => s + r.total, 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("usage.storageTitle")}</CardTitle>
+        <CardDescription>{t("usage.storageDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading && rows.length === 0 ? (
+          <SkeletonTable cols={3} />
+        ) : rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t("usage.empty")}
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("usage.colService")}</TableHead>
+                <TableHead>{t("usage.colKind")}</TableHead>
+                <TableHead className="text-right tabular-nums">
+                  {t("usage.colGBHours")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={`${r.resourceKind}:${r.serviceId}`}>
+                  <TableCell className="font-medium">{r.serviceId}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.resourceKind}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {storageGBSecondsToGBHours(r.total)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="border-t-2 font-semibold">
+                <TableCell colSpan={2}>{t("usage.totalRow")}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {storageGBSecondsToGBHours(totalGBSeconds)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- estimated cost section ---
 
 function EstimatedCostSection({
@@ -417,13 +485,13 @@ function TrendSection({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-[180px] w-full rounded-md" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <div>
               <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {t("usage.computeTitle")}
@@ -449,6 +517,15 @@ function TrendSection({
               <SvgLineChart
                 unit="min"
                 series={scaledSeries(points, "build", 60)}
+              />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {t("usage.storageTitle")}
+              </p>
+              <SvgLineChart
+                unit="GB-h"
+                series={scaledSeries(points, "storage", 3600)}
               />
             </div>
           </div>
@@ -502,6 +579,15 @@ export function UsagePage() {
       total: r.total,
     }),
   );
+  const storageRows = extractRows<StorageRow>(
+    services,
+    "storage_gb_seconds",
+    (svc, r) => ({
+      serviceId: svc.serviceId,
+      resourceKind: svc.resourceKind,
+      total: r.total,
+    }),
+  );
 
   return (
     <DashboardLayout>
@@ -545,6 +631,7 @@ export function UsagePage() {
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />
           <BuildSection rows={buildRows} loading={loading} />
+          <StorageSection rows={storageRows} loading={loading} />
           <EstimatedCostSection
             estimatedCost={summary?.estimatedCost ?? null}
             loading={loading}

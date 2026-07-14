@@ -2,15 +2,16 @@
 
 bex records month-to-date resource consumption per workspace and exposes it over REST, GraphQL, and MCP so any client — curl, the dashboard, or an MCP agent — can read the same numbers (pillar 1: API-first; pillar 3: agents as operators).
 
-## Three meters
+## Four meters
 
 | Meter | Unit | Source |
 | --- | --- | --- |
 | `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — pod count × window seconds |
 | `egress_bytes` | bytes | Traefik `traefik_service_responses_bytes_total` increase over the window |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
+| `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
 
-Meters match Render's three billing dimensions exactly (compute time per tier, bandwidth, pipeline minutes) so the data is comparable for operators migrating from Render.
+The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
 ## Meter applicability by resource kind
 
@@ -21,14 +22,17 @@ The rollup loop emits meters for three resource kinds. Not every meter applies t
 | `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) |
 | `egress_bytes` | ✅ Traefik HTTP router counter | — TCP/SNI routes not tracked by Traefik's HTTP metrics | — TCP/SNI routes not tracked by Traefik's HTTP metrics |
 | `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step |
+| `storage_gb_seconds` | — stateless App storage is not a supported product surface | ✅ CNPG PVCs (`<name>-<n>`) | ✅ Valkey PVC (`data-<name>-<n>`) |
 
 Each row in `usage_hourly` and `usage_monthly` carries a `resource_kind` column (`DEFAULT 'service'`, migration `0015_usage_resource_kind.up.sql`) so the REST/GraphQL/MCP surfaces can distinguish App compute from managed-datastore compute. The column is backward-compatible: rows written before the migration surface as `"service"`. Migration `0021_usage_resource_identity.up.sql` also makes `resource_kind` part of each table's primary key because a `Database` and `KeyValue` CR may legally share a Kubernetes name; their usage remains separate even when `service_id`, meter, tier, and window are identical.
+
+Migration `0022_usage_storage_kind.up.sql` extends both row-oriented tables' `kind` constraint with `storage_gb_seconds`. Existing rows need no rewrite: absence of a storage row means no previously-recorded storage usage, while successful zero-byte Prometheus queries persist an explicit zero row.
 
 ## How it works
 
 An hourly rollup loop (`usage.Service.Run`) writes rows to the `usage_hourly` table (migration `0006_usage.up.sql`) whenever both `BEX_CP_DB_URI` (the control-plane store) and `BEX_PROM_URL` (Prometheus) are set. Each row is keyed on `(resource_kind, service_id, kind, tier, window_start)` and is idempotent: re-processing a window (`ON CONFLICT … DO UPDATE`) never double-counts. On restart the loop catches up missed windows bounded to the last 48 hours.
 
-The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their CR name as `service_id` (name-as-id, the same documented deviation managed Postgres takes — [docs/ADR020-identifiers.md](ADR020-identifiers.md)).
+The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their CR name as `service_id` (name-as-id, the same documented deviation managed Postgres takes — [docs/ADR020-identifiers.md](ADR020-identifiers.md)). For each closed datastore window, the collector averages the kubelet used-byte gauge across the hour, sums all matching PVCs (including CNPG replicas), converts bytes to decimal GB, and multiplies by elapsed seconds. Per-meter catch-up cursors let storage backfill independently for up to 48 hours and idempotent upserts prevent double-counting when a window is retried.
 
 With `BEX_CP_DB_URI` set but `BEX_PROM_URL` absent the service is wired (the month-to-date read still works) but the metering side of the loop is skipped — only the retention compaction below runs.
 
@@ -84,7 +88,8 @@ Response:
       "serviceId": "mydb",
       "resourceKind": "postgres",
       "rows": [
-        { "kind": "instance_seconds", "tier": "basic-256mb", "total": 3600 }
+        { "kind": "instance_seconds", "tier": "basic-256mb", "total": 3600 },
+        { "kind": "storage_gb_seconds", "total": 7200 }
       ]
     }
   ]
@@ -115,6 +120,8 @@ query Usage($period: String) {
 
 The `usage` query is workspace-scoped — no `resourceId` argument needed. `period` is optional (`YYYY-MM`); omitting it returns the current calendar month. The `period` field in the response echoes back the queried month (identical semantics as REST). REST, GraphQL, and MCP are now capability-symmetric on historical period queries.
 
+`UsageRow.total` is a GraphQL `Float`, not `Int`: GraphQL's standard `Int` is only signed 32-bit, while one TB-month is already 2,628,000,000 storage GB-seconds. The service resolves an integer counter and IEEE-754 represents all realistic monthly totals here exactly; REST and MCP continue to serialize the same counter as an integer JSON number.
+
 ### MCP
 
 ```json
@@ -138,8 +145,8 @@ The `MonthToDate` verb checks `can_view` on the caller's workspace. A caller wit
 | --- | --- |
 | `BEX_CP_DB_URI` unset | All three adapters return HTTP 503 / GraphQL error / MCP error |
 | `BEX_PROM_URL` unset | The store reads still work and the retention compaction still runs; only the metering rollup doesn't (existing rows are served) |
-| Prometheus unreachable at rollup time | The affected window is skipped (logged); the query surface is unaffected |
+| Prometheus unreachable at rollup time | The affected storage window is deferred (logged) and retried before newer storage windows; the query surface remains available |
 
 ## Pre-declared drift from Render
 
-Render's public REST API and GraphQL surface have no usage or billing endpoints (billing is dashboard-only; verified against Render's OpenAPI spec 2026-07-09 — no `/usage`, `/billing`, or equivalent exists). This surface is therefore a bex extension. See [docs/ADR018-render-parity.md](ADR018-render-parity.md) § bex ahead of Render.
+Render's public REST API and GraphQL surface have no usage or billing endpoints (billing is dashboard-only; verified against Render's OpenAPI spec 2026-07-09 — no `/usage`, `/billing`, or equivalent exists). This surface is therefore a bex extension. Render's Postgres storage rate is `$0.30/GB-month`, prorated by the second, but applies to provisioned capacity; bex applies a 30%-lower `$0.21/GB-month` estimate to actual used bytes. Render has no independent Key Value storage charge; bex applying the same transparent used-storage rate to Valkey is a deliberate extension. See [docs/ADR018-render-parity.md](ADR018-render-parity.md) § bex ahead of Render.

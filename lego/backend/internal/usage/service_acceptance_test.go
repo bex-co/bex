@@ -175,7 +175,7 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	t.Logf("build_seconds (no k8s client, expected 0): %d", countByKind[buildKey])
 
 	// --- LatestUsageWindow must reflect w2 ---
-	latest, err := st.LatestUsageWindow(ctx, store.ResourceKindService, "srv-acc-001")
+	latest, err := st.LatestUsageWindow(ctx, store.ResourceKindService, "srv-acc-001", store.UsageKindInstanceSeconds)
 	if err != nil {
 		t.Fatalf("LatestUsageWindow: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestAcceptance_UsageCompaction(t *testing.T) {
 	pool, st := setupAcceptance(t, "tea-acc-002", "srv-acc-002", "compact-me")
 
 	// Seed hourly rows in a month 4 calendar months back — outside the default
-	// 3-month hot window whatever today's date is. All three kinds, and two
+	// 3-month hot window whatever today's date is. All four kinds, and two
 	// windows for instance_seconds so the SUM is exercised.
 	now := time.Now().UTC()
 	oldMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, -4, 0)
@@ -324,6 +324,7 @@ func TestAcceptance_UsageCompaction(t *testing.T) {
 		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", WindowStart: oldMonth.Add(11 * time.Hour), Quantity: 3600},
 		{Kind: store.UsageKindEgressBytes, WindowStart: oldMonth.Add(10 * time.Hour), Quantity: 2048},
 		{Kind: store.UsageKindBuildSeconds, WindowStart: oldMonth.Add(12 * time.Hour), Quantity: 120},
+		{Kind: store.UsageKindStorageGBSeconds, ResourceKind: store.ResourceKindPostgres, WindowStart: oldMonth.Add(12 * time.Hour), Quantity: 3600},
 	}
 	for _, row := range seed {
 		row.WorkspaceID, row.ServiceID = "tea-acc-002", "srv-acc-002"
@@ -366,8 +367,8 @@ func TestAcceptance_UsageCompaction(t *testing.T) {
 	).Scan(&monthlyRows); err != nil {
 		t.Fatalf("count usage_monthly: %v", err)
 	}
-	if monthlyRows != 3 { // one per (kind, tier) aggregate
-		t.Errorf("usage_monthly rows for %s: want 3, got %d", period, monthlyRows)
+	if monthlyRows != 4 { // one per (resource kind, kind, tier) aggregate
+		t.Errorf("usage_monthly rows for %s: want 4, got %d", period, monthlyRows)
 	}
 	if err := pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM usage_hourly WHERE workspace_id = 'tea-acc-002'
