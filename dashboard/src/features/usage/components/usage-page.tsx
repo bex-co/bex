@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { useState } from "react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -35,7 +36,18 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert.tsx";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select.tsx";
+import { SvgLineChart } from "@/features/metrics/components/svg-line-chart";
+import { seriesColor } from "@/features/metrics/components/chart-layout";
+import { periodFor, periodLabel } from "@/features/usage/lib/period";
 import { useUsage, type ServiceUsage, type UsageRow } from "../hooks/use-usage";
+import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 
 // --- unit conversion helpers ---
 
@@ -53,6 +65,19 @@ function buildSecondsToMinutes(seconds: number): string {
   return (seconds / 60).toFixed(1);
 }
 
+// --- month picker helpers ---
+
+/** Build options for `count` months starting `startFrom` months back (oldest first in JSX, but here newest-first). */
+function buildMonthOptions(
+  count: number,
+  startFrom = 0,
+): { value: string; label: string }[] {
+  return Array.from({ length: count }, (_, i) => {
+    const p = periodFor(i + startFrom);
+    return { value: p, label: periodLabel(p) };
+  });
+}
+
 // --- per-section data extraction ---
 
 interface ComputeRow {
@@ -62,12 +87,7 @@ interface ComputeRow {
   total: number;
 }
 
-interface BandwidthRow {
-  serviceId: string;
-  total: number;
-}
-
-interface BuildRow {
+interface ServiceTotalRow {
   serviceId: string;
   total: number;
 }
@@ -179,7 +199,7 @@ function BandwidthSection({
   rows,
   loading,
 }: {
-  rows: BandwidthRow[];
+  rows: ServiceTotalRow[];
   loading: boolean;
 }) {
   const { t } = useTranslations();
@@ -235,7 +255,7 @@ function BuildSection({
   rows,
   loading,
 }: {
-  rows: BuildRow[];
+  rows: ServiceTotalRow[];
   loading: boolean;
 }) {
   const { t } = useTranslations();
@@ -287,11 +307,76 @@ function BuildSection({
   );
 }
 
+// --- trend section ---
+
+function scaledSeries(points: TrendPoint[], key: keyof TrendPoint, divisor: number) {
+  return [
+    {
+      color: seriesColor(0),
+      points: points.map((p) => ({
+        timestamp: p.timestamp,
+        value: (p[key] as number) / divisor,
+      })),
+    },
+  ];
+}
+
+function TrendSection({ points, loading }: { points: TrendPoint[]; loading: boolean }) {
+  const { t } = useTranslations();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("usage.trendTitle")}</CardTitle>
+        <CardDescription>{t("usage.trendDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[180px] w-full rounded-md" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {t("usage.computeTitle")}
+              </p>
+              <SvgLineChart unit="h" series={scaledSeries(points, "compute", 3600)} />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {t("usage.bandwidthTitle")}
+              </p>
+              <SvgLineChart unit="MB" series={scaledSeries(points, "bandwidth", 1024 * 1024)} />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {t("usage.buildTitle")}
+              </p>
+              <SvgLineChart unit="min" series={scaledSeries(points, "build", 60)} />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- page ---
+
+const MONTH_OPTIONS = buildMonthOptions(5, 1);
+// Sentinel value for Radix Select (can't use empty string).
+const CURRENT_MONTH_SENTINEL = "__current__";
 
 export function UsagePage() {
   const { t } = useTranslations();
-  const { summary, loading, error } = useUsage();
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(CURRENT_MONTH_SENTINEL);
+  const period = selectedPeriod === CURRENT_MONTH_SENTINEL ? undefined : selectedPeriod;
+
+  const { summary, loading, error } = useUsage(period);
+  const { points: trendPoints, loading: trendLoading } = useUsageTrend();
 
   const services = summary?.services ?? [];
   const computeRows = extractRows<ComputeRow>(services, "instance_seconds", (svc, r) => ({
@@ -300,11 +385,11 @@ export function UsagePage() {
     tier: r.tier,
     total: r.total,
   }));
-  const bandwidthRows = extractRows<BandwidthRow>(services, "egress_bytes", (svc, r) => ({
+  const bandwidthRows = extractRows<ServiceTotalRow>(services, "egress_bytes", (svc, r) => ({
     serviceId: svc.serviceId,
     total: r.total,
   }));
-  const buildRows = extractRows<BuildRow>(services, "build_seconds", (svc, r) => ({
+  const buildRows = extractRows<ServiceTotalRow>(services, "build_seconds", (svc, r) => ({
     serviceId: svc.serviceId,
     total: r.total,
   }));
@@ -313,11 +398,28 @@ export function UsagePage() {
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
-          <div>
-            <h1 className="text-xl font-semibold">{t("usage.pageTitle")}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t("usage.pageSubtitle")}
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold">{t("usage.pageTitle")}</h1>
+              <p className="text-sm text-muted-foreground">
+                {t("usage.pageSubtitle")}
+              </p>
+            </div>
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger size="sm" className="w-44" aria-label={t("usage.monthPickerLabel")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CURRENT_MONTH_SENTINEL}>
+                  {t("usage.currentMonth")}
+                </SelectItem>
+                {MONTH_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {error && !summary && (
@@ -330,6 +432,7 @@ export function UsagePage() {
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />
           <BuildSection rows={buildRows} loading={loading} />
+          <TrendSection points={trendPoints} loading={trendLoading} />
         </div>
       </div>
     </DashboardLayout>

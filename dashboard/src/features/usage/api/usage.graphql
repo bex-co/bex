@@ -1,10 +1,12 @@
-# Workspace-scoped month-to-date usage (bex extension, no Render equivalent).
+# Workspace-scoped usage (bex extension, no Render equivalent).
 # Three kinds: instance_seconds (compute), egress_bytes (bandwidth),
 # build_seconds (CI/build) — displayed as hours, MB/GB, and minutes respectively.
 # resourceKind distinguishes App services from managed Postgres/KeyValue instances.
-query Usage {
-  usage {
+# period: optional calendar month YYYY-MM; defaults to the current month.
+query Usage($period: String) {
+  usage(period: $period) {
     workspaceId
+    period
     services {
       serviceId
       resourceKind

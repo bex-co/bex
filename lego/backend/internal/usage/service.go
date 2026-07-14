@@ -95,6 +95,7 @@ func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client
 // (seconds/bytes/seconds).
 type Summary struct {
 	WorkspaceID string
+	Period      string // "YYYY-MM" — the calendar month this summary covers
 	Services    []ServiceUsage
 }
 
@@ -128,7 +129,9 @@ func (s *Service) monthToDateAt(ctx context.Context, now time.Time) (Summary, er
 	if err != nil {
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
-	return summarise(tenantID, rows), nil
+	sum := summarise(tenantID, rows)
+	sum.Period = now.Format("2006-01")
+	return sum, nil
 }
 
 // MonthToDate returns the calling workspace's month-to-date usage summary

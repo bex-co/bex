@@ -42,6 +42,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, usageResponse{}, err
 		}
-		return nil, toUsageResponse(summary, now), nil
+		return nil, toUsageResponse(summary), nil
 	})
 }

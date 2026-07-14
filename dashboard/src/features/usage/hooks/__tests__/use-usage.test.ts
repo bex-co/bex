@@ -58,6 +58,7 @@ describe("useUsage", () => {
     expect(result.current.error).toBeUndefined();
     expect(result.current.summary).toEqual({
       workspaceId: "ws-abc123",
+      period: "",
       services: [
         {
           serviceId: "eden-cms-v2",
@@ -135,5 +136,58 @@ describe("useUsage", () => {
         fetchPolicy: "cache-and-network",
       }),
     );
+  });
+
+  it("passes period variable when a period is provided", () => {
+    mockUseQuery.mockReturnValue(createLoadingQueryResult());
+
+    renderHook(() => useUsage("2026-06"));
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ variables: { period: "2026-06" } }),
+    );
+  });
+
+  it("passes empty variables when no period is provided", () => {
+    mockUseQuery.mockReturnValue(createLoadingQueryResult());
+
+    renderHook(() => useUsage());
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ variables: {} }),
+    );
+  });
+
+  it("exposes the period field from the response summary", () => {
+    mockUseQuery.mockReturnValue(
+      createSuccessQueryResult({
+        usage: {
+          workspaceId: "ws-abc",
+          period: "2026-06",
+          services: [],
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useUsage("2026-06"));
+
+    expect(result.current.summary?.period).toBe("2026-06");
+  });
+
+  it("returns empty-string period when the field is absent from the response", () => {
+    mockUseQuery.mockReturnValue(
+      createSuccessQueryResult({
+        usage: {
+          workspaceId: "ws-abc",
+          services: [],
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useUsage());
+
+    expect(result.current.summary?.period).toBe("");
   });
 });

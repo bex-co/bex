@@ -364,6 +364,87 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 }
 
+// TestGraphQLPeriodArg verifies that the `period` argument is forwarded to the
+// store query and that the echoed `period` field matches what was requested.
+func TestGraphQLPeriodArg(t *testing.T) {
+	// Seed one row in June 2026 and one in July 2026.
+	app := store.App{ID: "srv-003", TenantID: "tea-003", Name: "periodapp", Tier: "free"}
+	st := newMemUsageStore(app)
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-003", ServiceID: "srv-003",
+		Kind: store.UsageKindInstanceSeconds, Tier: "free",
+		WindowStart: time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC),
+		Quantity:    5400,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-003", ServiceID: "srv-003",
+		Kind: store.UsageKindInstanceSeconds, Tier: "free",
+		WindowStart: time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC),
+		Quantity:    3600,
+	})
+
+	svc := svcWithTenant(st, "tea-003")
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("build schema: %v", err)
+	}
+
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:bob"})
+
+	// Query for June — should return 5400 and echo period "2026-06".
+	result := graphql.Do(graphql.Params{
+		Schema:         schema,
+		RequestString:  `query($period: String) { usage(period: $period) { workspaceId period services { serviceId rows { kind total } } } }`,
+		VariableValues: map[string]any{"period": "2026-06"},
+		Context:        ctx,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", result.Errors)
+	}
+	data, _ := result.Data.(map[string]any)
+	usageData, _ := data["usage"].(map[string]any)
+	if usageData["period"] != "2026-06" {
+		t.Errorf("period: want 2026-06, got %v", usageData["period"])
+	}
+	services, _ := usageData["services"].([]any)
+	if len(services) != 1 {
+		t.Fatalf("services: want 1, got %d", len(services))
+	}
+	rows, _ := services[0].(map[string]any)["rows"].([]any)
+	if len(rows) != 1 {
+		t.Fatalf("rows: want 1 (June only), got %d", len(rows))
+	}
+	if total, _ := rows[0].(map[string]any)["total"].(int); total != 5400 {
+		t.Errorf("total: want 5400, got %v", rows[0].(map[string]any)["total"])
+	}
+}
+
+// TestGraphQLPeriodInResponse verifies that the `period` field on UsageSummary
+// echoes the queried month even without an explicit period argument.
+func TestGraphQLPeriodInResponse(t *testing.T) {
+	svc := svcWithTenant(seedStore(), "tea-001")
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatalf("build schema: %v", err)
+	}
+
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+	result := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ usage { period } }`,
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", result.Errors)
+	}
+	data, _ := result.Data.(map[string]any)
+	usageData, _ := data["usage"].(map[string]any)
+	// fixedClock is 2026-07-15 so period should be "2026-07".
+	if usageData["period"] != "2026-07" {
+		t.Errorf("period: want 2026-07, got %v", usageData["period"])
+	}
+}
+
 // --- cross-adapter consistency ---
 
 // TestAdapterConsistency verifies that the REST and GraphQL adapters return the

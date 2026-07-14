@@ -60,14 +60,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toUsageResponse(summary, now))
+		core.WriteJSON(w, http.StatusOK, toUsageResponse(summary))
 	})
 }
 
 // toUsageResponse maps a Summary onto the shared JSON envelope. Services is
 // always a non-nil slice so an empty workspace serialises as [] not null.
-func toUsageResponse(sum Summary, now time.Time) usageResponse {
-	period := now.Format("2006-01")
+func toUsageResponse(sum Summary) usageResponse {
+	period := sum.Period
 	svcs := make([]usageServiceEntry, 0, len(sum.Services))
 	for _, svc := range sum.Services {
 		rows := make([]usageRow, 0, len(svc.Rows))

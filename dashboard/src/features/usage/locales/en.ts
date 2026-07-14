@@ -69,6 +69,22 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Could not load usage",
     description: "Error state heading on the Usage page",
   },
+  "usage.monthPickerLabel": {
+    message: "Select month",
+    description: "Aria-label for the month-picker select on the Usage page",
+  },
+  "usage.currentMonth": {
+    message: "Current month",
+    description: "Default option in the month picker meaning the current calendar month",
+  },
+  "usage.trendTitle": {
+    message: "3-Month Trend",
+    description: "Heading for the trend view showing last 3 months of usage",
+  },
+  "usage.trendDescription": {
+    message: "Total per meter over the last three calendar months",
+    description: "Subtitle for the trend charts on the Usage page",
+  },
 };
 
 export default enUsage;

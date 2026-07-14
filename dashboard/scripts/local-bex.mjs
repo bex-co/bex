@@ -716,44 +716,55 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { metrics: [] };
     case "MonthToDateBandwidth":
       return { monthToDateBandwidth: null };
-    // Workspace-scoped month-to-date usage (w8/m2 + m3): one entry per service
+    // Workspace-scoped month-to-date usage (w8/m2–m3 + m6): one entry per service
     // per kind. instance_seconds drives the Compute section; egress_bytes drives
-    // Bandwidth; build_seconds drives Build Minutes. Values are intentionally
-    // realistic — a mid-month workspace consuming starter-tier compute.
-    case "Usage":
+    // Bandwidth; build_seconds drives Build Minutes. Values vary by period so the
+    // trend view shows distinct bars across the last 3 months.
+    case "Usage": {
+      const period = variables.period || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      })();
+      // Scale values by month offset so historical periods show lower totals.
+      const [, mm] = period.split("-").map(Number);
+      const currentMm = new Date().getMonth() + 1;
+      const monthsBack = ((currentMm - mm + 12) % 12);
+      const scale = Math.max(0.3, 1 - monthsBack * 0.25);
       return {
         usage: {
           __typename: "UsageSummary",
           workspaceId: "local-workspace",
+          period,
           services: [
             {
               __typename: "ServiceUsage",
               serviceId: "eden-cms-v2",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: 432000 },
-                { __typename: "UsageRow", kind: "egress_bytes", tier: "", total: 524288000 },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 1800 },
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(432000 * scale) },
+                { __typename: "UsageRow", kind: "egress_bytes", tier: "", total: Math.round(524288000 * scale) },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(1800 * scale) },
               ],
             },
             {
               __typename: "ServiceUsage",
               serviceId: "email-worker",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: 216000 },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 900 },
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(216000 * scale) },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(900 * scale) },
               ],
             },
             {
               __typename: "ServiceUsage",
               serviceId: "nightly-report",
               rows: [
-                { __typename: "UsageRow", kind: "instance_seconds", tier: "free", total: 3600 },
-                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: 300 },
+                { __typename: "UsageRow", kind: "instance_seconds", tier: "free", total: Math.round(3600 * scale) },
+                { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(300 * scale) },
               ],
             },
           ],
         },
       };
+    }
     case "InstanceTypes":
       return {
         instanceTypes: [

@@ -69,6 +69,22 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "无法加载用量数据",
     description: "Error state heading on the Usage page",
   },
+  "usage.monthPickerLabel": {
+    message: "选择月份",
+    description: "Aria-label for the month-picker select on the Usage page",
+  },
+  "usage.currentMonth": {
+    message: "当月",
+    description: "Default option in the month picker meaning the current calendar month",
+  },
+  "usage.trendTitle": {
+    message: "近三月趋势",
+    description: "Heading for the trend view showing last 3 months of usage",
+  },
+  "usage.trendDescription": {
+    message: "近三个自然月的各计量指标合计",
+    description: "Subtitle for the trend charts on the Usage page",
+  },
 };
 
 export default zhUsage;

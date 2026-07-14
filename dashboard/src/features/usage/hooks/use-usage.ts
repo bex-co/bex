@@ -30,6 +30,7 @@ export interface ServiceUsage {
 
 export interface UsageSummary {
   workspaceId: string;
+  period: string; // "YYYY-MM"
   services: ServiceUsage[];
 }
 
@@ -39,8 +40,11 @@ export interface UseUsageResult {
   error: Error | undefined;
 }
 
-export function useUsage(): UseUsageResult {
+export function useUsage(period?: string): UseUsageResult {
   const { data, loading, error } = useQuery(UsageDocument, {
+    // {} and { period } key into separate Apollo cache entries — intentional so
+    // current-month and historical queries never share a cache slot.
+    variables: period ? { period } : {},
     pollInterval: 60_000,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
@@ -52,6 +56,7 @@ export function useUsage(): UseUsageResult {
       raw
         ? {
             workspaceId: raw.workspaceId ?? "",
+            period: raw.period ?? "",
             services: (raw.services ?? [])
               .filter(Boolean)
               .map((s) => ({

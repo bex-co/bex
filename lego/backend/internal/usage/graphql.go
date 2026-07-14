@@ -49,6 +49,7 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
 		"workspaceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.WorkspaceID })},
+		"period":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
 		"services":    &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
 	},
 })
@@ -58,8 +59,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"usage": &graphql.Field{
 			Type: usageSummaryGQLType,
+			Args: graphql.FieldConfigArgument{
+				"period": &graphql.ArgumentConfig{
+					Type:        graphql.String,
+					Description: "Calendar month YYYY-MM; defaults to the current month.",
+				},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.MonthToDate(p.Context)
+				period, _ := p.Args["period"].(string)
+				now := resolvePeriodEnd(period, s.Now().UTC())
+				return s.monthToDateAt(p.Context, now)
 			},
 		},
 	}

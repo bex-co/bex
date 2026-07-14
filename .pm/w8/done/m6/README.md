@@ -1,20 +1,20 @@
 # w8 · m6 — Usage history: GraphQL period support + dashboard multi-month view
 
-**Worker:** worker8 **Goal:** Close the surface asymmetry where REST (`?period=`) and MCP (`period` arg) can already return a past month's usage but GraphQL can't, and give the dashboard a way to see it — a month picker plus a short trend view over the last few months, reusing the metrics feature's existing chart component. **Status:** todo
+**Worker:** worker8 **Goal:** Close the surface asymmetry where REST (`?period=`) and MCP (`period` arg) can already return a past month's usage but GraphQL can't, and give the dashboard a way to see it — a month picker plus a short trend view over the last few months, reusing the metrics feature's existing chart component. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                      | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design: month-picker vs. trailing-N-months trend, referencing Render's historical/previous-period billing view (Playwright capture, extends m3's reference) | 30m | —          |
-| t002 | GraphQL: add a `period` argument to the `usage` query, reusing the core `Usage` verb (mirrors REST)         | 30m | t001       |
-| t003 | Apollo wiring + `useUsage` hook: accept a period param, refetch on change                                   | 30m | t002       |
-| t004 | Dashboard: month selector on the Usage page wired to the hook                                                | 35m | t003       |
-| t005 | Dashboard: trend view — last-N-months totals per meter, reusing `svg-line-chart` from the metrics feature   | 40m | t004       |
-| t006 | Render parity: compare against Render's historical/previous-period billing view; flag drift                 | 30m | t005       |
-| t007 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t006       |
-| t008 | Test coverage — GraphQL period-arg tests, hook period-change tests, empty-history state                      | 35m | t006       |
-| t009 | Closeout — DoD met → move milestone to `done/`                                                               | 10m | t008       |
+| t001 | Design: month-picker vs. trailing-N-months trend, referencing Render's historical/previous-period billing view (Playwright capture, extends m3's reference) | 30m | — | — **DONE** |
+| t002 | GraphQL: add a `period` argument to the `usage` query, reusing the core `Usage` verb (mirrors REST)         | 30m | t001 | — **DONE** |
+| t003 | Apollo wiring + `useUsage` hook: accept a period param, refetch on change                                   | 30m | t002 | — **DONE** |
+| t004 | Dashboard: month selector on the Usage page wired to the hook                                                | 35m | t003 | — **DONE** |
+| t005 | Dashboard: trend view — last-N-months totals per meter, reusing `svg-line-chart` from the metrics feature   | 40m | t004 | — **DONE** |
+| t006 | Render parity: compare against Render's historical/previous-period billing view; flag drift                 | 30m | t005 | — **DONE** |
+| t007 | Simplify — `/simplify` over the code this milestone changed                                                  | 20m | t006 | — **DONE** |
+| t008 | Test coverage — GraphQL period-arg tests, hook period-change tests, empty-history state                      | 35m | t006 | — **DONE** |
+| t009 | Closeout — DoD met → move milestone to `done/`                                                               | 10m | t008 | — **DONE** |
 
 ## Definition of done
 

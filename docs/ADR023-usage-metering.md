@@ -96,9 +96,10 @@ Response:
 ### GraphQL
 
 ```graphql
-{
-  usage {
+query Usage($period: String) {
+  usage(period: $period) {
     workspaceId
+    period
     services {
       serviceId
       resourceKind
@@ -112,7 +113,7 @@ Response:
 }
 ```
 
-The `usage` query is workspace-scoped — no `resourceId` argument needed. Period always defaults to the current calendar month; use REST `?period=` for historical queries.
+The `usage` query is workspace-scoped — no `resourceId` argument needed. `period` is optional (`YYYY-MM`); omitting it returns the current calendar month. The `period` field in the response echoes back the queried month (identical semantics as REST). REST, GraphQL, and MCP are now capability-symmetric on historical period queries.
 
 ### MCP
 
