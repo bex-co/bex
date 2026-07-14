@@ -47,7 +47,22 @@ spec:
                 "rootDirectory": "/var/lib/registry",
                 "gc": true,
                 "gcDelay": "1h",
-                "gcInterval": "24h"
+                "gcInterval": "24h",
+                "retention": {
+                  "dryRun": false,
+                  "policies": [
+                    {
+                      "repositories": ["**"],
+                      "deleteUntagged": true,
+                      "keepTags": [
+                        {
+                          "patterns": [".*"],
+                          "mostRecentlyPushedCount": 5
+                        }
+                      ]
+                    }
+                  ]
+                }
               },
               "http": {
                 "address": "0.0.0.0",
@@ -67,24 +82,7 @@ spec:
                   }
                 }
               },
-              "log": { "level": "info" },
-              "extensions": {
-                "retention": {
-                  "dryRun": false,
-                  "delay": "2h",
-                  "policies": [
-                    {
-                      "repositories": [".*"],
-                      "keepTags": [
-                        {
-                          "patterns": [".*"],
-                          "mostRecentlyPushedCount": 5
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
+              "log": { "level": "info" }
             }
         # Do NOT use the chart's secretFiles (it defaults to admin:admin). The
         # htpasswd is mounted from the out-of-band zot-htpasswd Secret instead.

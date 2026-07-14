@@ -321,6 +321,10 @@ export function NewServicePage() {
   useEffect(() => {
     if (nameEdited) return;
     if (tab === "github" && selectedRepo) {
+      // Intentional sync of the name field to the selected source while the
+      // user hasn't hand-edited it (guarded by nameEdited); the effect reacts
+      // to selection changes, so a synchronous set here is the desired behavior.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(repoNameSlug(selectedRepo.fullName));
       setBranch((b) => b || selectedRepo.defaultBranch);
     } else if (tab === "git" && gitUrl) {

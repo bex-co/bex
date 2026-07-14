@@ -44,6 +44,14 @@ func TestLiveAcceptance(t *testing.T) {
 	if dbURI == "" {
 		t.Skip("BEX_TEST_DB_URI not set")
 	}
+	// This drives a REAL App CR against a REAL cluster + operator, so it needs a
+	// KUBECONFIG pointing at a running mock cluster (see the doc comment above).
+	// CI sets BEX_TEST_DB_URI for the other integration tests but has no such
+	// cluster, so gate on KUBECONFIG too — otherwise ctrl.GetConfig() below
+	// fatals in CI. Manual/local runs export KUBECONFIG to opt in.
+	if os.Getenv("KUBECONFIG") == "" {
+		t.Skip("KUBECONFIG not set — TestLiveAcceptance is manual/local-only (needs a mock cluster + operator)")
+	}
 	ctx := context.Background()
 
 	if err := store.Migrate(dbURI); err != nil {

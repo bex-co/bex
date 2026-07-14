@@ -36,18 +36,22 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      openfga:
-        image: openfga/openfga:latest
-        env:
-          OPENFGA_DATASTORE_ENGINE: memory
-        ports:
-          - 8080:8080
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: lego/backend/go.mod
           cache-dependency-path: lego/backend/go.sum
+      # OpenFGA runs as a step, not a `services:` container: its image entrypoint
+      # is the bare binary and the HTTP server only starts under the `run`
+      # subcommand — which a services: block can't supply, so a service container
+      # exits immediately (help text) and the seed below would time out.
+      - name: start OpenFGA (in-memory)
+        run: |
+          docker run -d --name openfga \
+            -e OPENFGA_DATASTORE_ENGINE=memory \
+            -p 8080:8080 -p 8081:8081 \
+            openfga/openfga:latest run
       - name: seed OpenFGA (bex store + authz model)
         run: |
           # Wait for OpenFGA to accept connections (no HEALTHCHECK in its image).

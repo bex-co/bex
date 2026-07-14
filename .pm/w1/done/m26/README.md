@@ -1,6 +1,6 @@
 # w1 · m26 — Harden the build-image pull path (Zot node access, retention, drift guards)
 
-**Worker:** worker1 **Goal:** Every tenant node — including ones the autoscaler mints fresh — can pull a git-built image with zero hand-applied config, the registry can't silently fill again, and the prod-DB ownership drift that caused it is guarded against recurrence. **Status:** in-progress (t007 live verification pending)
+**Worker:** worker1 **Goal:** Every tenant node — including ones the autoscaler mints fresh — can pull a git-built image with zero hand-applied config, the registry can't silently fill again, and the prod-DB ownership drift that caused it is guarded against recurrence. **Status:** done — DoD live-verified PASS on prod 2026-07-13 (fresh node `bex-tenant-0-b5swk-nz9pc` pulled `agentmarketcap:gen-3` first-try, zero manual config). Verification surfaced and fixed two prod incidents (Zot down 21h: missing registry Secrets + an m26 `zot.yaml` retention-placement bug) and, separately, an image/gitops version skew whose deploy path was unblocked by fixing origin/main's red CI. The `zot.yaml`/`prometheus.yaml` fixes ship durably on the next `/ship` (which also redeploys HEAD, clearing the bex-api/operator/pg-sni-proxy crashloop — a separate incident, not part of this milestone's DoD).
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | Zot volume-usage alert rule added to the `w3/m6` Alertmanager rule pack                                                                                                   | 20m | t003       | — **DONE** |
 | t005 | Root-cause the App-generation churn loop that pushed 51 generations on `eden-cms-v2-git` (reconciler loop? clone-secret refresh?) and fix the underlying trigger          | 45m | —          | — **DONE** |
 | t006 | Migration-ownership guard: root-cause how `tenant_invites` was created owned by `postgres` instead of `bex`, fix any other drifted tables, add a CI/migration-convention check preventing recurrence | 40m | —          | — **DONE** |
-| t007 | Live verification: force the autoscaler to mint a fresh tenant node, confirm a git-built image pulls with zero hand-applied config                                       | 30m | t001, t002 |            |
-| t008 | Simplify: run `/simplify` over the code/config this milestone changed                                                                                                     | 30m | t007       |            |
+| t007 | Live verification: force the autoscaler to mint a fresh tenant node, confirm a git-built image pulls with zero hand-applied config                                       | 30m | t001, t002 | — **DONE** |
+| t008 | Simplify: run `/simplify` over the code/config this milestone changed                                                                                                     | 30m | t007       | — **DONE** |
 | t009 | Test coverage: meaningful tests/checks for the migration-ownership guard and (where feasible) the Zot retention policy                                                    | 30m | t007       | — **DONE** |
-| t010 | Closeout: verify DoD, mark done, move to `w1/done/m26/`                                                                                                                   | 15m | t008, t009 |            |
+| t010 | Closeout: verify DoD, mark done, move to `w1/done/m26/`                                                                                                                   | 15m | t008, t009 | — **DONE** |
 
 ## Definition of done
 

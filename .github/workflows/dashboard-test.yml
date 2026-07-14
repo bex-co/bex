@@ -25,13 +25,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "yarn"
-          cache-dependency-path: dashboard/yarn.lock
+      # Enable corepack BEFORE any `yarn` runs: package.json pins
+      # packageManager: yarn@4.17.0, and the runner's classic global yarn aborts
+      # on that pin ("current global version of Yarn ..."). setup-node's own
+      # `cache: yarn` would trip it during cache probing, so we don't use it —
+      # we cache Yarn's offline mirror (.yarn/cache) directly instead.
+      - name: enable corepack (yarn 4.17.0 per packageManager)
+        run: corepack enable
+      - name: cache yarn
+        uses: actions/cache@v4
+        with:
+          path: dashboard/.yarn/cache
+          key: yarn-${{ runner.os }}-${{ hashFiles('dashboard/yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
       - name: install dependencies
         working-directory: dashboard
-        run: |
-          corepack enable
-          yarn install --frozen-lockfile
+        run: yarn install --immutable
       - name: typecheck + lint + test
         working-directory: dashboard
         run: yarn typecheck && yarn lint && yarn test
