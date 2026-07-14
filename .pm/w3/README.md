@@ -16,11 +16,13 @@
 - [x] **m9** — Deploy notifications: email on deploy success/failure (9 tasks) — **done 2026-07-13** ([done/m9](done/m9/README.md)): `backend/internal/notifications` (store/service/REST/GraphQL/MCP) + the reconciler's `DeployNotifier` hook + the dashboard Settings panel. `/simplify` caught and fixed the notify hook blocking the reconciler's hot path before it shipped.
 - [x] **m10** — Extended resource metrics: autoscale target, disk, DB connections (9 tasks) — **done 2026-07-13** ([done/m10](done/m10/README.md)): `cpu_target`/`memory_target` (App-scoped, `Metrics`) + a new `DatastoreMetrics` verb for `disk`/`disk_capacity`/`db_connections`/`replication_lag` (Database/KeyValue-scoped), across REST/GraphQL/MCP + a dashboard `DatastoreMetricsPanel`. Replication-lag is wired but gated on `highAvailabilityEnabled` (omitted, not a fake zero) until `w1/m22` ships.
 - [ ] **m11** — Outbound event webhooks (Render `/webhooks` parity) (12 tasks) ← from `/pm-brainstorm for more` 2026-07-12 (last unowned row in the parity ledger's Platform events & integrations section; composes deploy lifecycle w2/m5 + SMTP courier w4/m7, sequenced after m7's in-flight service-events feed to share one instrumentation pass)
+- [ ] **m12** — Metrics `host`/`path` filter honesty fix (8 tasks) ← from `/pm-brainstorm more` 2026-07-13 (fourth pass; `docs/ADR006-bex-api.md:322` — host/path filters accepted but silently unapplied)
+- [ ] **m13** — Fix log-shipper N× duplication (7 tasks) ← promotes `004` 2026-07-13 (node-scope Alloy's cluster-wide pod discovery; needs a live multi-node cluster to verify safely)
 
 ## Inbox
 
-- `003.md` — Log Streams: forward logs to external observability tools (Render parity) — park until m5's shipper exists
-- `004.md` — log-shipper ships every stream N× (cluster-wide pod discovery on every node) — efficiency, filed by m8's `/simplify`; needs a Loki-synced cluster to verify (its failure mode is losing all logs)
+> `003.md` closed 2026-07-13 — conflicts with `.pm/DO_NOT_DO.md`'s "external log/metric drains — non-goal" entry; not built, moved to `done/003.md`.
+> `004.md` promoted to **m13** 2026-07-13; note moved to `done/`.
 
 > `002.md` (request logs + structured filters) promoted to **m8** 2026-07-12; note moved to `done/`.
 
