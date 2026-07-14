@@ -75,16 +75,20 @@ Reprovision the cluster the normal way (Cluster API + Argo bootstrap — the pla
 aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
   "s3://$TF_STATE_BUCKET/etcd-snapshots/<latest>.db.gz" . && gunzip <latest>.db.gz
 
-# 2. boot a throwaway etcd from it (any machine with docker) — use the image
-#    pinned in the backup CronJob; it matches the cluster's kubeadm etcd
-docker run --rm -v "$PWD":/data registry.k8s.io/etcd:3.5.15-0 \
-  etcdutl snapshot restore /data/<latest>.db --data-dir /data/restored
-docker run -d --name etcd-restore -v "$PWD":/data registry.k8s.io/etcd:3.5.15-0 \
-  etcd --data-dir /data/restored
+# 2. boot a throwaway etcd from it — use the cluster's actual etcd image
+#    (check with: kubectl -n kube-system get pod etcd-<node> -o jsonpath='{.spec.containers[0].image}')
+#    etcdutl is in 3.6.x+ images; it is NOT in 3.5.15-0. The restore step requires
+#    etcdutl, so even if the CronJob uses 3.5.15-0 for the snapshot, use the cluster's
+#    actual image (e.g. 3.6.8-0) for the restore:
+ETCD_IMAGE=registry.k8s.io/etcd:3.6.8-0   # replace with your cluster's actual image
+docker run --rm -v "$PWD":/data --entrypoint /usr/local/bin/etcdutl "$ETCD_IMAGE" \
+  snapshot restore /data/<latest>.db --data-dir /data/restored
+docker run -d --name etcd-restore -v "$PWD":/data --entrypoint /usr/local/bin/etcd "$ETCD_IMAGE" \
+  --data-dir /data/restored
 
 # 3. list and extract the App CRs (JSON), re-apply to the new cluster
-docker exec etcd-restore etcdctl get /registry/app.bex.co --prefix --keys-only
-docker exec etcd-restore etcdctl get /registry/app.bex.co/apps/<ns>/<name> \
+docker exec etcd-restore /usr/local/bin/etcdctl get /registry/app.bex.co --prefix --keys-only
+docker exec etcd-restore /usr/local/bin/etcdctl get /registry/app.bex.co/apps/<ns>/<name> \
   --print-value-only \
   | jq 'del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp,
             .metadata.managedFields, .metadata.finalizers, .status)' \
@@ -112,4 +116,4 @@ kubectl get apps.app.bex.co -A                         # verify
 
 **2026-07-05, local CAPD cluster (single-node, pre-m19):** The full chain ran against a real kubeadm cluster with the real bucket: the Job scheduled onto the control-plane node (nodeSelector + toleration), snapshotted live etcd over hostNetwork with the hostPath certs, uploaded, and pruned 10 objects down to the newest 7. Path A then recovered `/registry/app.bex.co/apps/default/beancount-cms` from the downloaded snapshot via a throwaway etcd. Test objects were removed from the bucket afterwards.
 
-**Multi-node topology re-verification (pending):** The 2026-07-05 test predates the w1/m19 rearchitecture (CAPH-owned network, tainted control plane, CAPI pivot). A re-drill against the current multi-node prod topology is planned; drill procedure and record target are in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records.
+**2026-07-14, CAPD 2-node mock cluster (w7/m29 drill):** Path A re-executed against the multi-node CAPD topology (1 control-plane + 1 worker, kubeadm-provisioned via CAPI). Snapshot taken via `registry.k8s.io/etcd:3.6.8-0` reaching etcd over the container's IP (not hostNetwork, since CAPD nodes are Docker containers). Restored with `etcdutl snapshot restore` using the same image. The `drill-test-app` App CR (`bex.co/drill: w7-m29-2026-07-14`) extracted cleanly via `--print-value-only | jq` and verified in the throwaway etcd. Duration: ~8 min including image pull. Key finding: the runbook pinned `3.5.15-0` for both snapshot and restore steps, but `etcdutl` (needed for restore) ships only in `3.6.x+` images — runbook corrected to use the cluster's actual etcd image. Full record in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records.

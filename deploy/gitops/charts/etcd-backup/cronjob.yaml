@@ -41,7 +41,7 @@ spec:
               effect: NoSchedule
           initContainers:
             - name: snapshot
-              image: registry.k8s.io/etcd:3.5.15-0
+              image: registry.k8s.io/etcd:3.6.8-0 # k8s 1.36.x kubeadm etcd; keep in sync with cluster
               command:
                 - etcdctl
                 - --endpoints=https://127.0.0.1:2379

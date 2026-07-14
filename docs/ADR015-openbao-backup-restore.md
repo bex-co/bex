@@ -72,6 +72,8 @@ aws --endpoint-url "$TF_STATE_ENDPOINT" s3 ls "s3://$TF_STATE_BUCKET/openbao-sna
 
 A Raft snapshot restore overwrites the live store with the snapshot's contents. The snapshot is sealed with the **master key from when it was taken** — so after restore, OpenBao unseals with the **same** unseal keys already in `.env` (`bao-init.sh` never rotates them). Restore onto a running, unsealed OpenBao:
 
+**Same-instance restore** (live OpenBao intact, same PVC, same master key — e.g. data corruption or runaway write):
+
 ```sh
 # 1. fetch + unpack the latest snapshot
 aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
@@ -82,9 +84,43 @@ kubectl -n secrets port-forward service/openbao 8200:8200 &
 export BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_ROOT_TOKEN"
 
 # 3. restore — the store (and all tenant secrets) is replaced by the snapshot
+#    The master key hasn't changed (same instance), so no --force is needed.
 bao operator raft snapshot restore <latest>.snap
 ```
 
-For a from-scratch rebuild (new PVC): let Argo bring OpenBao up, run `scripts/bao-init.sh` so the node initializes/unseals with the `.env` keys, then apply steps 1–3. `bao-init.sh` on a fresh node writes NEW keys to `.env` — if you are restoring an OLD snapshot, keep the old `.env` keys, because the restored data is sealed with the master key that matches them.
+**Fresh-node restore** (new PVC / new pod — Raft data gone, different master key):
 
-> **Restore drill pending (2026-07-12):** The backup CronJob is structurally complete and the role is least-privilege, but the restore path has not yet been executed against a live cluster. Full drill procedure and record target are in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records. Execute the drill and update that document before relying on this runbook in a real recovery.
+Do NOT run `bao-init.sh` before restoring: it writes NEW unseal keys to `.env`, making the snapshot (sealed with the old keys) unrecoverable. Instead:
+
+```sh
+# 1. Let Argo bring up a freshly initialized OpenBao (it auto-inits with new keys).
+#    Note the NEW root token for the API call in step 4.
+kubectl -n secrets exec openbao-0 -- \
+  bao operator init -key-shares=1 -key-threshold=1 -format=json > /tmp/fresh-init.json
+NEW_ROOT_TOKEN=$(jq -r .root_token /tmp/fresh-init.json)
+NEW_UNSEAL_KEY=$(jq -r .unseal_keys_b64[0] /tmp/fresh-init.json)
+bao operator unseal "$NEW_UNSEAL_KEY"   # unseal with new keys
+
+# 2. fetch + unpack the snapshot
+aws --endpoint-url "$TF_STATE_ENDPOINT" s3 cp \
+  "s3://$TF_STATE_BUCKET/openbao-snapshots/<latest>.snap.gz" . && gunzip <latest>.snap.gz
+
+# 3. reach OpenBao
+kubectl -n secrets port-forward service/openbao 8200:8200 &
+export BAO_ADDR=http://127.0.0.1:8200
+
+# 4. force-restore (bypasses master-key hash check — needed when instance has
+#    a different master key than the snapshot's)
+export BAO_TOKEN="$NEW_ROOT_TOKEN"
+bao operator raft snapshot restore -force <latest>.snap
+
+# 5. restart the OpenBao pod so it reloads from the restored Raft log
+kubectl -n secrets rollout restart statefulset/openbao
+
+# 6. unseal with the OLD .env keys (the restored data is sealed with the original master key)
+#    Keep old .env; do NOT let bao-init.sh overwrite it.
+export BAO_TOKEN="$BAO_ROOT_TOKEN"   # original root token from .env
+bao operator unseal "$BAO_UNSEAL_KEY_1"   # original unseal key(s) from .env
+```
+
+> **Tested 2026-07-14 (w7/m29 drill):** Fresh-node path executed against two local Docker containers. Key findings: (1) `--force` is required for fresh-node restore; plain `snapshot restore` returns `could not verify hash file`. (2) A pod restart is needed after `snapshot restore -force` so the Raft state is reloaded. (3) After restart, unseal with the ORIGINAL `.env` keys — the new instance's keys no longer work because the master key was replaced by the snapshot. Full record in [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md) §Drill records.

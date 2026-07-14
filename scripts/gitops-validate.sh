@@ -156,6 +156,22 @@ else
   echo "WARN: promtool not installed — skipping alerting-rule check/test (docs/ADR010-observability.md)" >&2
 fi
 
+# etcd snapshot image guard (w7/m29 drill): the CronJob's snapshot image must be ≥3.6.x.
+# etcdutl (required for 'snapshot restore' in the runbook) ships only in 3.6.x+ images.
+# A 3.5.x pin breaks the restore path even though the backup itself succeeds.
+echo "==> etcd-backup CronJob image version ≥3.6 (deploy/gitops/charts/etcd-backup/cronjob.yaml)"
+etcd_img="$(yq '.spec.jobTemplate.spec.template.spec.initContainers[] | select(.name == "snapshot") | .image' \
+  deploy/gitops/charts/etcd-backup/cronjob.yaml)"
+etcd_minor="$(echo "$etcd_img" | grep -oE '3\.[0-9]+' | head -1)"
+if [ -z "$etcd_minor" ]; then
+  echo "FAIL: could not parse etcd version from image '$etcd_img'" >&2; fail=1
+else
+  etcd_m="$(echo "$etcd_minor" | cut -d. -f2)"
+  if [ "$etcd_m" -lt 6 ]; then
+    echo "FAIL: etcd-backup CronJob uses '$etcd_img' (3.$etcd_m.x < 3.6.x) — restore requires etcdutl, which only ships in ≥3.6.x images (docs/ADR011-etcd-backup-restore.md)" >&2; fail=1
+  fi
+fi
+
 # bex-db backup guard (w2/m27 t009): spec.backup.barmanObjectStore must be present
 # so a future edit can't silently drop the backup config. Same structural-manifest
 # pattern as the network-policy and RBAC checks above.
