@@ -21,6 +21,8 @@
 
 ## Inbox
 
+- `005.md` — "deploy started" notification toggle (w3/m9 residual, sub-hour) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14; filed rather than scheduled — w3's queue is full
+
 > `003.md` closed 2026-07-13 — conflicts with `.pm/DO_NOT_DO.md`'s "external log/metric drains — non-goal" entry; not built, moved to `done/003.md`.
 > `004.md` promoted to **m13** 2026-07-13; note moved to `done/`.
 

@@ -32,6 +32,7 @@
 - [ ] **m26** — Workspace-level Env Groups page (10 tasks) ← from `/pm-brainstorm more tasks for w5 to achieve feature parity` 2026-07-13 (`docs/ADR018-render-parity.md` "Environment groups" row, UI service-scoped only — no workspace-level Env Groups page); backend `internal/envgroups` fully shipped
 - [x] **m27** — ~~Blueprints dashboard surface~~ **stale entry, fixed 2026-07-13**: this scope shipped as `w7/m27` (done 2026-07-13, list/detail/manifest/validate/sync, live-verified) — a concurrent `/pm-brainstorm` session materialized the identical proposal under `w7` before this README line was ever promoted to a real `w5/m27/` directory. No `w5/m27/` directory ever existed; nothing to move. See `w7/README.md`'s `m27` entry for the actual work.
 - [ ] **m28** — Dashboard SQL console for managed Postgres (8 tasks) ← from `/pm-brainstorm more` 2026-07-13 (second pass; `docs/ADR018-render-parity.md` "Read-only SQL query" row, UI cell)
+- [ ] **m29** — Deploy detail page: build log + status timeline (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (Render's per-deploy page; w5/m21 shipped the list only); build-log pane gated on `w7/m28`, coordinates with w2/m30–m32's deploy-object deepening
 
 ## Inbox
 

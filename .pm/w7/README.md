@@ -16,6 +16,8 @@
 - [x] **m10** — Security hygiene: image CVE scanning in CI + HTTP hardening headers (7 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `001`, `002` (each sub-hour)
 - [x] **m11** — Admission-time tenant-image signature verification (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`w6/006` shipped signing, verification was deferred and never picked back up — flagged three times across two workstreams)
 - [x] **m27** — Blueprints dashboard surface (list · manifest · validate · sync) (10 tasks) ← from `/pm-brainstorm more tasks for w5` 2026-07-13; closes last ✖ UI cell in parity ledger
+- [ ] **m28** — Build logs: ship `type=build` into the log store (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (ADR018 §Logs "`type=build` stays empty by design"; unblocks `w5/m29`); placed here for capacity — topical owner w3 has 4 open milestones (the m27 precedent)
+- [ ] **m29** — Execute and record the ADR031 restore drills (7 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (`w2/done/m27`'s "operational drills require live cluster execution" residual — etcd, OpenBao, and bex-db restores have never actually been run)
 
 ## Inbox
 
