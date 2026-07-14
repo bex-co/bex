@@ -298,6 +298,19 @@ type AppSpec struct {
 	Hosts []string `json:"hosts,omitempty"`
 }
 
+// PlatformSubdomain returns the slug the platform hostname is built from:
+// Subdomain when the control plane minted one, else name (typically the CR's
+// own Name) — the single fallback rule every reader of Subdomain (the
+// operator's Ingress/status host derivation, the static-site resolver, and
+// the custom-domain DNS-instructions surface) must apply identically, so it
+// lives here once instead of being hand-copied at each call site.
+func (s AppSpec) PlatformSubdomain(name string) string {
+	if s.Subdomain != "" {
+		return s.Subdomain
+	}
+	return name
+}
+
 // AutoscalingSpec declares the autoscaling policy for a service. When enabled,
 // the operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
 // live CPU/memory utilization vs the declared targets. Mirrors Render's Scaling

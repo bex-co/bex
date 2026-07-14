@@ -113,6 +113,35 @@ func TestCreate_OwnerIDLandsInTheNamedWorkspace(t *testing.T) {
 	}
 }
 
+// TestCreate_ResponseNameIsThePublicNameNotTheCRName guards w4/m19's
+// tenant-prefixed object naming (core.CRName) against leaking through the
+// create response: the App CR is object-named "tea-2-web" so two workspaces
+// can both own "web", but the AppView the caller sees back — which REST/
+// GraphQL both use verbatim as the service "id" (rest.go, graphql.go's "id"
+// resolver) — must read "web", the name dana actually typed, never the
+// internal composite. A client round-tripping that id into a later GET must
+// also resolve, which it does BECAUSE it is the public name: GetApp's first
+// candidate is CRName(acting, "web") = the real object name.
+func TestCreate_ResponseNameIsThePublicNameNotTheCRName(t *testing.T) {
+	svc := danaService()
+
+	view, err := svc.Create(ctxAs("dana"), CreateRequest{Name: "web", Image: "nginx", OwnerID: "tea-2"})
+	if err != nil {
+		t.Fatalf("Create(ownerId=tea-2): %v", err)
+	}
+	if view.Name != "web" {
+		t.Fatalf("create response name = %q, want the public name %q, not the tenant-prefixed CR name", view.Name, "web")
+	}
+
+	got, err := svc.Get(ctxAs("dana"), view.Name)
+	if err != nil {
+		t.Fatalf("round-tripping the returned id %q: %v", view.Name, err)
+	}
+	if got.Name != "web" {
+		t.Errorf("round-tripped name = %q, want web", got.Name)
+	}
+}
+
 func TestCreate_NoOwnerIDLandsInTheDefaultWorkspace(t *testing.T) {
 	svc := danaService()
 

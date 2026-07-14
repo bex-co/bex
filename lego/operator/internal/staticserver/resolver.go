@@ -135,11 +135,7 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	}
 	add(app.Spec.Host)
 	if app.Spec.Expose && baseDomain != "" {
-		subdomain := app.Spec.Subdomain
-		if subdomain == "" {
-			subdomain = app.Name
-		}
-		add(fmt.Sprintf("%s.%s", subdomain, baseDomain))
+		add(fmt.Sprintf("%s.%s", app.Spec.PlatformSubdomain(app.Name), baseDomain))
 	}
 	for _, h := range app.Spec.Hosts {
 		add(h)

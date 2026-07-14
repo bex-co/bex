@@ -274,7 +274,7 @@ func view(a *appv1alpha1.App) AppView {
 		asView = &v
 	}
 	return AppView{
-		Name:            a.Name,
+		Name:            publicName(a),
 		DisplayName:     a.Spec.DisplayName,
 		Type:            svcType,
 		Phase:           string(a.Status.Phase),
@@ -708,6 +708,15 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 			Tier:     desired.Tier,
 		})
 		if err != nil {
+			// Same TOCTOU backstop as create() (w4/m19): applyCreate's own
+			// GetApp pre-check can miss a duplicate that lands concurrently
+			// between the check and this write; the store's UNIQUE(tenant_id,
+			// name) constraint still catches it and must classify as
+			// ErrConflict here too, or a blueprint-stack race would 500
+			// instead of 409.
+			if errors.Is(err, store.ErrConflict) {
+				return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+			}
 			return AppView{}, fmt.Errorf("creating service record: %w", err)
 		}
 		// Stamp the managed-by + app-id labels so the projector's byID index

@@ -1,22 +1,22 @@
 # w4 · m19 — Duplicate service names: workspace-unique names + globally-unique subdomains (Render-consistent)
 
-**Worker:** worker4 **Goal:** Creating a service whose name is already used in the caller's workspace is cleanly rejected ("Name is already in use", 409) with a suggested free alternative (`beancount-cms-v2` taken → suggest `beancount-cms-v2-1`), while two _different_ workspaces can both own `beancount-cms` — the public URL stays globally unique via a Render-style random slug suffix (`beancount-cms-bkxk.<base>`). **Status:** todo
+**Worker:** worker4 **Goal:** Creating a service whose name is already used in the caller's workspace is cleanly rejected ("Name is already in use", 409) with a suggested free alternative (`beancount-cms-v2` taken → suggest `beancount-cms-v2-1`), while two _different_ workspaces can both own `beancount-cms` — the public URL stays globally unique via a Render-style random slug suffix (`beancount-cms-bkxk.<base>`). **Status:** done — all 11 tasks complete; proven live via `scripts/name-conflict-e2e.sh` (two runs, both green) against the real CAPD mock cluster; backend `go test ./...`, operator `make test`, dashboard `yarn test` (919 tests) all green; a real correctness bug (the create response leaking the tenant-prefixed CR name instead of the public service name) was found and fixed during the t009 simplify pass, with a regression test added
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                                  | est | depends_on       |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------------- |
-| t001 | Capture Render's duplicate-name behavior as a render-artifact (workspace-unique names; slug ≠ name; random subdomain suffix)                             | 15m | —                |
-| t002 | Store + CRD: persist a globally-unique subdomain slug (`apps.slug` UNIQUE migration; `spec.subdomain`; mint `-xxxx` suffix on global collision)          | 45m | t001             |
-| t003 | Core.Create: same-workspace duplicate → clean 409 (no more silent upsert); cross-tenant same name allowed (collision-free CR naming); fix 500-on-conflict | 45m | t002             |
-| t004 | Operator: derive the platform host from the stored slug, not `app.Name` (`effectiveHosts`, static resolver, status URL)                                  | 30m | t002             |
-| t005 | Name-availability + suggestion surface: query returns `available` / taken + next free `name-N` suggestion                                                | 30m | t003             |
-| t006 | Dashboard create form: debounced availability check, inline "Name is already in use", suggested-name prefill, conflict-aware create error                | 40m | t005             |
-| t007 | Verify e2e: same workspace duplicate → 409 + suggestion in the form; two workspaces, same name → two live services with distinct suffixed URLs           | 30m | t003, t004, t006 |
-| t008 | Render parity — same 409 shape + semantics across REST/GraphQL/MCP + dashboard; update the ADR018 create-service row (upsert → reject) and MCP tool docs | 20m | t007             |
-| t009 | Simplify — run `/simplify` over the code this milestone changed                                                                                          | 20m | t008             |
-| t010 | Test coverage — meaningful tests for duplicate-name behavior across surfaces, slug minting, operator host derivation                                     | 30m | t008             |
-| t011 | Closeout — DoD met → move milestone to `done/`                                                                                                           | 10m | t010             |
+| id   | title                                                                                                                                                       | est | depends_on       |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------------- |
+| t001 | Capture Render's duplicate-name behavior as a render-artifact (workspace-unique names; slug ≠ name; random subdomain suffix) — **DONE**                       | 15m | —                |
+| t002 | Store + CRD: persist a globally-unique subdomain slug (`apps.slug` UNIQUE migration; `spec.subdomain`; mint `-xxxx` suffix on global collision) — **DONE**    | 45m | t001             |
+| t003 | Core.Create: same-workspace duplicate → clean 409 (no more silent upsert); cross-tenant same name allowed (collision-free CR naming); fix 500-on-conflict — **DONE** | 45m | t002             |
+| t004 | Operator: derive the platform host from the stored slug, not `app.Name` (`effectiveHosts`, static resolver, status URL) — **DONE**                            | 30m | t002             |
+| t005 | Name-availability + suggestion surface: query returns `available` / taken + next free `name-N` suggestion — **DONE**                                          | 30m | t003             |
+| t006 | Dashboard create form: debounced availability check, inline "Name is already in use", suggested-name prefill, conflict-aware create error — **DONE**          | 40m | t005             |
+| t007 | Verify e2e: same workspace duplicate → 409 + suggestion in the form; two workspaces, same name → two live services with distinct suffixed URLs — **DONE**     | 30m | t003, t004, t006 |
+| t008 | Render parity — same 409 shape + semantics across REST/GraphQL/MCP + dashboard; update the ADR018 create-service row (upsert → reject) and MCP tool docs — **DONE** | 20m | t007             |
+| t009 | Simplify — run `/simplify` over the code this milestone changed — **DONE**                                                                                     | 20m | t008             |
+| t010 | Test coverage — meaningful tests for duplicate-name behavior across surfaces, slug minting, operator host derivation — **DONE**                                | 30m | t008             |
+| t011 | Closeout — DoD met → move milestone to `done/` — **DONE**                                                                                                      | 10m | t010             |
 
 ## Definition of done
 

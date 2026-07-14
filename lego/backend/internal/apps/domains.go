@@ -77,10 +77,7 @@ func domainType(hostname string) string {
 // or hand-applied). Never app.Name alone: two workspaces' same-named Apps
 // would otherwise get identical, colliding DNS instructions.
 func (s *Service) platformHost(app *appv1alpha1.App) string {
-	subdomain := app.Spec.Subdomain
-	if subdomain == "" {
-		subdomain = app.Name
-	}
+	subdomain := app.Spec.PlatformSubdomain(app.Name)
 	if s.BaseDomain != "" {
 		return subdomain + "." + s.BaseDomain
 	}
