@@ -25,7 +25,7 @@
 
 - [`012.md`](012.md) — read-side `ownerId`: usage, api-keys and GitHub-connect still resolve the caller's workspace implicitly (and the Team page's `workspaces[0]` pin) — surfaced while implementing **m14** 2026-07-13
 
-_(`009.md`, `010.md`, `011.md` grouped into **m15** 2026-07-13; `013.md` promoted to **m17** 2026-07-13)_
+_(`009.md`, `010.md`, `011.md` grouped into **m15** 2026-07-13; `013.md` promoted to **m17** 2026-07-13; `014.md` promoted to **w2/m28** 2026-07-13 — materialized under `w2`, not `w6`, per user direction)_
 
 > **m16 (Projects & environments: basic grouping) removed 2026-07-13** — duplicate of `w1/m31` ("Projects: group services within a workspace"), materialized by a concurrent `/pm-brainstorm` session the same day with near-identical scope (a `projects` table + REST/GraphQL/MCP/dashboard CRUD + assign/unassign). `w1/m31` is the tighter MVP (Projects only, no Environments) and is kept; `w6/m16`'s Environment half is not re-proposed here — Environments is a much larger architectural change (multi-environment promotion/deploy-target semantics) that needs its own design discussion before sizing, per `w1/m31`'s own scope note.
 
