@@ -50,16 +50,27 @@ var repoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// ownerIDArg is the optional workspace-scoping arg (Render's `ownerId`,
+// w6/m18) every git-connect query/mutation takes; omitted means the caller's
+// default workspace.
+var ownerIDArg = graphql.FieldConfigArgument{"ownerId": &graphql.ArgumentConfig{Type: graphql.String}}
+
 // GraphQLQuery returns the gitConnection + repos queries.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"gitConnection": &graphql.Field{
-			Type:    gitConnectionGQLType,
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.GetConnection(p.Context) },
+			Type: gitConnectionGQLType,
+			Args: ownerIDArg,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetConnection(p.Context, gqlStr(p.Args, "ownerId"))
+			},
 		},
 		"repos": &graphql.Field{
-			Type:    graphql.NewList(repoGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListRepos(p.Context) },
+			Type: graphql.NewList(repoGQLType),
+			Args: ownerIDArg,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListRepos(p.Context, gqlStr(p.Args, "ownerId"))
+			},
 		},
 	}
 }
@@ -69,15 +80,28 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"connectGit": &graphql.Field{
-			Type:    gitConnectionGQLType,
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.StartConnect(p.Context) },
+			Type: gitConnectionGQLType,
+			Args: ownerIDArg,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.StartConnect(p.Context, gqlStr(p.Args, "ownerId"))
+			},
 		},
 		"disconnectGit": &graphql.Field{
 			Type: graphql.Boolean,
+			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Disconnect(p.Context)
+				err := s.Disconnect(p.Context, gqlStr(p.Args, "ownerId"))
 				return err == nil, err
 			},
 		},
 	}
+}
+
+// gqlStr reads an optional string arg, "" when absent — package-local per
+// w6/m14's review (not worth a shared gqlutil helper for a one-line copy).
+func gqlStr(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
 }

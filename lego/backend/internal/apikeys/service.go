@@ -64,6 +64,10 @@ type APIKeyStore interface {
 type KeyBinder interface {
 	BindKey(ctx context.Context, clientID, tenantID string) error
 	UnbindKey(ctx context.Context, clientID string) error
+	// TenantForKey resolves the workspace a bound key belongs to (ok=false for
+	// an unbound/unknown key) — the read side of BindKey, used to scope
+	// ListAPIKeys/RevokeAPIKey to one workspace's own keys (w6/m18).
+	TenantForKey(ctx context.Context, clientID string) (tenantID string, ok bool)
 }
 
 // Service manages machine credentials over the injected APIKeyStore.
@@ -73,6 +77,11 @@ type Service struct {
 	// Binding, when set (the control-plane store is on), ties each minted key to
 	// the caller's tenant. nil => legacy unbound mint (store off).
 	Binding KeyBinder
+	// Selections is the shared MCP per-session workspace selection
+	// (w6/m2/t005, core.WorkspaceSelections): the api-key tools' ownerId
+	// precedence (explicit arg > the session's select_workspace > the
+	// caller's default). nil degrades to explicit-arg-or-default.
+	Selections core.WorkspaceSelectionReader
 
 	// touch throttle: earliest next last-used write per key id. Guards against a
 	// chatty caller turning every introspection into a Hydra write (w4/m13).
@@ -82,12 +91,15 @@ type Service struct {
 
 // CreateAPIKey mints a new machine credential. The returned Secret is shown once,
 // and the caller's identity (IdentityFrom) is stamped as the key's created-by.
-// With the store on, the key is bound to the caller's tenant (a mapping row +
-// the FGA membership that lets it authorize against workspace:tea-<id>); a
+// With the store on, the key is bound to ownerID's tenant (Render's `ownerId`,
+// w6/m18; "" => the caller's default workspace, membership-checked via
+// core.WithWorkspace like every other explicit-target verb) — a mapping row +
+// the FGA membership that lets it authorize against workspace:tea-<id>. A
 // session-less machine caller with no tenant is refused rather than minting an
 // orphaned, tuple-less key. A bind failure rolls the Hydra client back so no
 // half-bound credential lingers.
-func (s *Service) CreateAPIKey(ctx context.Context, name string) (APIKey, error) {
+func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKey, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return APIKey{}, err
 	}
@@ -163,27 +175,78 @@ func (s *Service) TouchAPIKey(id string) {
 	}()
 }
 
-// ListAPIKeys returns every machine credential (secrets omitted).
-func (s *Service) ListAPIKeys(ctx context.Context) ([]APIKey, error) {
+// ListAPIKeys returns ownerID's machine credentials (secrets omitted); ""
+// means the caller's default workspace (w6/m18). With the store off (Binding
+// nil), keys mint unbound and the list stays unfiltered, byte-identical to
+// before — the legacy single-tenant mode. With the store on, a caller who
+// resolves to no tenant sees an empty list rather than every workspace's keys
+// (the same pattern apps.List uses).
+func (s *Service) ListAPIKeys(ctx context.Context, ownerID string) ([]APIKey, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return nil, err
 	}
 	if s.APIKeys == nil {
 		return nil, core.ErrAPIKeysUnavailable
 	}
-	return s.APIKeys.List(ctx)
+	keys, err := s.APIKeys.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tenantID, scoped := s.boundTenant(ctx)
+	if !scoped {
+		return keys, nil
+	}
+	if tenantID == "" {
+		return []APIKey{}, nil
+	}
+	out := make([]APIKey, 0, len(keys))
+	for _, k := range keys {
+		if owner, ok := s.Binding.TenantForKey(ctx, k.ID); ok && owner == tenantID {
+			out = append(out, k)
+		}
+	}
+	return out, nil
+}
+
+// boundTenant resolves the workspace ListAPIKeys/RevokeAPIKey scope their key
+// binding to. scoped=false means the store is off (Binding nil) — keys mint
+// unbound, so there is no one workspace to scope to (List stays unfiltered,
+// Revoke skips the ownership check); scoped=true with an empty tenantID means
+// the caller has no resolvable tenant — scoped to nothing.
+func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool) {
+	if s.Binding == nil {
+		return "", false
+	}
+	tenantID, _ = s.Tenant(ctx)
+	return tenantID, true
 }
 
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
-// introspecting active (subject to bex-api's ≤30s introspection cache). With the
-// store on it also drops the tenant binding + FGA tuple (best-effort: the Hydra
-// client is already gone, so a leftover mapping is harmless, just cleaned up).
-func (s *Service) RevokeAPIKey(ctx context.Context, id string) error {
+// introspecting active (subject to bex-api's ≤30s introspection cache). ownerID
+// ("" => the caller's default workspace, w6/m18) must be the key's OWN bound
+// workspace — a caller who can manage keys in their own workspace may not
+// revoke another workspace's (the same cross-workspace gate w6/m14 gave
+// Apps/Databases/KeyValues, applied here since a key has no AuthorizeApp-style
+// CRD to fetch through). With the store on it also drops the tenant binding +
+// FGA tuple (best-effort: the Hydra client is already gone, so a leftover
+// mapping is harmless, just cleaned up).
+func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return err
 	}
 	if s.APIKeys == nil {
 		return core.ErrAPIKeysUnavailable
+	}
+	if tenantID, scoped := s.boundTenant(ctx); scoped {
+		if tenantID == "" {
+			return core.ErrForbidden
+		}
+		if owner, boundOK := s.Binding.TenantForKey(ctx, id); boundOK && owner != tenantID {
+			return core.ErrForbidden
+		}
+		// !boundOK: unbound/unknown key — fall through, Delete reports ErrNotFound.
 	}
 	if err := s.APIKeys.Delete(ctx, id); err != nil {
 		return err

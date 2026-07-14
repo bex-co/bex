@@ -37,35 +37,56 @@ var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery returns the apiKeys list query.
+// GraphQLQuery returns the apiKeys list query. ownerId (w6/m18) names the
+// workspace to list; omitted means the caller's default workspace.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"apiKeys": &graphql.Field{
-			Type:    graphql.NewList(apiKeyGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListAPIKeys(p.Context) },
+			Type: graphql.NewList(apiKeyGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListAPIKeys(p.Context, gqlStr(p.Args, "ownerId"))
+			},
 		},
 	}
 }
 
-// GraphQLMutation returns the createApiKey / revokeApiKey mutations.
+// GraphQLMutation returns the createApiKey / revokeApiKey mutations. ownerId
+// (w6/m18) names the workspace createApiKey binds into / revokeApiKey's key
+// must belong to; omitted means the caller's default workspace.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"createApiKey": &graphql.Field{
 			Type: apiKeyGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateAPIKey(p.Context, p.Args["name"].(string))
+				return s.CreateAPIKey(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string))
 			},
 		},
 		"revokeApiKey": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.RevokeAPIKey(p.Context, p.Args["id"].(string))
+				err := s.RevokeAPIKey(p.Context, gqlStr(p.Args, "ownerId"), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
 	}
+}
+
+// gqlStr reads an optional string arg, "" when absent — package-local per
+// w6/m14's review (not worth a shared gqlutil helper for a one-line copy).
+func gqlStr(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
 }

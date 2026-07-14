@@ -53,11 +53,14 @@ type usageResponse struct {
 	EstimatedCost pricing.EstimatedCost `json:"estimatedCost"`
 }
 
-// RegisterREST mounts the usage REST endpoint on the shared mux.
+// RegisterREST mounts the usage REST endpoint on the shared mux. ownerId
+// (Render's workspace-scoping query param, w6/m18) names the workspace to
+// query; empty means the caller's default workspace.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/usage", func(w http.ResponseWriter, r *http.Request) {
-		now := resolvePeriodEnd(r.URL.Query().Get("period"), s.Now().UTC())
-		summary, err := s.monthToDateAt(r.Context(), now)
+		q := r.URL.Query()
+		now := resolvePeriodEnd(q.Get("period"), s.Now().UTC())
+		summary, err := s.monthToDateAt(r.Context(), q.Get("ownerId"), now)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

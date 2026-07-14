@@ -78,7 +78,9 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery contributes the `usage` query to the root Query.
+// GraphQLQuery contributes the `usage` query to the root Query. ownerId
+// (w6/m18) names the workspace to query; omitted means the caller's default
+// workspace — the same arg m14 gave the write-side create mutations.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"usage": &graphql.Field{
@@ -88,12 +90,23 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					Type:        graphql.String,
 					Description: "Calendar month YYYY-MM; defaults to the current month.",
 				},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				period, _ := p.Args["period"].(string)
 				now := resolvePeriodEnd(period, s.Now().UTC())
-				return s.monthToDateAt(p.Context, now)
+				return s.monthToDateAt(p.Context, gqlStr(p.Args, "ownerId"), now)
 			},
 		},
 	}
+}
+
+// gqlStr reads an optional string arg, "" when absent (graphql-go omits unset
+// optional args from the map) — the local idiom (see apps/graphql.go's own
+// copy; kept package-local per w6/m14's review, not worth a shared helper).
+func gqlStr(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
 }

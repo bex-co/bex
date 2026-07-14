@@ -15,12 +15,20 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// The minted key binds to the switcher's selection (w6/m18), never a
+// workspace the hook resolves itself — same seam useCreateService uses.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId }),
+}));
+
 import { useCreateApiKey } from "@/features/api-keys/hooks/use-create-api-key";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
+  currentWorkspaceId = "tea-1";
 });
 
 describe("useCreateApiKey", () => {
@@ -46,8 +54,28 @@ describe("useCreateApiKey", () => {
     });
 
     expect(key).toEqual({ id: "key-1", name: "deploy-agent", secret: "s3cret" });
-    expect(mutate).toHaveBeenCalledWith({ variables: { name: "deploy-agent" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { name: "deploy-agent", ownerId: "tea-1" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Created deploy-agent");
+  });
+
+  it("refuses to create until the workspace selection resolves", async () => {
+    currentWorkspaceId = null;
+    const mutate = vi.fn();
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateApiKey());
+    let key;
+    await act(async () => {
+      key = await result.current.create("deploy-agent");
+    });
+
+    // Sending a null ownerId would silently mint in the caller's default
+    // workspace — the very bug this wiring exists to prevent.
+    expect(mutate).not.toHaveBeenCalled();
+    expect(key).toBeNull();
+    expect(toastError).toHaveBeenCalledWith("Couldn't create deploy-agent");
   });
 
   it("surfaces a mutation error as a toast and resolves null (t006)", async () => {

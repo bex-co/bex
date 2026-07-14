@@ -5,8 +5,11 @@
 # place a secret is ever fetched is the create mutation's response, exactly
 # once, matching Render's "shown only at creation" API-key UX.
 
-query ApiKeys {
-  apiKeys {
+# ownerId (w6/m18): the workspace to list/mint/revoke in — the dashboard always
+# sends the switcher's selection so a multi-workspace caller manages the right
+# workspace's keys, not just whichever workspace they resolve to implicitly.
+query ApiKeys($ownerId: String) {
+  apiKeys(ownerId: $ownerId) {
     id
     name
     createdAt
@@ -15,8 +18,8 @@ query ApiKeys {
   }
 }
 
-mutation CreateApiKey($name: String!) {
-  createApiKey(name: $name) {
+mutation CreateApiKey($name: String!, $ownerId: String) {
+  createApiKey(name: $name, ownerId: $ownerId) {
     id
     name
     secret
@@ -24,6 +27,6 @@ mutation CreateApiKey($name: String!) {
   }
 }
 
-mutation RevokeApiKey($id: String!) {
-  revokeApiKey(id: $id)
+mutation RevokeApiKey($id: String!, $ownerId: String) {
+  revokeApiKey(id: $id, ownerId: $ownerId)
 }

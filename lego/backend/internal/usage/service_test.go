@@ -463,14 +463,14 @@ func TestPeriodQueryIdenticalAcrossCompaction(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
 
 	marchEnd := time.Date(2026, 3, 31, 23, 59, 59, 0, time.UTC)
-	before, err := svc.monthToDateAt(ctx, marchEnd)
+	before, err := svc.monthToDateAt(ctx, "", marchEnd)
 	if err != nil {
 		t.Fatalf("pre-compaction query: %v", err)
 	}
 
 	svc.compact(ctx) // clock is July 15 → March is outside the hot window
 
-	after, err := svc.monthToDateAt(ctx, marchEnd)
+	after, err := svc.monthToDateAt(ctx, "", marchEnd)
 	if err != nil {
 		t.Fatalf("post-compaction query: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestStoreNilReturnsUnavailable(t *testing.T) {
 		Base:  &core.Base{},
 		Store: nil, // store off
 	}
-	_, err := svc.MonthToDate(context.Background())
+	_, err := svc.MonthToDate(context.Background(), "")
 	if !errors.Is(err, core.ErrUsageUnavailable) {
 		t.Errorf("expected core.ErrUsageUnavailable, got %v", err)
 	}

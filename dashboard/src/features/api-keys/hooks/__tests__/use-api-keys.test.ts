@@ -6,10 +6,18 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
+// Scoped to the switcher's selection (w6/m18), never a workspace the hook
+// resolves itself — same seam useServices uses.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId }),
+}));
+
 import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
 
 beforeEach(() => {
   mockUseQuery.mockReset();
+  currentWorkspaceId = "tea-1";
 });
 
 describe("useApiKeys", () => {
@@ -66,5 +74,25 @@ describe("useApiKeys", () => {
     });
     const { result } = renderHook(() => useApiKeys());
     expect(result.current.keys).toEqual([]);
+  });
+
+  it("sends the switcher's workspace as ownerId, skipped until it resolves", () => {
+    currentWorkspaceId = null;
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useApiKeys());
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ variables: { ownerId: null }, skip: true }),
+    );
+    // Skip means loading stays true regardless of Apollo's own flag, so the
+    // list page doesn't flash an empty state before the selection resolves.
+    expect(result.current.loading).toBe(true);
   });
 });

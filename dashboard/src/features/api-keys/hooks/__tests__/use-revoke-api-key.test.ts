@@ -15,6 +15,12 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// The revoked key must belong to the switcher's selection (w6/m18) — the
+// backend refuses to revoke another workspace's key.
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
+}));
+
 import { useRevokeApiKey } from "@/features/api-keys/hooks/use-revoke-api-key";
 
 beforeEach(() => {
@@ -35,7 +41,9 @@ describe("useRevokeApiKey", () => {
     });
 
     expect(ok).toBe(true);
-    expect(mutate).toHaveBeenCalledWith({ variables: { id: "key-1" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "key-1", ownerId: "tea-1" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Revoked deploy-agent");
   });
 

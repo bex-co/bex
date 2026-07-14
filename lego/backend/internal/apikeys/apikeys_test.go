@@ -120,6 +120,34 @@ func (b *fakeBinder) UnbindKey(_ context.Context, clientID string) error {
 	return nil
 }
 
+func (b *fakeBinder) TenantForKey(_ context.Context, clientID string) (string, bool) {
+	tid, ok := b.bound[clientID]
+	return tid, ok
+}
+
+// multiWorkspace is a core.WorkspaceResolver for a caller who belongs to
+// MULTIPLE workspaces (w6/m18's List/Revoke scoping tests need this — plain
+// fakeWorkspace only ever resolves one tenant per identity). memberships[0] is
+// the default (what Tenant returns absent an explicit core.WithWorkspace).
+type multiWorkspace map[string][]string
+
+func (f multiWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	m := f[id.Subject]
+	if len(m) == 0 {
+		return "", false
+	}
+	return m[0], true
+}
+
+func (f multiWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
+	for _, tid := range f[id.Subject] {
+		if tid == tenantID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // --- Key→tenant binding (w1/m9) ---
 
 func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
@@ -132,7 +160,7 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent")
 	if err != nil {
 		t.Fatalf("CreateAPIKey: %v", err)
 	}
@@ -154,7 +182,7 @@ func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound-caller", Method: "oauth2"})
 
-	if _, err := svc.CreateAPIKey(ctx, "agent"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreateAPIKey(ctx, "", "agent"); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("no-tenant caller: want ErrBadRequest, got %v", err)
 	}
 	if len(store.keys) != 0 {
@@ -172,7 +200,7 @@ func TestCreateAPIKeyBindFailureRollsBackHydraClient(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := svc.CreateAPIKey(ctx, "agent"); err == nil {
+	if _, err := svc.CreateAPIKey(ctx, "", "agent"); err == nil {
 		t.Fatal("bind failure must surface as an error")
 	}
 	// No orphaned credential: the Hydra client created before the failed bind
@@ -192,15 +220,90 @@ func TestRevokeAPIKeyUnbindsFromTenant(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if err := svc.RevokeAPIKey(ctx, created.ID); err != nil {
+	if err := svc.RevokeAPIKey(ctx, "", created.ID); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	if len(binder.unbound) != 1 || binder.unbound[0] != created.ID {
 		t.Errorf("unbound = %v, want [%s]", binder.unbound, created.ID)
+	}
+}
+
+// --- w6/m18: ListAPIKeys/RevokeAPIKey workspace scoping ---
+
+func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {
+	// dana belongs to both tea-a (her default) and tea-b; a key exists in
+	// each. Listing must return ONLY the targeted workspace's key — before
+	// this milestone ListAPIKeys had no tenant filter at all and returned
+	// every workspace's keys to any caller who could manage their own.
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // no ownerId => default, tea-a
+	if err != nil {
+		t.Fatalf("create agent-a: %v", err)
+	}
+	keyB, err := svc.CreateAPIKey(ctx, "tea-b", "agent-b")
+	if err != nil {
+		t.Fatalf("create agent-b: %v", err)
+	}
+
+	listA, err := svc.ListAPIKeys(ctx, "")
+	if err != nil {
+		t.Fatalf("list default: %v", err)
+	}
+	if len(listA) != 1 || listA[0].ID != keyA.ID {
+		t.Errorf("list default (tea-a) = %+v, want exactly [%s]", listA, keyA.ID)
+	}
+
+	listB, err := svc.ListAPIKeys(ctx, "tea-b")
+	if err != nil {
+		t.Fatalf("list tea-b: %v", err)
+	}
+	if len(listB) != 1 || listB[0].ID != keyB.ID {
+		t.Errorf("list tea-b = %+v, want exactly [%s]", listB, keyB.ID)
+	}
+}
+
+func TestRevokeAPIKeyRefusesCrossWorkspaceTarget(t *testing.T) {
+	// A key bound to tea-a must not be revocable by naming tea-b, even though
+	// dana administers both — the same cross-workspace gate w6/m14 gave
+	// Apps/Databases/KeyValues. Before this milestone RevokeAPIKey had no
+	// ownership check at all: any key id could be deleted by anyone who could
+	// manage keys in ANY workspace.
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // tea-a
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if err := svc.RevokeAPIKey(ctx, "tea-b", keyA.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("revoke tea-a's key targeting tea-b: want ErrForbidden, got %v", err)
+	}
+	if _, ok := store.keys[keyA.ID]; !ok {
+		t.Error("refused revoke must not delete the key")
+	}
+
+	// Targeting its own workspace succeeds.
+	if err := svc.RevokeAPIKey(ctx, "tea-a", keyA.ID); err != nil {
+		t.Errorf("revoke tea-a's key targeting tea-a: %v", err)
 	}
 }
 
@@ -211,7 +314,7 @@ func TestCreateAPIKeyNilBindingMintsUnbound(t *testing.T) {
 	svc := newService(store)
 	ctx := context.Background() // no identity at all — must not matter
 
-	created, err := svc.CreateAPIKey(ctx, "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent")
 	if err != nil || created.ID == "" {
 		t.Fatalf("nil Binding: %v %+v", err, created)
 	}
@@ -224,24 +327,24 @@ func TestAPIKeyVerbs(t *testing.T) {
 	svc := newService(store)
 	ctx := context.Background()
 
-	created, err := svc.CreateAPIKey(ctx, "ci-agent")
+	created, err := svc.CreateAPIKey(ctx, "", "ci-agent")
 	if err != nil || created.ID == "" || created.Secret == "" {
 		t.Fatalf("create must return id+secret: %v %+v", err, created)
 	}
-	listed, _ := svc.ListAPIKeys(ctx)
+	listed, _ := svc.ListAPIKeys(ctx, "")
 	if len(listed) != 1 || listed[0].Secret != "" {
 		t.Fatalf("list must omit secrets: %+v", listed)
 	}
-	if err := svc.RevokeAPIKey(ctx, created.ID); err != nil || len(store.keys) != 0 {
+	if err := svc.RevokeAPIKey(ctx, "", created.ID); err != nil || len(store.keys) != 0 {
 		t.Fatalf("revoke should delete: %v store=%d", err, len(store.keys))
 	}
 	// blank name => ErrBadRequest.
-	if _, err := svc.CreateAPIKey(ctx, "  "); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreateAPIKey(ctx, "", "  "); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("blank name => ErrBadRequest, got %v", err)
 	}
 	// nil store => ErrAPIKeysUnavailable on every verb.
 	nostore := newService(nil)
-	if _, err := nostore.ListAPIKeys(ctx); !errors.Is(err, core.ErrAPIKeysUnavailable) {
+	if _, err := nostore.ListAPIKeys(ctx, ""); !errors.Is(err, core.ErrAPIKeysUnavailable) {
 		t.Errorf("nil store => ErrAPIKeysUnavailable, got %v", err)
 	}
 }
@@ -484,7 +587,7 @@ func TestCreateAPIKeyStampsCaller(t *testing.T) {
 	svc := newService(store)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "for-alice")
+	created, err := svc.CreateAPIKey(ctx, "", "for-alice")
 	if err != nil {
 		t.Fatalf("CreateAPIKey: %v", err)
 	}
@@ -492,7 +595,7 @@ func TestCreateAPIKeyStampsCaller(t *testing.T) {
 		t.Fatalf("createdBy = %q, want user:alice", created.CreatedBy)
 	}
 	// With no identity in context, created-by is simply empty (no crash).
-	anon, err := svc.CreateAPIKey(context.Background(), "anon")
+	anon, err := svc.CreateAPIKey(context.Background(), "", "anon")
 	if err != nil || anon.CreatedBy != "" {
 		t.Fatalf("anon create: %v createdBy=%q, want empty", err, anon.CreatedBy)
 	}

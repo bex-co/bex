@@ -299,6 +299,15 @@ func (t *tenantService) BindKey(ctx context.Context, clientID, tenantID string) 
 	return nil
 }
 
+// TenantForKey implements apikeys.KeyBinder: resolves the workspace a bound
+// key belongs to, via the same cache-backed lookup Tenant uses (a bound key's
+// tenant is as stable as any caller's, w6/m18) — keyed under methodOAuth2 so
+// it can never collide with a human identity's cached resolution even if the
+// two ids ever coincided.
+func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (string, bool) {
+	return t.Tenant(ctx, core.Identity{Subject: clientID, Method: methodOAuth2})
+}
+
 // UnbindKey implements apikeys.KeyBinder: removes the client's tenant_members
 // row + its FGA developer membership.
 func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {

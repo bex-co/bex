@@ -13,9 +13,17 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
+// The queried workspace is the switcher's selection (w6/m18), never one the
+// hook resolves itself — same seam useCreateService/useServices use.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId }),
+}));
+
 describe("useUsage", () => {
   beforeEach(() => {
     mockUseQuery.mockReset();
+    currentWorkspaceId = "tea-1";
   });
 
   it("returns null summary and loading=true while the query is in-flight", () => {
@@ -140,25 +148,27 @@ describe("useUsage", () => {
     );
   });
 
-  it("passes period variable when a period is provided", () => {
+  it("passes period + the switcher's ownerId when a period is provided", () => {
     mockUseQuery.mockReturnValue(createLoadingQueryResult());
 
     renderHook(() => useUsage("2026-06"));
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ variables: { period: "2026-06" } }),
+      expect.objectContaining({
+        variables: { period: "2026-06", ownerId: "tea-1" },
+      }),
     );
   });
 
-  it("passes empty variables when no period is provided", () => {
+  it("passes only ownerId when no period is provided", () => {
     mockUseQuery.mockReturnValue(createLoadingQueryResult());
 
     renderHook(() => useUsage());
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ variables: {} }),
+      expect.objectContaining({ variables: { ownerId: "tea-1" } }),
     );
   });
 
@@ -191,5 +201,18 @@ describe("useUsage", () => {
     const { result } = renderHook(() => useUsage());
 
     expect(result.current.summary?.period).toBe("");
+  });
+
+  it("skips the query and reports loading until the switcher's selection resolves", () => {
+    currentWorkspaceId = null;
+    mockUseQuery.mockReturnValue(createLoadingQueryResult());
+
+    const { result } = renderHook(() => useUsage());
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ skip: true }),
+    );
+    expect(result.current.loading).toBe(true);
   });
 });

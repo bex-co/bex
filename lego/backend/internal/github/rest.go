@@ -32,7 +32,7 @@ import (
 // anything is recorded (docs/ADR026-github-integration.md).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/git/connect", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := s.StartConnect(r.Context())
+		conn, err := s.StartConnect(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -59,7 +59,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("GET /v1/git/connection", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := s.GetConnection(r.Context())
+		conn, err := s.GetConnection(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -68,7 +68,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("DELETE /v1/git/connection", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Disconnect(r.Context()); err != nil {
+		if err := s.Disconnect(r.Context(), r.URL.Query().Get("ownerId")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -76,7 +76,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("GET /v1/repos", func(w http.ResponseWriter, r *http.Request) {
-		repos, err := s.ListRepos(r.Context())
+		repos, err := s.ListRepos(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

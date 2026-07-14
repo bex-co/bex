@@ -57,6 +57,11 @@ type Service struct {
 	// the browser after recording the connection. Empty => the callback returns
 	// JSON instead of redirecting.
 	DashboardURL string
+	// Selections is the shared MCP per-session workspace selection
+	// (w6/m2/t005, core.WorkspaceSelections): the git-connect tools' ownerId
+	// precedence (explicit arg > the session's select_workspace > the
+	// caller's default). nil degrades to explicit-arg-or-default.
+	Selections core.WorkspaceSelectionReader
 }
 
 // Connection is the neutral connection view every adapter renders. InstallURL is
@@ -93,8 +98,13 @@ func (s *Service) installURL() string {
 // StartConnect returns the current connection state plus the install URL the
 // admin clicks to install the app (and grant repos). Admin-only — connecting a
 // workspace's GitHub is an admin action even though the record lands at the
-// callback.
-func (s *Service) StartConnect(ctx context.Context) (Connection, error) {
+// callback. ownerID ("" => the caller's default workspace, w6/m18) names the
+// workspace to check/connect, membership-checked via core.WithWorkspace like
+// every other explicit-target verb. Note: the callback GitHub itself redirects
+// to (Connect, below) carries no ownerId — it always records against the
+// admin's default workspace, unchanged from before this milestone.
+func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return Connection{}, err
 	}
@@ -140,9 +150,11 @@ func (s *Service) Connect(ctx context.Context, installationID int64) (Connection
 	return s.connectedView(row), nil
 }
 
-// GetConnection returns the workspace's connection status. "Not connected" is a
-// valid state (Connected:false + the install URL), not an error. Member read.
-func (s *Service) GetConnection(ctx context.Context) (Connection, error) {
+// GetConnection returns ownerID's connection status ("" => the caller's
+// default workspace, w6/m18). "Not connected" is a valid state (Connected:false
+// + the install URL), not an error. Member read.
+func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return Connection{}, err
 	}
@@ -159,9 +171,11 @@ func (s *Service) GetConnection(ctx context.Context) (Connection, error) {
 	return s.connectedView(row), nil
 }
 
-// Disconnect removes the workspace's connection. Idempotent: disconnecting when
-// not connected is a no-op success. Admin-only.
-func (s *Service) Disconnect(ctx context.Context) error {
+// Disconnect removes ownerID's connection ("" => the caller's default
+// workspace, w6/m18). Idempotent: disconnecting when not connected is a no-op
+// success. Admin-only.
+func (s *Service) Disconnect(ctx context.Context, ownerID string) error {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
 	}
@@ -175,10 +189,11 @@ func (s *Service) Disconnect(ctx context.Context) error {
 	return err
 }
 
-// ListRepos returns the connected installation's repositories (private included).
-// With no connection the list is empty (disconnect "empties" the repos), not an
-// error. Member read.
-func (s *Service) ListRepos(ctx context.Context) ([]Repo, error) {
+// ListRepos returns ownerID's connected installation's repositories ("" => the
+// caller's default workspace, w6/m18; private included). With no connection the
+// list is empty (disconnect "empties" the repos), not an error. Member read.
+func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}

@@ -20,13 +20,23 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the api-key MCP fragment (bex extensions over Render's MCP, which
-// manages keys outside its tools; naming follows Render's convention).
+// manages keys outside its tools; naming follows Render's convention). OwnerID
+// on each args struct follows the shared ownerId precedence every
+// workspace-scoped MCP tool uses (core.SelectedWorkspace, w6/m18): explicit
+// arg > the session's select_workspace > the caller's default workspace.
 
 type createAPIKeyArgs struct {
-	Name string `json:"name" jsonschema:"human-readable name for the credential"`
+	Name    string `json:"name" jsonschema:"human-readable name for the credential"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to bind the key to; defaults to the selected or caller's default workspace"`
+}
+
+type listAPIKeysArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to list; defaults to the selected or caller's default workspace"`
 }
 
 type listAPIKeysResult struct {
@@ -34,7 +44,8 @@ type listAPIKeysResult struct {
 }
 
 type revokeAPIKeyArgs struct {
-	KeyID string `json:"keyId" jsonschema:"the API key id (OAuth2 client_id)"`
+	KeyID   string `json:"keyId" jsonschema:"the API key id (OAuth2 client_id)"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"the key's workspace id; defaults to the selected or caller's default workspace"`
 }
 
 type revokeAPIKeyResult struct {
@@ -46,24 +57,24 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_api_key",
 		Description: "Create a machine credential (OAuth2 client) for the platform API. The secret is returned once — store it. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
-		key, err := s.CreateAPIKey(ctx, in.Name)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
+		key, err := s.CreateAPIKey(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name)
 		return nil, key, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_api_keys",
 		Description: "List the platform API's machine credentials (secrets never included). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listAPIKeysResult, error) {
-		keys, err := s.ListAPIKeys(ctx)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listAPIKeysArgs) (*mcp.CallToolResult, listAPIKeysResult, error) {
+		keys, err := s.ListAPIKeys(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		return nil, listAPIKeysResult{APIKeys: keys}, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "revoke_api_key",
 		Description: "Revoke a machine credential by keyId; its tokens stop working. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
-		err := s.RevokeAPIKey(ctx, in.KeyID)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
+		err := s.RevokeAPIKey(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.KeyID)
 		return nil, revokeAPIKeyResult{Revoked: err == nil}, err
 	})
 }

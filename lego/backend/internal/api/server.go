@@ -287,6 +287,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		GitHub:       d.GitHubClient,
 		Store:        d.GitHubStore,
 		DashboardURL: d.DashboardURL,
+		Selections:   selections,
 	}
 	// The registry-credentials service is also the apps deploy path's
 	// pull-secret seam (w2/m14), so build it once and share it, same as gh
@@ -298,6 +299,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// once and shared, same as gh/rc above.
 	pg := &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
+	// Usage is constructed and its metering loop started in cmd/api/main.go
+	// (before NewServer runs), so it can't take Selections as a constructor
+	// arg like pg/kv above — wire it onto the already-built pointer instead, so
+	// get_usage shares the SAME per-session selection store as every other
+	// workspace-scoped MCP tool (w6/m18).
+	if d.Usage != nil {
+		d.Usage.Selections = selections
+	}
 	return &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues},
@@ -313,7 +322,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 		},
-		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
+		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, Selections: selections},
 		Postgres:  pg,
 		KeyValue:  kv,
 		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},

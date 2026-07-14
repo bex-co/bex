@@ -3,10 +3,13 @@
 # build_seconds (CI/build), and storage_gb_seconds (managed datastore storage).
 # resourceKind distinguishes App services from managed Postgres/KeyValue instances.
 # period: optional calendar month YYYY-MM; defaults to the current month.
+# ownerId: workspace to query (w6/m18); the dashboard always sends the
+# switcher's selection so multi-workspace callers see the right workspace's
+# usage, not just whichever workspace they resolve to implicitly.
 # estimatedCost: USD estimate (30% below Render on compute/Postgres/KV/build/
 # Postgres storage, 90% below on bandwidth). Estimate only — not an invoice.
-query Usage($period: String) {
-  usage(period: $period) {
+query Usage($period: String, $ownerId: String) {
+  usage(period: $period, ownerId: $ownerId) {
     workspaceId
     period
     services {

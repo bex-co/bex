@@ -71,7 +71,12 @@ type Service struct {
 	// into usage_monthly (BEX_USAGE_RETENTION_MONTHS). Values < 1 mean
 	// DefaultRetentionMonths.
 	RetentionMonths int
-	promHTTP        *http.Client
+	// Selections is the shared MCP per-session workspace selection
+	// (w6/m2/t005, core.WorkspaceSelections): get_usage's ownerId precedence
+	// (explicit arg > the session's select_workspace > the caller's default).
+	// nil (e.g. no MCP transport wired) degrades to explicit-arg-or-default.
+	Selections core.WorkspaceSelectionReader
+	promHTTP   *http.Client
 }
 
 // NewService constructs a Service, normalising PromBase (strips trailing slash
@@ -113,8 +118,13 @@ type ServiceUsage struct {
 // monthToDateAt is the implementation used by adapters. now controls both the
 // calendar month (monthStart is derived from it) and the inclusive upper bound
 // of the query. Adapters pass s.Now().UTC() for the live query or the start of
-// the next month for a full historical-month query.
-func (s *Service) monthToDateAt(ctx context.Context, now time.Time) (Summary, error) {
+// the next month for a full historical-month query. ownerID names the
+// workspace to query (Render's `ownerId`, w6/m18): empty means the caller's
+// default workspace, honored via core.WithWorkspace/Base.Tenant the same way
+// every other read-side verb resolves an explicit target — a workspace the
+// caller is not a member of is core.ErrForbidden.
+func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Time) (Summary, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return Summary{}, err
 	}
@@ -138,10 +148,10 @@ func (s *Service) monthToDateAt(ctx context.Context, now time.Time) (Summary, er
 	return sum, nil
 }
 
-// MonthToDate returns the calling workspace's month-to-date usage summary
-// for the current calendar month.
-func (s *Service) MonthToDate(ctx context.Context) (Summary, error) {
-	return s.monthToDateAt(ctx, s.Now().UTC())
+// MonthToDate returns ownerID's month-to-date usage summary for the current
+// calendar month ("" => the caller's default workspace).
+func (s *Service) MonthToDate(ctx context.Context, ownerID string) (Summary, error) {
+	return s.monthToDateAt(ctx, ownerID, s.Now().UTC())
 }
 
 // summarise groups flat summary rows by resource identity. ResourceKind is

@@ -29,13 +29,14 @@ import (
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name string `json:"name"`
+			Name    string `json:"name"`
+			OwnerID string `json:"ownerId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		key, err := s.CreateAPIKey(r.Context(), req.Name)
+		key, err := s.CreateAPIKey(r.Context(), req.OwnerID, req.Name)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -43,7 +44,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, key)
 	})
 	mux.HandleFunc("GET /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
-		keys, err := s.ListAPIKeys(r.Context())
+		keys, err := s.ListAPIKeys(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -51,7 +52,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, keys)
 	})
 	mux.HandleFunc("DELETE /v1/api-keys/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.RevokeAPIKey(r.Context(), r.PathValue("id")); err != nil {
+		if err := s.RevokeAPIKey(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}

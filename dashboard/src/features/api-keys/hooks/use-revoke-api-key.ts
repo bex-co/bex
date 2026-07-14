@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { RevokeApiKeyDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseRevokeApiKeyResult {
   /** Fires revokeApiKey; resolves true on success (toasted either way). */
@@ -18,6 +19,7 @@ export interface UseRevokeApiKeyResult {
  */
 export function useRevokeApiKey(): UseRevokeApiKeyResult {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(RevokeApiKeyDocument);
   const [revoking, setRevoking] = useState<string | null>(null);
 
@@ -25,7 +27,9 @@ export function useRevokeApiKey(): UseRevokeApiKeyResult {
     async (id: string, name: string) => {
       setRevoking(id);
       try {
-        await mutate({ variables: { id } });
+        // ownerId (w6/m18): the key's own workspace — the backend refuses to
+        // revoke another workspace's key even if the caller can manage its own.
+        await mutate({ variables: { id, ownerId: currentWorkspaceId } });
         toast.success(t("apiKeys.revokeSuccess", { name }));
         return true;
       } catch {
@@ -35,7 +39,7 @@ export function useRevokeApiKey(): UseRevokeApiKeyResult {
         setRevoking(null);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { revoke, revoking };

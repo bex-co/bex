@@ -18,6 +18,7 @@ import { UsageDocument } from "@/graphql/definitions";
 import type { ServiceUsage } from "@/graphql/definitions";
 import type { Maybe } from "@/graphql/definitions";
 import { periodFor } from "@/features/usage/lib/period";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** One month's aggregated totals per meter kind. */
 export interface TrendPoint {
@@ -52,24 +53,32 @@ function sumKind(
  * returns one TrendPoint per month, sorted oldest-first, ready for SvgLineChart.
  */
 export function useUsageTrend(): { points: TrendPoint[]; loading: boolean } {
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
   const p0 = periodFor(0); // current month
   const p1 = periodFor(1); // 1 month ago
   const p2 = periodFor(2); // 2 months ago
 
+  // Skipped until the switcher's selection resolves (w6/m18) — same reason
+  // useUsage skips: a null ownerId would fetch the caller's default workspace
+  // then refetch once the real selection lands.
   const r0 = useQuery(UsageDocument, {
-    variables: { period: p0 },
+    variables: { period: p0, ownerId: currentWorkspaceId },
+    skip: !resolved,
     ...TREND_QUERY_OPTS,
   });
   const r1 = useQuery(UsageDocument, {
-    variables: { period: p1 },
+    variables: { period: p1, ownerId: currentWorkspaceId },
+    skip: !resolved,
     ...TREND_QUERY_OPTS,
   });
   const r2 = useQuery(UsageDocument, {
-    variables: { period: p2 },
+    variables: { period: p2, ownerId: currentWorkspaceId },
+    skip: !resolved,
     ...TREND_QUERY_OPTS,
   });
 
-  const loading = r0.loading || r1.loading || r2.loading;
+  const loading = !resolved || r0.loading || r1.loading || r2.loading;
 
   const points = useMemo<TrendPoint[]>(() => {
     return [

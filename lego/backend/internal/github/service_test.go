@@ -121,32 +121,32 @@ func TestConnectRoundTrip(t *testing.T) {
 		t.Error("install url should always be set")
 	}
 
-	got, err := svc.GetConnection(ctx)
+	got, err := svc.GetConnection(ctx, "")
 	if err != nil || !got.Connected || got.AccountLogin != "octo" {
 		t.Fatalf("get after connect = %+v err=%v", got, err)
 	}
 
-	repos, err := svc.ListRepos(ctx)
+	repos, err := svc.ListRepos(ctx, "")
 	if err != nil || len(repos) != 1 || !repos[0].Private {
 		t.Fatalf("list repos = %+v err=%v", repos, err)
 	}
 
-	if err := svc.Disconnect(ctx); err != nil {
+	if err := svc.Disconnect(ctx, ""); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
 
 	// After disconnect: not connected, repos empty (not an error).
-	got, err = svc.GetConnection(ctx)
+	got, err = svc.GetConnection(ctx, "")
 	if err != nil || got.Connected {
 		t.Fatalf("get after disconnect = %+v err=%v", got, err)
 	}
-	repos, err = svc.ListRepos(ctx)
+	repos, err = svc.ListRepos(ctx, "")
 	if err != nil || len(repos) != 0 {
 		t.Fatalf("repos after disconnect = %+v err=%v", repos, err)
 	}
 
 	// Disconnect is idempotent.
-	if err := svc.Disconnect(ctx); err != nil {
+	if err := svc.Disconnect(ctx, ""); err != nil {
 		t.Fatalf("second disconnect not idempotent: %v", err)
 	}
 }
@@ -163,13 +163,13 @@ func TestVerbs503WhenUnconfigured(t *testing.T) {
 			if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("connect err = %v", err)
 			}
-			if _, err := svc.GetConnection(ctx); !errors.Is(err, core.ErrGitHubUnavailable) {
+			if _, err := svc.GetConnection(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("get err = %v", err)
 			}
-			if _, err := svc.ListRepos(ctx); !errors.Is(err, core.ErrGitHubUnavailable) {
+			if _, err := svc.ListRepos(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("list err = %v", err)
 			}
-			if err := svc.Disconnect(ctx); !errors.Is(err, core.ErrGitHubUnavailable) {
+			if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("disconnect err = %v", err)
 			}
 		})
@@ -204,12 +204,12 @@ func TestListReposGitHubErrorSurfacesClean(t *testing.T) {
 
 	// A 5xx from GitHub surfaces as an error (never a silent empty list).
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{reposErr: &APIError{Status: 503, Body: "down"}}, Store: st}
-	if _, err := svc.ListRepos(context.Background()); err == nil {
+	if _, err := svc.ListRepos(context.Background(), ""); err == nil {
 		t.Error("5xx GitHub error should surface")
 	}
 	// A 4xx maps to a clean bad-request.
 	svc.GitHub = &fakeClient{reposErr: &APIError{Status: 403, Body: "forbidden"}}
-	if _, err := svc.ListRepos(context.Background()); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.ListRepos(context.Background(), ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("4xx GitHub error = %v, want ErrBadRequest", err)
 	}
 }
@@ -226,16 +226,16 @@ func TestAuthzGatesWritesButAllowsMemberReads(t *testing.T) {
 	}
 	ctx := withIdentity(context.Background())
 
-	if _, err := svc.GetConnection(ctx); err != nil {
+	if _, err := svc.GetConnection(ctx, ""); err != nil {
 		t.Errorf("viewer GetConnection = %v, want ok", err)
 	}
-	if _, err := svc.ListRepos(ctx); err != nil {
+	if _, err := svc.ListRepos(ctx, ""); err != nil {
 		t.Errorf("viewer ListRepos = %v, want ok", err)
 	}
 	if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("viewer Connect = %v, want Forbidden", err)
 	}
-	if err := svc.Disconnect(ctx); !errors.Is(err, core.ErrForbidden) {
+	if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("viewer Disconnect = %v, want Forbidden", err)
 	}
 }
@@ -316,13 +316,13 @@ func TestAuthzDenyAllForbidsEveryVerb(t *testing.T) {
 	if _, err := svc.Connect(ctx, 1); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("connect = %v", err)
 	}
-	if _, err := svc.GetConnection(ctx); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.GetConnection(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("get = %v", err)
 	}
-	if _, err := svc.ListRepos(ctx); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.ListRepos(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("list = %v", err)
 	}
-	if err := svc.Disconnect(ctx); !errors.Is(err, core.ErrForbidden) {
+	if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("disconnect = %v", err)
 	}
 }

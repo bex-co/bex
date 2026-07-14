@@ -15,6 +15,7 @@
 import { useQuery } from "@apollo/client/react";
 import { useMemo } from "react";
 import { UsageDocument } from "@/graphql/definitions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UsageRow {
   kind: string;
@@ -54,10 +55,16 @@ export interface UseUsageResult {
 }
 
 export function useUsage(period?: string): UseUsageResult {
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
   const { data, loading, error } = useQuery(UsageDocument, {
-    // {} and { period } key into separate Apollo cache entries — intentional so
-    // current-month and historical queries never share a cache slot.
-    variables: period ? { period } : {},
+    // { ownerId } and { period, ownerId } key into separate Apollo cache
+    // entries — intentional so current-month and historical queries never
+    // share a cache slot. Skipped until the switcher's selection resolves, so
+    // this never fires with a null ownerId (which the backend would silently
+    // route to the caller's default workspace, w6/m18) then refetch once it does.
+    variables: period ? { period, ownerId: currentWorkspaceId } : { ownerId: currentWorkspaceId },
+    skip: !resolved,
     pollInterval: 60_000,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
@@ -97,5 +104,5 @@ export function useUsage(period?: string): UseUsageResult {
     [raw],
   );
 
-  return { summary, loading, error };
+  return { summary, loading: !resolved || loading, error };
 }

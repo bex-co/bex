@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateApiKeyDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
 export interface UseCreateApiKeyResult {
@@ -22,14 +23,23 @@ export interface UseCreateApiKeyResult {
  */
 export function useCreateApiKey(): UseCreateApiKeyResult {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(CreateApiKeyDocument, { fetchPolicy: "no-cache" });
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
     async (name: string) => {
+      // Scoped to the switcher's selected workspace (w6/m18) — refused (never
+      // sent with a null ownerId, which the backend would silently route to the
+      // caller's default workspace) until the workspace list resolves, mirroring
+      // useCreateService.
+      if (currentWorkspaceId == null) {
+        toast.error(t("apiKeys.createError", { name }));
+        return null;
+      }
       setBusy(true);
       try {
-        const res = await mutate({ variables: { name } });
+        const res = await mutate({ variables: { name, ownerId: currentWorkspaceId } });
         const key = res.data?.createApiKey;
         if (!key?.id || !key.secret) {
           throw new Error("createApiKey returned no secret");
@@ -43,7 +53,7 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { create, busy };
