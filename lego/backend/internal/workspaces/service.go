@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // nameRE constrains a workspace name to a DNS-1123 label capped at 30 chars.
@@ -75,6 +76,15 @@ type Service struct {
 	// not happen in practice — the composition root always wires one) leaves the
 	// MCP workspace tools unregistered rather than panicking; see RegisterMCP.
 	Selections *core.WorkspaceSelections
+	// MaxServices, MaxPostgres, MaxKeyValues, when positive, are the effective
+	// per-workspace resource caps injected from the composition root (w7/m9):
+	// the same values apps.Service/postgres.Service/keyvalue.Service enforce at
+	// create time. 0 = unlimited. ResourceLimits surfaces these alongside the
+	// current count so every surface can show "3/5 services" without a separate
+	// query.
+	MaxServices  int
+	MaxPostgres  int
+	MaxKeyValues int
 }
 
 // WorkspaceStore is the slice of the source of truth this feature writes
@@ -673,4 +683,59 @@ func normalizePlan(plan string) (string, error) {
 		return "", fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 	}
 	return p, nil
+}
+
+// ResourceCapView is one resource slot in a workspace's limit report (w7/m9).
+type ResourceCapView struct {
+	Used  int `json:"used"`
+	Limit int `json:"limit"` // 0 = unlimited
+}
+
+// ResourceLimitsView is the per-workspace resource usage vs. cap (w7/m9):
+// how many of each resource kind the workspace currently owns (Used) and the
+// maximum it may create (Limit; 0 = unlimited). Returned by ResourceLimits.
+type ResourceLimitsView struct {
+	Services  ResourceCapView `json:"services"`
+	Postgres  ResourceCapView `json:"postgres"`
+	KeyValues ResourceCapView `json:"keyValues"`
+}
+
+// ResourceLimits returns the workspace's current resource usage vs. the
+// operator-configured caps (w7/m9) — the "3/5 services" visibility surface.
+// It authorizes can_view on the named workspace (same gate as GetWorkspace),
+// then counts App/Database/KeyValue CRs labelled with the workspace's tenant
+// id. Limits come from the runtime caps (MaxServices/MaxPostgres/MaxKeyValues),
+// 0 = unlimited. When the k8s client is nil (authz-sweep / store-off tests),
+// counts are zero but limits are still returned — the call never 500s.
+func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceLimitsView, error) {
+	ws, err := s.GetWorkspace(ctx, ownerID)
+	if err != nil {
+		return ResourceLimitsView{}, err
+	}
+	tenantID := ws.ID
+
+	out := ResourceLimitsView{
+		Services:  ResourceCapView{Limit: s.MaxServices},
+		Postgres:  ResourceCapView{Limit: s.MaxPostgres},
+		KeyValues: ResourceCapView{Limit: s.MaxKeyValues},
+	}
+	if s.Client == nil {
+		return out, nil
+	}
+	var apps appv1alpha1.AppList
+	if listErr := s.ListByTenant(ctx, &apps, tenantID); listErr != nil {
+		return ResourceLimitsView{}, fmt.Errorf("counting services: %w", listErr)
+	}
+	var dbs appv1alpha1.DatabaseList
+	if listErr := s.ListByTenant(ctx, &dbs, tenantID); listErr != nil {
+		return ResourceLimitsView{}, fmt.Errorf("counting databases: %w", listErr)
+	}
+	var kvs appv1alpha1.KeyValueList
+	if listErr := s.ListByTenant(ctx, &kvs, tenantID); listErr != nil {
+		return ResourceLimitsView{}, fmt.Errorf("counting key-values: %w", listErr)
+	}
+	out.Services.Used = len(apps.Items)
+	out.Postgres.Used = len(dbs.Items)
+	out.KeyValues.Used = len(kvs.Items)
+	return out, nil
 }

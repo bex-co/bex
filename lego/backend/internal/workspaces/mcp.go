@@ -149,4 +149,18 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		sel := toMCPWorkspace(w)
 		return nil, selectedWorkspaceResult{Selected: &sel}, nil
 	})
+
+	// get_workspace_limits — bex extension (w7/m9): surfaces per-workspace
+	// resource usage vs. cap for agents that want to check headroom before
+	// attempting a create. Authorizes can_view on the workspace.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_workspace_limits",
+		Description: "Get the resource usage and limits for a workspace (services, Postgres, key-value). Used is the current count; limit 0 means unlimited.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in selectWorkspaceArgs) (*mcp.CallToolResult, ResourceLimitsView, error) {
+		limits, err := s.ResourceLimits(ctx, in.OwnerID)
+		if err != nil {
+			return nil, ResourceLimitsView{}, err
+		}
+		return nil, limits, nil
+	})
 }

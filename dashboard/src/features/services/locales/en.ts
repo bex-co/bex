@@ -1775,6 +1775,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Rolled back from {target}",
     description: "Deploy row: provenance note when trigger=rollback",
   },
+  "services.capLimitTitle": {
+    message: "Service limit reached",
+    description: "Alert title when the workspace's service creation cap is hit (w7/m9)",
+  },
+  "services.capLimitUpgrade": {
+    message: "Upgrade plan",
+    description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
+  },
 };
 
 export default enServices;

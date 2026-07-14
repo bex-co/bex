@@ -1754,6 +1754,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "从 {target} 回滚",
     description: "Deploy row: provenance note when trigger=rollback",
   },
+  "services.capLimitTitle": {
+    message: "已达到服务上限",
+    description: "Alert title when the workspace's service creation cap is hit (w7/m9)",
+  },
+  "services.capLimitUpgrade": {
+    message: "升级方案",
+    description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
+  },
 };
 
 export default zhServices;

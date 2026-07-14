@@ -43,12 +43,44 @@ var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery contributes the caller's workspace list to the root Query.
+// resourceCapGQLType is the used/limit pair for one resource kind (w7/m9).
+var resourceCapGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ResourceCap",
+	Fields: graphql.Fields{
+		"used":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(c ResourceCapView) any { return c.Used })},
+		"limit": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(c ResourceCapView) any { return c.Limit })},
+	},
+})
+
+// resourceLimitsGQLType is the per-workspace cap report (w7/m9).
+var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ResourceLimits",
+	Fields: graphql.Fields{
+		"services":  &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.Services })},
+		"postgres":  &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.Postgres })},
+		"keyValues": &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.KeyValues })},
+	},
+})
+
+// GraphQLQuery contributes the caller's workspace list and limits query to the
+// root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"workspaces": &graphql.Field{
 			Type:    graphql.NewList(workspaceGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context) },
+		},
+		// workspaceLimits returns the named workspace's resource usage vs. cap
+		// (w7/m9): "3/5 services" visibility surface. Authorizes can_view on the
+		// workspace (same as the workspaces list + select_workspace path).
+		"workspaceLimits": &graphql.Field{
+			Type: resourceLimitsGQLType,
+			Args: graphql.FieldConfigArgument{
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ResourceLimits(p.Context, p.Args["ownerId"].(string))
+			},
 		},
 	}
 }

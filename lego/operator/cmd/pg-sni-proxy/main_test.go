@@ -47,10 +47,10 @@ func buildClientHello(sni string) []byte {
 	chBody := make([]byte, 34) // version + random
 	chBody[0] = 0x03
 	chBody[1] = 0x03
-	chBody = append(chBody, 0x00)             // session_id_len = 0
-	chBody = append(chBody, 0x00, 0x02)       // cipher_suites_len = 2
-	chBody = append(chBody, 0x00, 0x2f)       // TLS_RSA_WITH_AES_128_CBC_SHA
-	chBody = append(chBody, 0x01, 0x00)       // compression_methods: 1 byte, null
+	chBody = append(chBody, 0x00)       // session_id_len = 0
+	chBody = append(chBody, 0x00, 0x02) // cipher_suites_len = 2
+	chBody = append(chBody, 0x00, 0x2f) // TLS_RSA_WITH_AES_128_CBC_SHA
+	chBody = append(chBody, 0x01, 0x00) // compression_methods: 1 byte, null
 	chBody = append(chBody, exts...)
 
 	// Handshake header: type(1) + length(3)

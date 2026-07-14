@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { ArrowUpRight, Loader2, Plus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/common/components/ui/dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -52,8 +58,9 @@ export interface CreateDatabaseDialogProps {
  */
 export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
   const { t } = useTranslations();
+  const navigate = useNavigate();
   const { instanceTypes } = useDatabaseInstanceTypes();
-  const { create, busy } = useCreateDatabase();
+  const { create, busy, capLimit } = useCreateDatabase();
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -205,6 +212,30 @@ export function CreateDatabaseDialog({ onCreated }: CreateDatabaseDialogProps) {
             />
           </div>
         </div>
+
+        {capLimit ? (
+          <Alert variant="destructive">
+            <AlertTitle>{t("databases.capLimitTitle")}</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2">
+              <span>{capLimit}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={() => {
+                  handleOpenChange(false);
+                  void navigate({
+                    to: "/workspace/settings",
+                    search: { plan: "change" },
+                  });
+                }}
+              >
+                <ArrowUpRight className="size-3.5" />
+                {t("databases.capLimitUpgrade")}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <DialogFooter>
           <Button

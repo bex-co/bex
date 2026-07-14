@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { ArrowUpRight, Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -18,6 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -54,7 +59,7 @@ export function NewKeyValuePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { instanceTypes } = useKeyValueInstanceTypes();
-  const { create, busy } = useCreateKeyValue();
+  const { create, busy, capLimit } = useCreateKeyValue();
 
   const [name, setName] = useState("");
   const [planOverride, setPlanOverride] = useState<string | null>(null);
@@ -148,6 +153,29 @@ export function NewKeyValuePage() {
                   onCheckedChange={setIsPublic}
                 />
               </div>
+
+              {capLimit ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{t("keyvalue.capLimitTitle")}</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>{capLimit}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="self-start"
+                      onClick={() =>
+                        void navigate({
+                          to: "/workspace/settings",
+                          search: { plan: "change" },
+                        })
+                      }
+                    >
+                      <ArrowUpRight className="size-3.5" />
+                      {t("keyvalue.capLimitUpgrade")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <div className="flex justify-end gap-2">
                 <Button

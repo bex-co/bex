@@ -709,6 +709,60 @@ func TestChangePlan_AdminOnly(t *testing.T) {
 	}
 }
 
+// --- ResourceLimits (w7/m9) ------------------------------------------------
+
+func TestResourceLimits_ReturnsLimitsAndZeroCounts(t *testing.T) {
+	// Without a k8s client, Used counts are zero but limits from Max* fields
+	// must be returned unchanged.
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	svc.MaxServices = 5
+	svc.MaxPostgres = 1
+	svc.MaxKeyValues = 2
+
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+
+	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
+	if err != nil {
+		t.Fatalf("ResourceLimits: %v", err)
+	}
+	if limits.Services.Limit != 5 || limits.Services.Used != 0 {
+		t.Errorf("services = %+v, want {Used:0, Limit:5}", limits.Services)
+	}
+	if limits.Postgres.Limit != 1 || limits.Postgres.Used != 0 {
+		t.Errorf("postgres = %+v, want {Used:0, Limit:1}", limits.Postgres)
+	}
+	if limits.KeyValues.Limit != 2 || limits.KeyValues.Used != 0 {
+		t.Errorf("keyValues = %+v, want {Used:0, Limit:2}", limits.KeyValues)
+	}
+}
+
+func TestResourceLimits_ZeroLimitMeansUnlimited(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	// MaxServices/Postgres/KeyValues all 0 = unlimited
+
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
+	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
+	if err != nil {
+		t.Fatalf("ResourceLimits: %v", err)
+	}
+	if limits.Services.Limit != 0 || limits.Postgres.Limit != 0 || limits.KeyValues.Limit != 0 {
+		t.Errorf("want unlimited (0), got %+v", limits)
+	}
+}
+
+func TestResourceLimits_ForbiddenForNonMember(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+
+	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
+	if _, err := denied.ResourceLimits(ctxAs("user-b"), w.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("non-member: want forbidden, got %v", err)
+	}
+}
+
 // --- plan rules (store) ----------------------------------------------------
 
 func TestPlanLimitsAndGuards(t *testing.T) {

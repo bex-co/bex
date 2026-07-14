@@ -57,4 +57,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderTeamMembers(members)) // bare array, no cursor
 	})
+	// GET /v1/owners/{ownerId}/limits — bex extension (w7/m9): resource caps
+	// (services/postgres/keyValues used vs. limit, 0 = unlimited). Authorizes
+	// can_view on the workspace, same as GET /v1/owners/{ownerId}.
+	mux.HandleFunc("GET /v1/owners/{ownerId}/limits", func(w http.ResponseWriter, r *http.Request) {
+		limits, err := s.ResourceLimits(r.Context(), r.PathValue("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, limits)
+	})
 }

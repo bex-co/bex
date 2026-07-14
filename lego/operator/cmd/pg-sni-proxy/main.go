@@ -457,4 +457,3 @@ func parseSNIExtension(ext []byte) (string, bool) {
 	}
 	return "", false
 }
-

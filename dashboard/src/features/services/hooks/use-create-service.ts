@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { CreateServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 
 export interface EnvVarEntry {
   key: string;
@@ -28,6 +29,12 @@ export interface CreateServiceInput {
 export interface UseCreateServiceResult {
   create: (input: CreateServiceInput) => Promise<string | null>;
   busy: boolean;
+  /**
+   * The workspace's service cap was hit. Carries the backend's exact message
+   * so the create form can show it inline with an upgrade CTA (w7/m9). Null
+   * when the last attempt failed for another reason (toasted) or hasn't failed.
+   */
+  capLimit: string | null;
 }
 
 /**
@@ -42,6 +49,7 @@ export function useCreateService(): UseCreateServiceResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const [mutate, { loading: busy }] = useMutation(CreateServiceDocument);
+  const [capLimit, setCapLimit] = useState<string | null>(null);
 
   const create = useCallback(
     async (input: CreateServiceInput) => {
@@ -49,6 +57,7 @@ export function useCreateService(): UseCreateServiceResult {
         toast.error(t("services.createError", { name: input.name }));
         return null;
       }
+      setCapLimit(null);
       try {
         const res = await mutate({
           variables: {
@@ -70,13 +79,20 @@ export function useCreateService(): UseCreateServiceResult {
         const id = res.data?.createService?.id ?? input.name;
         toast.success(t("services.createSuccess", { name: input.name }));
         return id;
-      } catch {
-        toast.error(t("services.createError", { name: input.name }));
+      } catch (err) {
+        // "workspace is limited to N services" — surface inline with upgrade CTA
+        // rather than a toast that leaves the user with nowhere to go (w7/m9).
+        const msg = graphQLErrorMessage(err) ?? "";
+        if (msg.toLowerCase().includes("workspace is limited")) {
+          setCapLimit(msg);
+        } else {
+          toast.error(t("services.createError", { name: input.name }));
+        }
         return null;
       }
     },
     [mutate, t, currentWorkspaceId],
   );
 
-  return { create, busy };
+  return { create, busy, capLimit };
 }

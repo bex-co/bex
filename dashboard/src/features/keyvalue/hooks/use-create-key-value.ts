@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CreateKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 
 /** The create form's collected values (Render's `/new/redis` subset bex serves). */
 export interface CreateKeyValueInput {
@@ -18,6 +19,8 @@ export interface UseCreateKeyValueResult {
   /** Fires createKeyValue; resolves the new id on success, null on failure. */
   create: (input: CreateKeyValueInput) => Promise<string | null>;
   busy: boolean;
+  /** Workspace key-value cap hit — show inline with upgrade CTA (w7/m9). */
+  capLimit: string | null;
 }
 
 /**
@@ -37,6 +40,7 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
   const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(CreateKeyValueDocument);
   const [busy, setBusy] = useState(false);
+  const [capLimit, setCapLimit] = useState<string | null>(null);
 
   const create = useCallback(
     async (input: CreateKeyValueInput) => {
@@ -45,6 +49,7 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
         return null;
       }
       setBusy(true);
+      setCapLimit(null);
       try {
         const res = await mutate({
           variables: {
@@ -58,8 +63,13 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
         const id = res.data?.createKeyValue?.id ?? input.name;
         toast.success(t("keyvalue.createSuccess", { name: input.name }));
         return id;
-      } catch {
-        toast.error(t("keyvalue.createError", { name: input.name }));
+      } catch (err) {
+        const msg = graphQLErrorMessage(err) ?? "";
+        if (msg.toLowerCase().includes("workspace is limited")) {
+          setCapLimit(msg);
+        } else {
+          toast.error(t("keyvalue.createError", { name: input.name }));
+        }
         return null;
       } finally {
         setBusy(false);
@@ -68,5 +78,5 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
     [mutate, t, currentWorkspaceId],
   );
 
-  return { create, busy };
+  return { create, busy, capLimit };
 }

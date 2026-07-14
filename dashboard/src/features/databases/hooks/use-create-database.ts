@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 
 /** The create form's collected values (Render's create-form subset bex serves). */
 export interface CreateDatabaseInput {
@@ -19,6 +20,8 @@ export interface UseCreateDatabaseResult {
   /** Fires createDatabase; resolves the new id on success, null on failure. */
   create: (input: CreateDatabaseInput) => Promise<string | null>;
   busy: boolean;
+  /** Workspace Postgres cap hit — show inline with upgrade CTA (w7/m9). */
+  capLimit: string | null;
 }
 
 /**
@@ -39,6 +42,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
   const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(CreateDatabaseDocument);
   const [busy, setBusy] = useState(false);
+  const [capLimit, setCapLimit] = useState<string | null>(null);
 
   const create = useCallback(
     async (input: CreateDatabaseInput) => {
@@ -47,6 +51,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         return null;
       }
       setBusy(true);
+      setCapLimit(null);
       try {
         const res = await mutate({
           variables: {
@@ -61,8 +66,13 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         const id = res.data?.createDatabase?.id ?? input.name;
         toast.success(t("databases.createSuccess", { name: input.name }));
         return id;
-      } catch {
-        toast.error(t("databases.createError", { name: input.name }));
+      } catch (err) {
+        const msg = graphQLErrorMessage(err) ?? "";
+        if (msg.toLowerCase().includes("workspace is limited")) {
+          setCapLimit(msg);
+        } else {
+          toast.error(t("databases.createError", { name: input.name }));
+        }
         return null;
       } finally {
         setBusy(false);
@@ -71,5 +81,5 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
     [mutate, t, currentWorkspaceId],
   );
 
-  return { create, busy };
+  return { create, busy, capLimit };
 }

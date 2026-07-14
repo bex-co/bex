@@ -190,6 +190,14 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't create {name}. Please try again.",
     description: "Toast when a create request fails",
   },
+  "databases.capLimitTitle": {
+    message: "Postgres limit reached",
+    description: "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
+  },
+  "databases.capLimitUpgrade": {
+    message: "Upgrade plan",
+    description: "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
+  },
   // --- Detail metadata ---
   "databases.metaTitle": {
     message: "Details",

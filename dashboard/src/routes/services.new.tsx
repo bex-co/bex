@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers, Plus, Trash2 } from "lucide-react";
+import { Github, GitBranch, Box, Loader2, Globe, Lock, Cpu, Clock, Layers, Plus, Trash2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -11,6 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
@@ -277,7 +282,7 @@ export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { instanceTypes } = useInstanceTypes();
-  const { create, busy } = useCreateService();
+  const { create, busy, capLimit } = useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
 
@@ -728,6 +733,29 @@ export function NewServicePage() {
 
                 <EnvVarEditor rows={envVars} onChange={setEnvVars} />
               </div>
+
+              {capLimit ? (
+                <Alert variant="destructive">
+                  <AlertTitle>{t("services.capLimitTitle")}</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>{capLimit}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="self-start"
+                      onClick={() =>
+                        void navigate({
+                          to: "/workspace/settings",
+                          search: { plan: "change" },
+                        })
+                      }
+                    >
+                      <ArrowUpRight className="size-3.5" />
+                      {t("services.capLimitUpgrade")}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <div className="flex justify-end gap-2">
                 <Button

@@ -189,6 +189,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法创建 {name}。请重试。",
     description: "Toast when a create request fails",
   },
+  "databases.capLimitTitle": {
+    message: "已达到 Postgres 上限",
+    description: "Alert title when the workspace's Postgres creation cap is hit (w7/m9)",
+  },
+  "databases.capLimitUpgrade": {
+    message: "升级方案",
+    description: "Upgrade CTA button inside the Postgres cap-limit Alert (w7/m9)",
+  },
   // --- Detail metadata ---
   "databases.metaTitle": {
     message: "详情",

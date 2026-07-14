@@ -177,6 +177,14 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "无法创建 {name}。请重试。",
     description: "Toast when a create request fails",
   },
+  "keyvalue.capLimitTitle": {
+    message: "已达到键值存储上限",
+    description: "Alert title when the workspace's KV creation cap is hit (w7/m9)",
+  },
+  "keyvalue.capLimitUpgrade": {
+    message: "升级方案",
+    description: "Upgrade CTA button inside the KV cap-limit Alert (w7/m9)",
+  },
   // --- Detail metadata ---
   "keyvalue.metaTitle": {
     message: "详情",
