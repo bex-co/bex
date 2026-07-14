@@ -20,10 +20,11 @@
 - [x] **m14** — Deterministic workspace targeting: multi-workspace caller-tenant resolution (11 tasks) ← from `/pm-brainstorm more for w6` 2026-07-12 (m11 t003/t004 residuals: `TenantForIdentity` has no deterministic pick, audit log mis-scoped; ADR018 "Create service" row's stale `ownerId` omission) — done 2026-07-13 (deterministic default workspace = oldest membership; `ownerId` honored on creates across REST/GraphQL/MCP/dashboard, membership-checked, 403 for a non-member; `core.Base.GetApp` now authorizes the VERB'S OWN relation against the APP'S OWN workspace — which is what lifts m11's owner-403 without letting an admin of A act as an admin in B; verified against a live Postgres + OpenFGA (`TestMultiWorkspaceTargetingE2E`) and a browser click-through of the audit card. Found+fixed **two real bugs beyond the DoD**: a pre-existing **cross-tenant credential read** — `GET /v1/postgres/{name}` / key-value fetched ANY workspace's CR by name, connection string included — and a wrong-workspace write this milestone nearly shipped (`ownerId: B` on a name taken in A silently redeployed A's service). Known limitation filed as `w6/013`: a verb still also authorizes against the caller's DEFAULT workspace, so an invited *viewer* can't operate services in their own workspace), moved to `done/m14/`
 - [x] **m15** — Workspace lifecycle polish: invite-gate CTA + purger dedup + ChangePlan pending-invites guard (8 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, groups `009`, `010`, `011` (each sub-hour) — done 2026-07-13, moved to `done/m15/`
 - [ ] **m17** — Fix false-403: collapse the caller-default-workspace vs. resource-workspace authorization gates (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, promotes `013` (reproduced during **m14**; fix designed there as `core.Base.AuthorizeApp`)
+- [ ] **m18** — Deterministic ownerId threading: usage, API keys, GitHub connections (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13, promotes `012` (the read/bind-side residual **m14** left open)
 
 ## Inbox
 
-- [`012.md`](012.md) — read-side `ownerId`: usage, api-keys and GitHub-connect still resolve the caller's workspace implicitly (and the Team page's `workspaces[0]` pin) — surfaced while implementing **m14** 2026-07-13
+_(`012.md` promoted to **m18** 2026-07-13)_
 
 _(`009.md`, `010.md`, `011.md` grouped into **m15** 2026-07-13; `013.md` promoted to **m17** 2026-07-13; `014.md` promoted to **w2/m28** 2026-07-13 — materialized under `w2`, not `w6`, per user direction)_
 

@@ -28,6 +28,7 @@
 - [x] **m22** — Health Check Path in service Settings (9 tasks) ← promoted from `009` 2026-07-12; gate w1/m23/t001 materialized in session — done 2026-07-13, moved to `done/m22/`
 - [x] **m23** — Logs-tab structured filter UI (10 tasks) ← promoted from `008` 2026-07-13 (unblocked — `w3/m8` landed 2026-07-12) — done 2026-07-13 (implemented directly, not task-by-task): level/method/statusCode/instance dropdowns fed by `logLabelValues` (static fallbacks), request-path input, request-line method/status chips, live-tail gating, store-unavailable (503) state; Request/HTTP-logs UI ◐→✅ in ADR018. Moved to `done/m23/`
 - [x] **m24** — Key Value follow-ups: `maxmemoryPolicy`/`persistenceMode` create fields (KeyValue CR + operator Valkey reconcile + REST/GraphQL/MCP + create form, Free-plan-locked) **and** Key Value metrics — memory + connected-clients **folded into the w3/m10 `DatastoreMetricsPanel`/`datastoreMetrics` framework** (redis_exporter sidecar → Prometheus `valkey-instances` scrape → `kv_memory`/`kv_connections` on the shared `DatastoreMetrics` verb), not a parallel panel ← implemented directly from inbox `011` 2026-07-13 (note in `done/011.md`); repairs the ADR018 "filed as a w5/m12 follow-up" claim
+- [ ] **m25** — Environments dashboard UX (9 tasks) ← from `/pm-brainstorm more milestones to work on` 2026-07-13 (`docs/ADR018-render-parity.md` "Projects & environments" row, UI ◐: "Environments has no dashboard UX yet"); backend fully shipped `w1/m32`
 
 ## Inbox
 
