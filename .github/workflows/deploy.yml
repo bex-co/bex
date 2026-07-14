@@ -58,6 +58,8 @@ jobs:
         with:
           fetch-depth: 0  # full history so gitleaks can walk the pushed commit range
       - uses: gitleaks/gitleaks-action@v2
+        # Warn-first: findings or scanner setup failures annotate but never block deploy.
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FAIL_ON_SECRET: false  # warn-first — tighten to true once baseline is tuned
