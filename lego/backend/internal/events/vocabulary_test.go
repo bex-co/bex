@@ -57,6 +57,17 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// integration at all yet.
 		"postgres.SetEnvironmentID": "mirrors postgres.SetProjectID; postgres has no events feed integration yet",
 		"keyvalue.SetEnvironmentID": "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
+		// w6/m19: these environment verbs call AuthorizeApp per MEMBER App as a
+		// fan-out side effect of an environment-level action (syncing
+		// core.LabelNetworkIsolation for NetworkPolicy scoping, SetACL's
+		// ipAllowList propagation) — the target recorded is incidental
+		// plumbing, not the verb's own resource the way a single-App verb's
+		// target is. The environment-level action itself has no events feed
+		// of its own to join (environments is a grouping feature, like
+		// projects, neither of which has one yet).
+		"environments.Delete":      "fans AuthorizeApp out over member Apps to clear core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.SetServices": "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.SetACL":      "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

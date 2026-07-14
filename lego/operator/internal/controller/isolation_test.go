@@ -275,4 +275,112 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			}
 		})
 	})
+
+	Context("environment-scoped NetworkPolicy (w6/m19 protected-environment ACLs)", func() {
+		const name = "isolation-env-scoped"
+		const workspace = "tea-testworkspace0002"
+		const environment = "env-testenv0001"
+
+		var r *AppReconciler
+		BeforeEach(func() {
+			r = &AppReconciler{
+				Client: k8sClient, Scheme: k8sClient.Scheme(),
+				Mode: ModeKubernetes,
+			}
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+					Labels:    map[string]string{labelWorkspace: workspace, labelNetworkIsolation: environment},
+				},
+				Spec: appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 80},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		})
+		AfterEach(func() {
+			app := &appv1alpha1.App{}
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app); err == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcileApp(r, name)
+			}
+		})
+
+		It("propagates the environment label to the Deployment pod template", func() {
+			reconcileApp(r, name)
+
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
+			Expect(dep.Spec.Selector.MatchLabels).NotTo(HaveKey(labelNetworkIsolation),
+				"selector must remain stable, same rationale as labelWorkspace")
+		})
+
+		It("scopes ingress/egress to same-environment pods instead of same-workspace", func() {
+			reconcileApp(r, name)
+
+			np := &networkingv1.NetworkPolicy{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+
+			By("verifying ingress allows same-environment pods, not same-workspace ones")
+			var hasEnvPeer, hasWorkspacePeer bool
+			for _, p := range np.Spec.Ingress[0].From {
+				if p.PodSelector == nil {
+					continue
+				}
+				if p.PodSelector.MatchLabels[labelNetworkIsolation] == environment {
+					hasEnvPeer = true
+				}
+				if _, ok := p.PodSelector.MatchLabels[labelWorkspace]; ok {
+					hasWorkspacePeer = true
+				}
+			}
+			Expect(hasEnvPeer).To(BeTrue(), "ingress must allow same-environment pods")
+			Expect(hasWorkspacePeer).To(BeFalse(), "ingress must NOT fall back to the same-workspace selector when scoped to an environment")
+
+			By("verifying the same-scope egress rule selects by environment, not workspace")
+			var egressHasEnvPeer, egressHasWorkspacePeer bool
+			for _, rule := range np.Spec.Egress {
+				for _, p := range rule.To {
+					if p.PodSelector == nil {
+						continue
+					}
+					if p.PodSelector.MatchLabels[labelNetworkIsolation] == environment {
+						egressHasEnvPeer = true
+					}
+					if _, ok := p.PodSelector.MatchLabels[labelWorkspace]; ok {
+						egressHasWorkspacePeer = true
+					}
+				}
+			}
+			Expect(egressHasEnvPeer).To(BeTrue(), "egress must allow same-environment pods/services")
+			Expect(egressHasWorkspacePeer).To(BeFalse(), "egress must NOT fall back to the same-workspace selector when scoped to an environment")
+
+			By("verifying DNS and public-internet egress rules are unaffected")
+			Expect(np.Spec.Egress).To(HaveLen(3))
+		})
+
+		It("falls back to the same-workspace selector when the environment label is removed", func() {
+			reconcileApp(r, name)
+
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed())
+			delete(app.Labels, labelNetworkIsolation)
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileApp(r, name)
+
+			np := &networkingv1.NetworkPolicy{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+			var hasWorkspacePeer bool
+			for _, p := range np.Spec.Ingress[0].From {
+				if p.PodSelector != nil && p.PodSelector.MatchLabels[labelWorkspace] == workspace {
+					hasWorkspacePeer = true
+				}
+			}
+			Expect(hasWorkspacePeer).To(BeTrue(), "removing the environment label must fall back to same-workspace ingress")
+
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+		})
+	})
 })

@@ -64,6 +64,43 @@ describe("useEnvironments", () => {
       serviceIds: ["svc-a", "svc-b"],
       databaseIds: ["db-a"],
       keyValueIds: ["kv-a"],
+      // w6/m19: absent ACL fields default to Render's own defaults.
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowList: [],
+    });
+  });
+
+  it("maps w6/m19 protected-environment ACL fields when present", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        environments: [
+          {
+            __typename: "Environment",
+            id: "env-1",
+            projectId: "prj-1",
+            name: "production",
+            ownerId: "tea-1",
+            createdAt: "2026-01-01T00:00:00Z",
+            serviceIds: ["svc-a"],
+            protectedStatus: "protected",
+            networkIsolationEnabled: true,
+            ipAllowList: ["10.0.0.0/24", null],
+          },
+        ],
+      },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvironments("prj-1"));
+
+    expect(result.current.environments[0]).toMatchObject({
+      protectedStatus: "protected",
+      networkIsolationEnabled: true,
+      // null CIDR entries are filtered out, same as null service ids.
+      ipAllowList: ["10.0.0.0/24"],
     });
   });
 

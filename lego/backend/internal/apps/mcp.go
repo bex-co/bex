@@ -234,6 +234,7 @@ type deployArgs struct {
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
 	BexYAML string `json:"bexYaml" jsonschema:"the project's bex.yml — a render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
+	Confirm string `json:"confirm,omitempty" jsonschema:"required only when this call would change an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19): the exact phrase from the error message of a first, unconfirmed call"`
 }
 
 // renderStack is the deploy tool's result for a multi-resource bex.yml: the
@@ -399,6 +400,16 @@ type deletedResult struct {
 	Deleted bool `json:"deleted"`
 }
 
+// serviceConfirmArgs is serviceArgs plus an optional confirm — used by
+// delete_service/suspend_service, the two lifecycle verbs w6/m19's protected-
+// environment guard (apps.ProtectedConfirmation) can block. confirm is
+// ignored (harmless) when the service isn't a member of a protected
+// Environment.
+type serviceConfirmArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Confirm   string `json:"confirm,omitempty" jsonschema:"required only if this service belongs to a protectedStatus=protected Environment: the exact phrase from the error message of a first, unconfirmed call"`
+}
+
 // RegisterMCP adds the service and custom-domain tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -471,9 +482,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
-		Description: "Deploy a project from a git repo and its bex.yml (render.yaml Blueprint) in one call. A bex.yml may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying an unchanged bex.yml is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). bex extension (pillar 4, deploy-from-chat at stack scale).",
+		Description: "Deploy a project from a git repo and its bex.yml (render.yaml Blueprint) in one call. A bex.yml may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying an unchanged bex.yml is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). A change to an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19) requires confirm — retry with the phrase from the error message. bex extension (pillar 4, deploy-from-chat at stack scale).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderStack, error) {
-		res, err := s.DeployStack(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML})
+		res, err := s.DeployStack(ctx, DeployRequest{Repo: in.Repo, Branch: in.Branch, Manifest: in.BexYAML, Confirm: in.Confirm})
 		if err != nil {
 			return nil, renderStack{}, err
 		}
@@ -482,9 +493,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "delete_service",
-		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
-		err := s.Delete(ctx, in.ServiceID)
+		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, deletedResult, error) {
+		err := s.Delete(withConfirm(ctx, in.Confirm), in.ServiceID)
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 
@@ -495,8 +506,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_service",
-		Description: "Suspend a service: scale to zero, keeping host and certificates. bex extension over Render's MCP.",
-	}, s.serviceTool(s.Suspend))
+		Description: "Suspend a service: scale to zero, keeping host and certificates. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.Suspend(withConfirm(ctx, in.Confirm), in.ServiceID)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "resume_service",

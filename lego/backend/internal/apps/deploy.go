@@ -66,6 +66,13 @@ type DeployRequest struct {
 	Repo     string
 	Branch   string
 	Manifest string
+	// Confirm, when set, arms a direct-deploy-override on an EXISTING member
+	// service of a protectedStatus=protected Environment (w6/m19,
+	// apps/protection.go's requireUnprotected) — the phrase
+	// ProtectedConfirmation("deploy", name) for the specific service being
+	// overridden. Irrelevant (never checked) for a brand-new service or an
+	// unprotected one.
+	Confirm string
 }
 
 // StackResult is the set of resources one stack deploy created (or converged):
@@ -288,6 +295,10 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err != nil {
 		return StackResult{}, err
 	}
+	// req.Confirm rides the context from here on — applyCreate's protection
+	// guard (requireUnprotected) reads it via confirmFrom, the same
+	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
+	ctx = withConfirm(ctx, req.Confirm)
 	res := StackResult{}
 	// Databases first: a service's fromDatabase env points (via secretRef) at the
 	// CNPG "<name>-app" Secret, which only exists once the Database converges —
@@ -683,6 +694,15 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	// Idempotent update: short-circuit when the create-owned fields already match.
 	if !createOwnedSpecChanged(existing.Spec, desired) {
 		return view(existing), nil
+	}
+	// A real change to an EXISTING service via the stack-apply path is the
+	// "direct-deploy-override" w6/m19 names: a manual apply overriding what's
+	// already running, as opposed to the git-push auto-deploy pipeline
+	// (unexported redeploy, webhook-triggered, not guarded). Guarded here, not
+	// at deployStack's top, so an unchanged re-apply and a brand-new service
+	// (createNewApp above) never need a confirmation.
+	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
+		return AppView{}, err
 	}
 	base := client.MergeFrom(existing.DeepCopy())
 	applyCreateToSpec(&existing.Spec, desired)

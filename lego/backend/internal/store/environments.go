@@ -29,48 +29,61 @@ import (
 // Environment is a row of `environments` — a named subset of a Project's
 // services (e.g. staging/production). Services opt-in by having
 // environment_id set in `apps`, the same shape Project's project_id uses.
+//
+// ProtectedStatus/NetworkIsolationEnabled/IPAllowList (0023, w6/m19) are
+// Render's protected-environment ACLs: ProtectedStatus is "protected" or
+// "unprotected" (never empty — the column CHECK + DEFAULT enforce it);
+// NetworkIsolationEnabled, when true, is what makes environments/service.go
+// stamp core.LabelEnvironment onto member App CRs for the operator's
+// environment-scoped NetworkPolicy; IPAllowList is fanned out onto member
+// Database/KeyValue CRs' own Spec.IPAllowList (environments/acl.go).
 type Environment struct {
-	ID        string    `json:"id"`
-	ProjectID string    `json:"projectId"`
-	TenantID  string    `json:"tenantId"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID                      string    `json:"id"`
+	ProjectID               string    `json:"projectId"`
+	TenantID                string    `json:"tenantId"`
+	Name                    string    `json:"name"`
+	CreatedAt               time.Time `json:"createdAt"`
+	ProtectedStatus         string    `json:"protectedStatus"`
+	NetworkIsolationEnabled bool      `json:"networkIsolationEnabled"`
+	IPAllowList             []string  `json:"ipAllowList"`
+}
+
+const environmentColumns = `id, project_id, tenant_id, name, created_at, protected_status, network_isolation_enabled, ip_allow_list`
+
+func scanEnvironment(row pgx.Row) (Environment, error) {
+	var e Environment
+	err := row.Scan(&e.ID, &e.ProjectID, &e.TenantID, &e.Name, &e.CreatedAt,
+		&e.ProtectedStatus, &e.NetworkIsolationEnabled, &e.IPAllowList)
+	if err != nil {
+		return Environment{}, classify("environment", err)
+	}
+	return e, nil
 }
 
 func (s *PGStore) CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (Environment, error) {
-	e := Environment{ID: ids.New(ids.Environment), ProjectID: projectID, TenantID: tenantID, Name: name}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO environments (id, project_id, tenant_id, name) VALUES ($1, $2, $3, $4) RETURNING created_at`,
-		e.ID, projectID, tenantID, name,
-	).Scan(&e.CreatedAt)
-	if err != nil {
-		return Environment{}, classify("environment", err)
-	}
-	return e, nil
+	return scanEnvironment(s.Pool.QueryRow(ctx,
+		`INSERT INTO environments (id, project_id, tenant_id, name) VALUES ($1, $2, $3, $4)
+		 RETURNING `+environmentColumns,
+		ids.New(ids.Environment), projectID, tenantID, name,
+	))
 }
 
 func (s *PGStore) GetEnvironment(ctx context.Context, id string) (Environment, error) {
-	var e Environment
-	err := s.Pool.QueryRow(ctx,
-		`SELECT id, project_id, tenant_id, name, created_at FROM environments WHERE id = $1`, id,
-	).Scan(&e.ID, &e.ProjectID, &e.TenantID, &e.Name, &e.CreatedAt)
-	if err != nil {
-		return Environment{}, classify("environment", err)
-	}
-	return e, nil
+	return scanEnvironment(s.Pool.QueryRow(ctx,
+		`SELECT `+environmentColumns+` FROM environments WHERE id = $1`, id))
 }
 
 func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Environment, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, project_id, tenant_id, name, created_at FROM environments WHERE project_id = $1 ORDER BY created_at`, projectID)
+		`SELECT `+environmentColumns+` FROM environments WHERE project_id = $1 ORDER BY created_at`, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []Environment
 	for rows.Next() {
-		var e Environment
-		if err := rows.Scan(&e.ID, &e.ProjectID, &e.TenantID, &e.Name, &e.CreatedAt); err != nil {
+		e, err := scanEnvironment(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, e)
@@ -82,6 +95,26 @@ func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error 
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE environments SET name = $2, updated_at = now() WHERE id = $1`,
 		id, name)
+	if err != nil {
+		return classify("environment", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("environment: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetEnvironmentACL replaces the full protected-environment ACL triple —
+// full-replace, not a merge, matching every other "Set" verb in this store
+// (SetEnvironmentServices, postgres.SetIPAllowList): the caller always
+// supplies all three fields, never a partial patch.
+func (s *PGStore) SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error {
+	if ipAllowList == nil {
+		ipAllowList = []string{}
+	}
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE environments SET protected_status = $2, network_isolation_enabled = $3, ip_allow_list = $4, updated_at = now() WHERE id = $1`,
+		id, protectedStatus, networkIsolationEnabled, ipAllowList)
 	if err != nil {
 		return classify("environment", err)
 	}

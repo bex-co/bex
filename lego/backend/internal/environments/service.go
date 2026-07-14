@@ -29,6 +29,8 @@ import (
 	"fmt"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -50,14 +52,19 @@ type EnvironmentStore interface {
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
+	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
+	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error
 }
 
 // DatabaseIndex is the narrow contract environments needs from managed
 // Postgres to group Database CRs into an environment (w6/m20 extension) —
 // mirroring internal/projects.DatabaseIndex. Unlike services, Databases have
 // no control-plane row, so membership is a label (core.LabelEnvironment),
-// read via ListPostgres and written via SetEnvironmentID.
-// *postgres.Service satisfies this structurally.
+// read via ListPostgres and written via SetEnvironmentID. SetIPAllowList
+// (w6/m19) is the same feature's protected-environment ACL fan-out target —
+// environments needs it too since a member Database's ipAllowList follows its
+// environment's (SetACL's propagateIPAllowList). *postgres.Service satisfies
+// this structurally.
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
@@ -65,6 +72,7 @@ type DatabaseIndex interface {
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
 	SetProjectID(ctx context.Context, name, projectID string) error
+	SetIPAllowList(ctx context.Context, name string, cidrs []string) (postgres.PostgresView, error)
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -73,13 +81,15 @@ type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
 	SetProjectID(ctx context.Context, name, projectID string) error
+	SetIPAllowList(ctx context.Context, name string, cidrs []string) (keyvalue.KeyValueView, error)
 }
 
 // Service is the environments feature service. Store nil =>
 // ErrEnvironmentsUnavailable. Databases/KeyValues nil => the corresponding
-// *Ids field resolves empty and SetDatabases/SetKeyValues report
-// ErrEnvironmentsUnavailable — Store is the only hard dependency (matching
-// internal/projects.Service).
+// *Ids field resolves empty, SetDatabases/SetKeyValues report
+// ErrEnvironmentsUnavailable, and SetACL's ipAllowList change is not
+// propagated to any Database/KeyValue (matching internal/projects' own
+// nil-degrades pattern) — everything else about environments still works.
 type Service struct {
 	*core.Base
 	Store     EnvironmentStore
@@ -91,17 +101,32 @@ type Service struct {
 // wired (BEX_CP_DB_URI unset). Environments have no CR-only equivalent.
 var ErrEnvironmentsUnavailable = errors.New("environments store not configured")
 
+// Render's protectedStatus enum (w6/m19) — aliased from core (the shared leaf
+// both this feature and apps.Service's protection guard, apps/protection.go,
+// import) rather than defined here, so the two never drift and neither
+// feature needs to import the other's package for two string constants.
+// Unprotected is the default; on protected, the guard blocks unguarded
+// delete/suspend/direct-deploy-override verbs on member Apps unless the
+// caller echoes back apps.ProtectedConfirmation.
+const (
+	ProtectedStatusProtected   = core.ProtectedStatusProtected
+	ProtectedStatusUnprotected = core.ProtectedStatusUnprotected
+)
+
 // EnvironmentView is the API shape for an environment — all three surfaces
 // return this.
 type EnvironmentView struct {
-	ID          string    `json:"id"`
-	ProjectID   string    `json:"projectId"`
-	Name        string    `json:"name"`
-	OwnerID     string    `json:"ownerId"`
-	CreatedAt   time.Time `json:"createdAt"`
-	ServiceIDs  []string  `json:"serviceIds"`
-	DatabaseIDs []string  `json:"databaseIds"`
-	KeyValueIDs []string  `json:"keyValueIds"`
+	ID                      string    `json:"id"`
+	ProjectID               string    `json:"projectId"`
+	Name                    string    `json:"name"`
+	OwnerID                 string    `json:"ownerId"`
+	CreatedAt               time.Time `json:"createdAt"`
+	ServiceIDs              []string  `json:"serviceIds"`
+	DatabaseIDs             []string  `json:"databaseIds"`
+	KeyValueIDs             []string  `json:"keyValueIds"`
+	ProtectedStatus         string    `json:"protectedStatus"`
+	NetworkIsolationEnabled bool      `json:"networkIsolationEnabled"`
+	IPAllowList             []string  `json:"ipAllowList"`
 }
 
 // databaseIDsByEnvironment lists workspaceID's Databases once and groups
@@ -150,8 +175,8 @@ func (s *Service) keyValueIDsByEnvironment(ctx context.Context, workspaceID stri
 // databaseIDsForEnvironment returns the one environment's member Database
 // ids — mirroring internal/projects.Service.databaseIDsForProject, built on
 // top of databaseIDsByEnvironment so a single-environment call site (Get,
-// Rename, SetServices, SetDatabases, SetKeyValues) doesn't need its own
-// tenant-wide fetch.
+// Rename, SetServices, SetACL, SetDatabases, SetKeyValues) doesn't need its
+// own tenant-wide fetch.
 func (s *Service) databaseIDsForEnvironment(ctx context.Context, workspaceID, environmentID string) ([]string, error) {
 	byEnv, err := s.databaseIDsByEnvironment(ctx, workspaceID)
 	if err != nil {
@@ -260,13 +285,25 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 // Databases/KeyValues keep their core.LabelEnvironment label pointing at the
 // now-deleted id — the same staleness projects.Service.Delete already
 // tolerates for core.LabelProject; a member's next SetEnvironmentID call
-// (e.g. joining a different environment) overwrites it.
+// (e.g. joining a different environment) overwrites it. Member Apps'
+// core.LabelNetworkIsolation IS cleared first, though — before the row
+// disappears — so a delete never leaves an App CR pointing at an environment
+// id that no longer exists (Apps have no store-row staleness tolerance the
+// way Database/KeyValue's label does, since the operator actively acts on
+// this label for NetworkPolicy scoping).
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
 	if err != nil {
+		return err
+	}
+	names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	if err != nil {
+		return err
+	}
+	if err := s.applyAppEnvironmentLabels(ctx, names, "", false); err != nil {
 		return err
 	}
 	return mapStoreErr(s.Store.DeleteEnvironment(ctx, e.ID))
@@ -276,7 +313,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 // serviceNames are App CR names (e.g. "whoami"), the same id shown by
 // list_services — matching internal/projects.Service.SetServices exactly. The
 // assigned services also join the environment's project (see
-// store.SetEnvironmentServices).
+// store.SetEnvironmentServices). core.LabelNetworkIsolation is synced on
+// every affected App CR: cleared on services leaving, set (if the
+// environment's networkIsolationEnabled) on services now in it — the
+// operator's signal for environment-scoped NetworkPolicy (t004).
 func (s *Service) SetServices(ctx context.Context, id string, serviceNames []string) (EnvironmentView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
@@ -285,10 +325,32 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	before, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceNames); err != nil {
 		return EnvironmentView{}, mapStoreErr(err)
 	}
-	return s.toFullView(ctx, e)
+	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.applyAppEnvironmentLabels(ctx, namesLeaving(before, sids), "", false); err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
+		return EnvironmentView{}, err
+	}
+	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	kids, err := s.keyValueIDsForEnvironment(ctx, e.TenantID, e.ID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, sids, dids, kids), nil
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in an
@@ -378,6 +440,68 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 	return s.toFullView(ctx, e)
 }
 
+// SetACL replaces an environment's full protected-environment ACL triple
+// (w6/m19) — full-replace, not a merge, matching every other Set verb in this
+// codebase (SetServices, postgres/keyvalue's SetIPAllowList): a caller
+// changing one field sends the current value of the other two.
+//
+//   - protectedStatus arms/disarms apps.Service's destructive-verb guard on
+//     every member App (checked at guard time via the store, not projected
+//     onto any CR — see apps/protection.go).
+//   - networkIsolationEnabled is projected onto every member App CR as
+//     core.LabelNetworkIsolation (present) or its absence — the operator's
+//     signal to scope that App's NetworkPolicy to same-environment peers
+//     (t004).
+//   - ipAllowList is fanned out to every Database/KeyValue whose
+//     core.LabelEnvironment (w6/m20) names this environment
+//     (propagateIPAllowList).
+func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) (EnvironmentView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvironmentView{}, err
+	}
+	if protectedStatus != ProtectedStatusProtected && protectedStatus != ProtectedStatusUnprotected {
+		return EnvironmentView{}, fmt.Errorf("%w: protectedStatus must be %q or %q", core.ErrBadRequest, ProtectedStatusProtected, ProtectedStatusUnprotected)
+	}
+	if err := core.ValidateCIDRs(ipAllowList); err != nil {
+		return EnvironmentView{}, err
+	}
+	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if ipAllowList == nil {
+		ipAllowList = []string{}
+	}
+	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
+		return EnvironmentView{}, mapStoreErr(err)
+	}
+	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
+	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	// Always resync, regardless of which direction networkIsolationEnabled
+	// moved: applyAppEnvironmentLabels is a no-op patch for an App whose label
+	// already matches the target state, so this correctly (and cheaply)
+	// handles on->off, off->on, and unchanged alike without needing the
+	// pre-update value.
+	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, ipAllowList); err != nil {
+		return EnvironmentView{}, err
+	}
+	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	kids, err := s.keyValueIDsForEnvironment(ctx, e.TenantID, e.ID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, sids, dids, kids), nil
+}
+
 // requireProject fetches a project and authorizes it against the workspace it
 // belongs to — the id-scoped counterpart to List/Create's direct projectID
 // param, needed everywhere an environment verb is reached by a project id
@@ -443,16 +567,137 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs []string) 
 	if keyValueIDs == nil {
 		keyValueIDs = []string{}
 	}
-	return EnvironmentView{
-		ID:          e.ID,
-		ProjectID:   e.ProjectID,
-		Name:        e.Name,
-		OwnerID:     e.TenantID,
-		CreatedAt:   e.CreatedAt,
-		ServiceIDs:  serviceIDs,
-		DatabaseIDs: databaseIDs,
-		KeyValueIDs: keyValueIDs,
+	ipAllowList := e.IPAllowList
+	if ipAllowList == nil {
+		ipAllowList = []string{}
 	}
+	return EnvironmentView{
+		ID:                      e.ID,
+		ProjectID:               e.ProjectID,
+		Name:                    e.Name,
+		OwnerID:                 e.TenantID,
+		CreatedAt:               e.CreatedAt,
+		ServiceIDs:              serviceIDs,
+		DatabaseIDs:             databaseIDs,
+		KeyValueIDs:             keyValueIDs,
+		ProtectedStatus:         e.ProtectedStatus,
+		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
+		IPAllowList:             ipAllowList,
+	}
+}
+
+// namesLeaving returns the entries of before that are absent from after —
+// the App CR names that just stopped being members of an environment
+// (SetServices), so their core.LabelNetworkIsolation can be cleared.
+func namesLeaving(before, after []string) []string {
+	keep := make(map[string]bool, len(after))
+	for _, n := range after {
+		keep[n] = true
+	}
+	var out []string
+	for _, n := range before {
+		if !keep[n] {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// applyAppEnvironmentLabels reconciles core.LabelNetworkIsolation on every
+// named App CR to (envID, isolated): present (= envID) when isolated, absent
+// otherwise. Callers pass ("", false) to clear unconditionally — a service
+// leaving its environment (SetServices) or the environment itself being
+// deleted (Delete) — or (e.ID, e.NetworkIsolationEnabled) to sync to an
+// environment's current state (SetServices' new members, SetACL's toggle).
+func (s *Service) applyAppEnvironmentLabels(ctx context.Context, names []string, envID string, isolated bool) error {
+	for _, name := range names {
+		if err := s.setAppEnvironmentLabel(ctx, name, envID, isolated); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setAppEnvironmentLabel fetches the named App via AuthorizeApp — the same
+// authorize-and-audit seam apps.Service itself uses, so this fan-out write is
+// individually authorized (and its target individually audited) per App, not
+// just once at the environment level — then patches core.LabelNetworkIsolation
+// to match (isolated, envID) with a merge-patch. A no-op patch (label already
+// matches) is skipped. Client nil (no k8s cluster wired — unit tests, or a
+// DB-less deploy) is a no-op: the same degrade every other CR-touching
+// feature uses, never a panic on a nil client.
+func (s *Service) setAppEnvironmentLabel(ctx context.Context, name, envID string, isolated bool) error {
+	if s.Client == nil {
+		return nil
+	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	if err != nil {
+		// A member name with no matching App CR (a stale row, or a race with a
+		// concurrent delete) is skipped, not fatal — mirroring
+		// store.SetEnvironmentServices' own "names not found are silently
+		// skipped" convention rather than failing the whole ACL/membership
+		// change over one dangling name.
+		if errors.Is(err, core.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	want := isolated && envID != ""
+	if want && a.Labels[core.LabelNetworkIsolation] == envID {
+		return nil
+	}
+	if !want {
+		if _, ok := a.Labels[core.LabelNetworkIsolation]; !ok {
+			return nil
+		}
+	}
+	before := a.DeepCopy()
+	if want {
+		if a.Labels == nil {
+			a.Labels = map[string]string{}
+		}
+		a.Labels[core.LabelNetworkIsolation] = envID
+	} else {
+		delete(a.Labels, core.LabelNetworkIsolation)
+	}
+	return s.Client.Patch(ctx, a, client.MergeFrom(before))
+}
+
+// propagateIPAllowList fans an environment's ipAllowList out to every
+// Database/KeyValue whose core.LabelEnvironment (w6/m20) names this
+// environment — the same membership SetDatabases/SetKeyValues manage.
+// Databases/KeyValues nil (unwired) => no-op, matching internal/projects' own
+// degrade.
+func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, cidrs []string) error {
+	if s.Databases != nil {
+		dbs, err := s.Databases.ListPostgres(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, d := range dbs {
+			if d.EnvironmentID != environmentID {
+				continue
+			}
+			if _, err := s.Databases.SetIPAllowList(ctx, d.ID, cidrs); err != nil {
+				return err
+			}
+		}
+	}
+	if s.KeyValues != nil {
+		kvs, err := s.KeyValues.ListKeyValues(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, kv := range kvs {
+			if kv.EnvironmentID != environmentID {
+				continue
+			}
+			if _, err := s.KeyValues.SetIPAllowList(ctx, kv.ID, cidrs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func mapStoreErr(err error) error {

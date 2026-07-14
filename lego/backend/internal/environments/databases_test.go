@@ -82,6 +82,17 @@ func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, projectID stri
 	return nil
 }
 
+// SetIPAllowList (w6/m19) records the CIDRs onto the fake row so a test can
+// assert on the resulting allowlist, mirroring SetEnvironmentID/SetProjectID.
+func (f *fakeDatabaseIndex) SetIPAllowList(_ context.Context, name string, cidrs []string) (postgres.PostgresView, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d := f.dbs[name]
+	d.IPAllowList = cidrs
+	f.dbs[name] = d
+	return d, nil
+}
+
 // fakeKeyValueIndex is fakeDatabaseIndex's KeyValue-CR counterpart.
 type fakeKeyValueIndex struct {
 	mu        sync.Mutex
@@ -128,6 +139,17 @@ func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, projectID stri
 	kv.ProjectID = projectID
 	f.kvs[name] = kv
 	return nil
+}
+
+// SetIPAllowList (w6/m19) is fakeDatabaseIndex.SetIPAllowList's KeyValue-CR
+// counterpart.
+func (f *fakeKeyValueIndex) SetIPAllowList(_ context.Context, name string, cidrs []string) (keyvalue.KeyValueView, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	kv := f.kvs[name]
+	kv.IPAllowList = cidrs
+	f.kvs[name] = kv
+	return kv, nil
 }
 
 func TestSetDatabases_ReplacesFullListAndJoinsProject(t *testing.T) {

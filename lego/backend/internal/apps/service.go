@@ -128,6 +128,10 @@ type IntentStore interface {
 	// RemoveDomain removes a custom domain row. Idempotent — not-found silently
 	// ignored.
 	RemoveDomain(ctx context.Context, appID, host string) error
+	// GetAppProtectedStatus resolves an App's protectedStatus via its
+	// Environment (w6/m19) — "unprotected" when it has none. The read side of
+	// the destructive-verb guard, apps/protection.go.
+	GetAppProtectedStatus(ctx context.Context, appID string) (string, error)
 }
 
 // CronRunView is one execution of a cron_job — the neutral projection of the
@@ -804,6 +808,9 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if err := s.requireUnprotected(ctx, a, "delete"); err != nil {
+		return err
+	}
 	if s.Store != nil {
 		if id := a.Labels[store.LabelAppID]; id != "" {
 			// An already-gone row is the intended end state, not an error (a
@@ -1334,41 +1341,37 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 
 // setSuspended flips suspension with the row as the single writer of intent.
 // Restart needs no row write: spec.restartedAt is not projection-owned.
+// Suspending (not resuming) a member App of a protectedStatus=protected
+// Environment is guarded (w6/m19, requireUnprotected) — resume is never
+// blocked, since it restores availability rather than taking it away.
 func (s *Service) setSuspended(ctx context.Context, name string, suspended bool) (AppView, error) {
-	return s.writeThroughStore(ctx, core.RelCanOperate, name,
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if suspended {
+		if err := s.requireUnprotected(ctx, a, "suspend"); err != nil {
+			return AppView{}, err
+		}
+	}
+	return s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
 		func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
 }
 
-// writeThroughStore is the shared shape of every intent-field verb with a row
-// as the single writer of truth (suspend/resume, plan): for store-managed Apps
-// the row is updated first — the projection loop owns the field and would
-// revert a bare CR patch on the next resync — then the CR patch after it makes
-// the change converge immediately; if the row write fails, the CR is left
-// untouched (the row is already wrong, so retrying is safe). Unmanaged
-// (bare-CR) Apps skip the row entirely and go straight to the CR patch. One
-// AuthorizeApp serves both: it is the shared authorize-and-fetch (against the
-// App's own workspace, w6/m17) and the row write's source for the store's
-// app-id. relation is the one the calling verb needs — passed through rather
-// than assumed, so the gate can never be weaker than the verb's own.
-func (s *Service) writeThroughStore(
-	ctx context.Context, relation, name string,
-	writeRow func(ctx context.Context, id string) error,
-	mutate func(*appv1alpha1.App),
-) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, relation, name)
-	if err != nil {
-		return AppView{}, err
-	}
-	return s.writeThroughStoreFetched(ctx, a, writeRow, mutate)
-}
-
-// writeThroughStoreFetched is writeThroughStore's second half, for callers
-// (SetPlan, Scale, SetIdleTTL) that must authorize+fetch BEFORE validating
-// their input — so an unauthorized or nonexistent-App caller never learns
-// their input was also invalid — but validate before writing. Reuses the App
-// AuthorizeApp already fetched rather than fetching (and authorizing, and
-// auditing) a second time.
+// writeThroughStoreFetched is the shared shape of every intent-field verb
+// with a row as the single writer of truth (suspend/resume, plan, …): for
+// store-managed Apps the row is updated first — the projection loop owns the
+// field and would revert a bare CR patch on the next resync — then the CR
+// patch after it makes the change converge immediately; if the row write
+// fails, the CR is left untouched (the row is already wrong, so retrying is
+// safe). Unmanaged (bare-CR) Apps skip the row entirely and go straight to
+// the CR patch. Every caller (setSuspended, SetPlan, Scale, SetIdleTTL, …)
+// authorizes+fetches its own App first via AuthorizeApp (against the App's
+// own workspace, w6/m17) — some validate the request or run a guard (e.g.
+// setSuspended's requireUnprotected) against it before reaching here — then
+// hands the already-fetched App to this shared write, so it's never
+// authorized or fetched twice.
 func (s *Service) writeThroughStoreFetched(
 	ctx context.Context, a *appv1alpha1.App,
 	writeRow func(ctx context.Context, id string) error,
@@ -1386,8 +1389,9 @@ func (s *Service) writeThroughStoreFetched(
 
 // patch authorizes and fetches the App by name (against its own workspace,
 // core.Base.AuthorizeApp) then applies mutate. Restart/SetAutoDeploy's
-// single-fetch shape; writeThroughStore instead reuses the App it already
-// fetched via patchFetched. relation is the one the calling verb needs.
+// single-fetch shape; a row-writing verb instead reuses the App it already
+// fetched via writeThroughStoreFetched/patchFetched. relation is the one the
+// calling verb needs.
 func (s *Service) patch(ctx context.Context, relation, name string, mutate func(*appv1alpha1.App)) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, relation, name)
 	if err != nil {

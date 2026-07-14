@@ -177,4 +177,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, e)
 	})
+
+	// PATCH /v1/environments/{id}/acl replaces the full protected-environment
+	// ACL triple (w6/m19: protectedStatus/networkIsolationEnabled/ipAllowList
+	// — Render parity, see SetACL's doc comment for why it's full-replace).
+	// Body: {"protectedStatus": "protected"|"unprotected",
+	// "networkIsolationEnabled": bool, "ipAllowList": ["1.2.3.0/24", ...]}.
+	mux.HandleFunc("PATCH /v1/environments/{id}/acl", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ProtectedStatus         string   `json:"protectedStatus"`
+			NetworkIsolationEnabled bool     `json:"networkIsolationEnabled"`
+			IPAllowList             []string `json:"ipAllowList"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		e, err := s.SetACL(r.Context(), r.PathValue("id"), req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, e)
+	})
 }

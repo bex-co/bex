@@ -318,10 +318,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderService(app))
 	}
-	// verb maps a Service action to a handler with a Render-accurate status code.
+	// verb maps a Service action to a handler with a Render-accurate status
+	// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
+	// a no-op for most of them, but it's what arms Suspend's protected-
+	// environment guard (w6/m19, ProtectedConfirmation) without needing a
+	// bespoke handler alongside Restart/Resume.
 	verb := func(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			app, err := fn(r.Context(), r.PathValue("id"))
+			ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
+			app, err := fn(ctx, r.PathValue("id"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return
@@ -470,8 +475,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the
 	// operator's ownerRefs cascade its derived resources. Render returns 204 No
 	// Content with an empty body; unknown id => core.ErrNotFound => 404.
+	// ?confirm=<phrase> arms the delete when the service is a member of a
+	// protectedStatus=protected Environment (w6/m19, ProtectedConfirmation);
+	// ignored (harmless) otherwise.
 	deleteSvc := func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
+		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		if err := s.Delete(ctx, r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}

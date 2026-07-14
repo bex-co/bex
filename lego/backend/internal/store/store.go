@@ -577,6 +577,28 @@ func (s *PGStore) GetApp(ctx context.Context, id string) (App, error) {
 	return a, nil
 }
 
+// GetAppProtectedStatus resolves a store-managed App's protectedStatus via
+// its Environment (w6/m19, apps.Service's destructive-verb guard,
+// apps/protection.go): "unprotected" when the App has no environment_id, or
+// its environment's own protected_status column otherwise. "unprotected" is
+// the same literal 0023_environment_acl.up.sql defaults protected_status to
+// — an App outside any environment behaves exactly like one in a freshly
+// created, unprotected environment.
+func (s *PGStore) GetAppProtectedStatus(ctx context.Context, appID string) (string, error) {
+	var protectedStatus *string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT e.protected_status FROM apps a LEFT JOIN environments e ON e.id = a.environment_id WHERE a.id = $1`,
+		appID,
+	).Scan(&protectedStatus)
+	if err != nil {
+		return "", classify("app", err)
+	}
+	if protectedStatus == nil {
+		return "unprotected", nil
+	}
+	return *protectedStatus, nil
+}
+
 func (s *PGStore) ListApps(ctx context.Context) ([]App, error) {
 	rows, err := s.Pool.Query(ctx,
 		`SELECT `+appColumns+` FROM apps a ORDER BY a.created_at`)

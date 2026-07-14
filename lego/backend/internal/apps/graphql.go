@@ -570,9 +570,21 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 // GraphQLMutation returns the lifecycle mutations (Render dashboard names
 // suspendService / resumeService / restartServer).
 func (s *Service) GraphQLMutation() graphql.Fields {
+	// confirmIDArgs is gqlutil.IDArg() plus an optional confirm — used by the
+	// verbs w6/m19's protected-environment guard can block (suspendService,
+	// deleteService below); confirm is a no-op (never read) for verbs whose
+	// Args omit it, since verb reads it with a safe comma-ok assert.
+	confirmIDArgs := func() graphql.FieldConfigArgument {
+		return graphql.FieldConfigArgument{
+			"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+		}
+	}
 	verb := func(fn func(context.Context, string) (AppView, error)) graphql.FieldResolveFn {
 		return func(p graphql.ResolveParams) (any, error) {
-			return fn(p.Context, p.Args["id"].(string))
+			confirm, _ := p.Args["confirm"].(string)
+			ctx := withConfirm(p.Context, confirm)
+			return fn(ctx, p.Args["id"].(string))
 		}
 	}
 	return graphql.Fields{
@@ -657,9 +669,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// mutation name wasn't captured), following the deleteCustomDomain shape.
 		"deleteService": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: gqlutil.IDArg(),
+			// confirm arms a delete blocked by w6/m19's protected-environment
+			// guard (apps.ProtectedConfirmation) — a no-op otherwise.
+			Args: confirmIDArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Delete(p.Context, p.Args["id"].(string))
+				confirm, _ := p.Args["confirm"].(string)
+				err := s.Delete(withConfirm(p.Context, confirm), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
@@ -680,8 +695,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		// runCronJob: trigger a one-off run of a cron_job (Render's cron run verb);
 		// the run shows in status.runs once the operator reconciles.
-		"runCronJob":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
-		"suspendService": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Suspend)},
+		"runCronJob": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
+		// confirmIDArgs, not gqlutil.IDArg(): suspend can be blocked by w6/m19's
+		// protected-environment guard, armed via the optional confirm arg.
+		"suspendService": &graphql.Field{Type: serviceGQLType, Args: confirmIDArgs(), Resolve: verb(s.Suspend)},
 		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		// restartServer moved to deploys.GraphQLMutation (w2/m30): routing through
 		// deploys.Restart ensures every restart opens a deploy-history row.

@@ -59,6 +59,13 @@ type setEnvironmentKeyValuesArgs struct {
 	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the environment — replaces the full list; also joins these key-value instances to the environment's project"`
 }
 
+type setEnvironmentACLArgs struct {
+	ID                      string   `json:"id" jsonschema:"the environment id (env-…)"`
+	ProtectedStatus         string   `json:"protectedStatus" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services"`
+	NetworkIsolationEnabled bool     `json:"networkIsolationEnabled" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment, denying traffic to/from the rest of the workspace"`
+	IPAllowList             []string `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks allowed to reach member Postgres/KeyValue resources externally — propagated onto every Database/KeyValue in this environment; empty/omitted means open"`
+}
+
 type environmentsResult struct {
 	Environments []EnvironmentView `json:"environments"`
 }
@@ -139,6 +146,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			in.KeyValueIDs = []string{}
 		}
 		e, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
+		return nil, e, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_environment_acl",
+		Description: "Set an environment's protected-environment ACL: protectedStatus, networkIsolationEnabled, and ipAllowList. Full-replace — pass the current value of any field you don't mean to change. bex extension (Render parity: w6/m19).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentACLArgs) (*mcp.CallToolResult, EnvironmentView, error) {
+		e, err := s.SetACL(ctx, in.ID, in.ProtectedStatus, in.NetworkIsolationEnabled, in.IPAllowList)
 		return nil, e, err
 	})
 }

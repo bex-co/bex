@@ -366,6 +366,20 @@ type recordingStore struct {
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool
 	err              error
+	// protectedStatus, keyed by app id, backs GetAppProtectedStatus (w6/m19) —
+	// an id absent from the map reports "unprotected", matching the store's
+	// own default for an App outside any environment.
+	protectedStatus map[string]string
+}
+
+func (r *recordingStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {
+	if r.err != nil {
+		return "", r.err
+	}
+	if status, ok := r.protectedStatus[id]; ok {
+		return status, nil
+	}
+	return "unprotected", nil
 }
 
 func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, error) {

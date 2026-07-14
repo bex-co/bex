@@ -69,7 +69,7 @@ func (f *fakeStore) CreateEnvironment(_ context.Context, projectID, tenantID, na
 			return store.Environment{}, fmt.Errorf("environment: %w", store.ErrConflict)
 		}
 	}
-	e := store.Environment{ID: id.New(id.Environment), ProjectID: projectID, TenantID: tenantID, Name: name}
+	e := store.Environment{ID: id.New(id.Environment), ProjectID: projectID, TenantID: tenantID, Name: name, ProtectedStatus: ProtectedStatusUnprotected}
 	f.envs[e.ID] = e
 	return e, nil
 }
@@ -138,6 +138,18 @@ func (f *fakeStore) ListEnvironmentServices(_ context.Context, environmentID, _ 
 		out = append(out, name)
 	}
 	return out, nil
+}
+
+func (f *fakeStore) SetEnvironmentACL(_ context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.envs[id]
+	if !ok {
+		return fmt.Errorf("environment: %w", store.ErrNotFound)
+	}
+	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
+	f.envs[id] = e
+	return nil
 }
 
 // allowChecker allows every authz check — exercises the store/view logic

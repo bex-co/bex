@@ -30,14 +30,17 @@ import (
 var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Environment",
 	Fields: graphql.Fields{
-		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ID })},
-		"projectId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProjectID })},
-		"name":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.Name })},
-		"ownerId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.OwnerID })},
-		"createdAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.CreatedAt })},
-		"serviceIds":  &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
-		"databaseIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.DatabaseIDs })},
-		"keyValueIds": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.KeyValueIDs })},
+		"id":                      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ID })},
+		"projectId":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProjectID })},
+		"name":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.Name })},
+		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.OwnerID })},
+		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.CreatedAt })},
+		"serviceIds":              &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
+		"databaseIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.DatabaseIDs })},
+		"keyValueIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.KeyValueIDs })},
+		"protectedStatus":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProtectedStatus })},
+		"networkIsolationEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.NetworkIsolationEnabled })},
+		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.IPAllowList })},
 	},
 })
 
@@ -144,6 +147,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					names[i], _ = v.(string)
 				}
 				return s.SetKeyValues(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		// setEnvironmentACL replaces the full protected-environment ACL triple
+		// (w6/m19) — full-replace, matching setEnvironmentServices above.
+		"setEnvironmentACL": &graphql.Field{
+			Type: environmentGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":                      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["ipAllowList"].([]any)
+				cidrs := make([]string, len(raw))
+				for i, v := range raw {
+					cidrs[i], _ = v.(string)
+				}
+				return s.SetACL(p.Context, p.Args["id"].(string), p.Args["protectedStatus"].(string), p.Args["networkIsolationEnabled"].(bool), cidrs)
 			},
 		},
 	}

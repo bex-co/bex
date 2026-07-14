@@ -123,6 +123,36 @@ const LabelProject = "app.bex.co/project-id"
 // cleared by postgres.Service.SetEnvironmentID / keyvalue.Service.SetEnvironmentID.
 const LabelEnvironment = "app.bex.co/environment-id"
 
+// LabelNetworkIsolation carries an App CR's environment id (w6/m19
+// protected-environment ACLs), but ONLY while that environment currently has
+// networkIsolationEnabled=true — unlike LabelEnvironment above (unconditional
+// DB/KV environment membership, w6/m20), this label's mere PRESENCE is itself
+// the signal, not just its value. Stamped/cleared by environments.Service
+// whenever service membership changes (SetServices) or the isolation flag
+// flips (SetACL). Read by the operator (app_controller.go's
+// reconcileNetworkPolicy, kept in sync by hand, same LabelWorkspace pattern)
+// to scope that App's NetworkPolicy to same-environment peers instead of
+// same-workspace ones. Absent: no environment, or the environment has
+// isolation off — the App keeps ordinary same-workspace connectivity.
+//
+// A distinct label from LabelEnvironment (not a reuse) because the two
+// features that separately needed "an environment id on a label" this same
+// week (w6/m19, w6/m20) landed different semantics: m20's is unconditional
+// membership (App/DB/KV all belong to at most one environment, mirroring
+// LabelProject); m19's is conditional on a policy flag and, today, App-only.
+const LabelNetworkIsolation = "app.bex.co/network-isolation"
+
+// Render's protectedStatus enum on an Environment (w6/m19). Live in this
+// shared leaf, not the environments feature package, because apps.Service's
+// destructive-verb guard (apps/protection.go) needs to compare against it too
+// — a cross-feature import for two string constants would be the wrong
+// direction (apps -> environments); both features importing core instead
+// keeps neither depending on the other.
+const (
+	ProtectedStatusProtected   = "protected"
+	ProtectedStatusUnprotected = "unprotected"
+)
+
 // WorkspaceResolver maps an authenticated caller to its workspace: the tenant
 // id ("tea-<id>") for a tenant member or a bound API key (ok=true). ok=false
 // means the store is on but the caller resolves to no tenant — an unbound

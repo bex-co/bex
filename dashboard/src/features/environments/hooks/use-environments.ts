@@ -11,6 +11,10 @@ export interface EnvironmentView {
   serviceIds: string[];
   databaseIds: string[];
   keyValueIds: string[];
+  /** Render's protectedStatus (w6/m19): "protected" or "unprotected". */
+  protectedStatus: string;
+  networkIsolationEnabled: boolean;
+  ipAllowList: string[];
 }
 
 export interface UseEnvironmentsResult {
@@ -52,6 +56,9 @@ export function useEnvironments(projectId: string | null): UseEnvironmentsResult
         keyValueIds: (e.keyValueIds ?? []).filter(
           (s): s is string => s != null,
         ),
+        protectedStatus: e.protectedStatus ?? "unprotected",
+        networkIsolationEnabled: e.networkIsolationEnabled ?? false,
+        ipAllowList: (e.ipAllowList ?? []).filter((c): c is string => c != null),
       }));
   }, [data]);
 

@@ -61,6 +61,19 @@ const labelApp = "app.bex.co/app"
 // imports the backend (same pattern as labelApp / core.PodLabelApp).
 const labelWorkspace = "app.bex.co/workspace"
 
+// labelNetworkIsolation carries an App's environment id (w6/m19 protected-
+// environment ACLs), present on the App CR ONLY when that environment has
+// networkIsolationEnabled=true (environments.Service stamps/clears it —
+// internal/environments/service.go's setAppEnvironmentLabel). Kept in sync by
+// hand with core.LabelNetworkIsolation in the backend (same pattern as
+// labelWorkspace / core.LabelWorkspace) — a distinct label from the backend's
+// core.LabelEnvironment (w6/m20, unconditional Database/KeyValue environment
+// membership; Apps don't carry that one at all, only their own environment_id
+// store column). reconcileNetworkPolicy scopes the App's NetworkPolicy to
+// same-environment peers instead of same-workspace ones when this label is
+// present.
+const labelNetworkIsolation = "app.bex.co/network-isolation"
+
 // annotLastActive records when the app last served (or received) traffic.
 // Set by the operator on first Running and reset on each wake; updated by the
 // activator on each inbound request. Free-tier apps auto-hibernate after
@@ -530,6 +543,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	podLabels := map[string]string{labelApp: app.Name}
 	if ws := app.Labels[labelWorkspace]; ws != "" {
 		podLabels[labelWorkspace] = ws
+	}
+	// Same mutability rationale as labelWorkspace above: labelNetworkIsolation
+	// is only present on the App when its Environment has
+	// networkIsolationEnabled (w6/m19) — reconcileNetworkPolicy's
+	// scopeSelector needs it on the pod template to actually select these pods.
+	if env := app.Labels[labelNetworkIsolation]; env != "" {
+		podLabels[labelNetworkIsolation] = env
 	}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
@@ -1571,9 +1591,18 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 // Apps) — they communicate freely, consistent with prior behavior.
 //
 // Policy shape:
-//   - Ingress: allow from same-workspace pods + from the traefik namespace
-//   - Egress: allow DNS (kube-system :53), same-workspace pods/services,
+//   - Ingress: allow from same-scope pods + from the traefik namespace
+//   - Egress: allow DNS (kube-system :53), same-scope pods/services,
 //     and the public internet (not RFC1918/CGNAT — blocks in-cluster platforms)
+//
+// "same-scope" is same-workspace pods (labelWorkspace) normally, but when the
+// App carries labelNetworkIsolation (w6/m19 protected-environment ACLs:
+// networkIsolationEnabled=true on its Environment — internal/environments'
+// setAppEnvironmentLabel stamps/clears it) it narrows to same-environment
+// pods (labelNetworkIsolation) instead — denying traffic between that
+// environment's Apps and everything else in the workspace, not just outside
+// it. DNS, Traefik ingress, and public-internet egress are unaffected either
+// way; those are infrastructural, not "other Apps".
 func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
 	ws := app.Labels[labelWorkspace]
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
@@ -1584,6 +1613,10 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 			return err
 		}
 		return nil
+	}
+	scopeSelector := map[string]string{labelWorkspace: ws}
+	if env := app.Labels[labelNetworkIsolation]; env != "" {
+		scopeSelector = map[string]string{labelNetworkIsolation: env}
 	}
 
 	udpProto := corev1.ProtocolUDP
@@ -1600,9 +1633,9 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
 				{
 					From: []networkingv1.NetworkPolicyPeer{
-						// same-workspace pods (private services)
+						// same-scope pods (private services)
 						{PodSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{labelWorkspace: ws},
+							MatchLabels: scopeSelector,
 						}},
 						// Traefik ingress controller
 						{NamespaceSelector: &metav1.LabelSelector{
@@ -1624,11 +1657,11 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 						}},
 					},
 				},
-				// same-workspace pods and services
+				// same-scope pods and services
 				{
 					To: []networkingv1.NetworkPolicyPeer{
 						{PodSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{labelWorkspace: ws},
+							MatchLabels: scopeSelector,
 						}},
 					},
 				},

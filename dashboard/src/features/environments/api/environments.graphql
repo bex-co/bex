@@ -7,6 +7,9 @@ fragment EnvironmentFields on Environment {
   serviceIds
   databaseIds
   keyValueIds
+  protectedStatus
+  networkIsolationEnabled
+  ipAllowList
 }
 
 query Environments($projectId: String!) {
@@ -45,6 +48,22 @@ mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {
 
 mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {
   setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {
+    ...EnvironmentFields
+  }
+}
+
+mutation SetEnvironmentACL(
+  $id: String!
+  $protectedStatus: String!
+  $networkIsolationEnabled: Boolean!
+  $ipAllowList: [String!]
+) {
+  setEnvironmentACL(
+    id: $id
+    protectedStatus: $protectedStatus
+    networkIsolationEnabled: $networkIsolationEnabled
+    ipAllowList: $ipAllowList
+  ) {
     ...EnvironmentFields
   }
 }
