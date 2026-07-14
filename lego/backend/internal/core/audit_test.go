@@ -225,3 +225,50 @@ type fakeDenyChecker struct{}
 func (fakeDenyChecker) Check(context.Context, string, string, string) (bool, error) {
 	return false, nil
 }
+
+// helperVerbService stands in for a feature service whose exported verb
+// (Suspend) delegates to shared UNEXPORTED helper methods before reaching an
+// authorize entry point — apps.Service's post-w2/m30 shape (Suspend →
+// setSuspended → writeThroughStore → AuthorizeTarget). callerVerb must walk
+// past the helpers and record the VERB, or every consolidated verb collapses
+// into one meaningless helper name and vanishes from the events feed's and
+// outbound webhooks' verb-keyed vocabularies (found live by w3/m11/t008).
+type helperVerbService struct{ base *Base }
+
+func (s *helperVerbService) Suspend(ctx context.Context, service string) error {
+	return s.setSuspended(ctx, service)
+}
+
+func (s *helperVerbService) setSuspended(ctx context.Context, service string) error {
+	return s.writeThroughStore(ctx, service)
+}
+
+func (s *helperVerbService) writeThroughStore(ctx context.Context, service string) error {
+	return s.base.AuthorizeTarget(ctx, RelCanOperate, ServiceTarget(service))
+}
+
+func TestCallerVerbWalksPastUnexportedHelperMethods(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
+
+	svc := &helperVerbService{base: b}
+	if err := svc.Suspend(ctx, "web"); err != nil {
+		t.Fatalf("Suspend: %v", err)
+	}
+	if sink.len() != 1 {
+		t.Fatalf("got %d events, want 1", sink.len())
+	}
+	if got := sink.events[0].Verb; got != "core.Suspend" {
+		t.Errorf("Verb = %q, want %q — helper frames must not be recorded as the verb", got, "core.Suspend")
+	}
+
+	// A plain unexported FUNCTION is a terminal caller (the stand-in-verb
+	// shape above), never walked past — the two shapes must coexist.
+	if err := scaleLikeVerb(ctx, b, "web"); err != nil {
+		t.Fatalf("scaleLikeVerb: %v", err)
+	}
+	if got := sink.events[1].Verb; got != "core.scaleLikeVerb" {
+		t.Errorf("Verb = %q, want %q — plain functions are terminal", got, "core.scaleLikeVerb")
+	}
+}

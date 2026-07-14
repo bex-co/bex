@@ -53,6 +53,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
+	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
 
@@ -86,6 +87,7 @@ type Server struct {
 	Projects      *projects.Service
 	Environments  *environments.Service
 	RegistryCreds *registrycreds.Service
+	Webhooks      *webhooks.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -259,6 +261,12 @@ type Deps struct {
 	// blueprint list/sync verbs (w2/m15). nil => list/sync report
 	// ErrBlueprintsUnavailable (503); validate is always available (stateless).
 	BlueprintsStore apps.BlueprintStore
+	// WebhookStore, when set (the control-plane store is wired), backs the
+	// outbound-webhook endpoint CRUD + delivery-history verbs (w3/m11). nil =>
+	// those verbs report core.ErrWebhooksUnavailable (503). The delivery
+	// worker itself is constructed and started in cmd/api/main.go (a
+	// background loop, the usage/audit-sweep shape), not here.
+	WebhookStore webhooks.EndpointStore
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -382,6 +390,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		GitHub:        gh,
 		RegistryCreds: rc,
+		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Selections: selections},
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,
 		Audit:         d.Audit,
@@ -475,6 +484,9 @@ func (s *Server) features() []any {
 	}
 	if s.RegistryCreds != nil {
 		out = append(out, s.RegistryCreds)
+	}
+	if s.Webhooks != nil {
+		out = append(out, s.Webhooks)
 	}
 	return out
 }

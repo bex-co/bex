@@ -105,6 +105,23 @@ const (
 	PreDeployFailed    = "failed"
 )
 
+// RenderDeployStatus maps a TERMINAL bex deploy status onto Render's
+// deployStatus enum (succeeded|failed|canceled) — one mapping next to the
+// vocabulary it interprets, shared by the events feed's deploy_ended details
+// and the webhook payload's data.status so the same deploy can never be
+// reported differently by the two (the drift w2/m10's `canceled` addition
+// showed is possible).
+func RenderDeployStatus(status string) string {
+	switch status {
+	case DeployLive:
+		return "succeeded"
+	case DeployCanceled:
+		return "canceled"
+	default:
+		return "failed"
+	}
+}
+
 // The deploy `trigger` vocabulary — what caused a rollout. One place, since
 // both the writers (CreateApp, deploys.Trigger/Rollback) and the readers (the
 // events feed's deploy_started trigger flags, internal/events) spell it.

@@ -124,25 +124,79 @@ var receiverRE = regexp.MustCompile(`\(\*?\w+\)\.`)
 // empty every service's activity feed without failing anything.
 const verbFrameSkip = 2
 
-// callerVerb resolves the short "<package>.<Method>" name of the function skip
-// frames up the stack — the verb method that called into an authorize entry
-// point. Unexported so only this file's entry points use it; a bad skip count is
-// a bug caught by audit_test.go's expected-verb assertions, not a panic (an
-// unresolved frame degrades to "unknown", never blocks the verb).
+// helperWalkLimit bounds how many unexported-helper frames callerVerb walks
+// past looking for the exported verb — deeper than any real helper chain
+// (setSuspended → writeThroughStore is 2), small enough that a pathological
+// stack can't make every authorize call crawl it.
+const helperWalkLimit = 8
+
+// callerVerb resolves the short "<package>.<Method>" name of the verb that
+// called into an authorize entry point, starting skip frames up the stack.
+//
+// The frame at skip is usually the verb itself ("every verb starts with
+// s.Authorize…"). But a verb may share its write path with siblings through an
+// UNEXPORTED helper method (apps.Suspend → setSuspended → writeThroughStore →
+// AuthorizeApp, the w2/m30 consolidation), and recording the helper's name
+// would collapse distinct verbs into one meaningless "apps.writeThroughStore"
+// row — un-mapping every one of them from the events feed's and the outbound
+// webhooks' verb-keyed vocabularies at once (found live by w3/m11/t008). So:
+// walk upward past unexported *methods* — shared helpers by construction —
+// until the exported verb method appears. Plain functions and closures are
+// never skipped: a test's stand-in verb (audit_test.go's suspendLikeVerb) and
+// a handler closure are terminal callers, not shared write paths.
+//
+// A bad skip count is a bug caught by audit_test.go's expected-verb
+// assertions, not a panic (an unresolved frame degrades to "unknown", never
+// blocks the verb).
 func callerVerb(skip int) string {
-	pc, _, _, ok := runtime.Caller(skip)
-	if !ok {
+	// One unwind for the whole candidate window (runtime.Callers), not one
+	// full-stack runtime.Caller per candidate — this runs on every write-verb
+	// authorize. +1: Callers counts skip from itself where Caller counts from
+	// its caller.
+	pcs := make([]uintptr, helperWalkLimit+1)
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(skip+1, pcs)])
+	first := ""
+	for {
+		frame, more := frames.Next()
+		name := frame.Function
+		if name == "" {
+			break
+		}
+		if j := strings.LastIndex(name, "/"); j >= 0 {
+			name = name[j+1:]
+		}
+		short := receiverRE.ReplaceAllString(name, "")
+		if first == "" {
+			first = short
+		}
+		if !unexportedHelperMethod(name, short) {
+			return short
+		}
+		if !more {
+			break
+		}
+	}
+	if first == "" {
 		return "unknown"
 	}
-	fn := runtime.FuncForPC(pc)
-	if fn == nil {
-		return "unknown"
+	return first // nothing but helpers in budget: degrade to the nearest frame
+}
+
+// unexportedHelperMethod reports whether a resolved frame is an unexported
+// METHOD ("apps.(*Service).writeThroughStore" → "apps.writeThroughStore") —
+// the shared-helper shape callerVerb walks past. name is the runtime name
+// after path-trimming (receiver still present); short is the receiver-stripped
+// "<pkg>.<func>" form.
+func unexportedHelperMethod(name, short string) bool {
+	if !receiverRE.MatchString(name) {
+		return false // plain function (or nothing to strip): terminal
 	}
-	name := fn.Name()
-	if i := strings.LastIndex(name, "/"); i >= 0 {
-		name = name[i+1:]
+	_, method, ok := strings.Cut(short, ".")
+	if !ok || strings.Contains(method, ".") {
+		return false // closures ("….func1") are terminal, never walked past
 	}
-	return receiverRE.ReplaceAllString(name, "")
+	r := rune(method[0])
+	return r >= 'a' && r <= 'z'
 }
 
 // emit records one audit event for a write-relation authorize call — success

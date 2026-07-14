@@ -62,6 +62,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
+	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -187,6 +188,10 @@ func main() {
 	// as the reconciler's CloneSecreter (and vice-versa) after both are constructed
 	// (w2/m11): rec.Run is deferred until after NewServer for the same reason.
 	var rec *store.Reconciler
+	// st is hoisted like rec: the outbound-webhook delivery worker (w3/m11) is
+	// constructed after NewServer (it shares deps.Mailer + the identity email
+	// lookup) but reads/writes the store directly.
+	var st *store.PGStore
 	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
 		pool, err := pgxpool.New(ctx, dbURI)
@@ -206,7 +211,7 @@ func main() {
 			log.Fatalf("bex-api: %v", err)
 		}
 
-		st := store.NewPGStore(pool)
+		st = store.NewPGStore(pool)
 		rec = store.NewReconciler(cl, st, appsNS)
 		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
 			v, err := time.ParseDuration(d)
@@ -229,6 +234,7 @@ func main() {
 		deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
 		deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
 		deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
+		deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
@@ -389,6 +395,22 @@ func main() {
 		// before the first reconcile pass.
 		rec.DeployNotifier = srv.Notifications
 		go rec.Run(ctx)
+	}
+	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
+	// event feed (deploys + audit_events — the same rows the events feed reads)
+	// through a durable watermark and POSTs signed notifications to subscribed
+	// endpoints, with retry/auto-disable. Store off => no worker (the CRUD verbs
+	// already 503 via deps.WebhookStore above). Failure notices reuse the SMTP
+	// relay + Kratos email lookup the notifications feature uses.
+	// BEX_WEBHOOK_BACKOFF ("5s,10s,1m") overrides the documented retry schedule
+	// — a dev/verification knob, unset in production.
+	if st != nil {
+		backoff, err := webhooks.ParseBackoff(os.Getenv("BEX_WEBHOOK_BACKOFF"))
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+		whWorker := &webhooks.Worker{Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff}
+		go whWorker.Run(ctx)
 	}
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL

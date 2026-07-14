@@ -97,6 +97,7 @@ func TestPGStore(t *testing.T) {
 	assertWorkspaceLifecycle(ctx, t, s, pool)
 	assertRegistryCredentials(ctx, t, s, ten)
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
+	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
 
@@ -984,6 +985,185 @@ func assertDomainUniqueness(ctx context.Context, t *testing.T, s *PGStore, tenan
 	// (Render's "already exists on another site"), not swallowed.
 	if err := s.AddDomain(ctx, a2.ID, "shared.example.com"); !errors.Is(err, ErrConflict) {
 		t.Errorf("cross-app AddDomain => ErrConflict, got %v", err)
+	}
+}
+
+// assertWebhooks exercises w3/m11's outbound-webhook store methods against
+// real Postgres: endpoint CRUD (secret write-only past creation, enforced by
+// the read column lists), cross-workspace scoping, the watermark's
+// seed-once/advance semantics, the composed workspace-wide event feed
+// (webhookEventsQuery — the ascending twin of the service-events view, with
+// its tenant/app join and truthfulness predicates), and the delivery queue's
+// due/record lifecycle including the enabled-join park.
+func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool, ten Tenant, app App) {
+	t.Helper()
+	// The watermark is a singleton with no tenant FK, so the test's TRUNCATE
+	// tenants CASCADE leaves it behind — clear it for a deterministic re-run.
+	if _, err := pool.Exec(ctx, `TRUNCATE webhook_watermark`); err != nil {
+		t.Fatal(err)
+	}
+
+	// --- endpoint CRUD + scoping ---
+	ep, err := s.CreateWebhookEndpoint(ctx, ten.ID, "", "https://hooks.example.com/a", "whsec_secret-a", []string{"deploy_started", "deploy_ended"}, "user-x")
+	if err != nil {
+		t.Fatalf("create webhook endpoint: %v", err)
+	}
+	if ep.ID[:4] != "whk-" || ep.Secret != "whsec_secret-a" || ep.Name != "https://hooks.example.com/a" || !ep.Enabled {
+		t.Errorf("created endpoint = %+v", ep)
+	}
+	got, err := s.GetWebhookEndpoint(ctx, ten.ID, ep.ID)
+	if err != nil {
+		t.Fatalf("get webhook endpoint: %v", err)
+	}
+	if got.Secret != "" {
+		t.Errorf("Get returned the secret %q — reads must never select it", got.Secret)
+	}
+	if len(got.EventTypes) != 2 || got.EventTypes[0] != "deploy_started" {
+		t.Errorf("event types did not round-trip: %+v", got.EventTypes)
+	}
+	list, err := s.ListWebhookEndpoints(ctx, ten.ID)
+	if err != nil || len(list) != 1 || list[0].Secret != "" {
+		t.Errorf("list = %+v (err %v), want 1 endpoint with no secret", list, err)
+	}
+	if _, err := s.GetWebhookEndpoint(ctx, "tea-stranger00000000", ep.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-workspace get = %v, want ErrNotFound", err)
+	}
+	if err := s.DeleteWebhookEndpoint(ctx, "tea-stranger00000000", ep.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-workspace delete = %v, want ErrNotFound", err)
+	}
+	if _, err := s.CreateWebhookEndpoint(ctx, "tea-doesnotexist0000", "x", "https://x", "s", []string{"deploy_started"}, ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("create under a missing tenant = %v, want ErrNotFound (FK)", err)
+	}
+
+	disabled, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, false, "manual")
+	if err != nil || disabled.Enabled || disabled.DisabledReason != "manual" {
+		t.Errorf("disable = %+v (err %v)", disabled, err)
+	}
+	enabled, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, "ignored")
+	if err != nil || !enabled.Enabled || enabled.DisabledReason != "" {
+		t.Errorf("re-enable = %+v (err %v), want enabled with reason cleared", enabled, err)
+	}
+
+	// --- watermark: seeded once, later Ensure calls don't move it ---
+	seed := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
+	wmAt, wmKey, err := s.EnsureWebhookWatermark(ctx, seed)
+	if err != nil || !wmAt.Equal(seed) || wmKey != "" {
+		t.Fatalf("watermark seed = (%v, %q, %v), want (%v, \"\")", wmAt, wmKey, err, seed)
+	}
+	wmAt2, _, err := s.EnsureWebhookWatermark(ctx, seed.Add(time.Hour))
+	if err != nil || !wmAt2.Equal(seed) {
+		t.Errorf("second Ensure moved the watermark to %v; it must seed only once", wmAt2)
+	}
+
+	// --- the composed workspace-wide feed ---
+	// The app has deploys + audit rows from earlier assertions; add one row of
+	// each exclusion class to prove the truthfulness predicates carry over.
+	// An audit row's target carries whatever name the caller passed
+	// (core.AuthorizeApp), which has two legitimate spellings (w4/m19): the
+	// full service id "<tenantName>-<appName>" (the common one) and the bare
+	// app name (the LabelServiceName fallback) — the feed must match both.
+	fullTarget := core.ServiceTarget(core.CRName(ten.Name, app.Name))
+	bareTarget := core.ServiceTarget(app.Name)
+	at := time.Now().UTC().Add(-time.Minute)
+	recordAudit := func(atRow time.Time, verb, workspace, target string, outcome core.AuditOutcome) {
+		t.Helper()
+		if err := s.Record(ctx, core.AuditEvent{
+			Caller: "user-x", Verb: verb, Resource: core.WorkspaceObject(workspace),
+			Target: target, Outcome: outcome, At: atRow,
+		}); err != nil {
+			t.Fatalf("record %s: %v", verb, err)
+		}
+	}
+	recordAudit(at, "apps.Restart", ten.ID, fullTarget, core.AuditAllowed)
+	recordAudit(at.Add(time.Second), "apps.Restart", ten.ID, bareTarget, core.AuditAllowed)
+	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, core.AuditDenied)                // denied: excluded
+	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, core.AuditAllowed) // cross-tenant: excluded
+	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, core.AuditAllowed)             // verb not pushed down: excluded
+
+	rows, err := s.ListWebhookEvents(ctx, at.Add(-time.Second), "", time.Now().UTC().Add(time.Hour), []string{"apps.Restart"}, []string{ten.ID}, 100)
+	if err != nil {
+		t.Fatalf("list webhook events: %v", err)
+	}
+	var restarts int
+	for _, r := range rows {
+		if r.Source == EventSourceAudit {
+			if r.Verb != "apps.Restart" || r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.Name, app.Name) || r.ServiceName != app.Name {
+				t.Errorf("unexpected audit row in feed: %+v", r)
+			}
+			restarts++
+		}
+	}
+	if restarts != 2 {
+		t.Errorf("feed carried %d apps.Restart events, want exactly 2 (both target spellings; denied/cross-tenant/unmapped excluded)\n%+v", restarts, rows)
+	}
+	// Ascending keyset: rows must come back oldest-first and resume exactly.
+	if len(rows) >= 2 {
+		if rows[0].At.After(rows[1].At) {
+			t.Errorf("feed not ascending: %v then %v", rows[0].At, rows[1].At)
+		}
+		resumed, err := s.ListWebhookEvents(ctx, rows[0].At, rows[0].Key, time.Now().UTC().Add(time.Hour), []string{"apps.Restart"}, []string{ten.ID}, 100)
+		if err != nil || len(resumed) != len(rows)-1 {
+			t.Errorf("keyset resume = %d rows (err %v), want %d", len(resumed), err, len(rows)-1)
+		}
+	}
+
+	// --- delivery queue lifecycle ---
+	now := time.Now().UTC().Truncate(time.Microsecond) // timestamptz keeps microseconds
+	d := WebhookDelivery{
+		ID: "whd-testdelivery00000", EndpointID: ep.ID, EventID: "evt-testevent00000000",
+		EventType: "deploy_started", ServiceID: app.Name, Payload: `{"type":"deploy_started"}`,
+		NextAttemptAt: now,
+	}
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{d}, now, "advance-key"); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+	wmAt3, wmKey3, err := s.EnsureWebhookWatermark(ctx, time.Now())
+	if err != nil || !wmAt3.Equal(now) || wmKey3 != "advance-key" {
+		t.Errorf("watermark after enqueue = (%v, %q, %v), want (%v, advance-key)", wmAt3, wmKey3, err, now)
+	}
+	due, err := s.DueWebhookDeliveries(ctx, now.Add(time.Second), 10)
+	if err != nil || len(due) != 1 {
+		t.Fatalf("due = %+v (err %v), want the one enqueued delivery", due, err)
+	}
+	if due[0].Secret != "whsec_secret-a" || due[0].URL != "https://hooks.example.com/a" || due[0].CreatedBy != "user-x" {
+		t.Errorf("due join = %+v, want the endpoint's secret/url/creator", due[0])
+	}
+	// A failed attempt reschedules; the row stays open but future-dated.
+	if err := s.RecordWebhookAttempt(ctx, d.ID, 502, "bad gateway", now, now.Add(time.Hour), false, false); err != nil {
+		t.Fatalf("record attempt: %v", err)
+	}
+	if due, _ := s.DueWebhookDeliveries(ctx, now.Add(time.Second), 10); len(due) != 0 {
+		t.Errorf("rescheduled delivery must not be due, got %+v", due)
+	}
+	// Disabling the endpoint parks the queue even when the row is due.
+	if err := s.DisableWebhookEndpoint(ctx, ep.ID, "auto"); err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+	if due, _ := s.DueWebhookDeliveries(ctx, now.Add(2*time.Hour), 10); len(due) != 0 {
+		t.Errorf("a disabled endpoint's deliveries must not be due, got %+v", due)
+	}
+	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, ""); err != nil {
+		t.Fatalf("re-enable: %v", err)
+	}
+	// A delivered attempt closes the row.
+	if err := s.RecordWebhookAttempt(ctx, d.ID, 200, "", now.Add(2*time.Hour), now.Add(2*time.Hour), true, false); err != nil {
+		t.Fatalf("record delivered: %v", err)
+	}
+	history, err := s.ListWebhookDeliveries(ctx, ep.ID, time.Time{}, "", 10)
+	if err != nil || len(history) != 1 {
+		t.Fatalf("history = %+v (err %v)", history, err)
+	}
+	h := history[0]
+	if h.AttemptCount != 2 || h.DeliveredAt == nil || h.LastStatus != 200 {
+		t.Errorf("history row = %+v, want 2 attempts, delivered, 200", h)
+	}
+	// Deleting the endpoint cascades its deliveries.
+	if err := s.DeleteWebhookEndpoint(ctx, ten.ID, ep.ID); err != nil {
+		t.Fatalf("delete endpoint: %v", err)
+	}
+	var nDeliveries int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM webhook_deliveries WHERE endpoint_id = $1`, ep.ID).Scan(&nDeliveries); err != nil || nDeliveries != 0 {
+		t.Errorf("deliveries after endpoint delete = %d (err %v), want 0 (cascade)", nDeliveries, err)
 	}
 }
 

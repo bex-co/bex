@@ -79,12 +79,17 @@ var (
 	// afterward. "env" (not "evg" — that's the pre-existing, unrelated EnvGroup
 	// env-var-grouping feature).
 	Environment = Kind{prefix: "env", desc: "environment (named subset of a project's services)"}
+	// Webhook / WebhookDelivery are bex-chosen prefixes (w3/m11 outbound event
+	// webhooks) — Render's public docs don't expose its webhook-endpoint id
+	// spelling, so these follow the RegistryCredential precedent.
+	Webhook         = Kind{prefix: "whk", desc: "outbound webhook endpoint"}
+	WebhookDelivery = Kind{prefix: "whd", desc: "outbound webhook delivery"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential, Blueprint, Environment}
+var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

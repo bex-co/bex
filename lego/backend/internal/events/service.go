@@ -344,7 +344,7 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if err := s.checkWindow(since, until); err != nil {
 		return nil, err
 	}
-	after, err := decodeCursor(filter.Cursor)
+	after, err := core.DecodeKeysetCursor(filter.Cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		ID:        ids.Derive(ids.Event, r.Key),
 		At:        r.At,
 		ServiceID: service,
-		Cursor:    encodeCursor(r.At, r.Key),
+		Cursor:    core.EncodeKeysetCursor(r.At, r.Key),
 	}
 	switch r.Source {
 	case store.EventSourceDeploy:
@@ -411,7 +411,7 @@ func view(r store.ServiceEventRow, service string) Event {
 			}
 		} else {
 			ev.Type = TypeDeployEnded
-			ev.Details.DeployStatus = deployStatus(r.Status)
+			ev.Details.DeployStatus = store.RenderDeployStatus(r.Status)
 			ev.Details.PreDeployStatus = r.PreDeployStatus
 		}
 	case store.EventSourceAudit:
@@ -424,18 +424,4 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 	}
 	return ev
-}
-
-// deployStatus maps bex's deploy status onto Render's deployStatus enum
-// (succeeded|failed|canceled) — all three are live states since w2/m10 added
-// Cancel, and a canceled deploy must not be reported as a failed one.
-func deployStatus(status string) string {
-	switch status {
-	case store.DeployLive:
-		return "succeeded"
-	case store.DeployCanceled:
-		return "canceled"
-	default:
-		return "failed"
-	}
 }

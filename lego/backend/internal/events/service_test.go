@@ -194,20 +194,20 @@ func TestEventIDsAreDerivedNotMinted(t *testing.T) {
 
 func TestCursorRoundTrips(t *testing.T) {
 	at := now.Add(123 * time.Nanosecond) // nanosecond precision must survive
-	c := encodeCursor(at, "aud-1:")
-	got, err := decodeCursor(c)
+	c := core.EncodeKeysetCursor(at, "aud-1:")
+	got, err := core.DecodeKeysetCursor(c)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if !got.At.Equal(at) || got.Key != "aud-1:" {
 		t.Errorf("round-trip = %+v, want at=%s key=aud-1:", got, at)
 	}
-	if empty, err := decodeCursor(""); err != nil || !empty.At.IsZero() {
+	if empty, err := core.DecodeKeysetCursor(""); err != nil || !empty.At.IsZero() {
 		t.Errorf("empty cursor = %+v (err %v), want the head of the feed", empty, err)
 	}
 	for _, bad := range []string{"not-base64!!", "YWJj", "MjAyNi0wNy0xMHxrZXk"} { // junk, no separator, unparseable time
-		if _, err := decodeCursor(bad); !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("decodeCursor(%q) = %v, want core.ErrBadRequest (400)", bad, err)
+		if _, err := core.DecodeKeysetCursor(bad); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("core.DecodeKeysetCursor(%q) = %v, want core.ErrBadRequest (400)", bad, err)
 		}
 	}
 }

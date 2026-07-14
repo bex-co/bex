@@ -488,6 +488,7 @@ export type Mutation = {
   createProject: Maybe<Project>;
   createRegistryCredential: Maybe<RegistryCredential>;
   createService: Maybe<Service>;
+  createWebhookEndpoint: Maybe<WebhookEndpoint>;
   createWorkspace: Maybe<Workspace>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
@@ -502,6 +503,7 @@ export type Mutation = {
   deleteRegistryCredential: Maybe<Scalars['Boolean']['output']>;
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
+  deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
   deleteWorkspace: Maybe<Scalars['String']['output']>;
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
@@ -552,6 +554,7 @@ export type Mutation = {
   setSecretFile: Maybe<Scalars['Boolean']['output']>;
   setStaticHeaders: Maybe<Service>;
   setStaticRoutes: Maybe<Service>;
+  setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
   suspendDatabase: Maybe<Database>;
   suspendKeyValue: Maybe<KeyValue>;
   suspendService: Maybe<Service>;
@@ -697,6 +700,14 @@ export type MutationCreateServiceArgs = {
 };
 
 
+export type MutationCreateWebhookEndpointArgs = {
+  eventTypes: Array<InputMaybe<Scalars['String']['input']>>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  url: Scalars['String']['input'];
+};
+
+
 export type MutationCreateWorkspaceArgs = {
   name: Scalars['String']['input'];
   plan?: InputMaybe<Scalars['String']['input']>;
@@ -772,6 +783,12 @@ export type MutationDeleteSecretFileArgs = {
 export type MutationDeleteServiceArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteWebhookEndpointArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1078,6 +1095,13 @@ export type MutationSetStaticRoutesArgs = {
 };
 
 
+export type MutationSetWebhookEndpointEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationSuspendDatabaseArgs = {
   id: Scalars['String']['input'];
 };
@@ -1258,6 +1282,10 @@ export type Query = {
   services: Maybe<Array<Maybe<Service>>>;
   usage: Maybe<UsageSummary>;
   validateBlueprint: Maybe<BlueprintValidation>;
+  webhookDeliveries: Maybe<Array<Maybe<WebhookDelivery>>>;
+  webhookEndpoint: Maybe<WebhookEndpoint>;
+  webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
+  webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
   workspaceLimits: Maybe<ResourceLimits>;
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
@@ -1554,6 +1582,25 @@ export type QueryValidateBlueprintArgs = {
 };
 
 
+export type QueryWebhookDeliveriesArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  endpointId: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryWebhookEndpointArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryWebhookEndpointsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryWorkspaceInvitesArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -1761,6 +1808,38 @@ export type UsageSummary = {
   period: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<ServiceUsage>>>;
   workspaceId: Maybe<Scalars['String']['output']>;
+};
+
+export type WebhookDelivery = {
+  __typename: 'WebhookDelivery';
+  attemptCount: Maybe<Scalars['Int']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
+  cursor: Maybe<Scalars['String']['output']>;
+  deliveredAt: Maybe<Scalars['String']['output']>;
+  eventId: Maybe<Scalars['String']['output']>;
+  eventType: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  lastAttemptedAt: Maybe<Scalars['String']['output']>;
+  lastError: Maybe<Scalars['String']['output']>;
+  lastStatusCode: Maybe<Scalars['Int']['output']>;
+  nextAttemptAt: Maybe<Scalars['String']['output']>;
+  serviceId: Maybe<Scalars['String']['output']>;
+  status: Maybe<Scalars['String']['output']>;
+};
+
+export type WebhookEndpoint = {
+  __typename: 'WebhookEndpoint';
+  createdAt: Maybe<Scalars['String']['output']>;
+  createdBy: Maybe<Scalars['String']['output']>;
+  disabledReason: Maybe<Scalars['String']['output']>;
+  enabled: Maybe<Scalars['Boolean']['output']>;
+  eventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+  ownerId: Maybe<Scalars['String']['output']>;
+  secret: Maybe<Scalars['String']['output']>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+  url: Maybe<Scalars['String']['output']>;
 };
 
 export type Workspace = {
@@ -2852,6 +2931,55 @@ export type UsageQueryVariables = Exact<{
 
 export type UsageQuery = { usage: { __typename: 'UsageSummary', workspaceId: string | null, period: string | null, services: Array<{ __typename: 'ServiceUsage', serviceId: string | null, resourceKind: string | null, rows: Array<{ __typename: 'UsageRow', kind: string | null, tier: string | null, total: number | null } | null> | null } | null> | null, estimatedCost: { __typename: 'EstimatedCost', totalUsd: string | null, meters: Array<{ __typename: 'MeterEstimate', kind: string | null, tier: string | null, resourceKind: string | null, costUsd: string | null } | null> | null } | null } | null };
 
+export type WebhookEndpointsQueryVariables = Exact<{
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type WebhookEndpointsQuery = { webhookEndpoints: Array<{ __typename: 'WebhookEndpoint', id: string | null, name: string | null, url: string | null, eventTypes: Array<string | null> | null, enabled: boolean | null, disabledReason: string | null, createdAt: string | null } | null> | null };
+
+export type WebhookEventTypesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type WebhookEventTypesQuery = { webhookEventTypes: Array<string | null> | null };
+
+export type WebhookDeliveriesQueryVariables = Exact<{
+  endpointId: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type WebhookDeliveriesQuery = { webhookDeliveries: Array<{ __typename: 'WebhookDelivery', id: string | null, eventType: string | null, serviceId: string | null, status: string | null, attemptCount: number | null, lastStatusCode: number | null, lastError: string | null, nextAttemptAt: string | null, deliveredAt: string | null, createdAt: string | null, cursor: string | null } | null> | null };
+
+export type CreateWebhookEndpointMutationVariables = Exact<{
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  url: Scalars['String']['input'];
+  eventTypes: Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type CreateWebhookEndpointMutation = { createWebhookEndpoint: { __typename: 'WebhookEndpoint', id: string | null, name: string | null, url: string | null, eventTypes: Array<string | null> | null, enabled: boolean | null, secret: string | null, createdAt: string | null } | null };
+
+export type SetWebhookEndpointEnabledMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+
+export type SetWebhookEndpointEnabledMutation = { setWebhookEndpointEnabled: { __typename: 'WebhookEndpoint', id: string | null, enabled: boolean | null, disabledReason: string | null } | null };
+
+export type DeleteWebhookEndpointMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DeleteWebhookEndpointMutation = { deleteWebhookEndpoint: boolean | null };
+
 export type WorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -3019,6 +3147,12 @@ export const ChangeWorkspaceMemberRoleDocument = {"kind":"Document","definitions
 export const RemoveWorkspaceMemberDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveWorkspaceMember"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"subject"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeWorkspaceMember"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"subject"},"value":{"kind":"Variable","name":{"kind":"Name","value":"subject"}}}]}]}}]} as unknown as DocumentNode<RemoveWorkspaceMemberMutation, RemoveWorkspaceMemberMutationVariables>;
 export const RevokeWorkspaceInviteDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RevokeWorkspaceInvite"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"inviteId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"revokeWorkspaceInvite"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"inviteId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"inviteId"}}}]}]}}]} as unknown as DocumentNode<RevokeWorkspaceInviteMutation, RevokeWorkspaceInviteMutationVariables>;
 export const UsageDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Usage"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"period"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"usage"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"period"},"value":{"kind":"Variable","name":{"kind":"Name","value":"period"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"period"}},{"kind":"Field","name":{"kind":"Name","value":"services"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"resourceKind"}},{"kind":"Field","name":{"kind":"Name","value":"rows"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"total"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"estimatedCost"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalUsd"}},{"kind":"Field","name":{"kind":"Name","value":"meters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"resourceKind"}},{"kind":"Field","name":{"kind":"Name","value":"costUsd"}}]}}]}}]}}]}}]} as unknown as DocumentNode<UsageQuery, UsageQueryVariables>;
+export const WebhookEndpointsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEndpoints"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEndpoints"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<WebhookEndpointsQuery, WebhookEndpointsQueryVariables>;
+export const WebhookEventTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEventTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEventTypes"}}]}}]} as unknown as DocumentNode<WebhookEventTypesQuery, WebhookEventTypesQueryVariables>;
+export const WebhookDeliveriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookDeliveries"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookDeliveries"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"endpointId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"eventType"}},{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"attemptCount"}},{"kind":"Field","name":{"kind":"Name","value":"lastStatusCode"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"nextAttemptAt"}},{"kind":"Field","name":{"kind":"Name","value":"deliveredAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"cursor"}}]}}]}}]} as unknown as DocumentNode<WebhookDeliveriesQuery, WebhookDeliveriesQueryVariables>;
+export const CreateWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"url"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"url"},"value":{"kind":"Variable","name":{"kind":"Name","value":"url"}}},{"kind":"Argument","name":{"kind":"Name","value":"eventTypes"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"secret"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateWebhookEndpointMutation, CreateWebhookEndpointMutationVariables>;
+export const SetWebhookEndpointEnabledDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetWebhookEndpointEnabled"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setWebhookEndpointEnabled"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"enabled"},"value":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}}]}}]}}]} as unknown as DocumentNode<SetWebhookEndpointEnabledMutation, SetWebhookEndpointEnabledMutationVariables>;
+export const DeleteWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}]}]}}]} as unknown as DocumentNode<DeleteWebhookEndpointMutation, DeleteWebhookEndpointMutationVariables>;
 export const WorkspacesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Workspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<WorkspacesQuery, WorkspacesQueryVariables>;
 export const CreateWorkspaceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWorkspace"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"plan"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWorkspace"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"plan"},"value":{"kind":"Variable","name":{"kind":"Name","value":"plan"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateWorkspaceMutation, CreateWorkspaceMutationVariables>;
 export const RenameWorkspaceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RenameWorkspace"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"renameWorkspace"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<RenameWorkspaceMutation, RenameWorkspaceMutationVariables>;

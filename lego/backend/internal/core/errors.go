@@ -98,6 +98,12 @@ var (
 	// metadata lives in one and its secret in the other; adapters surface it
 	// as 503.
 	ErrRegistryCredentialsUnavailable = errors.New("registry credential store not configured")
+	// ErrWebhooksUnavailable is returned by the outbound-webhook verbs when the
+	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
+	// as 503 (w3/m11, the deploy-history precedent) — both the endpoint registry
+	// and the delivery queue are control-plane tables, so there is nothing to
+	// degrade to.
+	ErrWebhooksUnavailable = errors.New("webhook store not configured")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

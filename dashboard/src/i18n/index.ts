@@ -19,6 +19,7 @@ import enConnectedAgents from "@/features/connected-agents/locales/en";
 import enSessions from "@/features/sessions/locales/en";
 import enBlueprints from "@/features/blueprints/locales/en";
 import enEnvGroups from "@/features/env-groups/locales/en";
+import enWebhooks from "@/features/webhooks/locales/en";
 import zhCommon from "@/common/locales/zh";
 import zhAuth from "@/features/auth/locales/zh";
 import zhLogs from "@/features/logs/locales/zh";
@@ -40,6 +41,7 @@ import zhConnectedAgents from "@/features/connected-agents/locales/zh";
 import zhSessions from "@/features/sessions/locales/zh";
 import zhBlueprints from "@/features/blueprints/locales/zh";
 import zhEnvGroups from "@/features/env-groups/locales/zh";
+import zhWebhooks from "@/features/webhooks/locales/zh";
 import type { SupportedLanguage, TranslationEntry } from "./config";
 
 export type { SupportedLanguage, TranslationEntry } from "./config";
@@ -87,6 +89,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enSessions),
   ...extractMessages(enBlueprints),
   ...extractMessages(enEnvGroups),
+  ...extractMessages(enWebhooks),
 };
 
 export const zh: Record<string, string> = {
@@ -111,6 +114,7 @@ export const zh: Record<string, string> = {
   ...extractMessages(zhSessions),
   ...extractMessages(zhBlueprints),
   ...extractMessages(zhEnvGroups),
+  ...extractMessages(zhWebhooks),
 };
 
 export const resources: Record<

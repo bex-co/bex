@@ -1,0 +1,64 @@
+# bex-api's outbound-webhooks surface (backend/internal/webhooks/graphql.go,
+# w3/m11). Endpoints are workspace-scoped destinations bex pushes signed event
+# notifications to. The list query never requests `secret` (the server resolves
+# it empty everywhere but the create mutation anyway): the only place a signing
+# secret is ever fetched is CreateWebhookEndpoint's response, exactly once —
+# the API-key mint-once precedent.
+
+query WebhookEndpoints($ownerId: String) {
+  webhookEndpoints(ownerId: $ownerId) {
+    id
+    name
+    url
+    eventTypes
+    enabled
+    disabledReason
+    createdAt
+  }
+}
+
+# The subscribable event-type vocabulary — drives the create form's picker so
+# the dashboard never hardcodes (and drifts from) the server's set.
+query WebhookEventTypes {
+  webhookEventTypes
+}
+
+query WebhookDeliveries($endpointId: String!, $ownerId: String, $cursor: String, $limit: Int) {
+  webhookDeliveries(endpointId: $endpointId, ownerId: $ownerId, cursor: $cursor, limit: $limit) {
+    id
+    eventType
+    serviceId
+    status
+    attemptCount
+    lastStatusCode
+    lastError
+    nextAttemptAt
+    deliveredAt
+    createdAt
+    cursor
+  }
+}
+
+mutation CreateWebhookEndpoint($ownerId: String, $name: String, $url: String!, $eventTypes: [String]!) {
+  createWebhookEndpoint(ownerId: $ownerId, name: $name, url: $url, eventTypes: $eventTypes) {
+    id
+    name
+    url
+    eventTypes
+    enabled
+    secret
+    createdAt
+  }
+}
+
+mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {
+  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {
+    id
+    enabled
+    disabledReason
+  }
+}
+
+mutation DeleteWebhookEndpoint($id: String!, $ownerId: String) {
+  deleteWebhookEndpoint(id: $id, ownerId: $ownerId)
+}
