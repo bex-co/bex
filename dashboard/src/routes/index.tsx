@@ -4,12 +4,6 @@ import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card.tsx";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
@@ -111,82 +105,80 @@ export function HomePage() {
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-              <CardTitle>{t("projects.cardTitle")}</CardTitle>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="size-4" />
-                    {t("projects.newButton")}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link to="/services/new">{t("projects.newService")}</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
-                    {t("projects.newDatabase")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
-                    {t("projects.newProjectButton")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardHeader>
-            <CardContent>
-              {showError ? (
-                <Alert variant="destructive">
-                  <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
-                  <AlertDescription>{t("projects.errorBody")}</AlertDescription>
-                </Alert>
-              ) : showEmpty ? (
-                <div className="py-10 text-center">
-                  <p className="font-medium">{t("projects.emptyTitle")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("projects.emptyBody")}
+        <div className="w-full space-y-6">
+          <div className="flex flex-row items-center justify-between gap-2">
+            <h1 className="text-xl leading-none font-semibold">
+              {t("projects.cardTitle")}
+            </h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Plus className="size-4" />
+                  {t("projects.newButton")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/services/new">{t("projects.newService")}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setNewDatabaseOpen(true)}>
+                  {t("projects.newDatabase")}
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/keyvalue/new">{t("projects.newKeyValue")}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
+                  {t("projects.newProjectButton")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {showError ? (
+            <Alert variant="destructive">
+              <AlertTitle>{t("projects.errorTitle")}</AlertTitle>
+              <AlertDescription>{t("projects.errorBody")}</AlertDescription>
+            </Alert>
+          ) : showEmpty ? (
+            <div className="py-10 text-center">
+              <p className="font-medium">{t("projects.emptyTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("projects.emptyBody")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groups.map((g) => (
+                <ProjectSection
+                  key={g.id}
+                  id={g.id}
+                  name={g.name}
+                  rows={g.rows}
+                  loading={showSkeleton}
+                  servicePending={pending}
+                  onRunServiceAction={run}
+                  onDatabaseDeleted={refetchAll}
+                  onKeyValueDeleted={refetchAll}
+                  onChanged={refetchAll}
+                />
+              ))}
+              {(ungrouped.length > 0 || groups.length === 0) && (
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("projects.ungroupedLabel")}
                   </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {groups.map((g) => (
-                    <ProjectSection
-                      key={g.id}
-                      id={g.id}
-                      name={g.name}
-                      rows={g.rows}
-                      loading={showSkeleton}
-                      servicePending={pending}
-                      onRunServiceAction={run}
-                      onDatabaseDeleted={refetchAll}
-                      onKeyValueDeleted={refetchAll}
-                      onChanged={refetchAll}
-                    />
-                  ))}
-                  {(ungrouped.length > 0 || groups.length === 0) && (
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {t("projects.ungroupedLabel")}
-                      </p>
-                      <ResourceTable
-                        rows={ungrouped}
-                        loading={showSkeleton}
-                        servicePending={pending}
-                        onRunServiceAction={run}
-                        onDatabaseDeleted={refetchAll}
-                        onKeyValueDeleted={refetchAll}
-                      />
-                    </div>
-                  )}
+                  <ResourceTable
+                    rows={ungrouped}
+                    loading={showSkeleton}
+                    servicePending={pending}
+                    onRunServiceAction={run}
+                    onDatabaseDeleted={refetchAll}
+                    onKeyValueDeleted={refetchAll}
+                  />
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
       </div>
       <CreateDatabaseDialog

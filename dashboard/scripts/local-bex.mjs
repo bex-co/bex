@@ -111,6 +111,14 @@ const SERVICE = {
   command: null,
   runs: [],
   healthCheckPath: "/healthz",
+  idleTTLSeconds: 0,
+  repo: "https://github.com/acme-corp/eden-cms-v2",
+  branch: "main",
+  rootDir: "",
+  autoDeploy: true,
+  publishPath: null,
+  routes: [],
+  headers: [],
   ownerId: WORKSPACE_DEFAULT,
 };
 
@@ -133,6 +141,15 @@ const WORKER = {
   schedule: null,
   command: null,
   runs: [],
+  healthCheckPath: null,
+  idleTTLSeconds: 0,
+  repo: null,
+  branch: null,
+  rootDir: null,
+  autoDeploy: null,
+  publishPath: null,
+  routes: [],
+  headers: [],
   ownerId: WORKSPACE_DEFAULT,
 };
 
@@ -174,6 +191,15 @@ const CRON = {
       status: "Running",
     },
   ],
+  healthCheckPath: null,
+  idleTTLSeconds: 0,
+  repo: null,
+  branch: null,
+  rootDir: null,
+  autoDeploy: null,
+  publishPath: null,
+  routes: [],
+  headers: [],
   ownerId: WORKSPACE_DEFAULT,
 };
 
@@ -181,7 +207,12 @@ const SERVICES = [SERVICE, WORKER, CRON];
 
 // Per-service deploy-event history (w5/m7). Seeded with a few realistic entries
 // for the web service; other services start empty. TriggerDeploy/Cancel/Rollback
-// prepend to the appropriate list so the Events tab reflects mutations.
+// prepend to the appropriate list so the Events tab reflects mutations. Shape
+// mirrors dashboard/src/features/services/api/events.graphql exactly: a flat
+// ServiceEvent[] (each carrying its OWN cursor, no {cursor,events} envelope),
+// and ServiceEventDetails is {deployStatus, actor, triggeredByUser, trigger:
+// {firstBuild,envUpdated,manual,deployedByRender,clearCache,rollback}} — a
+// different shape from the Deploy mutations' plain-string trigger/no envelope.
 const EVENTS_BY_SERVICE = {
   "eden-cms-v2": [
     {
@@ -189,13 +220,21 @@ const EVENTS_BY_SERVICE = {
       id: "dep-live-001",
       type: "deploy",
       timestamp: "2026-07-11T14:30:00Z",
+      cursor: "dep-live-001",
       details: {
-        __typename: "EventDetails",
-        status: "live",
-        image: "registry.example.com/eden-cms-v2:a1b2c3d",
-        trigger: "user",
-        rollbackTarget: null,
-        message: null,
+        __typename: "ServiceEventDetails",
+        deployStatus: "live",
+        actor: "dev@localhost",
+        triggeredByUser: "dev@localhost",
+        trigger: {
+          __typename: "DeployTrigger",
+          firstBuild: false,
+          envUpdated: false,
+          manual: true,
+          deployedByRender: false,
+          clearCache: false,
+          rollback: false,
+        },
       },
     },
     {
@@ -203,13 +242,21 @@ const EVENTS_BY_SERVICE = {
       id: "dep-failed-000",
       type: "deploy",
       timestamp: "2026-07-11T13:00:00Z",
+      cursor: "dep-failed-000",
       details: {
-        __typename: "EventDetails",
-        status: "update_failed",
-        image: "registry.example.com/eden-cms-v2:bad0bad",
-        trigger: "push",
-        rollbackTarget: null,
-        message: null,
+        __typename: "ServiceEventDetails",
+        deployStatus: "update_failed",
+        actor: "github",
+        triggeredByUser: null,
+        trigger: {
+          __typename: "DeployTrigger",
+          firstBuild: false,
+          envUpdated: false,
+          manual: false,
+          deployedByRender: true,
+          clearCache: false,
+          rollback: false,
+        },
       },
     },
   ],
@@ -338,10 +385,14 @@ function makeDatabase(over = {}) {
     databaseUser: `${dbn}_user`,
     diskSizeGB: 5,
     highAvailabilityEnabled: false,
+    readReplicas: [],
     suspended: "not_suspended",
     createdAt: "2026-06-20T10:00:00Z",
     externalHost: "orders-db.db.bex.co",
     public: true,
+    poolerEnabled: false,
+    backupsEnabled: false,
+    ipAllowList: [],
     ownerId: WORKSPACE_DEFAULT,
     ...over,
   };
@@ -529,12 +580,17 @@ const MESSAGES = [
 
 function line(iso, i, resource) {
   const instances = instancesFor(resource);
+  const message = MESSAGES[i % MESSAGES.length];
+  const levelMatch = /level=(\w+)/.exec(message);
   return {
     __typename: "LogEntry",
     timestamp: iso,
-    message: MESSAGES[i % MESSAGES.length],
+    message,
     type: "app",
     instance: instances[i % instances.length],
+    level: levelMatch ? levelMatch[1] : "info",
+    method: null,
+    statusCode: null,
   };
 }
 
@@ -550,8 +606,13 @@ function history(count, resource) {
 }
 
 // Render-shaped SSE frame (internal/logs/render.go): id + message + timestamp +
-// a [{name,value}] labels array. Labelled with the requested resource.
+// a [{name,value}] labels array. Labelled with the requested resource. `level`
+// is parsed from the synthetic message's own `level=X` logfmt field (the real
+// backend parses a structured JSON severity field instead — this is just
+// enough for the dev stub's live-tail merge, dashboard/src/features/logs/lib/map.ts,
+// to have a level label to read, matching what the history/GraphQL path sends).
 function renderLog(entry, seq, resource) {
+  const levelMatch = /level=(\w+)/.exec(entry.message);
   return {
     id: `${entry.instance}-${entry.timestamp}-${seq}`,
     message: entry.message,
@@ -560,6 +621,7 @@ function renderLog(entry, seq, resource) {
       { name: "type", value: "app" },
       { name: "resource", value: resource },
       { name: "instance", value: entry.instance },
+      { name: "level", value: levelMatch ? levelMatch[1] : "info" },
     ],
   };
 }
@@ -725,6 +787,22 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const limit = variables.limit ?? 100;
       return { logs: logs.slice(-limit) };
     }
+    // Logs-tab filter dropdowns (w5/008): observed label values for one App.
+    // `level`/`instance` are the two labels the synthetic app-log generator
+    // actually varies (see MESSAGES/instancesFor above); the request-log-only
+    // labels (method/statusCode/host/type) have no bex-stub source, so they
+    // answer empty rather than fabricate values the real store would 503 on.
+    case "LogLabelValues": {
+      const values =
+        variables.label === "level"
+          ? ["info", "warn", "error"]
+          : variables.label === "instance"
+            ? instancesFor(variables.resource ?? "")
+            : variables.label === "type"
+              ? ["app"]
+              : [];
+      return { logLabelValues: values };
+    }
     // Tabs the Logs flow doesn't need — answer empty so nothing errors if visited.
     case "MetricsFilters":
       return {
@@ -734,6 +812,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { metrics: [] };
     case "MonthToDateBandwidth":
       return { monthToDateBandwidth: null };
+    // Scaling tab (w1/m20): no autoscaling configured for any stub service.
+    case "AutoscalingConfig":
+      return { autoscalingConfig: null };
     // Workspace-scoped month-to-date usage (w8/m2–m3 + m6): one entry per service
     // per kind. instance_seconds drives the Compute section; egress_bytes drives
     // Bandwidth; build_seconds drives Build Minutes. Values vary by period so the
@@ -771,6 +852,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
             {
               __typename: "ServiceUsage",
               serviceId: "eden-cms-v2",
+              resourceKind: "service",
               rows: [
                 { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(432000 * scale) },
                 { __typename: "UsageRow", kind: "egress_bytes", tier: "", total: Math.round(524288000 * scale) },
@@ -780,6 +862,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
             {
               __typename: "ServiceUsage",
               serviceId: "email-worker",
+              resourceKind: "service",
               rows: [
                 { __typename: "UsageRow", kind: "instance_seconds", tier: "starter", total: Math.round(216000 * scale) },
                 { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(900 * scale) },
@@ -788,6 +871,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
             {
               __typename: "ServiceUsage",
               serviceId: "nightly-report",
+              resourceKind: "service",
               rows: [
                 { __typename: "UsageRow", kind: "instance_seconds", tier: "free", total: Math.round(3600 * scale) },
                 { __typename: "UsageRow", kind: "build_seconds", tier: "", total: Math.round(300 * scale) },
@@ -815,6 +899,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return {
         service: { __typename: "Service", id: variables.id, envVarKeys: [] },
       };
+    case "SecretFileNames":
+      return {
+        service: { __typename: "Service", id: variables.id, secretFileNames: [] },
+      };
+    case "EnvGroups":
+      return { envGroups: [] };
     // Workspace lifecycle (w6/m1 verbs, w6/m3 dashboard UX) — an interactive
     // in-memory store so the switcher/create/rename/delete flow is exercisable
     // offline, including the Hobby-plan-cap inline error.
@@ -869,6 +959,22 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // controls (`canManage` only goes false on an actual GraphQL error).
     case "WorkspaceMembers":
       return { workspaceMembers: byOwner(WORKSPACE_MEMBERS, variables.workspaceId) };
+    // No pending invites seeded — an empty list renders the Team page's real
+    // empty state instead of a console warning.
+    case "WorkspaceInvites":
+      return { workspaceInvites: [] };
+    case "ApiKeys":
+      return { apiKeys: [] };
+    case "RegistryCredentials":
+      return { registryCredentials: [] };
+    case "NotificationSettings":
+      return {
+        notificationSettings: {
+          __typename: "NotificationSettings",
+          deploySucceeded: true,
+          deployFailed: true,
+        },
+      };
 
     // Settings → Security & Compliance → Audit Log (w4/m14 UI over w4/m10's
     // surface). Admin-scoped in the real API (RelCanManage; a non-admin gets
@@ -930,6 +1036,28 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (i >= 0) DATABASES.splice(i, 1);
       return { deleteDatabase: true };
     }
+    // Advanced managed-Postgres surface (w1/m17) + observability (w2/m25) —
+    // no bex-stub source for any of these (they read the operator's live
+    // CNPG/pg_stat views); safe empties so the detail page's panels render
+    // their real "no data yet" states instead of a console warning.
+    case "DatabaseRecoveryInfo":
+      return { databaseRecoveryInfo: null };
+    case "DatabaseUsers":
+      return { databaseUsers: [] };
+    case "DatabaseIpAllowList":
+      return { databaseIpAllowList: [] };
+    case "DatabaseProcesses":
+      return { databaseProcesses: [] };
+    case "DatabaseTopQueries":
+      return { databaseTopQueries: [] };
+    case "DatabaseSizes":
+      return { databaseSizes: null };
+    case "DatabaseTableScans":
+      return { databaseTableScans: [] };
+    case "DatabaseParameterOverrides":
+      return { databaseParameterOverrides: [] };
+    case "DatastoreMetrics":
+      return { datastoreMetrics: [] };
     // Managed Key Value (w5/m12) — an interactive in-memory store, mirroring
     // the Databases stub above (per-id lookup, unknown -> null).
     case "KeyValues":
@@ -938,6 +1066,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { keyValue: KEY_VALUES.find((k) => k.id === variables.id) ?? null };
     case "KeyValueInstanceTypes":
       return { keyValueInstanceTypes: KV_INSTANCE_TYPES };
+    case "KeyValueIpAllowList":
+      return { keyValueIpAllowList: [] };
     case "KeyValueConnectionInfo": {
       const k = KEY_VALUES.find((kv) => kv.id === variables.id);
       if (!k) return { keyValueConnectionInfo: null };
@@ -1064,17 +1194,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
       d.serverStatus = "active";
       return { verifyCustomDomain: d };
     }
-    // Service events (w5/m7): deploy-event feed per service. Cursor pagination
+    // Service events (w5/m7): deploy-event feed per service — a flat
+    // ServiceEvent[], no {cursor,events} envelope (each event carries its own
+    // cursor instead; see events.graphql's header comment). Cursor pagination
     // is ignored by the stub — always returns the full list newest-first.
     case "ServiceEvents": {
-      const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
-      return {
-        serviceEvents: {
-          __typename: "ServiceEventList",
-          cursor: null,
-          events: evts,
-        },
-      };
+      return { serviceEvents: EVENTS_BY_SERVICE[variables.serviceId] ?? [] };
     }
     // TriggerDeploy: prepend a new in-progress event, simulate it going live.
     case "TriggerDeploy": {
@@ -1085,7 +1210,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         status: "update_in_progress",
         createdAt: new Date().toISOString(),
         trigger: "user",
-        rollbackTarget: null,
+        rollbackOf: null,
         image: svc ? `registry.example.com/${svc.id}:stub` : null,
       };
       const evts = (EVENTS_BY_SERVICE[variables.id] ??= []);
@@ -1094,11 +1219,26 @@ function resolveGraphQL({ operationName, variables = {} }) {
         id: deploy.id,
         type: "deploy",
         timestamp: deploy.createdAt,
-        details: { __typename: "EventDetails", status: "update_in_progress", image: deploy.image, trigger: "user", rollbackTarget: null, message: null },
+        cursor: deploy.id,
+        details: {
+          __typename: "ServiceEventDetails",
+          deployStatus: "update_in_progress",
+          actor: "dev@localhost",
+          triggeredByUser: "dev@localhost",
+          trigger: {
+            __typename: "DeployTrigger",
+            firstBuild: false,
+            envUpdated: false,
+            manual: true,
+            deployedByRender: false,
+            clearCache: false,
+            rollback: false,
+          },
+        },
       });
       setTimeout(() => {
         const e = evts.find((ev) => ev.id === deploy.id);
-        if (e) e.details.status = "live";
+        if (e) e.details.deployStatus = "live";
         deploy.status = "live";
       }, 5000);
       return { triggerDeploy: deploy };
@@ -1107,7 +1247,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "CancelDeploy": {
       const evts = EVENTS_BY_SERVICE[variables.serviceId] ?? [];
       const e = evts.find((ev) => ev.id === variables.deployId);
-      if (e) e.details.status = "canceled";
+      if (e) e.details.deployStatus = "canceled";
       return { cancelDeploy: { __typename: "Deploy", id: variables.deployId, status: "canceled" } };
     }
     // RollbackService: prepend a rollback-triggered deploy event.
@@ -1119,7 +1259,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         status: "live",
         createdAt: new Date().toISOString(),
         trigger: "rollback",
-        rollbackTarget: variables.deployId,
+        rollbackOf: variables.deployId,
         image: svc ? `registry.example.com/${svc.id}:rollback` : null,
       };
       const evts = (EVENTS_BY_SERVICE[variables.serviceId] ??= []);
@@ -1128,7 +1268,22 @@ function resolveGraphQL({ operationName, variables = {} }) {
         id: deploy.id,
         type: "deploy",
         timestamp: deploy.createdAt,
-        details: { __typename: "EventDetails", status: "live", image: deploy.image, trigger: "rollback", rollbackTarget: variables.deployId, message: null },
+        cursor: deploy.id,
+        details: {
+          __typename: "ServiceEventDetails",
+          deployStatus: "live",
+          actor: "dev@localhost",
+          triggeredByUser: "dev@localhost",
+          trigger: {
+            __typename: "DeployTrigger",
+            firstBuild: false,
+            envUpdated: false,
+            manual: false,
+            deployedByRender: false,
+            clearCache: false,
+            rollback: true,
+          },
+        },
       });
       return { rollbackService: deploy };
     }
