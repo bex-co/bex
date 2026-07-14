@@ -45,12 +45,43 @@ flowchart LR
 |  | Render | bex (CNPG) |
 | --- | --- | --- |
 | **Internal URL** | `dpg-<id>-a` private host | the CNPG **`<cluster>-rw` ClusterIP Service**: `postgresql://user:pass@<cluster>-rw.<tenant-ns>.svc:5432/db` — in-cluster only, for the tenant's Apps. Free; CNPG creates the Service. |
-| **External URL** | `<id>.<region>-postgres.render.com` + SSL | a **Traefik TCP router with SNI + TLS passthrough** on a shared `:5432` entrypoint, routing `<db-id>.db.bex.co` → that DB's Service (Postgres speaks its own TLS, so `sslmode=require`). One wildcard `*.db.bex.co` + entrypoint fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
+| **External URL** | `<id>.<region>-postgres.render.com` + SSL | the **`bex-pg-sni-proxy` DaemonSet** on `:5432`, routing by SNI to the right CNPG `<name>-rw` ClusterIP Service after handling the PostgreSQL SSLRequest preamble. `sslmode=require` works for all standard clients (PG 13–18). One wildcard `*.db.bex.co` fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
 
-The external route is created by the operator only when `spec.public: true` and `BEX_DB_DOMAIN` is set (private by default). Two constraints are load-bearing and easy to miss:
+The external route is created by the operator only when `spec.public: true` and `BEX_DB_DOMAIN` is set (private by default). Key constraints:
 
 - **DNS-only (gray-cloud) wildcard.** `*.db.bex.co` must be a plain A record to the node IP, **not** a Cloudflare-proxied one — Cloudflare's proxy is HTTP(S) only; it cannot carry raw TCP `:5432` (that needs Spectrum, an enterprise feature). This differs from the App/API domains, which are proxied.
-- **The Postgres SSLRequest preamble vs SNI.** libpq's default negotiation sends a _cleartext_ `SSLRequest` **before** the TLS `ClientHello`, so Traefik (which reads SNI from the first-bytes ClientHello) cannot extract the SNI and route by host. SNI passthrough therefore works for clients using **direct TLS** — PostgreSQL 17+ with `sslnegotiation=direct` — but not for older preamble-mode clients. Broad-client compatibility needs a **Postgres-aware SNI proxy** (the `pg_sni_proxy` pattern) in front, which is deferred. For the MVP the external endpoint targets direct-TLS clients; the internal URL (what tenant Apps use) is unaffected.
+- **Postgres SSLRequest preamble (solved — w1/m29).** libpq's default negotiation sends a cleartext `SSLRequest` **before** the TLS `ClientHello`. The `bex-pg-sni-proxy` handles this: it receives the SSLRequest, replies `S`, reads the TLS `ClientHello` to extract the SNI hostname, connects to the appropriate CNPG backend, replays the SSLRequest/S exchange with it, then splices the connection bidirectionally. The proxy is not a TLS terminator — the TLS session is end-to-end between the client and CNPG. Direct-TLS clients (PG 17+ `sslnegotiation=direct`) are also handled transparently (no SSLRequest → the proxy reads the TLS `ClientHello` directly). The Traefik `postgres` entrypoint is removed; the proxy replaces it.
+
+### Postgres SNI proxy — deployment (w1/m29)
+
+The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `DaemonSet` (`bex-pg-sni-proxy`) runs on platform nodes with `hostPort: 5432`, watching `Database` CRs cluster-wide to maintain its routing table. It needs a `ClusterRole` to `list/watch` databases.
+
+**Dev (single-node, hostNetwork edge):** the DaemonSet's `hostPort: 5432` binds `:5432` directly on the node. `*.db.bex.co` is a DNS A record to the node IP.
+
+**Prod (Hetzner LoadBalancer):** the Hetzner LB currently routes `:5432` to Traefik. After this change, port `5432` must be removed from Traefik's LB service and added to a new `LoadBalancer` Service selecting the proxy DaemonSet pods:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: bex-pg-sni-proxy-lb
+  namespace: bex-system
+  annotations:
+    load-balancer.hetzner.cloud/name: bex-traefik # share the existing LB
+    load-balancer.hetzner.cloud/location: fsn1
+    load-balancer.hetzner.cloud/use-private-ip: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app.bex.co/component: pg-sni-proxy
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+```
+
+Apply this with `kubectl -n bex-system apply -f pg-sni-proxy-lb.yaml` after deploying the operator.
 
 ### 4. Naming convention (copy Render's reasoning, not its strings)
 

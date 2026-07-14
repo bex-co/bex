@@ -33,12 +33,13 @@ ports:
     port: 8000 # exposedPort defaults to 80 -> LB listens :80, forwards to :8000
   websecure:
     port: 8443 # exposedPort defaults to 443 -> LB listens :443
+  # postgres entrypoint removed (w1/m29): the bex-pg-sni-proxy DaemonSet now
+  # owns :5432 via the bex-traefik Hetzner LB (see pg-sni-proxy-lb.yaml below).
+  # Port 5432 is re-added to the same LB via the proxy's LoadBalancer Service.
   postgres:
     port: 5432
-    exposedPort: 5432 # managed-Postgres TCP/SNI still fronted by the LB
     expose:
-      default: true
-    protocol: TCP
+      default: false  # remove :5432 from the Hetzner LB; the proxy LB service adds it back
 service:
   annotations:
     load-balancer.hetzner.cloud/name: bex-traefik

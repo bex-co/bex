@@ -138,7 +138,7 @@ func TestRESTPostgresConnectionInfo(t *testing.T) {
 	if ci.InternalConnectionString != "postgresql://conn_db_user:s3cret@conn-db-rw.default:5432/conn_db" {
 		t.Errorf("internal = %q", ci.InternalConnectionString)
 	}
-	want := "postgresql://conn_db_user:s3cret@conn-db.db.bex.co:5432/conn_db?sslmode=require&sslnegotiation=direct"
+	want := "postgresql://conn_db_user:s3cret@conn-db.db.bex.co:5432/conn_db?sslmode=require"
 	if ci.ExternalConnectionString != want {
 		t.Errorf("external = %q", ci.ExternalConnectionString)
 	}

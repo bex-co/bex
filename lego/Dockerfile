@@ -1,9 +1,9 @@
 # Build the bex binaries from the multi-module workspace (build context is
 # lego/). One image, several entrypoints — the manager (operator module,
-# mechanism), the wake activator and the static-site origin server (operator
-# module too), and bex-api (backend module, business logic), all sharing the
-# types module (the CRD contract). Each non-default Deployment overrides command
-# (/api, /activator, /staticserver).
+# mechanism), the wake activator, the static-site origin server, the Postgres
+# SNI proxy (operator module too), and bex-api (backend module, business logic),
+# all sharing the types module (the CRD contract). Each non-default Deployment
+# overrides command (/api, /activator, /staticserver, /pg-sni-proxy).
 FROM golang:1.25 AS builder
 ARG TARGETOS
 ARG TARGETARCH
@@ -27,6 +27,7 @@ COPY backend/  ./backend/
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /workspace/manager ./cmd/manager
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /workspace/activator ./cmd/activator
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /workspace/staticserver ./cmd/staticserver
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /workspace/pg-sni-proxy ./cmd/pg-sni-proxy
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
 RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /workspace/bexapi ./cmd/api
@@ -39,6 +40,7 @@ COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/bexapi /api
 COPY --from=builder /workspace/activator /activator
 COPY --from=builder /workspace/staticserver /staticserver
+COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
 USER 65532:65532
 
 # Default entrypoint is the operator; the api Deployment sets command: ["/api"].

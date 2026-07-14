@@ -182,7 +182,7 @@ func TestReadReplicaConnectionInfo(t *testing.T) {
 	if ra.InternalConnectionString != wantInternal {
 		t.Errorf("replica[0] internal = %q, want %q", ra.InternalConnectionString, wantInternal)
 	}
-	wantExternal := "postgresql://rci_db_user:pw@rci-db-ro-reader-a.db.bex.co:5432/rci_db?sslmode=require&sslnegotiation=direct"
+	wantExternal := "postgresql://rci_db_user:pw@rci-db-ro-reader-a.db.bex.co:5432/rci_db?sslmode=require"
 	if ra.ExternalConnectionString != wantExternal {
 		t.Errorf("replica[0] external = %q, want %q", ra.ExternalConnectionString, wantExternal)
 	}

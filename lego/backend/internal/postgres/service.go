@@ -386,12 +386,13 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			pass, name, s.Namespace, user, dbn),
 	}
 	if d.Status.ExternalHost != "" {
-		// Render-shaped external string. sslnegotiation=direct is required today
-		// (Postgres SSLRequest preamble blocks Traefik SNI for older clients).
+		// Standard sslmode=require works for all clients: the pg-sni-proxy
+		// (w1/m29) handles the SSLRequest preamble before TLS, so
+		// sslnegotiation=direct is no longer needed.
 		info.ExternalConnectionString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
+			"postgresql://%s:%s@%s:5432/%s?sslmode=require",
 			user, pass, d.Status.ExternalHost, dbn)
-		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=require sslnegotiation=direct'",
+		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=require'",
 			pass, d.Status.ExternalHost, dbn, user)
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
@@ -404,7 +405,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	if d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
+			"postgresql://%s:%s@%s:5432/%s?sslmode=require",
 			user, pass, d.Status.PoolerExternalHost, dbn)
 	}
 	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
@@ -418,7 +419,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			}
 			if rs.ExternalHost != "" {
 				rc.ExternalConnectionString = fmt.Sprintf(
-					"postgresql://%s:%s@%s:5432/%s?sslmode=require&sslnegotiation=direct",
+					"postgresql://%s:%s@%s:5432/%s?sslmode=require",
 					user, pass, rs.ExternalHost, dbn)
 			}
 			rcs = append(rcs, rc)

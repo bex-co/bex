@@ -32,11 +32,10 @@ ports:
     port: 80 # host :80 (HTTP + ACME HTTP-01 challenge)
   websecure:
     port: 443 # host :443 (HTTPS)
-  postgres:
-    port: 5432 # host :5432 — TCP/SNI entrypoint for managed Postgres
-    expose:
-      default: true # bind on hostNetwork (external Database URLs)
-    protocol: TCP
+  # postgres entrypoint removed (w1/m29): the bex-pg-sni-proxy DaemonSet now
+  # owns host :5432 and routes directly to CNPG backends after handling the
+  # PostgreSQL SSLRequest preamble. Traefik's IngressRouteTCP resources for
+  # postgres are retained (owned by Database CRs) but no longer carry traffic.
   metrics:
     port: 9100 # Prometheus scrape target (in-cluster only)
     expose:

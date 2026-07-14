@@ -23,6 +23,9 @@ resources:
 # The shared static-site origin proxy (w1/m21): serves static_site Apps from the
 # object store. Same image as the manager, different entrypoint (/staticserver).
 - ../staticserver
+# The Postgres SNI front-door (w1/m29): handles the PostgreSQL SSLRequest preamble
+# so standard preamble-mode clients can connect to external managed databases.
+- ../pg-sni-proxy
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- ../webhook

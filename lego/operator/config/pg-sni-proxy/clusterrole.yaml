@@ -1,0 +1,9 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pg-sni-proxy
+rules:
+  # Watch Database CRs cluster-wide to maintain the SNI routing table.
+  - apiGroups: ["app.bex.co"]
+    resources: ["databases"]
+    verbs: ["get", "list", "watch"]
