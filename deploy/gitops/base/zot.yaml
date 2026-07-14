@@ -26,12 +26,17 @@ spec:
         # 127.0.0.1:30500 (configured in the CAPH machine template's
         # containerd hosts.toml) without needing cluster-internal DNS.
         service:
+          # NodePort 30500 on every node: kube-proxy forwards localhost:30500 →
+          # Zot ClusterIP so containerd's hosts.toml can use a stable, IP-free
+          # URL without /etc/hosts (t001). ClusterIP routing (bex-system, build
+          # pods) is unchanged — they reach Zot over the Service ClusterIP as before.
           type: NodePort
           port: 5000
           nodePort: 30500
-        # mountConfig: true ships our own config (below) so auth + accessControl
-        # are on, and GC + retention (w1/m26 t003) prevent a runaway rebuild loop
-        # from silently filling the 10Gi volume.
+        # mountConfig: ship our own config (below) so auth + accessControl are on,
+        # and GC + retention (w1/m26 t003) prevent a runaway rebuild loop from
+        # silently filling the 10Gi volume. The chart creates <release>-config and
+        # mounts it at /etc/zot.
         mountConfig: true
         persistence: true
         configFiles:
@@ -73,7 +78,7 @@ spec:
                       "keepTags": [
                         {
                           "patterns": [".*"],
-                          "mostRecentlyPushedCount": 10
+                          "mostRecentlyPushedCount": 5
                         }
                       ]
                     }

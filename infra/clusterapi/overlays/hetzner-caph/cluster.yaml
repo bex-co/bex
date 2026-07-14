@@ -134,7 +134,8 @@ spec:
         # plain-HTTP internal registry. Written here (not files:) because the
         # parent dir doesn't exist yet when cloud-init write_files runs.
         - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000
-        - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+        - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+        # Enable per-registry config so the hosts.toml above takes effect.
         - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
         - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
         - mkdir -p /etc/apt/keyrings/

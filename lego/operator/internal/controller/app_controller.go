@@ -410,13 +410,16 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
 
 	replicas := effectiveReplicas(app)
-	// When autoscaling is enabled, adjust replicas from live metrics before any
-	// further use. applyAutoscaling patches spec.replicas and returns the desired
-	// count so this reconcile pass uses it immediately. It is a no-op when
-	// metrics are unavailable or autoscaling is disabled. Overridden to 0 below
-	// if the app is auto-hibernating.
+	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
+	// to spec.replicas (the user's static count). applyAutoscaling writes the
+	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
 	var autoscaleRequeue bool
 	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !worker && !app.Spec.Suspended {
+		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
+			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
+				replicas = int32(n)
+			}
+		}
 		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
 	}
 	if autoHibernating {

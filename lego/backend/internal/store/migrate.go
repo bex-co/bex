@@ -56,39 +56,6 @@ func Migrate(uri string) error {
 	return nil
 }
 
-// CheckOwnership verifies that every table in the public schema is owned by the
-// role the pool connects as. A mismatch means a migration was applied by a
-// superuser (e.g. postgres) instead of the app role (bex), which silently
-// breaks table-level permissions. Call after Migrate at startup so the problem
-// pages immediately instead of surfacing as a cryptic "permission denied" at
-// runtime.
-func CheckOwnership(ctx context.Context, pool *pgxpool.Pool) error {
-	rows, err := pool.Query(ctx,
-		`SELECT tablename, tableowner
-		 FROM   pg_tables
-		 WHERE  schemaname = 'public'
-		 AND    tableowner != current_user`)
-	if err != nil {
-		return fmt.Errorf("controlplane: check table ownership: %w", err)
-	}
-	defer rows.Close()
-	var misowned []string
-	for rows.Next() {
-		var tablename, owner string
-		if err := rows.Scan(&tablename, &owner); err != nil {
-			return fmt.Errorf("controlplane: scan ownership row: %w", err)
-		}
-		misowned = append(misowned, tablename+" (owner: "+owner+")")
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("controlplane: check table ownership: %w", err)
-	}
-	if len(misowned) > 0 {
-		return fmt.Errorf("controlplane: tables owned by unexpected role — run ALTER TABLE <t> OWNER TO <current_user> for: %s", strings.Join(misowned, ", "))
-	}
-	return nil
-}
-
 // pgx5URL rewrites a postgres:///postgresql:// URI to the pgx5:// scheme that
 // golang-migrate's pgx/v5 driver registers under.
 func pgx5URL(uri string) string {
@@ -99,4 +66,48 @@ func pgx5URL(uri string) string {
 		return "pgx5://" + rest
 	}
 	return uri
+}
+
+// CheckOwnership verifies that every table in the public schema is owned by the
+// role currently connected (CURRENT_USER). Returns an error listing any
+// mis-owned tables. Call this at startup after Migrate so a hand-run migration
+// executed as a superuser (which creates tables owned by that superuser rather
+// than the application role) is caught before the first request.
+//
+// Incident (2026-07-12): tenant_invites was owned by postgres instead of bex,
+// causing "permission denied for table tenant_invites" on every invite-redemption
+// call. This check would have surfaced that at startup with a clear error.
+func CheckOwnership(ctx context.Context, pool *pgxpool.Pool) error {
+	rows, err := pool.Query(ctx, `
+		SELECT tablename, tableowner
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		  AND tableowner != current_user
+		ORDER BY tablename
+	`)
+	if err != nil {
+		return fmt.Errorf("controlplane: ownership check: %w", err)
+	}
+	defer rows.Close()
+	var misowned []string
+	for rows.Next() {
+		var table, owner string
+		if err := rows.Scan(&table, &owner); err != nil {
+			return fmt.Errorf("controlplane: ownership check scan: %w", err)
+		}
+		misowned = append(misowned, fmt.Sprintf("%s (owner: %s)", table, owner))
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("controlplane: ownership check rows: %w", err)
+	}
+	return ownershipError(misowned)
+}
+
+// ownershipError formats the error returned by CheckOwnership. Extracted so
+// tests can exercise the error path without a live database.
+func ownershipError(misowned []string) error {
+	if len(misowned) == 0 {
+		return nil
+	}
+	return fmt.Errorf("controlplane: table ownership mismatch — these public tables are not owned by the application role: %s — fix by running migration 0013 as a superuser or: ALTER TABLE <table> OWNER TO <app-role>", strings.Join(misowned, ", "))
 }

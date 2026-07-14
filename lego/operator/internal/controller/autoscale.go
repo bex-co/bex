@@ -23,6 +23,7 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -47,6 +48,14 @@ const scaleDownStabilizationWindow = 5 * time.Minute
 // first decided to scale down; the decision is only committed after the
 // stabilization window has passed.
 const annotAutoscaleScaleDown = "app.bex.co/autoscale-scale-down-at"
+
+// annotAutoscaleReplicas persists the autoscaler's last decided replica count
+// between reconcile passes. Stored as an annotation (not spec.replicas) so it
+// doesn't bump metadata.generation — a spec change bumps generation, which
+// causes the reconciler to treat git-backed Apps as needing a rebuild even
+// though only the replica count changed. This was the root cause of the
+// 51-generation / 9.7 Gi registry incident (eden-cms-v2-git, 2026-07-12).
+const annotAutoscaleReplicas = "app.bex.co/autoscale-replicas"
 
 // PodUsage is one pod's current resource consumption, as reported by metrics-server.
 type PodUsage struct {
@@ -363,10 +372,18 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		}
 	}
 
-	// Patch spec.replicas only when it changes.
-	if want != app.Spec.Replicas {
+	// Persist the desired count in an annotation, not spec.replicas.
+	// Writing spec.replicas would bump metadata.generation, which causes
+	// git-backed Apps to rebuild on every autoscaler tick (annotAutoscaleReplicas
+	// explains the incident). The caller reads this annotation to seed `current`
+	// on the next reconcile pass so a metrics-failure pass doesn't revert to
+	// spec.replicas (the user's static count).
+	if strconv.Itoa(int(want)) != app.Annotations[annotAutoscaleReplicas] {
 		base := app.DeepCopy()
-		app.Spec.Replicas = want
+		if app.Annotations == nil {
+			app.Annotations = map[string]string{}
+		}
+		app.Annotations[annotAutoscaleReplicas] = strconv.Itoa(int(want))
 		if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
 			return current, true
 		}

@@ -1,0 +1,3 @@
+-- No rollback: ownership is normalised to CURRENT_USER by the up migration.
+-- Reverting would require knowing the original (incorrect) owner, which is
+-- not recorded — and the correct state is CURRENT_USER anyway. A no-op is safe.

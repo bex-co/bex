@@ -421,6 +421,24 @@ spec:
                       summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
                       description: "A platform PVC (etcd/Loki/OpenBao/Prometheus PVs — hcloud-csi on prod, local-path on the mock) is >85% full. Debug: kubectl -n {{ $labels.namespace }} get pvc {{ $labels.persistentvolumeclaim }}; grow the volume or prune data."
 
+                  # Zot registry volume — fires before the generic PersistentVolumeFillingUp
+                  # (>85%) so there's time to act before pushes start returning 500.
+                  # Incident (2026-07-12): a runaway rebuild loop pushed 44+ image
+                  # generations and filled the 10 Gi PVC with no prior warning.
+                  # Retention policy (t003) caps at 5 generations per repo; this alert
+                  # catches the volume still filling despite the cap (e.g. many active repos).
+                  - alert: ZotRegistryFillingUp
+                    expr: |
+                      kubelet_volume_stats_used_bytes{namespace="bex-registry"}
+                      / kubelet_volume_stats_capacity_bytes{namespace="bex-registry"}
+                      > 0.70
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+                      description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check for stale repos or resize. Debug: kubectl -n bex-registry get pvc {{ $labels.persistentvolumeclaim }}; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry/*"
+
                   - alert: CertificateNotReady
                     expr: certmanager_certificate_ready_status{condition="True"} == 0
                     for: 15m

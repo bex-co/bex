@@ -17,8 +17,15 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -238,5 +245,74 @@ func TestAutoscaleDesiredBothMetrics(t *testing.T) {
 	}
 	if got != 3 {
 		t.Errorf("desired = %d, want 3 (max of cpu=2, mem=3)", got)
+	}
+}
+
+// TestApplyAutoscalingWritesAnnotationNotSpec is a regression test for the
+// 2026-07-12 incident where applyAutoscaling patched spec.replicas, bumping
+// metadata.generation on every autoscaler tick and causing git-backed Apps
+// (eden-cms-v2-git) to rebuild 51 times and fill the Zot registry (9.7 Gi).
+// The fix: persist the desired count in annotAutoscaleReplicas instead, which
+// does NOT bump generation and therefore does NOT trigger a rebuild.
+func TestApplyAutoscalingWritesAnnotationNotSpec(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-app",
+			Namespace: "default",
+		},
+		Spec: appv1alpha1.AppSpec{
+			Tier:     "starter",
+			Replicas: 1,
+			Autoscaling: &appv1alpha1.AutoscalingSpec{
+				Enabled:          true,
+				MinReplicas:      1,
+				MaxReplicas:      5,
+				TargetCPUPercent: ptr32(80),
+			},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+
+	// MetricsReader returns one pod at 0.6 CPU on starter tier (limit 0.5 CPU):
+	// target = 80% of 0.5 = 0.4; desired = ceil(1 * 0.6/0.4) = 2
+	r := &AppReconciler{
+		Client: cl,
+		MetricsReader: func(_ context.Context, _, _ string) ([]PodUsage, error) {
+			return []PodUsage{{Pod: "pod-a", CPUCores: 0.6, MemoryBytes: 64 * 1024 * 1024}}, nil
+		},
+	}
+
+	got, _ := r.applyAutoscaling(context.Background(), app, 1)
+
+	if got != 2 {
+		t.Errorf("applyAutoscaling returned %d, want 2", got)
+	}
+
+	// spec.replicas must NOT have been touched — any change bumps generation
+	// and triggers an unnecessary rebuild on git-backed Apps.
+	if app.Spec.Replicas != 1 {
+		t.Errorf("spec.replicas = %d, want 1 (must not be modified by autoscaler)", app.Spec.Replicas)
+	}
+
+	// The desired count must be persisted in the annotation.
+	if got := app.Annotations[annotAutoscaleReplicas]; got != "2" {
+		t.Errorf("annotation %s = %q, want \"2\"", annotAutoscaleReplicas, got)
+	}
+
+	// Confirm the patch was written to the fake store (not just the in-memory object).
+	var stored appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatalf("get stored app: %v", err)
+	}
+	if stored.Spec.Replicas != 1 {
+		t.Errorf("stored spec.replicas = %d, want 1", stored.Spec.Replicas)
+	}
+	if v := stored.Annotations[annotAutoscaleReplicas]; v != "2" {
+		t.Errorf("stored annotation %s = %q, want \"2\"", annotAutoscaleReplicas, v)
 	}
 }
