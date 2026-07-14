@@ -54,9 +54,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
 				return
 			}
+			if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
+				req.DryRun = true
+			}
 			pg, err := s.CreatePostgres(r.Context(), req)
 			if err != nil {
 				core.WriteErr(w, err)
+				return
+			}
+			if req.DryRun {
+				core.WriteJSON(w, http.StatusOK, pg) // dry-run: 200 (nothing created, w2/m29)
 				return
 			}
 			core.WriteJSON(w, http.StatusCreated, pg) // Render: create => 201
@@ -71,10 +78,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 		mux.HandleFunc("PATCH "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 			var req struct {
-				Plan string `json:"plan"`
+				Plan   string `json:"plan"`
+				DryRun bool   `json:"dryRun,omitempty"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+				return
+			}
+			dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
+			if dryRun {
+				pg, err := s.PreviewSetPlan(r.Context(), r.PathValue("id"), req.Plan)
+				if err != nil {
+					core.WriteErr(w, err)
+					return
+				}
+				core.WriteJSON(w, http.StatusOK, pg)
 				return
 			}
 			pg, err := s.SetPlan(r.Context(), r.PathValue("id"), req.Plan)

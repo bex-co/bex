@@ -55,6 +55,10 @@ type patchServiceRequest struct {
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001 +
 	// w5/009). A pointer so "absent" is distinct from an explicit "" (reset to "/").
 	HealthCheckPath *string `json:"healthCheckPath"`
+	// DryRun, when true, previews the plan change without writing (w2/m29).
+	// Honored when serviceDetails.plan is set; other PATCH fields are not previewed.
+	// Can also be set via the ?dryRun=true query parameter.
+	DryRun bool `json:"dryRun,omitempty"`
 }
 
 // scaleRequest is Render's POST /v1/services/{id}/scale body: the desired
@@ -105,6 +109,11 @@ type createServiceRequest struct {
 	// these via separate endpoints; bex also accepts them in the create body).
 	Routes  []renderRoute  `json:"routes"`
 	Headers []renderHeader `json:"headers"`
+	// DryRun, when true, resolves the spec and returns a preview without any
+	// Kubernetes or store writes — zero side effects (w2/m29). Response status
+	// is 200 (not 201 Created) to signal that no resource was actually created.
+	// Can also be set via the ?dryRun=true query parameter.
+	DryRun bool `json:"dryRun,omitempty"`
 }
 
 type keyValue struct {
@@ -186,6 +195,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		PublishPath:     publishPath,
 		Routes:          routeViewsFromRender(r.Routes),
 		Headers:         headerViewsFromRender(r.Headers),
+		DryRun:          r.DryRun,
 	}
 }
 
@@ -270,6 +280,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
 	// directory change (rootDir); an unknown plan or a rootDir on an image-backed
 	// App is core.ErrBadRequest => 400.
+	// Pass `dryRun: true` in the body or `?dryRun=true` to preview the plan
+	// change without writing; returns 200 with the resolved spec (w2/m29).
 	patch := func(w http.ResponseWriter, r *http.Request) {
 		var req patchServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -277,12 +289,29 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		id := r.PathValue("id")
+		dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 		var plan string
 		var idleTTL *int32
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
+
+		// Dry-run: preview plan change only; no writes at all (w2/m29).
+		if dryRun {
+			if plan == "" {
+				get(w, r) // no plan => reflect current state unchanged
+				return
+			}
+			app, err := s.PreviewSetPlan(r.Context(), id, plan)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, toRenderService(app))
+			return
+		}
+
 		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
@@ -350,15 +379,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// deploy endpoint). Render returns 201 Created on success. `ownerId` names the
 	// workspace to create in (w6/m14) — carried on CreateRequest, membership-checked
 	// by the verb: a non-member gets 403, not a service in the wrong workspace.
+	// Pass `dryRun: true` in the body or `?dryRun=true` in the query to preview
+	// the resolved spec without any writes; response is 200 (not 201) (w2/m29).
 	create := func(w http.ResponseWriter, r *http.Request) {
 		var req createServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
+		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
+			req.DryRun = true
+		}
 		app, err := s.Create(r.Context(), req.toCreateRequest())
 		if err != nil {
 			core.WriteErr(w, err)
+			return
+		}
+		if req.DryRun {
+			core.WriteJSON(w, http.StatusOK, toRenderService(app)) // dry-run: 200 (nothing created)
 			return
 		}
 		core.WriteJSON(w, http.StatusCreated, toRenderService(app)) // Render: create => 201

@@ -125,6 +125,9 @@ type CreateKeyValueRequest struct {
 	// settings. Empty => the CRD default (allkeys-lru / journal-snapshot).
 	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
 	PersistenceMode string `json:"persistenceMode,omitempty"`
+	// DryRun, when true, resolves and returns the spec preview without any k8s
+	// write — zero side effects (w2/m29). Validation still runs.
+	DryRun bool `json:"dryRun,omitempty"`
 }
 
 // validMaxmemoryPolicies / validPersistenceModes mirror the KeyValue CRD's enum
@@ -298,6 +301,10 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if tenantID, ok := s.Tenant(ctx); ok {
 		kv.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
+	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
+	if req.DryRun {
+		return kvView(kv), nil
+	}
 	if err := s.Client.Create(ctx, kv); err != nil {
 		return KeyValueView{}, err
 	}
@@ -410,6 +417,22 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	return s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Plan = plan
 	})
+}
+
+// PreviewSetPlan returns what SetPlan would produce without writing — the same
+// validation and in-memory spec update — zero side effects (w2/m29 dry-run).
+// Requires can_view on the named key-value store (no audit event, no write).
+func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if _, ok := tiers.Valkey.ByID(plan); !ok {
+		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
+	}
+	preview := kv.DeepCopy()
+	preview.Spec.Plan = plan
+	return kvView(preview), nil
 }
 
 // patchKeyValueObj applies mutate to an already-fetched KeyValue and merge-

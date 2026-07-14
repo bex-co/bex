@@ -130,6 +130,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ipAllowList":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
 				"maxmemoryPolicy": &graphql.ArgumentConfig{Type: graphql.String},
 				"persistenceMode": &graphql.ArgumentConfig{Type: graphql.String},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
@@ -153,6 +155,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					req.PersistenceMode = v
 				}
 				req.IPAllowList = gqlutil.StringList(p.Args["ipAllowList"])
+				req.DryRun, _ = p.Args["dryRun"].(bool)
 				return s.CreateKeyValue(p.Context, req)
 			},
 		},
@@ -169,8 +172,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				dryRun, _ := p.Args["dryRun"].(bool)
+				if dryRun {
+					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+				}
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},

@@ -168,6 +168,9 @@ type CreatePostgresRequest struct {
 	// addressable read-only connection URL. Render's readReplicas: [{name}].
 	// Independent of EnableHighAvailability.
 	ReadReplicas []ReadReplicaInput `json:"readReplicas,omitempty"`
+	// DryRun, when true, resolves and returns the spec preview without any k8s
+	// write — zero side effects (w2/m29). Validation still runs.
+	DryRun bool `json:"dryRun,omitempty"`
 }
 
 // pgIdent mirrors the operator's normalizeIdent: a valid unquoted PostgreSQL
@@ -348,6 +351,10 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if tenantID, ok := s.Tenant(ctx); ok {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
+	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
+	if req.DryRun {
+		return pgView(d), nil
+	}
 	if err := s.Client.Create(ctx, d); err != nil {
 		return PostgresView{}, err
 	}
@@ -443,6 +450,22 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.Plan = plan
 	})
+}
+
+// PreviewSetPlan returns what SetPlan would produce without writing — the same
+// validation and in-memory spec update — zero side effects (w2/m29 dry-run).
+// Requires can_view on the named database (no audit event, no write).
+func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if _, ok := tiers.Postgres.ByID(plan); !ok {
+		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
+	}
+	preview := d.DeepCopy()
+	preview.Spec.Plan = plan
+	return pgView(preview), nil
 }
 
 // patchDatabaseObj applies mutate to an already-fetched Database and writes it

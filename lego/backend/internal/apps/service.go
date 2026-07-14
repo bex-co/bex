@@ -458,6 +458,12 @@ type CreateRequest struct {
 	// SetRoutes/SetHeaders.
 	Routes  []StaticRouteView
 	Headers []StaticHeaderView
+	// DryRun, when true, resolves the spec and returns a preview without any
+	// Kubernetes or control-plane-store writes — zero side effects (w2/m29).
+	// The response shape is identical to a live create; the caller knows it is a
+	// dry-run because they set this flag. Validation (specFromCreate) still runs,
+	// so an invalid request still returns an error.
+	DryRun bool
 }
 
 // Create writes the App CR for a new service, or updates it in place when one
@@ -503,6 +509,18 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
+
+	// Dry-run: return the resolved spec preview without any k8s or store writes.
+	if req.DryRun {
+		a := &appv1alpha1.App{}
+		a.Name = req.Name
+		a.Namespace = s.Namespace
+		a.Spec = desired
+		if tenantID != "" {
+			a.Labels = map[string]string{core.LabelTenant: tenantID}
+		}
+		return view(a), nil
+	}
 
 	// Duplicate check, scoped to exactly the target workspace (w4/m19) —
 	// deliberately NOT GetApp, whose cross-workspace fallback exists so a
@@ -1025,6 +1043,23 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	return s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
+}
+
+// PreviewSetPlan returns what SetPlan would produce — the same validation and
+// in-memory spec update — without writing to Kubernetes or the store (w2/m29
+// dry-run). Requires can_view on the named service (no audit event, no write).
+func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	t, ok := tiers.Compute.ByRenderPlan(plan)
+	if !ok {
+		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	}
+	preview := a.DeepCopy()
+	preview.Spec.Tier = t.ID
+	return view(preview), nil
 }
 
 // Scale sets the App's desired running instance count (Render's manual-scaling

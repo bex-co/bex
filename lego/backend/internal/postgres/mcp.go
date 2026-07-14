@@ -49,6 +49,7 @@ type createPostgresArgs struct {
 	DiskSizeGB             int32  `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
 	Public                 bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
 	EnableHighAvailability bool   `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
+	DryRun                 bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
@@ -75,6 +76,7 @@ type queryPostgresArgs struct {
 type updatePlanArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
 	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, basic-256mb, basic-1gb)"`
+	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
@@ -103,7 +105,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public and enableHighAvailability are optional.",
+		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
@@ -113,6 +115,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DiskSizeGB:             in.DiskSizeGB,
 			Public:                 in.Public,
 			EnableHighAvailability: in.EnableHighAvailability,
+			DryRun:                 in.DryRun,
 		})
 		if err != nil {
 			return nil, PostgresView{}, err
@@ -133,9 +136,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_postgres_plan",
-		Description: "Change a managed Postgres database's instance plan (e.g. free → basic-1gb). The operator reconciles the new resource requests on the next sync; this is a rolling update, not a data-loss operation. Valid plans: free, basic-256mb, basic-1gb.",
+		Description: "Change a managed Postgres database's instance plan (e.g. free → basic-1gb). The operator reconciles the new resource requests on the next sync; this is a rolling update, not a data-loss operation. Pass dryRun:true to preview the change without any writes. Valid plans: free, basic-256mb, basic-1gb.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.SetPlan(ctx, in.PostgresID, in.Plan)
+		var (
+			v   PostgresView
+			err error
+		)
+		if in.DryRun {
+			v, err = s.PreviewSetPlan(ctx, in.PostgresID, in.Plan)
+		} else {
+			v, err = s.SetPlan(ctx, in.PostgresID, in.Plan)
+		}
 		return nil, v, err
 	})
 

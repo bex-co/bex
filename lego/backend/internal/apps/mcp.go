@@ -55,6 +55,7 @@ type listServicesArgs struct {
 type updatePlanArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 	Plan      string `json:"plan" jsonschema:"the new instance plan, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra"`
+	DryRun    bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // scaleArgs is scale_service's input — the desired running instance count,
@@ -119,6 +120,7 @@ type createWebServiceArgs struct {
 	HealthCheckPath string      `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
 	Port            int32       `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
 	Replicas        int32       `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	DryRun          bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -142,6 +144,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		HealthCheckPath: a.HealthCheckPath,
 		Port:            a.Port,
 		Replicas:        a.Replicas,
+		DryRun:          a.DryRun,
 	}
 }
 
@@ -160,6 +163,7 @@ type createCronJobArgs struct {
 	Plan       string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
 	EnvVars    []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
 	AutoDeploy string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	DryRun     bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
@@ -176,6 +180,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Plan:       a.Plan,
 		Env:        toEnvVars(a.EnvVars),
 		AutoDeploy: parseYesNo(a.AutoDeploy),
+		DryRun:     a.DryRun,
 	}
 }
 
@@ -283,6 +288,7 @@ type createStaticSiteArgs struct {
 	Domains     []string          `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
 	Routes      []staticRouteArg  `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
 	Headers     []staticHeaderArg `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
+	DryRun      bool              `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
@@ -299,6 +305,7 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 		Hosts:       a.Domains,
 		Routes:      routeArgViews(a.Routes),
 		Headers:     headerArgViews(a.Headers),
+		DryRun:      a.DryRun,
 	}
 }
 
@@ -466,9 +473,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_service_plan",
-		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. bex extension over Render's MCP.",
+		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. Pass dryRun:true to preview the change without any writes. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetPlan(ctx, in.ServiceID, in.Plan)
+		var (
+			app AppView
+			err error
+		)
+		if in.DryRun {
+			app, err = s.PreviewSetPlan(ctx, in.ServiceID, in.Plan)
+		} else {
+			app, err = s.SetPlan(ctx, in.ServiceID, in.Plan)
+		}
 		if err != nil {
 			return nil, renderService{}, err
 		}

@@ -357,6 +357,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
 				"public":                 &graphql.ArgumentConfig{Type: graphql.Boolean},
 				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
@@ -376,6 +378,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["enableHighAvailability"].(bool); ok {
 					req.EnableHighAvailability = v
 				}
+				req.DryRun, _ = p.Args["dryRun"].(bool)
 				return s.CreatePostgres(p.Context, req)
 			},
 		},
@@ -392,8 +395,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				dryRun, _ := p.Args["dryRun"].(bool)
+				if dryRun {
+					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+				}
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},

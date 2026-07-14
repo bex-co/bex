@@ -43,6 +43,7 @@ type keyValueArgs struct {
 type updateKeyValuePlanArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value_instances"`
 	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, starter, standard)"`
+	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
@@ -57,6 +58,7 @@ type createKeyValueArgs struct {
 	IPAllowList     []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
 	MaxmemoryPolicy string   `json:"maxmemoryPolicy,omitempty" jsonschema:"key-eviction policy at the memory budget (omit for the default allkeys-lru), e.g. noeviction, allkeys-lru, volatile-ttl"`
 	PersistenceMode string   `json:"persistenceMode,omitempty" jsonschema:"persistence: journal-snapshot (default), snapshot (RDB only), or off"`
+	DryRun          bool     `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -96,7 +98,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
-		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional.",
+		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
 			OwnerID:         core.SelectedWorkspace(s.Selections, req, in.OwnerID),
@@ -108,6 +110,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			IPAllowList:     in.IPAllowList,
 			MaxmemoryPolicy: in.MaxmemoryPolicy,
 			PersistenceMode: in.PersistenceMode,
+			DryRun:          in.DryRun,
 		})
 		if err != nil {
 			return nil, KeyValueView{}, err
@@ -117,9 +120,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_key_value_plan",
-		Description: "Change a managed key-value store's instance plan (e.g. free → standard). The operator reconciles the new resource requests on the next sync. Valid plans: free, starter, standard.",
+		Description: "Change a managed key-value store's instance plan (e.g. free → standard). The operator reconciles the new resource requests on the next sync. Pass dryRun:true to preview the change without any writes. Valid plans: free, starter, standard.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValuePlanArgs) (*mcp.CallToolResult, KeyValueView, error) {
-		v, err := s.SetPlan(ctx, in.KeyValueID, in.Plan)
+		var (
+			v   KeyValueView
+			err error
+		)
+		if in.DryRun {
+			v, err = s.PreviewSetPlan(ctx, in.KeyValueID, in.Plan)
+		} else {
+			v, err = s.SetPlan(ctx, in.KeyValueID, in.Plan)
+		}
 		return nil, v, err
 	})
 }

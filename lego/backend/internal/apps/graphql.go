@@ -603,8 +603,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"routes":          &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
 				"headers":         &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
 				"healthCheckPath": &graphql.ArgumentConfig{Type: graphql.String},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				dryRun, _ := p.Args["dryRun"].(bool)
 				return s.Create(p.Context, CreateRequest{
 					OwnerID:         gqlStr(p.Args, "ownerId"),
 					Name:            p.Args["name"].(string),
@@ -624,6 +627,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Routes:          gqlRouteInputs(p.Args, "routes"),
 					Headers:         gqlHeaderInputs(p.Args, "headers"),
 					HealthCheckPath: gqlStr(p.Args, "healthCheckPath"),
+					DryRun:          dryRun,
 				})
 			},
 		},
@@ -667,8 +671,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				dryRun, _ := p.Args["dryRun"].(bool)
+				if dryRun {
+					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+				}
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 			},
 		},
