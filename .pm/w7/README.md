@@ -19,6 +19,7 @@
 - [ ] **m12** — Delete really deletes: purge orphaned tenant artifacts on service/Postgres/Key Value deletion (12 tasks) ← from `/pm service deletion across all service, db, key value types` 2026-07-14 (verbs shipped in w2/m4 + w5/m14; this closes the delete-time teardown gaps)
 - [x] **m28** — Build logs: ship `type=build` into the log store (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (ADR018 §Logs "`type=build` stays empty by design"; unblocks `w5/m29`); placed here for capacity — topical owner w3 has 4 open milestones (the m27 precedent)
 - [x] **m29** — Execute and record the ADR031 restore drills (7 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (`w2/done/m27`'s "operational drills require live cluster execution" residual — etcd, OpenBao, and bex-db restores have never actually been run)
+- [ ] **m30** — Render OpenAPI contract-conformance suite in CI (8 tasks) ← from `/pm-brainstorm more milestones for each worker` round 4, 2026-07-14 (the parity ledger's manual "verified vs Render's OpenAPI" method has no automated guard; the gap-well is dry so the risk is now drift, not absence). Mechanizes ADR018's central claim; w7's CI-guard charter (gitleaks/trivy/structural guards). Render-parity closing task omitted — the milestone IS the parity check
 
 ## Inbox
 
