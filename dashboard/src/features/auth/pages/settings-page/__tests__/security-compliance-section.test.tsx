@@ -18,6 +18,30 @@ vi.mock("@/features/audit/hooks/use-audit-log", () => ({
   useAuditLog: () => auditState,
 }));
 
+vi.mock("@/features/connected-agents/hooks/use-connected-agents", () => ({
+  useConnectedAgents: () => ({
+    agents: [],
+    loading: false,
+    error: false,
+    revoke: vi.fn(),
+    revoking: null,
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock("@/features/sessions/hooks/use-active-sessions", () => ({
+  useActiveSessions: () => ({
+    sessions: [],
+    loading: false,
+    error: false,
+    revoke: vi.fn(),
+    revoking: null,
+    signOutOthers: vi.fn(),
+    signingOutOthers: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 beforeEach(() => {
   auditState.events = [];
   auditState.loading = false;
@@ -40,14 +64,26 @@ describe("SecurityComplianceSection", () => {
     expect(within(region).getByText("Audit Log")).toBeInTheDocument();
   });
 
-  it("hides the whole section (heading included) for a forbidden non-admin", () => {
-    auditState.forbidden = true;
-    const { container } = render(<SecurityComplianceSection />);
+  it("also renders Connected Agents and Active Sessions inside the section", () => {
+    render(<SecurityComplianceSection />);
 
-    expect(
-      screen.queryByRole("region", { name: /security & compliance/i }),
-    ).not.toBeInTheDocument();
-    expect(container).toBeEmptyDOMElement();
+    const region = screen.getByRole("region", {
+      name: /security & compliance/i,
+    });
+    expect(within(region).getByText("Connected agents")).toBeInTheDocument();
+    expect(within(region).getByText("Active sessions")).toBeInTheDocument();
+  });
+
+  it("keeps rendering the section (and the member-visible cards) for a forbidden non-admin, hiding only Audit Log", () => {
+    auditState.forbidden = true;
+    render(<SecurityComplianceSection />);
+
+    const region = screen.getByRole("region", {
+      name: /security & compliance/i,
+    });
+    expect(within(region).queryByText("Audit Log")).not.toBeInTheDocument();
+    expect(within(region).getByText("Connected agents")).toBeInTheDocument();
+    expect(within(region).getByText("Active sessions")).toBeInTheDocument();
   });
 
   it("keeps the store-less (503) state under the section heading", () => {

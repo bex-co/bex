@@ -3,6 +3,7 @@ import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentRequest } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import type { SessionState } from "@/common/server-fn/session";
+import { isSameOrigin } from "@/common/server-fn/same-origin";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -102,27 +103,6 @@ function csrfTokenMatches(
   const want = Buffer.from(consentCsrfToken(challenge, sessionID));
   const got = Buffer.from(presented);
   return want.length === got.length && timingSafeEqual(want, got);
-}
-
-/**
- * A browser always sends `Origin` on a cross-site POST, so requiring it to name
- * this dashboard rejects the cross-site form post outright. Compare **hosts**,
- * not full origins: behind an ingress the server sees `http://…` while the
- * browser sends `https://…`, and `x-forwarded-host` is the host the browser
- * actually typed. No Origin at all (a scripted client) is not a browser CSRF
- * vector, but it is also not something to trust — deny.
- */
-function isSameOrigin(request: Request, url: URL): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  let originHost: string;
-  try {
-    originHost = new URL(origin).host;
-  } catch {
-    return false;
-  }
-  const forwarded = request.headers.get("x-forwarded-host");
-  return originHost === url.host || (!!forwarded && originHost === forwarded);
 }
 
 /**

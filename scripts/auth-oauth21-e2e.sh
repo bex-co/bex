@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9 + m16 + m17): drives
-# the full agent story against REAL components — real Hydra, real Kratos with the
-# native `oauth2_provider` bridge (Kratos accepts the login challenge itself; no
-# custom login provider), the dashboard's real consent route, and the real bex-api
-# resource server:
+# End-to-end OAuth 2.1 provider check (docs/ADR012-auth.md, w4/m9 + m16 + m17 + m18):
+# drives the full agent story against REAL components — real Hydra, real Kratos
+# with the native `oauth2_provider` bridge (Kratos accepts the login challenge
+# itself; no custom login provider), the dashboard's real consent + Connected
+# Agents routes, and the real bex-api resource server:
 #
 #   discovery (RFC 9728 on bex-api) -> DCR (RFC 7591) -> authorize (PKCE S256)
 #   -> Kratos login (browser flow + login_challenge, as the dashboard login page
 #   drives it) -> consent (dashboard /auth/consent) -> code -> token
 #   -> Authorization: Bearer -> bex-api (introspection + audience check)
+#   -> revoke via Settings -> Security & Compliance's Connected Agents card
+#   (dashboard /api/connected-agents) -> the same token 401s
 #
 # Both consent paths, since w4/m16:
 #   * trusted client (operator-blessed `skip_consent`) -> headless auto-accept;
@@ -20,6 +22,12 @@
 # cookie jar), which keeps them independent — but it also means none of them ever
 # exercised the commonest path of all. Leg 13 reuses a jar that is already signed
 # in, the state that used to dead-end on the login page (see kratos_login).
+#
+# Since w4/m18: leg 14 proves the revocation half of the agent-token story — the
+# thing that made "revocable, scoped token" only half true after m16 shipped
+# remembered consent with no way to undo it (docs/ADR018-render-parity.md
+# § bex ahead). Reuses JAR_USER (its live Kratos session cookie is exactly what
+# `/api/connected-agents` reads) and leg 13's still-live access token.
 #
 # The consent page is a server-rendered HTML form posting back to /auth/consent,
 # so curl drives it exactly as a browser would — no Playwright, no framework-
@@ -70,7 +78,7 @@ wait_http() { # url [attempts]
   return 1
 }
 
-echo "-> 1/13 hydra (in-memory, DCR on, login/consent -> dashboard :$DASH_PORT)..."
+echo "-> 1/14 hydra (in-memory, DCR on, login/consent -> dashboard :$DASH_PORT)..."
 docker network create "$NET" >/dev/null 2>&1 || true
 docker rm -f "$HYDRA" >/dev/null 2>&1 || true
 docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
@@ -84,7 +92,7 @@ docker run -d --name "$HYDRA" --network "$NET" --network-alias hydra \
   oryd/hydra:v2.2.0 serve all --dev >/dev/null
 wait_http "$HYDRA_ADM/health/ready"
 
-echo "-> 2/13 kratos (in-memory, native oauth2_provider -> hydra admin)..."
+echo "-> 2/14 kratos (in-memory, native oauth2_provider -> hydra admin)..."
 cat >"$TMP/identity.schema.json" <<'JSON'
 {
   "$id": "https://schemas.bex.co/e2e.schema.json",
@@ -152,7 +160,7 @@ docker run -d --name "$KRATOS" --network "$NET" --network-alias kratos \
   oryd/kratos:v1.3.1 serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier=false >/dev/null
 wait_http "$KRATOS_PUB/health/ready"
 
-echo "-> 3/13 bex-api (issuer + resource configured)..."
+echo "-> 3/14 bex-api (issuer + resource configured)..."
 if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
   (cd lego/backend && BEX_HYDRA_ADMIN_URL=$HYDRA_ADM BEX_KRATOS_URL=$KRATOS_PUB \
     BEX_OAUTH_ISSUER=$ISSUER BEX_OAUTH_RESOURCE=$RESOURCE \
@@ -161,7 +169,7 @@ if ! curl -sf -o /dev/null "http://localhost:$API_PORT/healthz"; then
   wait_http "http://localhost:$API_PORT/healthz" 60
 fi
 
-echo "-> 4/13 dashboard dev server (consent route) on :$DASH_PORT..."
+echo "-> 4/14 dashboard dev server (consent route) on :$DASH_PORT..."
 if ! curl -sf -o /dev/null "$DASH/"; then
   (cd dashboard && VITE_KRATOS_PUBLIC_URL=$KRATOS_PUB VITE_API_URL=http://localhost:$API_PORT/graphql \
     HYDRA_ADMIN_URL=$HYDRA_ADM nohup yarn dev --port $DASH_PORT >"$TMP/dash.log" 2>&1 & echo $! >"$TMP/dash.pid")
@@ -169,7 +177,7 @@ if ! curl -sf -o /dev/null "$DASH/"; then
   wait_http "$DASH/auth/consent" 90 || true
 fi
 
-echo "-> 5/13 RFC 9728 discovery on bex-api..."
+echo "-> 5/14 RFC 9728 discovery on bex-api..."
 meta="$(curl -sf "http://localhost:$API_PORT/.well-known/oauth-protected-resource")"
 echo "$meta" | python3 -c "
 import sys, json
@@ -346,13 +354,13 @@ assert_bearer_works() { # access_token
   [ "$status" != "401" ] || { echo "error: /mcp still 401s with the granted token" >&2; return 1; }
 }
 
-echo "-> 6/13 DCR: three agents self-register public PKCE clients..."
+echo "-> 6/14 DCR: three agents self-register public PKCE clients..."
 TRUSTED_CLIENT="$(dcr 'claude-code-shaped agent (e2e)')"
 CONSENT_CLIENT="$(dcr 'unblessed agent (e2e)')"
 DENIED_CLIENT="$(dcr 'unwelcome agent (e2e)')"
 echo "  ✓ registered 3 clients at $REG_EP (none blessed yet)"
 
-echo "-> 7/13 operator blesses ONE client (skip_consent) + creates the test user..."
+echo "-> 7/14 operator blesses ONE client (skip_consent) + creates the test user..."
 # An operator marking an agent trusted is an admin action — the headless path.
 # The other two clients stay unblessed: since w4/m16 that is no longer a dead
 # end, it is the self-serve consent path.
@@ -366,7 +374,7 @@ curl -sf -X POST -H 'Content-Type: application/json' -d '{
 }' "$KRATOS_ADM/admin/identities" >/dev/null
 echo "  ✓ $TRUSTED_CLIENT trusted, identity created"
 
-echo "-> 8/13 trusted client: PKCE authorize -> login -> HEADLESS consent -> token -> Bearer..."
+echo "-> 8/14 trusted client: PKCE authorize -> login -> HEADLESS consent -> token -> Bearer..."
 JAR_TRUSTED="$TMP/trusted.jar"
 final="$(authorize "$TRUSTED_CLIENT" "state-trusted" "$JAR_TRUSTED")"
 expect_at "$CALLBACK" "$final" "trusted flow did not reach the agent callback (consent was not headless)"
@@ -375,7 +383,7 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$TRUSTED_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ consent auto-accepted headlessly -> token -> bex-api 200 (unchanged by m16)"
 
-echo "-> 9/13 unblessed client: authorize -> login -> the CONSENT PAGE renders..."
+echo "-> 9/14 unblessed client: authorize -> login -> the CONSENT PAGE renders..."
 JAR_USER="$TMP/user.jar"
 final="$(authorize "$CONSENT_CLIENT" "state-consent" "$JAR_USER")"
 expect_at "$DASH/auth/consent" "$final" "unblessed client did not reach the consent page"
@@ -383,7 +391,7 @@ grep -q 'unblessed agent (e2e)' "$TMP/page.html" || { echo "error: consent page 
 grep -q 'offline_access' "$TMP/page.html" || { echo "error: consent page does not list the requested scopes" >&2; exit 1; }
 echo "  ✓ the human sees a consent page naming the client and its scopes (no 403, no operator action)"
 
-echo "-> 10/13 the human approves -> code -> token -> bex-api..."
+echo "-> 10/14 the human approves -> code -> token -> bex-api..."
 final="$(consent_decide approve "$JAR_USER")"
 expect_at "$CALLBACK" "$final" "approve did not reach the agent callback"
 [ "$(qparam "$final" state)" = "state-consent" ] || { echo "error: state mismatch: $final" >&2; exit 1; }
@@ -391,7 +399,7 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ user-consented token passes bex-api introspection + audience check, exactly like a blessed client's"
 
-echo "-> 11/13 a second agent asks; the human denies -> access_denied, no code..."
+echo "-> 11/14 a second agent asks; the human denies -> access_denied, no code..."
 # A fresh browser (jar) per authorization, deliberately: Kratos accepts each Hydra
 # login challenge without asking Hydra to remember the login, so every authorize
 # re-runs login anyway — and driving each leg from a clean browser keeps the legs
@@ -405,7 +413,7 @@ expect_at "$CALLBACK" "$final" "deny did not bounce the agent back to its redire
 [ -z "$(qparam "$final" code)" ] || { echo "error: a denied flow still delivered an authorization code: $final" >&2; exit 1; }
 echo "  ✓ Hydra rejected the request; the agent gets error=access_denied and no code"
 
-echo "-> 12/13 remembered consent: a fresh browser, same user+client -> no consent page..."
+echo "-> 12/14 remembered consent: a fresh browser, same user+client -> no consent page..."
 JAR_AGAIN="$TMP/again.jar"
 final="$(authorize "$CONSENT_CLIENT" "state-again" "$JAR_AGAIN")"
 expect_at "$CALLBACK" "$final" "the remembered grant re-prompted for consent"
@@ -413,7 +421,7 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ inside the remember window the consent page is skipped -> token straight through"
 
-echo "-> 13/13 SIGNED-IN browser (reused jar): authorize again with no re-login..."
+echo "-> 13/14 SIGNED-IN browser (reused jar): authorize again with no re-login..."
 # The most common connect-an-agent path (docs/ADR025-connect-an-agent.md) and the one
 # every leg above deliberately avoids: the user is *already signed into the
 # dashboard* when the agent asks. JAR_USER has held a live Kratos session since
@@ -436,6 +444,39 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ already signed in -> no login form, no consent page -> token (this used to dead-end)"
 
+echo "-> 14/14 Settings -> Security & Compliance 'Connected agents': list -> revoke -> token dead..."
+# w4/m18: the revocation surface m16's remembered consent shipped without.
+# JAR_USER already carries a live Kratos session (since leg 9) — exactly the
+# cookie the dashboard's /api/connected-agents route reads — and $ACCESS is
+# the token leg 13 just minted for $CONSENT_CLIENT, still live.
+list="$(curl -sf -b "$JAR_USER" "$DASH/api/connected-agents")"
+echo "$list" | python3 -c "
+import sys, json
+agents = json.load(sys.stdin)
+assert any(a['clientId'] == '$CONSENT_CLIENT' for a in agents), agents
+print('  ✓ the authorized client is listed under Connected Agents')
+"
+
+status="$(curl -s -o "$TMP/revoke.out" -w '%{http_code}' -X POST \
+  -H "Origin: $DASH" -H 'Content-Type: application/json' \
+  -b "$JAR_USER" \
+  -d "{\"clientId\":\"$CONSENT_CLIENT\"}" \
+  "$DASH/api/connected-agents")"
+[ "$status" = "204" ] || { echo "error: revoke returned $status: $(cat "$TMP/revoke.out")" >&2; exit 1; }
+echo "  ✓ revoke succeeded"
+
+status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $ACCESS" "$RESOURCE")"
+[ "$status" = "401" ] || { echo "error: /mcp still accepts the revoked client's token (status $status)" >&2; exit 1; }
+echo "  ✓ the revoked client's access token is now rejected at /mcp (introspection inactive -> 401)"
+
+list="$(curl -sf -b "$JAR_USER" "$DASH/api/connected-agents")"
+echo "$list" | python3 -c "
+import sys, json
+agents = json.load(sys.stdin)
+assert not any(a['clientId'] == '$CONSENT_CLIENT' for a in agents), agents
+print('  ✓ the revoked client no longer appears in the list')
+"
+
 if [ -n "${HOLD:-}" ]; then
   echo
   echo "HOLD=1: stack left up — dashboard :$DASH_PORT, hydra $ISSUER, kratos $KRATOS_PUB"
@@ -444,7 +485,8 @@ if [ -n "${HOLD:-}" ]; then
 fi
 
 echo
-echo "✓ w4/m9 + m16 + m17 end-to-end: DCR -> PKCE -> dashboard-driven Kratos login"
+echo "✓ w4/m9 + m16 + m17 + m18 end-to-end: DCR -> PKCE -> dashboard-driven Kratos login"
 echo "  (native challenge accept, from a signed-out AND an already-signed-in browser)"
 echo "  -> consent (headless for blessed clients, a real user decision for everyone"
 echo "  else: approve / deny / remembered) -> token -> Bearer-authorized bex-api"
+echo "  -> Connected Agents list -> revoke -> the same token 401s at /mcp"
