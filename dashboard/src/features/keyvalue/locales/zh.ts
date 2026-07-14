@@ -152,6 +152,44 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "默认（最新）",
     description: "Create-Key-Value version select default option",
   },
+  "keyvalue.fieldMaxmemoryPolicy": {
+    message: "内存淘汰策略",
+    description: "Create-Key-Value form field label (eviction policy)",
+  },
+  "keyvalue.fieldMaxmemoryRecommended": {
+    message: "（缓存推荐）",
+    description:
+      "Suffix on the recommended maxmemory policy option (allkeys-lru)",
+  },
+  "keyvalue.fieldMaxmemoryPolicyHint": {
+    message: "当存储达到内存上限时如何淘汰键。",
+    description: "Create-Key-Value maxmemory policy helper text",
+  },
+  "keyvalue.fieldPersistenceMode": {
+    message: "持久化模式",
+    description: "Create-Key-Value form field label (persistence)",
+  },
+  "keyvalue.fieldPersistenceModeHint": {
+    message: "如何将数据持久化到磁盘，以便在重启后保留。",
+    description: "Create-Key-Value persistence mode helper text",
+  },
+  "keyvalue.fieldPersistenceFreeHint": {
+    message: "免费套餐没有持久化磁盘，因此持久化处于关闭状态。",
+    description:
+      "Create-Key-Value persistence helper text when Free plan is selected",
+  },
+  "keyvalue.persistenceJournalSnapshot": {
+    message: "日志 + 快照",
+    description: "Persistence mode option: AOF journal plus RDB snapshots",
+  },
+  "keyvalue.persistenceSnapshot": {
+    message: "仅快照",
+    description: "Persistence mode option: RDB snapshots only",
+  },
+  "keyvalue.persistenceOff": {
+    message: "关闭",
+    description: "Persistence mode option: no persistence",
+  },
   "keyvalue.fieldPublic": {
     message: "公网访问",
     description: "Create-Key-Value form field label (external endpoint toggle)",

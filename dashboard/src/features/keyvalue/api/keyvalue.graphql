@@ -83,6 +83,8 @@ mutation CreateKeyValue(
   $version: String
   $storageGB: Int
   $public: Boolean
+  $maxmemoryPolicy: String
+  $persistenceMode: String
 ) {
   createKeyValue(
     name: $name
@@ -91,6 +93,8 @@ mutation CreateKeyValue(
     version: $version
     storageGB: $storageGB
     public: $public
+    maxmemoryPolicy: $maxmemoryPolicy
+    persistenceMode: $persistenceMode
   ) {
     id
     name

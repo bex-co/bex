@@ -44,9 +44,10 @@ interface DatastoreMetricsPanelProps {
 
 /**
  * The managed-datastore sibling of ApplicationMetricsCard/NetworkMetricsCard
- * (w3/m10): disk usage for both Postgres and Key Value, plus
- * active-connections and replication-lag for Postgres only. bex extension —
- * Render's dashboard has no equivalent panel.
+ * (w3/m10): disk usage for both Postgres and Key Value, active-connections and
+ * replication-lag for Postgres only, and memory + connected-clients for Key
+ * Value only (w5/011, redis_exporter). bex extension — Render's dashboard has
+ * no equivalent panel.
  */
 export function DatastoreMetricsPanel({
   kind,
@@ -55,6 +56,7 @@ export function DatastoreMetricsPanel({
 }: DatastoreMetricsPanelProps) {
   const { t } = useTranslations();
   const isDatabase = kind === "database";
+  const isKeyValue = kind === "keyvalue";
 
   const disk = useDatastoreMetrics(kind, resource, "disk");
   const diskCapacity = useDatastoreMetrics(kind, resource, "disk_capacity");
@@ -67,6 +69,13 @@ export function DatastoreMetricsPanel({
     "replication_lag",
     { skip: !isDatabase || !highAvailabilityEnabled },
   );
+  // Key Value only: used-memory bytes and connected-clients count (w5/011).
+  const kvMemory = useDatastoreMetrics(kind, resource, "kv_memory", {
+    skip: !isKeyValue,
+  });
+  const kvConnections = useDatastoreMetrics(kind, resource, "kv_connections", {
+    skip: !isKeyValue,
+  });
 
   const diskSeries = useMemo(() => toLineSeries(disk.series), [disk.series]);
   const diskCapacityValue = latestValue(diskCapacity.series);
@@ -74,6 +83,15 @@ export function DatastoreMetricsPanel({
   const connectionSeries = useMemo(
     () => toLineSeries(connections.series),
     [connections.series],
+  );
+
+  const kvMemorySeries = useMemo(
+    () => toLineSeries(kvMemory.series),
+    [kvMemory.series],
+  );
+  const kvConnectionSeries = useMemo(
+    () => toLineSeries(kvConnections.series),
+    [kvConnections.series],
   );
 
   const replicationLagSeries = useMemo<LineSeriesInput[]>(
@@ -144,6 +162,29 @@ export function DatastoreMetricsPanel({
                 />
               )}
             </div>
+          </>
+        )}
+
+        {isKeyValue && (
+          <>
+            <MetricSection title={t("metrics.memoryTitle")} result={kvMemory}>
+              <SvgLineChart
+                unit={kvMemory.series[0]?.unit ?? "bytes"}
+                series={kvMemorySeries}
+              />
+              <ChartLegend entries={kvMemorySeries} />
+            </MetricSection>
+
+            <MetricSection
+              title={t("metrics.kvConnectionsTitle")}
+              result={kvConnections}
+            >
+              <SvgLineChart
+                unit={kvConnections.series[0]?.unit ?? "count"}
+                series={kvConnectionSeries}
+              />
+              <ChartLegend entries={kvConnectionSeries} />
+            </MetricSection>
           </>
         )}
       </CardContent>

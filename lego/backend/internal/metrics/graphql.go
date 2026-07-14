@@ -55,6 +55,8 @@ var datastoreMetricNames = map[string]string{
 	"DISK_CAPACITY":   MetricDiskCapacity,
 	"DB_CONNECTIONS":  MetricDBConnections,
 	"REPLICATION_LAG": MetricReplicationLag,
+	"MEMORY":          MetricKVMemory,      // key-value only
+	"CONNECTIONS":     MetricKVConnections, // key-value only
 }
 
 // datastoreMetricsQueryInputType is datastoreMetrics' query input — the

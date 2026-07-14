@@ -2,7 +2,26 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
-import type { LogLine } from "../types";
+import { cn } from "@/common/lib/utils/utils.ts";
+import { LOG_TYPE_REQUEST, type LogLine } from "../types";
+
+// A request (HTTP access) line's status chip, tinted by response class — the
+// at-a-glance signal Render's request-log rows lead with. An unknown/empty code
+// falls back to the neutral chip.
+function statusChipClass(status: string): string {
+  switch (status.charAt(0)) {
+    case "2":
+      return "bg-green-500/15 text-green-700 dark:text-green-400";
+    case "3":
+      return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
+    case "4":
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
+    case "5":
+      return "bg-red-500/15 text-red-700 dark:text-red-400";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
 
 // How close to the bottom (px) still counts as "pinned" — a small slack so a
 // sub-pixel scroll position or a wrapped final line doesn't unpin autoscroll.
@@ -66,6 +85,24 @@ export function LogLineList({ lines }: LogLineListProps) {
               {line.instance ? (
                 <span className="shrink-0 text-muted-foreground/70">
                   [{line.instance}]
+                </span>
+              ) : null}
+              {/* A request line leads with method/status chips from its labels
+                  (w5/008) — the at-a-glance structure Render's request rows show,
+                  instead of the raw Traefik JSON getting app-line treatment. */}
+              {line.type === LOG_TYPE_REQUEST && line.method ? (
+                <span className="shrink-0 rounded bg-muted px-1 font-semibold text-muted-foreground">
+                  {line.method}
+                </span>
+              ) : null}
+              {line.type === LOG_TYPE_REQUEST && line.statusCode ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1 font-semibold tabular-nums",
+                    statusChipClass(line.statusCode),
+                  )}
+                >
+                  {line.statusCode}
                 </span>
               ) : null}
               <span className="min-w-0 flex-1 text-foreground">

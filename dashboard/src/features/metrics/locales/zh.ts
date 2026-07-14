@@ -72,6 +72,16 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Datastore metrics panel: Postgres active-connections chart section title",
   },
+  "metrics.memoryTitle": {
+    message: "内存",
+    description:
+      "Datastore metrics panel: Key Value used-memory chart section title",
+  },
+  "metrics.kvConnectionsTitle": {
+    message: "连接数",
+    description:
+      "Datastore metrics panel: Key Value connected-clients chart section title",
+  },
   "metrics.replicationLagTitle": {
     message: "复制延迟",
     description:
@@ -88,7 +98,8 @@ const zhMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.datastoreMetricsDescription": {
     message: "该实例的实时资源使用情况",
-    description: "Database/Key Value detail page metrics panel card description",
+    description:
+      "Database/Key Value detail page metrics panel card description",
   },
   "metrics.statusCode": {
     message: "状态码",

@@ -19,7 +19,11 @@ import { DeleteServiceCard } from "@/features/services/components/delete-service
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
-import { isCron, isStaticSite, isWorker } from "@/features/services/lib/service-type";
+import {
+  isCron,
+  isStaticSite,
+  isWorker,
+} from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: ServiceSettingsPage,
@@ -82,11 +86,27 @@ export function ServiceSettingsPage() {
       </Card>
 
       {cron ? (
-        <CronDeploySection
-          serviceId={serviceId}
-          schedule={service?.schedule ?? null}
-          command={service?.command ?? null}
-        />
+        <>
+          <CronDeploySection
+            serviceId={serviceId}
+            schedule={service?.schedule ?? null}
+            command={service?.command ?? null}
+          />
+          {/* A git-sourced cron job still builds from a repo, so it keeps the
+              Build & Deploy section — Root Directory + the Auto Deploy toggle,
+              whose setAutoDeploy path is type-agnostic (w2/m9, w5/010). An
+              image-backed cron has nothing to build, so it renders neither.
+              Build Command / Log Stream stay deferred (ADR018 cron row). */}
+          {service?.repo && (
+            <BuildDeploySection
+              serviceId={serviceId}
+              repo={service.repo}
+              branch={service.branch}
+              rootDir={service.rootDir}
+              autoDeploy={service.autoDeploy ?? false}
+            />
+          )}
+        </>
       ) : (
         <>
           {service?.repo && (

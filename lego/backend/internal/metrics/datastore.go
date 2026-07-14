@@ -58,6 +58,13 @@ const (
 	// gated on Database.status.highAvailabilityEnabled, which today is always
 	// false, so the field is present in the API contract and inert until then.
 	MetricReplicationLag = "replication_lag"
+	// MetricKVMemory/MetricKVConnections are a managed Key Value (Valkey)
+	// instance's used-memory bytes and connected-client count (w5/011, the
+	// redis_exporter sidecar the operator attaches). KeyValue-only — the
+	// datastore siblings of the App metrics MEMORY/instance_count, distinct ids
+	// so they can't be requested on a Postgres resource.
+	MetricKVMemory      = "kv_memory"
+	MetricKVConnections = "kv_connections"
 )
 
 // DiskUsageRequest is the backend-neutral disk-usage ask for a managed
@@ -104,6 +111,22 @@ type ReplicationLagRequest struct {
 // core.ErrMetricsUnavailable once HA makes it reachable (today the verb never
 // calls it — see MetricReplicationLag).
 type ReplicationLagSource func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error)
+
+// KeyValueStatsRequest is the backend-neutral memory/connections ask for one
+// managed Key Value (Valkey) instance.
+type KeyValueStatsRequest struct {
+	Namespace  string
+	Resource   string // the KeyValue name
+	Dimension  string // "memory" | "connections"
+	Start, End time.Time
+	Resolution time.Duration
+}
+
+// KeyValueStatsSource reads a Valkey instance's used-memory / connected-clients
+// history (the operator's redis_exporter sidecar, scraped by Prometheus's
+// valkey-instances job). nil => kv_memory/kv_connections report
+// core.ErrMetricsUnavailable.
+type KeyValueStatsSource func(ctx context.Context, req KeyValueStatsRequest) ([]MetricSeries, error)
 
 // DatastoreMetricQuery is the resolved request for the DatastoreMetrics verb —
 // the Database/KeyValue-scoped sibling of MetricQuery.
@@ -158,6 +181,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, err
 		}
 		isHA = db.Status.HighAvailabilityEnabled
+		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
+			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
+		}
 	case DatastoreKeyValue:
 		if _, err := s.GetKeyValue(ctx, core.RelCanView, q.Resource); err != nil {
 			return nil, err
@@ -205,6 +231,18 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		return s.ReplicationLag(ctx, ReplicationLagRequest{
 			Namespace: s.Namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
+		})
+	case MetricKVMemory, MetricKVConnections:
+		if s.KeyValueStats == nil {
+			return nil, core.ErrMetricsUnavailable
+		}
+		dimension := "memory"
+		if q.Metric == MetricKVConnections {
+			dimension = "connections"
+		}
+		return s.KeyValueStats(ctx, KeyValueStatsRequest{
+			Namespace: s.Namespace, Resource: q.Resource, Dimension: dimension,
+			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	default:
 		return nil, fmt.Errorf("unknown metric %q", q.Metric)

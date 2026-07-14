@@ -54,6 +54,11 @@ const (
 	kvDataPath = "/data"
 	// kvDefaultImage is the Valkey image used when spec.version is empty.
 	kvDefaultImage = "valkey/valkey:8-alpine"
+	// kvExporterPort / kvExporterImage back the redis_exporter metrics sidecar
+	// (w5/011): it scrapes Valkey's INFO stats and exposes them as Prometheus
+	// metrics on kvExporterPort, discovered by the valkey-instances scrape job.
+	kvExporterPort  = 9121
+	kvExporterImage = "oliver006/redis_exporter:alpine"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
 	// StatefulSet selector + Service selector so the two stay coupled.
 	labelKeyValue = "app.bex.co/keyvalue"
@@ -91,6 +96,48 @@ func valkeyImage(version string) string {
 // guaranteedResources helper (requests == limits).
 func kvResources(plan tiers.ValkeyTier) corev1.ResourceRequirements {
 	return guaranteedResources(plan.CPU, plan.Memory)
+}
+
+// kvExporterResources is the fixed, tiny footprint for the redis_exporter
+// sidecar — it only polls INFO, so it needs a fraction of a core and a few MiB,
+// independent of the store's plan.
+func kvExporterResources() corev1.ResourceRequirements {
+	return guaranteedResources("10m", "32Mi")
+}
+
+// valkeyArgs builds the valkey-server flags from the KeyValue spec: the password,
+// the persistence mode (Render's Persistence Mode → AOF/RDB), and — when an
+// eviction policy is set — the memory budget and policy (Render's Maxmemory
+// Policy). An empty PersistenceMode/MaxmemoryPolicy preserves the prior default
+// (appendonly yes, no maxmemory), so a KeyValue created before these fields
+// reconciles byte-identically.
+func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
+	args := []string{"--requirepass", "$(VALKEY_PASSWORD)"}
+	switch spec.PersistenceMode {
+	case "off":
+		// No AOF and no RDB save points — a pure in-memory cache.
+		args = append(args, "--appendonly", "no", "--save", "")
+	case "snapshot":
+		// RDB snapshots only (the image's default save points); no AOF journal.
+		args = append(args, "--appendonly", "no")
+	default: // journal-snapshot and "" (the prior default): AOF + RDB.
+		args = append(args, "--appendonly", "yes")
+	}
+	// Only bound memory when a policy is chosen; without maxmemory the policy has
+	// nothing to evict against, and leaving both unset keeps legacy stores as they
+	// were.
+	if spec.MaxmemoryPolicy != "" {
+		args = append(args, "--maxmemory", valkeyMaxmemory(plan), "--maxmemory-policy", spec.MaxmemoryPolicy)
+	}
+	return args
+}
+
+// valkeyMaxmemory returns the data budget (bytes) eviction triggers at: 80% of
+// the plan's RAM, leaving headroom below the container memory limit so valkey's
+// own eviction runs before the kernel OOM-kills the pod.
+func valkeyMaxmemory(plan tiers.ValkeyTier) string {
+	q := resource.MustParse(plan.Memory)
+	return strconv.FormatInt(q.Value()*4/5, 10)
 }
 
 // generatePassword returns a URL-safe random password for a Valkey instance.
@@ -222,25 +269,42 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		sts.Spec.Replicas = &replicas
 		sts.Spec.Template.Labels = podLabels
+		// The Valkey password, shared by the server (arg expansion) and the metrics
+		// exporter (authenticated INFO scrape).
+		passwordEnv := corev1.EnvVar{
+			Name: "VALKEY_PASSWORD",
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: kv.Name},
+				Key:                  "password",
+			}},
+		}
 		sts.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:  "valkey",
 			Image: valkeyImage(kv.Spec.Version),
 			// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 			// $(VAR) from the container env list. appendonly persists to the PVC.
-			Args:  []string{"--requirepass", "$(VALKEY_PASSWORD)", "--appendonly", "yes"},
-			Ports: []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}},
-			Env: []corev1.EnvVar{{
-				Name: "VALKEY_PASSWORD",
-				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: kv.Name},
-					Key:                  "password",
-				}},
-			}},
+			Args:         valkeyArgs(kv.Spec, plan),
+			Ports:        []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}},
+			Env:          []corev1.EnvVar{passwordEnv},
 			Resources:    kvResources(plan),
 			VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}},
 			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
 			}},
+		}, {
+			// redis_exporter sidecar: exposes Valkey's INFO stats as Prometheus
+			// metrics (redis_memory_used_bytes, redis_connected_clients, …) on
+			// :9121, scraped by the valkey-instances job (deploy/gitops/base/
+			// prometheus.yaml) and surfaced as the Key Value metrics tab (w5/011).
+			Name:  "metrics",
+			Image: kvExporterImage,
+			Env: []corev1.EnvVar{
+				{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
+				// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
+				{Name: "REDIS_PASSWORD", ValueFrom: passwordEnv.ValueFrom},
+			},
+			Ports:     []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
+			Resources: kvExporterResources(),
 		}}
 		return controllerutil.SetControllerReference(&kv, sts, r.Scheme)
 	}); err != nil {

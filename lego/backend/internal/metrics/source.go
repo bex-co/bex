@@ -394,6 +394,41 @@ func NewPrometheusDiskUsageSource(base string, hc *http.Client) DiskUsageSource 
 	}
 }
 
+// NewPrometheusKeyValueStatsSource returns the production KeyValueStatsSource —
+// stepped redis_exporter series (used-memory bytes, connected-clients count)
+// via query_range, the KeyValue sibling of NewPrometheusDiskUsageSource. A
+// managed KeyValue is a single-instance StatefulSet, so its pods are named
+// <name>-<ordinal>; the anchored, two-segment matcher means store "cache" never
+// matches a "cache-api-…" pod. The valkey-instances scrape job
+// (deploy/gitops/base/prometheus.yaml) labels each series with pod + namespace.
+func NewPrometheusKeyValueStatsSource(base string, hc *http.Client) KeyValueStatsSource {
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		metric, unit := "redis_memory_used_bytes", unitBytes
+		if req.Dimension == "connections" {
+			metric, unit = "redis_connected_clients", unitCount
+		}
+		q := fmt.Sprintf(`sum by (pod) (%s{namespace=%q,pod=~%q})`,
+			metric, req.Namespace, fmt.Sprintf(`%s-[0-9]+`, promEscape(req.Resource)))
+		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
+		if err != nil {
+			return nil, err
+		}
+		for i := range series {
+			labels := map[string]string{"resource": req.Resource}
+			if pod := series[i].Labels["pod"]; pod != "" {
+				labels["instance"] = pod
+			}
+			series[i].Labels = labels
+			series[i].Unit = unit
+		}
+		return series, nil
+	}
+}
+
 // cnpgInstanceQuery runs a query_range for a CNPG-cluster-scoped metric and
 // relabels each series onto Core's vocabulary (pod => instance, plus the
 // cluster's resource tag) with the given unit — the shared scaffold behind

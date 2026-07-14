@@ -30,6 +30,7 @@ package keyvalue
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -57,10 +58,10 @@ type Service struct {
 	MaxKeyValues int
 }
 
-// KeyValueView is the Render-shaped "key-value" object. Fields bex cannot back
-// yet (Render's maxmemoryPolicy / persistenceMode) are omitted rather than
-// faked — the object stays a safe superset a Render client can read
-// (docs/ADR018-render-parity.md § Key Value records the omissions).
+// KeyValueView is the Render-shaped "key-value" object. maxmemoryPolicy /
+// persistenceMode (Render's eviction + persistence settings) are now backed by
+// KeyValue CR fields (w5/011); the object stays a safe superset a Render client
+// can read (docs/ADR018-render-parity.md § Key Value).
 type KeyValueView struct {
 	ID        string `json:"id"` // the KeyValue name (name-as-id, postgres sibling)
 	Name      string `json:"name"`
@@ -69,6 +70,11 @@ type KeyValueView struct {
 	Status    string `json:"status"`    // Render keyValueStatus enum
 	Suspended string `json:"suspended"` // Render string enum (like services/postgres)
 	CreatedAt string `json:"createdAt,omitempty"`
+
+	// MaxmemoryPolicy / PersistenceMode mirror Render's Key Value settings, read
+	// from the CR spec (empty until set — the operator applies its default then).
+	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
+	PersistenceMode string `json:"persistenceMode,omitempty"`
 
 	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
 	// ipAllowList). Empty => the external route is open to all source IPs.
@@ -110,7 +116,22 @@ type CreateKeyValueRequest struct {
 	Public    bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
 	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// MaxmemoryPolicy / PersistenceMode are Render's eviction + persistence
+	// settings. Empty => the CRD default (allkeys-lru / journal-snapshot).
+	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
+	PersistenceMode string `json:"persistenceMode,omitempty"`
 }
+
+// validMaxmemoryPolicies / validPersistenceModes mirror the KeyValue CRD's enum
+// markers (types/v1alpha1/keyvalue_types.go). The CRD would reject a bad value
+// at admission, but validating here first turns it into a clean 400 that names
+// the offending value — the same courtesy CreateKeyValue extends to `plan`.
+var validMaxmemoryPolicies = []string{
+	"noeviction", "allkeys-lru", "allkeys-lfu", "volatile-lru",
+	"volatile-lfu", "allkeys-random", "volatile-random", "volatile-ttl",
+}
+
+var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
 
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus string.
 func kvStatus(p appv1alpha1.KeyValuePhase) string {
@@ -130,17 +151,19 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		created = kv.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
 	return KeyValueView{
-		ID:           kv.Name,
-		Name:         kv.Name,
-		Plan:         kv.Spec.Plan,
-		Version:      kv.Spec.Version,
-		Status:       kvStatus(kv.Status.Phase),
-		Suspended:    core.SuspendedEnum(kv.Spec.Suspended),
-		CreatedAt:    created,
-		IPAllowList:  kv.Spec.IPAllowList,
-		ExternalHost: kv.Status.ExternalHost,
-		Public:       kv.Spec.Public,
-		OwnerID:      kv.Labels[core.LabelTenant],
+		ID:              kv.Name,
+		Name:            kv.Name,
+		Plan:            kv.Spec.Plan,
+		Version:         kv.Spec.Version,
+		Status:          kvStatus(kv.Status.Phase),
+		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
+		CreatedAt:       created,
+		IPAllowList:     kv.Spec.IPAllowList,
+		MaxmemoryPolicy: kv.Spec.MaxmemoryPolicy,
+		PersistenceMode: kv.Spec.PersistenceMode,
+		ExternalHost:    kv.Status.ExternalHost,
+		Public:          kv.Spec.Public,
+		OwnerID:         kv.Labels[core.LabelTenant],
 	}
 }
 
@@ -235,6 +258,12 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return KeyValueView{}, err
 	}
+	if req.MaxmemoryPolicy != "" && !slices.Contains(validMaxmemoryPolicies, req.MaxmemoryPolicy) {
+		return KeyValueView{}, fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, req.MaxmemoryPolicy, validMaxmemoryPolicies)
+	}
+	if req.PersistenceMode != "" && !slices.Contains(validPersistenceModes, req.PersistenceMode) {
+		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
+	}
 	// Per-workspace key-value cap (w7/m9).
 	if s.MaxKeyValues > 0 {
 		if tenantID, ok := s.Tenant(ctx); ok {
@@ -250,11 +279,13 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
 		Spec: appv1alpha1.KeyValueSpec{
-			Plan:        req.Plan,
-			Version:     req.Version,
-			StorageGB:   req.StorageGB,
-			Public:      req.Public,
-			IPAllowList: req.IPAllowList,
+			Plan:            req.Plan,
+			Version:         req.Version,
+			StorageGB:       req.StorageGB,
+			Public:          req.Public,
+			IPAllowList:     req.IPAllowList,
+			MaxmemoryPolicy: req.MaxmemoryPolicy,
+			PersistenceMode: req.PersistenceMode,
 		},
 	}
 	// Stamp both the tenant label (ownerId scoping — kvView/ListKeyValues read

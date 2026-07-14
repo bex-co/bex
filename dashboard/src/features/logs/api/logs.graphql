@@ -6,16 +6,50 @@
 # Render's labels array instead. Live tail is a separate stream (SSE), not a
 # GraphQL field.
 #
-# The query below asks for the fields the current UI renders. The schema also
-# offers the structured filters (level/statusCode/method/path/instance) and the
-# `logLabelValues` discovery query that feeds their dropdowns — the filter UI that
-# consumes them is .pm/w5/008. Note: without the durable store those filters (and
-# type=request) answer 503 rather than an empty page (docs/ADR010-observability.md).
-query Logs($resource: String!, $type: String, $text: String, $limit: Int) {
-  logs(resource: $resource, type: $type, text: $text, limit: $limit) {
+# The structured request filters (level/instance/statusCode/method/path) are
+# `[String]` lists — Render's filter vocabulary, wired to the Logs-tab filter bar
+# (w5/008). `type`/`text` stay single-valued strings (the shape the dashboard has
+# always sent). Without the durable store those filters (and type=request) answer
+# 503 (core.ErrLogStoreUnavailable), which the Logs tab renders as an explanatory
+# "request logs need the log store" state, not a generic error (docs/ADR010-observability.md).
+query Logs(
+  $resource: String!
+  $type: String
+  $text: String
+  $level: [String!]
+  $instance: [String!]
+  $statusCode: [String!]
+  $method: [String!]
+  $path: [String!]
+  $limit: Int
+) {
+  logs(
+    resource: $resource
+    type: $type
+    text: $text
+    level: $level
+    instance: $instance
+    statusCode: $statusCode
+    method: $method
+    path: $path
+    limit: $limit
+  ) {
     timestamp
     message
     type
     instance
+    level
+    method
+    statusCode
   }
+}
+
+# The filter-dropdown feed: the values a log label actually takes for one App
+# (level/instance/method/statusCode/host/type), scoped server-side to the App's
+# streams so a caller can never enumerate another tenant's pods. The logs sibling
+# of `metricsFilters` — populates the Logs-tab filter dropdowns with real observed
+# values, not a hardcoded guess. `host` resolves even without the store (answered
+# from the App's own URLs); the rest report 503 when the store is unwired.
+query LogLabelValues($label: String!, $resource: String!) {
+  logLabelValues(label: $label, resource: $resource)
 }

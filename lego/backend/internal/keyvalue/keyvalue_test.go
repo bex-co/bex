@@ -148,6 +148,69 @@ func TestRESTKeyValueCreateValidation(t *testing.T) {
 	}
 }
 
+// TestKeyValueMaxmemoryPersistence pins that create carries the maxmemoryPolicy
+// / persistenceMode settings (w5/011) onto spec, the view reads them back, and
+// bad values are refused (400) rather than silently dropped — across REST +
+// GraphQL.
+func TestKeyValueMaxmemoryPersistence(t *testing.T) {
+	svc, cl := newService()
+
+	// REST create with both settings => spec seeded + view echoes them.
+	w := serveREST(svc, "POST", "/v1/key-value",
+		`{"name":"cache-mm","plan":"starter","maxmemoryPolicy":"volatile-ttl","persistenceMode":"off"}`)
+	if w.Code != 201 {
+		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var view KeyValueView
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if view.MaxmemoryPolicy != "volatile-ttl" || view.PersistenceMode != "off" {
+		t.Fatalf("view settings = %q/%q", view.MaxmemoryPolicy, view.PersistenceMode)
+	}
+	var made appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-mm"}, &made); err != nil {
+		t.Fatalf("get CR: %v", err)
+	}
+	if made.Spec.MaxmemoryPolicy != "volatile-ttl" || made.Spec.PersistenceMode != "off" {
+		t.Fatalf("spec settings = %q/%q", made.Spec.MaxmemoryPolicy, made.Spec.PersistenceMode)
+	}
+
+	// Bad values => 400 (named), not a create.
+	if w := serveREST(svc, "POST", "/v1/key-value", `{"name":"bad-mm","maxmemoryPolicy":"evict-everything"}`); w.Code != 400 {
+		t.Errorf("bad maxmemoryPolicy => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if w := serveREST(svc, "POST", "/v1/key-value", `{"name":"bad-pm","persistenceMode":"maybe"}`); w.Code != 400 {
+		t.Errorf("bad persistenceMode => 400, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// GraphQL create carries the same settings onto spec.
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       context.Background(),
+		RequestString: `mutation { createKeyValue(name:"cache-gql-mm", maxmemoryPolicy:"allkeys-lfu", persistenceMode:"snapshot") { maxmemoryPolicy persistenceMode } }`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql create: %v", res.Errors)
+	}
+	obj := res.Data.(map[string]any)["createKeyValue"].(map[string]any)
+	if obj["maxmemoryPolicy"] != "allkeys-lfu" || obj["persistenceMode"] != "snapshot" {
+		t.Fatalf("gql view = %v", obj)
+	}
+	var gqlMade appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-gql-mm"}, &gqlMade); err != nil {
+		t.Fatalf("get gql CR: %v", err)
+	}
+	if gqlMade.Spec.MaxmemoryPolicy != "allkeys-lfu" || gqlMade.Spec.PersistenceMode != "snapshot" {
+		t.Fatalf("gql spec = %q/%q", gqlMade.Spec.MaxmemoryPolicy, gqlMade.Spec.PersistenceMode)
+	}
+}
+
 func TestRESTKeyValueConnectionInfo(t *testing.T) {
 	svc, cl := newService()
 	seedKeyValue(t, cl, "conn-kv")

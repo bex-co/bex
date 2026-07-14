@@ -43,6 +43,26 @@ type KeyValueSpec struct {
 	// +optional
 	StorageGB int32 `json:"storageGB,omitempty"`
 
+	// MaxmemoryPolicy is Valkey's key-eviction policy once the store reaches its
+	// memory budget — Render's "Maxmemory Policy". The operator sets `maxmemory`
+	// to a fraction of the plan's RAM and applies this policy; empty preserves the
+	// prior behavior (no maxmemory limit set). Default: allkeys-lru (Render's
+	// cache-oriented default). See docs/ADR021-keyvalue-management.md.
+	// +optional
+	// +kubebuilder:validation:Enum=noeviction;allkeys-lru;allkeys-lfu;volatile-lru;volatile-lfu;allkeys-random;volatile-random;volatile-ttl
+	// +kubebuilder:default=allkeys-lru
+	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
+
+	// PersistenceMode selects how Valkey persists to the PVC — Render's
+	// "Persistence Mode": journal-snapshot (AOF + RDB snapshots, the prior
+	// default), snapshot (RDB snapshots only), or off (no persistence). Empty
+	// preserves the prior behavior (appendonly yes). Default: journal-snapshot.
+	// See docs/ADR021-keyvalue-management.md.
+	// +optional
+	// +kubebuilder:validation:Enum=journal-snapshot;snapshot;off
+	// +kubebuilder:default=journal-snapshot
+	PersistenceMode string `json:"persistenceMode,omitempty"`
+
 	// Public, when true and the controller's BEX_KV_DOMAIN is set, exposes the
 	// store at "<name>.<BEX_KV_DOMAIN>" via a Traefik TCP/SNI route (TLS
 	// passthrough — Valkey terminates its own TLS for direct-TLS clients). Default:

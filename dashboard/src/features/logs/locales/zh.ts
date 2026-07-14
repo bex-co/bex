@@ -16,7 +16,62 @@ const zhLogs: Record<string, TranslationEntry> = {
   "logs.typeRequest": {
     message: "请求日志",
     description:
-      "Log-type filter option: request logs (empty on bex — no backend)",
+      "Log-type filter option: request logs (Traefik access lines, from the durable store)",
+  },
+  "logs.levelLabel": {
+    message: "级别",
+    description: "Accessible label for the log-level filter dropdown",
+  },
+  "logs.levelAll": {
+    message: "全部级别",
+    description: "Level filter option: no level filter",
+  },
+  "logs.methodLabel": {
+    message: "方法",
+    description: "Accessible label for the HTTP-method filter dropdown",
+  },
+  "logs.methodAll": {
+    message: "全部方法",
+    description: "Method filter option: no method filter",
+  },
+  "logs.statusCodeLabel": {
+    message: "状态码",
+    description: "Accessible label for the HTTP-status filter dropdown",
+  },
+  "logs.statusCodeAll": {
+    message: "全部状态",
+    description: "Status-code filter option: no status filter",
+  },
+  "logs.instanceLabel": {
+    message: "实例",
+    description: "Accessible label for the instance (replica) filter dropdown",
+  },
+  "logs.instanceAll": {
+    message: "全部实例",
+    description: "Instance filter option: no instance filter",
+  },
+  "logs.pathLabel": {
+    message: "请求路径",
+    description: "Accessible label for the request-path filter input",
+  },
+  "logs.pathPlaceholder": {
+    message: "按路径筛选",
+    description: "Placeholder for the request-path filter input",
+  },
+  "logs.liveUnsupported": {
+    message: "实时日志已关闭——请求日志与结构化筛选无法实时跟踪。",
+    description:
+      "Note when a store-only filter disables live tail (the tail reads pod stdout)",
+  },
+  "logs.storeRequiredTitle": {
+    message: "请求日志需要日志存储",
+    description:
+      "Empty-state title when a request/structured-filter query hits a deployment with no durable store (503)",
+  },
+  "logs.storeRequiredBody": {
+    message:
+      "请求日志以及级别/状态/方法/路径筛选需从持久化日志存储读取，而此环境未配置该存储。在已接入存储的环境中可用。",
+    description: "Empty-state body for the store-unavailable (503) state",
   },
   "logs.searchPlaceholder": {
     message: "搜索日志",
@@ -55,9 +110,9 @@ const zhLogs: Record<string, TranslationEntry> = {
     description: "Empty-state body with no filters applied",
   },
   "logs.emptyFilteredBody": {
-    message: "没有匹配此筛选条件的日志。bex 仅提供应用日志——请求日志为空。",
+    message: "没有匹配这些筛选条件的日志。",
     description:
-      "Empty-state body when a type/text filter yields nothing (honest about bex's app-only contract)",
+      "Empty-state body when a type/text/structured filter yields nothing",
   },
   "logs.errorTitle": {
     message: "无法加载日志",

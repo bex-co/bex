@@ -13,6 +13,10 @@ export interface CreateKeyValueInput {
   /** Valkey version, or "" to let the operator pick its default. */
   version: string;
   public: boolean;
+  /** Eviction policy at the memory budget (Render's Maxmemory Policy). */
+  maxmemoryPolicy: string;
+  /** Persistence mode (Render's Persistence Mode): journal-snapshot|snapshot|off. */
+  persistenceMode: string;
 }
 
 export interface UseCreateKeyValueResult {
@@ -58,6 +62,8 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
             plan: input.plan || undefined,
             version: input.version || undefined,
             public: input.public,
+            maxmemoryPolicy: input.maxmemoryPolicy || undefined,
+            persistenceMode: input.persistenceMode || undefined,
           },
         });
         const id = res.data?.createKeyValue?.id ?? input.name;

@@ -63,9 +63,48 @@ describe("DatastoreMetricsPanel", () => {
       "db_connections",
       { skip: true },
     );
-    // No connections/replication-lag chart sections for a keyvalue resource.
+    // No Postgres connections/replication-lag chart sections for a keyvalue.
     expect(screen.queryByText("Active Connections")).not.toBeInTheDocument();
     expect(screen.queryByText("Replication Lag")).not.toBeInTheDocument();
+    // But the keyvalue-only Memory + Connections sections DO render (w5/011),
+    // and their queries are not skipped.
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "kv_memory",
+      { skip: false },
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "kv_connections",
+      { skip: false },
+    );
+    expect(screen.getByText("Memory")).toBeInTheDocument();
+    expect(screen.getByText("Connections")).toBeInTheDocument();
+  });
+
+  it("skips the keyvalue memory/connections metrics for a database resource", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "kv_memory",
+      {
+        skip: true,
+      },
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "kv_connections",
+      { skip: true },
+    );
+    // The keyvalue-only Memory section doesn't render for a database.
+    expect(screen.queryByText("Memory")).not.toBeInTheDocument();
   });
 
   it("renders disk usage with a capacity reference label", () => {
@@ -105,9 +144,7 @@ describe("DatastoreMetricsPanel", () => {
     );
 
     expect(screen.getByText("Replication Lag")).toBeInTheDocument();
-    expect(
-      screen.getByText(/N\/A — no replica/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/N\/A — no replica/)).toBeInTheDocument();
     // The lag query itself is skipped pre-HA — no point asking a Prometheus
     // metric that reports a fake 0 from a lone primary (datastore.go's gate).
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
@@ -144,7 +181,12 @@ describe("DatastoreMetricsPanel", () => {
   it("renders the unavailable state when Prometheus isn't wired for a live HA instance", () => {
     mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
       if (metric === "replication_lag") {
-        return { series: [], loading: false, unavailable: true, error: undefined };
+        return {
+          series: [],
+          loading: false,
+          unavailable: true,
+          error: undefined,
+        };
       }
       return emptyResult();
     });

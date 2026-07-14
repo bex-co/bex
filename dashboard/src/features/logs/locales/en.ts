@@ -16,7 +16,63 @@ const enLogs: Record<string, TranslationEntry> = {
   "logs.typeRequest": {
     message: "Request logs",
     description:
-      "Log-type filter option: request logs (empty on bex — no backend)",
+      "Log-type filter option: request logs (Traefik access lines, from the durable store)",
+  },
+  "logs.levelLabel": {
+    message: "Level",
+    description: "Accessible label for the log-level filter dropdown",
+  },
+  "logs.levelAll": {
+    message: "All levels",
+    description: "Level filter option: no level filter",
+  },
+  "logs.methodLabel": {
+    message: "Method",
+    description: "Accessible label for the HTTP-method filter dropdown",
+  },
+  "logs.methodAll": {
+    message: "All methods",
+    description: "Method filter option: no method filter",
+  },
+  "logs.statusCodeLabel": {
+    message: "Status code",
+    description: "Accessible label for the HTTP-status filter dropdown",
+  },
+  "logs.statusCodeAll": {
+    message: "All statuses",
+    description: "Status-code filter option: no status filter",
+  },
+  "logs.instanceLabel": {
+    message: "Instance",
+    description: "Accessible label for the instance (replica) filter dropdown",
+  },
+  "logs.instanceAll": {
+    message: "All instances",
+    description: "Instance filter option: no instance filter",
+  },
+  "logs.pathLabel": {
+    message: "Request path",
+    description: "Accessible label for the request-path filter input",
+  },
+  "logs.pathPlaceholder": {
+    message: "Filter by path",
+    description: "Placeholder for the request-path filter input",
+  },
+  "logs.liveUnsupported": {
+    message:
+      "Live tail is off — request-log and structured filters can't be tailed.",
+    description:
+      "Note when a store-only filter disables live tail (the tail reads pod stdout)",
+  },
+  "logs.storeRequiredTitle": {
+    message: "Request logs need the log store",
+    description:
+      "Empty-state title when a request/structured-filter query hits a deployment with no durable store (503)",
+  },
+  "logs.storeRequiredBody": {
+    message:
+      "Request logs and level/status/method/path filters read from the durable log store, which isn't configured here. They're available where the store is wired.",
+    description: "Empty-state body for the store-unavailable (503) state",
   },
   "logs.searchPlaceholder": {
     message: "Search logs",
@@ -55,10 +111,9 @@ const enLogs: Record<string, TranslationEntry> = {
     description: "Empty-state body with no filters applied",
   },
   "logs.emptyFilteredBody": {
-    message:
-      "No logs match this filter. bex sources application logs only — request logs are empty.",
+    message: "No logs match these filters.",
     description:
-      "Empty-state body when a type/text filter yields nothing (honest about bex's app-only contract)",
+      "Empty-state body when a type/text/structured filter yields nothing",
   },
   "logs.errorTitle": {
     message: "Couldn't load logs",

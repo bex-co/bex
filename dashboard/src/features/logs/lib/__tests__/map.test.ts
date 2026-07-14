@@ -15,6 +15,9 @@ const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
   message: "hello world",
   type: "app",
   instance: "bv612",
+  level: null,
+  method: null,
+  statusCode: null,
   ...over,
 });
 
@@ -39,6 +42,23 @@ describe("toLogLine / toLogLines", () => {
     expect(line.timestamp).toBe("");
     expect(line.instance).toBe("");
     expect(line.type).toBe("app");
+    expect(line.level).toBe("");
+    expect(line.method).toBe("");
+    expect(line.statusCode).toBe("");
+  });
+
+  it("maps the request-line labels (type/method/statusCode)", () => {
+    const line = toLogLine(
+      gqlEntry({
+        type: "request",
+        method: "GET",
+        statusCode: "200",
+        level: null,
+      }),
+    );
+    expect(line.type).toBe("request");
+    expect(line.method).toBe("GET");
+    expect(line.statusCode).toBe("200");
   });
 
   it("drops null holes and undefined/null results", () => {
@@ -83,6 +103,23 @@ describe("fromRenderLog (SSE frame)", () => {
     const line = fromRenderLog({ message: "m", timestamp: "t" });
     expect(line.type).toBe("app");
     expect(line.instance).toBe("");
+    expect(line.method).toBe("");
+    expect(line.statusCode).toBe("");
+  });
+
+  it("reads request-line method/statusCode from the labels array", () => {
+    const line = fromRenderLog({
+      message: '{"RequestMethod":"POST"}',
+      timestamp: "2026-07-05T10:37:00.000Z",
+      labels: [
+        { name: "type", value: "request" },
+        { name: "method", value: "POST" },
+        { name: "statusCode", value: "503" },
+      ],
+    });
+    expect(line.type).toBe("request");
+    expect(line.method).toBe("POST");
+    expect(line.statusCode).toBe("503");
   });
 });
 
@@ -90,9 +127,13 @@ describe("mergeLogLines", () => {
   const line = (key: string): LogLine => ({
     key,
     timestamp: key,
+    time: key,
     instance: "i",
     message: key,
     type: "app",
+    level: "",
+    method: "",
+    statusCode: "",
   });
 
   it("appends live lines after history, in order", () => {

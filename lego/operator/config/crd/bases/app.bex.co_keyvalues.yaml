@@ -63,6 +63,37 @@ spec:
                 items:
                   type: string
                 type: array
+              maxmemoryPolicy:
+                default: allkeys-lru
+                description: |-
+                  MaxmemoryPolicy is Valkey's key-eviction policy once the store reaches its
+                  memory budget — Render's "Maxmemory Policy". The operator sets `maxmemory`
+                  to a fraction of the plan's RAM and applies this policy; empty preserves the
+                  prior behavior (no maxmemory limit set). Default: allkeys-lru (Render's
+                  cache-oriented default). See docs/ADR021-keyvalue-management.md.
+                enum:
+                - noeviction
+                - allkeys-lru
+                - allkeys-lfu
+                - volatile-lru
+                - volatile-lfu
+                - allkeys-random
+                - volatile-random
+                - volatile-ttl
+                type: string
+              persistenceMode:
+                default: journal-snapshot
+                description: |-
+                  PersistenceMode selects how Valkey persists to the PVC — Render's
+                  "Persistence Mode": journal-snapshot (AOF + RDB snapshots, the prior
+                  default), snapshot (RDB snapshots only), or off (no persistence). Empty
+                  preserves the prior behavior (appendonly yes). Default: journal-snapshot.
+                  See docs/ADR021-keyvalue-management.md.
+                enum:
+                - journal-snapshot
+                - snapshot
+                - "off"
+                type: string
               plan:
                 default: free
                 description: |-

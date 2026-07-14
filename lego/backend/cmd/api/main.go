@@ -134,6 +134,7 @@ func main() {
 		deps.DiskUsage = metrics.NewPrometheusDiskUsageSource(promURL, nil)
 		deps.DBConnections = metrics.NewPrometheusDBConnectionsSource(promURL, nil)
 		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
+		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
 	}
 	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key

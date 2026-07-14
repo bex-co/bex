@@ -154,6 +154,44 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Default (latest)",
     description: "Create-Key-Value version select default option",
   },
+  "keyvalue.fieldMaxmemoryPolicy": {
+    message: "Maxmemory Policy",
+    description: "Create-Key-Value form field label (eviction policy)",
+  },
+  "keyvalue.fieldMaxmemoryRecommended": {
+    message: "(recommended for caches)",
+    description:
+      "Suffix on the recommended maxmemory policy option (allkeys-lru)",
+  },
+  "keyvalue.fieldMaxmemoryPolicyHint": {
+    message: "How keys are evicted once the store reaches its memory limit.",
+    description: "Create-Key-Value maxmemory policy helper text",
+  },
+  "keyvalue.fieldPersistenceMode": {
+    message: "Persistence Mode",
+    description: "Create-Key-Value form field label (persistence)",
+  },
+  "keyvalue.fieldPersistenceModeHint": {
+    message: "How data is persisted to disk so it survives a restart.",
+    description: "Create-Key-Value persistence mode helper text",
+  },
+  "keyvalue.fieldPersistenceFreeHint": {
+    message: "The Free plan has no persistent disk, so persistence is off.",
+    description:
+      "Create-Key-Value persistence helper text when Free plan is selected",
+  },
+  "keyvalue.persistenceJournalSnapshot": {
+    message: "Journal + Snapshot",
+    description: "Persistence mode option: AOF journal plus RDB snapshots",
+  },
+  "keyvalue.persistenceSnapshot": {
+    message: "Snapshot only",
+    description: "Persistence mode option: RDB snapshots only",
+  },
+  "keyvalue.persistenceOff": {
+    message: "Off",
+    description: "Persistence mode option: no persistence",
+  },
   "keyvalue.fieldPublic": {
     message: "Public access",
     description: "Create-Key-Value form field label (external endpoint toggle)",

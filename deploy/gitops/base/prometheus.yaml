@@ -338,6 +338,32 @@ spec:
                   - source_labels: [__name__]
                     regex: cnpg_backends_total|cnpg_pg_replication_.*
                     action: keep
+              # Managed Key Value (Valkey) instances: the redis_exporter sidecar
+              # the operator attaches to every KeyValue StatefulSet pod (w5/011),
+              # scraped on :9121 across all namespaces (a KeyValue lives in its
+              # App's namespace). Kept by the app.bex.co/keyvalue pod label; only
+              # the redis_* series are retained — memory + connected-clients back
+              # the Key Value metrics panel.
+              - job_name: valkey-instances
+                scrape_interval: 60s
+                kubernetes_sd_configs:
+                  - role: pod
+                relabel_configs:
+                  - source_labels:
+                      [__meta_kubernetes_pod_label_app_bex_co_keyvalue]
+                    action: keep
+                    regex: .+
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9121
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                  - source_labels: [__meta_kubernetes_namespace]
+                    target_label: namespace
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: redis_.*
+                    action: keep
           # ── Alerting rules ──────────────────────────────────────────────────
           # Small, high-signal pack: every alert carries a one-line description
           # with the kubectl command to start debugging. Two groups: `platform`

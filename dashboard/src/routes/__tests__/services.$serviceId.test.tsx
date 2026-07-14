@@ -31,10 +31,20 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
 // The Logs tab's data layer hits Apollo + SSE; this routing test only cares
 // that the viewer mounts under the shared chrome, so stub both to empty.
 vi.mock("@/features/logs/hooks/use-log-history", () => ({
-  useLogHistory: () => ({ lines: [], loading: false, error: undefined }),
+  useLogHistory: () => ({
+    lines: [],
+    loading: false,
+    error: undefined,
+    storeUnavailable: false,
+  }),
 }));
 vi.mock("@/features/logs/hooks/use-live-logs", () => ({
   useLiveLogs: () => ({ lines: [], status: "idle" }),
+}));
+// The filter bar's dropdowns discover values over Apollo — stub so this routing
+// test needs no ApolloProvider.
+vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
+  useLogLabelValues: () => [],
 }));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {

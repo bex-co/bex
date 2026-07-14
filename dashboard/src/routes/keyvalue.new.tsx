@@ -28,6 +28,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import type { en } from "@/i18n";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
 import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-plan-picker";
@@ -40,6 +41,33 @@ import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-pla
 const VERSION_DEFAULT = "default";
 const VERSIONS = ["8", "7"] as const;
 
+// Maxmemory (eviction) policies + persistence modes, matching the KeyValue CRD's
+// enums (lego/types/v1alpha1/keyvalue_types.go) and Render's Key Value create
+// form (docs/render-artifacts/key-value.md). Policy identifiers are technical
+// tokens (shown as-is, like the metrics quantiles); persistence modes get i18n
+// labels. `allkeys-lru` leads — Render's cache-oriented default. The Free plan
+// has no persistence, so both are locked (persistence forced Off) when selected.
+const MAXMEMORY_POLICIES = [
+  "allkeys-lru",
+  "allkeys-lfu",
+  "volatile-lru",
+  "volatile-lfu",
+  "allkeys-random",
+  "volatile-random",
+  "volatile-ttl",
+  "noeviction",
+] as const;
+const PERSISTENCE_MODES = ["journal-snapshot", "snapshot", "off"] as const;
+const PERSISTENCE_LABEL_KEYS: Record<
+  (typeof PERSISTENCE_MODES)[number],
+  keyof typeof en
+> = {
+  "journal-snapshot": "keyvalue.persistenceJournalSnapshot",
+  snapshot: "keyvalue.persistenceSnapshot",
+  off: "keyvalue.persistenceOff",
+};
+const FREE_PLAN = "free";
+
 export const Route = createFileRoute("/keyvalue/new")({
   component: NewKeyValuePage,
   beforeLoad: requireAuth("/keyvalue/new"),
@@ -51,9 +79,9 @@ export const Route = createFileRoute("/keyvalue/new")({
 /**
  * Render's "New Key Value" form (`/new/redis`, docs/render-artifacts/key-value.md):
  * a full page, not a dialog — bex's subset covers name, plan (tier cards from
- * the shared tiers catalog), version, and the public (external endpoint)
- * toggle. Render's captured maxmemoryPolicy/persistenceMode/project/region axes
- * are omitted, not faked (bex's createKeyValue doesn't accept them).
+ * the shared tiers catalog), version, the public (external endpoint) toggle, and
+ * the Maxmemory Policy / Persistence Mode settings (w5/011, now backed by the
+ * KeyValue CR). Project/region axes remain omitted (not in bex's contract).
  */
 export function NewKeyValuePage() {
   const { t } = useTranslations();
@@ -65,8 +93,18 @@ export function NewKeyValuePage() {
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [version, setVersion] = useState<string>(VERSION_DEFAULT);
   const [isPublic, setIsPublic] = useState(false);
+  const [maxmemoryPolicy, setMaxmemoryPolicy] = useState<string>(
+    MAXMEMORY_POLICIES[0],
+  );
+  const [persistenceMode, setPersistenceMode] = useState<string>(
+    PERSISTENCE_MODES[0],
+  );
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
+  // The Free plan has no persistent disk, so persistence is forced Off and both
+  // settings lock — Render's exact behavior (docs/render-artifacts/key-value.md).
+  const isFree = plan === FREE_PLAN;
+  const effectivePersistence = isFree ? "off" : persistenceMode;
 
   const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
@@ -79,9 +117,14 @@ export function NewKeyValuePage() {
       plan,
       version: version === VERSION_DEFAULT ? "" : version,
       public: isPublic,
+      maxmemoryPolicy,
+      persistenceMode: effectivePersistence,
     });
     if (id) {
-      void navigate({ to: "/keyvalue/$keyValueId", params: { keyValueId: id } });
+      void navigate({
+        to: "/keyvalue/$keyValueId",
+        params: { keyValueId: id },
+      });
     }
   }
 
@@ -92,7 +135,9 @@ export function NewKeyValuePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t("keyvalue.createTitle")}</CardTitle>
-              <CardDescription>{t("keyvalue.createDescription")}</CardDescription>
+              <CardDescription>
+                {t("keyvalue.createDescription")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -140,6 +185,61 @@ export function NewKeyValuePage() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="kv-maxmemory">
+                  {t("keyvalue.fieldMaxmemoryPolicy")}
+                </Label>
+                <Select
+                  value={maxmemoryPolicy}
+                  onValueChange={setMaxmemoryPolicy}
+                  disabled={isFree}
+                >
+                  <SelectTrigger id="kv-maxmemory" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MAXMEMORY_POLICIES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                        {p === "allkeys-lru"
+                          ? ` ${t("keyvalue.fieldMaxmemoryRecommended")}`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {t("keyvalue.fieldMaxmemoryPolicyHint")}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kv-persistence">
+                  {t("keyvalue.fieldPersistenceMode")}
+                </Label>
+                <Select
+                  value={effectivePersistence}
+                  onValueChange={setPersistenceMode}
+                  disabled={isFree}
+                >
+                  <SelectTrigger id="kv-persistence" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERSISTENCE_MODES.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {t(PERSISTENCE_LABEL_KEYS[m])}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {isFree
+                    ? t("keyvalue.fieldPersistenceFreeHint")
+                    : t("keyvalue.fieldPersistenceModeHint")}
+                </p>
+              </div>
+
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="kv-public">{t("keyvalue.fieldPublic")}</Label>
@@ -185,7 +285,10 @@ export function NewKeyValuePage() {
                 >
                   {t("keyvalue.createCancel")}
                 </Button>
-                <Button onClick={() => void handleSubmit()} disabled={!canSubmit}>
+                <Button
+                  onClick={() => void handleSubmit()}
+                  disabled={!canSubmit}
+                >
                   {busy ? <Loader2 className="animate-spin" /> : null}
                   {t("keyvalue.createSubmit")}
                 </Button>

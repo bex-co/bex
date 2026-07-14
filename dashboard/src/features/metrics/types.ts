@@ -42,6 +42,8 @@ export const DATASTORE_METRIC_IDS = [
   "disk_capacity",
   "db_connections",
   "replication_lag",
+  "kv_memory",
+  "kv_connections",
 ] as const;
 
 export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
@@ -49,12 +51,15 @@ export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
 export type DatastoreKind = "database" | "keyvalue";
 
 // Mirrors lego/backend/internal/metrics/graphql.go's datastoreMetricNames.
-export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> = {
-  disk: "DISK",
-  disk_capacity: "DISK_CAPACITY",
-  db_connections: "DB_CONNECTIONS",
-  replication_lag: "REPLICATION_LAG",
-};
+export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> =
+  {
+    disk: "DISK",
+    disk_capacity: "DISK_CAPACITY",
+    db_connections: "DB_CONNECTIONS",
+    replication_lag: "REPLICATION_LAG",
+    kv_memory: "MEMORY",
+    kv_connections: "CONNECTIONS",
+  };
 
 // A metric point with guaranteed (non-null) fields — what charts consume.
 // bex-api's GraphQL schema marks every field nullable (Apollo codegen default),

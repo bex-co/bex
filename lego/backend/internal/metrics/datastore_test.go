@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,6 +166,54 @@ func TestDatastoreDBConnectionsNotValidForKeyValue(t *testing.T) {
 	}
 }
 
+// --- w5/011: Key Value memory + connections (redis_exporter) ---
+
+func TestDatastoreKeyValueMemoryAndConnections(t *testing.T) {
+	var got KeyValueStatsRequest
+	svc := newService(nil, nil, sampleKeyValue("cache"))
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		got = req
+		unit := unitBytes
+		if req.Dimension == "connections" {
+			unit = unitCount
+		}
+		return []MetricSeries{{Labels: map[string]string{"instance": "cache-0"}, Unit: unit, Points: []MetricPoint{{Value: 4096}}}}, nil
+	}
+
+	mem, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "cache", Metric: MetricKVMemory})
+	if err != nil || len(mem) != 1 || mem[0].Unit != unitBytes {
+		t.Fatalf("kv_memory: %v %+v", err, mem)
+	}
+	if got.Dimension != "memory" || got.Resource != "cache" {
+		t.Errorf("memory request = %+v", got)
+	}
+
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "cache", Metric: MetricKVConnections}); err != nil {
+		t.Fatalf("kv_connections: %v", err)
+	}
+	if got.Dimension != "connections" {
+		t.Errorf("connections dimension = %q", got.Dimension)
+	}
+}
+
+func TestDatastoreKeyValueMetricsNotValidForDatabase(t *testing.T) {
+	svc := newService(nil, nil, sampleDatabase("pg", false))
+	svc.KeyValueStats = func(context.Context, KeyValueStatsRequest) ([]MetricSeries, error) {
+		t.Fatal("kv stats source should never be called for a database resource")
+		return nil, nil
+	}
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreDatabase, Resource: "pg", Metric: MetricKVMemory}); err == nil {
+		t.Error("kv_memory on a database resource should error")
+	}
+}
+
+func TestDatastoreKeyValueMetricsUnavailableWithoutSource(t *testing.T) {
+	svc := newService(nil, nil, sampleKeyValue("cache")) // KeyValueStats nil
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "cache", Metric: MetricKVConnections}); err != core.ErrMetricsUnavailable {
+		t.Errorf("no source => ErrMetricsUnavailable, got %v", err)
+	}
+}
+
 // --- t004: replication lag, gated on HighAvailabilityEnabled ---
 
 func TestReplicationLagOmittedWithoutHA(t *testing.T) {
@@ -284,5 +333,27 @@ func TestPrometheusDiskUsageRoundTrip(t *testing.T) {
 	})
 	if err != nil || len(series) != 1 || series[0].Points[0].Value != 1048576 || series[0].Labels["instance"] != "pg-1" || series[0].Unit != unitBytes {
 		t.Fatalf("disk usage roundtrip: %v %+v", err, series)
+	}
+}
+
+func TestPrometheusKeyValueStatsRoundTrip(t *testing.T) {
+	var gotQuery string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("query")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"pod":"cache-0"},"values":[[1000000,"4096"]]}]}}`))
+	}))
+	defer ts.Close()
+	series, err := NewPrometheusKeyValueStatsSource(ts.URL, ts.Client())(context.Background(), KeyValueStatsRequest{
+		Namespace: "default", Resource: "cache", Dimension: "memory",
+		Start: time.Unix(1_000_000, 0), End: time.Unix(1_000_120, 0), Resolution: 60 * time.Second,
+	})
+	if err != nil || len(series) != 1 || series[0].Points[0].Value != 4096 || series[0].Labels["instance"] != "cache-0" || series[0].Labels["resource"] != "cache" || series[0].Unit != unitBytes {
+		t.Fatalf("kv stats roundtrip: %v %+v", err, series)
+	}
+	if _, still := series[0].Labels["pod"]; still {
+		t.Errorf("raw pod label should not leak: %+v", series[0].Labels)
+	}
+	if !strings.Contains(gotQuery, "redis_memory_used_bytes") || !strings.Contains(gotQuery, `pod=~"cache-[0-9]+"`) {
+		t.Errorf("unexpected query: %q", gotQuery)
 	}
 }

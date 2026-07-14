@@ -51,6 +51,8 @@ var datastoreMetricPaths = map[string]string{
 	"disk-capacity":   MetricDiskCapacity,
 	"db-connections":  MetricDBConnections,
 	"replication-lag": MetricReplicationLag,
+	"kv-memory":       MetricKVMemory,      // key-value only
+	"kv-connections":  MetricKVConnections, // key-value only
 }
 
 // RegisterREST mounts the Render metrics endpoints plus bex's datastore-metric

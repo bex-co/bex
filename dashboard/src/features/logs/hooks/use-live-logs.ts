@@ -39,15 +39,19 @@ const defaultCreateEventSource: EventSourceFactory = (url) =>
   new EventSource(url, { withCredentials: true }) as unknown as EventSourceLike;
 
 // bex-api's REST/SSE base lives in config (config.apiBaseUrl) — the same origin
-// as GraphQL, minus `/graphql`.
+// as GraphQL, minus `/graphql`. Only the tail-honorable filters (type app/all,
+// text, instance) reach the stream — the store-only ones can't be tailed, so the
+// viewer keeps live tail off while any is active (docs/ADR010-observability.md).
 function subscribeUrl(
   resource: string,
   type: LogTypeFilter,
   text: string,
+  instance: string,
 ): string {
   const params = new URLSearchParams({ resource });
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
+  if (instance) params.set("instance", instance);
   return `${config.apiBaseUrl}/v1/logs/subscribe?${params.toString()}`;
 }
 
@@ -57,6 +61,8 @@ export interface UseLiveLogsOptions {
   enabled: boolean;
   type: LogTypeFilter;
   text: string;
+  /** Replica filter — the one structured filter the tail honors (a pod name). */
+  instance: string;
   /** Ring-buffer cap on retained live lines; oldest drop first. */
   maxLines?: number;
   /** Injectable stream factory (tests). Defaults to a credentialed EventSource. */
@@ -80,6 +86,7 @@ export function useLiveLogs({
   enabled,
   type,
   text,
+  instance,
   maxLines = DEFAULT_MAX_LINES,
   createEventSource = defaultCreateEventSource,
 }: UseLiveLogsOptions): UseLiveLogsResult {
@@ -92,7 +99,7 @@ export function useLiveLogs({
   // pauses) — during render, React's sanctioned "adjust state when a prop
   // changes" pattern, so a stale filter's lines never flash before the effect
   // reconnects, and setState stays out of the effect body.
-  const subKey = `${resource}|${enabled}|${type}|${text}`;
+  const subKey = `${resource}|${enabled}|${type}|${text}|${instance}`;
   const [prevSubKey, setPrevSubKey] = useState(subKey);
   if (prevSubKey !== subKey) {
     setPrevSubKey(subKey);
@@ -103,7 +110,7 @@ export function useLiveLogs({
   useEffect(() => {
     if (!enabled) return;
 
-    const es = createEventSource(subscribeUrl(resource, type, text));
+    const es = createEventSource(subscribeUrl(resource, type, text, instance));
 
     es.onopen = () => setStatus("open");
 
@@ -134,7 +141,7 @@ export function useLiveLogs({
     };
 
     return () => es.close();
-  }, [resource, enabled, type, text, maxLines, createEventSource]);
+  }, [resource, enabled, type, text, instance, maxLines, createEventSource]);
 
   return { lines, status };
 }

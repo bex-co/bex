@@ -62,6 +62,7 @@ const baseOpts = (
   enabled: true,
   type: "all",
   text: "",
+  instance: "",
   createEventSource: factory,
   ...over,
 });

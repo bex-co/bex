@@ -72,13 +72,24 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Datastore metrics panel: Postgres active-connections chart section title",
   },
+  "metrics.memoryTitle": {
+    message: "Memory",
+    description:
+      "Datastore metrics panel: Key Value used-memory chart section title",
+  },
+  "metrics.kvConnectionsTitle": {
+    message: "Connections",
+    description:
+      "Datastore metrics panel: Key Value connected-clients chart section title",
+  },
   "metrics.replicationLagTitle": {
     message: "Replication Lag",
     description:
       "Datastore metrics panel: Postgres replication-lag chart section title",
   },
   "metrics.replicationLagPendingHA": {
-    message: "N/A — no replica (enable High Availability to see replication lag)",
+    message:
+      "N/A — no replica (enable High Availability to see replication lag)",
     description:
       "Shown instead of a chart for replication lag before Postgres HA is enabled (w1/m22)",
   },
@@ -88,7 +99,8 @@ const enMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.datastoreMetricsDescription": {
     message: "Live resource usage for this instance",
-    description: "Database/Key Value detail page metrics panel card description",
+    description:
+      "Database/Key Value detail page metrics panel card description",
   },
   "metrics.statusCode": {
     message: "Status Code",

@@ -74,9 +74,7 @@ describe("NewKeyValuePage", () => {
 
     // Invalid: must start with a letter — the inline error shows, submit stays off.
     await user.type(screen.getByLabelText("Name"), "1bad");
-    expect(
-      screen.getByText(/must start with a letter/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/must start with a letter/i)).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
     // Valid name enables submit.
@@ -95,7 +93,7 @@ describe("NewKeyValuePage", () => {
     ).toHaveAttribute("aria-checked", "true");
   });
 
-  it("submits with the selected plan and omits an unset version (default -> \"\")", async () => {
+  it('submits with the selected plan and omits an unset version (default -> "")', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -110,6 +108,23 @@ describe("NewKeyValuePage", () => {
       plan: "starter",
       version: "",
       public: false,
+      maxmemoryPolicy: "allkeys-lru",
+      persistenceMode: "journal-snapshot",
     });
+  });
+
+  it("forces persistence to off on the Free plan (Render parity, w5/011)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "cache-free");
+    // Free is the default (first) plan, so no plan click needed.
+    await user.click(
+      screen.getByRole("button", { name: "Create Key Value Instance" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: "free", persistenceMode: "off" }),
+    );
   });
 });

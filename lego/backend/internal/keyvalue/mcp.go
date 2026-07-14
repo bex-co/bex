@@ -48,13 +48,15 @@ type updateKeyValuePlanArgs struct {
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
-	OwnerID     string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name        string   `json:"name" jsonschema:"the key-value store name"`
-	Plan        string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
-	Version     string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
-	StorageGB   int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
-	Public      bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
-	IPAllowList []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	OwnerID         string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name            string   `json:"name" jsonschema:"the key-value store name"`
+	Plan            string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
+	Version         string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
+	StorageGB       int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	Public          bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	IPAllowList     []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	MaxmemoryPolicy string   `json:"maxmemoryPolicy,omitempty" jsonschema:"key-eviction policy at the memory budget (omit for the default allkeys-lru), e.g. noeviction, allkeys-lru, volatile-ttl"`
+	PersistenceMode string   `json:"persistenceMode,omitempty" jsonschema:"persistence: journal-snapshot (default), snapshot (RDB only), or off"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -94,16 +96,18 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
-		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public and ipAllowList are optional.",
+		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
-			OwnerID:     core.SelectedWorkspace(s.Selections, req, in.OwnerID),
-			Name:        in.Name,
-			Plan:        in.Plan,
-			Version:     in.Version,
-			StorageGB:   in.StorageGB,
-			Public:      in.Public,
-			IPAllowList: in.IPAllowList,
+			OwnerID:         core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			Name:            in.Name,
+			Plan:            in.Plan,
+			Version:         in.Version,
+			StorageGB:       in.StorageGB,
+			Public:          in.Public,
+			IPAllowList:     in.IPAllowList,
+			MaxmemoryPolicy: in.MaxmemoryPolicy,
+			PersistenceMode: in.PersistenceMode,
 		})
 		if err != nil {
 			return nil, KeyValueView{}, err

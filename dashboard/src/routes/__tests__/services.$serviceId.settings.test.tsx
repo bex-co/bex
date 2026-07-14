@@ -56,13 +56,19 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
 // The danger-zone card (w5/m14) is a client of useDeleteService (Apollo) —
 // mock it so this page test stays about section presence, not the delete wire.
 vi.mock("@/features/services/hooks/use-delete-service", () => ({
-  useDeleteService: () => ({ remove: vi.fn(async () => true), deleting: false }),
+  useDeleteService: () => ({
+    remove: vi.fn(async () => true),
+    deleting: false,
+  }),
 }));
 
 // Scaling row (w5/m16) calls scaleService; mock so section-presence assertions
 // don't hit Apollo.
 vi.mock("@/features/services/hooks/use-scale-service", () => ({
-  useScaleService: () => ({ scaleService: vi.fn(async () => true), busy: false }),
+  useScaleService: () => ({
+    scaleService: vi.fn(async () => true),
+    busy: false,
+  }),
 }));
 
 // Health Check Path row (w5/m21) calls setHealthCheckPath via Apollo; mock it
@@ -77,6 +83,22 @@ vi.mock("@/features/services/hooks/use-health-check-path", () => ({
 // CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
 vi.mock("@/features/services/hooks/use-cron-job", () => ({
   useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),
+}));
+
+// BuildDeploySection (w5/m13, and w5/010 for git-sourced cron) is a client of
+// useRootDir/useAutoDeploy/useGitConnection — mock them so this page test stays
+// about section presence.
+vi.mock("@/features/services/hooks/use-root-dir", () => ({
+  useRootDir: () => ({ setRootDir: vi.fn(async () => true), busy: false }),
+}));
+vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
+  useAutoDeploy: () => ({
+    setAutoDeploy: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  useGitConnection: () => ({ connection: undefined }),
 }));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
@@ -112,7 +134,9 @@ function renderSettings() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([settingsRoute]),
-    history: createMemoryHistory({ initialEntries: ["/services/app/settings"] }),
+    history: createMemoryHistory({
+      initialEntries: ["/services/app/settings"],
+    }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);
@@ -157,5 +181,40 @@ describe("ServiceSettingsPage", () => {
     expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
+  });
+
+  it("shows Build & Deploy (Auto-Deploy toggle) alongside the Deploy section for a git-sourced cron job", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "*/15 * * * *",
+      command: "npm run send-nightly-report",
+      repo: "https://github.com/acme/reports",
+      branch: "main",
+    });
+    renderSettings();
+
+    // Both the cron Deploy section (schedule/command) and Build & Deploy render.
+    expect(await screen.findByText("Deploy")).toBeInTheDocument();
+    expect(screen.getByText("Build & Deploy")).toBeInTheDocument();
+    expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
+    expect(
+      screen.getByText("https://github.com/acme/reports"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides Build & Deploy for an image-backed cron job (nothing to build)", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "*/15 * * * *",
+      command: "npm run send-nightly-report",
+      repo: null,
+    });
+    renderSettings();
+
+    expect(await screen.findByText("Deploy")).toBeInTheDocument();
+    expect(screen.queryByText("Build & Deploy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auto-Deploy")).not.toBeInTheDocument();
   });
 });

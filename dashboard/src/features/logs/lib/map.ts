@@ -21,12 +21,14 @@ export function logLineKey(
 
 // makeLogLine is the single place a LogLine is built — both wire shapes converge
 // here so the key derivation, the once-computed formatted `time`, and the `app`
-// type fallback live in one spot.
+// type fallback live in one spot. level/method/statusCode come from the entry's
+// labels (empty for an app line without them, populated for a request line).
 function makeLogLine(
   timestamp: string,
   instance: string,
   message: string,
   type: string,
+  labels: { level?: string; method?: string; statusCode?: string } = {},
 ): LogLine {
   return {
     key: logLineKey(timestamp, instance, message),
@@ -35,6 +37,9 @@ function makeLogLine(
     instance,
     message,
     type: type || LOG_TYPE_APP,
+    level: labels.level ?? "",
+    method: labels.method ?? "",
+    statusCode: labels.statusCode ?? "",
   };
 }
 
@@ -47,6 +52,11 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
     e.instance ?? "",
     e.message ?? "",
     e.type ?? "",
+    {
+      level: e.level ?? "",
+      method: e.method ?? "",
+      statusCode: e.statusCode ?? "",
+    },
   );
 }
 
@@ -67,8 +77,10 @@ export interface RenderLog {
   labels?: Array<{ name?: string; value?: string }>;
 }
 
-// fromRenderLog maps one SSE frame onto a LogLine, reading `instance`/`type`
-// out of the labels array (Render's shape) rather than flat fields.
+// fromRenderLog maps one SSE frame onto a LogLine, reading the labels out of the
+// array (Render's shape) rather than flat fields. The live tail reads app pod
+// logs, so level/method/statusCode are usually empty here — but they're mapped
+// the same way so a shipper that does attach them renders identically.
 export function fromRenderLog(log: RenderLog): LogLine {
   const labels = log.labels ?? [];
   const label = (name: string) =>
@@ -78,6 +90,11 @@ export function fromRenderLog(log: RenderLog): LogLine {
     label("instance"),
     log.message ?? "",
     label("type"),
+    {
+      level: label("level"),
+      method: label("method"),
+      statusCode: label("statusCode"),
+    },
   );
 }
 

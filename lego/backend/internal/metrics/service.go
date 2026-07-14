@@ -217,6 +217,10 @@ type Service struct {
 	// core.ErrMetricsUnavailable for an HA instance instead of silently 503ing
 	// on every instance regardless of HA state.
 	ReplicationLag ReplicationLagSource
+	// KeyValueStats reads a managed Key Value (Valkey) instance's used-memory /
+	// connected-clients history (redis_exporter via Prometheus, w5/011); nil =>
+	// kv_memory/kv_connections report core.ErrMetricsUnavailable.
+	KeyValueStats KeyValueStatsSource
 	// MaxQueryHours, when positive, caps the start–end window accepted by REST
 	// metrics queries (GET /v1/metrics/*). 0 = unlimited.
 	MaxQueryHours int
