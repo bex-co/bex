@@ -142,15 +142,12 @@ func appStoreID(a *appv1alpha1.App) string { return a.Labels[store.LabelAppID] }
 // list_deploys / GET .../deploys). A hand-applied App has no history: an
 // empty list, not an error.
 func (s *Service) List(ctx context.Context, service string) ([]DeployView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
 		return nil, core.ErrDeploysUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanView, service)
-	if err != nil {
-		return nil, err
 	}
 	appID := appStoreID(a)
 	if appID == "" {
@@ -173,15 +170,12 @@ func (s *Service) List(ctx context.Context, service string) ([]DeployView, error
 // core.ErrNotFound — the same "not yours" shape GetApp's tenant gate uses,
 // never a cross-app leak through the id alone.
 func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	if err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanView, service)
-	if err != nil {
-		return DeployView{}, err
 	}
 	appID := appStoreID(a)
 	if appID == "" {
@@ -207,15 +201,12 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 // the row still opens, the CR just has nothing new to build). Suspended
 // services refuse the trigger: there is nothing to roll.
 func (s *Service) Trigger(ctx context.Context, service string) (DeployView, error) {
-	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(service)); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	if err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanOperate, service)
-	if err != nil {
-		return DeployView{}, err
 	}
 	if a.Spec.Suspended {
 		return DeployView{}, fmt.Errorf("%w: service %q is suspended", core.ErrConflict, service)
@@ -253,15 +244,12 @@ func (s *Service) Trigger(ctx context.Context, service string) (DeployView, erro
 // (live/update_failed/canceled) is past the cancelable window: Render's 409,
 // never a silent no-op.
 func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	if err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanOperate, service)
-	if err != nil {
-		return DeployView{}, err
 	}
 	appID := appStoreID(a)
 	if appID == "" {
@@ -309,15 +297,12 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // canceled deploy never has one). Restores what ran (the image), not
 // workspace config — replicas/tier/idleTTL stay put, keeping this minimal.
 func (s *Service) Rollback(ctx context.Context, service, deployID string) (DeployView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	if err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanOperate, service)
-	if err != nil {
-		return DeployView{}, err
 	}
 	if a.Spec.Suspended {
 		return DeployView{}, fmt.Errorf("%w: service %q is suspended", core.ErrConflict, service)

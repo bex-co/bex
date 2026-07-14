@@ -91,10 +91,30 @@ func TestListKeyValues_OwnerIDFilterYieldsEmptyNotUnscoped(t *testing.T) {
 
 func TestListKeyValues_OwnerIDFilterForbiddenWhenCallerCantAccess(t *testing.T) {
 	svc, _ := newService(sampleKeyValue("kv1"))
+	// user-a IS a member of tea-2 (so the request isn't refused on membership
+	// alone) but OpenFGA denies can_view there.
+	svc.Workspace = fakeWorkspace{"user-a": "tea-2"}
 	svc.Authz = &fakeChecker{deny: core.WorkspaceObject("tea-2")}
 
 	if _, err := svc.ListKeyValues(ctxAs("user-a"), "tea-2"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("want ErrForbidden for an inaccessible ownerId, got %v", err)
+	}
+}
+
+// TestListKeyValues_OwnerIDFilterForbiddenWhenCallerIsNotAMember is
+// w6/m17/t003's own regression: before folding ListKeyValues(ownerID) onto
+// core.WithWorkspace, the ownerID gate was OpenFGA-only (AuthorizeOn) with NO
+// IsMember check, so an allow-all authorizer would let a caller list a
+// workspace it does not even belong to. Here OpenFGA allows everything; only
+// membership can refuse.
+func TestListKeyValues_OwnerIDFilterForbiddenWhenCallerIsNotAMember(t *testing.T) {
+	svc, _ := newService(sampleKeyValue("kv1"))
+	// user-a's only membership is tea-1 — not tea-2, the one they're asking for.
+	svc.Workspace = fakeWorkspace{"user-a": "tea-1"}
+	svc.Authz = &fakeChecker{allow: true}
+
+	if _, err := svc.ListKeyValues(ctxAs("user-a"), "tea-2"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("want ErrForbidden for a workspace the caller does not belong to (even with OpenFGA wide open), got %v", err)
 	}
 }
 

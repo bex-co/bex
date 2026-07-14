@@ -29,16 +29,20 @@ import (
 
 // TestEveryTargetedVerbIsNamedOrExcused is the guard that keeps this feed
 // truthful as bex grows. A verb becomes service-attributable the moment it calls
-// core.Base.AuthorizeTarget — from then on its audit rows carry a service target,
-// and the ONLY thing deciding whether it reaches the feed is whether eventTypes
-// names it. Without this test, a verb added next quarter would be silently
-// missing from every service's activity feed, and the feed would quietly stop
-// being the 1:1 record its DoD promises.
+// core.Base.AuthorizeTarget, or (w6/m17) core.Base.AuthorizeApp/
+// AuthorizeDatabase/AuthorizeKeyValue — the single seam that replaced the old
+// Authorize+GetApp pair and, like AuthorizeTarget, always records a target — from
+// then on its audit rows carry a service target, and the ONLY thing deciding
+// whether it reaches the feed is whether eventTypes names it. Without this test,
+// a verb added next quarter would be silently missing from every service's
+// activity feed, and the feed would quietly stop being the 1:1 record its DoD
+// promises.
 //
 // So: parse the sibling feature packages, find every method that calls
-// AuthorizeTarget, and require each to be either named in eventTypes or listed in
-// excusedVerbs below WITH a reason. Adding a targeted verb then forces a
-// deliberate choice — name it, or write down why it is not an event.
+// AuthorizeTarget/AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue, and require
+// each to be either named in eventTypes or listed in excusedVerbs below WITH a
+// reason. Adding a targeted verb then forces a deliberate choice — name it, or
+// write down why it is not an event.
 func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// Deliberately not events. Each of these is explained in service.go's
 	// eventTypes doc comment; the reason lives here so the guard fails loudly if
@@ -47,6 +51,29 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.Create":     "its first deploy already appears as deploy_started with trigger.firstBuild",
 		"apps.Delete":     "the service and its feed are gone; the row stays in the workspace audit log",
 		"deploys.Trigger": "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+	}
+	// w6/m17 moved every resource-scoped write verb off a separate Authorize
+	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam
+	// (fixing the caller-default/resource-workspace intersection bug, w6/013) —
+	// which, for verbs that previously called plain Authorize (no target) or
+	// routed through a package with no events feed at all (postgres, keyvalue),
+	// incidentally started recording a target too. That is a mechanical side
+	// effect of the collapse, not a deliberate choice to add any of these to a
+	// feed; naming real event types for them is a separate decision, left for
+	// later milestones (postgres/keyvalue have no events feed integration yet
+	// regardless).
+	for _, verb := range []string{
+		"apps.SetCronJob", "apps.SetHealthCheckPath",
+		"deploys.Cancel", "deploys.Rollback",
+		"secrets.SetSecretFile", "secrets.DeleteSecretFile",
+		"postgres.Suspend", "postgres.Resume", "postgres.Restart", "postgres.Failover",
+		"postgres.SetPlan", "postgres.DeletePostgres", "postgres.SetIPAllowList",
+		"postgres.CreateUser", "postgres.DeleteUser", "postgres.Recover",
+		"postgres.CreateExport", "postgres.SetParameterOverrides",
+		"keyvalue.Suspend", "keyvalue.Resume", "keyvalue.SetPlan",
+		"keyvalue.DeleteKeyValue", "keyvalue.SetIPAllowList",
+	} {
+		excusedVerbs[verb] = "w6/m17 seam collapse newly targets it; not yet given an event type"
 	}
 
 	// Every sibling feature package, ENUMERATED rather than listed: a literal list
@@ -105,9 +132,32 @@ func featurePackages(t *testing.T) []string {
 	return out
 }
 
+// targetingCalls are the core.Base entry points that record a target on their
+// audit event — AuthorizeTarget, and (w6/m17) the AuthorizeApp/AuthorizeDatabase/
+// AuthorizeKeyValue seam that replaced the old Authorize+GetApp pair and always
+// targets the resource it fetched.
+var targetingCalls = map[string]bool{
+	"AuthorizeTarget":   true,
+	"AuthorizeApp":      true,
+	"AuthorizeDatabase": true,
+	"AuthorizeKeyValue": true,
+}
+
 // targetedVerbsIn returns the "<pkg>.<Method>" names in dir whose body calls
-// s.AuthorizeTarget — the same "<package>.<Method>" spelling core.callerVerb
-// derives at runtime, which is what audit rows (and therefore eventTypes) key on.
+// one of targetingCalls, directly or through a same-package helper method
+// (apps.patch/writeThroughStore/setSuspended: w6/m17's Restart/Suspend/Resume/
+// SetAutoDeploy authorize+fetch through a shared helper rather than inline) —
+// the same "<package>.<Method>" spelling core.callerVerb derives at runtime,
+// which is what audit rows (and therefore eventTypes) key on.
+//
+// AuthorizeTarget is, by convention, only ever called with a write relation, so
+// any call counts. AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue (w6/m17) are
+// NOT that convention — they are also the read-verb fetch (Get, ListRoutes, ...)
+// — so a call only counts when its relation argument is PROVABLY a read
+// relation (targetsReadOnly); anything else, including a helper's `relation`
+// parameter this static sweep can't trace back to a literal, is conservatively
+// treated as targeted — this guard exists to force a human decision, and
+// silently skipping an unprovable call risks missing a real write verb.
 func targetedVerbsIn(t *testing.T, dir, pkg string) map[string]bool {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -119,21 +169,147 @@ func targetedVerbsIn(t *testing.T, dir, pkg string) map[string]bool {
 	}
 	out := map[string]bool{}
 	for _, p := range pkgs {
+		methods := map[string]*ast.FuncDecl{}
 		for _, file := range p.Files {
 			for _, decl := range file.Decls {
-				fn, ok := decl.(*ast.FuncDecl)
-				if !ok || fn.Recv == nil || fn.Body == nil {
-					continue
+				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Body != nil {
+					methods[fn.Name.Name] = fn
 				}
-				ast.Inspect(fn.Body, func(n ast.Node) bool {
-					sel, ok := n.(*ast.SelectorExpr)
-					if ok && sel.Sel.Name == "AuthorizeTarget" {
-						out[pkg+"."+fn.Name.Name] = true
-					}
-					return true
-				})
+			}
+		}
+		for name, fn := range methods {
+			// Only a VERB starts the walk (exported, (ctx, ...) shape — the same
+			// isVerbMethod contract server_test.go's reflection sweeps use):
+			// RegisterREST/RegisterMCP/GraphQLMutation call verbs inline as request
+			// handlers, so without this filter the walk would reach a targeting call
+			// through them too and misreport the ADAPTER as a targeted "verb". An
+			// unexported helper (patch, writeThroughStore, setSuspended) is never a
+			// verb either — it is only ever a hop the walk passes through.
+			if !isVerbFuncDecl(fn) {
+				continue
+			}
+			if targetsResource(fn, methods, map[string]bool{}, map[string]string{}) {
+				out[pkg+"."+name] = true
 			}
 		}
 	}
 	return out
+}
+
+// isVerbFuncDecl reports whether fn has a verb's shape: exported, first
+// parameter context.Context — see targetedVerbsIn.
+func isVerbFuncDecl(fn *ast.FuncDecl) bool {
+	if !fn.Name.IsExported() || fn.Type.Params == nil || len(fn.Type.Params.List) == 0 {
+		return false
+	}
+	sel, ok := fn.Type.Params.List[0].Type.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	x, ok := sel.X.(*ast.Ident)
+	return ok && x.Name == "context" && sel.Sel.Name == "Context"
+}
+
+// targetsResource reports whether fn's body reaches a targeting call, either
+// directly or by calling another same-package method (followed transitively;
+// visited guards recursion). See targetedVerbsIn.
+//
+// binding maps a PARAMETER NAME in fn's own signature to the relation literal
+// (e.g. "RelCanView") the CALLER passed for it — one-hop constant propagation,
+// needed because the shared fetch helpers (postgres.fetchDatabase/
+// loadAppSecret/runInsight, apps.patch/writeThroughStore) all forward the
+// verb's own relation through a `relation`-named parameter rather than
+// repeating the literal at each hop. Without this, every verb reached through
+// one of these helpers would look equally "unprovable" and default to
+// targeted — which is correct for a genuine write, but wrongly flags every
+// READ verb that happens to route through the same shared helper (e.g.
+// postgres.GetPostgres → fetchDatabase → AuthorizeDatabase(relation, ...)).
+func targetsResource(fn *ast.FuncDecl, methods map[string]*ast.FuncDecl, visited map[string]bool, binding map[string]string) bool {
+	if visited[fn.Name.Name] {
+		return false
+	}
+	visited[fn.Name.Name] = true
+	found := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if found {
+			return false
+		}
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		switch {
+		case targetingCalls[sel.Sel.Name]:
+			if sel.Sel.Name == "AuthorizeTarget" || !targetsReadOnly(call, binding) {
+				found = true
+			}
+		case methods[sel.Sel.Name] != nil:
+			helper := methods[sel.Sel.Name]
+			if targetsResource(helper, methods, visited, relationBinding(helper, call, binding)) {
+				found = true
+			}
+		}
+		return true
+	})
+	return found
+}
+
+// relationBinding computes the binding a recursive targetsResource call into
+// helper should see: helper's own `relation` parameter (if it has one) mapped
+// to whatever literal — direct, or resolved one level further back through
+// the CALLER's own binding — call passed for it. See targetsResource.
+func relationBinding(helper *ast.FuncDecl, call *ast.CallExpr, binding map[string]string) map[string]string {
+	next := map[string]string{}
+	if helper.Type.Params == nil {
+		return next
+	}
+	var names []string
+	for _, field := range helper.Type.Params.List {
+		for _, n := range field.Names {
+			names = append(names, n.Name)
+		}
+	}
+	for i, name := range names {
+		if name != "relation" || i >= len(call.Args) {
+			continue
+		}
+		switch a := call.Args[i].(type) {
+		case *ast.SelectorExpr:
+			next["relation"] = a.Sel.Name
+		case *ast.Ident:
+			if lit, ok := binding[a.Name]; ok {
+				next["relation"] = lit
+			}
+		}
+	}
+	return next
+}
+
+// targetsReadOnly reports whether call's relation argument (the second
+// argument to AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue) is PROVABLY a
+// read relation — a literal core.RelCanView/RelCanViewLogs/RelCanViewSensitive
+// selector, or a `relation` parameter binding (see relationBinding) that
+// resolves to one. Anything else (a write relation, or a variable this sweep
+// can't resolve) is not provably read-only — see targetedVerbsIn.
+func targetsReadOnly(call *ast.CallExpr, binding map[string]string) bool {
+	if len(call.Args) < 2 {
+		return false
+	}
+	name := ""
+	switch a := call.Args[1].(type) {
+	case *ast.SelectorExpr:
+		name = a.Sel.Name
+	case *ast.Ident:
+		name = binding[a.Name]
+	}
+	switch name {
+	case "RelCanView", "RelCanViewLogs", "RelCanViewSensitive":
+		return true
+	default:
+		return false
+	}
 }

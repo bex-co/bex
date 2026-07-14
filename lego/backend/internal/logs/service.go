@@ -326,14 +326,11 @@ func (q LogQuery) keep(e LogEntry) bool {
 // when no source is wired. It's the unfiltered convenience read; the REST and
 // MCP adapters go through QueryLogs (Render's type/text/time filters).
 func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
-	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
-		return nil, err
+	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, name); err != nil {
+		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
-	}
-	if _, err := s.GetApp(ctx, core.RelCanViewLogs, name); err != nil {
-		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	if tail <= 0 {
 		tail = defaultLogTail
@@ -351,7 +348,7 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 // logs and refuses what it cannot honor (ErrLogStoreUnavailable) rather than
 // returning unfiltered lines. `build` has no backend either way: an honest empty.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App); err != nil {
 		return nil, err
 	}
 	if err := q.validate(); err != nil {
@@ -359,9 +356,6 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	}
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
-	}
-	if _, err := s.GetApp(ctx, core.RelCanViewLogs, q.App); err != nil {
-		return nil, err
 	}
 	q = q.normalized()
 	// A build-only query has no source anywhere in bex — the one empty-by-design
@@ -402,7 +396,8 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 // stream label — the cardinality budget keeps it in the line), so it resolves even
 // without the store.
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App)
+	if err != nil {
 		return nil, err
 	}
 	if err := q.validate(); err != nil {
@@ -412,10 +407,6 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
 		return nil, fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
-	}
-	app, err := s.GetApp(ctx, core.RelCanViewLogs, q.App)
-	if err != nil {
-		return nil, err
 	}
 	if label == LabelHost {
 		// `host` is not a stream label (the cardinality budget keeps it in the line),
@@ -439,7 +430,7 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 // refuses the store-only ones (ErrLogStoreUnavailable), exactly as the fallback
 // query path does. Requires a PodLogStream (nil => core.ErrLogsUnavailable).
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
-	if err := s.Authorize(ctx, core.RelCanViewLogs); err != nil {
+	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App); err != nil {
 		return err
 	}
 	if err := q.validate(); err != nil {
@@ -447,9 +438,6 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	}
 	if s.PodLogsFollow == nil {
 		return core.ErrLogsUnavailable
-	}
-	if _, err := s.GetApp(ctx, core.RelCanViewLogs, q.App); err != nil {
-		return err
 	}
 	q = q.normalized()
 	// The tail's refusal is about the TRANSPORT, not the deployment: it reads pod

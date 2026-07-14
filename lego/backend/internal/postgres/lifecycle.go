@@ -34,18 +34,12 @@ import (
 // credentials and any external route are preserved — Render's Postgres suspend,
 // honoring the sleep-is-free promise.
 func (s *Service) Suspend(ctx context.Context, name string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return PostgresView{}, err
-	}
 	return s.setSuspended(ctx, name, true)
 }
 
 // Resume wakes a suspended Postgres (spec.suspended = false); the operator
 // un-hibernates the CNPG cluster back to healthy.
 func (s *Service) Resume(ctx context.Context, name string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return PostgresView{}, err
-	}
 	return s.setSuspended(ctx, name, false)
 }
 
@@ -69,9 +63,6 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // Restart requests a rolling restart of the primary (spec.restartedAt = now);
 // the operator stamps CNPG's restart annotation and CNPG bounces the instance.
 func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return PostgresView{}, err
-	}
 	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		d.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
@@ -83,9 +74,6 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 // operator is a no-op if there is no ready standby. Mirrors Render's
 // POST /v1/postgres/{id}/failover → 202 (fire-and-forget intent write).
 func (s *Service) Failover(ctx context.Context, name string) error {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return err
-	}
 	_, err := s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
 		d.Spec.FailoverAt = s.Now().UTC().Format(time.RFC3339)
 	})

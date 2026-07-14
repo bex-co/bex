@@ -329,6 +329,144 @@ func (b *Base) Tenant(ctx context.Context) (string, bool) {
 	return tenantID, true
 }
 
+// AuthorizeApp is the single seam for a verb scoped to ONE named App (w6/m17):
+// fetch it, authorize `relation` against ITS OWN workspace once, and record
+// exactly one audit event (target = core.ServiceTarget(name)). It replaces the
+// old Authorize(relation) + GetApp(relation, name) pair, whose independent
+// caller-workspace and resource-workspace checks made effective permission the
+// INTERSECTION of two unrelated workspaces' roles (w6/013): a caller who is
+// admin of their OWN workspace but was invited as a viewer elsewhere could not
+// operate their own service whenever the invited workspace happened to be
+// their default (the oldest membership — the common case for someone who
+// signed up BECAUSE they were invited, since EnsureTenant redeems the pending
+// invite before minting their personal tenant). Authorize alone could only
+// ever produce a false negative here: it checked the wrong workspace.
+//
+// 403-before-404: TestAuthzGuardsEveryVerb sweeps every verb against an empty
+// fake client and expects ErrForbidden, not ErrNotFound. A missing App has no
+// workspace to derive, so it is authorized against the workspace the REQUEST
+// is ACTING in (callerWorkspace) — the same object the old standalone
+// Authorize call used — before reporting absence; a resource that exists is
+// authorized against its OWN workspace instead (resourceWorkspace), which is
+// what fixes the caller-default/resource-workspace intersection bug above.
+func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
+	verb := callerVerb(verbFrameSkip)
+	var a appv1alpha1.App
+	getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &a)
+	if apierrors.IsNotFound(getErr) {
+		object, resolveErr := b.callerWorkspace(ctx)
+		if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err != nil {
+			return nil, err
+		}
+		return nil, ErrNotFound
+	}
+	if getErr != nil {
+		return nil, getErr
+	}
+	object, resolveErr := b.resourceWorkspace(ctx, a.Labels)
+	if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+// AuthorizeDatabase is AuthorizeApp for a managed Postgres Database — same
+// single seam, same 403-before-404 fallback, same resource-workspace gate. See
+// AuthorizeApp's doc for the design; the two are siblings because Database (and
+// KeyValue, below) carry the same core.LabelTenant contract as an App.
+func (b *Base) AuthorizeDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
+	verb := callerVerb(verbFrameSkip)
+	var d appv1alpha1.Database
+	getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &d)
+	if apierrors.IsNotFound(getErr) {
+		object, resolveErr := b.callerWorkspace(ctx)
+		if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
+			return nil, err
+		}
+		return nil, ErrNotFound
+	}
+	if getErr != nil {
+		return nil, getErr
+	}
+	object, resolveErr := b.resourceWorkspace(ctx, d.Labels)
+	if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// AuthorizeKeyValue is AuthorizeApp for a managed KeyValue — see AuthorizeApp
+// and AuthorizeDatabase.
+func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
+	verb := callerVerb(verbFrameSkip)
+	var kv appv1alpha1.KeyValue
+	getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &kv)
+	if apierrors.IsNotFound(getErr) {
+		object, resolveErr := b.callerWorkspace(ctx)
+		if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
+			return nil, err
+		}
+		return nil, ErrNotFound
+	}
+	if getErr != nil {
+		return nil, getErr
+	}
+	object, resolveErr := b.resourceWorkspace(ctx, kv.Labels)
+	if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
+		return nil, err
+	}
+	return &kv, nil
+}
+
+// resourceWorkspace is the (object, err) pair AuthorizeApp/AuthorizeDatabase/
+// AuthorizeKeyValue authorize a FOUND resource against — the resource-side
+// counterpart of callerWorkspace, called only once the fetch succeeds (a
+// missing resource has no labels to read, so those call sites use
+// callerWorkspace directly instead — its own fallback for "no workspace
+// resolves" is exactly the object a missing resource should be checked
+// against too, so there is nothing left for this function to add there).
+//
+//   - The caller named a workspace it is not a member of => the refusal from
+//     resolveWorkspace, against the workspace it ASKED for (matches
+//     callerWorkspace's own error branch).
+//   - No workspace resolves (store off, or an unbound/identity-less caller)
+//     => the DEFAULT workspace fallback — the same single check a standalone
+//     Authorize call would have made; there is nothing resource-specific to
+//     gate on in this mode.
+//   - The resource carries no owner label at all, but the request resolved to
+//     a real workspace => ErrForbidden: it belongs to no one, so it is
+//     nobody's cross-workspace read either.
+//   - The resource's owner IS the acting workspace => allowed, checked
+//     directly (no more "trust the verb already checked" shortcut — this seam
+//     IS the verb's only check now).
+//   - The resource's owner is ANOTHER of the caller's workspaces => allowed
+//     only if the caller is first a MEMBER there (requireMember) and `relation`
+//     also holds there — an admin of A who is merely a viewer of B still
+//     cannot operate B's resource by naming it.
+func (b *Base) resourceWorkspace(ctx context.Context, labels map[string]string) (string, error) {
+	acting, err := b.resolveWorkspace(ctx)
+	if err != nil {
+		named, _ := WorkspaceFrom(ctx)
+		return WorkspaceObject(named), err
+	}
+	if acting == "" {
+		return DefaultWorkspace, nil
+	}
+	owner := labels[LabelTenant]
+	switch {
+	case owner == "":
+		return WorkspaceObject(acting), ErrForbidden
+	case owner == acting:
+		return WorkspaceObject(acting), nil
+	default:
+		id, _ := IdentityFrom(ctx) // present: only a resolved workspace reaches here
+		if merr := b.requireMember(ctx, id, owner); merr != nil {
+			return WorkspaceObject(owner), merr
+		}
+		return WorkspaceObject(owner), nil
+	}
+}
+
 // GetApp fetches one App by name, mapping absence to ErrNotFound, and gates it
 // on `relation` — the SAME relation the calling verb just authorized. Shared by
 // the apps/logs/metrics/secrets/deploys/events/envgroups services — each needs
@@ -372,46 +510,6 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		return nil, err
 	}
 	return &a, nil
-}
-
-// GetDatabase fetches one Database by name — the Database sibling of GetApp,
-// same not-found mapping and cross-workspace gate (AuthorizeLabeled). Shared
-// by internal/postgres and internal/metrics (w3/m10's datastore-scoped
-// metrics), so a caller who knows a Database's name can't read it — or its
-// metrics — from a workspace it doesn't belong to just because one feature
-// remembered the gate and another didn't (w6/m14's fix for GetApp, generalized
-// once a second caller needed it: the Rule-of-Three case AuthorizeLabeled's own
-// doc comment already anticipated).
-func (b *Base) GetDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
-	var d appv1alpha1.Database
-	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &d)
-	if apierrors.IsNotFound(err) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := b.AuthorizeLabeled(ctx, relation, d.Labels); err != nil {
-		return nil, err
-	}
-	return &d, nil
-}
-
-// GetKeyValue fetches one KeyValue by name — the KeyValue sibling of GetApp;
-// see GetDatabase.
-func (b *Base) GetKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
-	var kv appv1alpha1.KeyValue
-	err := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: name}, &kv)
-	if apierrors.IsNotFound(err) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := b.AuthorizeLabeled(ctx, relation, kv.Labels); err != nil {
-		return nil, err
-	}
-	return &kv, nil
 }
 
 // AuthorizeLabeled is the cross-workspace gate for any tenant-labeled resource

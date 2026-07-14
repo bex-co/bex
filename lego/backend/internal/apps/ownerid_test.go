@@ -85,14 +85,32 @@ func TestList_OwnerIDFilterScopesResults(t *testing.T) {
 
 func TestList_OwnerIDFilterForbiddenWhenCallerCantAccess(t *testing.T) {
 	cl := fakeClient(tenantApp("web", "tea-1"))
-	// The coarse gate (workspace:default) passes; only workspace:tea-2 — the
-	// requested scope — is denied. A request scoped to tea-2 must be refused
-	// before any App is read, not silently emptied.
+	// user-a IS a member of tea-2 (so the request isn't refused on membership
+	// alone) but OpenFGA denies can_view there — a request scoped to tea-2 must
+	// be refused before any App is read, not silently emptied.
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default",
-		Authz: &fakeChecker{deny: core.WorkspaceObject("tea-2")}}}
+		Workspace: fakeWorkspace{"user-a": "tea-2"},
+		Authz:     &fakeChecker{deny: core.WorkspaceObject("tea-2")}}}
 
 	if _, err := svc.List(ctxAs("user-a"), "tea-2"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("want ErrForbidden for an inaccessible ownerId, got %v", err)
+	}
+}
+
+// TestList_OwnerIDFilterForbiddenWhenCallerIsNotAMember is w6/m17/t003's own
+// regression: before folding List(ownerID) onto core.WithWorkspace, the
+// ownerID gate was OpenFGA-only (AuthorizeOn) with NO IsMember check, so an
+// allow-all authorizer would let a caller list a workspace it does not even
+// belong to. Here OpenFGA allows everything; only membership can refuse.
+func TestList_OwnerIDFilterForbiddenWhenCallerIsNotAMember(t *testing.T) {
+	cl := fakeClient(tenantApp("web", "tea-2"))
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default",
+		// user-a's only membership is tea-1 — not tea-2, the one they're asking for.
+		Workspace: fakeWorkspace{"user-a": "tea-1"},
+		Authz:     &fakeChecker{allow: true}}}
+
+	if _, err := svc.List(ctxAs("user-a"), "tea-2"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("want ErrForbidden for a workspace the caller does not belong to (even with OpenFGA wide open), got %v", err)
 	}
 }
 

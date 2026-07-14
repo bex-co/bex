@@ -70,10 +70,15 @@ func TestMapPGError(t *testing.T) {
 	}
 }
 
-// TestQueryInputGuards covers the paths that don't need a live DB: authz-free
-// fake client, empty SQL, and an unknown database — all resolved before any dial.
+// TestQueryInputGuards covers the paths that don't need a live DB: empty SQL
+// and an unknown database — all resolved before any dial. Query's shared fetch
+// (w6/m17's AuthorizeDatabase) now authorizes-and-fetches before any other
+// check, so the empty-SQL case needs a database that actually exists — an
+// unknown name would report ErrNotFound first, exactly like the second case,
+// and never exercise the SQL guard at all.
 func TestQueryInputGuards(t *testing.T) {
 	svc, _ := newService()
+	seedDatabaseAt(t, svc, "any", "postgres://unused/placeholder")
 	ctx := context.Background()
 
 	if _, err := svc.Query(ctx, "any", "   "); !errors.Is(err, core.ErrBadRequest) {

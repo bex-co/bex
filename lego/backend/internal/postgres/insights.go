@@ -24,6 +24,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -228,9 +229,6 @@ func floatVal(v any) float64 {
 // Processes returns a snapshot of active backend processes (pg_stat_activity).
 // Requires RelCanViewSensitive because process query texts may contain literal values.
 func (s *Service) Processes(ctx context.Context, dbID string) ([]ProcessView, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return nil, err
-	}
 	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlProcesses)
 	if err != nil {
 		return nil, err
@@ -260,12 +258,15 @@ func (s *Service) Processes(ctx context.Context, dbID string) ([]ProcessView, er
 // before pg_stat_statements was enabled.
 // Requires RelCanViewSensitive because query texts may contain literal values.
 func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return nil, err
-	}
 	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlTopQueries)
 	if err != nil {
-		// pg_stat_statements not installed → fall through to empty list.
+		// An auth refusal must still refuse — everything else (unknown db,
+		// pg_stat_statements not installed, connection failure) falls through to
+		// an empty list, same as before this verb's fetch started gating on
+		// workspace membership too (w6/m17).
+		if errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrAuthzUnavailable) {
+			return nil, err
+		}
 		return []TopQueryView{}, nil
 	}
 	out := make([]TopQueryView, 0, len(res.Rows))
@@ -289,9 +290,6 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 // Sizes returns the database size and per-table sizes via pg_database_size /
 // pg_total_relation_size.
 func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return SizesView{}, err
-	}
 	dbRes, err := s.runInsight(ctx, core.RelCanView, dbID, sqlDatabaseSize)
 	if err != nil {
 		return SizesView{}, err
@@ -326,9 +324,6 @@ func (s *Service) Sizes(ctx context.Context, dbID string) (SizesView, error) {
 
 // TableScans returns sequential vs index scan stats from pg_stat_user_tables.
 func (s *Service) TableScans(ctx context.Context, dbID string) ([]TableScanView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	res, err := s.runInsight(ctx, core.RelCanView, dbID, sqlTableScans)
 	if err != nil {
 		return nil, err
@@ -354,9 +349,6 @@ func (s *Service) TableScans(ctx context.Context, dbID string) ([]TableScanView,
 
 // ParameterOverrides returns non-default postgresql.conf parameters from pg_settings.
 func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]ParameterOverrideView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	res, err := s.runInsight(ctx, core.RelCanView, dbID, sqlParameterOverrides)
 	if err != nil {
 		return nil, err
@@ -381,9 +373,6 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 // shared_preload_libraries cannot be overridden (the operator always sets it
 // to include pg_stat_statements); any entry with that key is silently dropped.
 func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params map[string]string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return PostgresView{}, err
-	}
 	if params == nil {
 		params = map[string]string{}
 	}
@@ -402,9 +391,6 @@ func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params
 // Database CR (spec.parameters), not from pg_settings. Use ParameterOverrides for
 // the live database view.
 func (s *Service) GetParameterSpec(ctx context.Context, dbID string) (map[string]string, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err

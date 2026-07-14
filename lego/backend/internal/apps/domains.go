@@ -154,10 +154,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 
 // ListDomains returns the custom domains from App.spec.hosts[].
 func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
-	app, err := s.GetApp(ctx, core.RelCanView, appName)
+	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +170,7 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 
 // GetDomain returns one custom domain by hostname, or core.ErrNotFound.
 func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return DomainView{}, err
-	}
-	app, err := s.GetApp(ctx, core.RelCanView, appName)
+	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return DomainView{}, err
 	}
@@ -264,15 +258,12 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 // or already registered on another App (core.ErrConflict, Render's "already in
 // use"). For store-managed Apps the row is written first (same rationale as Suspend).
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(appName)); err != nil {
+	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
+	if err != nil {
 		return DomainView{}, err
 	}
 	if hostname == "" {
 		return DomainView{}, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
-	}
-	app, err := s.GetApp(ctx, core.RelCanOperate, appName)
-	if err != nil {
-		return DomainView{}, err
 	}
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
@@ -309,10 +300,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 // hostname not in spec.hosts[] is a no-op. For store-managed Apps the row is
 // deleted first (same row-first rationale as the other intent verbs).
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
-	if err := s.AuthorizeTarget(ctx, core.RelCanOperate, core.ServiceTarget(appName)); err != nil {
-		return err
-	}
-	app, err := s.GetApp(ctx, core.RelCanOperate, appName)
+	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return err
 	}

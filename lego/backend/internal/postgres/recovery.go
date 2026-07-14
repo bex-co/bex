@@ -90,9 +90,6 @@ type RecoverRequest struct {
 // RecoveryInfo returns the recovery window + backup list for a managed Postgres.
 // A no-backup plan returns {enabled:false} rather than an error.
 func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return RecoveryInfoView{}, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return RecoveryInfoView{}, err
@@ -159,7 +156,8 @@ func backupStatus(phase string) string {
 // object-store backups to a point in time (Render's recover) — the source is
 // never touched. The new Database defaults to the source's plan/version.
 func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	src, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	if req.Name == "" {
@@ -172,10 +170,6 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		if _, err := time.Parse(time.RFC3339, req.TargetTime); err != nil {
 			return PostgresView{}, fmt.Errorf("%w: targetTime must be an RFC3339 timestamp", core.ErrBadRequest)
 		}
-	}
-	src, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
-	if err != nil {
-		return PostgresView{}, err
 	}
 	if !src.Status.BackupsEnabled {
 		return PostgresView{}, fmt.Errorf("%w: %q has no backups to recover from", core.ErrBadRequest, name)
@@ -214,9 +208,6 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 // ListExports lists the on-demand exports (base-backup snapshots to object
 // storage) taken for a database, newest first not guaranteed by the API.
 func (s *Service) ListExports(ctx context.Context, name string) ([]BackupView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	if _, err := s.fetchDatabase(ctx, core.RelCanView, name); err != nil {
 		return nil, err
 	}
@@ -228,9 +219,6 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]BackupView, e
 // a physical base-backup snapshot, not Render's logical pg_dump: a documented
 // divergence — see docs/ADR009-postgresql-management.md.) Requires backups enabled.
 func (s *Service) CreateExport(ctx context.Context, name string) (BackupView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return BackupView{}, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return BackupView{}, err

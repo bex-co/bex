@@ -173,13 +173,13 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 }
 
-// fetchKeyValue resolves a KeyValue by name through the shared core.Base fetch
-// (the workspace gate every fetch-by-name needs — core.Base.AuthorizeLabeled,
-// the same rule apps' GetApp applies). Goes through s.Base explicitly: this
-// package's own public verb is ALSO named GetKeyValue (Render's naming), which
-// would otherwise shadow core.Base's promoted method of the same name.
+// fetchKeyValue resolves a KeyValue by name through the shared core.Base seam
+// (w6/m17's core.Base.AuthorizeKeyValue: authorize + fetch in one call, against
+// the KeyValue's OWN workspace — the same rule apps.AuthorizeApp applies) — kept
+// as a thin wrapper so this package's many call sites don't all need to spell
+// core.Base.AuthorizeKeyValue.
 func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
-	return s.Base.GetKeyValue(ctx, relation, name)
+	return s.AuthorizeKeyValue(ctx, relation, name)
 }
 
 // loadSecret resolves a KeyValue and its operator-generated credentials Secret
@@ -208,19 +208,18 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 // ListKeyValues returns every managed key-value store in the namespace,
 // optionally narrowed to a single owning workspace — Render's `ownerId`
 // list-filter contract (w6/m4/t002), mirroring postgres.Service.ListPostgres.
-// ownerID == "" lists unscoped. A non-empty ownerID authorizes can_view on
-// that exact workspace (an inaccessible ownerId is ErrForbidden) and then
-// filters by core.LabelTenant; never silently returns unscoped data for a
-// scoped request.
+// ownerID == "" lists unscoped. A non-empty ownerID names the workspace to
+// list (core.WithWorkspace), authorized+membership-checked by the same
+// resolveWorkspace mechanism every other verb uses (w6/m17 — previously an
+// OpenFGA-only check with no IsMember) and then filters by core.LabelTenant;
+// never silently returns unscoped data for a scoped request.
 func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValueView, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
 	opts := []client.ListOption{client.InNamespace(s.Namespace)}
 	if ownerID != "" {
-		if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
-			return nil, err
-		}
 		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
 	}
 	var list appv1alpha1.KeyValueList
@@ -236,9 +235,6 @@ func (s *Service) ListKeyValues(ctx context.Context, ownerID string) ([]KeyValue
 
 // GetKeyValue returns one managed key-value store, or core.ErrNotFound.
 func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return KeyValueView{}, err
-	}
 	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return KeyValueView{}, err
@@ -311,9 +307,6 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 // DeleteKeyValue removes a managed key-value store (cascades the StatefulSet,
 // PVC, Secret and any external route via owner refs).
 func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
-	}
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
@@ -324,17 +317,11 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 // Suspend scales a store to zero (data preserved on the PVC) — Render's KV
 // suspend. Resume brings it back with the same password and endpoint.
 func (s *Service) Suspend(ctx context.Context, name string) (KeyValueView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return KeyValueView{}, err
-	}
 	return s.setSuspended(ctx, name, true)
 }
 
 // Resume restores a suspended store.
 func (s *Service) Resume(ctx context.Context, name string) (KeyValueView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
-		return KeyValueView{}, err
-	}
 	return s.setSuspended(ctx, name, false)
 }
 
@@ -381,9 +368,6 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 // GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
@@ -396,14 +380,11 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, er
 // endpoint to all source IPs. The operator maps it to a Traefik ipAllowList
 // middleware on the SNI route — the same gate managed Postgres uses.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (KeyValueView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	if err != nil {
 		return KeyValueView{}, err
 	}
 	if err := core.ValidateCIDRs(cidrs); err != nil {
-		return KeyValueView{}, err
-	}
-	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
-	if err != nil {
 		return KeyValueView{}, err
 	}
 	if len(cidrs) == 0 {
@@ -422,25 +403,23 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 // to 400/a GraphQL error, listing the valid plans). A plan change resizes the
 // Valkey StatefulSet's pod resources on the next operator reconcile.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	if err != nil {
 		return KeyValueView{}, err
 	}
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 	}
-	return s.patchKeyValue(ctx, core.RelCanOperate, name, func(kv *appv1alpha1.KeyValue) {
+	return s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Plan = plan
 	})
 }
 
-// patchKeyValue fetches the KeyValue and merge-patches it — the spec-intent
-// writer the operator converges (the same discipline postgres.patchDatabase uses).
-// Merge patches are conflict-free against the operator's concurrent status writes.
-func (s *Service) patchKeyValue(ctx context.Context, relation, name string, mutate func(kv *appv1alpha1.KeyValue)) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, relation, name)
-	if err != nil {
-		return KeyValueView{}, err
-	}
+// patchKeyValueObj applies mutate to an already-fetched KeyValue and merge-
+// patches it — for callers (SetPlan) that must validate input BEFORE the
+// write but AFTER authorizing+fetching, reusing the KeyValue fetchKeyValue
+// already fetched rather than fetching (and authorizing, and auditing) again.
+func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue, mutate func(kv *appv1alpha1.KeyValue)) (KeyValueView, error) {
 	patch := client.MergeFrom(kv.DeepCopy())
 	mutate(kv)
 	if err := s.Client.Patch(ctx, kv, patch); err != nil {
@@ -453,9 +432,6 @@ func (s *Service) patchKeyValue(ctx context.Context, relation, name string, muta
 // from the operator-generated Secret (the only place the connection strings, and
 // so the password, are surfaced — to an authenticated caller).
 func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyValueConnectionInfo, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return KeyValueConnectionInfo{}, err
-	}
 	_, sec, err := s.loadSecret(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return KeyValueConnectionInfo{}, err

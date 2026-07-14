@@ -48,9 +48,6 @@ var pgRoleName = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 // GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal -rw path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
@@ -63,13 +60,14 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, er
 // endpoint to all source IPs. The operator maps it to a Traefik ipAllowList
 // middleware on the SNI route.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	if err := core.ValidateCIDRs(cidrs); err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		if len(cidrs) == 0 {
 			d.Spec.IPAllowList = nil
 		} else {
@@ -97,9 +95,6 @@ type CreateUserResult struct {
 // ListUsers returns the database's additional managed login roles (not the
 // owner role, which is CNPG-managed). Passwords are never surfaced.
 func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
@@ -116,15 +111,12 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 // Database (spec.users), which the operator projects to CNPG's managed roles.
 // The password is returned once and never logged.
 func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUserResult, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
 		return CreateUserResult{}, err
 	}
 	if !pgRoleName.MatchString(role) {
 		return CreateUserResult{}, fmt.Errorf("%w: role must match %s", core.ErrBadRequest, pgRoleName.String())
-	}
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
-	if err != nil {
-		return CreateUserResult{}, err
 	}
 	orig := d.DeepCopy()
 	for _, u := range d.Spec.Users {
@@ -160,9 +152,6 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 // role; dropping the role from Postgres outright would need an ensure:absent
 // tombstone, out of scope for basic CRUD.)
 func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err

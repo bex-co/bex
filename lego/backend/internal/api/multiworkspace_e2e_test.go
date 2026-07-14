@@ -141,12 +141,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	// call drives the real REST router as `subject` (the auth middleware's job —
 	// attaching the Identity — is done here, as the other e2e tests do).
 	call := func(subject, method, path, body string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(method, path, strings.NewReader(body))
-		req.Header.Set("content-type", "application/json")
-		rec := httptest.NewRecorder()
-		ictx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "session"})
-		mux.ServeHTTP(rec, req.WithContext(ictx))
-		return rec
+		return e2eCall(mux, ctx, subject, method, path, body)
 	}
 	appTenantOf := func(t *testing.T, name string) string {
 		t.Helper()
@@ -234,4 +229,17 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 // k8sKey is the fake apiserver's object key for an App in the test namespace.
 func k8sKey(name string) client.ObjectKey {
 	return client.ObjectKey{Namespace: "default", Name: name}
+}
+
+// e2eCall drives mux's REST router as `subject` (the auth middleware's job —
+// attaching the Identity — is done here, as the auth gate would). Shared by
+// every real-infrastructure e2e test in this package (multiworkspace, w6013)
+// so the request-building dance lives in one place.
+func e2eCall(mux http.Handler, ctx context.Context, subject, method, path, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Header.Set("content-type", "application/json")
+	rec := httptest.NewRecorder()
+	ictx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "session"})
+	mux.ServeHTTP(rec, req.WithContext(ictx))
+	return rec
 }

@@ -226,13 +226,14 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 }
 
-// fetchDatabase resolves a Database by name through the shared core.Base fetch
-// (the workspace gate every fetch-by-name needs — core.Base.AuthorizeLabeled,
-// the same rule apps' GetApp applies; also shared by internal/metrics' w3/m10
-// datastore-scoped metrics). Kept as a thin wrapper so this package's many
-// call sites don't all need to spell core.Base.GetDatabase.
+// fetchDatabase resolves a Database by name through the shared core.Base seam
+// (w6/m17's core.Base.AuthorizeDatabase: authorize + fetch in one call, against
+// the Database's OWN workspace — the same rule apps.AuthorizeApp applies; also
+// shared by internal/metrics' w3/m10 datastore-scoped metrics). Kept as a thin
+// wrapper so this package's many call sites don't all need to spell
+// core.Base.AuthorizeDatabase.
 func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
-	return s.GetDatabase(ctx, relation, name)
+	return s.AuthorizeDatabase(ctx, relation, name)
 }
 
 // loadAppSecret resolves a Database and its CNPG-generated "<name>-app" Secret
@@ -261,19 +262,18 @@ func (s *Service) loadAppSecret(ctx context.Context, relation, name string) (*ap
 // ListPostgres returns every managed Postgres in the namespace, optionally
 // narrowed to a single owning workspace — Render's `ownerId` list-filter
 // contract (w6/m2/t004, labeling fixed by w6/m4/t001), mirroring
-// apps.Service.List. ownerID == "" lists unscoped. A non-empty ownerID
-// authorizes can_view on that exact workspace (an inaccessible ownerId is
-// ErrForbidden) and then filters by core.LabelTenant; never silently returns
-// unscoped data for a scoped request.
+// apps.Service.List. ownerID == "" lists unscoped. A non-empty ownerID names
+// the workspace to list (core.WithWorkspace), authorized+membership-checked by
+// the same resolveWorkspace mechanism every other verb uses (w6/m17 —
+// previously an OpenFGA-only check with no IsMember) and then filters by
+// core.LabelTenant; never silently returns unscoped data for a scoped request.
 func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresView, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
 	opts := []client.ListOption{client.InNamespace(s.Namespace)}
 	if ownerID != "" {
-		if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
-			return nil, err
-		}
 		// Push the scoping into the list call itself (server-side label selector)
 		// rather than fetching the whole namespace and filtering in memory.
 		opts = append(opts, client.MatchingLabels{core.LabelTenant: ownerID})
@@ -291,9 +291,6 @@ func (s *Service) ListPostgres(ctx context.Context, ownerID string) ([]PostgresV
 
 // GetPostgres returns one managed Postgres, or core.ErrNotFound.
 func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return PostgresView{}, err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return PostgresView{}, err
@@ -360,9 +357,6 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,
 // Secret and any external route via owner refs).
 func (s *Service) DeletePostgres(ctx context.Context, name string) error {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
-	}
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
@@ -374,9 +368,6 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 // from CNPG's generated "<name>-app" Secret (the only place the password is
 // surfaced, to an authenticated caller).
 func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (PostgresConnectionInfo, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return PostgresConnectionInfo{}, err
-	}
 	d, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
 		return PostgresConnectionInfo{}, err
@@ -442,13 +433,14 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 // CNPG Cluster's pod resources on the next operator reconcile — same cost as any
 // rolling update.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.Plan = plan
 	})
 }

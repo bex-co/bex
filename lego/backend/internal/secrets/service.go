@@ -66,14 +66,11 @@ func envPath(service string) string { return "services/" + service + "/env" }
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return nil, err
+	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
+		return nil, err // ErrNotFound for unknown services, exactly like Get
 	}
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
-	}
-	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
-		return nil, err // ErrNotFound for unknown services, exactly like Get
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
 	if err != nil {
@@ -85,14 +82,11 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
 // {key,value}. Unknown service or key => core.ErrNotFound. Sensitive read.
 func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarView, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
+	if _, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service); err != nil {
 		return EnvVarView{}, err
 	}
 	if s.Store == nil {
 		return EnvVarView{}, core.ErrSecretsUnavailable
-	}
-	if _, err := s.GetApp(ctx, core.RelCanViewSensitive, service); err != nil {
-		return EnvVarView{}, err
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
 	if err != nil {
@@ -110,15 +104,12 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 // values land in OpenBao (source of truth), are projected into the app's Secret,
 // and the pods roll so the new values take effect.
 func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarView) ([]EnvVarView, error) {
-	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service) // one App read: existence check + patch base
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanCreate, service) // one App read: existence check + patch base
-	if err != nil {
-		return nil, err
 	}
 	env := make(map[string]string, len(vars))
 	for _, v := range vars {
@@ -142,7 +133,8 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 // {value}), merging it into the existing set rather than replacing it. Returns
 // the bare {key,value}. Manage-scope verb.
 func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (EnvVarView, error) {
-	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
 		return EnvVarView{}, err
 	}
 	if s.Store == nil {
@@ -151,10 +143,6 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (En
 	key = strings.TrimSpace(key)
 	if !core.ValidEnvKey(key) {
 		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
-	}
-	a, err := s.GetApp(ctx, core.RelCanCreate, service)
-	if err != nil {
-		return EnvVarView{}, err
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
 	if err != nil {
@@ -173,15 +161,12 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (En
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
 // re-projecting the reduced set. Unknown key => core.ErrNotFound.
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
-	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
 		return err
 	}
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanCreate, service)
-	if err != nil {
-		return err
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
 	if err != nil {

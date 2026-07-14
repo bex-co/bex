@@ -31,10 +31,10 @@ import (
 // active-connections and replication-lag are Postgres-only (CNPG). metrics
 // can't import internal/postgres or internal/keyvalue (features never import
 // each other), so it resolves the Database/KeyValue CR by name through
-// core.Base's GetDatabase/GetKeyValue — the same shared fetch-by-name +
-// AuthorizeLabeled gate internal/postgres and internal/keyvalue's own verbs
-// use, promoted onto the shared kernel (core.Base.GetApp's sibling) once a
-// third caller needed it, rather than a second copy of the Get+gate logic.
+// core.Base's AuthorizeDatabase/AuthorizeKeyValue (w6/m17) — the single
+// authorize-and-fetch seam internal/postgres and internal/keyvalue's own verbs
+// use, promoted onto the shared kernel (core.Base.AuthorizeApp's sibling) once
+// a third caller needed it, rather than a second copy of the same logic.
 
 // Datastore kinds a DatastoreMetricQuery can target.
 const (
@@ -169,14 +169,10 @@ func pvcPattern(kind, resource string) string {
 // doesn't support (e.g. db_connections on a KeyValue), and returns
 // Render-shaped series.
 func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) ([]MetricSeries, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
-
 	var isHA bool
 	switch q.Kind {
 	case DatastoreDatabase:
-		db, err := s.GetDatabase(ctx, core.RelCanView, q.Resource)
+		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -185,13 +181,20 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
 		}
 	case DatastoreKeyValue:
-		if _, err := s.GetKeyValue(ctx, core.RelCanView, q.Resource); err != nil {
+		if _, err := s.AuthorizeKeyValue(ctx, core.RelCanView, q.Resource); err != nil {
 			return nil, err
 		}
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
 		}
 	default:
+		// An unknown kind names no resource to authorize against (there is no
+		// AuthorizeDatabase/AuthorizeKeyValue call to make) — fall back to a
+		// bare Authorize against the caller's own workspace so a malformed
+		// request still 403s before revealing the kind was invalid.
+		if err := s.Authorize(ctx, core.RelCanView); err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("unknown datastore kind %q", q.Kind)
 	}
 

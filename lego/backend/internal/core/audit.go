@@ -62,6 +62,14 @@ type AuditEvent struct {
 // someone else's feed (see store.ListServiceEvents).
 func ServiceTarget(name string) string { return "service:" + name }
 
+// DatabaseTarget is ServiceTarget's sibling for a managed Postgres Database
+// (AuthorizeDatabase).
+func DatabaseTarget(name string) string { return "database:" + name }
+
+// KeyValueTarget is ServiceTarget's sibling for a managed KeyValue
+// (AuthorizeKeyValue).
+func KeyValueTarget(name string) string { return "keyvalue:" + name }
+
 // AuditSink persists audit events. Base.emit bounds every call to
 // auditRecordTimeout and always swallows a Record error (logged, never
 // returned) — a sink outage adds at most that much latency to the verb it's

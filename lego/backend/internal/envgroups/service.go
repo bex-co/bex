@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Service manages environment groups over the shared core.SecretKV store and
@@ -344,17 +345,14 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 // group's env + files Secret refs, its pods roll, and the group's link set records
 // the service. Idempotent. Manage scope.
 func (s *Service) LinkService(ctx context.Context, gid, service string) error {
-	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
 		return err
 	}
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
 	m, err := s.requireGroup(ctx, gid)
-	if err != nil {
-		return err
-	}
-	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -372,7 +370,13 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 // UnlinkService reverses LinkService: drop the group's Secret refs from the
 // service, roll it, and remove it from the group's link set. Idempotent.
 func (s *Service) UnlinkService(ctx context.Context, gid, service string) error {
-	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.ServiceTarget(service)); err != nil {
+	// Authorize+fetch against the service's OWN workspace (w6/m17) — reused
+	// below via detachFetched, so this is the only fetch of `service` UnlinkService
+	// makes. detach (DeleteEnvGroup's bulk-unlink path over every linked service,
+	// which authorizes once for the GROUP, not per service) still does its own
+	// bare GetApp: it must not fan out into one audit event per linked service.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -382,7 +386,7 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	if err != nil {
 		return err
 	}
-	if err := s.detach(ctx, gid, service); err != nil {
+	if err := s.detachFetched(ctx, gid, a); err != nil {
 		return err
 	}
 	m.links = removeString(m.links, service)
@@ -399,6 +403,13 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 	if err != nil {
 		return err
 	}
+	return s.detachFetched(ctx, gid, a)
+}
+
+// detachFetched is detach's second half, for a caller (UnlinkService) that
+// already holds the App it authorized — reusing it rather than fetching (and
+// authorizing, and auditing) a second time.
+func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
 	base := client.MergeFrom(a.DeepCopy())
 	a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
 	a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))

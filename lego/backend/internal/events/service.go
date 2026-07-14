@@ -315,15 +315,12 @@ type Service struct {
 // no deploys and no audit target: an empty feed, not an error — the deploy-history
 // precedent.
 func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Event, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
 		return nil, core.ErrEventsUnavailable
-	}
-	a, err := s.GetApp(ctx, core.RelCanView, service)
-	if err != nil {
-		return nil, err
 	}
 	since, until := filter.Since, filter.Until
 	if since.IsZero() {

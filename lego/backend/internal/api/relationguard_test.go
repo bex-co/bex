@@ -29,15 +29,18 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// relationguard_test.go holds w6/m14's structural guard. The milestone made the
-// shared fetch-by-name (core.Base.GetApp, postgres/keyvalue's fetch*) authorize
-// the CALLING VERB'S relation against the RESOURCE'S OWN workspace — which only
-// works if each verb hands it the relation it actually authorized. That is a
-// convention (lego/backend/CLAUDE.md), and a convention across ~45 call sites is
-// a convention that will be broken: a read verb copy-pasted into a write verb
-// keeps compiling while its fetch still says can_view, and the result is a
-// viewer of workspace B deleting B's service on the strength of being an admin
-// of A. This sweep makes that a test failure instead of a CVE.
+// relationguard_test.go holds w6/m14's structural guard, updated by w6/m17. The
+// original shape: a verb ran TWO checks — Authorize(relation) against the
+// caller's OWN workspace, then GetApp(relation, name) against the RESOURCE'S
+// workspace — and this test caught them drifting to different relations (a read
+// verb copy-pasted into a write verb keeping its fetch at can_view). w6/m17
+// collapsed that into ONE call, core.Base.AuthorizeApp(relation, name): there is
+// only one relation argument now, so the two checks literally cannot drift —
+// the bug class this test watches for is structurally impossible for any verb
+// using the new seam. What's left to guard is the OLD two-check shape, wherever
+// it still exists (a not-yet-migrated verb, or a legitimately two-object verb
+// like Create's name-collision probe): if a verb DOES check its own workspace
+// AND the resource's, those checks must still agree.
 //
 // It is deliberately mechanical — no per-verb table to maintain, like
 // TestAuthzGuardsEveryVerb (whose service inventory it reuses, so a new feature
@@ -114,13 +117,19 @@ func callVerbNamed(cv reflect.Value, m reflect.Method, ctx context.Context, name
 	m.Func.Call(args)
 }
 
-// TestFetchByNameUsesTheVerbsOwnRelation: for every verb that reaches a
-// resource living in the caller's OTHER workspace (tea-b), every relation it
-// checks there must be one it also checked against its own workspace (tea-a) —
+// TestFetchByNameUsesTheVerbsOwnRelation: for every verb that ALSO checks its
+// own (acting) workspace — tea-a — separately from the resource it fetches —
+// tea-b — every relation checked on tea-b must be one also checked on tea-a,
 // i.e. the fetch was given the verb's own relation, not a weaker one.
 //
 // A verb that authorizes can_create and then fetches with can_view records
 // {can_create} on tea-a and {can_view} on tea-b, and fails here.
+//
+// A verb using the w6/m17 seam (core.Base.AuthorizeApp et al.) never checks
+// tea-a at all — one call, one relation, nothing to drift — so onOwn is empty
+// for it and the comparison below is skipped: there is nothing this guard can
+// catch that the Go compiler didn't already prevent (there is only one
+// `relation` local to pass).
 func TestFetchByNameUsesTheVerbsOwnRelation(t *testing.T) {
 	const name = "web"
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
@@ -166,6 +175,9 @@ func TestFetchByNameUsesTheVerbsOwnRelation(t *testing.T) {
 				continue // this verb never reached a resource in the other workspace
 			}
 			crossed++
+			if len(onOwn) == 0 {
+				continue // the w6/m17 seam: one call, one relation — nothing to compare
+			}
 			for rel := range onOther {
 				if !onOwn[rel] {
 					t.Errorf("%s.%s: fetched a resource in the caller's other workspace with %q, "+

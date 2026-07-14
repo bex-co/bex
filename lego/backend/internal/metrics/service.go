@@ -230,10 +230,7 @@ type Service struct {
 // fails with core.ErrNotFound for an unknown App, dispatches on q.Metric, and
 // returns Render-shaped series.
 func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
-	app, err := s.GetApp(ctx, core.RelCanView, q.App)
+	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
@@ -578,10 +575,7 @@ type MonthToDateBandwidth struct {
 // is real (increase() over the elapsed month); a short-retention Prometheus just
 // under-counts (see ADR010-observability.md).
 func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthToDateBandwidth, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return MonthToDateBandwidth{}, err
-	}
-	if _, err := s.GetApp(ctx, core.RelCanView, app); err != nil {
+	if _, err := s.AuthorizeApp(ctx, core.RelCanView, app); err != nil {
 		return MonthToDateBandwidth{}, err
 	}
 	if s.MonthToDateBandwidthSource == nil {
@@ -616,10 +610,7 @@ type MetricsFilterValues struct {
 // RESOURCE/INSTANCE/HOST are answered from data the service already has;
 // STATUS_CODE needs MetricsFilterValuesSource; BUILD/PATH always report empty.
 func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
-	}
-	a, err := s.GetApp(ctx, core.RelCanView, q.App)
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err
 	}

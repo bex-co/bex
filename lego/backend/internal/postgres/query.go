@@ -81,15 +81,12 @@ type queryLimits struct {
 // in-cluster next to the databases) inside a hard read-only envelope; writes, DDL,
 // multi-statement escapes and over-long queries are rejected by Postgres itself.
 func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, error) {
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
-		return QueryResult{}, err
-	}
-	if strings.TrimSpace(sql) == "" {
-		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
-	}
 	_, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
 		return QueryResult{}, err // core.ErrNotFound for an unknown/unprovisioned db
+	}
+	if strings.TrimSpace(sql) == "" {
+		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
 	}
 	uri := string(sec.Data["uri"])
 	if uri == "" {
