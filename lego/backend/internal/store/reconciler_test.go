@@ -275,7 +275,7 @@ func TestRecordDeployClosesLiveOnHealthy(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	deploys, err := store.ListDeploys(ctx, row.ID)
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestRecordDeployClosesLiveBackfillsResolvedImage(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	deploys, err := store.ListDeploys(ctx, row.ID)
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployLive || deploys[0].ResolvedImage != "img:1@sha256:resolved" {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, live, with resolved_image backfilled", deploys, err)
 	}
@@ -336,7 +336,7 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	deploys, err := store.ListDeploys(ctx, row.ID)
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed || deploys[0].FinishedAt == nil {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed, with finished_at set", deploys, err)
 	}
@@ -364,7 +364,7 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	deploys, err := store.ListDeploys(ctx, row.ID)
+	deploys, err := store.ListDeploys(ctx, row.ID, DeployFilter{})
 	if err != nil || len(deploys) != 1 || deploys[0].Status != DeployUpdateFailed {
 		t.Fatalf("deploys = %+v (err %v), want exactly one, update_failed via the gate timeout", deploys, err)
 	}

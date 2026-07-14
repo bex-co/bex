@@ -19,7 +19,12 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
+	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // These exercise the in-memory Store (always on, no BEX_TEST_DB_URI needed) —
@@ -51,7 +56,7 @@ func TestCreateAppOpensFirstDeploy(t *testing.T) {
 		t.Fatalf("create app: %v", err)
 	}
 
-	deploys, err := s.ListDeploys(ctx, app.ID)
+	deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
@@ -95,7 +100,7 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trigger deploy: %v", err)
 	}
-	deploys, err := s.ListDeploys(ctx, app.ID)
+	deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
@@ -125,6 +130,130 @@ func TestCreateRollbackDeployRecordsProvenanceAndResolvedImage(t *testing.T) {
 	got, err := s.GetDeploy(ctx, app.ID, rb.ID)
 	if err != nil || got.RollbackOf != first.ID {
 		t.Fatalf("get rollback deploy = %+v (err %v)", got, err)
+	}
+}
+
+// seedDeploy writes a deploy row with explicit fields directly into the
+// memStore, bypassing CreateDeploy's time.Now() stamp, so the filter tests
+// below control the timeline exactly (no flaky same-instant timestamps).
+func seedDeploy(s *memStore, id, appID, status string, createdAt time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.deploys[id] = Deploy{ID: id, AppID: appID, Trigger: TriggerAPI, Status: status, CreatedAt: createdAt}
+}
+
+func deployIDs(deploys []Deploy) []string {
+	out := make([]string, len(deploys))
+	for i, d := range deploys {
+		out[i] = d.ID
+	}
+	return out
+}
+
+func TestListDeploysFilters(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	// Five deploys a minute apart, plus two sharing one instant (the id
+	// tiebreak's case), newest-first expected order:
+	//   dep-g,dep-f (same instant, id desc) > dep-e > dep-d > dep-c > dep-b > dep-a
+	seedDeploy(s, "dep-a", "srv-1", DeployLive, base)
+	seedDeploy(s, "dep-b", "srv-1", DeployUpdateFailed, base.Add(1*time.Minute))
+	seedDeploy(s, "dep-c", "srv-1", DeployLive, base.Add(2*time.Minute))
+	seedDeploy(s, "dep-d", "srv-1", DeployCanceled, base.Add(3*time.Minute))
+	seedDeploy(s, "dep-e", "srv-1", DeployUpdateInProgress, base.Add(4*time.Minute))
+	seedDeploy(s, "dep-f", "srv-1", DeployLive, base.Add(5*time.Minute))
+	seedDeploy(s, "dep-g", "srv-1", DeployLive, base.Add(5*time.Minute))
+	// Another app's deploy must never leak in.
+	seedDeploy(s, "dep-x", "srv-2", DeployLive, base.Add(6*time.Minute))
+
+	assertIDs := func(name string, f DeployFilter, want ...string) {
+		t.Helper()
+		got, err := s.ListDeploys(ctx, "srv-1", f)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !slices.Equal(deployIDs(got), want) {
+			t.Errorf("%s = %v, want %v", name, deployIDs(got), want)
+		}
+	}
+
+	assertIDs("empty filter (full history, newest first, id tiebreak)", DeployFilter{},
+		"dep-g", "dep-f", "dep-e", "dep-d", "dep-c", "dep-b", "dep-a")
+	assertIDs("one status", DeployFilter{Statuses: []string{DeployLive}},
+		"dep-g", "dep-f", "dep-c", "dep-a")
+	assertIDs("two statuses", DeployFilter{Statuses: []string{DeployUpdateFailed, DeployCanceled}},
+		"dep-d", "dep-b")
+	assertIDs("unknown status matches nothing", DeployFilter{Statuses: []string{"warp_in_progress"}})
+	// createdBefore/createdAfter are EXCLUSIVE: the row at the bound stays out.
+	assertIDs("createdAfter", DeployFilter{CreatedAfter: base.Add(3 * time.Minute)},
+		"dep-g", "dep-f", "dep-e")
+	assertIDs("createdBefore", DeployFilter{CreatedBefore: base.Add(2 * time.Minute)},
+		"dep-b", "dep-a")
+	assertIDs("window", DeployFilter{CreatedAfter: base, CreatedBefore: base.Add(3 * time.Minute)},
+		"dep-c", "dep-b")
+	assertIDs("status + window + limit combined",
+		DeployFilter{Statuses: []string{DeployLive}, CreatedBefore: base.Add(5 * time.Minute), Limit: 1},
+		"dep-c")
+	assertIDs("limit", DeployFilter{Limit: 3}, "dep-g", "dep-f", "dep-e")
+	assertIDs("cursor resumes after its row", DeployFilter{Cursor: "dep-e"},
+		"dep-d", "dep-c", "dep-b", "dep-a")
+	assertIDs("cursor within a same-instant pair (id tiebreak)", DeployFilter{Cursor: "dep-g"},
+		"dep-f", "dep-e", "dep-d", "dep-c", "dep-b", "dep-a")
+	assertIDs("unknown cursor is an empty page", DeployFilter{Cursor: "dep-doesnotexist00000"})
+}
+
+// TestListDeploysCursorWalkIsGapAndDupFree pages the full history with a
+// small limit and asserts the concatenated pages are exactly the unpaged
+// list — no row skipped, none repeated, including across the same-instant
+// pair the id tiebreak orders.
+func TestListDeploysCursorWalkIsGapAndDupFree(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	for i := range 5 {
+		seedDeploy(s, fmt.Sprintf("dep-%03d", i), "srv-1", DeployLive, base.Add(time.Duration(i)*time.Minute))
+	}
+	// Two same-instant rows, positioned so a limit-3 page boundary splits them.
+	seedDeploy(s, "dep-t1", "srv-1", DeployLive, base.Add(10*time.Minute))
+	seedDeploy(s, "dep-t2", "srv-1", DeployLive, base.Add(10*time.Minute))
+
+	full, err := s.ListDeploys(ctx, "srv-1", DeployFilter{})
+	if err != nil || len(full) != 7 {
+		t.Fatalf("full list = %v (err %v), want 7 rows", deployIDs(full), err)
+	}
+
+	var walked []string
+	cursor := ""
+	for range 10 { // bounded so a paging bug can't loop forever
+		page, err := s.ListDeploys(ctx, "srv-1", DeployFilter{Cursor: cursor, Limit: 3})
+		if err != nil {
+			t.Fatalf("page after %q: %v", cursor, err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		walked = append(walked, deployIDs(page)...)
+		cursor = page[len(page)-1].ID
+	}
+	if !slices.Equal(walked, deployIDs(full)) {
+		t.Errorf("cursor walk = %v, want the unpaged list %v", walked, deployIDs(full))
+	}
+}
+
+func TestListDeploysLimitClampsToMaxPageLimit(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	for i := range core.MaxPageLimit + 20 {
+		seedDeploy(s, fmt.Sprintf("dep-%04d", i), "srv-1", DeployLive, base.Add(time.Duration(i)*time.Second))
+	}
+	got, err := s.ListDeploys(ctx, "srv-1", DeployFilter{Limit: core.MaxPageLimit + 10})
+	if err != nil || len(got) != core.MaxPageLimit {
+		t.Errorf("limit above the cap: got %d rows (err %v), want %d", len(got), err, core.MaxPageLimit)
+	}
+	if got, err := s.ListDeploys(ctx, "srv-1", DeployFilter{}); err != nil || len(got) != core.MaxPageLimit+20 {
+		t.Errorf("no limit stays unbounded: got %d rows (err %v), want %d", len(got), err, core.MaxPageLimit+20)
 	}
 }
 

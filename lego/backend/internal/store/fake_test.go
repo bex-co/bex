@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -528,16 +529,48 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	return d, nil
 }
 
-func (m *memStore) ListDeploys(_ context.Context, appID string) ([]Deploy, error) {
+func (m *memStore) ListDeploys(_ context.Context, appID string, filter DeployFilter) ([]Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var out []Deploy
 	for _, d := range m.deploys {
-		if d.AppID == appID {
-			out = append(out, d)
+		if d.AppID != appID {
+			continue
 		}
+		if len(filter.Statuses) > 0 && !slices.Contains(filter.Statuses, d.Status) {
+			continue
+		}
+		if !filter.CreatedAfter.IsZero() && !d.CreatedAt.After(filter.CreatedAfter) {
+			continue
+		}
+		if !filter.CreatedBefore.IsZero() && !d.CreatedAt.Before(filter.CreatedBefore) {
+			continue
+		}
+		out = append(out, d)
 	}
-	slices.SortFunc(out, func(x, y Deploy) int { return y.CreatedAt.Compare(x.CreatedAt) }) // newest first
+	// Newest first, id as tiebreak — PGStore's exact total order, so keyset
+	// paging behaves identically against either store.
+	slices.SortFunc(out, func(x, y Deploy) int {
+		if c := y.CreatedAt.Compare(x.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(y.ID, x.ID)
+	})
+	if filter.Cursor != "" {
+		// Mirror PGStore's keyset semantics: keep rows strictly older than the
+		// cursor row's own (created_at, id) — keyed off the row, not its position
+		// in the filtered slice, so a row whose status changed between pages
+		// (update_in_progress -> live) still resumes correctly. An unknown
+		// cursor yields an empty page, exactly like PG's NULL comparison.
+		c, ok := m.deploys[filter.Cursor]
+		out = slices.DeleteFunc(out, func(d Deploy) bool {
+			return !ok || d.CreatedAt.After(c.CreatedAt) ||
+				(d.CreatedAt.Equal(c.CreatedAt) && d.ID >= c.ID)
+		})
+	}
+	if limit := clampPageLimit(filter.Limit); limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
 	return out, nil
 }
 

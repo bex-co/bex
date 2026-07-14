@@ -105,7 +105,7 @@ func TestLiveAcceptance(t *testing.T) {
 
 	waitForPhase(t, ctx, rec, cl, name, appv1alpha1.PhaseRunning, 60*time.Second)
 
-	list, err := svc.List(ctx, name)
+	list, err := svc.List(ctx, name, ListFilter{})
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestLiveAcceptance(t *testing.T) {
 	}
 	waitForDeployStatus(t, ctx, rec, svc, name, triggered.ID, store.DeployLive, 60*time.Second)
 
-	list, err = svc.List(ctx, name)
+	list, err = svc.List(ctx, name, ListFilter{})
 	if err != nil {
 		t.Fatalf("list after trigger: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestLiveAcceptance(t *testing.T) {
 	badName := store.CRName("m5acc", "bad")
 	waitForDeployStatus(t, ctx, rec, svc, badName, "", store.DeployUpdateFailed, 30*time.Second)
 
-	badList, err := svc.List(ctx, badName)
+	badList, err := svc.List(ctx, badName, ListFilter{})
 	if err != nil {
 		t.Fatalf("list bad deploys: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestLiveAcceptance(t *testing.T) {
 	// directly (bex-api has no "change image" verb yet, so this mirrors what
 	// one would eventually drive) and opening a matching deploy row, the same
 	// bookkeeping Trigger would do for an image change.
-	goodDeploys, err := svc.List(ctx, name)
+	goodDeploys, err := svc.List(ctx, name, ListFilter{})
 	if err != nil || len(goodDeploys) == 0 {
 		t.Fatalf("list web deploys before rollback: %+v (err %v)", goodDeploys, err)
 	}
@@ -278,7 +278,7 @@ func currentStatus(ctx context.Context, svc *Service, service, deployID string) 
 		}
 		return d.Status, true
 	}
-	list, err := svc.List(ctx, service)
+	list, err := svc.List(ctx, service, ListFilter{})
 	if err != nil || len(list) == 0 {
 		return "", false
 	}

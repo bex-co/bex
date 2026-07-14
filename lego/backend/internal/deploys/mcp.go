@@ -33,9 +33,14 @@ import (
 // drift.
 
 // listDeploysArgs is list_deploys' input — Render keys deploy tools on
-// serviceId, like every other single-service tool.
+// serviceId, like every other single-service tool. Limit/Cursor (w2/m31)
+// match Render's own MCP tool's pagination knobs (render-oss/render-mcp-server
+// pkg/deploy/tools.go: limit default 10, clamped to [1,100]; cursor from the
+// previous result).
 type listDeploysArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 10)"`
+	Cursor    string `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the previous list_deploys result); omit for the first page"`
 }
 
 // getDeployArgs is get_deploy's input — the deploy to poll after a trigger.
@@ -45,17 +50,35 @@ type getDeployArgs struct {
 }
 
 // listDeploysResult wraps the array — MCP tool outputs must be JSON objects.
+// Cursor (w2/m31) is the bex-shaped equivalent of Render's trailing
+// `cursor: <value>` text marker (its tool appends it after the deploys JSON;
+// bex's outputs are JSON objects, so the cursor is a field instead): the last
+// deploy's id, to echo back as `cursor` for the next page, or "" when this
+// page is empty (the end of the history).
 type listDeploysResult struct {
 	Deploys []renderDeploy `json:"deploys"`
+	Cursor  string         `json:"cursor"`
 }
 
 // RegisterMCP adds the deploy-history tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
-		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live, *_failed, or canceled.",
+		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live, *_failed, or canceled. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, listDeploysResult, error) {
-		deploys, err := s.List(ctx, in.ServiceID)
+		// Render's own tool's bounds: default 10 when unset, clamped to [1,100].
+		// The default is an intentional w2/m31 behavior change from bex's prior
+		// always-the-full-history tool — an agent polling a long-lived service
+		// should not re-fetch hundreds of deploys per call; page with cursor.
+		limit := in.Limit
+		if limit < 1 {
+			limit = 10
+		}
+		filter, err := FilterOf(nil, "", "", in.Cursor, limit)
+		if err != nil {
+			return nil, listDeploysResult{}, err
+		}
+		deploys, err := s.List(ctx, in.ServiceID, filter)
 		if err != nil {
 			return nil, listDeploysResult{}, err
 		}
@@ -63,7 +86,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		for i, d := range deploys {
 			out[i] = toRenderDeploy(d)
 		}
-		return nil, listDeploysResult{Deploys: out}, nil
+		res := listDeploysResult{Deploys: out}
+		if len(deploys) > 0 {
+			res.Cursor = deploys[len(deploys)-1].ID
+		}
+		return nil, res, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

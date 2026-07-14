@@ -182,7 +182,7 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 		t.Error("Rollback must bump spec.restartedAt so the CR converges immediately")
 	}
 
-	list, err := svc.List(context.Background(), "web")
+	list, err := svc.List(context.Background(), "web", ListFilter{})
 	if err != nil || len(list) != 3 || list[0].ID != rolled.ID {
 		t.Fatalf("List after rollback (want newest-first, 3 entries) = %+v (err %v)", list, err)
 	}

@@ -281,7 +281,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 // because they depend on Postgres's ORDER BY / WHERE, not just Go logic.
 func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app App) {
 	t.Helper()
-	deploys, err := s.ListDeploys(ctx, app.ID)
+	deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
@@ -315,9 +315,38 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if err != nil || second.Status != DeployUpdateInProgress {
 		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
 	}
-	deploys, err = s.ListDeploys(ctx, app.ID)
+	deploys, err = s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil || len(deploys) != 2 || deploys[0].ID != second.ID {
 		t.Fatalf("list after trigger (want newest first) = %+v (err %v)", deploys, err)
+	}
+
+	// DeployFilter against real Postgres (w2/m31) — the additive WHERE/LIMIT
+	// building and the keyset subquery are SQL, so they're asserted here, not
+	// just against the Go fakes. The deeper multi-page walk lives in
+	// deploys_test.go's memStore tests; the two rows on hand (second = open,
+	// newer; first = live, older) cover each clause's direction.
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{Statuses: []string{DeployLive}}); err != nil || len(got) != 1 || got[0].ID != first.ID {
+		t.Fatalf("status filter = %+v (err %v), want [%s]", got, err, first.ID)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{Limit: 1}); err != nil || len(got) != 1 || got[0].ID != second.ID {
+		t.Fatalf("limit 1 = %+v (err %v), want the newest [%s]", got, err, second.ID)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{Cursor: second.ID}); err != nil || len(got) != 1 || got[0].ID != first.ID {
+		t.Fatalf("cursor after newest = %+v (err %v), want [%s]", got, err, first.ID)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{Cursor: first.ID}); err != nil || len(got) != 0 {
+		t.Fatalf("cursor after oldest = %+v (err %v), want the empty end-of-history page", got, err)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{Cursor: "dep-doesnotexist00000"}); err != nil || len(got) != 0 {
+		t.Fatalf("unknown cursor = %+v (err %v), want an empty page, never the unfiltered list", got, err)
+	}
+	// createdBefore/createdAfter are exclusive: second's own instant bounds out
+	// second itself in both directions.
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{CreatedBefore: second.CreatedAt}); err != nil || len(got) != 1 || got[0].ID != first.ID {
+		t.Fatalf("createdBefore = %+v (err %v), want [%s]", got, err, first.ID)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{CreatedAfter: first.CreatedAt}); err != nil || len(got) != 1 || got[0].ID != second.ID {
+		t.Fatalf("createdAfter = %+v (err %v), want [%s]", got, err, second.ID)
 	}
 
 	if _, err := s.GetDeploy(ctx, "srv-doesnotexist00000", second.ID); !errors.Is(err, ErrNotFound) {
@@ -420,7 +449,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	verbs := []string{"apps.Suspend", "apps.Scale"}
 	phases := []string{EventPhaseStarted, EventPhaseEnded}
 
-	deploys, err := s.ListDeploys(ctx, app.ID)
+	deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil || len(deploys) != 2 {
 		t.Fatalf("precondition: deploys = %+v (err %v), want 2", deploys, err)
 	}

@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -27,7 +29,8 @@ import (
 
 // rest.go is the deploy-history REST fragment (w2/m5's list/get/trigger,
 // w2/m10's cancel/rollback): Render's GET .../deploys (the {deploy, cursor}
-// list envelope), GET .../deploys/{id}, POST .../deploys (trigger),
+// list envelope, honoring status/createdBefore/createdAfter/cursor/limit
+// since w2/m31), GET .../deploys/{id}, POST .../deploys (trigger),
 // POST .../deploys/{id}/cancel, and POST .../rollback. Served under both
 // /v1/services and /v1/apps, same as every other apps-adjacent route.
 // Behavior lives in the Service, so GraphQL and MCP stay identical.
@@ -90,13 +93,39 @@ func toDeployList(deploys []DeployView) []deployWithCursor {
 	return out
 }
 
+// filterFromQuery translates Render's ListDeploysParams query params —
+// status (repeatable), createdBefore/createdAfter (RFC3339), cursor, limit —
+// into a ListFilter (w2/m31), over the one shared translator (FilterOf) the
+// GraphQL and MCP fragments also use. Absent limit means the full history
+// (the pre-m31 contract — a documented divergence from Render's default-20
+// page, docs/ADR018-render-parity.md), which is why this parses limit itself
+// instead of core.PageParams (whose absent-means-20 default and silent
+// unparseable-means-default reading are both wrong here: a limit the caller
+// spelled wrong must 400, not silently return the full history).
+func filterFromQuery(q url.Values) (ListFilter, error) {
+	limit := 0
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+		}
+		limit = n
+	}
+	return FilterOf(q["status"], q.Get("createdBefore"), q.Get("createdAfter"), q.Get("cursor"), limit)
+}
+
 // RegisterREST adds the Render-shaped deploy-history endpoints. Store
 // unconfigured => the Service returns core.ErrDeploysUnavailable => 503 on
 // these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
-			deploys, err := s.List(r.Context(), r.PathValue("id"))
+			filter, err := filterFromQuery(r.URL.Query())
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			deploys, err := s.List(r.Context(), r.PathValue("id"), filter)
 			if err != nil {
 				core.WriteErr(w, err)
 				return

@@ -56,7 +56,7 @@ type DeployStore interface {
 	// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10)
 	// restoring image, provenance-tagged with the source deploy id.
 	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (store.Deploy, error)
-	ListDeploys(ctx context.Context, appID string) ([]store.Deploy, error)
+	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
 	// CloseDeploy transitions a still-open deploy row terminal, CAS-guarded
 	// (see store.Store.CloseDeploy) — Cancel's write path, and the same method
@@ -140,10 +140,63 @@ func (s *Service) patchApp(ctx context.Context, a *appv1alpha1.App, mutate func(
 // has deploy history.
 func appStoreID(a *appv1alpha1.App) string { return a.Labels[store.LabelAppID] }
 
+// ListFilter narrows List (w2/m31) — the neutral shape the REST/GraphQL/MCP
+// adapters translate Render's status/createdBefore/createdAfter/cursor/limit
+// params into, mirroring store.DeployFilter field-for-field: Statuses (empty
+// ⇒ all), exclusive CreatedBefore/CreatedAfter bounds, keyset Cursor (a
+// previously returned deploy's id), and Limit (0 ⇒ the full history — the
+// pre-m31 contract; the store clamps anything above core.MaxPageLimit).
+type ListFilter struct {
+	Statuses      []string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
+}
+
+// FilterOf builds a ListFilter from the params in the string form every
+// adapter has them in (a query value, a GraphQL argument, an MCP tool field)
+// — one translator for all three surfaces, the events.FilterOf precedent, so
+// a REST call and a tool call with the same params cannot page differently.
+// Unlike events' permissive reading, a malformed value is core.ErrBadRequest
+// (400): events falls back to its default window, but deploys has none —
+// silently dropping a bound (or turning a negative limit into "unbounded",
+// which is what the store reads <=0 as) would return the unfiltered history
+// as if it were the filtered one. The upper limit bound is the store's
+// invariant (store.DeployFilter), not re-clamped here.
+func FilterOf(statuses []string, createdBefore, createdAfter, cursor string, limit int) (ListFilter, error) {
+	if limit < 0 {
+		return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+	}
+	f := ListFilter{Statuses: statuses, Cursor: cursor, Limit: limit}
+	var err error
+	if f.CreatedBefore, err = parseTime("createdBefore", createdBefore); err != nil {
+		return ListFilter{}, err
+	}
+	if f.CreatedAfter, err = parseTime("createdAfter", createdAfter); err != nil {
+		return ListFilter{}, err
+	}
+	return f, nil
+}
+
+// parseTime reads one optional RFC3339 param — empty stays the zero time
+// (bound unset), anything else must parse.
+func parseTime(name, value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, nil
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %s must be RFC3339 (e.g. 2026-01-02T15:04:05Z)", core.ErrBadRequest, name)
+	}
+	return t, nil
+}
+
 // List returns a service's deploy history, newest first (Render's
-// list_deploys / GET .../deploys). A hand-applied App has no history: an
+// list_deploys / GET .../deploys), narrowed by filter (w2/m31) — a zero
+// ListFilter returns the full history. A hand-applied App has no history: an
 // empty list, not an error.
-func (s *Service) List(ctx context.Context, service string) ([]DeployView, error) {
+func (s *Service) List(ctx context.Context, service string, filter ListFilter) ([]DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
 	if err != nil {
 		return nil, err
@@ -155,7 +208,13 @@ func (s *Service) List(ctx context.Context, service string) ([]DeployView, error
 	if appID == "" {
 		return []DeployView{}, nil
 	}
-	deploys, err := s.Store.ListDeploys(ctx, appID)
+	deploys, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{
+		Statuses:      filter.Statuses,
+		CreatedBefore: filter.CreatedBefore,
+		CreatedAfter:  filter.CreatedAfter,
+		Cursor:        filter.Cursor,
+		Limit:         filter.Limit,
+	})
 	if err != nil {
 		return nil, err
 	}

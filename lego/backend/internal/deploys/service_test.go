@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -100,10 +100,41 @@ func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollba
 	return d, nil
 }
 
-func (f *fakeStore) ListDeploys(_ context.Context, appID string) ([]store.Deploy, error) {
+// ListDeploys mirrors PGStore's filter semantics (w2/m31) — status set,
+// exclusive created_at bounds, keyset cursor off the cursor row's own
+// (CreatedAt, ID), clamped limit — so adapter tests exercise the same paging
+// behavior the real store has. f.byApp is already newest-first.
+func (f *fakeStore) ListDeploys(_ context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]store.Deploy(nil), f.byApp[appID]...), nil
+	var cursorRow *store.Deploy
+	for _, d := range f.byApp[appID] {
+		if d.ID == filter.Cursor {
+			cursorRow = &d
+			break
+		}
+	}
+	var out []store.Deploy
+	for _, d := range f.byApp[appID] {
+		if len(filter.Statuses) > 0 && !slices.Contains(filter.Statuses, d.Status) {
+			continue
+		}
+		if !filter.CreatedAfter.IsZero() && !d.CreatedAt.After(filter.CreatedAfter) {
+			continue
+		}
+		if !filter.CreatedBefore.IsZero() && !d.CreatedAt.Before(filter.CreatedBefore) {
+			continue
+		}
+		if filter.Cursor != "" && (cursorRow == nil || d.CreatedAt.After(cursorRow.CreatedAt) ||
+			(d.CreatedAt.Equal(cursorRow.CreatedAt) && d.ID >= cursorRow.ID)) {
+			continue
+		}
+		out = append(out, d)
+	}
+	if limit := min(filter.Limit, core.MaxPageLimit); limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }
 
 func (f *fakeStore) GetDeploy(_ context.Context, appID, deployID string) (store.Deploy, error) {
@@ -163,7 +194,7 @@ func TestListEmptyForHandAppliedApp(t *testing.T) {
 	ds.byApp["srv-other"] = []store.Deploy{{ID: "dep-1", AppID: "srv-other", Status: store.DeployLive}}
 	svc, _ := newService(ds, sampleApp("manual", ""))
 
-	got, err := svc.List(context.Background(), "manual")
+	got, err := svc.List(context.Background(), "manual", ListFilter{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -177,7 +208,7 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, cl := newService(ds, sampleApp("web", "srv-1"))
 
-	list, err := svc.List(context.Background(), "web")
+	list, err := svc.List(context.Background(), "web", ListFilter{})
 	if err != nil || len(list) != 1 || list[0].ID != first.ID || list[0].Trigger != "create" {
 		t.Fatalf("List = %+v (err %v)", list, err)
 	}
@@ -194,7 +225,7 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 		t.Error("Trigger must bump spec.restartedAt (a re-pull/restart now)")
 	}
 
-	list, err = svc.List(context.Background(), "web")
+	list, err = svc.List(context.Background(), "web", ListFilter{})
 	if err != nil || len(list) != 2 || list[0].ID != triggered.ID {
 		t.Fatalf("List after trigger (want newest first) = %+v (err %v)", list, err)
 	}
@@ -245,7 +276,7 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web", "srv-1"))
 	ctx := context.Background()
 
-	if _, err := svc.List(ctx, "web"); !errors.Is(err, core.ErrDeploysUnavailable) {
+	if _, err := svc.List(ctx, "web", ListFilter{}); !errors.Is(err, core.ErrDeploysUnavailable) {
 		t.Errorf("List: want ErrDeploysUnavailable, got %v", err)
 	}
 	if _, err := svc.Get(ctx, "web", "dep-1"); !errors.Is(err, core.ErrDeploysUnavailable) {
@@ -262,23 +293,14 @@ func TestRESTListGetTrigger(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
-	mux := http.NewServeMux()
-	svc.RegisterREST(mux)
-
-	do := func(method, path string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(method, path, nil)
-		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
-		return rec
-	}
+	do := newRESTHarness(t, svc)
 
 	rec := do("GET", "/v1/services/web/deploys")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list: code=%d body=%s", rec.Code, rec.Body)
 	}
-	var list []deployWithCursor
-	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 || list[0].Deploy.ID != first.ID {
-		t.Fatalf("list envelope = %s (err %v)", rec.Body, err)
+	if list := decodeList(t, rec); len(list) != 1 || list[0].Deploy.ID != first.ID {
+		t.Fatalf("list envelope = %s", rec.Body)
 	}
 
 	rec = do("POST", "/v1/services/web/deploys")
@@ -302,13 +324,9 @@ func TestRESTListGetTrigger(t *testing.T) {
 
 func TestREST503WithoutStore(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web", "srv-1"))
-	mux := http.NewServeMux()
-	svc.RegisterREST(mux)
+	do := newRESTHarness(t, svc)
 
-	req := httptest.NewRequest("GET", "/v1/services/web/deploys", nil)
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusServiceUnavailable {
+	if rec := do("GET", "/v1/services/web/deploys"); rec.Code != http.StatusServiceUnavailable {
 		t.Errorf("code=%d, want 503", rec.Code)
 	}
 }
@@ -323,19 +341,8 @@ func TestMCPMatchesREST(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
-
-	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	svc.RegisterMCP(srv)
-	serverT, clientT := mcp.NewInMemoryTransports()
 	ctx := context.Background()
-	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
-		t.Fatalf("server connect: %v", err)
-	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatalf("client connect: %v", err)
-	}
-	defer cs.Close()
+	cs := newMCPSession(t, svc)
 
 	tools, err := cs.ListTools(ctx, nil)
 	if err != nil {
@@ -359,7 +366,7 @@ func TestMCPMatchesREST(t *testing.T) {
 	if err := decodeStructured(res.StructuredContent, &got); err != nil {
 		t.Fatalf("decode list_deploys result: %v", err)
 	}
-	restList, err := svc.List(ctx, "web")
+	restList, err := svc.List(ctx, "web", ListFilter{})
 	if err != nil || len(got.Deploys) != len(restList) || got.Deploys[0].ID != first.ID {
 		t.Fatalf("list_deploys = %+v, want to match List() = %+v (err %v)", got, restList, err)
 	}

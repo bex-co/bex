@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -266,8 +267,10 @@ type Store interface {
 	// (w2/m10). rollbackOf records provenance: the source deploy id being
 	// rolled back to.
 	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error)
-	// ListDeploys returns an app's deploy history, newest first.
-	ListDeploys(ctx context.Context, appID string) ([]Deploy, error)
+	// ListDeploys returns an app's deploy history, newest first, narrowed by
+	// filter (w2/m31) — a zero DeployFilter returns the full history, the
+	// pre-m31 contract.
+	ListDeploys(ctx context.Context, appID string, filter DeployFilter) ([]Deploy, error)
 	// GetDeploy fetches one deploy scoped to appID — a deployID belonging to a
 	// different app is ErrNotFound, not a cross-app leak.
 	GetDeploy(ctx context.Context, appID, deployID string) (Deploy, error)
@@ -797,6 +800,60 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 	return d, nil
 }
 
+// DeployFilter narrows ListDeploys (w2/m31) — the subset of Render's
+// ListDeploysParams bex can honestly back today (updatedBefore/updatedAfter
+// wait on w2/m32's updated_at column). Statuses filters to the given deploy
+// statuses (empty ⇒ all; an unknown status simply matches nothing, so the
+// vocabulary can grow without touching this); CreatedBefore/CreatedAfter
+// bound created_at exclusively (Render's createdBefore/createdAfter); Cursor
+// resumes strictly after a previously returned deploy's id (newest-first
+// keyset paging, the AuditFilter convention — stable under concurrent
+// inserts, and an unknown cursor yields an empty page, not the unfiltered
+// list); Limit caps the page (clamped here by clampPageLimit: <=0 means
+// UNBOUNDED, the pre-m31 contract every existing caller keeps — unlike
+// AuditFilter whose zero value pages — and >core.MaxPageLimit clamps).
+type DeployFilter struct {
+	Statuses      []string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
+}
+
+// clampPageLimit is the store's page-size invariant for lists whose zero
+// limit means unbounded (DeployFilter): <=0 stays 0 (no LIMIT clause),
+// anything else caps at core.MaxPageLimit. The store is the enforcing layer
+// — feature translators (deploys.FilterOf) pass the caller's value through
+// rather than each keeping their own copy of the clamp.
+func clampPageLimit(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	return min(n, core.MaxPageLimit)
+}
+
+// pageNewestFirst appends the keyset-pagination tail shared by the store's
+// newest-first list queries (ListDeploys, ListAuditEvents): the cursor resume
+// clause, the (sortCol DESC, id DESC) total order — the id tiebreak makes the
+// order total, so paging can never skip or repeat two rows created in the
+// same instant — and the LIMIT (skipped when limit <= 0, the unbounded case).
+// The cursor resumes strictly older than the cursor row's own (sortCol, id);
+// an unknown cursor id matches no subquery row, so the comparison is NULL
+// (never true) — an invalid cursor yields an empty page, not a crash or a
+// leak of the unfiltered list.
+func pageNewestFirst(query string, args []any, table, sortCol, cursor string, limit int) (string, []any) {
+	if cursor != "" {
+		args = append(args, cursor)
+		query += fmt.Sprintf(" AND (%s, id) < (SELECT %s, id FROM %s WHERE id = $%d)", sortCol, sortCol, table, len(args))
+	}
+	query += fmt.Sprintf(" ORDER BY %s DESC, id DESC", sortCol)
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	return query, args
+}
+
 const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, status, created_at, started_at, finished_at`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
@@ -805,9 +862,23 @@ func scanDeploy(row pgx.Row) (Deploy, error) {
 	return d, err
 }
 
-func (s *PGStore) ListDeploys(ctx context.Context, appID string) ([]Deploy, error) {
-	rows, err := s.Pool.Query(ctx,
-		`SELECT `+deployColumns+` FROM deploys WHERE app_id = $1 ORDER BY created_at DESC`, appID)
+func (s *PGStore) ListDeploys(ctx context.Context, appID string, filter DeployFilter) ([]Deploy, error) {
+	query := `SELECT ` + deployColumns + ` FROM deploys WHERE app_id = $1`
+	args := []any{appID}
+	if len(filter.Statuses) > 0 {
+		args = append(args, filter.Statuses)
+		query += fmt.Sprintf(" AND status = ANY($%d)", len(args))
+	}
+	if !filter.CreatedAfter.IsZero() {
+		args = append(args, filter.CreatedAfter)
+		query += fmt.Sprintf(" AND created_at > $%d", len(args))
+	}
+	if !filter.CreatedBefore.IsZero() {
+		args = append(args, filter.CreatedBefore)
+		query += fmt.Sprintf(" AND created_at < $%d", len(args))
+	}
+	query, args = pageNewestFirst(query, args, "deploys", "created_at", filter.Cursor, clampPageLimit(filter.Limit))
+	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -114,16 +114,7 @@ func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filte
 		args = append(args, filter.Until)
 		query += fmt.Sprintf(" AND at <= $%d", len(args))
 	}
-	if filter.Cursor != "" {
-		// Keyset resume: strictly older than the cursor row's own (at, id). An
-		// unknown cursor id matches no subquery row, so the comparison is NULL
-		// (never true) — an invalid cursor yields an empty page, not a crash or
-		// a leak of the unfiltered list.
-		args = append(args, filter.Cursor)
-		query += fmt.Sprintf(" AND (at, id) < (SELECT at, id FROM audit_events WHERE id = $%d)", len(args))
-	}
-	args = append(args, limit)
-	query += fmt.Sprintf(" ORDER BY at DESC, id DESC LIMIT $%d", len(args))
+	query, args = pageNewestFirst(query, args, "audit_events", "at", filter.Cursor, limit)
 
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {

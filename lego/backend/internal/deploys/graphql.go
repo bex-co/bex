@@ -17,8 +17,11 @@ limitations under the License.
 package deploys
 
 import (
+	"fmt"
+
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -43,20 +46,62 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery returns the deploys(serviceId) field for the composition root
-// to merge into the root Query.
+// GraphQLQuery returns the deploys(serviceId, …) field for the composition
+// root to merge into the root Query. The filter arguments (w2/m31) mirror the
+// REST query params 1:1 — status/createdBefore/createdAfter/cursor/limit —
+// through the same FilterOf translator, so the two surfaces cannot page
+// differently; all absent means the full history, the pre-m31 contract.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"deploys": &graphql.Field{
 			Type: graphql.NewList(deployGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"status":        &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"createdBefore": &graphql.ArgumentConfig{Type: graphql.String},
+				"createdAfter":  &graphql.ArgumentConfig{Type: graphql.String},
+				"cursor":        &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":         &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.List(p.Context, p.Args["serviceId"].(string))
+				filter, err := filterFromArgs(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.List(p.Context, p.Args["serviceId"].(string), filter)
 			},
 		},
 	}
+}
+
+// filterFromArgs is the GraphQL twin of rest.go's filterFromQuery: it pulls
+// the same five params out of the resolver's argument map and hands them to
+// the one shared translator (FilterOf) — the events.filterFromArgs precedent.
+func filterFromArgs(args map[string]any) (ListFilter, error) {
+	str := func(key string) string {
+		v, _ := args[key].(string)
+		return v
+	}
+	var statuses []string
+	if raw, _ := args["status"].([]any); len(raw) > 0 {
+		statuses = make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				statuses = append(statuses, s)
+			}
+		}
+	}
+	// An EXPLICIT limit below 1 is rejected here (REST's ?limit=0 rejection);
+	// an absent limit stays 0 = the full history. FilterOf can't tell the two
+	// apart once limit is an int, so presence is checked at the arg map.
+	limit := 0
+	if v, ok := args["limit"].(int); ok {
+		if v < 1 {
+			return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+		}
+		limit = v
+	}
+	return FilterOf(statuses, str("createdBefore"), str("createdAfter"), str("cursor"), limit)
 }
 
 // deployMutationArgs is the (serviceId, deployId) argument shape cancelDeploy and
