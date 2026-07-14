@@ -33,6 +33,13 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
@@ -62,12 +69,32 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 type SourceTab = "github" | "git" | "image";
+type NativeRuntime = "elixir" | "go" | "node" | "python" | "ruby" | "rust";
+type GitRuntime = NativeRuntime | "docker";
 type ServiceType =
   | "web_service"
   | "private_service"
   | "background_worker"
   | "cron_job"
   | "static_site";
+
+const RUNTIME_COMMANDS: Record<
+  NativeRuntime,
+  { build: string; start: string }
+> = {
+  elixir: {
+    build: "mix deps.get --only prod && mix compile",
+    start: "mix phx.server",
+  },
+  go: { build: "go build -o app .", start: "./app" },
+  node: { build: "npm install", start: "npm start" },
+  python: {
+    build: "pip install -r requirements.txt",
+    start: "gunicorn app:app",
+  },
+  ruby: { build: "bundle install", start: "bundle exec puma" },
+  rust: { build: "cargo build --release", start: "cargo run --release" },
+};
 
 export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
@@ -313,6 +340,9 @@ export function NewServicePage() {
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
   const [rootDir, setRootDir] = useState("");
+  const [runtime, setRuntime] = useState<GitRuntime>("node");
+  const [buildCommand, setBuildCommand] = useState(RUNTIME_COMMANDS.node.build);
+  const [startCommand, setStartCommand] = useState(RUNTIME_COMMANDS.node.start);
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [autoDeploy, setAutoDeploy] = useState(true);
   const [schedule, setSchedule] = useState("");
@@ -394,12 +424,19 @@ export function NewServicePage() {
   const envVarsValid = envVars.every(
     (r) => r.key === "" || VALID_KEY.test(r.key),
   );
+  const nativeCommandsValid =
+    !isGitSource ||
+    isStaticType ||
+    runtime === "docker" ||
+    (buildCommand.trim() !== "" &&
+      (isCronType ? command.trim() !== "" : startCommand.trim() !== ""));
   const canSubmit =
     nameValid &&
     !showNameTaken &&
     sourceValid &&
     !busy &&
     envVarsValid &&
+    nativeCommandsValid &&
     (isStaticType || plan !== "") &&
     (!isCronType || (schedule.trim() !== "" && !scheduleError));
 
@@ -439,6 +476,22 @@ export function NewServicePage() {
       image,
       branch: branchVal,
       rootDir: rootDir || undefined,
+      runtime:
+        tab === "image"
+          ? "image"
+          : isGitSource && !isStaticType
+            ? runtime
+            : undefined,
+      buildCommand:
+        isGitSource && !isStaticType && runtime !== "docker"
+          ? buildCommand.trim()
+          : undefined,
+      startCommand:
+        isGitSource && !isStaticType && runtime !== "docker"
+          ? isCronType
+            ? command.trim()
+            : startCommand.trim()
+          : undefined,
       plan: showPlan ? plan || undefined : undefined,
       autoDeploy: isGitSource ? autoDeploy : undefined,
       schedule: isCronType ? schedule.trim() || undefined : undefined,
@@ -712,6 +765,85 @@ export function NewServicePage() {
                         {t("services.createFieldRootDirHint")}
                       </p>
                     </div>
+                    {!isStaticType ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="svc-runtime">
+                            {t("services.createFieldRuntime")}
+                          </Label>
+                          <Select
+                            value={runtime}
+                            onValueChange={(value) => {
+                              const next = value as GitRuntime;
+                              setRuntime(next);
+                              if (next !== "docker") {
+                                setBuildCommand(RUNTIME_COMMANDS[next].build);
+                                setStartCommand(RUNTIME_COMMANDS[next].start);
+                              }
+                            }}
+                          >
+                            <SelectTrigger id="svc-runtime" className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="node">
+                                {t("services.createRuntimeNode")}
+                              </SelectItem>
+                              <SelectItem value="python">
+                                {t("services.createRuntimePython")}
+                              </SelectItem>
+                              <SelectItem value="go">
+                                {t("services.createRuntimeGo")}
+                              </SelectItem>
+                              <SelectItem value="ruby">
+                                {t("services.createRuntimeRuby")}
+                              </SelectItem>
+                              <SelectItem value="rust">
+                                {t("services.createRuntimeRust")}
+                              </SelectItem>
+                              <SelectItem value="elixir">
+                                {t("services.createRuntimeElixir")}
+                              </SelectItem>
+                              <SelectItem value="docker">
+                                {t("services.createRuntimeDocker")}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {runtime !== "docker" ? (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="svc-build-command">
+                                {t("services.createFieldBuildCommand")}
+                              </Label>
+                              <Input
+                                id="svc-build-command"
+                                value={buildCommand}
+                                onChange={(e) =>
+                                  setBuildCommand(e.target.value)
+                                }
+                                autoComplete="off"
+                              />
+                            </div>
+                            {!isCronType ? (
+                              <div className="space-y-2">
+                                <Label htmlFor="svc-start-command">
+                                  {t("services.createFieldStartCommand")}
+                                </Label>
+                                <Input
+                                  id="svc-start-command"
+                                  value={startCommand}
+                                  onChange={(e) =>
+                                    setStartCommand(e.target.value)
+                                  }
+                                  autoComplete="off"
+                                />
+                              </div>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -744,7 +876,7 @@ export function NewServicePage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="svc-command">
-                        {t("services.createFieldCommand")}
+                        {t("services.createFieldStartCommand")}
                       </Label>
                       <Input
                         id="svc-command"

@@ -108,6 +108,22 @@ func toRenderService(a AppView) renderService {
 	if a.Plan != "" {
 		set("plan", a.Plan) // webServiceDetails.plan (render-public-api-1.json)
 	}
+	if a.Runtime != "" {
+		set("runtime", a.Runtime)
+		set("env", a.Runtime) // deprecated Render response field, still required by its schema
+	}
+	if a.Runtime == "docker" {
+		set("envSpecificDetails", map[string]any{
+			"dockerCommand":  a.StartCommand,
+			"dockerContext":  a.RootDir,
+			"dockerfilePath": a.DockerfilePath,
+		})
+	} else if a.BuildCommand != "" || a.StartCommand != "" {
+		set("envSpecificDetails", map[string]any{
+			"buildCommand": a.BuildCommand,
+			"startCommand": a.StartCommand,
+		})
+	}
 	if a.Schedule != "" {
 		set("schedule", a.Schedule) // cronJobDetails.schedule (render-public-api-1.json)
 	}

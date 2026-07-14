@@ -302,6 +302,15 @@ spec:
   template:
     spec:
       kubeadmConfigSpec:
+        preKubeadmCommands:
+        # kpack's registry client recognizes *.local as plain HTTP. Its build
+        # pods then pull the composed builder through containerd, so every node
+        # maps that alias (and the canonical runtime name) to Zot's NodePort.
+        - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
+        - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+        - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
+        - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
+        - systemctl restart containerd
         clusterConfiguration:
           apiServer:
             certSANs:
@@ -398,6 +407,12 @@ metadata:
 spec:
   template:
     spec:
+      preKubeadmCommands:
+      - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
+      - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+      - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
+      - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
+      - systemctl restart containerd
       joinConfiguration:
         nodeRegistration:
           kubeletExtraArgs:

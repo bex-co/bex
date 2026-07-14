@@ -45,6 +45,9 @@ describe("useCreateService", () => {
         name: "web",
         type: "web_service",
         image: "nginx",
+        runtime: "node",
+        buildCommand: "npm ci",
+        startCommand: "npm start",
       });
     });
 
@@ -56,6 +59,9 @@ describe("useCreateService", () => {
           ownerId: "tea-1",
           type: "web_service",
           image: "nginx",
+          runtime: "node",
+          buildCommand: "npm ci",
+          startCommand: "npm start",
         }),
       }),
     );

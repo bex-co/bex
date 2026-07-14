@@ -24,6 +24,9 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,6 +92,15 @@ func TestBuildJobShape(t *testing.T) {
 	}
 	if c.SecurityContext.Privileged != nil && *c.SecurityContext.Privileged {
 		t.Error("build container must not be privileged")
+	}
+}
+
+func TestBuildJobCustomDockerfilePath(t *testing.T) {
+	o := opts()
+	o.DockerfilePath = "docker/Dockerfile.prod"
+	args := BuildJob(o, o.ImageRef()).Spec.Template.Spec.Containers[0].Args
+	if !containsPair(args, "--opt", "filename=docker/Dockerfile.prod") {
+		t.Fatalf("buildkit args missing Dockerfile path: %v", args)
 	}
 }
 
@@ -210,6 +222,18 @@ func fakeClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+}
+
+func kpackImageWithCondition(o Options, status corev1.ConditionStatus, reason, message, latest string) *unstructured.Unstructured {
+	image := KpackImage(o)
+	condition := map[string]any{
+		"type": kpackReadyCondition, "status": string(status), "reason": reason, "message": message,
+	}
+	image.Object["status"] = map[string]any{
+		"conditions":  []any{condition},
+		"latestImage": latest,
+	}
+	return image
 }
 
 func completedJob(o Options, cond batchv1.JobConditionType) *batchv1.Job {
@@ -410,13 +434,144 @@ func TestBuildJobResourceLimits(t *testing.T) {
 	}
 }
 
-func TestBuildRejectsBuildpackAndNilClient(t *testing.T) {
+func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	o := opts()
-	o.Client = fakeClient()
 	o.Builder = BuilderBuildpack
-	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "buildpack") {
-		t.Errorf("buildpack should be rejected in-cluster, got %v", err)
+	o.KpackRegistry = "zot.local:5000"
+	o.RootDir = "services/api"
+	o.BuildEnv = []corev1.EnvVar{
+		{Name: "BP_GO_TARGETS", Value: "./cmd/api"},
+		{Name: "IGNORED_SECRET", ValueFrom: &corev1.EnvVarSource{}},
 	}
+	image := KpackImage(o)
+	if got, _, _ := unstructured.NestedString(image.Object, "spec", "tag"); got != "zot.local:5000/hello:gen-7" {
+		t.Errorf("tag = %q", got)
+	}
+	if got, _, _ := unstructured.NestedString(image.Object, "spec", "source", "git", "url"); got != o.Repo {
+		t.Errorf("repo = %q", got)
+	}
+	if got, _, _ := unstructured.NestedString(image.Object, "spec", "source", "git", "revision"); got != "main" {
+		t.Errorf("revision = %q", got)
+	}
+	if got, _, _ := unstructured.NestedString(image.Object, "spec", "source", "subPath"); got != "services/api" {
+		t.Errorf("subPath = %q", got)
+	}
+	env, _, _ := unstructured.NestedSlice(image.Object, "spec", "build", "env")
+	if len(env) != 1 || env[0].(map[string]any)["name"] != "BP_GO_TARGETS" {
+		t.Fatalf("build env = %#v", env)
+	}
+	if image.GetName() != "bld-hello-gen-7" || image.GetLabels()["app.bex.co/component"] != "build" {
+		t.Errorf("image metadata = %s %#v", image.GetName(), image.GetLabels())
+	}
+
+	ready := kpackImageWithCondition(o, corev1.ConditionTrue, "BuildSuccess", "", "zot.local:5000/hello@sha256:abc")
+	o.Client = fakeClient(ready)
+	res, err := Build(context.Background(), o)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if res.Image != "zot.bex-registry.svc:5000/hello@sha256:abc" {
+		t.Errorf("resolved image = %q", res.Image)
+	}
+	var job batchv1.Job
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}, &job); !apierrors.IsNotFound(err) {
+		t.Errorf("buildpack dispatch must not create a BuildKit Job, got %v", err)
+	}
+	var sa corev1.ServiceAccount
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: kpackServiceAccountName(o.Name)}, &sa); err != nil {
+		t.Fatalf("kpack service account: %v", err)
+	}
+}
+
+func TestBuildpackFailureUsesBuildCondition(t *testing.T) {
+	o := opts()
+	o.Builder = BuilderBuildpack
+	image := kpackImageWithCondition(o, corev1.ConditionFalse, "BuildFailed", "image fallback", "")
+	image.Object["status"].(map[string]any)["latestBuildRef"] = "bld-hello-gen-7-build-1"
+	build := newKpackBuild()
+	build.SetName("bld-hello-gen-7-build-1")
+	build.SetNamespace(o.Namespace)
+	build.Object["status"] = map[string]any{"conditions": []any{map[string]any{
+		"type": kpackSucceededCondition, "status": string(corev1.ConditionFalse),
+		"reason": "BuildpackDetectFailed", "message": "no buildpack groups passed detection",
+	}}}
+	o.Client = fakeClient(image, build)
+	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "BuildpackDetectFailed: no buildpack groups passed detection") {
+		t.Fatalf("failure = %v", err)
+	}
+}
+
+func TestBuildpackCreatesImageWhenAbsent(t *testing.T) {
+	o := opts()
+	o.Builder = BuilderBuildpack
+	o.Client = fakeClient()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = Build(ctx, o)
+	}()
+
+	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
+	found := false
+	for range 200 {
+		image := newKpackImage()
+		if err := o.Client.Get(ctx, key, image); err == nil {
+			found = true
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !found {
+		t.Fatal("Build did not create the kpack Image")
+	}
+	cancel()
+	<-done
+}
+
+func TestKpackCredentialAdaptation(t *testing.T) {
+	o := opts()
+	o.KpackRegistry = "zot.local:5000"
+	o.PushSecret = "bex-registry-push"
+	o.CloneSecret = "hello-clone"
+	o.SignKeySecret = "cosign-key"
+	pushConfig := []byte(`{"auths":{"zot.bex-registry.svc:5000":{"username":"builder","password":"redacted"}}}`)
+	push := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: o.PushSecret, Namespace: o.Namespace}, Data: map[string][]byte{"config.json": pushConfig}}
+	clone := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: o.CloneSecret, Namespace: o.Namespace}, Data: map[string][]byte{"token": []byte("redacted-token")}}
+	o.Client = fakeClient(push, clone)
+	if err := ensureKpackCredentials(context.Background(), o); err != nil {
+		t.Fatal(err)
+	}
+
+	var registry corev1.Secret
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "bex-registry-push-kpack"}, &registry); err != nil {
+		t.Fatal(err)
+	}
+	if registry.Type != corev1.SecretTypeDockerConfigJson || !strings.Contains(string(registry.Data[corev1.DockerConfigJsonKey]), "zot.local:5000") {
+		t.Errorf("adapted registry secret = type %s data %s", registry.Type, registry.Data[corev1.DockerConfigJsonKey])
+	}
+	var git corev1.Secret
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "hello-clone-kpack"}, &git); err != nil {
+		t.Fatal(err)
+	}
+	if git.Type != corev1.SecretTypeBasicAuth || git.Annotations["kpack.io/git"] != "https://github.com" || string(git.Data[corev1.BasicAuthPasswordKey]) != "redacted-token" {
+		t.Errorf("adapted git secret = %#v", git)
+	}
+	var sa corev1.ServiceAccount
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "bex-kpack-hello"}, &sa); err != nil {
+		t.Fatal(err)
+	}
+	gotSecrets := make([]string, len(sa.Secrets))
+	for i := range sa.Secrets {
+		gotSecrets[i] = sa.Secrets[i].Name
+	}
+	if got := strings.Join(gotSecrets, ","); got != "bex-registry-push-kpack,hello-clone-kpack,cosign-key" {
+		t.Errorf("service account secrets = %s", got)
+	}
+}
+
+func TestBuildNilClient(t *testing.T) {
 	o2 := opts() // nil client
 	o2.Builder = BuilderDockerfile
 	if _, err := Build(context.Background(), o2); err == nil || !strings.Contains(err.Error(), "nil client") {

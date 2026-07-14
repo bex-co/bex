@@ -1,0 +1,148 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package build
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+const nativePreparerImage = "busybox:1.37.0"
+
+var nativeRuntimeImages = map[string]string{
+	"elixir": "elixir:1.18",
+	"go":     "golang:1.24-bookworm",
+	"node":   "node:24-bookworm",
+	"python": "python:3.13-bookworm",
+	"ruby":   "ruby:3.4-bookworm",
+	"rust":   "rust:1-bookworm",
+}
+
+func validateNativeOptions(o Options) error {
+	if _, ok := nativeRuntimeImages[o.Runtime]; !ok {
+		return fmt.Errorf("build: unsupported native runtime %q", o.Runtime)
+	}
+	if strings.TrimSpace(o.BuildCommand) == "" {
+		return fmt.Errorf("build: native runtime %s requires buildCommand", o.Runtime)
+	}
+	if strings.TrimSpace(o.StartCommand) == "" {
+		return fmt.Errorf("build: native runtime %s requires startCommand", o.Runtime)
+	}
+	return nil
+}
+
+// nativeDockerfile translates Render's native runtime contract into a
+// reproducible OCI build: select the language toolchain, run the caller's exact
+// build command with service env available, and retain the exact start command
+// as the image CMD. The generated file is written by an init container and is
+// never committed to the tenant repository.
+func nativeDockerfile(o Options) string {
+	buildScript := `while IFS='=' read -r key encoded; do
+  [ -n "$key" ] || continue
+  export "$key=$(printf '%s' "$encoded" | base64 -d)"
+done < /run/secrets/render-env
+` + o.BuildCommand
+	run := shellJSON(buildScript)
+	start := shellJSON(o.StartCommand)
+	return fmt.Sprintf(`# syntax=docker/dockerfile:1.7
+FROM %s
+WORKDIR /opt/render/project/src
+COPY . .
+RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env %s
+ENV PORT=10000
+CMD %s
+`, nativeRuntimeImages[o.Runtime], run, start)
+}
+
+func shellJSON(command string) string {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	_ = encoder.Encode([]string{"/bin/bash", "-lc", command})
+	return strings.TrimSpace(out.String())
+}
+
+// nativeBuildPreparer materializes the generated Dockerfile and a base64 env
+// bundle into an EmptyDir shared with buildkit. The env bundle enters BuildKit
+// through a secret mount, so neither literal nor OpenBao-backed values appear in
+// image metadata or the generated Dockerfile.
+func nativeBuildPreparer(o Options) corev1.Container {
+	keys := make([]string, 0, len(o.BuildEnv))
+	env := make([]corev1.EnvVar, 0, len(o.BuildEnv)+2)
+	for _, item := range o.BuildEnv {
+		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
+			continue
+		}
+		keys = append(keys, item.Name)
+		env = append(env, corev1.EnvVar{Name: item.Name, Value: item.Value})
+	}
+	sort.Strings(keys)
+	env = append(env,
+		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: nativeDockerfile(o)},
+		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: strings.Join(keys, "\n")},
+	)
+
+	mounts := []corev1.VolumeMount{{Name: "native-build", MountPath: "/native"}}
+	if o.RuntimeEnvSecret != "" {
+		mounts = append(mounts, corev1.VolumeMount{Name: "runtime-env", MountPath: "/runtime-env", ReadOnly: true})
+	}
+	return corev1.Container{
+		Name:    "prepare-native-build",
+		Image:   nativePreparerImage,
+		Command: []string{"sh", "-eu", "-c"},
+		Args: []string{`umask 077
+printf '%s' "$BEX_NATIVE_DOCKERFILE" > /native/Dockerfile
+: > /native/render-env
+if [ -d /runtime-env ]; then
+  for path in /runtime-env/*; do
+    [ -f "$path" ] || continue
+    key="$(basename "$path")"
+    encoded="$(base64 < "$path" | tr -d '\n')"
+    printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
+  done
+fi
+for key in $BEX_NATIVE_LITERAL_KEYS; do
+  encoded="$(printenv "$key" | base64 | tr -d '\n')"
+  printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
+done`},
+		Env:          env,
+		VolumeMounts: mounts,
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser:                ptr(int64(65532)),
+			RunAsGroup:               ptr(int64(65532)),
+			RunAsNonRoot:             ptr(true),
+			AllowPrivilegeEscalation: ptr(false),
+			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceMemory: resource.MustParse("64Mi"),
+			},
+		},
+	}
+}

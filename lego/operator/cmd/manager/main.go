@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
@@ -198,6 +199,11 @@ func main() {
 	if csErr != nil {
 		setupLog.Info("metrics-server reader unavailable; autoscaling disabled", "reason", csErr)
 	}
+	buildClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		setupLog.Error(err, "Failed to create uncached build client")
+		os.Exit(1)
+	}
 
 	activatorPort := 8888
 	if v := os.Getenv("BEX_ACTIVATOR_PORT"); v != "" {
@@ -219,9 +225,11 @@ func main() {
 	}
 	appReconciler := &controller.AppReconciler{
 		Client:              mgr.GetClient(),
+		BuildClient:         buildClient,
 		Scheme:              mgr.GetScheme(),
 		Mode:                envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
 		Registry:            envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+		KpackRegistry:       os.Getenv("BEX_KPACK_REGISTRY"),
 		CNBBuilder:          envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
 		BuildNamespace:      os.Getenv("BEX_BUILD_NAMESPACE"),
 		Runtime:             bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),

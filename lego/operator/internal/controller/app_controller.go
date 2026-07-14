@@ -70,15 +70,23 @@ const annotLastActive = "app.bex.co/last-active"
 const (
 	ModeOpenSandbox = "opensandbox" // run revisions as OpenSandbox sandboxes (host)
 	ModeKubernetes  = "kubernetes"  // run revisions as k8s Deployments (pods on cluster nodes)
+	runtimeDocker   = "docker"
 )
 
 // AppReconciler reconciles an App: resolve an image (prebuilt or built from git)
 // and run it as a revision on the selected runtime, recording status.
 type AppReconciler struct {
 	client.Client
+	// BuildClient bypasses controller-runtime's shared cache for build-plane
+	// objects. Secrets and ServiceAccounts are authorized only in build/app
+	// namespaces; a cached client would try to establish forbidden cluster-wide
+	// informers before performing a namespaced Get. Tests may leave it nil and
+	// use Client.
+	BuildClient      client.Client
 	Scheme           *runtime.Scheme
 	Mode             string                  // ModeOpenSandbox | ModeKubernetes
 	Registry         string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	KpackRegistry    string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
 	CNBBuilder       string                  // e.g. paketobuildpacks/builder-jammy-base
 	BuildNamespace   string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
 	Runtime          *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
@@ -133,6 +141,8 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=kpack.io,resources=images,verbs=get;list;watch;create;delete
+// +kubebuilder:rbac:groups=kpack.io,resources=builds,verbs=get;list;watch
 
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
@@ -197,11 +207,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
 		// docker daemon on the node.
 		buildNs := r.buildNamespace(app.Namespace)
+		builder := effectiveBuilder(app.Spec)
 
 		// Newest-wins per App (w7/m9): cancel any active build Job for this service
 		// so a push-spam burst never runs more than one build at a time per App,
 		// matching Render's "Render cancels any in-progress build for the same service".
-		if err := build.CancelActiveBuilds(ctx, app.Name, buildNs, r.Client); err != nil {
+		buildClient := r.buildPlaneClient()
+		if err := build.CancelActiveBuilds(ctx, app.Name, buildNs, buildClient); err != nil {
 			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err))
 		}
 
@@ -210,7 +222,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// Byte-identical when MaxConcurrentBuilds == 0 (unset) or workspace absent.
 		if r.MaxConcurrentBuilds > 0 {
 			if workspace := app.Labels[labelWorkspace]; workspace != "" {
-				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, r.Client)
+				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
 				if err != nil {
 					return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err))
 				}
@@ -234,18 +246,29 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err))
 			}
 		}
+		if builder == build.BuilderNative && app.Spec.EnvFromSecret != "" && buildNs != app.Namespace {
+			if err := r.copyCloneSecret(ctx, app.Namespace, buildNs, app.Spec.EnvFromSecret); err != nil {
+				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
+			}
+		}
 		res, err := build.Build(ctx, build.Options{
-			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir, Name: app.Name,
-			Registry: r.Registry, CNBBuilder: r.CNBBuilder,
-			Builder:       app.Spec.Builder,
-			Revision:      fmt.Sprintf("gen-%d", app.Generation),
-			Namespace:     buildNs,
-			Workspace:     app.Labels[labelWorkspace],
-			CloneSecret:   app.Spec.CloneSecret,
-			SignKeySecret: r.TenantSignKeySecret,
-			SignImage:     r.TenantSignImage,
-			PushSecret:    r.RegistryPushSecret,
-			Client:        r.Client,
+			Repo: app.Spec.Repo, Ref: branch, RootDir: app.Spec.RootDir,
+			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name,
+			Registry: r.Registry, KpackRegistry: r.KpackRegistry,
+			Builder:          builder,
+			Runtime:          app.Spec.Runtime,
+			BuildCommand:     app.Spec.BuildCommand,
+			StartCommand:     app.Spec.StartCommand,
+			BuildEnv:         buildEnv(builder, app.Spec.Env),
+			RuntimeEnvSecret: app.Spec.EnvFromSecret,
+			Revision:         fmt.Sprintf("gen-%d", app.Generation),
+			Namespace:        buildNs,
+			Workspace:        app.Labels[labelWorkspace],
+			CloneSecret:      app.Spec.CloneSecret,
+			SignKeySecret:    r.TenantSignKeySecret,
+			SignImage:        r.TenantSignImage,
+			PushSecret:       r.RegistryPushSecret,
+			Client:           buildClient,
 		})
 		if err != nil {
 			return r.fail(ctx, &app, "BuildFailed", err)
@@ -257,6 +280,40 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return r.reconcileKubernetes(ctx, &app, image, port)
 	}
 	return r.reconcileOpenSandbox(ctx, &app, image, port)
+}
+
+// effectiveBuilder keeps the App CR itself Render-compatible: direct CR users
+// may set runtime/build/start without knowing bex's internal builder enum. The
+// API performs the same projection before persistence, while this final mapping
+// makes the mechanism robust for hand-applied Apps and older control planes.
+func effectiveBuilder(spec appv1alpha1.AppSpec) string {
+	switch spec.Runtime {
+	case runtimeDocker:
+		return build.BuilderDockerfile
+	case "elixir", "go", "node", "python", "ruby", "rust":
+		return build.BuilderNative
+	default:
+		return spec.Builder
+	}
+}
+
+// buildEnv selects literal App.spec.env entries for the active source builder.
+// Native builds receive every literal (the OpenBao-backed bulk Secret travels
+// separately as a BuildKit secret); kpack receives only its documented BP_ and
+// BPE_ configuration. SecretKeyRef entries never enter a world-readable Image
+// CR or generated Dockerfile.
+func buildEnv(builder string, env []appv1alpha1.EnvVar) []corev1.EnvVar {
+	out := make([]corev1.EnvVar, 0, len(env))
+	for _, item := range env {
+		if item.ValueFrom != nil {
+			continue
+		}
+		if builder == build.BuilderBuildpack && !strings.HasPrefix(item.Name, "BP_") && !strings.HasPrefix(item.Name, "BPE_") {
+			continue
+		}
+		out = append(out, corev1.EnvVar{Name: item.Name, Value: item.Value})
+	}
+	return out
 }
 
 // resourcesForTier maps an App tier (plan) to a fixed pod allocation, set as
@@ -326,12 +383,13 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 // on every build, so the token stays fresh. Mechanism-only — the operator never
 // reads the token, only copies the bytes.
 func (r *AppReconciler) copyCloneSecret(ctx context.Context, srcNS, dstNS, name string) error {
+	buildClient := r.buildPlaneClient()
 	var src corev1.Secret
-	if err := r.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
+	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
 		return err
 	}
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, dst, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, buildClient, dst, func() error {
 		dst.Type = src.Type
 		dst.Data = src.Data
 		if dst.Labels == nil {
@@ -342,6 +400,15 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, srcNS, dstNS, name 
 		return nil
 	})
 	return err
+}
+
+// buildPlaneClient returns the uncached client used for build-plane resources.
+// Tests and embedders that do not provide one retain the historical client.
+func (r *AppReconciler) buildPlaneClient() client.Client {
+	if r.BuildClient != nil {
+		return r.BuildClient
+	}
+	return r.Client
 }
 
 // lastActiveTime parses the annotLastActive annotation, returning zero if absent or invalid.
@@ -469,6 +536,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			Ports:           ports,
 			Resources:       resourcesForTier(app.Spec.Tier),
 			SecurityContext: tenantSecCtx(),
+		}
+		if app.Spec.Runtime == runtimeDocker && app.Spec.StartCommand != "" {
+			container.Command = []string{"/bin/sh", "-c", app.Spec.StartCommand}
 		}
 		// Health-gating: a non-worker service speaks HTTP, so gate pod
 		// readiness on GET spec.healthCheckPath — Render's health check. A
@@ -1030,8 +1100,12 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		Resources:       resourcesForTier(app.Spec.Tier),
 		SecurityContext: tenantSecCtx(),
 	}
-	if app.Spec.Command != "" {
-		container.Command = []string{"/bin/sh", "-c", app.Spec.Command}
+	command := app.Spec.Command
+	if command == "" && app.Spec.Runtime == runtimeDocker {
+		command = app.Spec.StartCommand
+	}
+	if command != "" {
+		container.Command = []string{"/bin/sh", "-c", command}
 	}
 	spec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,

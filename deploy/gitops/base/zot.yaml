@@ -39,6 +39,8 @@ spec:
         # mounts it at /etc/zot.
         mountConfig: true
         persistence: true
+        # kpack publishes its generated builder as Docker schema 2; Zot's
+        # docker2s2 compatibility mode accepts that manifest format.
         configFiles:
           config.json: |-
             {
@@ -67,6 +69,7 @@ spec:
               "http": {
                 "address": "0.0.0.0",
                 "port": "5000",
+                "compat": ["docker2s2"],
                 "readTimeout": "60s",
                 "writeTimeout": "60s",
                 "auth": { "htpasswd": { "path": "/secret/htpasswd" } },

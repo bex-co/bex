@@ -1582,6 +1582,46 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Subdirectory to build from. Leave blank to use the repo root.",
     description: "Create-wizard root-directory input hint text",
   },
+  "services.createFieldRuntime": {
+    message: "Runtime",
+    description: "Create-wizard Render-compatible runtime selector label",
+  },
+  "services.createFieldBuildCommand": {
+    message: "Build Command",
+    description: "Create-wizard Render-compatible build command label",
+  },
+  "services.createFieldStartCommand": {
+    message: "Start Command",
+    description: "Create-wizard Render-compatible start command label",
+  },
+  "services.createRuntimeNode": {
+    message: "Node",
+    description: "Create-wizard Node runtime option",
+  },
+  "services.createRuntimePython": {
+    message: "Python 3",
+    description: "Create-wizard Python runtime option",
+  },
+  "services.createRuntimeGo": {
+    message: "Go",
+    description: "Create-wizard Go runtime option",
+  },
+  "services.createRuntimeRuby": {
+    message: "Ruby",
+    description: "Create-wizard Ruby runtime option",
+  },
+  "services.createRuntimeRust": {
+    message: "Rust",
+    description: "Create-wizard Rust runtime option",
+  },
+  "services.createRuntimeElixir": {
+    message: "Elixir",
+    description: "Create-wizard Elixir runtime option",
+  },
+  "services.createRuntimeDocker": {
+    message: "Docker",
+    description: "Create-wizard Docker runtime option",
+  },
   "services.createFieldPlan": {
     message: "Instance Type",
     description: "Create-wizard plan-picker section label",
@@ -1689,7 +1729,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the command field",
   },
   "services.createFieldCommandHint": {
-    message: "Overrides the image's default entry point.",
+    message: "The command to run on each scheduled invocation.",
     description: "Hint text under the command field",
   },
   "services.createFieldPublishPath": {

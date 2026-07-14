@@ -124,11 +124,18 @@ type AppSpec struct {
 	// ":<RootDir>" suffix so BuildKit builds only that subdirectory's
 	// Dockerfile, and the git-push auto-deploy webhook only redeploys when the
 	// pushed diff touches paths under it. Empty means the repo root (today's
-	// behavior, unchanged). Dockerfile builder only; ignored for prebuilt
-	// Image apps. Traversal ("..") is rejected at the API boundary (w6/m6 t003).
+	// behavior, unchanged). Ignored for prebuilt Image apps. Traversal ("..")
+	// is rejected at the API boundary (w6/m6 t003).
 	// +optional
 	// +kubebuilder:validation:MaxLength=512
 	RootDir string `json:"rootDir,omitempty"`
+
+	// DockerfilePath is Render's Dockerfile Path setting, relative to RootDir.
+	// Empty uses Dockerfile. It applies only when Runtime is docker (or the
+	// legacy Dockerfile builder).
+	// +optional
+	// +kubebuilder:validation:MaxLength=512
+	DockerfilePath string `json:"dockerfilePath,omitempty"`
 
 	// Branch to track. Defaults to "main". A git ref (no shell metacharacters,
 	// no leading dash) — enforced at the CRD schema (w6/m6 t003).
@@ -160,10 +167,33 @@ type AppSpec struct {
 	// +optional
 	ExternalRegistryPullSecret string `json:"externalRegistryPullSecret,omitempty"`
 
-	// Builder selects how the image is built:
-	// "auto" (Dockerfile if present, else Cloud Native Buildpacks), "buildpack", or "dockerfile".
+	// Runtime is Render's source-build runtime. Native language values use the
+	// command-preserving native builder; docker uses the repository Dockerfile.
+	// Empty retains the legacy Builder behavior for hand-applied Apps.
 	// +optional
-	// +kubebuilder:validation:Enum=auto;buildpack;dockerfile
+	// +kubebuilder:validation:Enum=docker;elixir;go;image;node;python;ruby;rust
+	Runtime string `json:"runtime,omitempty"`
+
+	// BuildCommand is Render's native-runtime build command. It is required by
+	// the API when Runtime is a language and ignored for Dockerfile/buildpack
+	// builds. The command runs from RootDir in the generated native build image.
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	BuildCommand string `json:"buildCommand,omitempty"`
+
+	// StartCommand is Render's runtime launch command. For a native runtime it
+	// becomes the generated image's CMD; for docker it is dockerCommand and
+	// overrides the image command on Deployments/CronJobs when non-empty.
+	// +optional
+	// +kubebuilder:validation:MaxLength=4096
+	StartCommand string `json:"startCommand,omitempty"`
+
+	// Builder is bex's internal/extension build strategy. "auto" preserves the
+	// historical Dockerfile path; Render-facing runtime inputs are translated to
+	// "native" or "dockerfile" before they reach the operator. "buildpack" is an
+	// explicit Paketo extension for zero-command source builds.
+	// +optional
+	// +kubebuilder:validation:Enum=auto;buildpack;dockerfile;native
 	// +kubebuilder:default=auto
 	Builder string `json:"builder,omitempty"`
 

@@ -160,10 +160,10 @@ func TestMCP_CreateDuplicateNameErrors(t *testing.T) {
 	cs := mcpSessionAs(t, srv, "client-1")
 
 	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "web", "image": "nginx"})
+		map[string]any{"name": "web", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""})
 
 	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "create_web_service", Arguments: map[string]any{"name": "web", "image": "nginx"},
+		Name: "create_web_service", Arguments: map[string]any{"name": "web", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""},
 	})
 	if err != nil {
 		t.Fatalf("create_web_service duplicate: transport error %v", err)
@@ -209,7 +209,7 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 	// With no selection, a create lands in the caller's DEFAULT workspace (the
 	// oldest membership — `first`).
 	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "before", "image": "nginx"})
+		map[string]any{"name": "before", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""})
 	if got := appTenant(t, cl, "before"); got != first.ID {
 		t.Errorf("unselected create landed in %q, want the default workspace %q", got, first.ID)
 	}
@@ -220,7 +220,7 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 	}](t, cs, "select_workspace", map[string]any{"ownerID": second.ID})
 
 	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "after", "image": "nginx"})
+		map[string]any{"name": "after", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": ""})
 	if got := appTenant(t, cl, "after"); got != second.ID {
 		t.Errorf("create after select_workspace landed in %q, want the SELECTED workspace %q", got, second.ID)
 	}
@@ -228,14 +228,14 @@ func TestMCP_CreateLandsInTheSelectedWorkspace(t *testing.T) {
 	// An explicit ownerId still wins over the session selection (the same
 	// precedence list_services uses).
 	callTool[struct{ ID string }](t, cs, "create_web_service",
-		map[string]any{"name": "explicit", "image": "nginx", "ownerId": first.ID})
+		map[string]any{"name": "explicit", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "ownerId": first.ID})
 	if got := appTenant(t, cl, "explicit"); got != first.ID {
 		t.Errorf("explicit ownerId landed in %q, want %q — an argument must beat the session selection", got, first.ID)
 	}
 
 	// A workspace client-1 is not a member of: tool error, nothing created.
 	callToolError(t, cs, "create_web_service",
-		map[string]any{"name": "stranger", "image": "nginx", "ownerId": "tea-not-mine"})
+		map[string]any{"name": "stranger", "image": "nginx", "runtime": "image", "buildCommand": "", "startCommand": "", "ownerId": "tea-not-mine"})
 	var a appv1alpha1.App
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "stranger"}, &a); err == nil {
 		t.Errorf("a create into a non-member workspace wrote an App (%q) — it must be refused", a.Labels[core.LabelTenant])

@@ -84,6 +84,9 @@ mutation CreateService(
   $image: String
   $branch: String
   $rootDir: String
+  $runtime: String
+  $buildCommand: String
+  $startCommand: String
   $plan: String
   $autoDeploy: Boolean
   $schedule: String
@@ -99,6 +102,9 @@ mutation CreateService(
     image: $image
     branch: $branch
     rootDir: $rootDir
+    runtime: $runtime
+    buildCommand: $buildCommand
+    startCommand: $startCommand
     plan: $plan
     autoDeploy: $autoDeploy
     schedule: $schedule

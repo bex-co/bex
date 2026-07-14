@@ -111,15 +111,25 @@ spec:
                 maxLength: 255
                 pattern: ^[A-Za-z0-9][A-Za-z0-9._/@+-]*$
                 type: string
+              buildCommand:
+                description: |-
+                  BuildCommand is Render's native-runtime build command. It is required by
+                  the API when Runtime is a language and ignored for Dockerfile/buildpack
+                  builds. The command runs from RootDir in the generated native build image.
+                maxLength: 4096
+                type: string
               builder:
                 default: auto
                 description: |-
-                  Builder selects how the image is built:
-                  "auto" (Dockerfile if present, else Cloud Native Buildpacks), "buildpack", or "dockerfile".
+                  Builder is bex's internal/extension build strategy. "auto" preserves the
+                  historical Dockerfile path; Render-facing runtime inputs are translated to
+                  "native" or "dockerfile" before they reach the operator. "buildpack" is an
+                  explicit Paketo extension for zero-command source builds.
                 enum:
                 - auto
                 - buildpack
                 - dockerfile
+                - native
                 type: string
               cloneSecret:
                 description: |-
@@ -145,6 +155,13 @@ spec:
                   changing this field relabels the service without changing its Kubernetes
                   identity, platform hostname, or derived resource names. Empty falls back
                   to Name in human-facing clients so existing Apps remain unchanged.
+                type: string
+              dockerfilePath:
+                description: |-
+                  DockerfilePath is Render's Dockerfile Path setting, relative to RootDir.
+                  Empty uses Dockerfile. It applies only when Runtime is docker (or the
+                  legacy Dockerfile builder).
+                maxLength: 512
                 type: string
               env:
                 description: |-
@@ -363,8 +380,8 @@ spec:
                   ":<RootDir>" suffix so BuildKit builds only that subdirectory's
                   Dockerfile, and the git-push auto-deploy webhook only redeploys when the
                   pushed diff touches paths under it. Empty means the repo root (today's
-                  behavior, unchanged). Dockerfile builder only; ignored for prebuilt
-                  Image apps. Traversal ("..") is rejected at the API boundary (w6/m6 t003).
+                  behavior, unchanged). Ignored for prebuilt Image apps. Traversal ("..")
+                  is rejected at the API boundary (w6/m6 t003).
                 maxLength: 512
                 type: string
               routes:
@@ -408,10 +425,32 @@ spec:
                   cron's template. Empty = never requested; re-setting the same value is a
                   no-op. Ignored for non-cron types. See docs/ADR006-bex-api.md (cron run trigger).
                 type: string
+              runtime:
+                description: |-
+                  Runtime is Render's source-build runtime. Native language values use the
+                  command-preserving native builder; docker uses the repository Dockerfile.
+                  Empty retains the legacy Builder behavior for hand-applied Apps.
+                enum:
+                - docker
+                - elixir
+                - go
+                - image
+                - node
+                - python
+                - ruby
+                - rust
+                type: string
               schedule:
                 description: |-
                   Schedule is the cron expression (standard 5-field crontab) a cron_job runs
                   on. Required when Type is cron_job; ignored for every other type.
+                type: string
+              startCommand:
+                description: |-
+                  StartCommand is Render's runtime launch command. For a native runtime it
+                  becomes the generated image's CMD; for docker it is dockerCommand and
+                  overrides the image command on Deployments/CronJobs when non-empty.
+                maxLength: 4096
                 type: string
               subdomain:
                 description: |-

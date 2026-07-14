@@ -210,7 +210,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ownerId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
-		"rootDir": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
+		"rootDir":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
+		"runtime":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Runtime })},
+		"buildCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.BuildCommand })},
+		"startCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.StartCommand })},
+		"builder":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Builder })},
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
 		"branch":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
@@ -418,9 +422,9 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.ID })},
 		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Name })},
 		"repo":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Repo })},
-		"branch":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
-		"manifest": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Manifest })},
-		"status":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
+		"branch":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
+		"manifest":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Manifest })},
+		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
 		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.CreatedAt })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.UpdatedAt })},
 	},
@@ -581,18 +585,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// twin of the services list filter above, and the same optional
 				// contract REST's create body has: omitted => the caller's default
 				// workspace; a workspace they don't belong to => forbidden.
-				"ownerId":    &graphql.ArgumentConfig{Type: graphql.String},
-				"type":       &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
-				"schedule":   &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
-				"command":    &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
-				"repo":       &graphql.ArgumentConfig{Type: graphql.String},
-				"image":      &graphql.ArgumentConfig{Type: graphql.String},
-				"branch":     &graphql.ArgumentConfig{Type: graphql.String},
-				"rootDir":    &graphql.ArgumentConfig{Type: graphql.String}, // subdirectory of repo to build from (monorepo support)
-				"plan":       &graphql.ArgumentConfig{Type: graphql.String},
-				"autoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"port":       &graphql.ArgumentConfig{Type: graphql.Int},
-				"replicas":   &graphql.ArgumentConfig{Type: graphql.Int},
+				"ownerId":      &graphql.ArgumentConfig{Type: graphql.String},
+				"type":         &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
+				"schedule":     &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
+				"command":      &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
+				"repo":         &graphql.ArgumentConfig{Type: graphql.String},
+				"image":        &graphql.ArgumentConfig{Type: graphql.String},
+				"branch":       &graphql.ArgumentConfig{Type: graphql.String},
+				"rootDir":      &graphql.ArgumentConfig{Type: graphql.String}, // subdirectory of repo to build from (monorepo support)
+				"runtime":      &graphql.ArgumentConfig{Type: graphql.String}, // Render runtime: native language | docker | image
+				"buildCommand": &graphql.ArgumentConfig{Type: graphql.String},
+				"startCommand": &graphql.ArgumentConfig{Type: graphql.String},
+				"builder":      &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
+				"plan":         &graphql.ArgumentConfig{Type: graphql.String},
+				"autoDeploy":   &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"port":         &graphql.ArgumentConfig{Type: graphql.Int},
+				"replicas":     &graphql.ArgumentConfig{Type: graphql.Int},
 				// envVars sets literal (non-secret) environment variables at create time
 				// (Render parity, w5/m19): REST/MCP parity — those surfaces accepted
 				// envVars at create since w2/m2; GraphQL now reaches the same shape.
@@ -619,6 +627,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Image:           gqlStr(p.Args, "image"),
 					Branch:          gqlStr(p.Args, "branch"),
 					RootDir:         gqlStr(p.Args, "rootDir"),
+					Runtime:         gqlStr(p.Args, "runtime"),
+					BuildCommand:    gqlStr(p.Args, "buildCommand"),
+					StartCommand:    gqlStr(p.Args, "startCommand"),
+					Builder:         gqlStr(p.Args, "builder"),
 					Plan:            gqlStr(p.Args, "plan"),
 					AutoDeploy:      gqlBoolPtr(p.Args, "autoDeploy"),
 					Port:            int32(gqlInt(p.Args, "port")),

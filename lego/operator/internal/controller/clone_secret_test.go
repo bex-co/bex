@@ -36,15 +36,16 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 		Type:       corev1.SecretTypeOpaque,
 		Data:       map[string][]byte{"token": []byte("ghs_abc")},
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-	r := &AppReconciler{Client: cl}
+	cachedClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
+	r := &AppReconciler{Client: cachedClient, BuildClient: buildClient}
 
 	// Copy default/web-clone -> bex-system/web-clone (the build namespace).
 	if err := r.copyCloneSecret(context.Background(), "default", "bex-system", "web-clone"); err != nil {
 		t.Fatalf("copy: %v", err)
 	}
 	var dst corev1.Secret
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst); err != nil {
+	if err := buildClient.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst); err != nil {
 		t.Fatalf("dst not created: %v", err)
 	}
 	if string(dst.Data["token"]) != "ghs_abc" {
@@ -56,13 +57,13 @@ func TestCopyCloneSecretAcrossNamespaces(t *testing.T) {
 
 	// Idempotent + refreshes: change the source, copy again, dst updates.
 	src.Data["token"] = []byte("ghs_fresh")
-	if err := cl.Update(context.Background(), src); err != nil {
+	if err := buildClient.Update(context.Background(), src); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.copyCloneSecret(context.Background(), "default", "bex-system", "web-clone"); err != nil {
 		t.Fatal(err)
 	}
-	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst)
+	_ = buildClient.Get(context.Background(), client.ObjectKey{Namespace: "bex-system", Name: "web-clone"}, &dst)
 	if string(dst.Data["token"]) != "ghs_fresh" {
 		t.Errorf("refresh failed: token = %q, want ghs_fresh", dst.Data["token"])
 	}

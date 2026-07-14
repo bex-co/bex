@@ -1,0 +1,107 @@
+# A two-label *.local Service name makes go-containerregistry (and therefore
+# upstream kpack) use HTTP for the existing development Zot endpoint. It is an
+# alias of the same Service, not another registry. Kubernetes' DNS search path
+# expands zot.local to zot.local.svc.cluster.local.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zot
+  namespace: local
+spec:
+  type: ExternalName
+  externalName: zot.bex-registry.svc.cluster.local
+  ports:
+    - name: registry
+      port: 5000
+      targetPort: 5000
+---
+# One source of truth for the complete builder image kpack imports and the tag
+# of the ClusterBuilder it composes. The operator's checked-in
+# BEX_CNB_BUILDER/BEX_KPACK_REGISTRY values intentionally match these values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bex-kpack-config
+  namespace: bex-system
+data:
+  cnbBuilder: paketobuildpacks/builder-jammy-base
+  clusterBuilderTag: zot.local:5000/bex-cnb-builder:latest
+---
+# The out-of-band registry bootstrap creates bex-registry-push-kpack as a
+# dockerconfigjson Secret. kpack watches this ServiceAccount and recovers if the
+# Secret arrives after the GitOps resources.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bex-kpack-builder
+  namespace: bex-system
+secrets:
+  - name: bex-registry-push-kpack
+imagePullSecrets:
+  - name: bex-registry-push-kpack
+---
+apiVersion: kpack.io/v1alpha2
+kind: ClusterStore
+metadata:
+  name: bex
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceAccountRef:
+    name: bex-kpack-builder
+    namespace: bex-system
+  # Replaced from bex-kpack-config by kustomize.
+  sources:
+    - image: paketobuildpacks/builder-jammy-base
+---
+apiVersion: kpack.io/v1alpha2
+kind: ClusterStack
+metadata:
+  name: bex-jammy-base
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  id: io.buildpacks.stacks.jammy
+  buildImage:
+    image: paketobuildpacks/build-jammy-base
+  runImage:
+    image: paketobuildpacks/run-jammy-base
+---
+# kpack v0.17 no longer accepts a complete builder image directly on Image.
+# Instead, ClusterStore imports its buildpackages and this ClusterBuilder
+# recreates the complete Paketo detection order against the matching Jammy
+# stack. Versions are intentionally omitted so a deliberate cnbBuilder update
+# selects the newest matching versions found in that imported image.
+apiVersion: kpack.io/v1alpha2
+kind: ClusterBuilder
+metadata:
+  name: bex
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # Replaced from bex-kpack-config by kustomize.
+  tag: zot.local:5000/bex-cnb-builder:latest
+  serviceAccountRef:
+    name: bex-kpack-builder
+    namespace: bex-system
+  stack:
+    name: bex-jammy-base
+    kind: ClusterStack
+  store:
+    name: bex
+    kind: ClusterStore
+  order:
+    - group: [{ id: paketo-buildpacks/ruby }]
+    - group: [{ id: paketo-buildpacks/dotnet-core }]
+    - group: [{ id: paketo-buildpacks/go }]
+    - group: [{ id: paketo-buildpacks/java-native-image }]
+    - group: [{ id: paketo-buildpacks/java }]
+    - group: [{ id: paketo-buildpacks/web-servers }]
+    - group: [{ id: paketo-buildpacks/nodejs }]
+    - group: [{ id: paketo-buildpacks/python }]
+    - group: [{ id: paketo-buildpacks/procfile }]

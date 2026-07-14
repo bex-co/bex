@@ -29,6 +29,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -103,6 +105,29 @@ func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 	err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: buildJobName("web", 3)}, &gone)
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("build job after cancel: want deleted (NotFound), got %v", err)
+	}
+}
+
+func TestCancelDeletesInFlightKpackImage(t *testing.T) {
+	ds := newFakeStore()
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3)
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Repo = "https://example.invalid/acme/web.git"
+	image := &unstructured.Unstructured{}
+	image.SetGroupVersionKind(schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"})
+	image.SetName(buildJobName("web", 3))
+	image.SetNamespace("default")
+	svc, cl := newService(ds, app, image)
+
+	if _, err := svc.Cancel(context.Background(), "web", first.ID); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	gone := &unstructured.Unstructured{}
+	gone.SetGroupVersionKind(image.GroupVersionKind())
+	err := cl.Get(context.Background(), client.ObjectKeyFromObject(image), gone)
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("kpack Image after cancel: want deleted (NotFound), got %v", err)
 	}
 }
 

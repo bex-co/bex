@@ -85,6 +85,16 @@ spec:
           # bex-registry namespace on http:5000 (local/dev); front with TLS on prod.
           - name: BEX_REGISTRY
             value: zot.bex-registry.svc:5000
+          # kpack's upstream registry client recognizes *.local as a plain-HTTP
+          # development registry. deploy/gitops/charts/kpack provides zot.local
+          # as a DNS alias of the SAME Zot Service; external/TLS registries leave
+          # this unset and kpack uses BEX_REGISTRY directly.
+          - name: BEX_KPACK_REGISTRY
+            value: zot.local:5000
+          # The kpack ClusterStore imports this complete Paketo builder image;
+          # keep the value aligned with deploy/gitops/charts/kpack/platform.yaml.
+          - name: BEX_CNB_BUILDER
+            value: paketobuildpacks/builder-jammy-base
           # Registry auth (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
           # control): Zot denies anonymous catalog/pull/push. These name docker-config
           # Secrets (minted out-of-band by scripts/registry-secrets.sh) — the build Job
@@ -95,7 +105,8 @@ spec:
             value: bex-registry-push
           - name: BEX_REGISTRY_PULL_SECRET
             value: bex-registry-pull
-          # Namespace the build Jobs run in; empty => the App's own namespace.
+          # Namespace the BuildKit Jobs / kpack Images run in; empty => the
+          # App's own namespace.
           - name: BEX_BUILD_NAMESPACE
             value: bex-system
           # cert-manager ClusterIssuer for App Ingresses. Start on staging; flip to

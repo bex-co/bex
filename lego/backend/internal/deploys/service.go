@@ -35,6 +35,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -273,6 +275,18 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 		job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: buildJobName(a.Name, d.Generation), Namespace: buildNS}}
 		if err := s.Client.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
 			return DeployView{}, fmt.Errorf("cancel build job: %w", err)
+		}
+		// A buildpack deploy is represented by a kpack Image with the same
+		// deterministic name as the legacy BuildKit Job. Delete both shapes:
+		// builder=auto may resolve either way and cancellation must not race that
+		// resolution. Unstructured keeps the backend independent of operator/kpack
+		// implementation modules.
+		image := &unstructured.Unstructured{}
+		image.SetGroupVersionKind(schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"})
+		image.SetName(buildJobName(a.Name, d.Generation))
+		image.SetNamespace(buildNS)
+		if err := s.Client.Delete(ctx, image, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+			return DeployView{}, fmt.Errorf("cancel kpack image: %w", err)
 		}
 	}
 	won, err := s.Store.CloseDeploy(ctx, deployID, store.DeployCanceled, "")

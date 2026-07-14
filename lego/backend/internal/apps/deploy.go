@@ -116,6 +116,8 @@ type bexService struct {
 	ImagePath         string      `json:"imagePath"`       // bex alias: bare prebuilt image
 	Builder           string      `json:"builder"`         // bex builder (auto|buildpack|dockerfile)
 	RootDir           string      `json:"rootDir"`
+	BuildCommand      string      `json:"buildCommand"`
+	StartCommand      string      `json:"startCommand"`
 	NumInstances      int32       `json:"numInstances"` // render.yaml; alias for replicas
 	Replicas          int32       `json:"replicas"`     // bex alias
 	Port              int32       `json:"port"`         // bex (Render infers PORT env)
@@ -444,6 +446,10 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, []bexEnvVar, 
 	if publish == "" {
 		publish = a.PublishPath
 	}
+	runtime := a.Runtime
+	if strings.EqualFold(runtime, "static") {
+		runtime = "" // static is represented by the service type, not an App runtime
+	}
 
 	autoDeploy := a.AutoDeploy
 	if a.AutoDeployTrigger != "" {
@@ -477,6 +483,9 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, []bexEnvVar, 
 		Image:           image,
 		Branch:          branch,
 		Builder:         a.Builder,
+		Runtime:         runtime,
+		BuildCommand:    a.BuildCommand,
+		StartCommand:    a.StartCommand,
 		RootDir:         a.RootDir,
 		Port:            a.Port,
 		Replicas:        replicas,

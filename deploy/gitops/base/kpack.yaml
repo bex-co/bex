@@ -1,0 +1,25 @@
+# kpack — Kubernetes-native Cloud Native Buildpack builds. The exact upstream
+# v0.17.2 controller/CRDs and bex's ClusterBuilder are vendored so Argo applies a
+# reproducible artifact rather than following a moving remote URL.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kpack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/kpack
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kpack
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

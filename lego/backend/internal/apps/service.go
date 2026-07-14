@@ -151,13 +151,21 @@ type AppView struct {
 	DisplayName string `json:"displayName"`
 	// Type is the Render serviceType (web_service | private_service |
 	// background_worker | cron_job); empty spec.type projects as web_service.
-	Type      string   `json:"type"`
-	Phase     string   `json:"phase"`
-	URL       string   `json:"url"`
-	URLs      []string `json:"urls"`
-	Image     string   `json:"image"`
-	Replicas  int32    `json:"replicas"`
-	Suspended bool     `json:"suspended"`
+	Type  string   `json:"type"`
+	Phase string   `json:"phase"`
+	URL   string   `json:"url"`
+	URLs  []string `json:"urls"`
+	Image string   `json:"image"`
+	// Runtime/build/start mirror Render's native source-build contract.
+	Runtime      string `json:"runtime,omitempty"`
+	BuildCommand string `json:"buildCommand,omitempty"`
+	StartCommand string `json:"startCommand,omitempty"`
+	// Builder selects the internal repo build strategy (auto | buildpack |
+	// dockerfile | native). Render-facing clients normally use Runtime instead.
+	// Empty only occurs on legacy Apps created before the CRD default existed.
+	Builder   string `json:"builder,omitempty"`
+	Replicas  int32  `json:"replicas"`
+	Suspended bool   `json:"suspended"`
 	// Schedule is the cron expression for a cron_job (spec.schedule), empty otherwise.
 	Schedule string `json:"schedule,omitempty"`
 	// Command overrides a cron_job's default entrypoint (spec.command), empty
@@ -185,7 +193,8 @@ type AppView struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	// RootDir is the subdirectory of the repo this App builds from (Render's
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
-	RootDir string `json:"rootDir,omitempty"`
+	RootDir        string `json:"rootDir,omitempty"`
+	DockerfilePath string `json:"dockerfilePath,omitempty"`
 	// Repo and Branch are the build-from-git source (spec.repo/spec.branch),
 	// empty for an image-backed App. The dashboard's Settings → Build & Deploy
 	// section reads all three; only RootDir is editable after create
@@ -281,6 +290,10 @@ func view(a *appv1alpha1.App) AppView {
 		URL:             a.Status.URL,
 		URLs:            a.Status.URLs,
 		Image:           a.Status.Image,
+		Runtime:         a.Spec.Runtime,
+		BuildCommand:    a.Spec.BuildCommand,
+		StartCommand:    a.Spec.StartCommand,
+		Builder:         a.Spec.Builder,
 		Replicas:        a.Spec.Replicas,
 		Suspended:       a.Spec.Suspended,
 		Schedule:        a.Spec.Schedule,
@@ -292,6 +305,7 @@ func view(a *appv1alpha1.App) AppView {
 		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
 		OwnerID:         a.Labels[core.LabelTenant],
 		RootDir:         a.Spec.RootDir,
+		DockerfilePath:  a.Spec.DockerfilePath,
 		Repo:            a.Spec.Repo,
 		Branch:          a.Spec.Branch,
 		Autoscaling:     asView,
@@ -435,14 +449,18 @@ type CreateRequest struct {
 	Schedule string
 	// Command overrides a cron_job's default entrypoint (spec.command); empty
 	// runs the image's own command. Ignored for every other type.
-	Command string
-	Repo    string
-	Image   string
-	Branch  string
-	Builder string
+	Command      string
+	Repo         string
+	Image        string
+	Branch       string
+	Builder      string
+	Runtime      string
+	BuildCommand string
+	StartCommand string
 	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root
 	// Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir         string
+	DockerfilePath  string
 	Port            int32
 	Replicas        int32
 	Plan            string
@@ -824,6 +842,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
 	}
+	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	}
 	svcType, err := normalizeType(req.Type)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -872,6 +893,34 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if branch == "" && req.Repo != "" {
 		branch = "main"
 	}
+	builder := req.Builder
+	runtime := strings.ToLower(strings.TrimSpace(req.Runtime))
+	if runtime != "" && builder != "" && builder != "auto" {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: runtime and builder cannot both select a build strategy", core.ErrBadRequest)
+	}
+	switch runtime {
+	case "":
+		if builder != "" && builder != "auto" && builder != "buildpack" && builder != "dockerfile" {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: builder must be auto, buildpack, or dockerfile", core.ErrBadRequest)
+		}
+	case "docker":
+		builder = "dockerfile"
+	case "image":
+		if req.Image == "" || req.Repo != "" {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: runtime image requires image and no repo", core.ErrBadRequest)
+		}
+		builder = "auto"
+	case "elixir", "go", "node", "python", "ruby", "rust":
+		if req.Repo == "" {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
+		}
+		if strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == "" {
+			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires buildCommand and startCommand", core.ErrBadRequest, runtime)
+		}
+		builder = "native"
+	default:
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
+	}
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).
 	// An explicit request value wins.
@@ -884,8 +933,12 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Repo:            req.Repo,
 		Image:           req.Image,
 		Branch:          branch,
-		Builder:         req.Builder,
+		Runtime:         runtime,
+		BuildCommand:    req.BuildCommand,
+		StartCommand:    req.StartCommand,
+		Builder:         builder,
 		RootDir:         req.RootDir,
+		DockerfilePath:  req.DockerfilePath,
 		Port:            port,
 		Replicas:        replicas,
 		Tier:            tier,
@@ -940,8 +993,12 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Repo = want.Repo
 	dst.Image = want.Image
 	dst.Branch = want.Branch
+	dst.Runtime = want.Runtime
+	dst.BuildCommand = want.BuildCommand
+	dst.StartCommand = want.StartCommand
 	dst.Builder = want.Builder
 	dst.RootDir = want.RootDir
+	dst.DockerfilePath = want.DockerfilePath
 	dst.Port = want.Port
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier

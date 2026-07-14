@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - sealed-secrets.yaml          # encrypt infra creds at rest -> committable SealedSecrets (docs/ADR016-sealed-secrets.md)
   - zot.yaml                     # OCI registry (build -> registry -> deploy)
+  - kpack.yaml                   # CNB build controller + Paketo ClusterBuilder (spec.builder=buildpack)
   - opensandbox-controller.yaml  # OpenSandbox BatchSandbox/Pool/SandboxSnapshot CRDs + controller
   - bex.yaml                     # the bex control plane (operator + gateway)
   - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/ADR012-auth.md §5)

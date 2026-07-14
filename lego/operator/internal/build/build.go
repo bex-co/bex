@@ -16,16 +16,11 @@ limitations under the License.
 
 // Package build is the bex build plane: turn a git repo @ ref into an OCI image
 // pushed to the in-cluster registry (Zot), built ENTIRELY IN-CLUSTER by a
-// Kubernetes Job — no docker daemon, no host tools, so it works on containerd
-// app nodes (w1/m5). The Job runs rootless BuildKit, which fetches the git
-// context itself (the dockerfile frontend's built-in git support) and pushes the
-// result. The operator only dispatches the Job and waits for it; the heavy
-// lifting happens on the cluster.
-//
-// Dockerfile builds (spec.builder auto|dockerfile) are supported here. Cloud
-// Native Buildpacks (spec.builder buildpack) need a k8s-native builder (kpack) —
-// not yet deployed — so they report a clear error rather than silently shelling
-// out to `pack` (impossible on containerd). See docs/ADR004-deployment.md.
+// Kubernetes workload — no docker daemon and no host tools, so it works on
+// containerd app nodes (w1/m5, w6/m22). Dockerfile builds use a rootless
+// BuildKit Job; Cloud Native Buildpack builds use a kpack Image CR. In both
+// cases the operator only dispatches the workload and observes it while the
+// heavy lifting stays inside the cluster. See docs/ADR004-deployment.md.
 package build
 
 import (
@@ -47,6 +42,8 @@ const (
 	BuilderAuto       = "auto"
 	BuilderDockerfile = "dockerfile"
 	BuilderBuildpack  = "buildpack"
+	BuilderNative     = "native"
+	defaultRevision   = "latest"
 )
 
 // defaultBuildkitImage is the rootless BuildKit image the build Job runs. Rootless
@@ -89,15 +86,29 @@ func mountRegistryCred(c *corev1.Container, secret string) {
 
 // Options configures a single in-cluster build.
 type Options struct {
-	Repo       string // git URL to clone (BuildKit fetches it)
-	Ref        string // branch or commit; defaults to the repo's default branch
-	RootDir    string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
-	Name       string // image repo name (the service name)
-	Registry   string // in-cluster registry host, e.g. zot.bex-registry.svc:5000
-	Revision   string // image tag, operator-supplied (e.g. "gen-7") — deterministic per revision
-	Builder    string // auto | dockerfile | buildpack (App.spec.builder)
-	CNBBuilder string // CNB builder image (buildpack strategy; not yet in-cluster)
-	Namespace  string // namespace the build Job runs in
+	Repo           string // git URL to clone (BuildKit fetches it)
+	Ref            string // branch or commit; defaults to the repo's default branch
+	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
+	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
+	Name           string // image repo name (the service name)
+	Registry       string // in-cluster registry host, e.g. zot.bex-registry.svc:5000
+	// KpackRegistry is an optional alias for Registry used only by kpack. Kpack's
+	// upstream registry client deliberately treats *.local names as plain HTTP,
+	// which lets the GitOps-provided zot.local alias reach the same development
+	// Zot Service without disabling TLS for arbitrary registries. Empty uses
+	// Registry (the normal production/TLS path).
+	KpackRegistry string
+	Revision      string // image tag, operator-supplied (e.g. "gen-7") — deterministic per revision
+	Builder       string // auto | dockerfile | buildpack | native (App.spec.builder)
+	Runtime       string // Render native runtime: node | python | ruby | go | rust | elixir
+	BuildCommand  string // Render native build command (BuilderNative only)
+	StartCommand  string // Render native start command (BuilderNative only)
+	// BuildEnv carries selected literal build-time environment. Kpack receives
+	// BP_*/BPE_* entries in Image.spec.build.env; native builds encode all
+	// literals into a BuildKit secret alongside RuntimeEnvSecret.
+	BuildEnv         []corev1.EnvVar
+	RuntimeEnvSecret string // optional Secret whose keys also enter a native build
+	Namespace        string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
 	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).
@@ -146,22 +157,41 @@ type Result struct {
 func (o Options) ImageRef() string {
 	rev := o.Revision
 	if rev == "" {
-		rev = "latest"
+		rev = defaultRevision
 	}
 	return fmt.Sprintf("%s/%s:%s", o.Registry, o.Name, rev)
 }
 
-// Build dispatches an in-cluster BuildKit Job that fetches Repo@Ref, builds its
-// Dockerfile, and pushes <registry>/<name>:<revision> to the registry; it blocks
-// until the Job succeeds (returning the image ref) or fails. Re-invocation for
-// the same revision is idempotent: the Job is named per revision, so a retry
-// adopts the existing Job instead of starting a second build.
+// KpackImageRef is the deterministic tag a buildpack build pushes. It normally
+// equals ImageRef; the separate registry alias exists for the in-cluster HTTP
+// Zot endpoint described on Options.KpackRegistry.
+func (o Options) KpackImageRef() string {
+	registry := o.KpackRegistry
+	if registry == "" {
+		registry = o.Registry
+	}
+	rev := o.Revision
+	if rev == "" {
+		rev = defaultRevision
+	}
+	return fmt.Sprintf("%s/%s:%s", registry, o.Name, rev)
+}
+
+// Build dispatches the selected in-cluster builder and blocks until it returns
+// an immutable image reference or a useful failure. Re-invocation for one App
+// generation is idempotent because both mechanisms use the same deterministic
+// build name and adopt an existing Job/Image.
 func Build(ctx context.Context, o Options) (Result, error) {
 	if o.Client == nil {
 		return Result{}, fmt.Errorf("build: nil client (in-cluster builds require a cluster client)")
 	}
 	if o.Builder == BuilderBuildpack {
-		return Result{}, fmt.Errorf("build: buildpack (CNB) builds are not yet supported in-cluster — add a Dockerfile or wait for kpack (w1/m5 follow-up)")
+		return buildpack(ctx, o)
+	}
+	if o.Builder == BuilderNative {
+		if err := validateNativeOptions(o); err != nil {
+			return Result{}, err
+		}
 	}
 
 	image := o.ImageRef()
@@ -220,6 +250,15 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		"--opt", "context=" + ctxArg,
 		"--output", "type=image,name=" + image + ",push=true,registry.insecure=true",
 	}
+	if o.Builder == BuilderNative {
+		args = append(args,
+			"--local", "dockerfile=/native",
+			"--opt", "filename=Dockerfile",
+			"--secret", "id=render-env,src=/native/render-env",
+		)
+	} else if o.DockerfilePath != "" {
+		args = append(args, "--opt", "filename="+o.DockerfilePath)
+	}
 
 	// Rootless buildkitd needs a writable state dir under the unprivileged
 	// user's home.
@@ -256,6 +295,18 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PushSecret}},
 		})
 	}
+	if o.Builder == BuilderNative {
+		volumes = append(volumes, corev1.Volume{
+			Name:         "native-build",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		})
+		if o.RuntimeEnvSecret != "" {
+			volumes = append(volumes, corev1.Volume{
+				Name:         "runtime-env",
+				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.RuntimeEnvSecret}},
+			})
+		}
+	}
 
 	// buildkit container (rootless BuildKit builds + pushes the image).
 	buildkit := corev1.Container{
@@ -286,11 +337,18 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			},
 		},
 	}
+	if o.Builder == BuilderNative {
+		buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: "native-build", MountPath: "/native"})
+	}
 	mountRegistryCred(&buildkit, o.PushSecret) // w7/m8: docker-config for the push
 
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{buildkit},
+	}
+	if o.Builder == BuilderNative {
+		podSpec.InitContainers = []corev1.Container{nativeBuildPreparer(o)}
+		podSpec.SecurityContext = &corev1.PodSecurityContext{FSGroup: ptr(int64(65532))}
 	}
 	annotations := map[string]string{
 		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
@@ -331,7 +389,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			},
 		}
 		mountRegistryCred(&sign, o.PushSecret) // w7/m8: cosign's signature push authenticates too
-		podSpec.InitContainers = []corev1.Container{buildkit}
+		podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 		podSpec.Containers = []corev1.Container{sign}
 		volumes = append(volumes, corev1.Volume{
 			Name:         "cosign-key",
@@ -402,7 +460,7 @@ func gitContext(repo, ref, rootDir string) string {
 func JobName(name, revision string) string {
 	rev := revision
 	if rev == "" {
-		rev = "latest"
+		rev = defaultRevision
 	}
 	n := "bld-" + name + "-" + rev
 	if len(n) > 63 {
@@ -456,6 +514,9 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 			return fmt.Errorf("cancel build %s: %w", j.Name, err)
 		}
 	}
+	if err := cancelActiveKpackImages(ctx, name, namespace, cl); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -482,7 +543,11 @@ func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl 
 			active++
 		}
 	}
-	return active, nil
+	kpackActive, err := activeWorkspaceKpackImages(ctx, workspace, namespace, cl)
+	if err != nil {
+		return 0, err
+	}
+	return active + kpackActive, nil
 }
 
 func ptr[T any](v T) *T { return &v }

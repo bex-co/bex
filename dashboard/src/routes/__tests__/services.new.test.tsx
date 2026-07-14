@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -11,6 +11,15 @@ import {
 import { NewServicePage } from "../services.new";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
+
+beforeAll(() => {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => {};
+  }
+});
 
 // ── mocks ────────────────────────────────────────────────────────────────────
 
@@ -339,6 +348,27 @@ describe("NewServicePage", () => {
           repo: "https://github.com/acme-corp/web-frontend.git",
           plan: "starter",
           autoDeploy: true,
+          runtime: "node",
+          buildCommand: "npm install",
+          startCommand: "npm start",
+        }),
+      );
+    });
+
+    it("submits the selected Render runtime and commands", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
+      await user.click(screen.getByRole("option", { name: "Python 3" }));
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runtime: "python",
+          buildCommand: "pip install -r requirements.txt",
+          startCommand: "gunicorn app:app",
         }),
       );
     });
@@ -393,7 +423,7 @@ describe("NewServicePage", () => {
       renderPage();
       await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
       expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
-      expect(screen.getByLabelText("Command")).toBeInTheDocument();
+      expect(screen.getByLabelText("Start Command")).toBeInTheDocument();
     });
 
     it("shows publish directory for static site and hides plan picker", async () => {
@@ -464,7 +494,7 @@ describe("NewServicePage", () => {
       ).toBeInTheDocument();
     });
 
-    it("enables Deploy when schedule is a valid 5-field cron expression", async () => {
+    it("enables Deploy when schedule and start command are valid", async () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
@@ -472,6 +502,7 @@ describe("NewServicePage", () => {
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
+      await user.type(screen.getByLabelText("Start Command"), "npm run job");
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),
       ).toBeEnabled();
@@ -485,13 +516,16 @@ describe("NewServicePage", () => {
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );
       await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
-      await user.type(screen.getByLabelText("Command"), "python job.py");
+      await user.type(screen.getByLabelText("Start Command"), "python job.py");
       await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "cron_job",
           schedule: "0 0 * * *",
           command: "python job.py",
+          runtime: "node",
+          buildCommand: "npm install",
+          startCommand: "python job.py",
         }),
       );
       const callArg = create.mock.calls[0][0] as Record<string, unknown>;

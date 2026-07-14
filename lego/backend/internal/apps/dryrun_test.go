@@ -216,9 +216,12 @@ func TestMCPDryRunCreateWebService(t *testing.T) {
 	defer cleanup()
 
 	got := call("create_web_service", map[string]any{
-		"name":   "mcp-preview",
-		"image":  "img:v1",
-		"dryRun": true,
+		"name":         "mcp-preview",
+		"image":        "img:v1",
+		"runtime":      "image",
+		"buildCommand": "",
+		"startCommand": "",
+		"dryRun":       true,
 	})
 	if got["id"] != "mcp-preview" {
 		t.Fatalf("preview id = %v, want mcp-preview", got["id"])

@@ -341,7 +341,7 @@ func TestMCP_CreateThenDeleteRoundTrip(t *testing.T) {
 
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "create_web_service",
-		Arguments: map[string]any{"name": "web", "image": "nginx:1", "plan": "starter"},
+		Arguments: map[string]any{"name": "web", "image": "nginx:1", "runtime": "image", "buildCommand": "", "startCommand": "", "plan": "starter"},
 	})
 	if err != nil || res.IsError {
 		t.Fatalf("create_web_service: %v isErr=%v %+v", err, res.IsError, res)

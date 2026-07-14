@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -75,9 +76,9 @@ type scaleRequest struct {
 // schema (verified against its public API: top-level name/repo/branch/image
 // object/envVars, plan + numInstances + healthCheckPath nested under
 // serviceDetails, type used to pick private_service). bex reads the Render
-// fields it can honor and adds a few extensions; the Render fields it can't yet
-// honor (region, runtime build/start commands) are ignored, a safe superset. One
-// of repo/image is required.
+// fields it can honor, including native runtime/build/start commands, and adds
+// a few extensions. Region remains a one-region platform concern. One of
+// repo/image is required.
 type createServiceRequest struct {
 	// OwnerID is the workspace to create the service IN (Render's `ownerId`,
 	// w6/m14). Render requires it; bex keeps it OPTIONAL — omitted, the service
@@ -139,12 +140,24 @@ type serviceDetailsReq struct {
 	Plan            string `json:"plan"`
 	NumInstances    int32  `json:"numInstances"`
 	HealthCheckPath string `json:"healthCheckPath"`
-	Schedule        string `json:"schedule"`
-	Command         string `json:"command"`
+	Runtime         string `json:"runtime"`
+	// Env is Render's deprecated spelling for Runtime; Runtime wins.
+	Env                string                 `json:"env"`
+	EnvSpecificDetails *envSpecificDetailsReq `json:"envSpecificDetails"`
+	Schedule           string                 `json:"schedule"`
+	Command            string                 `json:"command"`
 	// PublishPath is Render's staticSiteDetails.publishPath — the built output
 	// directory a static_site serves. Accepted here or at the top level (top
 	// level wins), mirroring schedule/command.
 	PublishPath string `json:"publishPath"`
+}
+
+type envSpecificDetailsReq struct {
+	BuildCommand   string `json:"buildCommand"`
+	StartCommand   string `json:"startCommand"`
+	DockerCommand  string `json:"dockerCommand"`
+	DockerContext  string `json:"dockerContext"`
+	DockerfilePath string `json:"dockerfilePath"`
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -153,12 +166,29 @@ type serviceDetailsReq struct {
 // fallback. type:private_service maps to the in-cluster-only flag.
 func (r createServiceRequest) toCreateRequest() CreateRequest {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
+	rootDir := r.RootDir
+	var runtime, buildCommand, startCommand, dockerfilePath string
 	var replicas int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
 		health = r.ServiceDetails.HealthCheckPath
+		runtime = r.ServiceDetails.Runtime
+		if runtime == "" {
+			runtime = r.ServiceDetails.Env
+		}
+		if r.ServiceDetails.EnvSpecificDetails != nil {
+			buildCommand = r.ServiceDetails.EnvSpecificDetails.BuildCommand
+			startCommand = r.ServiceDetails.EnvSpecificDetails.StartCommand
+			if strings.EqualFold(runtime, "docker") {
+				startCommand = r.ServiceDetails.EnvSpecificDetails.DockerCommand
+				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
+				if rootDir == "" {
+					rootDir = r.ServiceDetails.EnvSpecificDetails.DockerContext
+				}
+			}
+		}
 		replicas = r.ServiceDetails.NumInstances
 		if schedule == "" {
 			schedule = r.ServiceDetails.Schedule // top-level schedule wins over the nested one
@@ -188,7 +218,11 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Image:           image,
 		Branch:          r.Branch,
 		Builder:         r.Builder,
-		RootDir:         r.RootDir,
+		Runtime:         runtime,
+		BuildCommand:    buildCommand,
+		StartCommand:    startCommand,
+		RootDir:         rootDir,
+		DockerfilePath:  dockerfilePath,
 		Port:            r.Port,
 		Replicas:        replicas,
 		Plan:            plan,

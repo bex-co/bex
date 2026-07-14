@@ -1558,6 +1558,46 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "构建所使用的子目录。留空则使用仓库根目录。",
     description: "Create-wizard root-directory input hint text",
   },
+  "services.createFieldRuntime": {
+    message: "运行时",
+    description: "Create-wizard Render-compatible runtime selector label",
+  },
+  "services.createFieldBuildCommand": {
+    message: "构建命令",
+    description: "Create-wizard Render-compatible build command label",
+  },
+  "services.createFieldStartCommand": {
+    message: "启动命令",
+    description: "Create-wizard Render-compatible start command label",
+  },
+  "services.createRuntimeNode": {
+    message: "Node",
+    description: "Create-wizard Node runtime option",
+  },
+  "services.createRuntimePython": {
+    message: "Python 3",
+    description: "Create-wizard Python runtime option",
+  },
+  "services.createRuntimeGo": {
+    message: "Go",
+    description: "Create-wizard Go runtime option",
+  },
+  "services.createRuntimeRuby": {
+    message: "Ruby",
+    description: "Create-wizard Ruby runtime option",
+  },
+  "services.createRuntimeRust": {
+    message: "Rust",
+    description: "Create-wizard Rust runtime option",
+  },
+  "services.createRuntimeElixir": {
+    message: "Elixir",
+    description: "Create-wizard Elixir runtime option",
+  },
+  "services.createRuntimeDocker": {
+    message: "Docker",
+    description: "Create-wizard Docker runtime option",
+  },
   "services.createFieldPlan": {
     message: "实例类型",
     description: "Create-wizard plan-picker section label",
@@ -1665,7 +1705,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the command field",
   },
   "services.createFieldCommandHint": {
-    message: "覆盖镜像的默认入口点。",
+    message: "每次计划调用时运行的命令。",
     description: "Hint text under the command field",
   },
   "services.createFieldPublishPath": {

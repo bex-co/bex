@@ -18,6 +18,17 @@ export interface CreateServiceInput {
   image?: string;
   branch?: string;
   rootDir?: string;
+  runtime?:
+    | "docker"
+    | "elixir"
+    | "go"
+    | "image"
+    | "node"
+    | "python"
+    | "ruby"
+    | "rust";
+  buildCommand?: string;
+  startCommand?: string;
   plan?: string;
   autoDeploy?: boolean;
   schedule?: string;
@@ -80,6 +91,9 @@ export function useCreateService(): UseCreateServiceResult {
             image: input.image,
             branch: input.branch,
             rootDir: input.rootDir,
+            runtime: input.runtime,
+            buildCommand: input.buildCommand,
+            startCommand: input.startCommand,
             plan: input.plan,
             autoDeploy: input.autoDeploy,
             schedule: input.schedule,

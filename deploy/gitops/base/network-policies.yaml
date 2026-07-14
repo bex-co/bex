@@ -65,6 +65,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: bex-system
+    # kpack's controller imports buildpacks and composes the ClusterBuilder in
+    # Zot; per-App build pods themselves run in bex-system (or match the build
+    # label rule below).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kpack
     - from:
         - namespaceSelector: {}
           podSelector:

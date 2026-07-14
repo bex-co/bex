@@ -1,0 +1,58 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Exact upstream v0.17.2 release manifest. Its SHA-256 is recorded in README.
+  - upstream/release-0.17.2.yaml
+  - platform.yaml
+patches:
+  # Control-plane components belong on the platform pool. Build pods themselves
+  # intentionally remain schedulable on ordinary app workers.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: kpack-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector/bex.co~1pool
+        value: platform
+      - op: add
+        path: /spec/template/spec/tolerations
+        value:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: kpack-webhook
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector/bex.co~1pool
+        value: platform
+      - op: add
+        path: /spec/template/spec/tolerations
+        value:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+replacements:
+  - source:
+      kind: ConfigMap
+      name: bex-kpack-config
+      fieldPath: data.cnbBuilder
+    targets:
+      - select:
+          group: kpack.io
+          version: v1alpha2
+          kind: ClusterStore
+          name: bex
+        fieldPaths: [spec.sources.0.image]
+  - source:
+      kind: ConfigMap
+      name: bex-kpack-config
+      fieldPath: data.clusterBuilderTag
+    targets:
+      - select:
+          group: kpack.io
+          version: v1alpha2
+          kind: ClusterBuilder
+          name: bex
+        fieldPaths: [spec.tag]
