@@ -1,0 +1,10 @@
+# displayName is bex's mutable human label for a Service. The App name/id stays
+# immutable so renaming never changes the Kubernetes object, platform hostname,
+# or derived resource names. Empty clears the label and restores the name fallback.
+mutation SetDisplayName($id: String!, $displayName: String!) {
+  setDisplayName(id: $id, displayName: $displayName) {
+    id
+    name
+    displayName
+  }
+}

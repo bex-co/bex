@@ -20,6 +20,7 @@ import { DeleteServiceCard } from "@/features/services/components/delete-service
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
+import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import {
   isCron,
   isStaticSite,
@@ -35,11 +36,10 @@ export const Route = createFileRoute("/services/$serviceId/settings")({
 });
 
 /**
- * The Settings tab (w5/m7, w1/m11.5, w5/m13): the Instance Type section
- * Render's settings page leads with, then Build & Deploy (repo-backed Apps
- * only — Source/Branch read-only, Root Directory editable), Custom Domains,
- * and the platform subdomain (Render parity). Name/region are future
- * milestones.
+ * The Settings tab (w5/m7, w1/m11.5, w5/m13): the mutable service label and
+ * Instance Type section Render's settings page leads with, then Build & Deploy
+ * (repo-backed Apps only — Source/Branch read-only, Root Directory editable),
+ * Custom Domains, and the platform subdomain (Render parity).
  *
  * Render parity (captured live from dashboard.render.com/web/.../settings):
  * a right-side sticky "Table of contents" nav, one anchor per section, while
@@ -102,6 +102,11 @@ export function ServiceSettingsPage() {
               <Skeleton className="h-10 w-full" />
             ) : (
               <div className="space-y-6">
+                <DisplayNameRow
+                  serviceId={serviceId}
+                  displayName={service?.displayName}
+                  onChanged={() => void refetch()}
+                />
                 <InstanceTypeRow
                   serviceId={serviceId}
                   plan={service?.plan ?? null}
@@ -206,7 +211,7 @@ export function ServiceSettingsPage() {
         )}
 
         {/* Danger zone: type-to-confirm delete (every service type). Only once the
-            service has loaded — the confirm matches against its exact name. */}
+            service has loaded — the confirm matches against its immutable id. */}
         {service && (
           <div id="delete">
             <DeleteServiceCard service={service} />

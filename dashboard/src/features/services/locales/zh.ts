@@ -641,16 +641,52 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab card title",
   },
   "services.settingsDescription": {
-    message: "配置该服务的实例规格及其他设置。",
+    message: "配置该服务的名称、实例规格及其他设置。",
     description: "Settings tab card description",
   },
   "services.settingsNavLabel": {
     message: "设置分区",
-    description: "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
+    description:
+      "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
   },
   "services.settingsNavGeneral": {
     message: "常规",
-    description: "Settings tab quick-nav item for the top instance/scaling card",
+    description:
+      "Settings tab quick-nav item for the top instance/scaling card",
+  },
+  "services.displayNameLabel": {
+    message: "服务名称",
+    description:
+      "Settings tab row label for the mutable human-facing service name",
+  },
+  "services.displayNameHint": {
+    message: "服务 ID 仍为 {id}；URL 和基础设施不会改变。",
+    description:
+      "Settings tab explanation that a display-name change preserves identity",
+  },
+  "services.displayNameEdit": {
+    message: "编辑服务名称",
+    description: "Accessible label for the service-name edit button",
+  },
+  "services.displayNameSave": {
+    message: "保存服务名称",
+    description: "Accessible label for the service-name save button",
+  },
+  "services.displayNameCancel": {
+    message: "取消编辑服务名称",
+    description: "Accessible label for the service-name cancel button",
+  },
+  "services.displayNameSuccess": {
+    message: "服务已重命名为「{name}」。",
+    description: "Toast after setDisplayName succeeds",
+  },
+  "services.displayNameCleared": {
+    message: "服务名称已重置为其不可变 ID。",
+    description: "Toast after clearing displayName",
+  },
+  "services.displayNameError": {
+    message: "无法重命名服务，请重试。",
+    description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
     message: "实例类型",
@@ -1369,7 +1405,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.deleteConfirmPrompt": {
     message: "输入 {name} 以确认",
-    description: "Delete-confirm input label naming the exact service name",
+    description: "Delete-confirm input label naming the immutable service id",
   },
   "services.deleteCancel": {
     message: "取消",

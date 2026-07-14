@@ -48,6 +48,14 @@ const (
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
 type AppSpec struct {
+	// DisplayName is the free-form, human-facing label for this App. It is
+	// intentionally distinct from the App object's immutable, DNS-safe Name:
+	// changing this field relabels the service without changing its Kubernetes
+	// identity, platform hostname, or derived resource names. Empty falls back
+	// to Name in human-facing clients so existing Apps remain unchanged.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
+
 	// Type is the service kind, tracking Render's serviceType vocabulary:
 	// web_service (default), private_service, background_worker, cron_job,
 	// static_site. Empty is treated as web_service so existing Apps are unchanged.

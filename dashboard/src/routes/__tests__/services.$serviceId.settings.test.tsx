@@ -80,6 +80,13 @@ vi.mock("@/features/services/hooks/use-health-check-path", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-display-name", () => ({
+  useDisplayName: () => ({
+    setDisplayName: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 // CronDeploySection (w5/m18) calls useCronJob which hits Apollo; mock it.
 vi.mock("@/features/services/hooks/use-cron-job", () => ({
   useCronJob: () => ({ updateCronJob: vi.fn(async () => true), busy: false }),
@@ -125,7 +132,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 // The route's component reads serviceId via Route.useParams(), so it needs a
 // real router context — rebuild it as a minimal tree rooted at the settings
 // path, mirroring services.$serviceId.test.tsx.
-function renderSettings() {
+function renderSettings(serviceId = "app") {
   const rootRoute = createRootRoute();
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -135,7 +142,7 @@ function renderSettings() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([settingsRoute]),
     history: createMemoryHistory({
-      initialEntries: ["/services/app/settings"],
+      initialEntries: [`/services/${serviceId}/settings`],
     }),
     context: { client: {} as never, session: null },
   });
@@ -149,6 +156,23 @@ beforeEach(() => {
 });
 
 describe("ServiceSettingsPage", () => {
+  it("shows the mutable Service Name while making the immutable id explicit", async () => {
+    serverState.service = svc({
+      id: "stable-service-id",
+      name: "Customer API",
+      displayName: "Customer API",
+    });
+    renderSettings("stable-service-id");
+
+    expect(await screen.findByText("Service Name")).toBeInTheDocument();
+    expect(screen.getByText("Customer API")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The service ID remains stable-service-id; URLs and infrastructure do not change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows Custom Domains + Idle timeout + instance count stepper, no Deploy section, for a web service", async () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();

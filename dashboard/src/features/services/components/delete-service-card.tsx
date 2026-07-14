@@ -30,10 +30,10 @@ export interface DeleteServiceCardProps {
 /**
  * The Settings-tab danger zone (w5/m14): a destructive-bordered card whose
  * "Delete service" button opens a type-to-confirm dialog. Typing the service's
- * exact name arms the confirm button — a typo is a no-op, not a destroyed
- * service (Render's own delete flow gates on the same typed name). On success
- * the deleted App is evicted from the cache (see useDeleteService) and the user
- * lands back on the services list, where the deleted row is already gone.
+ * immutable id arms the confirm button — a mutable display label can be shared,
+ * so it is not a safe destructive identity. On success the deleted App is
+ * evicted from the cache (see useDeleteService) and the user lands back on the
+ * services list, where the deleted row is already gone.
  */
 export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
   const { t } = useTranslations();
@@ -41,7 +41,7 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
   const { remove, deleting } = useDeleteService();
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
-  const matches = confirmation === service.name;
+  const matches = confirmation === service.id;
 
   async function handleDelete() {
     if (!matches || deleting) return;
@@ -62,9 +62,7 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
         <CardTitle className="text-destructive">
           {t("services.dangerZoneTitle")}
         </CardTitle>
-        <CardDescription>
-          {t("services.dangerZoneDescription")}
-        </CardDescription>
+        <CardDescription>{t("services.dangerZoneDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Button variant="destructive" onClick={() => setOpen(true)}>
@@ -84,14 +82,14 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="service-delete-confirm">
-              {t("services.deleteConfirmPrompt", { name: service.name })}
+              {t("services.deleteConfirmPrompt", { name: service.id })}
             </Label>
             <Input
               id="service-delete-confirm"
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
               autoComplete="off"
-              placeholder={service.name}
+              placeholder={service.id}
             />
           </div>
           <DialogFooter>

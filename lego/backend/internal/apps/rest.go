@@ -26,10 +26,10 @@ import (
 )
 
 // patchServiceRequest is the subset of Render's PATCH /v1/services/{id} body
-// bex honors: a plan change nested under serviceDetails, a root-directory change,
-// and Render's top-level autoDeploy toggle. PATCH is partial — fields this bex
-// doesn't support (name, ...) are accepted and silently ignored rather than
-// rejected, a safe superset; omitting a field leaves it unchanged.
+// bex honors: a plan change nested under serviceDetails, a human-facing display
+// name, a root-directory change, and Render's top-level autoDeploy toggle. PATCH
+// is partial — fields this bex doesn't support (name, ...) are silently ignored
+// rather than rejected, a safe superset; omitting a field leaves it unchanged.
 type patchServiceRequest struct {
 	ServiceDetails *struct {
 		Plan string `json:"plan"`
@@ -38,6 +38,10 @@ type patchServiceRequest struct {
 		// distinct from an explicit 0 (restore the controller default).
 		IdleTTLSeconds *int32 `json:"idleTTLSeconds"`
 	} `json:"serviceDetails"`
+	// DisplayName is the mutable human label. A pointer distinguishes omission
+	// (leave unchanged) from an explicit empty string (clear and fall back to the
+	// immutable App name).
+	DisplayName *string `json:"displayName"`
 	// RootDir is a pointer so "absent" (leave unchanged) is distinct from an
 	// explicit "" (restore the repo root) — Render's Root Directory setting,
 	// the Settings → Build & Deploy save flow (w5/m13).
@@ -312,7 +316,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil {
+		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -320,6 +324,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// least one runs, so app is always set by the time we serialize.
 		var app AppView
 		var err error
+		if req.DisplayName != nil {
+			if app, err = s.SetDisplayName(r.Context(), id, *req.DisplayName); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
 		if plan != "" {
 			if app, err = s.SetPlan(r.Context(), id, plan); err != nil {
 				core.WriteErr(w, err)

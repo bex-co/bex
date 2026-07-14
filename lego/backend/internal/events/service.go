@@ -50,6 +50,7 @@ limitations under the License.
 //	auto_deploy_changed         apps.SetAutoDeploy              (Render splits enabled/disabled; see Omissions)
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
+//	display_name_changed        apps.SetDisplayName
 //	publish_path_changed        apps.SetPublishPath
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
@@ -134,6 +135,7 @@ const (
 	TypeAutoDeployChanged    = "auto_deploy_changed"
 	TypeIdleTimeoutChanged   = "idle_timeout_changed"
 	TypeRootDirectoryChanged = "root_directory_changed"
+	TypeDisplayNameChanged   = "display_name_changed"
 	TypePublishPathChanged   = "publish_path_changed"
 	TypeRoutesChanged        = "routes_changed"
 	TypeHeadersChanged       = "headers_changed"
@@ -165,6 +167,7 @@ var eventTypes = map[string]string{
 	"apps.SetAutoDeploy":      TypeAutoDeployChanged,
 	"apps.SetIdleTTL":         TypeIdleTimeoutChanged,
 	"apps.SetRootDir":         TypeRootDirectoryChanged,
+	"apps.SetDisplayName":     TypeDisplayNameChanged,
 	"apps.SetPublishPath":     TypePublishPathChanged,
 	"apps.SetRoutes":          TypeRoutesChanged,
 	"apps.SetHeaders":         TypeHeadersChanged,

@@ -138,6 +138,14 @@ spec:
                   run (Render's cron "Command" field, e.g. "npm run report"); empty runs the
                   image's own command unmodified. Ignored for every other type.
                 type: string
+              displayName:
+                description: |-
+                  DisplayName is the free-form, human-facing label for this App. It is
+                  intentionally distinct from the App object's immutable, DNS-safe Name:
+                  changing this field relabels the service without changing its Kubernetes
+                  identity, platform hostname, or derived resource names. Empty falls back
+                  to Name in human-facing clients so existing Apps remain unchanged.
+                type: string
               env:
                 description: |-
                   Env are environment variables set on the App's container, in the order

@@ -649,16 +649,54 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Settings tab card title",
   },
   "services.settingsDescription": {
-    message: "Configure this service's instance size and other settings.",
+    message:
+      "Configure this service's name, instance size, and other settings.",
     description: "Settings tab card description",
   },
   "services.settingsNavLabel": {
     message: "Settings sections",
-    description: "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
+    description:
+      "Accessible label for the Settings tab's right-side quick-nav (Render's Table of contents)",
   },
   "services.settingsNavGeneral": {
     message: "General",
-    description: "Settings tab quick-nav item for the top instance/scaling card",
+    description:
+      "Settings tab quick-nav item for the top instance/scaling card",
+  },
+  "services.displayNameLabel": {
+    message: "Service Name",
+    description:
+      "Settings tab row label for the mutable human-facing service name",
+  },
+  "services.displayNameHint": {
+    message:
+      "The service ID remains {id}; URLs and infrastructure do not change.",
+    description:
+      "Settings tab explanation that a display-name change preserves identity",
+  },
+  "services.displayNameEdit": {
+    message: "Edit service name",
+    description: "Accessible label for the service-name edit button",
+  },
+  "services.displayNameSave": {
+    message: "Save service name",
+    description: "Accessible label for the service-name save button",
+  },
+  "services.displayNameCancel": {
+    message: "Cancel service name edit",
+    description: "Accessible label for the service-name cancel button",
+  },
+  "services.displayNameSuccess": {
+    message: 'Service renamed to "{name}".',
+    description: "Toast after setDisplayName succeeds",
+  },
+  "services.displayNameCleared": {
+    message: "Service name reset to its immutable ID.",
+    description: "Toast after clearing displayName",
+  },
+  "services.displayNameError": {
+    message: "Couldn't rename the service. Please try again.",
+    description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
     message: "Instance Type",
@@ -1390,7 +1428,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.deleteConfirmPrompt": {
     message: "Type {name} to confirm",
-    description: "Delete-confirm input label naming the exact service name",
+    description: "Delete-confirm input label naming the immutable service id",
   },
   "services.deleteCancel": {
     message: "Cancel",

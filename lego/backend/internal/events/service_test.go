@@ -127,8 +127,12 @@ func TestViewMapsEverySource(t *testing.T) {
 		row:      store.ServiceEventRow{Key: "aud-5:", Source: store.EventSourceAudit, Verb: "apps.SetPlan", Caller: "user-x"},
 		wantType: TypePlanChanged,
 	}, {
+		name:     "display-name change is recorded without leaking the label",
+		row:      store.ServiceEventRow{Key: "aud-6:", Source: store.EventSourceAudit, Verb: "apps.SetDisplayName", Caller: "user-x"},
+		wantType: TypeDisplayNameChanged,
+	}, {
 		name:     "env-var write carries neither key nor value",
-		row:      store.ServiceEventRow{Key: "aud-6:", Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
+		row:      store.ServiceEventRow{Key: "aud-7:", Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
 		wantType: TypeEnvVarsChanged,
 	}}
 

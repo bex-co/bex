@@ -1,0 +1,36 @@
+fragment EnvironmentFields on Environment {
+  id
+  projectId
+  name
+  ownerId
+  createdAt
+  serviceIds
+}
+
+query Environments($projectId: String!) {
+  environments(projectId: $projectId) {
+    ...EnvironmentFields
+  }
+}
+
+mutation CreateEnvironment($name: String!, $projectId: String!) {
+  createEnvironment(name: $name, projectId: $projectId) {
+    ...EnvironmentFields
+  }
+}
+
+mutation RenameEnvironment($id: String!, $name: String!) {
+  renameEnvironment(id: $id, name: $name) {
+    ...EnvironmentFields
+  }
+}
+
+mutation DeleteEnvironment($id: String!) {
+  deleteEnvironment(id: $id)
+}
+
+mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {
+  setEnvironmentServices(id: $id, serviceIds: $serviceIds) {
+    ...EnvironmentFields
+  }
+}

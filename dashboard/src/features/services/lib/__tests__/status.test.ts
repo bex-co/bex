@@ -17,6 +17,7 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     __typename: "Service",
     id: "app",
     name: "app",
+    displayName: null,
     type: "web_service",
     suspended: "not_suspended",
     dashboardUrl: "https://app.onbex.co",
@@ -71,6 +72,7 @@ describe("toServiceView", () => {
     ).toEqual({
       id: "app",
       name: "app",
+      displayName: null,
       type: "web_service",
       suspended: true,
       phase: "Hibernated",
@@ -102,6 +104,15 @@ describe("toServiceView", () => {
     const v = toServiceView(node({ name: null, url: null, id: "svc-1" }));
     expect(v.name).toBe("svc-1");
     expect(v.url).toBeNull();
+  });
+
+  it("uses displayName for humans while preserving the immutable id", () => {
+    const v = toServiceView(
+      node({ id: "stable-id", name: "stable-id", displayName: "Customer API" }),
+    );
+    expect(v.id).toBe("stable-id");
+    expect(v.name).toBe("Customer API");
+    expect(v.displayName).toBe("Customer API");
   });
 
   it("leaves schedule/command null / runs empty for a list node (no cron fields selected)", () => {

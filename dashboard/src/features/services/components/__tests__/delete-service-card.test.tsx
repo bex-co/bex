@@ -90,13 +90,39 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText(/Type web to confirm/), "web");
+    await user.type(
+      within(dialog).getByLabelText(/Type web to confirm/),
+      "web",
+    );
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
 
     expect(remove).toHaveBeenCalledWith("web", "web");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("requires the immutable id when the human display name differs", async () => {
+    const user = userEvent.setup();
+    render(
+      <DeleteServiceCard
+        service={svc({ id: "stable-id", name: "Customer API" })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete Service" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(/Type stable-id to confirm/);
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete Service",
+    });
+    await user.type(input, "Customer API");
+    expect(confirm).toBeDisabled();
+    await user.clear(input);
+    await user.type(input, "stable-id");
+    await user.click(confirm);
+
+    expect(remove).toHaveBeenCalledWith("stable-id", "Customer API");
   });
 
   it("stays put when the delete fails (no redirect)", async () => {
@@ -106,7 +132,10 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Service" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText(/Type web to confirm/), "web");
+    await user.type(
+      within(dialog).getByLabelText(/Type web to confirm/),
+      "web",
+    );
     await user.click(
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );

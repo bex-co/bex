@@ -1,0 +1,49 @@
+fragment ProjectFields on Project {
+  id
+  name
+  ownerId
+  createdAt
+  serviceIds
+  databaseIds
+  keyValueIds
+}
+
+query Projects($ownerId: String!) {
+  projects(ownerId: $ownerId) {
+    ...ProjectFields
+  }
+}
+
+mutation CreateProject($name: String!, $ownerId: String!) {
+  createProject(name: $name, ownerId: $ownerId) {
+    ...ProjectFields
+  }
+}
+
+mutation RenameProject($id: String!, $name: String!) {
+  renameProject(id: $id, name: $name) {
+    ...ProjectFields
+  }
+}
+
+mutation DeleteProject($id: String!) {
+  deleteProject(id: $id)
+}
+
+mutation SetProjectServices($id: String!, $serviceIds: [String!]!) {
+  setProjectServices(id: $id, serviceIds: $serviceIds) {
+    ...ProjectFields
+  }
+}
+
+mutation SetProjectDatabases($id: String!, $databaseIds: [String!]!) {
+  setProjectDatabases(id: $id, databaseIds: $databaseIds) {
+    ...ProjectFields
+  }
+}
+
+mutation SetProjectKeyValues($id: String!, $keyValueIds: [String!]!) {
+  setProjectKeyValues(id: $id, keyValueIds: $keyValueIds) {
+    ...ProjectFields
+  }
+}

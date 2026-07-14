@@ -7,7 +7,10 @@
 export interface ServiceView {
   /** App name — Render's opaque service id; also the metrics deep-link param. */
   id: string;
+  /** Human-facing label: displayName when set, otherwise the immutable App name. */
   name: string;
+  /** Raw mutable label from spec.displayName; null/empty means fall back to id. */
+  displayName?: string | null;
   /**
    * Render serviceType — web_service | private_service | background_worker |
    * cron_job. Empty spec.type reads back as web_service from bex-api.

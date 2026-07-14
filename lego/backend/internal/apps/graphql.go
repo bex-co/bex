@@ -148,6 +148,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Render-shaped fields (id is the App name; type is the serviceType enum).
 		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		"displayName":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DisplayName })},
 		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
 		"suspended":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},
 		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
@@ -680,6 +681,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
 				}
 				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
+			},
+		},
+		// setDisplayName relabels a service for humans while leaving its immutable
+		// App name/id, platform hostname, and derived Kubernetes resources alone.
+		// An empty displayName clears the label and restores the name fallback.
+		"setDisplayName": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"displayName": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetDisplayName(p.Context, p.Args["id"].(string), p.Args["displayName"].(string))
 			},
 		},
 		// scaleService: Render's manual-scaling verb. numInstances mirrors the

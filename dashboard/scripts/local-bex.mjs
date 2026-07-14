@@ -98,6 +98,7 @@ const SERVICE = {
   __typename: "Service",
   id: "eden-cms-v2",
   name: "eden-cms-v2",
+  displayName: null,
   type: "web_service",
   suspended: null,
   dashboardUrl: "http://localhost:5173/services/eden-cms-v2",
@@ -129,6 +130,7 @@ const WORKER = {
   __typename: "Service",
   id: "email-worker",
   name: "email-worker",
+  displayName: null,
   type: "background_worker",
   suspended: null,
   dashboardUrl: "http://localhost:5173/services/email-worker",
@@ -157,6 +159,7 @@ const CRON = {
   __typename: "Service",
   id: "nightly-report",
   name: "nightly-report",
+  displayName: null,
   type: "cron_job",
   suspended: null,
   dashboardUrl: "http://localhost:5173/services/nightly-report",
@@ -741,6 +744,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         __typename: "Service",
         id: variables.name,
         name: variables.name,
+        displayName: null,
         type: variables.image ? "web_service" : "web_service",
         suspended: null,
         dashboardUrl: `http://localhost:5173/services/${variables.name}`,
@@ -768,6 +772,12 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "Server":
       // null for an unknown id — never borrow another service's object.
       return { server: serviceById(variables.id) };
+    case "SetDisplayName": {
+      const svc = serviceById(variables.id);
+      if (!svc) throw new Error("not found");
+      svc.displayName = String(variables.displayName ?? "").trim() || null;
+      return { setDisplayName: svc };
+    }
     case "DeleteService": {
       // Danger-zone delete (w5/m14), mirroring DeleteDatabase: drop the service
       // from the in-memory store so a subsequent Services list omits it.

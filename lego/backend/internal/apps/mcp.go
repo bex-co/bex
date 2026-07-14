@@ -95,6 +95,13 @@ type autoDeployArgs struct {
 	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
 }
 
+// displayNameArgs is set_display_name's input. The service id remains the
+// immutable App name; displayName is only the mutable human-facing label.
+type displayNameArgs struct {
+	ServiceID   string `json:"serviceId" jsonschema:"the immutable service id (bex App name), as returned by list_services"`
+	DisplayName string `json:"displayName" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
+}
+
 // healthCheckPathArgs is set_health_check_path's input.
 type healthCheckPathArgs struct {
 	ServiceID       string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
@@ -564,6 +571,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_display_name",
+		Description: "Change the human-facing label for a service without changing its immutable service id, platform hostname, or derived Kubernetes resources. Pass an empty displayName to restore the immutable-name fallback. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in displayNameArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetDisplayName(ctx, in.ServiceID, in.DisplayName)
 		if err != nil {
 			return nil, renderService{}, err
 		}

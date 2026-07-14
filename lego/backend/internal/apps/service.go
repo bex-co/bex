@@ -145,6 +145,10 @@ type CronRunView struct {
 // format (the REST/GraphQL adapters render it in Render's Service shape).
 type AppView struct {
 	Name string `json:"name"`
+	// DisplayName is the App's mutable, human-facing label (spec.displayName).
+	// Empty means clients should display Name, preserving existing Apps while
+	// keeping Name available as the immutable resource id.
+	DisplayName string `json:"displayName"`
 	// Type is the Render serviceType (web_service | private_service |
 	// background_worker | cron_job); empty spec.type projects as web_service.
 	Type      string   `json:"type"`
@@ -271,6 +275,7 @@ func view(a *appv1alpha1.App) AppView {
 	}
 	return AppView{
 		Name:            a.Name,
+		DisplayName:     a.Spec.DisplayName,
 		Type:            svcType,
 		Phase:           string(a.Status.Phase),
 		URL:             a.Status.URL,
@@ -1210,6 +1215,18 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.AutoDeploy = enabled
+	})
+}
+
+// SetDisplayName changes the human-facing label for an App without changing
+// its immutable Kubernetes object name or any identity derived from that name
+// (including platform hostnames and TLS secret names). It is a direct CR patch:
+// displayName is not owned by the control-plane row projector. Whitespace at
+// the edges is presentation noise and is trimmed; an empty value clears the
+// label so clients fall back to the immutable Name.
+func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) (AppView, error) {
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+		a.Spec.DisplayName = strings.TrimSpace(displayName)
 	})
 }
 
