@@ -26,10 +26,11 @@ rules:
   # Read the CNPG-generated "<db>-app" Secret to assemble connection strings;
   # create/update the per-app "<app>-env" Secret the env-vars API materializes
   # from OpenBao (docs/ADR013-secrets.md) so the Deployment consumes it via envFrom.
-  # No delete, no watch (deliberate narrowing).
+  # Delete is required to remove the per-App clone and external-registry pull
+  # Secrets during service deletion. Watch remains deliberately omitted.
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "create", "update", "patch"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
   # Read-only pod access for the logs + metrics verbs: list pods by App label,
   # read logs (pods/log), and read pod resource limits for percentage-mode metrics.
   - apiGroups: [""]

@@ -95,3 +95,26 @@ func TestGraphQLResolversRoundTrip(t *testing.T) {
 		t.Errorf("repos = %v", repos)
 	}
 }
+
+func TestGraphQLResolverErrorReturnsNullData(t *testing.T) {
+	svc := &Service{Base: &core.Base{Namespace: "default"}}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       context.Background(),
+		RequestString: `{ gitConnection { connected accountLogin installUrl } }`,
+	})
+	if len(res.Errors) != 1 {
+		t.Fatalf("graphql errors = %v, want one unavailable error", res.Errors)
+	}
+	data := res.Data.(map[string]any)
+	if data["gitConnection"] != nil {
+		t.Errorf("gitConnection = %#v, want null when its root resolver fails", data["gitConnection"])
+	}
+}

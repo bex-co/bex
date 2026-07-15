@@ -527,7 +527,7 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 		if jobCondition(j, batchv1.JobComplete) || jobCondition(j, batchv1.JobFailed) {
 			continue
 		}
-		if err := cl.Delete(ctx, j); err != nil && !apierrors.IsNotFound(err) {
+		if err := cl.Delete(ctx, j, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("cancel build %s: %w", j.Name, err)
 		}
 	}
@@ -537,10 +537,13 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 	return nil
 }
 
-// DeleteAppArtifacts deletes ALL build Jobs, predeploy Jobs, and kpack Images
-// for the named app in namespace — called by the App finalizer to clean up
-// cross-namespace artifacts that ownerRefs can't cascade (build/predeploy run
-// in the build namespace, a different namespace from the App CR).
+// DeleteAppArtifacts deletes ALL build Jobs, their Pods, predeploy Jobs and
+// their Pods, and kpack Images for the named app in namespace — called by the
+// App finalizer to clean up cross-namespace artifacts that ownerRefs can't
+// cascade (build/predeploy run in the build namespace, a different namespace
+// from the App CR). Pods are deleted explicitly as a safety net: an orphan
+// propagation policy or a failed garbage-collection pass can otherwise leave a
+// completed build Pod behind after its Job disappears.
 func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.Client) error {
 	// Build Jobs (labeled app.bex.co/build: <name>)
 	var buildJobs batchv1.JobList
@@ -549,7 +552,7 @@ func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.C
 		return fmt.Errorf("list build jobs for %s: %w", name, err)
 	}
 	for i := range buildJobs.Items {
-		if err := cl.Delete(ctx, &buildJobs.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+		if err := cl.Delete(ctx, &buildJobs.Items[i], client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("delete build job %s: %w", buildJobs.Items[i].Name, err)
 		}
 	}
@@ -560,8 +563,23 @@ func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.C
 		return fmt.Errorf("list predeploy jobs for %s: %w", name, err)
 	}
 	for i := range preJobs.Items {
-		if err := cl.Delete(ctx, &preJobs.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+		if err := cl.Delete(ctx, &preJobs.Items[i], client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("delete predeploy job %s: %w", preJobs.Items[i].Name, err)
+		}
+	}
+	for label, description := range map[string]string{
+		"app.bex.co/build":     "build",
+		"app.bex.co/predeploy": "predeploy",
+	} {
+		var pods corev1.PodList
+		if err := cl.List(ctx, &pods, client.InNamespace(namespace),
+			client.MatchingLabels{label: name}); err != nil {
+			return fmt.Errorf("list %s pods for %s: %w", description, name, err)
+		}
+		for i := range pods.Items {
+			if err := cl.Delete(ctx, &pods.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("delete %s pod %s: %w", description, pods.Items[i].Name, err)
+			}
 		}
 	}
 	// kpack Images (if kpack is installed; tolerate "no matches for kind")

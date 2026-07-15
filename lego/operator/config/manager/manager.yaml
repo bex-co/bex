@@ -5,6 +5,15 @@ metadata:
     control-plane: controller-manager
     app.kubernetes.io/name: control-plane
     app.kubernetes.io/managed-by: kustomize
+    # Rootless BuildKit still requires unconfined seccomp/AppArmor. The build
+    # Jobs run in BEX_BUILD_NAMESPACE (bex-system in the checked-in deployment),
+    # so cluster-wide baseline enforcement must not reject them before they
+    # start. Tenant workloads remain in the separately baseline-enforced apps
+    # namespace; the platform pods below retain their explicit restricted
+    # security contexts.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
   name: system
 ---
 apiVersion: apps/v1

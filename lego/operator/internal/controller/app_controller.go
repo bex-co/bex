@@ -41,6 +41,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -54,6 +55,19 @@ import (
 )
 
 const finalizer = "app.bex.co/finalizer"
+
+// generationOrDeletionPredicate keeps the normal generation-only reconcile
+// filter while admitting the metadata-only update Kubernetes emits when an App
+// is deleted. DeletionTimestamp does not bump generation; filtering that event
+// strands the App's finalizer and every owned workload indefinitely.
+type generationOrDeletionPredicate struct {
+	predicate.GenerationChangedPredicate
+}
+
+func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
+	return p.GenerationChangedPredicate.Update(e) ||
+		(e.ObjectNew != nil && !e.ObjectNew.GetDeletionTimestamp().IsZero())
+}
 
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
@@ -1719,7 +1733,7 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&networkingv1.Ingress{}).
 		Owns(&networkingv1.NetworkPolicy{}).
 		Owns(&batchv1.CronJob{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		WithEventFilter(generationOrDeletionPredicate{}).
 		Named("app").
 		Complete(r)
 }

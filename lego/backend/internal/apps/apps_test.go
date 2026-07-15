@@ -358,6 +358,39 @@ func TestCreateWritesStoreRowWhenStoreAndTenantResolved(t *testing.T) {
 	}
 }
 
+type createErrorClient struct {
+	client.Client
+	err error
+}
+
+func (c createErrorClient) Create(context.Context, client.Object, ...client.CreateOption) error {
+	return c.err
+}
+
+func TestCreateRollsBackStoreRowWhenCRCreateFails(t *testing.T) {
+	rec := &recordingStore{}
+	wantErr := errors.New("CRD rejected App")
+	svc := &Service{
+		Base: &core.Base{
+			Client:    createErrorClient{Client: fakeClient(), err: wantErr},
+			Namespace: "default",
+			Workspace: fakeWorkspace{"id-a": "tea-a"},
+		},
+		Store: rec,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+
+	if _, err := svc.create(ctx, CreateRequest{Name: "web", Image: "nginx:1"}); !errors.Is(err, wantErr) {
+		t.Fatalf("create error = %v, want wrapped CR create error", err)
+	}
+	if len(rec.appCreates) != 1 {
+		t.Fatalf("store creates = %d, want 1", len(rec.appCreates))
+	}
+	if len(rec.deleteCalls) != 1 || rec.deleteCalls[0] != "srv-test" {
+		t.Fatalf("store rollback deletes = %v, want [srv-test]", rec.deleteCalls)
+	}
+}
+
 func TestCreateSkipsStoreRowWhenNoTenant(t *testing.T) {
 	// Store wired but caller not bound to a tenant — must fall back to direct CR.
 	rec := &recordingStore{}

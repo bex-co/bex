@@ -62,14 +62,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: gitConnectionGQLType,
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetConnection(p.Context, gqlStr(p.Args, "ownerId"))
+				connection, err := s.GetConnection(p.Context, gqlStr(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return connection, nil
 			},
 		},
 		"repos": &graphql.Field{
 			Type: graphql.NewList(repoGQLType),
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListRepos(p.Context, gqlStr(p.Args, "ownerId"))
+				repos, err := s.ListRepos(p.Context, gqlStr(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return repos, nil
 			},
 		},
 	}
@@ -83,7 +91,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: gitConnectionGQLType,
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.StartConnect(p.Context, gqlStr(p.Args, "ownerId"))
+				connection, err := s.StartConnect(p.Context, gqlStr(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return connection, nil
 			},
 		},
 		"disconnectGit": &graphql.Field{

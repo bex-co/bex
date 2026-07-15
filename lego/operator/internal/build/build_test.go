@@ -685,14 +685,27 @@ func predeployJob(name, appName, ns string) *batchv1.Job {
 	}
 }
 
+func artifactPod(name, label, appName, ns string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels:    map[string]string{label: appName},
+		},
+	}
+}
+
 func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
 	ctx := context.Background()
 	cl := fakeClient(
 		buildJob("bld-hello-gen-1", "hello", "build"),
 		buildJob("bld-hello-gen-2", "hello", "build"),
 		predeployJob("pred-hello-gen-1", "hello", "build"),
+		artifactPod("bld-hello-gen-1-pod", "app.bex.co/build", "hello", "build"),
+		artifactPod("pred-hello-gen-1-pod", "app.bex.co/predeploy", "hello", "build"),
 		// another app's jobs — must NOT be deleted
 		buildJob("bld-other-gen-1", "other", "build"),
+		artifactPod("bld-other-gen-1-pod", "app.bex.co/build", "other", "build"),
 	)
 
 	if err := DeleteAppArtifacts(ctx, "hello", "build", cl); err != nil {
@@ -718,6 +731,24 @@ func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
 		t.Errorf("predeploy Jobs for 'hello' still present: %d", len(jobs.Items))
 	}
 
+	// The Job controller normally cascades these Pods, but the finalizer also
+	// removes them explicitly so an orphaned completed Pod cannot survive.
+	var pods corev1.PodList
+	if err := cl.List(ctx, &pods, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/build": "hello"}); err != nil {
+		t.Fatalf("list build pods: %v", err)
+	}
+	if len(pods.Items) != 0 {
+		t.Errorf("build Pods for 'hello' still present: %d", len(pods.Items))
+	}
+	if err := cl.List(ctx, &pods, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/predeploy": "hello"}); err != nil {
+		t.Fatalf("list predeploy pods: %v", err)
+	}
+	if len(pods.Items) != 0 {
+		t.Errorf("predeploy Pods for 'hello' still present: %d", len(pods.Items))
+	}
+
 	// other's build Job must still be there.
 	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
 		client.MatchingLabels{"app.bex.co/build": "other"}); err != nil {
@@ -725,6 +756,13 @@ func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
 	}
 	if len(jobs.Items) != 1 {
 		t.Errorf("other app's build Job was incorrectly deleted; want 1, got %d", len(jobs.Items))
+	}
+	if err := cl.List(ctx, &pods, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/build": "other"}); err != nil {
+		t.Fatalf("list other pods: %v", err)
+	}
+	if len(pods.Items) != 1 {
+		t.Errorf("other app's build Pod was incorrectly deleted; want 1, got %d", len(pods.Items))
 	}
 }
 

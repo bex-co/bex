@@ -91,7 +91,18 @@ export function ServiceEventsPage() {
               {events.map((event) => {
                 const details = event.details;
                 const deployId = details?.deployId ?? "";
-                const status = details?.deployStatus ?? "";
+                // Render's deploy_started event intentionally has no terminal
+                // status, while deploy_ended uses succeeded/failed instead of
+                // the deploy object's live/update_failed vocabulary. Normalize
+                // that API boundary for the shared badge and action helpers.
+                const status =
+                  event.type === "deploy_started"
+                    ? "update_in_progress"
+                    : details?.deployStatus === "succeeded"
+                      ? "live"
+                      : details?.deployStatus === "failed"
+                        ? "update_failed"
+                        : (details?.deployStatus ?? "");
                 const label = triggerLabel(details?.trigger ?? null);
                 const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
                 const summary = (

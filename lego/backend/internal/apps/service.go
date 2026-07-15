@@ -719,6 +719,25 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	}
 	a.Namespace = s.Namespace
 	a.Spec = desired
+	// A store-managed create writes its source-of-truth row before the CR so the
+	// CR can be stamped with the row id and its initial deploy history exists as
+	// soon as create succeeds. If any later step fails, remove that row again:
+	// otherwise the projector can resurrect a service the API reported as
+	// failed, potentially from the store's narrower projection of the desired
+	// spec (for example after a stale CRD rejects a newly added field).
+	var createdRowID string
+	rollbackStoreRow := func(cause error) error {
+		if createdRowID == "" || s.Store == nil {
+			return cause
+		}
+		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
+			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
+		}
+		if s.Kick != nil {
+			s.Kick()
+		}
+		return cause
+	}
 	// Per-workspace service cap (w7/m9): count before creating so the (N+1)th
 	// service is refused across all three surfaces. Counted against tenantID —
 	// the workspace this create TARGETS (w6/m14's ownerId), not whichever one
@@ -774,6 +793,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 		a.Labels[store.LabelManagedBy] = store.ManagedByValue
 		a.Labels[store.LabelAppID] = row.ID
+		createdRowID = row.ID
 		a.Labels[store.LabelWorkspace] = tenantID
 		// The globally-unique slug (w4/m19) drives the platform host
 		// (operator effectiveHosts) — never req.Name, which is only
@@ -786,17 +806,17 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if desired.CloneSecret == "" {
 		secretName, err := s.ensureCloneSecret(ctx, a)
 		if err != nil {
-			return AppView{}, err
+			return AppView{}, rollbackStoreRow(err)
 		}
 		a.Spec.CloneSecret = secretName
 	}
 	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
 	if err != nil {
-		return AppView{}, err
+		return AppView{}, rollbackStoreRow(err)
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
 	if err := s.Client.Create(ctx, a); err != nil {
-		return AppView{}, err
+		return AppView{}, rollbackStoreRow(err)
 	}
 	if s.Kick != nil {
 		s.Kick()

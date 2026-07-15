@@ -40,7 +40,7 @@ function deployEvent(over: Record<string, unknown> = {}) {
     cursor: "cursor-live-001",
     details: {
       deployId: "dep-live-001",
-      deployStatus: "live",
+      deployStatus: "succeeded",
       preDeployStatus: "",
       actor: "dev@localhost",
       triggeredByUser: "dev@localhost",
@@ -107,6 +107,31 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     const link = await screen.findByRole("link");
     expect(link).toHaveAttribute("href", "/services/app/deploys/dep-live-001");
+  });
+
+  it("presents deploy_started as in progress even though its status is empty", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            type: "deploy_started",
+            details: {
+              deployId: "dep-live-001",
+              deployStatus: "",
+              preDeployStatus: "",
+              trigger: { firstBuild: true },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("In Progress")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
   it("navigates to the rollback deploy's own page once the mutation resolves its id", async () => {

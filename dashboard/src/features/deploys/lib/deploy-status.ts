@@ -39,6 +39,7 @@ export function isCancelableDeployStatus(status: string): boolean {
 export function deployStatusVariant(status: string): DeployBadgeVariant {
   switch (status) {
     case "live":
+    case "succeeded":
       return "default";
     case "update_in_progress":
       return "secondary";
