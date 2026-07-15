@@ -1,0 +1,16 @@
+# dev-8 overlay for Ory Hydra (workstream w8) — sibling of
+# kratos.values.yaml in this directory; see its header for why each
+# workstream needs its own Ory stack instead of reusing the shared cluster's
+# "auth" namespace.
+#
+# Ports here MUST match .pm/w8/dev-8/ports.env:
+#   dashboard        -> http://localhost:50080
+#   hydra-admin port-forward -> http://localhost:52080
+hydra:
+  dev: true # plain-HTTP issuer, dev-only
+  config:
+    urls:
+      self:
+        issuer: http://localhost:57080
+      login: http://localhost:50080/auth/login
+      consent: http://localhost:50080/auth/consent

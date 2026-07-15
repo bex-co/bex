@@ -1,0 +1,56 @@
+# dev-6 overlay for Ory Kratos (workstream w6) — layered on top of the
+# repo's own ../../../../deploy/gitops/base/values/kratos.values.yaml (helm
+# -f order: base first, this second, later wins), the same later-wins pattern
+# deploy/gitops/overlays/local/values/kratos.values.yaml uses for the shared
+# cluster's "auth" namespace. Same idea, different ports/namespace so it
+# never collides with the shared cluster's Kratos on :5173/:4433, nor with
+# any other workstream's dev-N (ui_url and allowed_return_urls are
+# single-valued / allowlist entries — two dashboards on two different ports
+# cannot share one Kratos deployment cleanly).
+#
+# Ports here MUST match .pm/w6/dev-6/ports.env:
+#   dashboard  -> http://localhost:50060
+#   kratos-public port-forward -> http://localhost:51060
+kratos:
+  config:
+    oauth2_provider:
+      url: http://hydra-admin.dev-6-auth.svc.cluster.local:4445
+    serve:
+      public:
+        base_url: http://localhost:51060/
+        cors:
+          enabled: true
+          allowed_origins:
+            - http://localhost:50060
+          allow_credentials: true
+    selfservice:
+      default_browser_return_url: http://localhost:50060/
+      allowed_return_urls:
+        - http://localhost:50060
+      methods:
+        webauthn:
+          config:
+            rp:
+              id: localhost
+              origins:
+                - http://localhost:50060
+      flows:
+        login:
+          ui_url: http://localhost:50060/auth/login
+        registration:
+          enabled: true
+          ui_url: http://localhost:50060/auth/sign-up
+        recovery:
+          enabled: true
+          ui_url: http://localhost:50060/auth/forgot-password
+        settings:
+          ui_url: http://localhost:50060/settings
+        verification:
+          enabled: true
+          ui_url: http://localhost:50060/auth/verification
+        error:
+          ui_url: http://localhost:50060/auth/error
+    session:
+      cookie:
+        domain: ""
+        same_site: Lax
