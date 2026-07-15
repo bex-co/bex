@@ -81,6 +81,74 @@ func TestCheckOwnershipAfterMigration(t *testing.T) {
 	}
 }
 
+// TestNotificationDeployStartedMigrationRepairsSkippedPrerequisite reproduces
+// the production 2026-07-15 failure: an older database had advanced past the
+// renumbered 0013 migration without ever creating notification_settings, so
+// 0028's ALTER TABLE dirtied the migration and blocked bex-api startup. Execute
+// 0028 in an isolated schema with only its tenants prerequisite and require it
+// to build the complete final table from scratch.
+func TestNotificationDeployStartedMigrationRepairsSkippedPrerequisite(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	sql, err := migrationsFS.ReadFile("migrations/0028_notification_deploy_started.up.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0028_repair;
+		SET LOCAL search_path TO migration_0028_repair;
+		CREATE TABLE tenants (id text PRIMARY KEY);
+	`); err != nil {
+		t.Fatalf("prepare skipped-prerequisite schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(sql)); err != nil {
+		t.Fatalf("migration 0028 against missing notification_settings: %v", err)
+	}
+
+	var columns int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*)
+		FROM information_schema.columns
+		WHERE table_schema = 'migration_0028_repair'
+		  AND table_name = 'notification_settings'
+		  AND column_name IN ('id', 'tenant_id', 'subject', 'deploy_started',
+		                      'deploy_succeeded', 'deploy_failed', 'created_at', 'updated_at')
+	`).Scan(&columns); err != nil {
+		t.Fatalf("inspect repaired columns: %v", err)
+	}
+	if columns != 8 {
+		t.Errorf("repaired notification_settings has %d expected columns, want 8", columns)
+	}
+
+	var indexes int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*)
+		FROM pg_indexes
+		WHERE schemaname = 'migration_0028_repair'
+		  AND tablename = 'notification_settings'
+		  AND indexname = 'notification_settings_member_idx'
+	`).Scan(&indexes); err != nil {
+		t.Fatalf("inspect repaired index: %v", err)
+	}
+	if indexes != 1 {
+		t.Errorf("repaired notification_settings member indexes = %d, want 1", indexes)
+	}
+}
+
 // TestMigrationNumbersAreUnique guards against a bug class that has bitten
 // this migrations directory repeatedly: golang-migrate keys a migration off
 // its leading NNNN_ number, so two files sharing one is at best a refused
