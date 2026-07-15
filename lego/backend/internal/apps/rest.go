@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -39,6 +40,10 @@ type patchServiceRequest struct {
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
 		IdleTTLSeconds *int32 `json:"idleTTLSeconds"`
+		// MaxShutdownDelaySeconds is Render's graceful SIGTERM window. The
+		// custom optional integer preserves omission for PATCH and returns a
+		// field-named 400 for strings, fractions, booleans, or null.
+		MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`
 	} `json:"serviceDetails"`
 	// DisplayName is the mutable human label. A pointer distinguishes omission
 	// (leave unchanged) from an explicit empty string (clear and fall back to the
@@ -84,6 +89,25 @@ type patchServiceRequest struct {
 // running instance count. numInstances < 1 or > 100 is core.ErrBadRequest.
 type scaleRequest struct {
 	NumInstances int32 `json:"numInstances"`
+}
+
+// optionalInt32 distinguishes an omitted JSON property from an explicit value
+// without accepting encoding/json's usual float/string coercion. It is used by
+// maxShutdownDelaySeconds on both create and PATCH so malformed types get the
+// same named error before reaching the shared range/type validation.
+type optionalInt32 struct {
+	Value int32
+	Set   bool
+}
+
+func (v *optionalInt32) UnmarshalJSON(data []byte) error {
+	var value int32
+	if string(data) == "null" || json.Unmarshal(data, &value) != nil {
+		return fmt.Errorf("maxShutdownDelaySeconds must be an integer")
+	}
+	v.Value = value
+	v.Set = true
+	return nil
 }
 
 // createServiceRequest is the POST /v1/services body — shaped to Render's create
@@ -160,10 +184,11 @@ type imageRef struct {
 // on create — the same location PATCH and GET report them. schedule is Render's
 // cronJobDetails.schedule (accepted here or at the top level, top level wins).
 type serviceDetailsReq struct {
-	Plan            string `json:"plan"`
-	NumInstances    int32  `json:"numInstances"`
-	HealthCheckPath string `json:"healthCheckPath"`
-	Runtime         string `json:"runtime"`
+	Plan                    string        `json:"plan"`
+	NumInstances            int32         `json:"numInstances"`
+	HealthCheckPath         string        `json:"healthCheckPath"`
+	MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`
+	Runtime                 string        `json:"runtime"`
 	// Env is Render's deprecated spelling for Runtime; Runtime wins.
 	Env                string                 `json:"env"`
 	EnvSpecificDetails *envSpecificDetailsReq `json:"envSpecificDetails"`
@@ -197,6 +222,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	var runtime, buildCommand, startCommand, dockerfilePath string
 	preDeploy := r.PreDeployCommand
 	var replicas int32
+	var maxShutdownDelaySeconds *int32
 	if r.ServiceDetails != nil {
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
@@ -218,6 +244,10 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 			}
 		}
 		replicas = r.ServiceDetails.NumInstances
+		if r.ServiceDetails.MaxShutdownDelaySeconds.Set {
+			value := r.ServiceDetails.MaxShutdownDelaySeconds.Value
+			maxShutdownDelaySeconds = &value
+		}
 		if schedule == "" {
 			schedule = r.ServiceDetails.Schedule // top-level schedule wins over the nested one
 		}
@@ -240,34 +270,35 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
 	return CreateRequest{
-		OwnerID:          r.OwnerID,
-		Name:             r.Name,
-		Type:             r.Type,
-		Schedule:         schedule,
-		Command:          command,
-		Repo:             r.Repo,
-		Image:            image,
-		Branch:           r.Branch,
-		Builder:          r.Builder,
-		Runtime:          runtime,
-		BuildCommand:     buildCommand,
-		StartCommand:     startCommand,
-		RootDir:          rootDir,
-		BuildFilter:      r.BuildFilter,
-		DockerfilePath:   dockerfilePath,
-		Port:             r.Port,
-		Replicas:         replicas,
-		Plan:             plan,
-		HealthCheckPath:  health,
-		Env:              env,
-		Hosts:            r.Domains,
-		AutoDeploy:       parseYesNo(r.AutoDeploy),
-		NotifyOnFail:     r.NotifyOnFail,
-		PreDeployCommand: preDeploy,
-		PublishPath:      publishPath,
-		Routes:           routeViewsFromRender(r.Routes),
-		Headers:          headerViewsFromRender(r.Headers),
-		DryRun:           r.DryRun,
+		OwnerID:                 r.OwnerID,
+		Name:                    r.Name,
+		Type:                    r.Type,
+		Schedule:                schedule,
+		Command:                 command,
+		Repo:                    r.Repo,
+		Image:                   image,
+		Branch:                  r.Branch,
+		Builder:                 r.Builder,
+		Runtime:                 runtime,
+		BuildCommand:            buildCommand,
+		StartCommand:            startCommand,
+		RootDir:                 rootDir,
+		BuildFilter:             r.BuildFilter,
+		DockerfilePath:          dockerfilePath,
+		Port:                    r.Port,
+		Replicas:                replicas,
+		Plan:                    plan,
+		HealthCheckPath:         health,
+		MaxShutdownDelaySeconds: maxShutdownDelaySeconds,
+		Env:                     env,
+		Hosts:                   r.Domains,
+		AutoDeploy:              parseYesNo(r.AutoDeploy),
+		NotifyOnFail:            r.NotifyOnFail,
+		PreDeployCommand:        preDeploy,
+		PublishPath:             publishPath,
+		Routes:                  routeViewsFromRender(r.Routes),
+		Headers:                 headerViewsFromRender(r.Headers),
+		DryRun:                  r.DryRun,
 	}
 }
 
@@ -375,15 +406,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	patch := func(w http.ResponseWriter, r *http.Request) {
 		var req patchServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
 		id := r.PathValue("id")
 		dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 		var plan string
 		var idleTTL *int32
+		var maxShutdownDelay optionalInt32
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
+			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
 
@@ -402,7 +435,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil {
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -424,6 +457,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if idleTTL != nil {
 			if app, err = s.SetIdleTTL(r.Context(), id, *idleTTL); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if maxShutdownDelay.Set {
+			if app, err = s.SetMaxShutdownDelay(r.Context(), id, maxShutdownDelay.Value); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -498,7 +537,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	create := func(w http.ResponseWriter, r *http.Request) {
 		var req createServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {

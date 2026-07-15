@@ -277,6 +277,17 @@ type AppSpec struct {
 	// +kubebuilder:default=/
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
 
+	// MaxShutdownDelaySeconds is the maximum graceful-shutdown window after
+	// Kubernetes sends SIGTERM before it sends SIGKILL. It maps directly to the
+	// pod template's terminationGracePeriodSeconds. Render allows 1-300 seconds
+	// and defaults to 30; nil deliberately leaves Kubernetes' identical 30-second
+	// default untouched so existing Apps reconcile byte-identically. Applies to
+	// web_service, private_service, and background_worker only.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=300
+	MaxShutdownDelaySeconds *int32 `json:"maxShutdownDelaySeconds,omitempty"`
+
 	// AutoDeploy triggers a deploy on each push to Branch.
 	// +optional
 	AutoDeploy bool `json:"autoDeploy,omitempty"`

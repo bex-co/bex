@@ -45,6 +45,9 @@ query Server($id: String!) {
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath
+    # Graceful window after SIGTERM before SIGKILL. Render/Kubernetes default 30;
+    # only web/private/background-worker services expose it.
+    maxShutdownDelaySeconds
     # preDeployCommand is Render's Pre-Deploy Command (w1/m33) — the Build &
     # Deploy section reads it; empty means no pre-deploy step.
     preDeployCommand

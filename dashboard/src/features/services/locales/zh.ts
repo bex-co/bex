@@ -736,6 +736,38 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新空闲超时。",
     description: "Toast after setIdleTimeout fails",
   },
+  "services.settingsMaxShutdownDelay": {
+    message: "最大关闭延迟",
+    description: "Settings row label for the graceful SIGTERM window",
+  },
+  "services.settingsMaxShutdownDelayHint": {
+    message: "收到 SIGTERM 后等待 1–300 秒再强制停止进程（默认 30 秒）。",
+    description: "Settings row help for the shutdown-delay range",
+  },
+  "services.maxShutdownDelaySeconds": {
+    message: "{seconds} 秒",
+    description: "Current graceful-shutdown delay in seconds",
+  },
+  "services.maxShutdownDelayEdit": {
+    message: "编辑最大关闭延迟",
+    description: "Accessible label for the shutdown-delay edit button",
+  },
+  "services.maxShutdownDelaySave": {
+    message: "保存最大关闭延迟",
+    description: "Accessible label for the shutdown-delay save button",
+  },
+  "services.maxShutdownDelayCancel": {
+    message: "取消编辑最大关闭延迟",
+    description: "Accessible label for the shutdown-delay cancel button",
+  },
+  "services.maxShutdownDelaySuccess": {
+    message: "最大关闭延迟已更新。",
+    description: "Toast after setMaxShutdownDelay succeeds",
+  },
+  "services.maxShutdownDelayError": {
+    message: "无法更新最大关闭延迟。",
+    description: "Toast after setMaxShutdownDelay fails",
+  },
   "services.settingsHealthChecksTitle": {
     message: "健康检查",
     description: "Settings tab: Health Checks section card title",

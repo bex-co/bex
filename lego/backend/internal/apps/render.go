@@ -166,6 +166,12 @@ func toRenderService(a AppView) renderService {
 	if a.PreDeployCommand != "" {
 		set("preDeployCommand", a.PreDeployCommand) // webServiceDetails.preDeployCommand (w1/m33)
 	}
+	if a.MaxShutdownDelaySeconds > 0 {
+		// Render places this on web/private/background-worker serviceDetails.
+		// view() supplies the shared Render/Kubernetes default (30) when the CR
+		// pointer is unset, so legacy services read back exactly like Render.
+		set("maxShutdownDelaySeconds", a.MaxShutdownDelaySeconds)
+	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {
 		ras = &renderAutoscaling{

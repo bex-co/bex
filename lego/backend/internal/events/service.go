@@ -53,6 +53,7 @@ limitations under the License.
 //	build_filter_changed        apps.SetBuildFilter
 //	display_name_changed        apps.SetDisplayName
 //	pre_deploy_command_changed  apps.SetPreDeployCommand
+//	max_shutdown_delay_changed  apps.SetMaxShutdownDelay
 //	publish_path_changed        apps.SetPublishPath
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
@@ -132,22 +133,23 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged        = "env_vars_changed"
-	TypeEnvGroupLinked        = "env_group_linked"
-	TypeEnvGroupUnlinked      = "env_group_unlinked"
-	TypeAutoDeployChanged     = "auto_deploy_changed"
-	TypeIdleTimeoutChanged    = "idle_timeout_changed"
-	TypeRootDirectoryChanged  = "root_directory_changed"
-	TypeBuildFilterChanged    = "build_filter_changed"
-	TypeDisplayNameChanged    = "display_name_changed"
-	TypePreDeployChanged      = "pre_deploy_command_changed"
-	TypePublishPathChanged    = "publish_path_changed"
-	TypeRoutesChanged         = "routes_changed"
-	TypeHeadersChanged        = "headers_changed"
-	TypeCustomDomainAdded     = "custom_domain_added"
-	TypeCustomDomainRemoved   = "custom_domain_removed"
-	TypeDeployHookRegenerated = "deploy_hook_regenerated"
-	TypeNotifyOnFailChanged   = "notify_on_fail_changed"
+	TypeEnvVarsChanged          = "env_vars_changed"
+	TypeEnvGroupLinked          = "env_group_linked"
+	TypeEnvGroupUnlinked        = "env_group_unlinked"
+	TypeAutoDeployChanged       = "auto_deploy_changed"
+	TypeIdleTimeoutChanged      = "idle_timeout_changed"
+	TypeRootDirectoryChanged    = "root_directory_changed"
+	TypeBuildFilterChanged      = "build_filter_changed"
+	TypeDisplayNameChanged      = "display_name_changed"
+	TypePreDeployChanged        = "pre_deploy_command_changed"
+	TypeMaxShutdownDelayChanged = "max_shutdown_delay_changed"
+	TypePublishPathChanged      = "publish_path_changed"
+	TypeRoutesChanged           = "routes_changed"
+	TypeHeadersChanged          = "headers_changed"
+	TypeCustomDomainAdded       = "custom_domain_added"
+	TypeCustomDomainRemoved     = "custom_domain_removed"
+	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
+	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -178,6 +180,7 @@ var eventTypes = map[string]string{
 	"apps.SetBuildFilter":          TypeBuildFilterChanged,
 	"apps.SetDisplayName":          TypeDisplayNameChanged,
 	"apps.SetPreDeployCommand":     TypePreDeployChanged,
+	"apps.SetMaxShutdownDelay":     TypeMaxShutdownDelayChanged,
 	"apps.SetPublishPath":          TypePublishPathChanged,
 	"apps.SetRoutes":               TypeRoutesChanged,
 	"apps.SetHeaders":              TypeHeadersChanged,

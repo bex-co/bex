@@ -262,6 +262,11 @@ type AppView struct {
 	// Render's healthCheckPath). Empty means the default "/". The Settings →
 	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
+	// MaxShutdownDelaySeconds is the effective SIGTERM grace window for a
+	// long-running service. Existing CRs leave the underlying pointer unset, so
+	// view() reports Render/Kubernetes' shared 30-second default without mutating
+	// their spec. Zero means not applicable (cron_job/static_site).
+	MaxShutdownDelaySeconds int32 `json:"maxShutdownDelaySeconds,omitempty"`
 	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
 	// command run to completion against the new revision's image before it serves
 	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
@@ -413,37 +418,40 @@ func view(a *appv1alpha1.App) AppView {
 	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
 	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
 	return AppView{
-		Name:             publicName(a),
-		Slug:             a.Spec.PlatformSubdomain(a.Name),
-		DisplayName:      a.Spec.DisplayName,
-		Type:             svcType,
-		Phase:            string(a.Status.Phase),
-		URL:              a.Status.URL,
-		URLs:             a.Status.URLs,
-		Image:            a.Status.Image,
-		Runtime:          a.Spec.Runtime,
-		BuildCommand:     a.Spec.BuildCommand,
-		StartCommand:     a.Spec.StartCommand,
-		Builder:          a.Spec.Builder,
-		Replicas:         a.Spec.Replicas,
-		Suspended:        a.Spec.Suspended,
-		Schedule:         a.Spec.Schedule,
-		Command:          a.Spec.Command,
-		Runs:             cronRunViews(a.Status.Runs),
-		Plan:             plan,
-		Revision:         a.Status.ActiveRevision,
-		CreatedAt:        created,
-		IdleTTLSeconds:   a.Spec.IdleTTLSeconds,
-		OwnerID:          a.Labels[core.LabelTenant],
-		RootDir:          a.Spec.RootDir,
-		DockerfilePath:   a.Spec.DockerfilePath,
-		Repo:             a.Spec.Repo,
-		Branch:           a.Spec.Branch,
-		BuildFilter:      buildFilterView(a.Spec.BuildFilter),
-		Autoscaling:      asView,
-		AutoDeploy:       a.Spec.AutoDeploy,
-		NotifyOnFail:     notifyOnFail,
-		HealthCheckPath:  a.Spec.HealthCheckPath,
+		Name:            publicName(a),
+		Slug:            a.Spec.PlatformSubdomain(a.Name),
+		DisplayName:     a.Spec.DisplayName,
+		Type:            svcType,
+		Phase:           string(a.Status.Phase),
+		URL:             a.Status.URL,
+		URLs:            a.Status.URLs,
+		Image:           a.Status.Image,
+		Runtime:         a.Spec.Runtime,
+		BuildCommand:    a.Spec.BuildCommand,
+		StartCommand:    a.Spec.StartCommand,
+		Builder:         a.Spec.Builder,
+		Replicas:        a.Spec.Replicas,
+		Suspended:       a.Spec.Suspended,
+		Schedule:        a.Spec.Schedule,
+		Command:         a.Spec.Command,
+		Runs:            cronRunViews(a.Status.Runs),
+		Plan:            plan,
+		Revision:        a.Status.ActiveRevision,
+		CreatedAt:       created,
+		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
+		OwnerID:         a.Labels[core.LabelTenant],
+		RootDir:         a.Spec.RootDir,
+		DockerfilePath:  a.Spec.DockerfilePath,
+		Repo:            a.Spec.Repo,
+		Branch:          a.Spec.Branch,
+		BuildFilter:     buildFilterView(a.Spec.BuildFilter),
+		Autoscaling:     asView,
+		AutoDeploy:      a.Spec.AutoDeploy,
+		NotifyOnFail:    notifyOnFail,
+		HealthCheckPath: a.Spec.HealthCheckPath,
+		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
+			svcType, a.Spec.MaxShutdownDelaySeconds,
+		),
 		PreDeployCommand: a.Spec.PreDeployCommand,
 		PublishPath:      a.Spec.PublishPath,
 		Routes:           staticRouteViews(a.Spec.Routes),
@@ -604,8 +612,12 @@ type CreateRequest struct {
 	Replicas        int32
 	Plan            string
 	HealthCheckPath string
-	Env             []appv1alpha1.EnvVar
-	Hosts           []string
+	// MaxShutdownDelaySeconds is Render's per-service SIGTERM grace window.
+	// nil means omitted (the shared Render/Kubernetes default of 30 seconds);
+	// non-nil values must be 1-300 and only apply to web/private/worker services.
+	MaxShutdownDelaySeconds *int32
+	Env                     []appv1alpha1.EnvVar
+	Hosts                   []string
 	// AutoDeploy controls whether a signed git push to Branch redeploys this App
 	// (the webhook honors spec.autoDeploy). nil => the default: on for a
 	// repo-backed service (Render's default too), off for an image-backed one
@@ -1034,6 +1046,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	// A cron_job needs a schedule; a worker/cron has no ingress, so it can't carry
 	// custom domains (same rule the deploy manifest enforces for private services).
 	if svcType == appv1alpha1.TypeCronJob && strings.TrimSpace(req.Schedule) == "" {
@@ -1122,21 +1137,24 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		return appv1alpha1.AppSpec{}, err
 	}
 	spec := appv1alpha1.AppSpec{
-		Type:             svcType,
-		Repo:             req.Repo,
-		Image:            req.Image,
-		Branch:           branch,
-		Runtime:          runtime,
-		BuildCommand:     req.BuildCommand,
-		StartCommand:     req.StartCommand,
-		Builder:          builder,
-		RootDir:          req.RootDir,
-		BuildFilter:      buildFilter,
-		DockerfilePath:   req.DockerfilePath,
-		Port:             port,
-		Replicas:         replicas,
-		Tier:             tier,
-		HealthCheckPath:  req.HealthCheckPath,
+		Type:            svcType,
+		Repo:            req.Repo,
+		Image:           req.Image,
+		Branch:          branch,
+		Runtime:         runtime,
+		BuildCommand:    req.BuildCommand,
+		StartCommand:    req.StartCommand,
+		Builder:         builder,
+		RootDir:         req.RootDir,
+		BuildFilter:     buildFilter,
+		DockerfilePath:  req.DockerfilePath,
+		Port:            port,
+		Replicas:        replicas,
+		Tier:            tier,
+		HealthCheckPath: req.HealthCheckPath,
+		MaxShutdownDelaySeconds: cloneInt32(
+			req.MaxShutdownDelaySeconds,
+		),
 		Env:              req.Env,
 		AutoDeploy:       autoDeploy,
 		NotifyOnFail:     notifyOnFail,
@@ -1200,6 +1218,55 @@ func normalizeType(t string) (string, error) {
 	}
 }
 
+const (
+	defaultMaxShutdownDelaySeconds int32 = 30
+	minMaxShutdownDelaySeconds     int32 = 1
+	maxMaxShutdownDelaySeconds     int32 = 300
+)
+
+// supportsMaxShutdownDelay reports whether the service owns a continuously
+// running pod whose process receives SIGTERM during rollout/scale-down. Empty
+// is the legacy spelling of web_service.
+func supportsMaxShutdownDelay(serviceType string) bool {
+	switch serviceType {
+	case "", appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+		return true
+	default:
+		return false
+	}
+}
+
+func validateMaxShutdownDelaySeconds(serviceType string, seconds *int32) error {
+	if seconds == nil {
+		return nil
+	}
+	if !supportsMaxShutdownDelay(serviceType) {
+		return fmt.Errorf("%w: maxShutdownDelaySeconds is not applicable to a %s", core.ErrBadRequest, serviceType)
+	}
+	if *seconds < minMaxShutdownDelaySeconds || *seconds > maxMaxShutdownDelaySeconds {
+		return fmt.Errorf("%w: maxShutdownDelaySeconds must be %d-%d", core.ErrBadRequest, minMaxShutdownDelaySeconds, maxMaxShutdownDelaySeconds)
+	}
+	return nil
+}
+
+func effectiveMaxShutdownDelaySeconds(serviceType string, seconds *int32) int32 {
+	if !supportsMaxShutdownDelay(serviceType) {
+		return 0
+	}
+	if seconds == nil {
+		return defaultMaxShutdownDelaySeconds
+	}
+	return *seconds
+}
+
+func cloneInt32(value *int32) *int32 {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
 // applyCreateToSpec copies the create-owned fields of want onto an existing
 // spec, leaving fields owned by the operator or other features (EnvFromSecret,
 // Suspended, IdleTTLSeconds, RestartedAt) untouched — the same discipline the
@@ -1222,6 +1289,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier
 	dst.HealthCheckPath = want.HealthCheckPath
+	dst.MaxShutdownDelaySeconds = cloneInt32(want.MaxShutdownDelaySeconds)
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
 	dst.NotifyOnFail = want.NotifyOnFail
@@ -1539,6 +1607,23 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.HealthCheckPath = trimmed
+	})
+}
+
+// SetMaxShutdownDelay changes the maximum time Kubernetes gives a service's
+// process to exit after SIGTERM before SIGKILL. It is a direct CR patch because
+// the control-plane row does not own this field. Kubernetes rolls the Deployment
+// when the pod template's terminationGracePeriodSeconds changes.
+func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds int32) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if err := validateMaxShutdownDelaySeconds(a.Spec.Type, &seconds); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.MaxShutdownDelaySeconds = cloneInt32(&seconds)
 	})
 }
 
