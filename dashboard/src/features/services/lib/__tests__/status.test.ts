@@ -107,6 +107,7 @@ describe("toServiceView", () => {
       publishPath: null,
       routes: [],
       headers: [],
+      ipAllowList: null,
     });
   });
 

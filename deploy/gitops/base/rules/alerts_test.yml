@@ -63,7 +63,7 @@ tests:
               namespace: secrets
             exp_annotations:
               summary: "Backup secrets/openbao-backup has not succeeded in >26h"
-              description: "The nightly openbao-backup last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md"
+              description: "The nightly openbao-backup last succeeded over 26h ago — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR031-platform-data-backup.md"
 
   # TraefikHigh5xxRate: a tiny denominator (1 request total) must NOT fire even at
   # 100% 5xx — the traffic floor guards against alerting on noise.
