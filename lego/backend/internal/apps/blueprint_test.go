@@ -20,10 +20,12 @@ package apps
 // validate (stateless) · list · sync — each verb over all three adapters.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,12 +113,15 @@ func blueprintSchema(t *testing.T, svc *Service) graphql.Schema {
 
 func TestValidateBlueprintValidYAML(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), stackManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", stackManifest)
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(valid): %v", err)
 	}
 	if !v.Valid || len(v.Errors) != 0 {
 		t.Errorf("valid manifest: want Valid=true no errors, got %+v", v)
+	}
+	if v.Plan == nil || len(v.Plan.Services) != 3 || len(v.Plan.Databases) != 1 || v.Plan.TotalActions != 4 {
+		t.Errorf("valid manifest: unexpected plan: %+v", v.Plan)
 	}
 }
 
@@ -126,19 +131,34 @@ func TestValidateBlueprintBadYAML(t *testing.T) {
   - name: ""
     type: web
 `
-	v, err := svc.ValidateBlueprint(context.Background(), bad)
+	v, err := svc.ValidateBlueprint(context.Background(), "", bad)
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(bad): unexpected error %v", err)
 	}
 	if v.Valid || len(v.Errors) == 0 {
 		t.Errorf("invalid manifest: want Valid=false with errors, got %+v", v)
 	}
+	if v.Errors[0].Error == "" || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].name" {
+		t.Errorf("invalid manifest: want a structured services[0].name error, got %+v", v.Errors)
+	}
+}
+
+func TestValidateBlueprintSyntaxErrorIncludesLine(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	const bad = "services:\n  - name: web\n    envVars: [\n"
+	v, err := svc.ValidateBlueprint(context.Background(), "", bad)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint(syntax error): unexpected error %v", err)
+	}
+	if v.Valid || len(v.Errors) != 1 || v.Errors[0].Line == nil || *v.Errors[0].Line < 1 {
+		t.Errorf("syntax error: want structured error with a source line, got %+v", v)
+	}
 }
 
 func TestValidateBlueprintStateless(t *testing.T) {
 	// validate must not touch the store — Blueprints=nil must not panic.
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}, Blueprints: nil}
-	if _, err := svc.ValidateBlueprint(context.Background(), stackManifest); err != nil {
+	if _, err := svc.ValidateBlueprint(context.Background(), "", stackManifest); err != nil {
 		t.Fatalf("ValidateBlueprint with nil store: %v", err)
 	}
 }
@@ -337,6 +357,115 @@ func TestRESTValidateBlueprint(t *testing.T) {
 	}
 }
 
+func multipartBlueprintRequest(t *testing.T, ownerID, filename, manifest string) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("ownerId", ownerID); err != nil {
+		t.Fatalf("ownerId field: %v", err)
+	}
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		t.Fatalf("file field: %v", err)
+	}
+	if _, err := part.Write([]byte(manifest)); err != nil {
+		t.Fatalf("file content: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart: %v", err)
+	}
+	req := httptest.NewRequest("POST", "/v1/blueprints/validate", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req
+}
+
+func TestRESTValidateBlueprintRenderCLIMultipart(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", stackManifest))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("multipart validate => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	var out BlueprintValidation
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !out.Valid || out.Plan == nil {
+		t.Fatalf("multipart valid manifest: got %+v", out)
+	}
+	if got, want := out.Plan.Services, []string{"web", "api", "worker"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("plan services = %v, want %v", got, want)
+	}
+	if got, want := out.Plan.Databases, []string{"db"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("plan databases = %v, want %v", got, want)
+	}
+	if out.Plan.TotalActions != 4 {
+		t.Errorf("plan totalActions = %d, want 4", out.Plan.TotalActions)
+	}
+}
+
+func TestRESTValidateBlueprintRenderCLIMultipartInvalidReturnsValidationResult(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", "services:\n  - name: \"\"\n"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("invalid Blueprint is a validation result, not a transport error: got %d: %s", rec.Code, rec.Body)
+	}
+	var out BlueprintValidation
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out.Valid || len(out.Errors) != 1 || out.Errors[0].Error == "" {
+		t.Fatalf("invalid multipart manifest: got %+v", out)
+	}
+}
+
+func TestRESTValidateBlueprintRenderCLIMultipartRequiresOwnerAndFile(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for _, tc := range []struct {
+		name     string
+		ownerID  string
+		manifest string
+	}{{"missing owner", "", stackManifest}, {"empty file", "tea-workspace", ""}} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, multipartBlueprintRequest(t, tc.ownerID, "render.yaml", tc.manifest))
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("got %d (%s), want 400", rec.Code, rec.Body)
+			}
+		})
+	}
+}
+
+func TestRESTValidateBlueprintMultipartOwnerIDScopesAuthorization(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for _, tc := range []struct {
+		ownerID  string
+		wantCode int
+	}{{"tea-a", http.StatusOK}, {"tea-b", http.StatusForbidden}} {
+		req := multipartBlueprintRequest(t, tc.ownerID, "render.yaml", stackManifest)
+		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != tc.wantCode {
+			t.Errorf("ownerId %q: got %d (%s), want %d", tc.ownerID, rec.Code, rec.Body, tc.wantCode)
+		}
+	}
+}
+
 func TestRESTValidateBlueprintBadYAML(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	mux := http.NewServeMux()
@@ -389,7 +518,7 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	schema := blueprintSchema(t, svc)
 
-	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors } }`, stackManifest)
+	q := fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors plan { services databases totalActions } } }`, stackManifest)
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
 	if len(res.Errors) > 0 {
 		t.Fatalf("validateBlueprint: %v", res.Errors)
@@ -397,6 +526,29 @@ func TestGraphQLValidateBlueprint(t *testing.T) {
 	v := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
 	if v["valid"] != true {
 		t.Errorf("validateBlueprint valid manifest: want valid=true, got %v", v)
+	}
+	plan := v["plan"].(map[string]any)
+	if plan["totalActions"] != 4 {
+		t.Errorf("validateBlueprint plan = %+v, want totalActions=4", plan)
+	}
+}
+
+func TestGraphQLValidateBlueprintPreservesStringErrorsAndAddsDetails(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	schema := blueprintSchema(t, svc)
+
+	q := `{ validateBlueprint(bexYaml: "services:\n  - name: \"\"\n") { valid errors errorDetails { error path } } }`
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q})
+	if len(res.Errors) > 0 {
+		t.Fatalf("validateBlueprint: %v", res.Errors)
+	}
+	v := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
+	if v["valid"] != false || len(v["errors"].([]any)) != 1 {
+		t.Fatalf("validateBlueprint invalid result = %+v", v)
+	}
+	details := v["errorDetails"].([]any)
+	if len(details) != 1 || details[0].(map[string]any)["path"] != "services[0].name" {
+		t.Errorf("validateBlueprint errorDetails = %+v", details)
 	}
 }
 

@@ -305,6 +305,7 @@ func toRenderStack(res StackResult) renderStack {
 // validateBlueprintArgs is validate_bex_yml's input (w2/m15).
 type validateBlueprintArgs struct {
 	BexYAML string `json:"bexYaml" jsonschema:"the bex.yml content to validate (render.yaml Blueprint shape); parsed and checked for per-entry errors with no apply"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
 }
 
 // listBlueprintsArgs is list_blueprints' input (w2/m15).
@@ -853,9 +854,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// Blueprint verbs (w2/m15): validate_bex_yml · list_blueprints · sync_blueprint.
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
-		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return per-entry errors without applying anything — the safe pre-flight check before a deploy call. Returns {valid: bool, errors: [string]}. Requires no store; always available. bex extension (pillar 4 agent safety).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
-		v, err := s.ValidateBlueprint(ctx, in.BexYAML)
+		Description: "Dry-run parse a bex.yml (render.yaml Blueprint) and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. Returns {valid, errors: [{error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
+		v, err := s.ValidateBlueprint(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML)
 		return nil, v, err
 	})
 

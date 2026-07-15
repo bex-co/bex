@@ -24,12 +24,16 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"sigs.k8s.io/yaml"
 )
 
 // BlueprintStore is the persistence interface blueprints need.
@@ -56,10 +60,35 @@ type BlueprintView struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-// BlueprintValidation is the result of a dry-run validate — no storage, no apply.
+// BlueprintValidationError is Render's validation-error shape. Error is always
+// present; line/column/path are best-effort source locations and remain absent
+// when the YAML decoder cannot identify one precisely.
+type BlueprintValidationError struct {
+	Error  string  `json:"error"`
+	Line   *int    `json:"line,omitempty"`
+	Column *int    `json:"column,omitempty"`
+	Path   *string `json:"path,omitempty"`
+}
+
+// BlueprintValidationPlan is Render's dry-run resource summary. bex currently
+// supports services, Postgres databases, and env groups in a Blueprint; the
+// keyValue field is retained for wire compatibility and will be omitted until
+// render.yaml Key Value entries are supported by the shared parser.
+type BlueprintValidationPlan struct {
+	Services     []string `json:"services,omitempty"`
+	Databases    []string `json:"databases,omitempty"`
+	KeyValue     []string `json:"keyValue,omitempty"`
+	EnvGroups    []string `json:"envGroups,omitempty"`
+	TotalActions int      `json:"totalActions"`
+}
+
+// BlueprintValidation is the result of a dry-run validate — no storage, no
+// apply. Its JSON representation matches Render's ValidateBlueprintResponse so
+// the official CLI can decode it directly.
 type BlueprintValidation struct {
-	Valid  bool     `json:"valid"`
-	Errors []string `json:"errors,omitempty"`
+	Valid  bool                       `json:"valid"`
+	Errors []BlueprintValidationError `json:"errors,omitempty"`
+	Plan   *BlueprintValidationPlan   `json:"plan,omitempty"`
 }
 
 // SyncBlueprintResult is the result of a sync: the updated blueprint metadata
@@ -70,14 +99,19 @@ type SyncBlueprintResult struct {
 }
 
 // ValidateBlueprint parses a bex.yml and returns per-entry errors without
-// applying anything (stateless: no store, no k8s writes). Requires can_view.
-func (s *Service) ValidateBlueprint(ctx context.Context, bexYAML string) (BlueprintValidation, error) {
+// applying anything (stateless: no store, no k8s writes). ownerID is Render's
+// workspace selector; empty resolves to the caller's default. Requires can_view.
+func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string) (BlueprintValidation, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return BlueprintValidation{}, err
 	}
-	_, err := parseStack(DeployRequest{Manifest: bexYAML})
+	st, err := parseStack(DeployRequest{Manifest: bexYAML})
 	if err == nil {
-		return BlueprintValidation{Valid: true}, nil
+		plan := blueprintValidationPlan(st)
+		return BlueprintValidation{Valid: true, Plan: &plan}, nil
 	}
 	if !errors.Is(err, core.ErrBadRequest) {
 		return BlueprintValidation{}, err
@@ -86,7 +120,103 @@ func (s *Service) ValidateBlueprint(ctx context.Context, bexYAML string) (Bluepr
 	if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
 		msg = after
 	}
-	return BlueprintValidation{Errors: []string{msg}}, nil
+	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(bexYAML, msg)}}, nil
+}
+
+func blueprintValidationPlan(st parsedStack) BlueprintValidationPlan {
+	plan := BlueprintValidationPlan{
+		Services:  make([]string, 0, len(st.services)),
+		Databases: make([]string, 0, len(st.databases)),
+		EnvGroups: make([]string, 0, len(st.envGroups)),
+	}
+	for _, svc := range st.services {
+		plan.Services = append(plan.Services, svc.req.Name)
+	}
+	for _, db := range st.databases {
+		plan.Databases = append(plan.Databases, db.name)
+	}
+	for _, group := range st.envGroups {
+		plan.EnvGroups = append(plan.EnvGroups, group.name)
+	}
+	plan.TotalActions = len(plan.Services) + len(plan.Databases) + len(plan.KeyValue) + len(plan.EnvGroups)
+	return plan
+}
+
+var yamlLineRE = regexp.MustCompile(`(?i)\bline\s+(\d+)\b`)
+
+func blueprintValidationError(manifest, message string) BlueprintValidationError {
+	out := BlueprintValidationError{Error: message}
+	if match := yamlLineRE.FindStringSubmatch(message); len(match) == 2 {
+		if line, err := strconv.Atoi(match[1]); err == nil && line > 0 {
+			out.Line = &line
+		}
+	}
+	if fieldPath := blueprintErrorPath(manifest, message); fieldPath != "" {
+		out.Path = &fieldPath
+	}
+	return out
+}
+
+// blueprintErrorPath supplies the optional Render path for semantic errors the
+// shared parser can associate with a named entry. Syntax errors already carry a
+// decoder line; an uncertain path is omitted rather than fabricated.
+func blueprintErrorPath(manifest, message string) string {
+	var parsed bexManifest
+	if err := yaml.Unmarshal([]byte(manifest), &parsed); err != nil {
+		return ""
+	}
+	services := parsed.Services
+	root := "services"
+	if len(parsed.Apps) > 0 && len(parsed.Services) == 0 {
+		services = parsed.Apps
+		root = "apps"
+	}
+	for i, svc := range services {
+		if svc.Name == "" {
+			if strings.Contains(message, "service entry is missing its name") {
+				return fmt.Sprintf("%s[%d].name", root, i)
+			}
+			continue
+		}
+		if strings.Contains(message, fmt.Sprintf("%q", svc.Name)) || strings.Contains(message, svc.Name+" ") {
+			return fmt.Sprintf("%s[%d]%s", root, i, blueprintErrorField(message))
+		}
+	}
+	for i, db := range parsed.Databases {
+		if db.Name == "" {
+			if strings.Contains(message, "database entry is missing its name") {
+				return fmt.Sprintf("databases[%d].name", i)
+			}
+			continue
+		}
+		if strings.Contains(message, fmt.Sprintf("%q", db.Name)) || strings.Contains(message, db.Name+" ") {
+			return fmt.Sprintf("databases[%d]%s", i, blueprintErrorField(message))
+		}
+	}
+	for i, group := range parsed.EnvVarGroups {
+		if group.Name == "" {
+			if strings.Contains(message, "envVarGroups entry is missing its name") {
+				return fmt.Sprintf("envVarGroups[%d].name", i)
+			}
+			continue
+		}
+		if strings.Contains(message, fmt.Sprintf("%q", group.Name)) || strings.Contains(message, group.Name+" ") {
+			return fmt.Sprintf("envVarGroups[%d]%s", i, blueprintErrorField(message))
+		}
+	}
+	return ""
+}
+
+func blueprintErrorField(message string) string {
+	for _, field := range []string{"plan", "domains", "schedule", "runtime", "type", "image", "name"} {
+		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
+			return "." + field
+		}
+	}
+	if strings.Contains(message, " env ") || strings.Contains(message, "env var") {
+		return ".envVars"
+	}
+	return ""
 }
 
 // ListBlueprints returns all active blueprints for a workspace, newest first.

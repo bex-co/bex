@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"slices"
 	"strings"
@@ -719,14 +721,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
 	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			BexYAML string `json:"bexYaml"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.BexYAML == "" {
+		ownerID, bexYAML, err := decodeBlueprintValidationRequest(w, r)
+		if err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		v, err := s.ValidateBlueprint(r.Context(), body.BexYAML)
+		v, err := s.ValidateBlueprint(r.Context(), ownerID, bexYAML)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -781,4 +781,58 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("GET "+base+"/{id}/headers", listHeaders)
 		mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
 	}
+}
+
+const maxBlueprintValidationBodyBytes = 2 << 20
+
+// decodeBlueprintValidationRequest accepts Render's multipart contract used by
+// the official CLI (ownerId field + file part), while retaining bex's original
+// JSON contract for the dashboard and direct API callers.
+func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (ownerID, bexYAML string, err error) {
+	contentType := r.Header.Get("Content-Type")
+	mediaType := "application/json"
+	if contentType != "" {
+		mediaType, _, err = mime.ParseMediaType(contentType)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	if mediaType != "multipart/form-data" {
+		if mediaType != "application/json" {
+			return "", "", fmt.Errorf("unsupported content type %q", mediaType)
+		}
+		var body struct {
+			BexYAML string `json:"bexYaml"`
+			OwnerID string `json:"ownerId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.BexYAML == "" {
+			return "", "", core.ErrBadRequest
+		}
+		return body.OwnerID, body.BexYAML, nil
+	}
+
+	// The global request-body guard defaults to the same 2 MiB. Keep a local
+	// bound too because feature-level tests and embedders can mount this router
+	// without the composition root's middleware.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBlueprintValidationBodyBytes)
+	if err := r.ParseMultipartForm(maxBlueprintValidationBodyBytes); err != nil {
+		return "", "", err
+	}
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll() //nolint:errcheck // best-effort temp-file cleanup
+	}
+	ownerID = strings.TrimSpace(r.FormValue("ownerId"))
+	if ownerID == "" {
+		return "", "", fmt.Errorf("ownerId is required")
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return "", "", err
+	}
+	defer file.Close() //nolint:errcheck // read-only multipart file
+	content, err := io.ReadAll(file)
+	if err != nil || len(content) == 0 {
+		return "", "", core.ErrBadRequest
+	}
+	return ownerID, string(content), nil
 }
