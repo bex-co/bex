@@ -105,7 +105,7 @@ export function ProjectPage() {
                   {t("projects.eyebrow")}
                 </p>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold">
+                  <h1 className="truncate text-xl font-semibold">
                     {project?.name ?? projectId}
                   </h1>
                   <Button

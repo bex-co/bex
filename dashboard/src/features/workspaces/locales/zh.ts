@@ -114,8 +114,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Fallback toast/inline message on a failed create",
   },
   "workspaces.settingsTitle": {
-    message: "工作区",
-    description: "Workspace settings card title",
+    message: "工作区设置",
+    description: "Workspace settings page and card title",
   },
   "workspaces.settingsDescription": {
     message: "重命名此工作区，或查看其套餐与元数据。",

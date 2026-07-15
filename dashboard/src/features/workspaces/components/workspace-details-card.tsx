@@ -79,7 +79,9 @@ export function WorkspaceDetailsCard({
     <Card>
       <CardHeader>
         <CardTitle>
-          <h1>{t("workspaces.settingsTitle")}</h1>
+          <h1 className="text-xl font-semibold">
+            {t("workspaces.settingsTitle")}
+          </h1>
         </CardTitle>
         <CardDescription>{t("workspaces.settingsDescription")}</CardDescription>
       </CardHeader>

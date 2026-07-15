@@ -39,10 +39,10 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl font-semibold text-foreground">
               {t("auth.settingsTitle")}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {t("auth.settingsSubtitle")}
             </p>
           </div>

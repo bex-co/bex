@@ -115,8 +115,8 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "Fallback toast/inline message on a failed create",
   },
   "workspaces.settingsTitle": {
-    message: "Workspace",
-    description: "Workspace settings card title",
+    message: "Workspace settings",
+    description: "Workspace settings page and card title",
   },
   "workspaces.settingsDescription": {
     message: "Rename this workspace or review its plan and metadata.",

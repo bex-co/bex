@@ -24,7 +24,7 @@ export const Route = createFileRoute("/env-groups_/$groupId")({
   component: EnvGroupDetailPage,
   beforeLoad: requireAuth("/env-groups/$groupId"),
   head: ({ params }) => ({
-    meta: [{ title: `${params.groupId} · Environment Groups · bex` }],
+    meta: [{ title: `${params.groupId} · Environment Groups · bex dashboard` }],
   }),
 });
 

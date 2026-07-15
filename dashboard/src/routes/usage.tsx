@@ -6,6 +6,6 @@ export const Route = createFileRoute("/usage")({
   component: UsagePage,
   beforeLoad: requireAuth("/usage"),
   head: () => ({
-    meta: [{ title: "Usage — bex" }],
+    meta: [{ title: "Usage · bex dashboard" }],
   }),
 });
