@@ -42,6 +42,7 @@
 - [x] **m34** — Build filters: `buildFilter.paths` + `ignoredPaths` (9 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (`docs/ADR018-render-parity.md` "buildFilter is not editable — ◐" row understates it: zero hits in `lego/`, the field is entirely unbuilt); generalizes w1/m18's `rootDirMatches` webhook path filter — done 2026-07-14, moved to `done/m34/`
 - [ ] **m35** — Blueprint field completeness: envVarGroups · fromGroup · sync:false · fromService (10 tasks) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (ADR018 Blueprint row's named-error rejections; every ingredient shipped — m16 env groups, m24 stacks, w2/m15 verbs); `generateValue` acceptance rides `w8/m10`'s core verb
 - [ ] **m36** — Node bring-up efficiency: baked snapshot image + trimmed provisioning (8 tasks) ← promotes `.pm/FUTURE-MAYBE.md`'s node-bring-up entry 2026-07-14 — its trigger ("app images move into a pullable registry — zot wired end-to-end") fired when `w1/m26` closed 2026-07-13; the roll-safety condition that deferred it is gone for the same reason
+- [ ] **m37** — Maintenance mode: user-toggled interstitial + custom page (10 tasks) ← from `/pm-brainstorm` round 6, 2026-07-14 (field-level spec-grep: `maintenanceMode {enabled, uri}` on Render's webServiceDetails + POST/PATCH, zero hits in `lego/`; NOT the ADR018 "Maintenance runs" non-goal — that row is the `/maintenance` managed-infra surface, this is the tenant-facing toggle)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
