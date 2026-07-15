@@ -220,7 +220,6 @@ func TestRESTCreateRejectsSecretFilesBeforeWriteWhenUnavailable(t *testing.T) {
 func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t *testing.T) {
 	createBodies := map[string]string{
 		"previews":            `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"previews":{"generation":"manual"}}}`,
-		"maintenance mode":    `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":"/maintenance"}}}`,
 		"registry credential": `{"name":"new","type":"web_service","image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
 	}
 	for name, body := range createBodies {
@@ -238,7 +237,6 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 
 	patchBodies := map[string]string{
 		"previews":            `{"serviceDetails":{"previews":{"generation":"manual"}}}`,
-		"maintenance mode":    `{"serviceDetails":{"maintenanceMode":{"enabled":true}}}`,
 		"registry credential": `{"image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
 	}
 	for name, body := range patchBodies {

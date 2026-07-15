@@ -362,6 +362,11 @@ type AppView struct {
 	// Only meaningful for web_service and static_site. The REST wire format
 	// expands each entry to {cidrBlock, description}; here it is the raw list.
 	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// MaintenanceMode is Render's maintenanceMode object (spec.maintenanceMode):
+	// {enabled, uri}. web_service only — every other type reports the zero
+	// value. The Settings → Maintenance Mode section reads it and writes it via
+	// SetMaintenanceMode. See docs/render-artifacts/maintenance-mode.md.
+	MaintenanceMode MaintenanceModeView `json:"maintenanceMode"`
 }
 
 // StaticRouteView is the neutral projection of one static_site redirect/rewrite
@@ -402,6 +407,50 @@ func staticHeaderViews(headers []appv1alpha1.StaticHeader) []StaticHeaderView {
 		out[i] = StaticHeaderView{Path: h.Path, Name: h.Name, Value: h.Value}
 	}
 	return out
+}
+
+// MaintenanceModeView is the neutral projection of Render's maintenanceMode
+// object (spec.maintenanceMode): {enabled, uri}, byte-identical across every
+// surface. Unlike BuildFilterView, a value type (never nil) — nil/unset
+// spec.maintenanceMode reads back as the zero value {enabled:false, uri:""},
+// matching docs/render-artifacts/maintenance-mode.md ("nil/unset is the same
+// as {enabled: false}"), so a read never has to distinguish "never
+// configured" from "explicitly disabled" the way BuildFilter does.
+type MaintenanceModeView struct {
+	Enabled bool   `json:"enabled"`
+	URI     string `json:"uri"`
+}
+
+// maintenanceModeView projects the CR spec onto the neutral view; nil => the
+// zero value.
+func maintenanceModeView(m *appv1alpha1.MaintenanceModeSpec) MaintenanceModeView {
+	if m == nil {
+		return MaintenanceModeView{}
+	}
+	return MaintenanceModeView{Enabled: m.Enabled, URI: m.URI}
+}
+
+// normalizeMaintenanceMode validates Render's maintenanceMode input and
+// projects it onto the CRD spec type. nil input means unset (create didn't
+// mention it) => nil spec, the same as never having enabled it. A non-empty
+// uri must be an absolute http(s) URL (docs/render-artifacts/
+// maintenance-mode.md); bex does not special-case a uri that points at the
+// service's own host (Render's documented advice, not a validated rule) — a
+// self-referencing uri is left to fail its own fetch at request time, same as
+// any other unreachable uri.
+func normalizeMaintenanceMode(in *MaintenanceModeView) (*appv1alpha1.MaintenanceModeSpec, error) {
+	if in == nil {
+		return nil, nil
+	}
+	return validatedMaintenanceModeSpec(in.Enabled, in.URI)
+}
+
+func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.MaintenanceModeSpec, error) {
+	uri := strings.TrimSpace(rawURI)
+	if uri != "" && !core.ValidAbsoluteHTTPURL(uri) {
+		return nil, core.ErrNotAbsoluteHTTPURL("maintenanceMode.uri")
+	}
+	return &appv1alpha1.MaintenanceModeSpec{Enabled: enabled, URI: uri}, nil
 }
 
 // BuildFilterView is the neutral projection of Render's Build Filters object
@@ -475,6 +524,16 @@ func cleanGlobs(field string, globs []string) ([]string, error) {
 	return out, nil
 }
 
+// effectiveType resolves spec.type to Render's serviceType, defaulting an
+// empty value to web_service — the one place that default is decided, so
+// view()/toRenderService()/requireWebService can't drift on it.
+func effectiveType(specType string) string {
+	if specType == "" {
+		return appv1alpha1.TypeWebService
+	}
+	return specType
+}
+
 func view(a *appv1alpha1.App) AppView {
 	name := publicName(a)
 	appID := publicID(a)
@@ -486,10 +545,7 @@ func view(a *appv1alpha1.App) AppView {
 	if t, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
 		plan = t.RenderPlan
 	}
-	svcType := a.Spec.Type
-	if svcType == "" {
-		svcType = appv1alpha1.TypeWebService // empty spec.type == web_service
-	}
+	svcType := effectiveType(a.Spec.Type)
 	var asView *AutoscalingView
 	if a.Spec.Autoscaling != nil {
 		v := autoscalingView(a)
@@ -548,6 +604,7 @@ func view(a *appv1alpha1.App) AppView {
 		Routes:           staticRouteViews(a.Spec.Routes),
 		Headers:          staticHeaderViews(a.Spec.Headers),
 		IPAllowList:      a.Spec.IPAllowList,
+		MaintenanceMode:  maintenanceModeView(a.Spec.MaintenanceMode),
 	}
 }
 
@@ -864,6 +921,13 @@ type CreateRequest struct {
 	// list of CIDR strings to set on the App CR. Empty means open to all source
 	// IPs (Render's default). Only meaningful for web_service and static_site.
 	IPAllowList []string
+	// MaintenanceMode is Render's maintenanceMode object at create time
+	// (spec.maintenanceMode): {enabled, uri}. nil means unset (disabled).
+	// web_service only — a non-nil value for any other type is core.ErrBadRequest.
+	// A later toggle is SetMaintenanceMode, never re-applied by a redeploy
+	// (applyCreateToSpec deliberately leaves it alone — it's a runtime state,
+	// not desired build config; see that function's doc comment).
+	MaintenanceMode *MaintenanceModeView
 	// DryRun, when true, resolves the spec and returns a preview without any
 	// Kubernetes or control-plane-store writes — zero side effects (w2/m29).
 	// The response shape is identical to a live create; the caller knows it is a
@@ -1401,6 +1465,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	} else if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
 	}
+	if req.MaintenanceMode != nil && svcType != appv1alpha1.TypeWebService {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: maintenanceMode only applies to a web_service", core.ErrBadRequest)
+	}
 	tier, err := normalizeTierOrPlan(req.Plan)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -1462,6 +1529,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	maintenanceMode, err := normalizeMaintenanceMode(req.MaintenanceMode)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	notifyOnFail, err := normalizeNotifyOnFail(req.NotifyOnFail)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -1487,6 +1558,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Builder:         builder,
 		RootDir:         req.RootDir,
 		BuildFilter:     buildFilter,
+		MaintenanceMode: maintenanceMode,
 		DockerfilePath:  req.DockerfilePath,
 		Port:            port,
 		Replicas:        replicas,
@@ -1625,8 +1697,12 @@ func cloneInt32(value *int32) *int32 {
 
 // applyCreateToSpec copies the create-owned fields of want onto an existing
 // spec, leaving fields owned by the operator or other features (EnvFromSecret,
-// Suspended, IdleTTLSeconds, RestartedAt) untouched — the same discipline the
-// store projector's applyOwnedSpec follows.
+// Suspended, IdleTTLSeconds, RestartedAt, MaintenanceMode) untouched — the same
+// discipline the store projector's applyOwnedSpec follows. MaintenanceMode is
+// create-accepted (Render's POST accepts it) but redeploy-inert: a repeated
+// Create/deploy call must not clear an active maintenance window or silently
+// re-enable one — docs/render-artifacts/maintenance-mode.md's "deploys proceed
+// normally... the maintenance page persists... until explicitly disabled".
 func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Type = want.Type
 	dst.Schedule = want.Schedule
@@ -2288,6 +2364,28 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	})
 }
 
+// SetMaintenanceMode changes Render's maintenanceMode object ({enabled, uri})
+// on a web service — the toggle that takes it offline behind an interstitial
+// page without touching the running pods (docs/render-artifacts/
+// maintenance-mode.md). A direct CR patch (like SetBuildFilter/SetRoutes):
+// maintenanceMode is not a control-plane-store-owned field.
+func (s *Service) SetMaintenanceMode(ctx context.Context, name string, in MaintenanceModeView) (AppView, error) {
+	spec, err := validatedMaintenanceModeSpec(in.Enabled, in.URI)
+	if err != nil {
+		return AppView{}, err
+	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if err := requireWebService(a, name); err != nil {
+		return AppView{}, err
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.MaintenanceMode = spec
+	})
+}
+
 // SetDisplayName changes the human-facing label for an App without changing
 // its immutable Kubernetes object name or any identity derived from that name
 // (including platform hostnames and TLS secret names). It is a direct CR patch:
@@ -2443,6 +2541,18 @@ func validateHeaders(headers []StaticHeaderView) error {
 func requireStaticSite(a *appv1alpha1.App, name string) error {
 	if a.Spec.Type != appv1alpha1.TypeStaticSite {
 		return fmt.Errorf("%w: service %q is not a static_site", core.ErrBadRequest, name)
+	}
+	return nil
+}
+
+// requireWebService returns ErrBadRequest unless a is a web_service —
+// maintenanceMode applies only to that type (docs/render-artifacts/
+// maintenance-mode.md). Empty spec.type defaults to web_service (effectiveType,
+// view()'s own default), so a legacy App with no explicit type is not wrongly
+// rejected.
+func requireWebService(a *appv1alpha1.App, name string) error {
+	if effectiveType(a.Spec.Type) != appv1alpha1.TypeWebService {
+		return fmt.Errorf("%w: service %q is not a web_service", core.ErrBadRequest, name)
 	}
 	return nil
 }

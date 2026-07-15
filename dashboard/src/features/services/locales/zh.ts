@@ -1145,6 +1145,82 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新平台子域名设置，请重试。",
     description: "Toast on failed setSubdomainPolicy mutation",
   },
+  "services.maintenanceModeTitle": {
+    message: "维护模式",
+    description: "Settings tab maintenance-mode section title",
+  },
+  "services.maintenanceModeDescription": {
+    message:
+      "让此服务在维护页面后下线，而不暂停它——其 Pod 保持运行，只是公共流量被重定向。",
+    description: "Settings tab maintenance-mode section description",
+  },
+  "services.maintenanceModeEnabled": {
+    message: "已启用",
+    description: "Maintenance-mode toggle label when active",
+  },
+  "services.maintenanceModeDisabled": {
+    message: "已禁用",
+    description: "Maintenance-mode toggle label when inactive",
+  },
+  "services.maintenanceModeSwitchHint": {
+    message: "此服务提供的所有主机都将显示维护页面。",
+    description: "Maintenance-mode section hint text next to the switch",
+  },
+  "services.maintenanceModeToggleLabel": {
+    message: "切换维护模式",
+    description: "Accessible label for the maintenance-mode Switch",
+  },
+  "services.maintenanceModeUriLabel": {
+    message: "自定义维护页面 URL",
+    description: "Label for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriPlaceholder": {
+    message: "https://status.example.com/maintenance（可选）",
+    description: "Placeholder for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriHint": {
+    message:
+      "将被获取并代替默认页面提供。留空以使用 bex 的默认维护页面。不能指向此服务自身的 URL。",
+    description: "Hint text under the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeSaveUri": {
+    message: "保存",
+    description: "Save button for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeEnableAction": {
+    message: "启用维护模式",
+    description: "Confirm-dialog action button for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeTitle": {
+    message: "启用维护模式？",
+    description: "Confirm-dialog title for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeBody": {
+    message:
+      "{name} 将向每位访问者显示维护页面，直到你禁用此设置。服务的 Pod 将继续运行。",
+    description: "Confirm-dialog body for enabling maintenance mode",
+  },
+  "services.maintenanceModeEnabledSuccess": {
+    message: "维护模式已启用。",
+    description: "Toast on successfully enabling maintenance mode",
+  },
+  "services.maintenanceModeDisabledSuccess": {
+    message: "维护模式已禁用。",
+    description: "Toast on successfully disabling maintenance mode",
+  },
+  "services.maintenanceModeError": {
+    message: "无法更新维护模式，请重试。",
+    description: "Toast on failed setMaintenanceMode mutation",
+  },
+  "services.maintenanceModeBannerTitle": {
+    message: "维护模式已开启",
+    description: "Service-detail header banner title while in maintenance",
+  },
+  "services.maintenanceModeBannerBody": {
+    message:
+      "访问者将看到维护页面而不是此服务。Pod 仍在运行——在设置中禁用维护模式以恢复正常服务。",
+    description: "Service-detail header banner body while in maintenance",
+  },
   "services.deployTitle": {
     message: "部署",
     description: "Cron job Settings tab: Deploy section title (Render parity)",

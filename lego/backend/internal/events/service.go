@@ -64,6 +64,7 @@ limitations under the License.
 //	custom_domain_added/removed apps.Add/DeleteDomain
 //	notify_on_fail_changed      apps.SetNotifyOnFail            (w4/m21, a bex-only name — Render's field has no dedicated event type)
 //	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
+//	maintenance_mode_changed    apps.SetMaintenanceMode         (w1/m37, a bex-only name — not verified against Render's real events enum, which may name this differently or not at all)
 //
 // # Redaction (structural, not filtered)
 //
@@ -95,8 +96,11 @@ limitations under the License.
 //   - Push-triggered redeploys open no deploys row today (w2/m5's scope), so they
 //     produce no deploy_started; when they do, this feed shows them with no
 //     change here.
-//   - build_started/build_ended, server_failed, disk_*, maintenance_* — no bex
-//     source at all.
+//   - build_started/build_ended, server_failed, disk_* — no bex source at all.
+//     (maintenance_* now has a source — see maintenance_mode_changed above —
+//     but only for the tenant-facing toggle this feed's apps.SetMaintenanceMode
+//     records; Render's platform-scheduled infra-maintenance concept, if its
+//     enum names one, still has none.)
 //
 // Requires the control-plane store (BEX_CP_DB_URI): both sources live there, so
 // with it unwired the verb reports core.ErrEventsUnavailable (503) — omitted, not
@@ -163,6 +167,7 @@ const (
 	TypeIPAllowListChanged      = "ip_allow_list_changed"
 	TypeJobStarted              = "job_started"
 	TypeJobCanceled             = "job_canceled"
+	TypeMaintenanceModeChanged  = "maintenance_mode_changed"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -216,6 +221,7 @@ var eventTypes = map[string]string{
 	"deploys.RegenerateDeployHook": TypeDeployHookRegenerated,
 	"jobs.Create":                  TypeJobStarted,
 	"jobs.Cancel":                  TypeJobCanceled,
+	"apps.SetMaintenanceMode":      TypeMaintenanceModeChanged,
 }
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —

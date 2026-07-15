@@ -86,5 +86,12 @@ query Server($id: String!) {
     # static_site (w7/m32): each element is a CIDR string; empty/null means
     # open to all source IPs (Render's default).
     ipAllowList
+    # maintenanceMode is Render's maintenanceMode object (w1/m37): takes a
+    # web_service offline behind an interstitial page without suspending it.
+    # Always present (never null), even when never configured.
+    maintenanceMode {
+      enabled
+      uri
+    }
   }
 }

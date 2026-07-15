@@ -100,14 +100,15 @@ describe("toServiceView", () => {
       buildFilter: null,
       autoDeploy: null,
       notifyOnFail: null,
+      renderSubdomainPolicy: null,
       healthCheckPath: null,
       maxShutdownDelaySeconds: null,
       preDeployCommand: null,
-      renderSubdomainPolicy: null,
       publishPath: null,
       routes: [],
       headers: [],
       ipAllowList: null,
+      maintenanceMode: null,
     });
   });
 

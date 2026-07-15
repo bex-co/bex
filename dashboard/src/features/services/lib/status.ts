@@ -7,6 +7,7 @@ import type {
   StaticRouteView,
   StaticHeaderView,
   BuildFilterView,
+  MaintenanceModeView,
 } from "@/features/services/types";
 
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
@@ -75,7 +76,21 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     ipAllowList: "ipAllowList" in s ? (s.ipAllowList ?? null) : null,
     routes: "routes" in s ? toStaticRoutes(s.routes) : [],
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],
+    maintenanceMode:
+      "maintenanceMode" in s ? toMaintenanceMode(s.maintenanceMode) : null,
   };
+}
+
+/**
+ * Project the detail query's `maintenanceMode` object onto MaintenanceModeView.
+ * bex-api always reports a concrete object (never null); this stays nil-safe
+ * so a still-nullable wire field (schema drift, a stale cached response) falls
+ * back to disabled rather than throwing.
+ */
+function toMaintenanceMode(
+  m: ServerNode["maintenanceMode"],
+): MaintenanceModeView {
+  return { enabled: m?.enabled ?? false, uri: m?.uri ?? "" };
 }
 
 /** Project the detail query's nullable `routes` array onto StaticRouteView[]. */

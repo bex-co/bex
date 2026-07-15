@@ -80,6 +80,24 @@ vi.mock("@/features/services/hooks/use-health-check-path", () => ({
   }),
 }));
 
+// Platform Subdomain section (w7/m31) calls setSubdomainPolicy via Apollo;
+// mock it so section-presence assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-subdomain-policy", () => ({
+  useSubdomainPolicy: () => ({
+    setSubdomainPolicy: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
+// Maintenance Mode section (w1/m37) calls setMaintenanceMode via Apollo; mock
+// it so section-presence assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-maintenance-mode", () => ({
+  useMaintenanceMode: () => ({
+    setMaintenanceMode: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 // Notifications row (w4/m21) calls setNotifyOnFail via Apollo; mock it so
 // section-presence assertions don't need an Apollo client.
 vi.mock("@/features/services/hooks/use-notify-on-fail", () => ({

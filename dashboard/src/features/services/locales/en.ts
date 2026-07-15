@@ -1164,6 +1164,83 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Could not update platform subdomain setting. Try again.",
     description: "Toast on failed setSubdomainPolicy mutation",
   },
+  "services.maintenanceModeTitle": {
+    message: "Maintenance Mode",
+    description: "Settings tab maintenance-mode section title",
+  },
+  "services.maintenanceModeDescription": {
+    message:
+      "Take this service offline behind a maintenance page without suspending it — its pods keep running, only public traffic is redirected.",
+    description: "Settings tab maintenance-mode section description",
+  },
+  "services.maintenanceModeEnabled": {
+    message: "Enabled",
+    description: "Maintenance-mode toggle label when active",
+  },
+  "services.maintenanceModeDisabled": {
+    message: "Disabled",
+    description: "Maintenance-mode toggle label when inactive",
+  },
+  "services.maintenanceModeSwitchHint": {
+    message:
+      "Every host this service serves will answer with the maintenance page.",
+    description: "Maintenance-mode section hint text next to the switch",
+  },
+  "services.maintenanceModeToggleLabel": {
+    message: "Toggle maintenance mode",
+    description: "Accessible label for the maintenance-mode Switch",
+  },
+  "services.maintenanceModeUriLabel": {
+    message: "Custom maintenance page URL",
+    description: "Label for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriPlaceholder": {
+    message: "https://status.example.com/maintenance (optional)",
+    description: "Placeholder for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeUriHint": {
+    message:
+      "Fetched and served in place of the default page. Leave empty to use bex's default maintenance page. Must not point at this service's own URL.",
+    description: "Hint text under the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeSaveUri": {
+    message: "Save",
+    description: "Save button for the maintenance-mode custom-page URL field",
+  },
+  "services.maintenanceModeEnableAction": {
+    message: "Enable maintenance mode",
+    description: "Confirm-dialog action button for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeTitle": {
+    message: "Enable maintenance mode?",
+    description: "Confirm-dialog title for enabling maintenance mode",
+  },
+  "services.confirmMaintenanceModeBody": {
+    message:
+      "{name} will show a maintenance page to every visitor until you disable this. The service's pods keep running.",
+    description: "Confirm-dialog body for enabling maintenance mode",
+  },
+  "services.maintenanceModeEnabledSuccess": {
+    message: "Maintenance mode enabled.",
+    description: "Toast on successfully enabling maintenance mode",
+  },
+  "services.maintenanceModeDisabledSuccess": {
+    message: "Maintenance mode disabled.",
+    description: "Toast on successfully disabling maintenance mode",
+  },
+  "services.maintenanceModeError": {
+    message: "Could not update maintenance mode. Try again.",
+    description: "Toast on failed setMaintenanceMode mutation",
+  },
+  "services.maintenanceModeBannerTitle": {
+    message: "Maintenance mode is on",
+    description: "Service-detail header banner title while in maintenance",
+  },
+  "services.maintenanceModeBannerBody": {
+    message:
+      "Visitors see a maintenance page instead of this service. Pods are still running — disable maintenance mode in Settings to resume normal serving.",
+    description: "Service-detail header banner body while in maintenance",
+  },
   "services.deployTitle": {
     message: "Deploy",
     description: "Cron job Settings tab: Deploy section title (Render parity)",
