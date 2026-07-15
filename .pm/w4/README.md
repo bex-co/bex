@@ -2,6 +2,16 @@
 
 **Worker:** worker4 w1 builds the platform, w2 makes it AI-native, w3 makes it observable — w4 makes it multi-tenant-secure: real identities (Ory Kratos) and OAuth2 tokens (Ory Hydra) replacing the single static `BEX_API_TOKEN`. Ordered by dependency: deploy the auth substrate first (GitOps side), then wire bex-api to it (product side).
 
+## Local dev environment
+
+Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared local kind/CAPD cluster — never the shared cluster's default `auth`/`bex-system` namespaces or standard ports (5173/4433/4445/8090/8091/5432), which any other worker's session may also be using. `dev-4` gets its own Kratos + Hydra + Mailpit (namespace `dev-4-auth`) and app namespace (`dev-4`), reusing the shared cluster's CNPG operator and bex operator, plus a locally-built `bex-api` on dedicated ports derived from N=4 (`dev-4/ports.env`) so it never collides with any other workstream's `dev-N`.
+
+- `bash .pm/w4/dev-4/up.sh` — bring it up (idempotent — safe to re-run)
+- `bash .pm/w4/dev-4/status.sh` — health check (processes, pods, HTTP)
+- `bash .pm/w4/dev-4/down.sh` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+
+`up.sh` prints the dashboard command to point at it once bex-api is running.
+
 ## Milestones
 
 - [x] **m1** — Platform auth: Ory Kratos + Hydra on the cluster (+ ADR) (9 tasks) ← from brainstorm 2026-07-05

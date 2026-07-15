@@ -2,6 +2,16 @@
 
 **Worker:** worker3 The obs surface owned by no workstream today: w1 builds the platform/control-plane, w2 makes it AI-native, w3 makes it _observable_. Maps to `GOAL.md` #2 ("Basic obs for operation"). Ordered by value/dependency: logs first (highest operational value, pure pod-log backend, no metrics-server dependency), then metrics (needs metrics-server + Traefik metrics from w1 platform).
 
+## Local dev environment
+
+Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared local kind/CAPD cluster — never the shared cluster's default `auth`/`bex-system` namespaces or standard ports (5173/4433/4445/8090/8091/5432), which any other worker's session may also be using. `dev-3` gets its own Kratos + Hydra + Mailpit (namespace `dev-3-auth`) and app namespace (`dev-3`), reusing the shared cluster's CNPG operator and bex operator, plus a locally-built `bex-api` on dedicated ports derived from N=3 (`dev-3/ports.env`) so it never collides with any other workstream's `dev-N`.
+
+- `bash .pm/w3/dev-3/up.sh` — bring it up (idempotent — safe to re-run)
+- `bash .pm/w3/dev-3/status.sh` — health check (processes, pods, HTTP)
+- `bash .pm/w3/dev-3/down.sh` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+
+`up.sh` prints the dashboard command to point at it once bex-api is running.
+
 ## Milestones
 
 - [x] **m1** — Logs API: query + stream App logs (5 tasks) ← from `001`, brainstorm 2026-07-05
