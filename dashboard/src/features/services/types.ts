@@ -153,13 +153,15 @@ export interface StaticHeaderView {
 
 /** One execution of a `cron_job` — the Render cron-run shape bex-api projects. */
 export interface CronRunView {
-  /** Kubernetes Job name backing the run — its stable id in the list. */
+  /** Stable, opaque crr- id. */
+  id: string;
+  /** Legacy nested-service alias; first-class reads set this to id. */
   name: string;
   /** RFC3339 start time, or null if it hasn't started. */
   startedAt: string | null;
   /** RFC3339 completion/failure time, or null while running. */
   finishedAt: string | null;
-  /** Run outcome — Running | Succeeded | Failed. */
+  /** Render run outcome — pending | successful | unsuccessful | canceled. */
   status: string;
 }
 

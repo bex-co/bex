@@ -54,7 +54,9 @@ query Server($id: String!) {
     # cron_job fields (null/empty for other service types)
     schedule
     command
+    lastSuccessfulRunAt
     runs {
+      id
       name
       startedAt
       finishedAt

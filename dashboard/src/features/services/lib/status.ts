@@ -113,6 +113,7 @@ function toCronRuns(runs: ServerNode["runs"]): CronRunView[] {
   return (runs ?? [])
     .filter((r): r is NonNullable<typeof r> => r != null)
     .map((r) => ({
+      id: r.id ?? r.name ?? "",
       name: r.name ?? "",
       startedAt: r.startedAt ?? null,
       finishedAt: r.finishedAt ?? null,

@@ -57,10 +57,11 @@ type renderService struct {
 	// Schedule/Command/Runs describe a cron_job (Render nests schedule/command
 	// under cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty
 	// otherwise.
-	Schedule       string        `json:"schedule,omitempty"`
-	Command        string        `json:"command,omitempty"`
-	Runs           []CronRunView `json:"runs,omitempty"`
-	IdleTTLSeconds int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
+	Schedule            string        `json:"schedule,omitempty"`
+	Command             string        `json:"command,omitempty"`
+	Runs                []CronRunView `json:"runs,omitempty"`
+	LastSuccessfulRunAt string        `json:"lastSuccessfulRunAt,omitempty"`
+	IdleTTLSeconds      int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
 	// RootDir is the subdirectory of the repo this service builds from (Render's
 	// Root Directory setting, monorepo support). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`
@@ -185,6 +186,9 @@ func toRenderService(a AppView) renderService {
 	if a.Command != "" {
 		set("command", a.Command) // cronJobDetails.command (render-public-api-1.json)
 	}
+	if a.LastSuccessfulRunAt != "" {
+		set("lastSuccessfulRunAt", a.LastSuccessfulRunAt) // cronJobDetails.lastSuccessfulRunAt
+	}
 	if a.PublishPath != "" {
 		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
 	}
@@ -215,36 +219,37 @@ func toRenderService(a AppView) renderService {
 		}
 	}
 	return renderService{
-		ID:              publicID,
-		Name:            renderServiceName(a),
-		Slug:            a.Slug,
-		DisplayName:     a.DisplayName,
-		Type:            svcType,
-		Suspended:       core.SuspendedEnum(a.Suspended),
-		DashboardURL:    a.URL,
-		CreatedAt:       a.CreatedAt,
-		UpdatedAt:       a.CreatedAt,
-		ServiceDetails:  details,
-		ImagePath:       a.SourceImage,
-		Suspenders:      []string{},
-		OwnerID:         a.OwnerID,
-		EnvironmentID:   a.EnvironmentID,
-		Phase:           a.Phase,
-		Replicas:        a.Replicas,
-		Revision:        a.Revision,
-		URLs:            a.URLs,
-		Schedule:        a.Schedule,
-		Command:         a.Command,
-		Runs:            a.Runs,
-		IdleTTLSeconds:  a.IdleTTLSeconds,
-		RootDir:         a.RootDir,
-		BuildFilter:     a.BuildFilter,
-		Repo:            a.Repo,
-		Branch:          a.Branch,
-		Autoscaling:     ras,
-		AutoDeploy:      yesNoEnum(a.AutoDeploy),
-		NotifyOnFail:    a.NotifyOnFail,
-		HealthCheckPath: a.HealthCheckPath,
+		ID:                  publicID,
+		Name:                renderServiceName(a),
+		Slug:                a.Slug,
+		DisplayName:         a.DisplayName,
+		Type:                svcType,
+		Suspended:           core.SuspendedEnum(a.Suspended),
+		DashboardURL:        a.URL,
+		CreatedAt:           a.CreatedAt,
+		UpdatedAt:           a.CreatedAt,
+		ServiceDetails:      details,
+		ImagePath:           a.SourceImage,
+		Suspenders:          []string{},
+		OwnerID:             a.OwnerID,
+		EnvironmentID:       a.EnvironmentID,
+		Phase:               a.Phase,
+		Replicas:            a.Replicas,
+		Revision:            a.Revision,
+		URLs:                a.URLs,
+		Schedule:            a.Schedule,
+		Command:             a.Command,
+		Runs:                a.Runs,
+		LastSuccessfulRunAt: a.LastSuccessfulRunAt,
+		IdleTTLSeconds:      a.IdleTTLSeconds,
+		RootDir:             a.RootDir,
+		BuildFilter:         a.BuildFilter,
+		Repo:                a.Repo,
+		Branch:              a.Branch,
+		Autoscaling:         ras,
+		AutoDeploy:          yesNoEnum(a.AutoDeploy),
+		NotifyOnFail:        a.NotifyOnFail,
+		HealthCheckPath:     a.HealthCheckPath,
 	}
 }
 
@@ -256,6 +261,42 @@ func renderServiceName(a AppView) string {
 		return a.DisplayName
 	}
 	return a.Name
+}
+
+// renderCronJobRun mirrors Render's cronJobRun schema. triggeredBy/canceledBy
+// are omitted because Kubernetes Jobs do not retain the caller identity; an
+// honest subset is preferable to fabricating an actor.
+type renderCronJobRun struct {
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	StartedAt   string `json:"startedAt,omitempty"`
+	FinishedAt  string `json:"finishedAt,omitempty"`
+	TriggeredBy string `json:"triggeredBy,omitempty"`
+	CanceledBy  string `json:"canceledBy,omitempty"`
+}
+
+func toRenderCronJobRun(run CronRunView) renderCronJobRun {
+	return renderCronJobRun{
+		ID: run.ID, Status: run.Status,
+		StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
+	}
+}
+
+// cronJobRunWithCursor is the standard Render list-item envelope. Render's
+// current public spec does not expose this historical list route; bex keeps the
+// milestone's first-class list as a documented extension using Render's normal
+// {resource,cursor} grammar.
+type cronJobRunWithCursor struct {
+	CronJobRun renderCronJobRun `json:"cronJobRun"`
+	Cursor     string           `json:"cursor"`
+}
+
+func toCronJobRunList(runs []CronRunView) []cronJobRunWithCursor {
+	out := make([]cronJobRunWithCursor, 0, len(runs))
+	for _, run := range runs {
+		out = append(out, cronJobRunWithCursor{CronJobRun: toRenderCronJobRun(run), Cursor: run.ID})
+	}
+	return out
 }
 
 // renderRoute mirrors Render's static-site route shape

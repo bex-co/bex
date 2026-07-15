@@ -119,6 +119,7 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			cj := &batchv1.CronJob{}
 			Expect(k8sClient.Get(ctx, nn, cj)).To(Succeed())
 			Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
+			Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image).To(Equal("busybox:latest"))
 			By("spec.command overrides the image's entrypoint via a shell")
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command).
@@ -157,6 +158,36 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(got.Status.Runs[0].Status).To(Equal("Succeeded"))
 			Expect(got.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 			Expect(got.Status.URL).To(BeEmpty())
+
+			By("canceling an in-flight run deletes its Job and preserves terminal canceled status")
+			got.Spec.RunAt = "2026-07-09T10:05:00Z"
+			Expect(k8sClient.Update(ctx, got)).To(Succeed())
+			reconcileN(r, nn)
+			cancelJobName := manualRunJobName(name, got.Spec.RunAt)
+			cancelJobNN := types.NamespacedName{Name: cancelJobName, Namespace: "default"}
+			Expect(k8sClient.Get(ctx, cancelJobNN, &batchv1.Job{})).To(Succeed())
+
+			Expect(k8sClient.Get(ctx, nn, got)).To(Succeed())
+			got.Spec.CancelRun = &appv1alpha1.CronRunCancellation{
+				Name: cancelJobName, RequestedAt: "2026-07-09T10:05:05Z",
+			}
+			Expect(k8sClient.Update(ctx, got)).To(Succeed())
+			reconcileN(r, nn)
+			terminating := &batchv1.Job{}
+			cancelGetErr := k8sClient.Get(ctx, cancelJobNN, terminating)
+			Expect(errors.IsNotFound(cancelGetErr) || !terminating.DeletionTimestamp.IsZero()).To(BeTrue(),
+				"foreground cancellation must remove the backing Job (envtest has no GC controller, so a deletion timestamp is the converged test signal)")
+			Expect(k8sClient.Get(ctx, nn, got)).To(Succeed())
+			Expect(got.Status.Runs).NotTo(BeEmpty())
+			Expect(got.Status.Runs[0]).To(Equal(appv1alpha1.CronRun{
+				Name: cancelJobName, FinishedAt: "2026-07-09T10:05:05Z", Status: appv1alpha1.CronRunCanceled,
+			}))
+
+			By("the stable runAt cannot recreate the Job on a later reconcile")
+			reconcileN(r, nn)
+			terminating = &batchv1.Job{}
+			cancelGetErr = k8sClient.Get(ctx, cancelJobNN, terminating)
+			Expect(errors.IsNotFound(cancelGetErr) || !terminating.DeletionTimestamp.IsZero()).To(BeTrue())
 		})
 	})
 })

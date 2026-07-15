@@ -42,6 +42,7 @@ limitations under the License.
 //	instance_count_changed      apps.Scale
 //	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling
 //	cron_job_run_started        apps.TriggerCronRun
+//	cron_job_run_ended          apps.CancelCronRun / apps.CancelCurrentCronRun
 //
 // and these bex-named types, for writes Render's vocabulary has no name for:
 //
@@ -130,6 +131,7 @@ const (
 	TypeInstanceCountChanged     = "instance_count_changed"
 	TypeAutoscalingConfigChanged = "autoscaling_config_changed"
 	TypeCronJobRunStarted        = "cron_job_run_started"
+	TypeCronJobRunEnded          = "cron_job_run_ended"
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -179,6 +181,8 @@ var eventTypes = map[string]string{
 	"apps.SetAutoscaling":          TypeAutoscalingConfigChanged,
 	"apps.DeleteAutoscaling":       TypeAutoscalingConfigChanged,
 	"apps.TriggerCronRun":          TypeCronJobRunStarted,
+	"apps.CancelCronRun":           TypeCronJobRunEnded,
+	"apps.CancelCurrentCronRun":    TypeCronJobRunEnded,
 	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
 	"apps.SetNotifyOnFail":         TypeNotifyOnFailChanged,
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,

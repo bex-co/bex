@@ -170,6 +170,24 @@ spec:
                 - dockerfile
                 - native
                 type: string
+              cancelRun:
+                description: |-
+                  CancelRun requests cancellation of one in-flight cron_job run. The backend
+                  resolves the public run id to the backing Job name and records intent here;
+                  the operator owns the mechanism (foreground Job deletion) and writes the
+                  terminal Canceled entry to status.runs. Nil means no cancellation has been
+                  requested. Ignored for non-cron types.
+                properties:
+                  name:
+                    description: Name is the Kubernetes Job name to terminate.
+                    type: string
+                  requestedAt:
+                    description: RequestedAt is when cancellation was accepted (RFC3339Nano).
+                    type: string
+                required:
+                - name
+                - requestedAt
+                type: object
               cloneSecret:
                 description: |-
                   CloneSecret names a Secret in the App's namespace holding a git credential
@@ -732,7 +750,7 @@ spec:
                       type: string
                     status:
                       description: 'Status is the run outcome: Running, Succeeded,
-                        or Failed.'
+                        Failed, or Canceled.'
                       type: string
                   required:
                   - name

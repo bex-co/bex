@@ -158,7 +158,7 @@ func TestRenderServiceCarriesTypeScheduleRuns(t *testing.T) {
 	if rs.Command != "npm run report" {
 		t.Errorf("render command = %q", rs.Command)
 	}
-	if len(rs.Runs) != 1 || rs.Runs[0].Status != "Succeeded" {
+	if len(rs.Runs) != 1 || rs.Runs[0].Status != "successful" {
 		t.Errorf("render runs = %+v", rs.Runs)
 	}
 	if got, _ := rs.ServiceDetails["schedule"].(string); got != "*/5 * * * *" {
@@ -203,8 +203,8 @@ func TestRESTCronRunTrigger(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/cron-jobs/nightly/runs", nil))
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("cron run => 201, got %d: %s", rec.Code, rec.Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cron run => 200, got %d: %s", rec.Code, rec.Body)
 	}
 	if getApp(t, cl, "nightly").Spec.RunAt == "" {
 		t.Error("run trigger must set spec.runAt")
@@ -212,8 +212,8 @@ func TestRESTCronRunTrigger(t *testing.T) {
 	// The same verb is reachable under the /v1/services noun too.
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/nightly/runs", nil))
-	if rec.Code != http.StatusCreated {
-		t.Errorf("cron run (services noun) => 201, got %d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("cron run (services noun) => 200, got %d", rec.Code)
 	}
 }
 
@@ -276,7 +276,7 @@ func TestGraphQLCreateServiceTypeAndCronFields(t *testing.T) {
 		t.Errorf("server = %+v", srv)
 	}
 	runs := srv["runs"].([]any)
-	if len(runs) != 1 || runs[0].(map[string]any)["status"] != "Succeeded" {
+	if len(runs) != 1 || runs[0].(map[string]any)["status"] != "successful" {
 		t.Errorf("runs = %+v", runs)
 	}
 

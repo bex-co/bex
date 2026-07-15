@@ -59,9 +59,7 @@ export function ServiceEventsPage() {
     fetchPolicy: "cache-and-network",
   });
 
-  // A cron_job's run history hangs off the same landing tab (it was the retired
-  // Overview panel's second card); `server(id)` is already in Apollo's cache
-  // from the detail shell's own read, so this doesn't cost a second request.
+  // A cron_job's first-class run history hangs off the same landing tab.
   const { service } = useServer(serviceId);
 
   const events = (data?.serviceEvents ?? []).filter(
@@ -151,7 +149,7 @@ export function ServiceEventsPage() {
       </Card>
 
       {service && isCron(service) ? (
-        <CronRunsSection service={service} />
+        <CronRunsSection serviceId={serviceId} />
       ) : null}
     </div>
   );

@@ -1644,9 +1644,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Started",
     description: "Cron runs table column header (run start time)",
   },
+  "services.cronRunColDuration": {
+    message: "Duration",
+    description: "Cron runs table column header (elapsed run time)",
+  },
   "services.cronRunColStatus": {
     message: "Status",
     description: "Cron runs table column header (run outcome)",
+  },
+  "services.cronRunColActions": {
+    message: "Actions",
+    description: "Cron runs table column header (row actions)",
   },
   "services.cronRunStatusRunning": {
     message: "Running",
@@ -1659,6 +1667,42 @@ const enServices: Record<string, TranslationEntry> = {
   "services.cronRunStatusFailed": {
     message: "Failed",
     description: "Cron run status badge",
+  },
+  "services.cronRunStatusCanceled": {
+    message: "Canceled",
+    description: "Cron run status badge",
+  },
+  "services.cronRunCancel": {
+    message: "Cancel",
+    description: "Cancel an in-flight cron run",
+  },
+  "services.cronRunCancelConfirmTitle": {
+    message: "Cancel this run?",
+    description: "Cron run cancellation confirmation title",
+  },
+  "services.cronRunCancelConfirmBody": {
+    message: "The running job will be terminated. This can't be undone.",
+    description: "Cron run cancellation confirmation body",
+  },
+  "services.cronRunCancelSuccess": {
+    message: "Cron run canceled.",
+    description: "Toast after cron run cancellation is accepted",
+  },
+  "services.cronRunCancelError": {
+    message: "Couldn't cancel the cron run.",
+    description: "Toast after cron run cancellation fails",
+  },
+  "services.cronRunsLoadMore": {
+    message: "Load more",
+    description: "Cron run history pagination button",
+  },
+  "services.cronRunsLoadingMore": {
+    message: "Loading…",
+    description: "Cron run history pagination busy label",
+  },
+  "services.cronRunsLoadError": {
+    message: "Couldn't load cron runs.",
+    description: "Cron run history read error",
   },
   "services.dangerZoneTitle": {
     message: "Danger Zone",

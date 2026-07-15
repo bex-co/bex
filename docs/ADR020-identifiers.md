@@ -19,6 +19,7 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 | `srv-` | service (app)               | srv    |
 | `cdm-` | custom domain               | cdm    |
 | `evt-` | service event (**derived**) | evt    |
+| `crr-` | cron-job run (**derived**)  | —      |
 
 ## Why this shape
 
@@ -31,13 +32,14 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 
 Most ids are **minted**: `id.New(kind)` draws a fresh xid, and the id is stored alongside the row it names. A few resources have no row to store an id in — they are **projections**, computed at read time from rows the store already holds. The service-events feed is the first ([ADR006-bex-api.md](ADR006-bex-api.md) § Service events): an event is a view over a `deploys` or `audit_events` row, never a table of its own.
 
-For those, `id.Derive(kind, parts…)` mints the id as a **deterministic function of the source row** — same parts in, same id out, forever — instead of a fresh xid:
+For those, `id.Derive(kind, parts…)` mints the id as a **deterministic function of the source row or mechanism identity** — same parts in, same id out, forever — instead of a fresh xid:
 
 ```go
 id.Derive(id.Event, "dep-c185th5c2rvvnhbfiltg:started") // → evt-… , identical on every read
+id.Derive(id.CronRun, "nightly-run-a1b2c3d4")             // → crr-… , identical on every read
 ```
 
-Determinism is the requirement, not a nicety: a client pages with an event's cursor, re-fetches it, and dedupes on its id. `id.New` would hand out a different id for the same event on every request, which is exactly wrong. The output is 100 bits of SHA-256 in base32-hex, so a derived id is **shape-identical to a minted one** (`WellFormed`/`KindOf` accept it, it is a valid DNS-1123 label, and it satisfies Render's `^evt-[0-9a-z]{20}$`) — the distinction is where the entropy comes from, not what the id looks like. `Derive` lives in the same closed registry as `New` and panics the same way on an unregistered kind, so this is a second mint path, not a bypass of the one place ids are made.
+Determinism is the requirement, not a nicety: a client pages with an event/run cursor, re-fetches it, and dedupes on its id. `id.New` would hand out a different id for the same projection on every request, which is exactly wrong. Cron runs use the backing Job name as the derivation input so the ID survives Job deletion without exposing that mechanism name. The output is 100 bits of SHA-256 in base32-hex, so a derived id is **shape-identical to a minted one** (`WellFormed`/`KindOf` accept it and it is a valid DNS-1123 label) — the distinction is where the entropy comes from, not what the id looks like. `Derive` lives in the same closed registry as `New` and panics the same way on an unregistered kind, so this is a second mint path, not a bypass of the one place ids are made.
 
 ## id ≠ name
 

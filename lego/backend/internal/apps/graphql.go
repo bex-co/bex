@@ -256,6 +256,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(cronRunGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
 		},
+		"lastSuccessfulRunAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.LastSuccessfulRunAt })},
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
 		"ownerId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
 		// rootDir is the subdirectory of the repo this App builds from (Render's
@@ -328,6 +329,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CronRun",
 	Fields: graphql.Fields{
+		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.ID })},
 		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.Name })},
 		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.StartedAt })},
 		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.FinishedAt })},
@@ -618,6 +620,30 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.Get(p.Context, p.Args["id"].(string))
 			},
 		},
+		// First-class cron run reads (bex extensions over Render's current public
+		// API, which only exposes trigger/cancel-current). Both delegate to the
+		// same status.runs verbs REST/MCP use.
+		"cronJobRuns": &graphql.Field{
+			Type: graphql.NewList(cronRunGQLType),
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlStr(p.Args, "cursor"), gqlInt(p.Args, "limit"))
+			},
+		},
+		"cronJobRun": &graphql.Field{
+			Type: cronRunGQLType,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"runId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetCronRun(p.Context, p.Args["serviceId"].(string), p.Args["runId"].(string))
+			},
+		},
 		"instanceTypes": &graphql.Field{ // bex extension backing the plan picker (see InstanceType)
 			Type:    graphql.NewList(instanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
@@ -828,9 +854,24 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetCronJob(p.Context, p.Args["id"].(string), &sched, gqlStrPtr(p.Args, "command"))
 			},
 		},
-		// runCronJob: trigger a one-off run of a cron_job (Render's cron run verb);
-		// the run shows in status.runs once the operator reconciles.
-		"runCronJob": &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.TriggerCronRun)},
+		// runCronJob returns the deterministic pending run, matching REST's
+		// Render-shaped trigger response instead of returning the parent service.
+		"runCronJob": &graphql.Field{
+			Type: cronRunGQLType, Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.TriggerCronRun(p.Context, p.Args["id"].(string))
+			},
+		},
+		"cancelCronJobRun": &graphql.Field{
+			Type: cronRunGQLType,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"runId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.CancelCronRun(p.Context, p.Args["serviceId"].(string), p.Args["runId"].(string))
+			},
+		},
 		// confirmIDArgs, not gqlutil.IDArg(): suspend can be blocked by w6/m19's
 		// protected-environment guard, armed via the optional confirm arg.
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: confirmIDArgs(), Resolve: verb(s.Suspend)},

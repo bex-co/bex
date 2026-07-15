@@ -1619,9 +1619,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "开始时间",
     description: "Cron runs table column header (run start time)",
   },
+  "services.cronRunColDuration": {
+    message: "持续时间",
+    description: "Cron runs table column header (elapsed run time)",
+  },
   "services.cronRunColStatus": {
     message: "状态",
     description: "Cron runs table column header (run outcome)",
+  },
+  "services.cronRunColActions": {
+    message: "操作",
+    description: "Cron runs table column header (row actions)",
   },
   "services.cronRunStatusRunning": {
     message: "运行中",
@@ -1634,6 +1642,42 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.cronRunStatusFailed": {
     message: "失败",
     description: "Cron run status badge",
+  },
+  "services.cronRunStatusCanceled": {
+    message: "已取消",
+    description: "Cron run status badge",
+  },
+  "services.cronRunCancel": {
+    message: "取消",
+    description: "Cancel an in-flight cron run",
+  },
+  "services.cronRunCancelConfirmTitle": {
+    message: "取消此次运行？",
+    description: "Cron run cancellation confirmation title",
+  },
+  "services.cronRunCancelConfirmBody": {
+    message: "正在运行的任务将被终止，且无法撤销。",
+    description: "Cron run cancellation confirmation body",
+  },
+  "services.cronRunCancelSuccess": {
+    message: "定时任务运行已取消。",
+    description: "Toast after cron run cancellation is accepted",
+  },
+  "services.cronRunCancelError": {
+    message: "无法取消定时任务运行。",
+    description: "Toast after cron run cancellation fails",
+  },
+  "services.cronRunsLoadMore": {
+    message: "加载更多",
+    description: "Cron run history pagination button",
+  },
+  "services.cronRunsLoadingMore": {
+    message: "加载中…",
+    description: "Cron run history pagination busy label",
+  },
+  "services.cronRunsLoadError": {
+    message: "无法加载定时任务运行记录。",
+    description: "Cron run history read error",
   },
   "services.dangerZoneTitle": {
     message: "危险区域",

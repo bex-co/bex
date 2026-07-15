@@ -1024,6 +1024,10 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
 		cj.Spec.Schedule = app.Spec.Schedule
+		// Render runs at most one cron execution at a time. Scheduled overlap is
+		// skipped; a manual trigger explicitly cancels the active Job before its
+		// replacement is created below.
+		cj.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 		// Suspend pauses scheduling without losing history — resume just clears it.
 		cj.Spec.Suspend = &suspended
 		cj.Spec.JobTemplate.Labels = labels // so the Jobs it creates carry labelApp
@@ -1033,10 +1037,15 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		return r.fail(ctx, app, "CronJobFailed", err)
 	}
 
+	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "CronRunCancelFailed", err)
+	}
+
 	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
 	// single Job from the same template, named deterministically from runAt so a
 	// re-reconcile of the same value is a no-op. Skipped while suspended.
-	if app.Spec.RunAt != "" && !suspended {
+	if app.Spec.RunAt != "" && !suspended && !cancelPending && !cancelsManualRun(app) {
 		if err := r.ensureManualRun(ctx, app, image, port, labels); err != nil {
 			return r.fail(ctx, app, "CronRunFailed", err)
 		}
@@ -1073,7 +1082,45 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if suspended {
 		return ctrl.Result{}, nil
 	}
+	if cancelPending {
+		return ctrl.Result{RequeueAfter: time.Second}, nil
+	}
 	return ctrl.Result{RequeueAfter: time.Minute}, nil
+}
+
+// cancelRequestedCronRun converges spec.cancelRun by foreground-deleting the
+// exact backing Job. NotFound is success: a retry after deletion and a run the
+// CronJob controller already removed are both already at the desired state.
+// Status reconciliation below preserves and marks the run Canceled even after
+// the Job object has disappeared. The bool reports that deletion is still in
+// progress, which keeps a manual replacement from starting until the old run's
+// pods are gone.
+func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	if app.Spec.CancelRun == nil || app.Spec.CancelRun.Name == "" {
+		return false, nil
+	}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: app.Spec.CancelRun.Name, Namespace: app.Namespace}}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(job), job); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !job.DeletionTimestamp.IsZero() {
+		return true, nil
+	}
+	if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+		return false, err
+	}
+	return true, nil
+}
+
+// cancelsManualRun prevents the stable spec.runAt value from recreating the
+// exact manual Job a cancellation just deleted. A later trigger changes runAt,
+// producing a different Job name, so the replacement is created normally.
+func cancelsManualRun(app *appv1alpha1.App) bool {
+	return app.Spec.CancelRun != nil &&
+		app.Spec.CancelRun.Name == appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
 }
 
 // ensureManualRun creates the one-off Job for the current spec.runAt if it does
@@ -1110,15 +1157,49 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]a
 	}
 	items := jobs.Items
 	sort.Slice(items, func(i, j int) bool { return jobStartKey(&items[i]).After(jobStartKey(&items[j])) })
-	if len(items) == 0 {
-		return nil, nil
-	}
 	runs := make([]appv1alpha1.CronRun, 0, maxCronRuns)
+	prior := make(map[string]appv1alpha1.CronRun, len(app.Status.Runs))
+	for _, run := range app.Status.Runs {
+		prior[run.Name] = run
+	}
+	current := make(map[string]appv1alpha1.CronRun, len(items))
 	for i := range items {
+		run := toCronRun(&items[i])
+		if old, ok := prior[run.Name]; ok && run.StartedAt == "" {
+			run.StartedAt = old.StartedAt
+		}
+		if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == run.Name {
+			run.Status = appv1alpha1.CronRunCanceled
+			run.FinishedAt = app.Spec.CancelRun.RequestedAt
+		}
+		current[run.Name] = run
+		// A Job absent from the prior status is new, and the sorted Job list puts
+		// these newest executions first. Existing entries are appended below in
+		// their prior relative order, which remains stable when a newer canceled
+		// Job disappears while an older successful Job still exists.
+		if _, existed := prior[run.Name]; !existed && len(runs) < maxCronRuns {
+			runs = append(runs, run)
+		}
+	}
+	// Kubernetes may garbage-collect terminal Jobs (and cancellation deletes its
+	// Job by definition). Retain terminal entries already captured in status so
+	// the first-class run ids and cursor history remain stable across reads.
+	for _, old := range app.Status.Runs {
 		if len(runs) >= maxCronRuns {
 			break
 		}
-		runs = append(runs, toCronRun(&items[i]))
+		if run, ok := current[old.Name]; ok {
+			runs = append(runs, run)
+			continue
+		}
+		if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == old.Name {
+			old.Status = appv1alpha1.CronRunCanceled
+			old.FinishedAt = app.Spec.CancelRun.RequestedAt
+		}
+		switch old.Status {
+		case appv1alpha1.CronRunSucceeded, appv1alpha1.CronRunFailed, appv1alpha1.CronRunCanceled:
+			runs = append(runs, old)
+		}
 	}
 	return runs, nil
 }
@@ -1134,7 +1215,7 @@ func jobStartKey(job *batchv1.Job) time.Time {
 
 // toCronRun projects a Job's status onto the CR's run-history shape.
 func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
-	run := appv1alpha1.CronRun{Name: job.Name, Status: "Running"}
+	run := appv1alpha1.CronRun{Name: job.Name, Status: appv1alpha1.CronRunRunning}
 	if job.Status.StartTime != nil {
 		run.StartedAt = job.Status.StartTime.UTC().Format(time.RFC3339)
 	}
@@ -1144,10 +1225,10 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 		}
 		switch c.Type {
 		case batchv1.JobComplete:
-			run.Status = "Succeeded"
+			run.Status = appv1alpha1.CronRunSucceeded
 			run.FinishedAt = c.LastTransitionTime.UTC().Format(time.RFC3339)
 		case batchv1.JobFailed:
-			run.Status = "Failed"
+			run.Status = appv1alpha1.CronRunFailed
 			run.FinishedAt = c.LastTransitionTime.UTC().Format(time.RFC3339)
 		}
 	}
@@ -1200,8 +1281,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 // manualRunJobName derives a deterministic Job name from the App name + runAt, so
 // reconciling the same runAt twice never spawns a duplicate run.
 func manualRunJobName(appName, runAt string) string {
-	sum := sha256.Sum256([]byte(runAt))
-	return fmt.Sprintf("%s-run-%x", appName, sum[:4])
+	return appv1alpha1.ManualCronRunJobName(appName, runAt)
 }
 
 // reconcileOpenSandbox runs the revision as an OpenSandbox sandbox (host runtime).

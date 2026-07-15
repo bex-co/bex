@@ -86,6 +86,14 @@ type AppSpec struct {
 	// +optional
 	RunAt string `json:"runAt,omitempty"`
 
+	// CancelRun requests cancellation of one in-flight cron_job run. The backend
+	// resolves the public run id to the backing Job name and records intent here;
+	// the operator owns the mechanism (foreground Job deletion) and writes the
+	// terminal Canceled entry to status.runs. Nil means no cancellation has been
+	// requested. Ignored for non-cron types.
+	// +optional
+	CancelRun *CronRunCancellation `json:"cancelRun,omitempty"`
+
 	// PublishPath is the built output directory a static_site serves as its
 	// document root (Render's "Publish Directory", e.g. "dist", "build",
 	// "public"), relative to the built image's working directory. The publish
@@ -572,10 +580,34 @@ type CronRun struct {
 	// +optional
 	FinishedAt string `json:"finishedAt,omitempty"`
 
-	// Status is the run outcome: Running, Succeeded, or Failed.
+	// Status is the run outcome: Running, Succeeded, Failed, or Canceled.
 	// +required
 	Status string `json:"status"`
 }
+
+// CronRunCancellation is durable cancellation intent for a cron Job. Name is
+// the exact backing Kubernetes Job name; RequestedAt is the API acceptance time
+// and becomes the canceled run's FinishedAt timestamp after the operator has
+// terminated it.
+type CronRunCancellation struct {
+	// Name is the Kubernetes Job name to terminate.
+	// +required
+	Name string `json:"name"`
+
+	// RequestedAt is when cancellation was accepted (RFC3339Nano).
+	// +required
+	RequestedAt string `json:"requestedAt"`
+}
+
+// Cron run status vocabulary stored in App.status.runs. The backend maps these
+// mechanism-facing values onto Render's public pending/successful/unsuccessful/
+// canceled enum at the API boundary.
+const (
+	CronRunRunning   = "Running"
+	CronRunSucceeded = "Succeeded"
+	CronRunFailed    = "Failed"
+	CronRunCanceled  = "Canceled"
+)
 
 // Pre-deploy step outcomes, shared by the operator (which writes
 // AppStatus.PreDeploy.Status) and the backend (which projects it onto the
