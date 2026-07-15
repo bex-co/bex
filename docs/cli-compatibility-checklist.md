@@ -46,15 +46,15 @@ Six recurring bugs explain most of the ✖ rows below; each is cited by name in 
 | `logout` | ◐ | 4 | Correctly refuses to "log out" an env-var credential and explains how to revoke via the dashboard — CLI-native behavior, not a bex gap; no owner needed. |
 | `whoami` | ✖ | 4 | RC6 → owner `w4/016`. |
 | `workspace current` | ✅ |  | Returns the real minted tenant (`tea-…`). |
-| `workspace set` | ◐ |  | Not driven interactively in this harness; `RENDER_WORKSPACE` achieves the same effect through `config.WorkspaceID()`'s env-var precedence (`cli/pkg/config/config.go:123-131`) — every other command below relies on exactly that. Not a bex gap; no owner needed. |
+| `workspace set` | ◐ | 8 | Not driven interactively in this harness; `RENDER_WORKSPACE` achieves the same effect through `config.WorkspaceID()`'s env-var precedence (`cli/pkg/config/config.go:123-131`) — every other command below relies on exactly that. Not a bex gap; no owner needed. |
 | `workspaces` | ✅ |  | Lists the real minted tenant. |
 | `projects` | ✅ |  | `null` (valid empty list — no projects created in this harness run; endpoint responds, no error). |
 | `environments <id>` | ✖ |  | RC1 masks the real 404 for an unknown project id as `unknown error` → owner `w1/022`. |
-| `services` (list) | ✖ |  | RC2 → owner `w2/008`. |
-| `services create` | ◐ |  | The App CR is genuinely created (`kubectl get apps.app.bex.co` shows it `Deploying`) but the CLI prints `null` instead of a confirmation — the create response likely hits RC2/a sibling shape issue too → owner `w2/008`. |
-| `services update` | ◐ |  | `--num-instances` is rejected **client-side** before any HTTP call (`--num-instances is not supported for update`) — a CLI-native restriction, not tested further against bex-api in this pass; no confirmed bex gap, no owner needed. |
-| `services delete` | ✖ |  | RC2 (the delete path re-fetches/re-serializes the Service) → owner `w2/008`. |
-| `services instances` | ✖ |  | `failed to list instances: 404 Not Found` — folded into `w2/008` (same Service-surface note) pending a closer look; owner `w2/008`. |
+| `services` (list) | ✖ | 8 | RC2 → owner `w2/008`. |
+| `services create` | ◐ | 8 | The App CR is genuinely created (`kubectl get apps.app.bex.co` shows it `Deploying`) but the CLI prints `null` instead of a confirmation — the create response likely hits RC2/a sibling shape issue too → owner `w2/008`. |
+| `services update` | ◐ | 8 | `--num-instances` is rejected **client-side** before any HTTP call (`--num-instances is not supported for update`) — a CLI-native restriction, not tested further against bex-api in this pass; no confirmed bex gap, no owner needed. |
+| `services delete` | ✖ | 8 | RC2 (the delete path re-fetches/re-serializes the Service) → owner `w2/008`. |
+| `services instances` | ✖ | 8 | `failed to list instances: 404 Not Found` — folded into `w2/008` (same Service-surface note) pending a closer look; owner `w2/008`. |
 | `postgres create` | ✅ |  | Full, correct response body — real record created and returned intact. |
 | `postgres` (list) | ✖ |  | RC3 → owner `w8/m13`. |
 | `postgres get` | ✖ |  | RC3 (downstream: list-derived id is empty, so "get by name" can't resolve it) → owner `w8/m13`. |
