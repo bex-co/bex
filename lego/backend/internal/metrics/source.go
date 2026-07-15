@@ -107,7 +107,11 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
-		return promQueryRange(ctx, hc, base, promQueryFor(req), req.Start, req.End, stepSeconds(req.Resolution))
+		query := promQueryFor(req)
+		if query == "" {
+			return []MetricSeries{}, nil
+		}
+		return promQueryRange(ctx, hc, base, query, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
 
@@ -205,10 +209,20 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 }
 
 // promQueryFor builds the PromQL range query for a request metric over Traefik's
-// counters, which carry no host/path labels — those filters are rejected
-// upstream (see MetricQuery.Host) and absent from RequestMetricsRequest.
+// counters. HTTP count/latency retain their service selector; bandwidth uses
+// exact router identities so shared backends remain attributable. The counters
+// carry no host/path labels, so those filters are rejected upstream (see
+// MetricQuery.Host) and absent from RequestMetricsRequest.
 func promQueryFor(req RequestMetricsRequest) string {
-	sel := []string{fmt.Sprintf(`service=~".*%s.*"`, promEscape(req.App))}
+	selector := fmt.Sprintf(`service=~".*%s.*"`, promEscape(req.App))
+	if req.Metric == MetricBandwidth {
+		matcher := core.TraefikRouterMatcher(req.Routers)
+		if matcher == "" {
+			return ""
+		}
+		selector = fmt.Sprintf(`router=~%q`, matcher)
+	}
+	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
 		sel = append(sel, fmt.Sprintf(`code=~"%s"`, c))
 	}
@@ -224,7 +238,7 @@ func promQueryFor(req RequestMetricsRequest) string {
 		return fmt.Sprintf(`histogram_quantile(%s, sum(rate(traefik_service_request_duration_seconds_bucket{%s}[%s])) by (%s))`,
 			strconv.FormatFloat(req.Quantile, 'g', -1, 64), matchers, window, by)
 	case MetricBandwidth:
-		return sumRate("traefik_service_responses_bytes_total", matchers, window, groupLabel(req.GroupBy))
+		return sumRate("traefik_router_responses_bytes_total", matchers, window, groupLabel(req.GroupBy))
 	default: // http_requests
 		return sumRate("traefik_service_requests_total", matchers, window, groupLabel(req.GroupBy))
 	}
@@ -297,13 +311,17 @@ func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBand
 		hc = http.DefaultClient
 	}
 	base = strings.TrimRight(base, "/")
-	return func(ctx context.Context, _, app string, since time.Time) (float64, error) {
+	return func(ctx context.Context, routers []string, since time.Time) (float64, error) {
+		matcher := core.TraefikRouterMatcher(routers)
+		if matcher == "" {
+			return 0, nil
+		}
 		elapsed := time.Since(since)
 		if elapsed <= 0 {
 			return 0, nil
 		}
-		q := fmt.Sprintf(`sum(increase(traefik_service_responses_bytes_total{service=~".*%s.*"}[%ds]))`,
-			promEscape(app), int64(elapsed/time.Second))
+		q := fmt.Sprintf(`sum(increase(traefik_router_responses_bytes_total{router=~%q}[%ds]))`,
+			matcher, int64(elapsed/time.Second))
 		u := fmt.Sprintf("%s/api/v1/query?%s", base, url.Values{"query": {q}}.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

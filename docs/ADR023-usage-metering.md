@@ -7,11 +7,38 @@ bex records month-to-date resource consumption per workspace and exposes it over
 | Meter | Unit | Source |
 | --- | --- | --- |
 | `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — pod count × window seconds |
-| `egress_bytes` | bytes | Traefik `traefik_service_responses_bytes_total` increase over the window |
+| `egress_bytes` | bytes | Traefik `traefik_router_responses_bytes_total` increase over the window, attributed by the App's exact Ingress router identities |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
+
+### Outbound-bandwidth completeness prerequisite (w8/m15)
+
+The current `egress_bytes` implementation is deliberately narrower than its final product meaning: it counts Traefik HTTP response bytes by exact App Ingress/router identity, including static sites whose Ingress points at the shared static-server Service. It does **not** yet count WebSocket frames after upgrade, App-initiated traffic to public destinations, public Postgres responses, or public Key Value responses. Do not use this HTTP-only quantity for a full outbound-bandwidth cap. `w8/m15` owns the remaining prerequisite expansion; `w8/001` remains gated until it ships and then accumulates a fresh 28-day bandwidth window.
+
+The HTTP component resolves a control-plane App row to its projected CR through the immutable `bex.co/app-id` label, reads that CR's actual operator-owned Ingress, and reproduces the router-key algorithm from the production-pinned Traefik v3.7.5. Prometheus selectors are anchored to the complete `router@kubernetes` labels; display-name substrings and backend Service names are never used for bandwidth attribution. This keeps ordinary services, custom domains, and shared-backend static sites separate. A genuinely private App with no Ingress records a successful zero. A missing projected CR, missing expected public Ingress, unsupported Ingress shape, ambiguous projection or cross-Ingress router label, Kubernetes failure, or Prometheus failure writes no row and is retried by the per-meter cursor.
+
+The target contract follows Render's documented categories while keeping bex's source boundaries explicit. Traefik's HTTP response-size capture stops at connection hijack, so HTTP responses and WebSocket downstream frames are separate sources rather than one counter with an optimistic label:
+
+| Traffic class | Counted source | Attribution | Excluded / double-count guard |
+| --- | --- | --- | --- |
+| App HTTP responses, including `static_site` | Traefik router response-byte counter | App Ingress/router identity | The App→Traefik private hop is not counted by the direct meter |
+| App WebSocket downstream frames after upgrade | dedicated metered edge connection wrapper | exact App router identity | handshake HTTP bytes stay in the router counter; client→App frames and the private backend hop are excluded |
+| App-initiated TCP/UDP to a public destination | Dedicated node-local eBPF meter at the App pod boundary | immutable pod UID → `service` resource | cluster/private/link-local/node destinations, DNS-to-cluster, dropped packets |
+| Public managed-Postgres responses | existing Postgres SNI proxy's backend→client copy counter | resolved parent `Database` (RW/pooler/replica all roll up) | client→backend requests, internal DB clients, backups |
+| Public managed-Key-Value responses | metered SNI pass-through front door's backend→client copy counter | resolved `KeyValue` | client→backend requests and internal KV clients |
+
+Each source is monotonic and independently health-checked. The hourly collector treats any required-source failure, unsupported attachment, counter loss, or ambiguous reset as unavailable: it writes no row and retries the meter's oldest missing hour under the existing `m11` cursor contract. A successful empty vector remains a real zero. The implementation must document the precise byte basis at each boundary; the total is a stable bex usage quantity, not a claim that it reproduces a cloud provider's opaque invoice byte-for-byte.
+
+The source audit rejected tempting shortcuts for concrete correctness reasons:
+
+- **cAdvisor pod transmit bytes** are cumulative but carry no destination class, so they would charge same-workspace/private and cluster traffic.
+- **Hubble flow events/metrics** carry source and destination identities, but the [v1.19 flow contract](https://github.com/cilium/cilium/blob/v1.19.5/api/v1/flow/flow.proto) has no packet-byte field; `flows_to_world_total` is a flow count, not bytes.
+- **Cilium policy statistics** are useful diagnostics, not a durable usage ledger. In v1.19.5 the [stats map](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/statsmap.go) is a bounded per-CPU LRU hash keyed by endpoint id and policy key. [Endpoint removal](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/cell.go) removes the endpoint policy map but not old stats, and [policy updates](https://github.com/cilium/cilium/blob/v1.19.5/pkg/maps/policymap/policymap.go) zero the associated stat only in debug mode. Eviction, endpoint-id reuse, and reset semantics can therefore silently lose or misattribute quota bytes.
+- **Traefik service response bytes alone** cover HTTP only. Traefik documents [router response-byte metrics](https://doc.traefik.io/traefik/reference/install-configuration/observability/metrics/#router-metrics), which solve shared-backend HTTP attribution, but its [capture writer](https://github.com/traefik/traefik/blob/v3.7.5/pkg/middlewares/capture/capture.go) returns the underlying connection on `Hijack`, so WebSocket frames bypass `ResponseSize`; it also exposes no equivalent per-TCP-service response-byte counter for public datastore routes.
+
+This design intentionally owns the accounting datapath instead of scraping a CNI's debug ABI. Production still uses Cilium and the local CAPD overlay still uses Calico; the node-meter attachment must be proven on a focused Cilium fixture, fail closed as a meter when unsupported, and coexist with the CNI without replacing its programs.
 
 ## Meter applicability by resource kind
 

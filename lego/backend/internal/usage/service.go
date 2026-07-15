@@ -524,7 +524,7 @@ func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind
 	case store.UsageKindInstanceSeconds:
 		quantity, ok = s.queryInstanceSeconds(ctx, app.Name, s.Namespace, window, end)
 	case store.UsageKindEgressBytes:
-		quantity, ok = s.queryEgressBytes(ctx, app.Name, window, end)
+		quantity, ok = s.queryEgressBytes(ctx, app, window, end)
 	case store.UsageKindBuildSeconds:
 		quantity, ok = s.queryBuildSeconds(ctx, app.Name, window, end)
 	default:
@@ -635,21 +635,43 @@ func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers st
 	return int64(math.Round(v * float64(windowSecs))), true
 }
 
-// queryEgressBytes returns total outbound bytes for the app in [start, end)
-// via Traefik's increase() instant query at the window end, mirroring the
-// monthToDateBandwidth source in internal/metrics but window-bounded and
-// returning bytes (not MB).
-func (s *Service) queryEgressBytes(ctx context.Context, appName string, start, end time.Time) (int64, bool) {
-	if s.PromBase == "" {
+// queryEgressBytes returns HTTP response bytes for the exact App Ingress
+// routers in [start, end) via Traefik's increase() instant query at the window
+// end, mirroring the monthToDateBandwidth source in internal/metrics but
+// window-bounded and returning bytes (not MB). Other outbound classes are
+// composed by w8/m14 after their independently attributable sources land.
+func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, end time.Time) (int64, bool) {
+	if s.PromBase == "" || s.Client == nil {
 		return 0, false
+	}
+	var projected appv1alpha1.AppList
+	if err := s.Client.List(ctx, &projected,
+		client.InNamespace(s.Namespace),
+		client.MatchingLabels{store.LabelAppID: app.ID},
+	); err != nil {
+		log.Printf("usage: egress_bytes resolve App CR for %s: %v", app.ID, err)
+		return 0, false
+	}
+	if len(projected.Items) != 1 {
+		log.Printf("usage: egress_bytes resolve App CR for %s: found %d projected Apps", app.ID, len(projected.Items))
+		return 0, false
+	}
+	routers, err := s.TraefikRouterNames(ctx, &projected.Items[0])
+	if err != nil {
+		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
+		return 0, false
+	}
+	matcher := core.TraefikRouterMatcher(routers)
+	if matcher == "" {
+		return 0, true
 	}
 	elapsed := end.Sub(start)
 	q := fmt.Sprintf(
-		`sum(increase(traefik_service_responses_bytes_total{service=~".*%s.*"}[%ds]))`,
-		promEscape(appName), int64(elapsed/time.Second))
+		`sum(increase(traefik_router_responses_bytes_total{router=~%q}[%ds]))`,
+		matcher, int64(elapsed/time.Second))
 	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
-		log.Printf("usage: egress_bytes for %s: %v", appName, err)
+		log.Printf("usage: egress_bytes for %s: %v", app.ID, err)
 		return 0, false
 	}
 	return int64(math.Round(v)), true

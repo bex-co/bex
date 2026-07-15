@@ -31,6 +31,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -206,6 +207,112 @@ func fakeProm(value float64) *httptest.Server {
 	}))
 }
 
+// appMeterClient returns the projected private App behind one store row. Its
+// missing Ingress is a real public-egress zero, while Jobs can still be listed
+// for the build meter in the same fake client.
+func appMeterClient(t *testing.T, app store.App) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	if err := batchv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := networkingv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	projected := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name:      app.TenantID + "-" + app.Name,
+		Namespace: "default",
+		Labels:    map[string]string{store.LabelAppID: app.ID},
+	}}
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(projected).Build()
+}
+
+func publicAppMeterClient(t *testing.T, app store.App, crName, backend string, hosts ...string) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	_ = networkingv1.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	class := "traefik"
+	pathType := networkingv1.PathTypePrefix
+	projected := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      crName,
+			Namespace: "default",
+			Labels:    map[string]string{store.LabelAppID: app.ID},
+		},
+		Spec: appv1alpha1.AppSpec{Host: hosts[0], Hosts: hosts[1:]},
+	}
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: projected.Name, Namespace: "default"},
+		Spec:       networkingv1.IngressSpec{IngressClassName: &class},
+	}
+	for _, host := range hosts {
+		ingress.Spec.Rules = append(ingress.Spec.Rules, networkingv1.IngressRule{
+			Host: host,
+			IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+				Paths: []networkingv1.HTTPIngressPath{{
+					Path:     "/",
+					PathType: &pathType,
+					Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{
+						Name: backend,
+					}},
+				}},
+			}},
+		})
+	}
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(projected, ingress).Build()
+}
+
+func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {
+	var gotQuery string
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("query")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"result":[{"value":[0,"42"]}]}}`))
+	}))
+	defer prom.Close()
+
+	app := store.App{ID: "srv-static", TenantID: "tea-one", Name: "static"}
+	cl := publicAppMeterClient(t, app, "tea-one-static", "shared-static-server", "site.onbex.co", "www.example.com")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
+
+	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
+	if !ok || quantity != 42 {
+		t.Fatalf("queryEgressBytes: got quantity=%d ok=%v, want 42/true", quantity, ok)
+	}
+	for _, exact := range []string{
+		"default-tea-one-static-site-onbex-co@kubernetes",
+		"default-tea-one-static-www-example-com@kubernetes",
+	} {
+		if !strings.Contains(gotQuery, exact) {
+			t.Errorf("query %q is missing exact router %q", gotQuery, exact)
+		}
+	}
+	if !strings.Contains(gotQuery, `sum(increase(traefik_router_responses_bytes_total`) {
+		t.Errorf("query does not use Prometheus reset-safe increase(): %q", gotQuery)
+	}
+	if strings.Contains(gotQuery, `service=~`) || strings.Contains(gotQuery, `.*`) {
+		t.Errorf("query retained a broad service matcher: %q", gotQuery)
+	}
+}
+
+func TestQueryEgressBytesEmptyVectorIsSuccessfulZero(t *testing.T) {
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"success","data":{"result":[]}}`))
+	}))
+	defer prom.Close()
+	app := store.App{ID: "srv-quiet", TenantID: "tea-one", Name: "quiet"}
+	cl := publicAppMeterClient(t, app, "tea-one-quiet", "tea-one-quiet", "quiet.onbex.co")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, nil, prom.URL, prom.Client())
+
+	quantity, ok := svc.queryEgressBytes(context.Background(), app, time.Now().Add(-time.Hour), time.Now())
+	if !ok || quantity != 0 {
+		t.Fatalf("empty Prometheus vector: got quantity=%d ok=%v, want successful zero", quantity, ok)
+	}
+}
+
 // --- Tests ---
 
 func TestProcessWindowUpsertIdempotent(t *testing.T) {
@@ -243,9 +350,7 @@ func TestProcessWindowPersistsSuccessfulZeroAnchors(t *testing.T) {
 	prom := fakeProm(0)
 	defer prom.Close()
 
-	scheme := runtime.NewScheme()
-	_ = batchv1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	cl := appMeterClient(t, app)
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
 	window := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
 
@@ -302,9 +407,7 @@ func TestAppMeterCatchUpRetriesFailedMeterWithoutBlockingHealthyMeters(t *testin
 	prom := fakeProm(0)
 	defer prom.Close()
 
-	scheme := runtime.NewScheme()
-	_ = batchv1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	cl := appMeterClient(t, app)
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
 
 	previous := time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC)
@@ -372,9 +475,7 @@ func TestAppMeterCatchUpStartsAtAppCreationHour(t *testing.T) {
 	prom := fakeProm(0)
 	defer prom.Close()
 
-	scheme := runtime.NewScheme()
-	_ = batchv1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	cl := appMeterClient(t, app)
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
 
 	svc.catchUpAppThrough(context.Background(), app, created.Truncate(time.Hour).Add(time.Hour))

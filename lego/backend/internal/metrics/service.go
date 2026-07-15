@@ -163,8 +163,12 @@ type ResourceMetricsRangeSource func(ctx context.Context, req ResourceMetricsRan
 
 // RequestMetricsRequest is the backend-neutral request-metric ask.
 type RequestMetricsRequest struct {
-	Namespace  string
-	App        string
+	Namespace string
+	App       string
+	// Routers are the exact Traefik router metric labels for bandwidth. The
+	// service resolves them from the authorized App's actual Ingress; request
+	// count and latency retain their existing service-level selector.
+	Routers    []string
 	Metric     string // http_requests | http_latency | bandwidth
 	Start, End time.Time
 	Resolution time.Duration
@@ -180,7 +184,7 @@ type RequestMetricsSource func(ctx context.Context, req RequestMetricsRequest) (
 // MonthToDateBandwidthSource returns an App's cumulative HTTP egress in bytes
 // since the given time. nil => MonthToDateBandwidth reports
 // core.ErrMetricsUnavailable.
-type MonthToDateBandwidthSource func(ctx context.Context, namespace, app string, since time.Time) (bytesTotal float64, err error)
+type MonthToDateBandwidthSource func(ctx context.Context, routers []string, since time.Time) (bytesTotal float64, err error)
 
 // MetricsFilterValuesSource discovers a Prometheus label's observed values (e.g.
 // the `code` label backing STATUS_CODE) for an App's request metrics. nil =>
@@ -249,7 +253,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	case MetricInstanceCount:
 		series, err = s.instanceCountMetric(ctx, q)
 	case MetricHTTPRequests, MetricHTTPLatency, MetricBandwidth:
-		series, err = s.requestMetric(ctx, q)
+		series, err = s.requestMetric(ctx, q, app)
 	case MetricCPUTarget, MetricMemoryTarget:
 		series = autoscaleTargetMetric(app, q, s.Now())
 	default:
@@ -487,13 +491,22 @@ func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery) ([]Met
 }
 
 // requestMetric delegates to the injected request-metrics source.
-func (s *Service) requestMetric(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
+	}
+	var routers []string
+	if q.Metric == MetricBandwidth {
+		var err error
+		routers, err = s.TraefikRouterNames(ctx, app)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+		}
 	}
 	series, err := s.RequestMetrics(ctx, RequestMetricsRequest{
 		Namespace:  s.Namespace,
 		App:        q.App,
+		Routers:    routers,
 		Metric:     q.Metric,
 		Start:      q.Start,
 		End:        q.End,
@@ -578,15 +591,20 @@ type MonthToDateBandwidth struct {
 // is real (increase() over the elapsed month); a short-retention Prometheus just
 // under-counts (see ADR010-observability.md).
 func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthToDateBandwidth, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanView, app); err != nil {
+	resolved, err := s.AuthorizeApp(ctx, core.RelCanView, app)
+	if err != nil {
 		return MonthToDateBandwidth{}, err
 	}
 	if s.MonthToDateBandwidthSource == nil {
 		return MonthToDateBandwidth{}, core.ErrMetricsUnavailable
 	}
+	routers, err := s.TraefikRouterNames(ctx, resolved)
+	if err != nil {
+		return MonthToDateBandwidth{}, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+	}
 	now := s.Now().UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	bytesTotal, err := s.MonthToDateBandwidthSource(ctx, s.Namespace, app, monthStart)
+	bytesTotal, err := s.MonthToDateBandwidthSource(ctx, routers, monthStart)
 	if err != nil {
 		return MonthToDateBandwidth{}, err
 	}

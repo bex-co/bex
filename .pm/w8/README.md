@@ -1,6 +1,6 @@
 # w8 — Usage metering (worker8)
 
-**Worker:** worker8 Created 2026-07-09 from `/pm-brainstorm w8` — owns `GOAL.md` #5's unowned half ("usage metering"; the multi-tenant half is w1/m9 + w6 + w4/m12). Meters **quantities** — instance-seconds by tier, egress bytes, build minutes: exactly Render's three meters (verified live 2026-07-09 vs render.com/pricing + docs). Payments/payment-collection stay out per w6's "no billing system" boundary; **m7** (2026-07-13) adds dollar *estimates* over these quantities (a price sheet, not a billing system — `.pm/FUTURE-MAYBE.md`'s "Pricing & spend estimation" trigger). Numbered **w8, not w7** — w7 was consumed as the old staging path for w1/m15; never reuse a number. Ordered by dependency: pipeline → API surface → dashboard.
+**Worker:** worker8 Created 2026-07-09 from `/pm-brainstorm w8` — owns `GOAL.md` #5's unowned half ("usage metering"; the multi-tenant half is w1/m9 + w6 + w4/m12). Meters **quantities** — instance-seconds by tier, egress bytes, build minutes: exactly Render's three meters (verified live 2026-07-09 vs render.com/pricing + docs). Payments/payment-collection stay out per w6's "no billing system" boundary; **m7** (2026-07-13) adds dollar _estimates_ over these quantities (a price sheet, not a billing system — `.pm/FUTURE-MAYBE.md`'s "Pricing & spend estimation" trigger). Numbered **w8, not w7** — w7 was consumed as the old staging path for w1/m15; never reuse a number. Ordered by dependency: pipeline → API surface → dashboard.
 
 ## Milestones
 
@@ -18,6 +18,7 @@
 - [ ] **m12** — Managed Postgres major-version upgrade (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 2, 2026-07-14 (`database_types.go:35` — `Version` exists at create, no upgrade verb anywhere; Render ships version upgrades as a first-class flow; rides CNPG's declarative major-upgrade path, verified first by t002). Placed under w8 for capacity per the m8 precedent; numbered m12 not m11 — a concurrent session claimed m11 mid-rebase
 - [ ] **m13** — Datastore list pagination: Postgres + Key Value (7 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (`core.PageParams` in `apps/rest.go:309` but nowhere in `postgres/rest.go`/`keyvalue/rest.go`; Render's `GET /postgres` + `GET /key-value` both page); datastore-family placement per the m12 precedent
 - [ ] **m14** — Postgres disk autoscaling (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `enableDiskAutoscaling`/`diskAutoscalingEnabled`, zero hits; the control loop between grow-only `storageGB` and w3/m10's already-scraped kubelet volume stats)
+- [ ] **m15** — Complete outbound-bandwidth accounting: HTTP + WebSocket + direct + datastore TCP (14 tasks) ← prerequisite split from `001` 2026-07-14; replaces the HTTP-only counter before bandwidth caps can be promoted
 
 ## Inbox
 
