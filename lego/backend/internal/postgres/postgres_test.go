@@ -107,10 +107,15 @@ func TestRESTPostgresCRUD(t *testing.T) {
 		t.Fatalf("db CR not created: %v", err)
 	}
 
-	var list []PostgresView
+	// list — Render's cursor envelope ({postgres, cursor} per item, RC3):
+	// decode into the wrapper shape and check the nested record's real
+	// fields, not just the array length (a bare-array/wrong-shape regression
+	// would still produce a length-1 slice of zero-value structs and pass a
+	// length-only check).
+	var list []postgresWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres", "").Body.Bytes(), &list)
-	if len(list) != 1 {
-		t.Fatalf("list => 1, got %d", len(list))
+	if len(list) != 1 || list[0].Postgres.ID != "pg-test" || list[0].Cursor != "pg-test" {
+		t.Fatalf("list => one {postgres,cursor} entry for pg-test, got %+v", list)
 	}
 	if serveREST(svc, "GET", "/v1/postgres/pg-test", "").Code != 200 {
 		t.Fatal("get failed")
@@ -123,6 +128,34 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	}
 	if serveREST(svc, "GET", "/v1/postgres/pg-test", "").Code != 404 {
 		t.Error("deleted db should be gone")
+	}
+}
+
+// TestRESTCreatePostgresIPAllowListWireShape covers the other bug found live
+// against the real render-oss/cli: `postgres create --ip-allow-list ...`
+// sends Render's {cidrBlock,description} object array
+// (cli/pkg/client/types_gen.go's CidrBlockAndDescription), but a prior
+// version of CreatePostgresRequest.IPAllowList was a bare []string — decoding
+// an object array into []string failed the whole request body decode
+// ("bad request body"), so the flag was unusable end to end.
+func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
+	svc, _ := newService()
+	w := serveREST(svc, "POST", "/v1/postgres",
+		`{"name":"pg-ipal","plan":"free","ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"internal"}]}`)
+	if w.Code != 201 {
+		t.Fatalf("create with object-array ipAllowList => 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var pg PostgresView
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
+		t.Errorf("ipAllowList in create response = %+v, want one entry with cidrBlock 10.0.0.0/8", pg.IPAllowList)
+	}
+
+	// a bad CIDR inside a well-formed entry is still rejected.
+	w = serveREST(svc, "POST", "/v1/postgres",
+		`{"name":"pg-ipal-bad","plan":"free","ipAllowList":[{"cidrBlock":"nonsense"}]}`)
+	if w.Code != 400 {
+		t.Errorf("create with a bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -365,6 +398,105 @@ func TestRESTSetPostgresPlan(t *testing.T) {
 	w = serveREST(svc, "PATCH", "/v1/databases/plan-db", `{"plan":"basic-256mb"}`)
 	if w.Code != 200 {
 		t.Errorf("/v1/databases alias => 200, got %d", w.Code)
+	}
+}
+
+// TestRESTUpdatePostgresPartial covers the bug found live against the real
+// render-oss/cli: a prior version of the PATCH handler decoded plan as a
+// plain (non-pointer) string and called SetPlan unconditionally, so ANY
+// update that didn't include plan — a disk resize, an HA toggle, an
+// ip-allow-list replace — 400'd with "plan must be one of ...". Render's
+// PostgresPATCHInput (cli/pkg/client/types_gen.go) makes every field
+// optional; omitting one must leave it untouched, not fail the whole request.
+func TestRESTUpdatePostgresPartial(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "upd-db")
+	ctx := context.Background()
+
+	// disk resize alone, no plan — must succeed (previously 400'd).
+	w := serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":20}`)
+	if w.Code != 200 {
+		t.Fatalf("disk-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var got appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Spec.StorageGB != 20 {
+		t.Errorf("spec.storageGB = %d, want 20", got.Spec.StorageGB)
+	}
+	if got.Spec.Plan != "free" {
+		t.Errorf("plan should be untouched by a disk-only update, got %q", got.Spec.Plan)
+	}
+
+	// HA toggle alone, no plan — must succeed.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"enableHighAvailability":true}`)
+	if w.Code != 200 {
+		t.Fatalf("HA-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if !got.Spec.HighAvailability {
+		t.Error("spec.highAvailability should be true after an HA-only update")
+	}
+
+	// ip-allow-list alone, Render's {cidrBlock,description} wire shape, no
+	// plan — must succeed and round-trip through the same shape on read.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db",
+		`{"ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"internal"}]}`)
+	if w.Code != 200 {
+		t.Fatalf("ip-allow-list-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var pg PostgresView
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
+		t.Errorf("ipAllowList in response = %+v, want one entry with cidrBlock 10.0.0.0/8", pg.IPAllowList)
+	}
+	if w2 := serveREST(svc, "GET", "/v1/postgres/upd-db", ""); w2.Code == 200 {
+		var reGet PostgresView
+		_ = json.Unmarshal(w2.Body.Bytes(), &reGet)
+		if len(reGet.IPAllowList) != 1 || reGet.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
+			t.Errorf("GET after PATCH ipAllowList = %+v, want the entry to persist", reGet.IPAllowList)
+		}
+	}
+
+	// clearing the allow-list with an explicit empty array — must clear, not
+	// be treated as "field omitted".
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"ipAllowList":[]}`)
+	if w.Code != 200 {
+		t.Fatalf("ip-allow-list clear PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if len(got.Spec.IPAllowList) != 0 {
+		t.Errorf("spec.ipAllowList should be cleared, got %v", got.Spec.IPAllowList)
+	}
+
+	// renaming isn't supported (bex uses the name as the id, ADR020) — must
+	// fail clearly, not as a misleading plan-validation error.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"renamed-db"}`)
+	if w.Code != 400 {
+		t.Errorf("rename attempt => 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "renaming") {
+		t.Errorf("rename error should explain why, got: %s", w.Body.String())
+	}
+	// ...but a same-name "rename" (a no-op) is not an error.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"upd-db","diskSizeGB":25}`)
+	if w.Code != 200 {
+		t.Errorf("same-name PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// dry-run: previews the disk change without writing it.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db?dryRun=true", `{"diskSizeGB":99}`)
+	if w.Code != 200 {
+		t.Fatalf("dry-run PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if pg.DiskSizeGB != 99 {
+		t.Errorf("dry-run response diskSizeGB = %d, want 99 (preview)", pg.DiskSizeGB)
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if got.Spec.StorageGB == 99 {
+		t.Error("dry-run must not write to the CR")
 	}
 }
 

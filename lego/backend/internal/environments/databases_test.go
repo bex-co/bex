@@ -88,7 +88,11 @@ func (f *fakeDatabaseIndex) SetIPAllowList(_ context.Context, name string, cidrs
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	d := f.dbs[name]
-	d.IPAllowList = cidrs
+	entries := make([]postgres.IPAllowListEntry, len(cidrs))
+	for i, c := range cidrs {
+		entries[i] = postgres.IPAllowListEntry{CIDRBlock: c}
+	}
+	d.IPAllowList = entries
 	f.dbs[name] = d
 	return d, nil
 }

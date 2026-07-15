@@ -57,6 +57,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// integration at all yet.
 		"postgres.SetEnvironmentID": "mirrors postgres.SetProjectID; postgres has no events feed integration yet",
 		"postgres.ExecuteQuery":     "managed Postgres has no events feed; confirmed writes remain visible in the workspace audit log without recording SQL text",
+		"postgres.UpdatePostgres":   "REST's general PATCH handler (rename-rejection/disk/HA/ip-allow-list, supersedes postgres.SetPlan for that surface, same w6/m17-era gap); postgres has no events feed integration yet",
 		"keyvalue.SetEnvironmentID": "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
 		// w6/m19: these environment verbs call AuthorizeApp per MEMBER App as a
 		// fan-out side effect of an environment-level action (syncing

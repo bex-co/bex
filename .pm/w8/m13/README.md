@@ -1,12 +1,12 @@
 # w8 · m13 — Datastore list pagination: Postgres + Key Value
 
-**Worker:** worker8 **Goal:** `GET /v1/postgres` and `GET /v1/key-value` page with Render's cursor/limit envelope exactly like the services list already does, removing the last list-endpoint asymmetry. **Status:** todo
+**Worker:** worker8 **Goal:** `GET /v1/postgres` and `GET /v1/key-value` page with Render's cursor/limit envelope exactly like the services list already does, removing the last list-endpoint asymmetry. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id   | title                                              | est | depends_on |
 | ---- | --------------------------------------------------- | --- | ---------- |
-| t001 | REST paging on both datastore lists                  | 40m | —          |
+| t001 | REST paging on both datastore lists                  | 40m | —          | — **DONE** |
 | t002 | GraphQL envelope parity                               | 30m | t001       |
 | t003 | MCP args checked against Render's tools               | 30m | t001       |
 | t004 | Render parity                                        | 30m | t002, t003 |

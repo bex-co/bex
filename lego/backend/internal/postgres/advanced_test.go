@@ -254,7 +254,7 @@ func TestIPAllowList(t *testing.T) {
 	}
 
 	// the create-time seed goes through the same gate (core.ValidateCIDRs)
-	if _, err := svc.CreatePostgres(ctx, CreatePostgresRequest{Name: "acl-bad", IPAllowList: []string{"nonsense"}}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreatePostgres(ctx, CreatePostgresRequest{Name: "acl-bad", IPAllowList: []IPAllowListEntry{{CIDRBlock: "nonsense"}}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("create with bad CIDR should be ErrBadRequest, got %v", err)
 	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-bad"}, &db); err == nil {
