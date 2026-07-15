@@ -40,11 +40,13 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m34** — Fix GitHub Connect: browser install-callback can't record the connection (10 tasks; DONE 2026-07-14 — normal dashboard browser install/callback and authenticated Bearer callback both verified live in production; Bearer preserved HTTP 200 JSON with no redirect and the existing `bex-co` installation) ← from `/pm-brainstorm more` 2026-07-13 (fifth pass; `docs/ADR026-github-integration.md` line 88 "Known limitation," discovered live during `m8`'s DoD run 2026-07-12, never given a follow-up milestone); numbered m34 not m31 — a concurrent session claimed m30-m32 first
 - [x] **m35** — Postgres logical exports: `pg_dump` download parity (11 tasks) — **DONE 2026-07-14** (portable directory-format dump, private object-store upload, short-lived `can_view_sensitive` download, honest lifecycle + seven-day expiry, REST/GraphQL/MCP/UI parity, live restore evidence)
 - [x] **m36** — Cron-job runs API: list · get · cancel (10 tasks; DONE 2026-07-14 — Render-compatible trigger/current-cancel plus bex list/get/per-run cancel across REST/GraphQL/MCP; stable `crr-…` ids, retained canceled history, `lastSuccessfulRunAt`, confirmed dashboard Cancel; live Job termination and all surfaces verified on the mock cluster) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14
-- [ ] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `servicePOST.secretFiles` + `environmentId` on the three create inputs are silently dropped today; thin threading over w1/m16 + w1/m32 verbs)
+- [x] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks; DONE 2026-07-15 — three adapters, canonical Blueprint grouping, service wizard, full suites, live first-pod secret read + service/Postgres/Key Value Environment assignment) ← from `/pm-brainstorm` round 7, 2026-07-14
 - [ ] **m38** — Full deploy status lifecycle + transition timestamps (9 tasks) ← from `w5/m29`'s 2026-07-14 Render-parity audit; narrowed after w9/001 independently shipped commit id/message provenance
 - [ ] **m39** — SSH into running service instances (13 tasks) ← user explicitly reopened the narrow SSH surface from `.pm/DO_NOT_DO.md`, 2026-07-14; hosted sandboxes, ephemeral shells, jobs, and browser shell remain excluded
 
 ## Inbox
+
+- `010.md` — support environment-scoped `projects[].environments[].envVarGroups` in Blueprint apply (root/ungrouped groups already work; named rejection today).
 
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.

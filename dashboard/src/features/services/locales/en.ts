@@ -2231,6 +2231,68 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Error shown when an env var key is invalid in the create wizard",
   },
+  "services.createFieldSecretFilesTitle": {
+    message: "Secret Files",
+    description: "Section heading for secret files in the create wizard",
+  },
+  "services.createFieldSecretFilesHint": {
+    message: "Mounted read-only under /etc/secrets from the first deploy.",
+    description: "Hint for create-time secret files",
+  },
+  "services.createFieldSecretFilesAdd": {
+    message: "Add Secret File",
+    description: "Button to add a create-time secret file",
+  },
+  "services.createFieldSecretFilesRemove": {
+    message: "Remove secret file",
+    description: "Accessible label for removing a secret file row",
+  },
+  "services.createFieldSecretFilesName": {
+    message: "Secret file name",
+    description: "Accessible label for a secret file name",
+  },
+  "services.createFieldSecretFilesContent": {
+    message: "Secret file contents",
+    description: "Accessible label for secret file contents",
+  },
+  "services.createFieldSecretFilesNamePlaceholder": {
+    message: "credentials.json",
+    description: "Placeholder for a secret file name",
+  },
+  "services.createFieldSecretFilesContentPlaceholder": {
+    message: "Paste secret contents",
+    description: "Placeholder for secret file contents",
+  },
+  "services.createFieldSecretFilesNameError": {
+    message:
+      "Use only letters, digits, dots, dashes, and underscores; . and .. are not allowed.",
+    description: "Invalid secret file name error",
+  },
+  "services.createFieldEnvironmentTitle": {
+    message: "Project and Environment",
+    description: "Create wizard grouping section title",
+  },
+  "services.createFieldProject": {
+    message: "Project",
+    description: "Accessible label for the create project picker",
+  },
+  "services.createFieldProjectNone": {
+    message: "No project",
+    description: "Unassigned option in the project picker",
+  },
+  "services.createFieldEnvironment": {
+    message: "Environment",
+    description: "Accessible label for the create environment picker",
+  },
+  "services.createFieldEnvironmentNone": {
+    message: "No environment",
+    description: "Unassigned option in the environment picker",
+  },
+  "services.createFieldEnvironmentHint": {
+    message:
+      "Selecting an environment also adds the service to its parent project.",
+    description: "Hint for create-time environment assignment",
+  },
   "services.navEvents": {
     message: "Events",
     description: "Service-detail nav item (events tab)",

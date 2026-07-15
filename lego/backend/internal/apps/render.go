@@ -52,7 +52,10 @@ type renderService struct {
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
 	// Apps the control-plane projector never labeled (see AppView.OwnerID).
 	OwnerID string `json:"ownerId,omitempty"`
-	// EnvironmentID is Render's top-level environment membership field.
+	// ProjectID/EnvironmentID are the create-time grouping forward pointers.
+	// EnvironmentID is Render's field; ProjectID is a safe bex superset that
+	// makes the automatic parent-project join observable without another list.
+	ProjectID     string `json:"projectId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
 
 	// bex-native superset (ignored by Render clients).
@@ -270,6 +273,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		ImagePath:             a.SourceImage,
 		Suspenders:            []string{},
 		OwnerID:               a.OwnerID,
+		ProjectID:             a.ProjectID,
 		EnvironmentID:         a.EnvironmentID,
 		Phase:                 a.Phase,
 		Replicas:              a.Replicas,

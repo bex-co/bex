@@ -113,6 +113,44 @@ type Service struct {
 // wired (BEX_CP_DB_URI unset). Environments have no CR-only equivalent.
 var ErrEnvironmentsUnavailable = errors.New("environments store not configured")
 
+// ResolveForCreate is the shared environment-assignment seam used by service,
+// Postgres, and Key Value creates. Each create has already bound ownerId to its
+// context and authorized can_create against that workspace; this helper owns
+// the remaining lookup + same-workspace rule once so the three resource
+// packages cannot drift. A foreign existing id is 403, an unknown id is 404.
+func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {
+	if s.Store == nil {
+		return core.EnvironmentAssignment{}, core.ErrWorkspacesUnavailable
+	}
+	e, err := s.Store.GetEnvironment(ctx, environmentID)
+	if err != nil {
+		return core.EnvironmentAssignment{}, mapStoreErr(err)
+	}
+	if workspaceID == "" || e.TenantID != workspaceID {
+		return core.EnvironmentAssignment{}, fmt.Errorf("%w: environment %q does not belong to the target workspace", core.ErrForbidden, environmentID)
+	}
+	return core.EnvironmentAssignment{
+		ID:                      e.ID,
+		ProjectID:               e.ProjectID,
+		WorkspaceID:             e.TenantID,
+		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
+		IPAllowList:             append([]string(nil), e.IPAllowList...),
+	}, nil
+}
+
+type createResolver struct{ service *Service }
+
+func (r createResolver) ResolveForCreate(ctx context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {
+	return r.service.resolveForCreate(ctx, environmentID, workspaceID)
+}
+
+// NewCreateResolver returns the shared resource-create assignment seam. Its
+// method is kept off Service because it is plumbing after the parent create
+// verb's authorization, not an independently callable API verb.
+func NewCreateResolver(service *Service) core.EnvironmentResolver {
+	return createResolver{service: service}
+}
+
 // Render's protectedStatus enum (w6/m19) — aliased from core (the shared leaf
 // both this feature and apps.Service's protection guard, apps/protection.go,
 // import) rather than defined here, so the two never drift and neither

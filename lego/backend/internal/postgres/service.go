@@ -60,6 +60,9 @@ type Service struct {
 	*core.Base
 	Owners   resourcemeta.OwnerResolver
 	Metadata resourcemeta.Config
+	// Environments is the shared create-time assignment resolver used by all
+	// three resource kinds.
+	Environments core.EnvironmentResolver
 	// ExportSigner mints short-lived object-store download URLs after the
 	// ListExports verb has passed can_view_sensitive. Production wires the
 	// Kubernetes Secret-backed S3 signer; tests can replace it.
@@ -223,12 +226,13 @@ type CreatePostgresRequest struct {
 	// means the caller's default workspace; a workspace the caller is not a
 	// member of is core.ErrForbidden, never a create in the wrong one. Bound to
 	// the context by the verb, before its authorization check.
-	OwnerID    string `json:"ownerId,omitempty"`
-	Name       string `json:"name"`
-	Plan       string `json:"plan,omitempty"`
-	Version    string `json:"version,omitempty"`
-	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
-	Public     bool   `json:"public,omitempty"`
+	OwnerID       string `json:"ownerId,omitempty"`
+	EnvironmentID string `json:"environmentId,omitempty"`
+	Name          string `json:"name"`
+	Plan          string `json:"plan,omitempty"`
+	Version       string `json:"version,omitempty"`
+	DiskSizeGB    int32  `json:"diskSizeGB,omitempty"`
+	Public        bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
 	// Render's wire shape ({cidrBlock, description} entries) — see IPAllowListEntry.
 	IPAllowList []IPAllowListEntry `json:"ipAllowList,omitempty"`
@@ -414,7 +418,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := validateDatabaseName(req.Name); err != nil {
 		return PostgresView{}, err
 	}
-	tenantID, _ := s.Tenant(ctx)
+	tenantID, tenantOK := s.Tenant(ctx)
 	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return PostgresView{}, err
 	}
@@ -425,9 +429,20 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := core.ValidateCIDRs(cidrs); err != nil {
 		return PostgresView{}, err
 	}
+	var environment core.EnvironmentAssignment
+	if req.EnvironmentID != "" {
+		if s.Environments == nil || !tenantOK {
+			return PostgresView{}, core.ErrWorkspacesUnavailable
+		}
+		var err error
+		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
+		if err != nil {
+			return PostgresView{}, fmt.Errorf("resolving environment: %w", err)
+		}
+	}
 	// Per-workspace Postgres cap (w7/m9).
 	if s.MaxPostgres > 0 {
-		if tenantID, ok := s.Tenant(ctx); ok {
+		if tenantOK {
 			var existing appv1alpha1.DatabaseList
 			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
 				return PostgresView{}, fmt.Errorf("checking postgres cap: %w", listErr)
@@ -460,8 +475,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	// it to CNPG pod metadata for same-workspace NetworkPolicy selectors,
 	// docs/ADR022-tenant-isolation.md), mirroring the App CR dual-stamp
 	// (store/reconciler.go's stampLabels). Skip when the store is off (no resolver).
-	if tenantID != "" {
+	if tenantOK {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+	}
+	if environment.ID != "" {
+		d.Labels[core.LabelProject] = environment.ProjectID
+		d.Labels[core.LabelEnvironment] = environment.ID
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {

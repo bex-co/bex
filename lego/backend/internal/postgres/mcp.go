@@ -43,6 +43,7 @@ type postgresArgs struct {
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
 	OwnerID                string `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID          string `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                   string `json:"name" jsonschema:"the database name"`
 	Plan                   string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
 	Version                string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
@@ -122,6 +123,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			EnvironmentID:          in.EnvironmentID,
 			Name:                   in.Name,
 			Plan:                   in.Plan,
 			Version:                in.Version,

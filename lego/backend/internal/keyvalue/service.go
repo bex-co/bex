@@ -49,6 +49,9 @@ type Service struct {
 	*core.Base
 	Owners   resourcemeta.OwnerResolver
 	Metadata resourcemeta.Config
+	// Environments is the shared create-time assignment resolver used by all
+	// three resource kinds.
+	Environments core.EnvironmentResolver
 	// Selections is the shared MCP per-session workspace selection
 	// (w6/m2/t005): list_key_value_instances falls back to the caller's
 	// selected workspace when its ownerId argument is omitted. Read-only
@@ -125,12 +128,13 @@ type CreateKeyValueRequest struct {
 	// means the caller's default workspace; a workspace the caller is not a
 	// member of is core.ErrForbidden, never a create in the wrong one. Bound to
 	// the context by the verb, before its authorization check.
-	OwnerID   string `json:"ownerId,omitempty"`
-	Name      string `json:"name"`
-	Plan      string `json:"plan,omitempty"`
-	Version   string `json:"version,omitempty"`
-	StorageGB int32  `json:"storageGB,omitempty"`
-	Public    bool   `json:"public,omitempty"`
+	OwnerID       string `json:"ownerId,omitempty"`
+	EnvironmentID string `json:"environmentId,omitempty"`
+	Name          string `json:"name"`
+	Plan          string `json:"plan,omitempty"`
+	Version       string `json:"version,omitempty"`
+	StorageGB     int32  `json:"storageGB,omitempty"`
+	Public        bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
 	IPAllowList []string `json:"ipAllowList,omitempty"`
 	// MaxmemoryPolicy / PersistenceMode are Render's eviction + persistence
@@ -297,9 +301,21 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if persistenceMode != "" && !slices.Contains(validPersistenceModes, persistenceMode) {
 		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
 	}
+	tenantID, tenantOK := s.Tenant(ctx)
+	var environment core.EnvironmentAssignment
+	if req.EnvironmentID != "" {
+		if s.Environments == nil || !tenantOK {
+			return KeyValueView{}, core.ErrWorkspacesUnavailable
+		}
+		var err error
+		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
+		if err != nil {
+			return KeyValueView{}, fmt.Errorf("resolving environment: %w", err)
+		}
+	}
 	// Per-workspace key-value cap (w7/m9).
 	if s.MaxKeyValues > 0 {
-		if tenantID, ok := s.Tenant(ctx); ok {
+		if tenantOK {
 			var existing appv1alpha1.KeyValueList
 			if listErr := s.ListByTenant(ctx, &existing, tenantID); listErr != nil {
 				return KeyValueView{}, fmt.Errorf("checking key-value cap: %w", listErr)
@@ -326,8 +342,12 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	// docs/ADR022-tenant-isolation.md — this is also what lets a tenant's own App
 	// reach its own KeyValue instance), mirroring postgres.CreatePostgres.
 	// Skip when the store is off (no resolver).
-	if tenantID, ok := s.Tenant(ctx); ok {
+	if tenantOK {
 		kv.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+	}
+	if environment.ID != "" {
+		kv.Labels[core.LabelProject] = environment.ProjectID
+		kv.Labels[core.LabelEnvironment] = environment.ID
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {

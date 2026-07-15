@@ -186,6 +186,7 @@ type serviceIPAllowListArgs struct {
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
 	OwnerID                 string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID           string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name                    string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
 	Type                    string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo                    string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
@@ -200,6 +201,7 @@ type createWebServiceArgs struct {
 	Builder                 string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan                    string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars                 []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	SecretFiles             []secretFileArg `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy              string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
 	NotifyOnFail            string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
 	HealthCheckPath         string          `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
@@ -215,6 +217,11 @@ type createWebServiceArgs struct {
 type envVarArg struct {
 	Key   string `json:"key" jsonschema:"the environment variable name"`
 	Value string `json:"value" jsonschema:"the literal value"`
+}
+
+type secretFileArg struct {
+	Name    string `json:"name" jsonschema:"file name beneath /etc/secrets"`
+	Content string `json:"content" jsonschema:"secret file contents"`
 }
 
 type listCronJobRunsArgs struct {
@@ -236,6 +243,7 @@ type listCronJobRunsResult struct {
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
 		OwnerID:                 a.OwnerID,
+		EnvironmentID:           a.EnvironmentID,
 		Name:                    a.Name,
 		Type:                    a.Type,
 		Repo:                    a.Repo,
@@ -250,6 +258,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Builder:                 a.Builder,
 		Plan:                    a.Plan,
 		Env:                     toEnvVars(a.EnvVars),
+		SecretFiles:             toSecretFiles(a.SecretFiles),
 		AutoDeploy:              parseYesNo(a.AutoDeploy),
 		NotifyOnFail:            a.NotifyOnFail,
 		HealthCheckPath:         a.HealthCheckPath,
@@ -266,29 +275,32 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
-	OwnerID        string      `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name           string      `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
-	Schedule       string      `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
-	Command        string      `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
-	Repo           string      `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image          string      `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch         string      `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir        string      `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime        string      `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand   string      `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
-	StartCommand   string      `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
-	DockerfilePath string      `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder        string      `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan           string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
-	EnvVars        []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
-	AutoDeploy     string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	NotifyOnFail   string      `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
-	DryRun         bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID        string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID  string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name           string          `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
+	Schedule       string          `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Command        string          `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
+	Repo           string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image          string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch         string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir        string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Runtime        string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand   string          `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
+	StartCommand   string          `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
+	DockerfilePath string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder        string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan           string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	EnvVars        []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
+	SecretFiles    []secretFileArg `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
+	AutoDeploy     string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail   string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
+	DryRun         bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
 		OwnerID:        a.OwnerID,
+		EnvironmentID:  a.EnvironmentID,
 		Name:           a.Name,
 		Type:           appv1alpha1.TypeCronJob,
 		Schedule:       a.Schedule,
@@ -304,6 +316,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Builder:        a.Builder,
 		Plan:           a.Plan,
 		Env:            toEnvVars(a.EnvVars),
+		SecretFiles:    toSecretFiles(a.SecretFiles),
 		AutoDeploy:     parseYesNo(a.AutoDeploy),
 		NotifyOnFail:   a.NotifyOnFail,
 		DryRun:         a.DryRun,
@@ -318,6 +331,14 @@ func toEnvVars(in []envVarArg) []appv1alpha1.EnvVar {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
 	return env
+}
+
+func toSecretFiles(in []secretFileArg) []core.SecretFile {
+	var files []core.SecretFile
+	for _, f := range in {
+		files = append(files, core.SecretFile{Name: f.Name, Content: f.Content})
+	}
+	return files
 }
 
 // deployArgs is the deploy tool's input: a repo + its bex.yml. Deploy-from-chat
@@ -339,11 +360,12 @@ type deployArgs struct {
 type renderStack struct {
 	Services  []renderService     `json:"services"`
 	Databases []StackDatabaseView `json:"databases,omitempty"`
+	KeyValues []StackKeyValueView `json:"keyValues,omitempty"`
 }
 
 // toRenderStack maps a StackResult onto the MCP deploy result shape.
 func toRenderStack(res StackResult) renderStack {
-	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases}
+	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues}
 }
 
 // validateBlueprintArgs is validate_bex_yml's input (w2/m15).
@@ -405,35 +427,39 @@ type staticHeaderArg struct {
 // object-store origin (no running container). publishPath is required; routes and
 // headers are the optional edge rules.
 type createStaticSiteArgs struct {
-	OwnerID     string            `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name        string            `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
-	Repo        string            `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
-	Image       string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
-	Branch      string            `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir     string            `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	PublishPath string            `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
-	EnvVars     []envVarArg       `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
-	Domains     []string          `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
-	Routes      []staticRouteArg  `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
-	Headers     []staticHeaderArg `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
-	DryRun      bool              `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID       string            `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID string            `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name          string            `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
+	Repo          string            `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
+	Image         string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
+	Branch        string            `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir       string            `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	PublishPath   string            `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
+	EnvVars       []envVarArg       `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
+	SecretFiles   []secretFileArg   `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
+	Domains       []string          `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
+	Routes        []staticRouteArg  `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
+	Headers       []staticHeaderArg `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
+	DryRun        bool              `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:     a.OwnerID,
-		Name:        a.Name,
-		Type:        appv1alpha1.TypeStaticSite,
-		Repo:        a.Repo,
-		Image:       a.Image,
-		Branch:      a.Branch,
-		RootDir:     a.RootDir,
-		PublishPath: a.PublishPath,
-		Env:         toEnvVars(a.EnvVars),
-		Hosts:       a.Domains,
-		Routes:      routeArgViews(a.Routes),
-		Headers:     headerArgViews(a.Headers),
-		DryRun:      a.DryRun,
+		OwnerID:       a.OwnerID,
+		EnvironmentID: a.EnvironmentID,
+		Name:          a.Name,
+		Type:          appv1alpha1.TypeStaticSite,
+		Repo:          a.Repo,
+		Image:         a.Image,
+		Branch:        a.Branch,
+		RootDir:       a.RootDir,
+		PublishPath:   a.PublishPath,
+		Env:           toEnvVars(a.EnvVars),
+		SecretFiles:   toSecretFiles(a.SecretFiles),
+		Hosts:         a.Domains,
+		Routes:        routeArgViews(a.Routes),
+		Headers:       headerArgViews(a.Headers),
+		DryRun:        a.DryRun,
 	}
 }
 

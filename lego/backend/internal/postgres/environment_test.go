@@ -18,6 +18,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,6 +26,60 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+type fixedCreateEnvironment struct {
+	assignment core.EnvironmentAssignment
+	err        error
+	calls      int
+}
+
+func (r *fixedCreateEnvironment) ResolveForCreate(_ context.Context, _, _ string) (core.EnvironmentAssignment, error) {
+	r.calls++
+	return r.assignment, r.err
+}
+
+func TestCreatePostgresEnvironmentResolution(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{name: "unknown", err: core.ErrNotFound},
+		{name: "foreign", err: core.ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService()
+			svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+			svc.Environments = &fixedCreateEnvironment{err: tc.err}
+			_, err := svc.CreatePostgres(ctxAs("user-a"), CreatePostgresRequest{Name: "db", EnvironmentID: "env-x"})
+			if !errors.Is(err, tc.err) {
+				t.Fatalf("CreatePostgres error = %v, want %v", err, tc.err)
+			}
+			var databases appv1alpha1.DatabaseList
+			if listErr := cl.List(context.Background(), &databases); listErr != nil || len(databases.Items) != 0 {
+				t.Fatalf("failed resolution wrote databases: %v, err=%v", len(databases.Items), listErr)
+			}
+		})
+	}
+
+	resolver := &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
+	svc, cl := newService()
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = resolver
+	view, err := svc.CreatePostgres(ctxAs("user-a"), CreatePostgresRequest{Name: "db", EnvironmentID: "env-staging"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ProjectID != "prj-platform" || view.EnvironmentID != "env-staging" || resolver.calls != 1 {
+		t.Fatalf("view = %+v, resolver calls = %d", view, resolver.calls)
+	}
+	var database appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &database); err != nil {
+		t.Fatal(err)
+	}
+	if database.Labels[core.LabelProject] != "prj-platform" || database.Labels[core.LabelEnvironment] != "env-staging" {
+		t.Fatalf("labels = %v", database.Labels)
+	}
+}
 
 // environment_test.go covers w6/m20's SetEnvironmentID: the internal/
 // environments feature's write path onto a Database CR, mirroring

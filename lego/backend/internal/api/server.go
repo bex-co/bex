@@ -363,7 +363,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	var envGroupApplier apps.EnvGroupApplier
 	if d.Secrets != nil {
 		envSeeder = secretsSvc
-		secretFileSeeder = secretsSvc
+		secretFileSeeder = secrets.NewCreateSecretFileSeeder(secretsSvc)
 		envGroupApplier = envGroupsSvc
 	}
 	// Usage is constructed and its metering loop started in cmd/api/main.go
@@ -385,6 +385,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		KeyValues: kv,
 		EnvGroups: environmentEnvGroups,
 	}
+	environmentCreateResolver := environments.NewCreateResolver(environmentsSvc)
+	pg.Environments = environmentCreateResolver
+	kv.Environments = environmentCreateResolver
+	var blueprintGroups apps.BlueprintGroupingStore
+	if groups, ok := d.Store.(apps.BlueprintGroupingStore); ok {
+		blueprintGroups = groups
+	}
 	// Environment membership is stored with the env group, while validation
 	// belongs to environments.Service. Wire the two narrow seams once here so
 	// create_env_group(environmentId) and set_environment_env_groups share the
@@ -403,7 +410,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Identities: identityEmailLookup{d.Identities},
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,

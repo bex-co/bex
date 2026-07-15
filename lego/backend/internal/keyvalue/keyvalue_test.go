@@ -94,15 +94,21 @@ func seedKeyValue(t *testing.T, cl client.Client, name string) {
 
 func TestRESTKeyValueCRUD(t *testing.T) {
 	svc, cl := newService()
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
 
 	// create — Render: 201.
-	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"cache-1","plan":"starter","public":true}`)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/key-value", strings.NewReader(`{"name":"cache-1","plan":"starter","public":true,"environmentId":"env-staging"}`))
+	mux.ServeHTTP(w, req.WithContext(ctxAs("user-a")))
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
 	var kv KeyValueView
 	_ = json.Unmarshal(w.Body.Bytes(), &kv)
-	if kv.ID != "cache-1" || kv.Name != "cache-1" || kv.Plan != "starter" || !kv.Public {
+	if kv.ID != "cache-1" || kv.Name != "cache-1" || kv.Plan != "starter" || !kv.Public || kv.ProjectID != "prj-platform" || kv.EnvironmentID != "env-staging" {
 		t.Fatalf("view wrong: %+v", kv)
 	}
 	if kv.Suspended != core.RenderNotSuspended {
@@ -111,6 +117,9 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 	var got appv1alpha1.KeyValue
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-1"}, &got); err != nil {
 		t.Fatalf("kv CR not created: %v", err)
+	}
+	if got.Labels[core.LabelProject] != "prj-platform" || got.Labels[core.LabelEnvironment] != "env-staging" {
+		t.Fatalf("kv environment labels = %v", got.Labels)
 	}
 
 	var list []KeyValueView
@@ -307,7 +316,7 @@ func TestGraphQLKeyValue(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	run := func(q string) map[string]any {
-		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: ctxAs("user-a")})
 		if len(res.Errors) > 0 {
 			t.Fatalf("gql %q: %v", q, res.Errors)
 		}
@@ -321,11 +330,17 @@ func TestGraphQLKeyValue(t *testing.T) {
 	if ci["internalConnectionString"] == "" || ci["cliCommand"] == "" {
 		t.Fatalf("connection info: %+v", ci)
 	}
-	run(`mutation { createKeyValue(name:"gql-new", plan:"standard") { id } }`)
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
+	created := run(`mutation { createKeyValue(name:"gql-new", plan:"standard", environmentId:"env-staging") { id projectId environmentId } }`)["createKeyValue"].(map[string]any)
+	if created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
+		t.Fatalf("createKeyValue association = %+v", created)
+	}
 	var made appv1alpha1.KeyValue
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-new"}, &made); err != nil || made.Spec.Plan != "standard" {
 		t.Fatalf("createKeyValue did not create the CR with plan: %v %+v", err, made.Spec)
 	}
+	svc.Workspace = nil
 	// suspend/resume mutations flip spec.suspended.
 	run(`mutation { suspendKeyValue(id:"gql-kv") { suspended } }`)
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-kv"}, &made)
@@ -354,7 +369,7 @@ func TestMCPKeyValue(t *testing.T) {
 
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
-	ctx := context.Background()
+	ctx := ctxAs("user-a")
 	serverT, clientT := mcp.NewInMemoryTransports()
 	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
 		t.Fatalf("server connect: %v", err)
@@ -385,7 +400,9 @@ func TestMCPKeyValue(t *testing.T) {
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["id"] != "mcp-kv" {
 		t.Fatalf("get_key_value id = %v", got["id"])
 	}
-	if got := call("create_key_value", map[string]any{"name": "mcp-new", "plan": "standard"}); got["id"] != "mcp-new" {
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
+	if got := call("create_key_value", map[string]any{"name": "mcp-new", "plan": "standard", "environmentId": "env-staging"}); got["id"] != "mcp-new" || got["projectId"] != "prj-platform" || got["environmentId"] != "env-staging" {
 		t.Fatalf("create_key_value id = %v", got["id"])
 	}
 	var made appv1alpha1.KeyValue

@@ -50,6 +50,7 @@ type updateKeyValuePlanArgs struct {
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
 	OwnerID         string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID   string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
 	Name            string   `json:"name" jsonschema:"the key-value store name"`
 	Plan            string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
 	Version         string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
@@ -102,6 +103,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		v, err := s.CreateKeyValue(ctx, CreateKeyValueRequest{
 			OwnerID:         core.SelectedWorkspace(s.Selections, req, in.OwnerID),
+			EnvironmentID:   in.EnvironmentID,
 			Name:            in.Name,
 			Plan:            in.Plan,
 			Version:         in.Version,

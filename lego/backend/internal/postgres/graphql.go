@@ -52,6 +52,8 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"poolerEnabled":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.PoolerEnabled })},
 		"backupsEnabled":          &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.BackupsEnabled })},
 		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.OwnerID })},
+		"projectId":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ProjectID })},
+		"environmentId":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.EnvironmentID })},
 	},
 })
 
@@ -438,6 +440,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// twin of the databases list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
 				"ownerId":                &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId":          &graphql.ArgumentConfig{Type: graphql.String},
 				"plan":                   &graphql.ArgumentConfig{Type: graphql.String},
 				"version":                &graphql.ArgumentConfig{Type: graphql.String},
 				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
@@ -448,7 +451,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
-				req := CreatePostgresRequest{Name: p.Args["name"].(string), OwnerID: ownerID}
+				environmentID, _ := p.Args["environmentId"].(string)
+				req := CreatePostgresRequest{Name: p.Args["name"].(string), OwnerID: ownerID, EnvironmentID: environmentID}
 				if v, ok := p.Args["plan"].(string); ok {
 					req.Plan = v
 				}

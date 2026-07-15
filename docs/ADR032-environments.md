@@ -16,9 +16,15 @@ Render's own model treats "in an environment" as "in that project" — an enviro
 
 The reverse isn't automatic: removing a service from its project via the independent `setProjectServices` verb (which knows nothing about environments) can leave a stale `apps.environment_id` pointing at an environment of a project the service is no longer in. `ListEnvironmentServices` defends against this by filtering on **both** `environment_id` and `project_id` together, so a drifted row never surfaces as a false membership — but the `apps.environment_id` column itself isn't proactively cleared by `setProjectServices` (that would mean threading environments-package knowledge into the already-shipped, independently-authored projects package). Documented here as a known, narrow edge case rather than silently left unexplained.
 
-## Why not read/write forward pointers on `AppView`
+## Create-time assignment and forward pointers (w2/m37)
 
-A service's own view (`list_services`, `GET /v1/services/{id}`) does not carry `projectId`/`environmentId` fields. This mirrors `internal/projects`' own precedent exactly (it never added `projectId` to `AppView` either) — `internal/apps`'s reads come entirely from the Kubernetes App CR, while project/environment membership lives only in the control-plane Postgres `apps` table (never projected onto the CR). Adding a forward pointer would mean wiring a NEW kind of Postgres-store lookup into `apps.Service`'s otherwise CR-only read path, keyed by the CR's `store.LabelAppID` label back to the control-plane row — a real, first-of-its-kind integration this milestone deliberately did not take on, to keep the change composable with (not a rework of) the already-shipped Projects code. The dashboard already works around this by joining `services` + `projects[].serviceIds` client-side (`dashboard/src/routes/index.tsx`); an Environments-aware version of that same join is the natural follow-on, not a regression introduced here.
+Service, managed-Postgres, and Key Value creation now accept Render's optional `environmentId` on REST, GraphQL, and MCP. All nine adapter paths delegate to one `core.EnvironmentResolver` implementation in `internal/environments`: it resolves the Environment before creating anything, returns 404 for an unknown id and 403 for a known Environment in another workspace, and returns the parent Project id with the Environment policy. Omission preserves the previous ungrouped behavior. Assignment automatically joins the parent Project, matching the bulk membership verbs above.
+
+Services stamp `bex.co/project` and `bex.co/environment` onto the App CR at birth and persist both ids on the control-plane row. `AppView` therefore reports `projectId` and `environmentId` directly on REST, GraphQL, and MCP without a second membership-list lookup. The same first-write rule stamps the project/environment labels on Database and KeyValue CRs. A network-isolated environment additionally stamps the App's `app.bex.co/network-isolation` label before the first pod can be reconciled.
+
+The dashboard service-create wizard exposes Project and Environment selects. Choosing an Environment supplies its id and implicitly selects its parent Project; the server remains authoritative and rejects stale or foreign ids. Postgres and Key Value have API create parity in this milestone, while their existing dashboard create pages retain their post-create membership management flow.
+
+Blueprints use Render's separate YAML vocabulary: resources nested directly under `projects[].environments[]` receive the same first-write assignment, and resources under root `ungrouped:` receive none. A direct `environmentId` inside a Blueprint resource is rejected because it is not part of Render's Blueprint schema. Project/Environment rows declared by name are created or resolved before resource convergence; reapplying the stack preserves idempotence.
 
 ## Package-local unavailable errors → 503
 
@@ -49,6 +55,7 @@ Environment groups now carry an optional `environmentId` in their KV-stored meta
 ## Known divergence from Render / deliberate scope
 
 - **No dashboard UX for the ACL fields or env-group membership.** `w1/m32`'s own dashboard UX (`w5/m25`) reads/writes name and service/database/key-value membership only; `protectedStatus`/`networkIsolationEnabled`/`ipAllowList` and `envGroupIds` are REST/GraphQL/MCP only for now.
-- **No forward pointer on a service's own view** — see above; a follow-on, not an oversight.
+- **Environment-scoped Blueprint env-var groups are not yet applied.** Root `envVarGroups` remain supported, while a group nested under `projects[].environments[]` returns a named validation error rather than silently losing membership.
+- **Datastore create-page Environment pickers remain deferred.** `environmentId` works on all three datastore API adapters; the dashboard can still assign membership after creation.
 - **Full-CRUD MCP, not read-only** — a deliberate consistency choice with the already-shipped Projects MCP surface, diverging from this feature's own original "read-only" plan.
 - ~~No protected-environment ACLs~~ — shipped in `w6/m19`, see above.
