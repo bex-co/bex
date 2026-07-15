@@ -132,6 +132,7 @@ kill_if_running "$ENVDIR/.pids/bex-api.pid"
 nohup env \
   KUBECONFIG="$PWD/$KUBECONFIG_FILE" \
   BEX_API_ADDR=":$BEX_API_PORT" \
+  BEX_CP_ADDR=":$BEX_CP_PORT" \
   BEX_API_NAMESPACE="$DEV_ALPHA_NS" \
   BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
   BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
