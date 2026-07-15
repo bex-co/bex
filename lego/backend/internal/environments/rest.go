@@ -31,6 +31,34 @@ import (
 // projectId (the project's own workspace scoping already gates authorization,
 // so no separate ownerId param is needed here).
 
+// renderEnvironment preserves bex's cross-surface field names while adding
+// Render's REST spellings for the two managed-datastore lists. Render calls
+// these databasesIds and redisIds; GraphQL/MCP use the product-neutral
+// databaseIds and keyValueIds. Keeping both makes the REST object compatible
+// with the official CLI without breaking existing bex REST clients.
+type renderEnvironment struct {
+	EnvironmentView
+	DatabasesIDs []string `json:"databasesIds"`
+	RedisIDs     []string `json:"redisIds"`
+}
+
+type environmentWithCursor struct {
+	Environment renderEnvironment `json:"environment"`
+	Cursor      string            `json:"cursor"`
+}
+
+func toRenderEnvironment(e EnvironmentView) renderEnvironment {
+	return renderEnvironment{EnvironmentView: e, DatabasesIDs: e.DatabaseIDs, RedisIDs: e.KeyValueIDs}
+}
+
+func toEnvironmentList(environments []EnvironmentView) []environmentWithCursor {
+	out := make([]environmentWithCursor, 0, len(environments))
+	for _, e := range environments {
+		out = append(out, environmentWithCursor{Environment: toRenderEnvironment(e), Cursor: e.ID})
+	}
+	return out
+}
+
 // writeErr maps ErrEnvironmentsUnavailable to 503 before falling back to
 // core.WriteErr: that shared mapper only recognizes error sentinels declared
 // in package core (a leaf core cannot import a feature package to add this
@@ -40,7 +68,7 @@ import (
 // core.WriteErr's default 500.
 func writeErr(w http.ResponseWriter, err error) {
 	if errors.Is(err, ErrEnvironmentsUnavailable) {
-		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error(), "message": err.Error(), "id": "unavailable"})
 		return
 	}
 	core.WriteErr(w, err)
@@ -59,7 +87,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, es)
+		// Render's list schema is [{environment, cursor}], not a flat array.
+		// The official CLI unwraps the environment member and otherwise decodes
+		// every flat object as an all-zero Environment.
+		after, limit := core.PageParams(r.URL.Query())
+		page := core.Page(es, after, limit, func(e EnvironmentView) string { return e.ID })
+		core.WriteJSON(w, http.StatusOK, toEnvironmentList(page))
 	})
 
 	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +109,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, e)
+		core.WriteJSON(w, http.StatusCreated, toRenderEnvironment(e))
 	})
 
 	mux.HandleFunc("GET /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +118,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	mux.HandleFunc("PATCH /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +134,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	mux.HandleFunc("DELETE /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +164,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	// PUT /v1/environments/{id}/database-links replaces the full list of
@@ -154,7 +187,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	// PUT /v1/environments/{id}/keyvalue-links is database-links' KeyValue-CR
@@ -175,7 +208,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	// PUT /v1/environments/{id}/env-group-links replaces the full list of
@@ -197,7 +230,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
 	// PATCH /v1/environments/{id}/acl replaces the full protected-environment
@@ -220,6 +253,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, e)
+		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 }

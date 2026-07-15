@@ -1,19 +1,19 @@
 # w4 · m22 — Close the ADR032-flagged `internal/projects` authz + error-mapping gaps
 
-**Worker:** worker4 **Goal:** `internal/projects` gets the same tenant-isolation test coverage and error-mapping correctness `internal/environments` already has, and the CLI-compat checklist's `environments <id>` row gets its unverified success path closed out. **Status:** todo
+**Worker:** worker4 **Goal:** `internal/projects` gets the same tenant-isolation test coverage and error-mapping correctness `internal/environments` already has, and the CLI-compat checklist's `environments <id>` row gets its unverified success path closed out. **Status:** done — both packages pin cross-tenant-existing 403 vs nonexistent 404; Projects joined the shared authz/audit/relation sweeps; store-off Projects is a Render-shaped REST 503 plus native GraphQL/MCP errors; the official CLI success+404 paths passed live after fixing the Environment cursor envelope.
 
 ## Tasks (in order)
 
-| id   | title                                                                             | est | depends_on             |
-| ---- | ---------------------------------------------------------------------------------- | --- | ----------------------- |
-| t001 | Pin cross-tenant-vs-nonexistent 403-before-404 with a regression test              | 30m | —                       |
-| t002 | Bring `internal/projects` into the authz-guards-every-verb sweep                   | 30m | —                       |
-| t003 | Fix `internal/projects`' `ErrProjectsUnavailable` REST/GraphQL/MCP 500→503 mapping | 40m | —                       |
-| t004 | Live-verify the environments success path end to end, close out the checklist row  | 30m | t001, t002, t003        |
-| t005 | Render parity: REST/GraphQL/MCP error-mapping consistency                          | 20m | t004                    |
-| t006 | Simplify                                                                            | 20m | t005                    |
-| t007 | Test coverage                                                                       | 20m | t005                    |
-| t008 | Closeout                                                                            | 10m | t006, t007              |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Pin cross-tenant-vs-nonexistent 403-before-404 with a regression test — **DONE** | 30m | — |
+| t002 | Bring `internal/projects` into the authz-guards-every-verb sweep — **DONE** | 30m | — |
+| t003 | Fix `internal/projects`' `ErrProjectsUnavailable` REST/GraphQL/MCP 500→503 mapping — **DONE** | 40m | — |
+| t004 | Live-verify the environments success path end to end, close out the checklist row — **DONE** | 30m | t001, t002, t003 |
+| t005 | Render parity: REST/GraphQL/MCP error-mapping consistency — **DONE** | 20m | t004 |
+| t006 | Simplify — **DONE** | 20m | t005 |
+| t007 | Test coverage — **DONE** | 20m | t005 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -22,6 +22,8 @@
 - A misconfigured (`BEX_CP_DB_URI` unset) projects REST/GraphQL/MCP call returns 503, not a bare 500 — closing the second gap `docs/ADR032-environments.md:25` flags: _"its REST fragment passes it straight to `core.WriteErr` — which doesn't recognize it, so it currently falls through to a bare 500."_
 - `render environments <id> -o json` verified end to end against a **real, seeded** project (not just the already-confirmed unknown-id 404 path), and `docs/cli-compatibility-checklist.md`'s `environments <id>` row updated from ◐ with evidence for the success path.
 - `cd lego/backend && go test ./...` green; new tests fail on the pre-fix code (proven by running them against a stashed pre-t003 diff, or by inspection of the removed 500 fallthrough).
+
+**Met.** `cd lego/backend && go test ./...` passes. The pre-fix REST path is directly visible in the diff (`core.WriteErr`'s unknown-sentinel 500 fallthrough was replaced by the local 503 mapper), and `TestREST_ListUsesRenderCursorEnvelope` would decode no `environment` member against the old flat list. Live dev-4 proof used the unmodified official CLI against a throwaway Project + `staging` Environment, asserted populated ids/name/status/lists, reconfirmed the unknown-project 404, and deleted the seeded rows afterward. Render's remaining standard `ipAllowList` object-wire drift is tracked separately as `w4/017`.
 
 ## Source + Goal linkage
 
