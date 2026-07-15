@@ -9,7 +9,8 @@
 | t001 | Fix the five stale ADR018 gap-backlog rows with resolution pointers            | 30m | —          |
 | t002 | Doc pointers: ADR028→w7/m35, ADR018 events row→w3/m16, PR-previews wording     | 20m | —          |
 | t003 | FUTURE-MAYBE sync: w1/m41 promotion note, w8/m7 → Done, delivery-dedup clause  | 20m | —          |
-| t004 | Simplify                                                                         | 10m | t001, t002, t003 |
+| t007 | Fix two more stale pointers: CLI-checklist login row → w4/m27; ADR018:214 cells | 20m | —          |
+| t004 | Simplify                                                                         | 10m | t001, t002, t003, t007 |
 | t005 | Test coverage                                                                    | 10m | t004       |
 | t006 | Closeout                                                                         | 15m | t005       |
 
