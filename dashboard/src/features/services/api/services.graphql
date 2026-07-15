@@ -82,6 +82,7 @@ mutation CreateService(
   $runtime: String
   $buildCommand: String
   $startCommand: String
+  $dockerfilePath: String
   $plan: String
   $autoDeploy: Boolean
   $schedule: String
@@ -100,6 +101,7 @@ mutation CreateService(
     runtime: $runtime
     buildCommand: $buildCommand
     startCommand: $startCommand
+    dockerfilePath: $dockerfilePath
     plan: $plan
     autoDeploy: $autoDeploy
     schedule: $schedule

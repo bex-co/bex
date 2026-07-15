@@ -31,6 +31,10 @@ query Server($id: String!) {
     repo
     branch
     rootDir
+    runtime
+    builder
+    startCommand
+    dockerfilePath
     # buildFilter is Render's Build Filters (w1/m34) — the glob patterns gating
     # git-push auto-deploys, read by the Build & Deploy section. Null when unset.
     buildFilter {

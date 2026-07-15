@@ -103,6 +103,22 @@ vi.mock("@/features/services/hooks/use-display-name", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-subdomain-policy", () => ({
+  useSubdomainPolicy: () => ({
+    setSubdomainPolicy: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
+vi.mock("@/features/services/hooks/use-static-site", () => ({
+  useStaticSiteMutations: () => ({
+    setRoutes: vi.fn(async () => true),
+    setHeaders: vi.fn(async () => true),
+    setPublishPath: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 // DeployHookSection (w2/m33) owns an Apollo query/mutation pair. Keep this page
 // test on section composition while the component/hook suites cover the real
 // reveal, copy, rotation, and failure behavior.
@@ -126,6 +142,18 @@ vi.mock("@/features/services/hooks/use-cron-job", () => ({
 // about section presence.
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir: vi.fn(async () => true), busy: false }),
+}));
+vi.mock("@/features/services/hooks/use-start-command", () => ({
+  useStartCommand: () => ({
+    setStartCommand: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+vi.mock("@/features/services/hooks/use-dockerfile-path", () => ({
+  useDockerfilePath: () => ({
+    setDockerfilePath: vi.fn(async () => true),
+    busy: false,
+  }),
 }));
 vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
   usePreDeployCommand: () => ({
@@ -261,6 +289,10 @@ describe("ServiceSettingsPage", () => {
       command: "npm run send-nightly-report",
       repo: "https://github.com/acme/reports",
       branch: "main",
+      runtime: "docker",
+      builder: "dockerfile",
+      startCommand: "bin/cron",
+      dockerfilePath: "docker/Dockerfile.cron",
     });
     renderSettings();
 
@@ -271,6 +303,28 @@ describe("ServiceSettingsPage", () => {
     expect(
       screen.getByText("https://github.com/acme/reports"),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
+  });
+
+  it("hides command and Dockerfile controls for a git-sourced static site", async () => {
+    serverState.service = svc({
+      type: "static_site",
+      repo: "https://github.com/acme/docs",
+      branch: "main",
+      runtime: "docker",
+      builder: "dockerfile",
+      startCommand: "bin/server",
+      dockerfilePath: "docker/Dockerfile.static",
+      publishPath: "dist",
+      routes: [],
+      headers: [],
+    });
+    renderSettings();
+
+    expect(await screen.findByText("Build & Deploy")).toBeInTheDocument();
+    expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
   });
 
   it("hides Build & Deploy for an image-backed cron job (nothing to build)", async () => {

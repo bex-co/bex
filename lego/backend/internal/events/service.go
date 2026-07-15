@@ -51,6 +51,7 @@ limitations under the License.
 //	auto_deploy_changed         apps.SetAutoDeploy              (Render splits enabled/disabled; see Omissions)
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
+//	dockerfile_path_changed     apps.SetDockerfilePath
 //	build_filter_changed        apps.SetBuildFilter
 //	commands_changed            apps.SetCommands
 //	source_changed              apps.SetSource
@@ -144,6 +145,7 @@ const (
 	TypeAutoDeployChanged       = "auto_deploy_changed"
 	TypeIdleTimeoutChanged      = "idle_timeout_changed"
 	TypeRootDirectoryChanged    = "root_directory_changed"
+	TypeDockerfilePathChanged   = "dockerfile_path_changed"
 	TypeBuildFilterChanged      = "build_filter_changed"
 	TypeCommandsChanged         = "commands_changed"
 	TypeSourceChanged           = "source_changed"
@@ -156,10 +158,10 @@ const (
 	TypeCustomDomainAdded       = "custom_domain_added"
 	TypeCustomDomainRemoved     = "custom_domain_removed"
 	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
-	TypeNotifyOnFailChanged        = "notify_on_fail_changed"
-	TypeSubdomainPolicyChanged     = "subdomain_policy_changed"
-	TypeJobStarted                 = "job_started"
-	TypeJobCanceled                = "job_canceled"
+	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
+	TypeSubdomainPolicyChanged  = "subdomain_policy_changed"
+	TypeJobStarted              = "job_started"
+	TypeJobCanceled             = "job_canceled"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -190,6 +192,7 @@ var eventTypes = map[string]string{
 	"apps.SetSubdomainPolicy":      TypeSubdomainPolicyChanged,
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
 	"apps.SetRootDir":              TypeRootDirectoryChanged,
+	"apps.SetDockerfilePath":       TypeDockerfilePathChanged,
 	"apps.SetBuildFilter":          TypeBuildFilterChanged,
 	"apps.SetCommands":             TypeCommandsChanged,
 	"apps.SetSource":               TypeSourceChanged,

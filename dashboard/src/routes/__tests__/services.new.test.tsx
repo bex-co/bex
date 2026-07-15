@@ -373,6 +373,60 @@ describe("NewServicePage", () => {
       );
     });
 
+    it("shows Docker-only fields and submits Dockerfile Path plus Docker Command", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
+      await user.click(screen.getByRole("option", { name: "Docker" }));
+
+      expect(screen.getByLabelText("Dockerfile Path")).toBeInTheDocument();
+      expect(screen.getByLabelText("Docker Command")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Build Command")).not.toBeInTheDocument();
+      await user.type(
+        screen.getByLabelText("Dockerfile Path"),
+        "docker/Dockerfile.prod",
+      );
+      await user.type(screen.getByLabelText("Docker Command"), "bin/server");
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runtime: "docker",
+          dockerfilePath: "docker/Dockerfile.prod",
+          startCommand: "bin/server",
+        }),
+      );
+    });
+
+    it("clears a stale Dockerfile Path when switching back to a native runtime", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const runtime = screen.getByRole("combobox", { name: /Runtime/i });
+      await user.click(runtime);
+      await user.click(screen.getByRole("option", { name: "Docker" }));
+      await user.type(
+        screen.getByLabelText("Dockerfile Path"),
+        "docker/Dockerfile.stale",
+      );
+
+      await user.click(runtime);
+      await user.click(screen.getByRole("option", { name: "Node" }));
+      expect(
+        screen.queryByLabelText("Dockerfile Path"),
+      ).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ runtime: "node", dockerfilePath: undefined }),
+      );
+    });
+
     it("shows the image field but no branch/autoDeploy when on Existing Image tab", async () => {
       const user = userEvent.setup();
       renderPage();

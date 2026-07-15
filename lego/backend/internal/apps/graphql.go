@@ -953,6 +953,32 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
 			},
 		},
+		// setStartCommand changes the command used to start an existing service.
+		// The shared SetCommands verb also backs Render's REST PATCH shape; this
+		// scalar setter is the dashboard-friendly GraphQL projection.
+		"setStartCommand": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				command := p.Args["command"].(string)
+				return s.SetCommands(p.Context, p.Args["id"].(string), nil, &command)
+			},
+		},
+		// setDockerfilePath changes Render's Dockerfile Path on an existing
+		// repo-backed Docker service. Empty restores the default Dockerfile.
+		"setDockerfilePath": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":             &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetDockerfilePath(p.Context, p.Args["id"].(string), p.Args["dockerfilePath"].(string))
+			},
+		},
 		// setBuildFilter: the Settings → Build & Deploy Build Filters rows (w1/m34)
 		// write Render's Build Filters (spec.buildFilter) — the glob patterns gating
 		// git-push auto-deploys — on an existing App. Passing an all-empty object

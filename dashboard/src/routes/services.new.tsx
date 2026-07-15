@@ -355,6 +355,7 @@ export function NewServicePage() {
   const [runtime, setRuntime] = useState<GitRuntime>("node");
   const [buildCommand, setBuildCommand] = useState(RUNTIME_COMMANDS.node.build);
   const [startCommand, setStartCommand] = useState(RUNTIME_COMMANDS.node.start);
+  const [dockerfilePath, setDockerfilePath] = useState("");
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [autoDeploy, setAutoDeploy] = useState(true);
   const [schedule, setSchedule] = useState("");
@@ -499,10 +500,14 @@ export function NewServicePage() {
           ? buildCommand.trim()
           : undefined,
       startCommand:
-        isGitSource && !isStaticType && runtime !== "docker"
+        isGitSource && !isStaticType
           ? isCronType
             ? command.trim()
-            : startCommand.trim()
+            : startCommand.trim() || undefined
+          : undefined,
+      dockerfilePath:
+        isGitSource && !isStaticType && runtime === "docker"
+          ? dockerfilePath.trim() || undefined
           : undefined,
       plan: showPlan ? plan || undefined : undefined,
       autoDeploy: isGitSource ? autoDeploy : undefined,
@@ -788,7 +793,11 @@ export function NewServicePage() {
                             onValueChange={(value) => {
                               const next = value as GitRuntime;
                               setRuntime(next);
-                              if (next !== "docker") {
+                              if (next === "docker") {
+                                setBuildCommand("");
+                                setStartCommand("");
+                              } else {
+                                setDockerfilePath("");
                                 setBuildCommand(RUNTIME_COMMANDS[next].build);
                                 setStartCommand(RUNTIME_COMMANDS[next].start);
                               }
@@ -853,7 +862,47 @@ export function NewServicePage() {
                               </div>
                             ) : null}
                           </>
-                        ) : null}
+                        ) : (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="svc-dockerfile-path">
+                                {t("services.createFieldDockerfilePath")}
+                              </Label>
+                              <Input
+                                id="svc-dockerfile-path"
+                                value={dockerfilePath}
+                                onChange={(event) =>
+                                  setDockerfilePath(event.target.value)
+                                }
+                                placeholder={t(
+                                  "services.createFieldDockerfilePathPlaceholder",
+                                )}
+                                autoComplete="off"
+                              />
+                              <p className="text-sm text-muted-foreground">
+                                {t("services.createFieldDockerfilePathHint")}
+                              </p>
+                            </div>
+                            {!isCronType ? (
+                              <div className="space-y-2">
+                                <Label htmlFor="svc-docker-command">
+                                  {t("services.createFieldDockerCommand")}
+                                </Label>
+                                <Input
+                                  id="svc-docker-command"
+                                  value={startCommand}
+                                  onChange={(event) =>
+                                    setStartCommand(event.target.value)
+                                  }
+                                  placeholder={t(
+                                    "services.createFieldDockerCommandPlaceholder",
+                                  )}
+                                  autoComplete="off"
+                                />
+                              </div>
+                            ) : null}
+                          </>
+                        )}
                       </>
                     ) : null}
                   </>

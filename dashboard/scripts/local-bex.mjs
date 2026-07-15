@@ -122,6 +122,7 @@ const SERVICE = {
   __typename: "Service",
   id: "eden-cms-v2",
   name: "eden-cms-v2",
+  slug: "eden-cms-v2",
   displayName: null,
   type: "web_service",
   suspended: null,
@@ -140,9 +141,16 @@ const SERVICE = {
   maxShutdownDelaySeconds: 30,
   preDeployCommand: null,
   idleTTLSeconds: 0,
+  lastSuccessfulRunAt: null,
+  renderSubdomainPolicy: null,
   repo: "https://github.com/acme-corp/eden-cms-v2",
   branch: "main",
   rootDir: "",
+  buildFilter: null,
+  runtime: "docker",
+  builder: "dockerfile",
+  startCommand: "node server.js",
+  dockerfilePath: "Dockerfile",
   autoDeploy: true,
   publishPath: null,
   routes: [],
@@ -157,6 +165,7 @@ const WORKER = {
   __typename: "Service",
   id: "email-worker",
   name: "email-worker",
+  slug: "email-worker",
   displayName: null,
   type: "background_worker",
   suspended: null,
@@ -175,9 +184,16 @@ const WORKER = {
   maxShutdownDelaySeconds: 45,
   preDeployCommand: null,
   idleTTLSeconds: 0,
+  lastSuccessfulRunAt: null,
+  renderSubdomainPolicy: null,
   repo: null,
   branch: null,
   rootDir: null,
+  runtime: null,
+  builder: null,
+  startCommand: null,
+  dockerfilePath: null,
+  buildFilter: null,
   autoDeploy: null,
   publishPath: null,
   routes: [],
@@ -189,6 +205,7 @@ const CRON = {
   __typename: "Service",
   id: "nightly-report",
   name: "nightly-report",
+  slug: "nightly-report",
   displayName: null,
   type: "cron_job",
   suspended: null,
@@ -229,9 +246,16 @@ const CRON = {
   maxShutdownDelaySeconds: null,
   preDeployCommand: null,
   idleTTLSeconds: 0,
+  lastSuccessfulRunAt: null,
+  renderSubdomainPolicy: null,
   repo: null,
   branch: null,
   rootDir: null,
+  runtime: null,
+  builder: null,
+  startCommand: null,
+  dockerfilePath: null,
+  buildFilter: null,
   autoDeploy: null,
   publishPath: null,
   routes: [],
@@ -333,7 +357,8 @@ const DEPLOYS_BY_SERVICE = {
       image: "registry.example.com/eden-cms-v2:a1b2c3d",
       rollbackOf: "",
       commitId: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
-      commitMessage: "feat(cms): lazy-load the asset picker\n\nCuts editor TTI by ~400ms.",
+      commitMessage:
+        "feat(cms): lazy-load the asset picker\n\nCuts editor TTI by ~400ms.",
       createdAt: "2026-07-11T14:30:00Z",
       startedAt: "2026-07-11T14:30:05Z",
       finishedAt: "2026-07-11T14:31:40Z",
@@ -435,7 +460,16 @@ const TERMINAL_DEPLOY_STATUSES = new Set(["live", "update_failed", "canceled"]);
 // DEPLOYS_BY_SERVICE and reference it (never copy its fields) from the
 // matching ServiceEvent via deployServiceEvent below, so there is exactly one
 // place a status transition needs to be written.
-function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStatus = "", commitId = "", commitMessage = "" }) {
+function makeDeploy({
+  id,
+  status,
+  trigger,
+  rollbackOf = "",
+  image,
+  preDeployStatus = "",
+  commitId = "",
+  commitMessage = "",
+}) {
   const createdAt = new Date().toISOString();
   return {
     __typename: "Deploy",
@@ -962,6 +996,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         __typename: "Service",
         id: variables.name,
         name: variables.name,
+        slug: variables.name,
         displayName: null,
         type: variables.image ? "web_service" : "web_service",
         suspended: null,
@@ -976,11 +1011,26 @@ function resolveGraphQL({ operationName, variables = {} }) {
         command: null,
         runs: [],
         healthCheckPath: null,
+        notifyOnFail: "default",
+        maxShutdownDelaySeconds: 30,
         preDeployCommand: null,
+        idleTTLSeconds: 0,
+        lastSuccessfulRunAt: null,
+        renderSubdomainPolicy: null,
         ownerId: WORKSPACE_DEFAULT,
         repo: variables.repo ?? null,
         branch: variables.branch ?? null,
         rootDir: variables.rootDir ?? null,
+        runtime: variables.runtime ?? null,
+        builder: variables.runtime === "docker" ? "dockerfile" : "native",
+        buildCommand: variables.buildCommand ?? null,
+        startCommand: variables.startCommand ?? null,
+        dockerfilePath: variables.dockerfilePath ?? null,
+        autoDeploy: variables.autoDeploy ?? true,
+        buildFilter: null,
+        publishPath: null,
+        routes: [],
+        headers: [],
         image: variables.image ?? null,
       };
       SERVICES.push(svc);
@@ -1024,6 +1074,24 @@ function resolveGraphQL({ operationName, variables = {} }) {
       svc.displayName = String(variables.displayName ?? "").trim() || null;
       return { setDisplayName: svc };
     }
+    case "SetStartCommand": {
+      const svc = serviceById(variables.id);
+      if (!svc) throw new Error("not found");
+      svc.startCommand = String(variables.command ?? "").trim();
+      return { setStartCommand: svc };
+    }
+    case "SetDockerfilePath": {
+      const svc = serviceById(variables.id);
+      if (!svc) throw new Error("not found");
+      const next = String(variables.dockerfilePath ?? "").trim();
+      if (next.startsWith("/") || next.split("/").includes("..")) {
+        throw new Error(
+          "dockerfilePath must be a relative path with no '..' components",
+        );
+      }
+      svc.dockerfilePath = next;
+      return { setDockerfilePath: svc };
+    }
     case "DeleteService": {
       // Danger-zone delete (w5/m14), mirroring DeleteDatabase: drop the service
       // from the in-memory store so a subsequent Services list omits it.
@@ -1061,7 +1129,9 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (type === "build" || type === "predeploy") {
         const deploy = deployForWindow(resource, variables.startTime);
         const lines = deploy ? deploySyntheticLogs(deploy)[type] : [];
-        return { logs: lines.filter((l) => inWindow(l.timestamp)).slice(-limit) };
+        return {
+          logs: lines.filter((l) => inWindow(l.timestamp)).slice(-limit),
+        };
       }
       if (type && type !== "app" && type !== "application") return { logs: [] };
       let logs = history(60, resource).filter((l) => inWindow(l.timestamp));
@@ -1083,7 +1153,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
     case "Deploys": {
       let rows = deploysFor(variables.serviceId);
       const statuses = (variables.status ?? []).filter(Boolean);
-      if (statuses.length > 0) rows = rows.filter((d) => statuses.includes(d.status));
+      if (statuses.length > 0)
+        rows = rows.filter((d) => statuses.includes(d.status));
       if (variables.cursor) {
         const at = rows.findIndex((d) => d.id === variables.cursor);
         rows = at === -1 ? [] : rows.slice(at + 1);
@@ -1746,7 +1817,13 @@ function resolveGraphQL({ operationName, variables = {} }) {
         deploy.status = "canceled";
         deploy.finishedAt = new Date().toISOString();
       }
-      return { cancelDeploy: { __typename: "Deploy", id: variables.deployId, status: "canceled" } };
+      return {
+        cancelDeploy: {
+          __typename: "Deploy",
+          id: variables.deployId,
+          status: "canceled",
+        },
+      };
     }
     // RollbackService: prepend a rollback-triggered Deploy row + its event.
     case "RollbackService": {
@@ -1812,8 +1889,16 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // SetPreDeployCommand (w1/m33): persist the pre-deploy command; empty clears it.
     case "SetPreDeployCommand": {
       const svc = serviceById(variables.id);
-      if (svc) svc.preDeployCommand = String(variables.command ?? "").trim() || null;
-      return { setPreDeployCommand: { __typename: "Service", id: variables.id, preDeployCommand: svc?.preDeployCommand ?? null, phase: svc?.phase ?? null } };
+      if (svc)
+        svc.preDeployCommand = String(variables.command ?? "").trim() || null;
+      return {
+        setPreDeployCommand: {
+          __typename: "Service",
+          id: variables.id,
+          preDeployCommand: svc?.preDeployCommand ?? null,
+          phase: svc?.phase ?? null,
+        },
+      };
     }
     // Blueprints (w7/m27) — no seeded blueprints in the dev stub; return an
     // empty list so Apollo's InMemoryCache doesn't log "Missing field" warnings
@@ -2058,5 +2143,7 @@ server.listen(PORT, () => {
   console.log(`  Live tail: GET http://localhost:${PORT}/v1/logs/subscribe`);
   console.log(`  Kratos:   GET  http://localhost:${PORT}/sessions/whoami`);
   console.log(`  Kratos:   GET  http://localhost:${PORT}/sessions`);
-  console.log(`  Hydra:    GET  http://localhost:${PORT}/admin/oauth2/auth/sessions/consent`);
+  console.log(
+    `  Hydra:    GET  http://localhost:${PORT}/admin/oauth2/auth/sessions/consent`,
+  );
 });

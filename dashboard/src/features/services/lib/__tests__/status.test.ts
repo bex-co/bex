@@ -51,6 +51,10 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     repo: null,
     branch: null,
     rootDir: null,
+    runtime: null,
+    builder: null,
+    startCommand: null,
+    dockerfilePath: null,
     ...overrides,
   };
 }
@@ -89,12 +93,17 @@ describe("toServiceView", () => {
       repo: null,
       branch: null,
       rootDir: null,
+      runtime: null,
+      builder: null,
+      startCommand: null,
+      dockerfilePath: null,
       buildFilter: null,
       autoDeploy: null,
       notifyOnFail: null,
       healthCheckPath: null,
       maxShutdownDelaySeconds: null,
       preDeployCommand: null,
+      renderSubdomainPolicy: null,
       publishPath: null,
       routes: [],
       headers: [],
@@ -128,7 +137,7 @@ describe("toServiceView", () => {
     expect(v.runs).toEqual([]);
   });
 
-  it("maps a build-from-git server node's repo/branch/rootDir", () => {
+  it("maps a build-from-git server node's source and build settings", () => {
     const serverNode: ServerNode = {
       __typename: "Service",
       id: "mono",
@@ -146,6 +155,10 @@ describe("toServiceView", () => {
       repo: "https://github.com/x/mono",
       branch: "main",
       rootDir: "backend",
+      runtime: "docker",
+      builder: "dockerfile",
+      startCommand: "bin/server",
+      dockerfilePath: "docker/Dockerfile.prod",
       schedule: null,
       command: null,
       runs: [],
@@ -154,13 +167,21 @@ describe("toServiceView", () => {
     expect(v.repo).toBe("https://github.com/x/mono");
     expect(v.branch).toBe("main");
     expect(v.rootDir).toBe("backend");
+    expect(v.runtime).toBe("docker");
+    expect(v.builder).toBe("dockerfile");
+    expect(v.startCommand).toBe("bin/server");
+    expect(v.dockerfilePath).toBe("docker/Dockerfile.prod");
   });
 
-  it("leaves repo/branch/rootDir null for a list node (no build fields selected)", () => {
+  it("leaves build settings null for a list node (not selected)", () => {
     const v = toServiceView(node());
     expect(v.repo).toBeNull();
     expect(v.branch).toBeNull();
     expect(v.rootDir).toBeNull();
+    expect(v.runtime).toBeNull();
+    expect(v.builder).toBeNull();
+    expect(v.startCommand).toBeNull();
+    expect(v.dockerfilePath).toBeNull();
   });
 
   it("reads slug from a detail server node, incl. the random-suffix case", () => {
