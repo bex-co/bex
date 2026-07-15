@@ -36,6 +36,13 @@ type CommitResolver interface {
 	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
 }
 
+// DeployStartedNotifier is the request-time notification seam used by the
+// HMAC-authenticated git-push redeploy path. The notifications service
+// satisfies it structurally without apps importing that feature package.
+type DeployStartedNotifier interface {
+	NotifyDeployStarted(ctx context.Context, tenantID, appName string)
+}
+
 // resolveDeployCommit resolves repo@ref for a deploy row this package is
 // about to open — best-effort by design (w9/001): a missing resolver, an
 // image-backed app, or any resolution failure returns the zero CommitInfo

@@ -30,6 +30,7 @@ import (
 var notificationSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "NotificationSettings",
 	Fields: graphql.Fields{
+		"deployStarted":   &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeployStarted })},
 		"deploySucceeded": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeploySucceeded })},
 		"deployFailed":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeployFailed })},
 	},
@@ -53,11 +54,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateNotificationSettings": &graphql.Field{
 			Type: notificationSettingsGQLType,
 			Args: graphql.FieldConfigArgument{
+				"deployStarted":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
 				"deploySucceeded": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
 				"deployFailed":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.UpdateSettings(p.Context, p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
+				return s.UpdateSettings(p.Context, p.Args["deployStarted"].(bool), p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
 			},
 		},
 	}

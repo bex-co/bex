@@ -4,13 +4,23 @@
 
 query NotificationSettings {
   notificationSettings {
+    deployStarted
     deploySucceeded
     deployFailed
   }
 }
 
-mutation UpdateNotificationSettings($deploySucceeded: Boolean!, $deployFailed: Boolean!) {
-  updateNotificationSettings(deploySucceeded: $deploySucceeded, deployFailed: $deployFailed) {
+mutation UpdateNotificationSettings(
+  $deployStarted: Boolean!
+  $deploySucceeded: Boolean!
+  $deployFailed: Boolean!
+) {
+  updateNotificationSettings(
+    deployStarted: $deployStarted
+    deploySucceeded: $deploySucceeded
+    deployFailed: $deployFailed
+  ) {
+    deployStarted
     deploySucceeded
     deployFailed
   }

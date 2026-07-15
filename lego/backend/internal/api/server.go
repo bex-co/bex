@@ -396,7 +396,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 		return e.OwnerID, nil
 	}
-	return &Server{
+	notificationsSvc := &notifications.Service{
+		Base:       base,
+		Store:      d.NotificationsStore,
+		Mailer:     d.Mailer,
+		Identities: identityEmailLookup{d.Identities},
+	}
+	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
@@ -435,12 +441,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			InviteBaseURL: d.InviteBaseURL,
 			Identities:    identityEmailLookup{d.Identities},
 		},
-		Notifications: &notifications.Service{
-			Base:       base,
-			Store:      d.NotificationsStore,
-			Mailer:     d.Mailer,
-			Identities: identityEmailLookup{d.Identities},
-		},
+		Notifications: notificationsSvc,
 		Projects: &projects.Service{
 			Base:       base,
 			Store:      d.ProjectsStore,
@@ -457,6 +458,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Usage:         d.Usage,
 		Audit:         d.Audit,
 	}
+	// Request-time deploy-start notifications use the same feature service as
+	// the reconciler's close-time success/failure fan-out, but are wired at the
+	// two seams that actually initiate deploys.
+	srv.Apps.StartedNotifier = notificationsSvc
+	srv.Deploys.StartedNotifier = notificationsSvc
+	return srv
 }
 
 // identityEmailLookup adapts workspaces.IdentityReader to members.EmailLookup

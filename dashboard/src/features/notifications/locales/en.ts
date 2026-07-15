@@ -7,8 +7,16 @@ const enNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.description": {
     message:
-      "Get emailed when a deploy of one of your services succeeds or fails. These are your own preferences — every workspace member sets theirs independently.",
+      "Get emailed when a deploy of one of your services starts, succeeds, or fails. These are your own preferences — every workspace member sets theirs independently.",
     description: "Settings Notifications section card description",
+  },
+  "notifications.deployStarted": {
+    message: "Deploy started",
+    description: "Toggle label",
+  },
+  "notifications.deployStartedHint": {
+    message: "Email me when a deploy starts.",
+    description: "Toggle hint",
   },
   "notifications.deploySucceeded": {
     message: "Deploy succeeded",

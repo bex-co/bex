@@ -19,6 +19,7 @@ package notifications
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -59,8 +60,8 @@ func (f *fakeStore) GetNotificationSettings(_ context.Context, tenantID, subject
 	return row, nil
 }
 
-func (f *fakeStore) UpsertNotificationSettings(_ context.Context, tenantID, subject string, deploySucceeded, deployFailed bool) (store.NotificationSettings, error) {
-	row := store.NotificationSettings{ID: "ntf-fake", TenantID: tenantID, Subject: subject, DeploySucceeded: deploySucceeded, DeployFailed: deployFailed}
+func (f *fakeStore) UpsertNotificationSettings(_ context.Context, tenantID, subject string, deployStarted, deploySucceeded, deployFailed bool) (store.NotificationSettings, error) {
+	row := store.NotificationSettings{ID: "ntf-fake", TenantID: tenantID, Subject: subject, DeployStarted: deployStarted, DeploySucceeded: deploySucceeded, DeployFailed: deployFailed}
 	f.rows[[2]string{tenantID, subject}] = row
 	return row, nil
 }
@@ -71,11 +72,14 @@ func (f *fakeStore) ListNotifyRecipients(_ context.Context, tenantID string) ([]
 
 // fakeMailer records every send.
 type fakeMailer struct {
+	mu   sync.Mutex
 	sent []struct{ to, subject, body string }
 	err  error
 }
 
 func (f *fakeMailer) Send(_ context.Context, to, subject, body string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.err != nil {
 		return f.err
 	}
@@ -119,11 +123,11 @@ func TestUpdateSettingsThenGetReflectsIt(t *testing.T) {
 	svc := newTestService(st, fakeWorkspace{"alice": "tea-a"}, nil, nil)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice"})
 
-	updated, err := svc.UpdateSettings(ctx, false, true)
+	updated, err := svc.UpdateSettings(ctx, false, false, true)
 	if err != nil {
 		t.Fatalf("UpdateSettings: %v", err)
 	}
-	want := SettingsView{DeploySucceeded: false, DeployFailed: true}
+	want := SettingsView{DeployStarted: false, DeploySucceeded: false, DeployFailed: true}
 	if updated != want {
 		t.Fatalf("UpdateSettings returned %+v, want %+v", updated, want)
 	}
@@ -146,8 +150,30 @@ func TestSettingsUnavailableWhenStoreNil(t *testing.T) {
 	if _, err := svc.GetSettings(ctx); !errors.Is(err, core.ErrNotificationsUnavailable) {
 		t.Errorf("GetSettings with nil store: want ErrNotificationsUnavailable, got %v", err)
 	}
-	if _, err := svc.UpdateSettings(ctx, true, true); !errors.Is(err, core.ErrNotificationsUnavailable) {
+	if _, err := svc.UpdateSettings(ctx, true, true, true); !errors.Is(err, core.ErrNotificationsUnavailable) {
 		t.Errorf("UpdateSettings with nil store: want ErrNotificationsUnavailable, got %v", err)
+	}
+}
+
+func TestNotifyDeployStartedRespectsStartedPreference(t *testing.T) {
+	st := newFakeStore()
+	st.recipients["tea-a"] = []store.NotifyRecipient{
+		{Subject: "alice", DeployStarted: true},
+		{Subject: "bob", DeployStarted: false},
+	}
+	mailer := &fakeMailer{}
+	svc := newTestService(st, nil, mailer, fakeIdentities{
+		"alice": "alice@example.com",
+		"bob":   "bob@example.com",
+	})
+
+	svc.NotifyDeployStarted(context.Background(), "tea-a", "web")
+
+	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
+		t.Fatalf("sent = %+v, want exactly one deploy-start mail to opted-in alice", mailer.sent)
+	}
+	if mailer.sent[0].subject != "Deploy started: web" || mailer.sent[0].body != "A deploy of \"web\" has started.\n" {
+		t.Errorf("deploy-start mail = %+v", mailer.sent[0])
 	}
 }
 

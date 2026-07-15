@@ -14,11 +14,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useNotificationSettings } from "@/features/notifications/hooks/use-notification-settings";
 import { useUpdateNotificationSettings } from "@/features/notifications/hooks/use-update-notification-settings";
 
-type Field = "deploySucceeded" | "deployFailed";
+type Field = "deployStarted" | "deploySucceeded" | "deployFailed";
 
 /**
  * Settings → Notifications (w3/m9): the caller's own deploy-email
- * preferences — succeed/fail on any of their workspace's services, matching
+ * preferences — start/succeed/fail on any of their workspace's services, matching
  * Render's /notification-settings. Self-service (no per-role gate beyond
  * workspace membership), so every toggle acts on the signed-in caller alone.
  */
@@ -37,6 +37,11 @@ export function NotificationSettingsPanel() {
   }
 
   const rows: Array<{ field: Field; labelKey: string; hintKey: string }> = [
+    {
+      field: "deployStarted",
+      labelKey: "notifications.deployStarted",
+      hintKey: "notifications.deployStartedHint",
+    },
     {
       field: "deploySucceeded",
       labelKey: "notifications.deploySucceeded",
@@ -76,9 +81,7 @@ export function NotificationSettingsPanel() {
               >
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor={`notif-${field}`}>{t(labelKey)}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t(hintKey)}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t(hintKey)}</p>
                 </div>
                 <Switch
                   id={`notif-${field}`}

@@ -18,6 +18,7 @@ describe("useNotificationSettings", () => {
       data: {
         notificationSettings: {
           __typename: "NotificationSettings",
+          deployStarted: true,
           deploySucceeded: false,
           deployFailed: true,
         },
@@ -29,12 +30,13 @@ describe("useNotificationSettings", () => {
 
     const { result } = renderHook(() => useNotificationSettings());
     expect(result.current.settings).toEqual({
+      deployStarted: true,
       deploySucceeded: false,
       deployFailed: true,
     });
   });
 
-  it("defaults to both true when no row exists yet (null response)", () => {
+  it("defaults all three lifecycle events true when no row exists yet (null response)", () => {
     mockUseQuery.mockReturnValue({
       data: { notificationSettings: null },
       loading: false,
@@ -44,12 +46,13 @@ describe("useNotificationSettings", () => {
 
     const { result } = renderHook(() => useNotificationSettings());
     expect(result.current.settings).toEqual({
+      deployStarted: true,
       deploySucceeded: true,
       deployFailed: true,
     });
   });
 
-  it("defaults to both true while loading with no data yet", () => {
+  it("defaults all three lifecycle events true while loading with no data yet", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: true,
@@ -59,6 +62,7 @@ describe("useNotificationSettings", () => {
 
     const { result } = renderHook(() => useNotificationSettings());
     expect(result.current.settings).toEqual({
+      deployStarted: true,
       deploySucceeded: true,
       deployFailed: true,
     });

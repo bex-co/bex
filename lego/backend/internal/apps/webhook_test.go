@@ -23,7 +23,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -248,6 +250,18 @@ func autoDeployApp(name, repo string) *appv1alpha1.App {
 	return a
 }
 
+type webhookStartedCall struct{ tenantID, appName string }
+
+type blockingWebhookStartedNotifier struct {
+	calls   chan webhookStartedCall
+	release chan struct{}
+}
+
+func (n *blockingWebhookStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName string) {
+	n.calls <- webhookStartedCall{tenantID: tenantID, appName: appName}
+	<-n.release
+}
+
 func postPush(t *testing.T, h *GitWebhook, sigSecret, event string, body []byte) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(body)))
@@ -287,6 +301,41 @@ func TestWebhookAcceptsEitherKey(t *testing.T) {
 		if getApp(t, cl, "api").Spec.RestartedAt == "" {
 			t.Errorf("push signed with %s should redeploy", key)
 		}
+	}
+}
+
+func TestWebhookNotifiesDeployStartedOffRequestPath(t *testing.T) {
+	const repo = "https://github.com/x/app"
+	a := autoDeployApp("api", repo)
+	a.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	svc, _ := newService(nil, a)
+	notifier := &blockingWebhookStartedNotifier{
+		calls:   make(chan webhookStartedCall, 1),
+		release: make(chan struct{}),
+	}
+	defer close(notifier.release)
+	svc.StartedNotifier = notifier
+	h := &GitWebhook{Svc: svc, GitHubSecret: "gh-key"}
+	body := pushBody(t, repo, "refs/heads/main")
+
+	response := make(chan *httptest.ResponseRecorder, 1)
+	go func() { response <- postPush(t, h, "gh-key", "push", body) }()
+
+	select {
+	case rec := <-response:
+		if rec.Code != http.StatusOK {
+			t.Fatalf("push => %d: %s", rec.Code, rec.Body)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("git webhook blocked on deploy-start notification delivery")
+	}
+	select {
+	case got := <-notifier.calls:
+		if got != (webhookStartedCall{tenantID: "tea-a", appName: "api"}) {
+			t.Errorf("started notification = %+v", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("git webhook returned without issuing a deploy-start notification")
 	}
 }
 

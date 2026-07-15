@@ -80,6 +80,14 @@ type CommitResolver interface {
 	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
 }
 
+// DeployStartedNotifier is the request-time notification seam. The
+// notifications service satisfies it structurally; keeping the interface here
+// avoids a feature-package dependency while letting Trigger fire only after
+// the deploy row was opened successfully.
+type DeployStartedNotifier interface {
+	NotifyDeployStarted(ctx context.Context, tenantID, appName string)
+}
+
 // DeployView is the neutral projection of a store.Deploy the adapters render
 // in Render's deploy shape. CommitID/CommitMessage (w9/001) are the resolved
 // commit a build-from-git deploy ran, "" when unresolved — the adapters omit
@@ -127,6 +135,9 @@ func view(d store.Deploy) DeployView {
 type Service struct {
 	*core.Base
 	Store DeployStore
+	// StartedNotifier is invoked asynchronously after a trigger opens its deploy
+	// row. nil keeps notifications disabled without changing trigger behavior.
+	StartedNotifier DeployStartedNotifier
 	// Commits resolves the triggering ref to the exact commit a
 	// build-from-git deploy runs (w9/001) — github.Service's
 	// DeployCommitSource. nil ⇒ deploy rows open with no commit metadata.
@@ -372,7 +383,23 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	if err != nil {
 		return DeployView{}, err
 	}
+	s.notifyDeployStarted(ctx, a, service)
 	return view(d), nil
+}
+
+// notifyDeployStarted detaches delivery from the request hot path, matching the
+// close-time notifier's best-effort pattern. The App's owner label is
+// authoritative: using the caller's default workspace here would misroute a
+// notification when they operate a service in another workspace they joined.
+func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, service string) {
+	if s.StartedNotifier == nil {
+		return
+	}
+	tenantID := a.Labels[core.LabelTenant]
+	if tenantID == "" {
+		return
+	}
+	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, service)
 }
 
 // resolveCommit resolves the ref a trigger will build — the explicit
