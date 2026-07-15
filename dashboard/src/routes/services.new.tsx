@@ -648,7 +648,9 @@ export function NewServicePage() {
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t("services.createTitle")}</CardTitle>
+              <CardTitle>
+                <h1>{t("services.createTitle")}</h1>
+              </CardTitle>
               <CardDescription>
                 {t("services.createDescription")}
               </CardDescription>
@@ -674,17 +676,26 @@ export function NewServicePage() {
                     setBranch("");
                   }}
                 >
-                  <TabsList className="w-full">
-                    <TabsTrigger value="github" className="flex-1 gap-1.5">
-                      <Github className="size-4" />
+                  <TabsList className="grid h-auto w-full grid-cols-3">
+                    <TabsTrigger
+                      value="github"
+                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
+                    >
+                      <Github className="hidden size-4 sm:block" />
                       {t("services.createTabGitHub")}
                     </TabsTrigger>
-                    <TabsTrigger value="git" className="flex-1 gap-1.5">
-                      <GitBranch className="size-4" />
+                    <TabsTrigger
+                      value="git"
+                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
+                    >
+                      <GitBranch className="hidden size-4 sm:block" />
                       {t("services.createTabPublicGit")}
                     </TabsTrigger>
-                    <TabsTrigger value="image" className="flex-1 gap-1.5">
-                      <Box className="size-4" />
+                    <TabsTrigger
+                      value="image"
+                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
+                    >
+                      <Box className="hidden size-4 sm:block" />
                       {t("services.createTabImage")}
                     </TabsTrigger>
                   </TabsList>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -123,6 +123,7 @@ beforeEach(() => {
   serverState.service = svc();
   serverState.loading = false;
   serverState.error = undefined;
+  serverState.refetch = vi.fn(async () => []);
   run.mockReset();
 });
 
@@ -184,5 +185,26 @@ describe("service-detail layout routing", () => {
     expect(
       screen.queryByPlaceholderText("Search logs"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a retryable error instead of not-found when the service query fails", async () => {
+    serverState.service = null;
+    serverState.loading = false;
+    serverState.error = new Error("Cannot query field ipAllowList");
+    renderAt("/services/app/logs");
+
+    expect(
+      await screen.findByText("Couldn't load service"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The service may still exist.", { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Service not found")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Events" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(serverState.refetch).toHaveBeenCalledOnce();
   });
 });

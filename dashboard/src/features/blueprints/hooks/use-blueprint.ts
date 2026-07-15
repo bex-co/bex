@@ -19,12 +19,20 @@ export function useBlueprint(id: string): UseBlueprintResult {
     errorPolicy: "all",
   });
 
-  const blueprint = useMemo(() => data?.blueprint ?? null, [data]);
+  // The Render-compatible adapter may encode a missing row as an empty object
+  // instead of GraphQL null. Treat an absent id as not-found so the detail page
+  // never renders blank headings, epoch dates, and an actionable Sync button.
+  const blueprint = useMemo(
+    () => (data?.blueprint?.id ? data.blueprint : null),
+    [data],
+  );
 
   return {
     blueprint,
     loading,
     error,
-    refetch: () => { void refetch(); },
+    refetch: () => {
+      void refetch();
+    },
   };
 }

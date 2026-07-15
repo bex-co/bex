@@ -182,6 +182,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "对 bex-api 的请求失败。请检查网络连接后重试。",
     description: "Services list error card body",
   },
+  "services.detailErrorTitle": {
+    message: "无法加载服务",
+    description: "Service detail query error card title",
+  },
+  "services.detailErrorBody": {
+    message: "对 bex-api 的请求失败。该服务可能仍然存在。",
+    description: "Service detail query error card body",
+  },
   "services.emptyTitle": {
     message: "还没有服务",
     description: "Services list empty state title",

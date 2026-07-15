@@ -36,8 +36,8 @@ export function ScalingRow({ serviceId, replicas }: ScalingRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         <div className="text-sm text-muted-foreground">
           {t("services.scalingInstanceCount")}
         </div>
@@ -45,7 +45,7 @@ export function ScalingRow({ serviceId, replicas }: ScalingRowProps) {
           {t("services.scalingInstanceCountHint")}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 self-start sm:flex-nowrap sm:self-auto">
         <Button
           size="icon"
           variant="outline"

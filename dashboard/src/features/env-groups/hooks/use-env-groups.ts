@@ -29,7 +29,7 @@ type RawGroup = NonNullable<NonNullable<EnvGroupsQuery["envGroups"]>[number]>;
 export function mapEnvGroup(
   raw: RawGroup | NonNullable<EnvGroupQuery["envGroup"]> | null | undefined,
 ): EnvGroupView | null {
-  if (raw?.id == null || raw.name == null) return null;
+  if (!raw?.id || !raw.name) return null;
   return {
     id: raw.id,
     name: raw.name,

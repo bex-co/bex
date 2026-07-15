@@ -46,8 +46,8 @@ export function DisplayNameRow({
   }
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         <div className="text-sm text-muted-foreground">
           {t("services.displayNameLabel")}
         </div>
@@ -56,14 +56,14 @@ export function DisplayNameRow({
         </div>
       </div>
       {editing ? (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             aria-label={t("services.displayNameLabel")}
             autoFocus
             autoComplete="off"
-            className="w-56"
+            className="min-w-0 flex-1 sm:w-56 sm:flex-none"
             onKeyDown={(event) => {
               if (event.key === "Enter" && canSave) void handleSave();
               if (event.key === "Escape") setEditing(false);
@@ -93,8 +93,8 @@ export function DisplayNameRow({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{visible}</span>
+        <div className="flex min-w-0 items-center gap-2 self-start sm:self-auto">
+          <span className="truncate text-sm font-medium">{visible}</span>
           <Button
             size="icon"
             variant="ghost"

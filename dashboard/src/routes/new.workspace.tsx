@@ -23,7 +23,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useCreateWorkspace } from "@/features/workspaces/hooks/use-create-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { PlanPicker } from "@/features/workspaces/components/plan-picker";
-import { WORKSPACE_NAME_RE, type WorkspacePlanId } from "@/features/workspaces/types";
+import {
+  WORKSPACE_NAME_RE,
+  type WorkspacePlanId,
+} from "@/features/workspaces/types";
 
 export const Route = createFileRoute("/new/workspace")({
   component: NewWorkspacePage,
@@ -70,7 +73,9 @@ export function NewWorkspacePage() {
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t("workspaces.createTitle")}</CardTitle>
+              <CardTitle>
+                <h1>{t("workspaces.createTitle")}</h1>
+              </CardTitle>
               <CardDescription>
                 {t("workspaces.createDescription")}
               </CardDescription>

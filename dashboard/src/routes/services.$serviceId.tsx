@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
-import { SearchX } from "lucide-react";
+import { SearchX, TriangleAlert } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
@@ -31,9 +31,43 @@ function RouteComponent() {
  * request, so each route stays self-contained.
  */
 export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
-  const { service, loading, refetch } = useServer(serviceId);
+  const { service, loading, error, refetch } = useServer(serviceId);
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
+
+  // A failed `server(id)` query is not evidence that the service is absent.
+  // Keep it distinct from not-found so schema skew, auth failures, and backend
+  // outages never masquerade as a deleted service.
+  if (!service && !loading && error) {
+    return (
+      <DashboardLayout>
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="mx-auto w-full max-w-4xl">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <TriangleAlert className="text-destructive h-8 w-8" />
+                <div>
+                  <p className="mb-1 font-medium">
+                    {t("services.detailErrorTitle")}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {t("services.detailErrorBody")}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refetch()}
+                >
+                  {t("common.tryAgain")}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   // Unknown service id: `server(id)` resolved null and we're no longer loading.
   // Render a proper not-found state for the WHOLE detail (every tab) instead of

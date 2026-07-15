@@ -1,4 +1,9 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -30,6 +35,19 @@ export const Route = createFileRoute("/blueprints")({
 });
 
 export function BlueprintsPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  // `blueprints.$blueprintId.tsx` is a nested file route. Yield the parent
+  // match to its child instead of keeping the list mounted over the detail
+  // page; the detail owns its own dashboard shell and loading/not-found state.
+  if (pathname !== "/blueprints") return <Outlet />;
+
+  return <BlueprintsListPage />;
+}
+
+function BlueprintsListPage() {
   const { t } = useTranslations();
   const { blueprints, loading, error } = useBlueprints();
 
