@@ -85,7 +85,7 @@ type PostgresView struct {
 
 	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
 	// ipAllowList). Empty => the external route is open to all source IPs.
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	IPAllowList []IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// PoolerEnabled reports whether a PgBouncer pooler is provisioned (its pooled
 	// connection strings appear in connection-info).
 	PoolerEnabled bool `json:"poolerEnabled"`
@@ -110,6 +110,43 @@ type PostgresView struct {
 	// unassigned. Set via SetEnvironmentID; the environments feature is the
 	// only writer.
 	EnvironmentID string `json:"environmentId,omitempty"`
+}
+
+// IPAllowListEntry is Render's ipAllowList wire shape (components.schemas
+// cidrBlockAndDescription: {cidrBlock, description}), verified against the
+// render-oss/cli generated client (`client.CidrBlockAndDescription`) — a bare
+// CIDR-string array breaks the CLI's decode of both `postgres create
+// --ip-allow-list` and `postgres get`/`list`. bex doesn't persist a
+// per-entry description (the Database CR's spec.ipAllowList is just
+// []string); an incoming Description is accepted but dropped, and read back
+// entries always carry an empty one — a deliberate, documented subset.
+type IPAllowListEntry struct {
+	CIDRBlock   string `json:"cidrBlock"`
+	Description string `json:"description,omitempty"`
+}
+
+// ipAllowListToWire/ipAllowListFromWire convert between bex's internal CIDR-
+// string storage and Render's {cidrBlock, description} wire entries.
+func ipAllowListToWire(cidrs []string) []IPAllowListEntry {
+	if len(cidrs) == 0 {
+		return nil
+	}
+	out := make([]IPAllowListEntry, len(cidrs))
+	for i, c := range cidrs {
+		out[i] = IPAllowListEntry{CIDRBlock: c}
+	}
+	return out
+}
+
+func ipAllowListFromWire(entries []IPAllowListEntry) []string {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = e.CIDRBlock
+	}
+	return out
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
@@ -170,7 +207,8 @@ type CreatePostgresRequest struct {
 	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	Public     bool   `json:"public,omitempty"`
 	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// Render's wire shape ({cidrBlock, description} entries) — see IPAllowListEntry.
+	IPAllowList []IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// Pooler optionally provisions a PgBouncer pooler at create.
 	Pooler bool `json:"pooler,omitempty"`
 	// EnableHighAvailability provisions a replicated CNPG cluster (primary +
@@ -234,7 +272,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		CreatedAt:               created,
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
-		IPAllowList:             d.Spec.IPAllowList,
+		IPAllowList:             ipAllowListToWire(d.Spec.IPAllowList),
 		PoolerEnabled:           d.Spec.Pooler,
 		BackupsEnabled:          d.Status.BackupsEnabled,
 		OwnerID:                 d.Labels[core.LabelTenant],
@@ -318,7 +356,8 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("name is required")
 	}
-	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+	cidrs := ipAllowListFromWire(req.IPAllowList)
+	if err := core.ValidateCIDRs(cidrs); err != nil {
 		return PostgresView{}, err
 	}
 	// Per-workspace Postgres cap (w7/m9).
@@ -344,7 +383,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Version:          req.Version,
 			StorageGB:        req.DiskSizeGB,
 			Public:           req.Public,
-			IPAllowList:      req.IPAllowList,
+			IPAllowList:      cidrs,
 			Pooler:           req.Pooler,
 			HighAvailability: req.EnableHighAvailability,
 			ReadReplicas:     crReplicas,
@@ -472,6 +511,84 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 	}
 	preview := d.DeepCopy()
 	preview.Spec.Plan = plan
+	return pgView(preview), nil
+}
+
+// PostgresPatch is the mutable-field set for PATCH /v1/postgres/{id} — Render's
+// "only the fields you pass are changed" semantics (nil = leave unchanged,
+// mirroring the pointer fields on the CLI's generated PostgresPATCHInput).
+type PostgresPatch struct {
+	Plan                   *string
+	DiskSizeGB             *int32
+	EnableHighAvailability *bool
+	IPAllowList            *[]string // nil = unchanged; non-nil empty slice clears it
+}
+
+// validate checks every field present in the patch (plan enum, CIDR syntax)
+// before any write; shared by UpdatePostgres and PreviewUpdatePostgres so the
+// two paths can never accept different inputs.
+func (patch PostgresPatch) validate() error {
+	if patch.Plan != nil {
+		if _, ok := tiers.Postgres.ByID(*patch.Plan); !ok {
+			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
+		}
+	}
+	if patch.IPAllowList != nil {
+		if err := core.ValidateCIDRs(*patch.IPAllowList); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
+	if patch.Plan != nil {
+		d.Spec.Plan = *patch.Plan
+	}
+	if patch.DiskSizeGB != nil {
+		d.Spec.StorageGB = *patch.DiskSizeGB
+	}
+	if patch.EnableHighAvailability != nil {
+		d.Spec.HighAvailability = *patch.EnableHighAvailability
+	}
+	if patch.IPAllowList != nil {
+		if len(*patch.IPAllowList) == 0 {
+			d.Spec.IPAllowList = nil
+		} else {
+			d.Spec.IPAllowList = *patch.IPAllowList
+		}
+	}
+}
+
+// UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}
+// semantics — only fields set in patch change; everything else is left alone).
+// SetPlan/PreviewSetPlan above remain the plan-only entry points GraphQL's
+// updatePostgresPlan mutation and the update_postgres_plan MCP tool use; this
+// is the general handler REST's PATCH route needs (rename, disk, HA,
+// ip-allow-list — not just plan).
+func (s *Service) UpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if err := patch.validate(); err != nil {
+		return PostgresView{}, err
+	}
+	return s.patchDatabaseObj(ctx, d, patch.apply)
+}
+
+// PreviewUpdatePostgres is UpdatePostgres's dry-run twin (w2/m29 pattern): same
+// validation, zero side effects. Requires can_view (no audit event, no write).
+func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if err := patch.validate(); err != nil {
+		return PostgresView{}, err
+	}
+	preview := d.DeepCopy()
+	patch.apply(preview)
 	return pgView(preview), nil
 }
 

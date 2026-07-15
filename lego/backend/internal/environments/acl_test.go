@@ -212,7 +212,7 @@ func TestSetACL_PropagatesIPAllowListToEnvironmentMembers(t *testing.T) {
 	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, cidrs); err != nil {
 		t.Fatalf("SetACL: %v", err)
 	}
-	if got := dbs.dbs["indb"].IPAllowList; len(got) != 1 || got[0] != "10.0.0.0/24" {
+	if got := dbs.dbs["indb"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" {
 		t.Errorf("indb (member of this environment) should get the environment's ipAllowList, got %v", got)
 	}
 	if got := dbs.dbs["outdb"].IPAllowList; got != nil {

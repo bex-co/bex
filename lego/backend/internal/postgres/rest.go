@@ -19,6 +19,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -115,32 +116,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			core.WriteJSON(w, http.StatusOK, pg)
 		})
-		mux.HandleFunc("PATCH "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				Plan   string `json:"plan"`
-				DryRun bool   `json:"dryRun,omitempty"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
-				return
-			}
-			dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
-			if dryRun {
-				pg, err := s.PreviewSetPlan(r.Context(), r.PathValue("id"), req.Plan)
-				if err != nil {
-					core.WriteErr(w, err)
-					return
-				}
-				core.WriteJSON(w, http.StatusOK, pg)
-				return
-			}
-			pg, err := s.SetPlan(r.Context(), r.PathValue("id"), req.Plan)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, pg)
-		})
+		mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
 		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 			if err := s.DeletePostgres(r.Context(), r.PathValue("id")); err != nil {
 				core.WriteErr(w, err)
@@ -352,4 +328,60 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, http.StatusOK, pg)
 		})
 	}
+}
+
+// handleUpdatePostgres is PATCH /v1/postgres/{id} (+ /v1/databases alias) —
+// pulled out of RegisterREST to keep that registration function's own
+// complexity down. Render's PostgresPATCHInput (verified against the
+// render-oss/cli generated client, cli/pkg/client/types_gen.go): every field
+// is a pointer — omitted means "leave unchanged", NOT "clear" or "zero
+// value". A prior version of this handler decoded Plan as a plain string and
+// called SetPlan unconditionally, so any update that didn't touch plan (a
+// rename, a disk resize, an HA toggle, an ip-allow-list replace) 400'd with
+// "plan must be one of ..." — found running `render postgres update <name>
+// --name <new>` (and --disk-size-gb / --high-availability / --ip-allow-list)
+// against a live bex-api: every one of those failed end to end.
+func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name                   *string             `json:"name,omitempty"`
+		Plan                   *string             `json:"plan,omitempty"`
+		DiskSizeGB             *int32              `json:"diskSizeGB,omitempty"`
+		EnableHighAvailability *bool               `json:"enableHighAvailability,omitempty"`
+		IPAllowList            *[]IPAllowListEntry `json:"ipAllowList,omitempty"`
+		DryRun                 bool                `json:"dryRun,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+		return
+	}
+	id := r.PathValue("id")
+	// bex uses the Database name as its id (docs/ADR020-identifiers.md
+	// §Known deviations) — unlike Render's opaque dpg-... ids, renaming isn't
+	// a field update, it's a k8s object rename. Reject cleanly instead of
+	// silently ignoring the request or misreporting it as a plan error.
+	if req.Name != nil && *req.Name != id {
+		core.WriteErr(w, fmt.Errorf("%w: renaming a Postgres database isn't supported — bex uses the database name as its id (docs/ADR020-identifiers.md)", core.ErrBadRequest))
+		return
+	}
+	patch := PostgresPatch{Plan: req.Plan, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
+	if req.IPAllowList != nil {
+		cidrs := ipAllowListFromWire(*req.IPAllowList)
+		patch.IPAllowList = &cidrs
+	}
+	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
+	if dryRun {
+		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, pg)
+		return
+	}
+	pg, err := s.UpdatePostgres(r.Context(), id, patch)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, pg)
 }
