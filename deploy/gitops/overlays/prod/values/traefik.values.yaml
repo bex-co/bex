@@ -14,7 +14,19 @@
 # unchanged. See app-cluster.yml (CCM) + docs/ADR019-infra-credentials.md.
 hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
+  replicas: 2 # one edge remains behind the stable LB during a node drain
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: traefik-traefik
+            app.kubernetes.io/name: traefik
+        topologyKey: kubernetes.io/hostname
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 # Bind non-privileged container ports (the LB does the public :80/:443 exposure),
 # so drop the root + NET_BIND_SERVICE edge-proxy exception the hostNetwork path
 # needed. `add: []` clears the base's NET_BIND_SERVICE (maps deep-merge).

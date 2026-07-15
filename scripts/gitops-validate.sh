@@ -236,6 +236,53 @@ for chart in kratos hydra openfga openbao traefik; do
   done
 done
 
+# The platform databases can fail over only if the services above them remain
+# reachable. Render the production layers and pin every synchronous request-path
+# Deployment to two node-separated replicas plus a one-available PDB. This also
+# proves the production-only bex-api overlay renders without making the one-node
+# local CAPD cluster permanently Progressing.
+echo "==> production auth/control-plane request path is drain-safe"
+helm template hydra "$tmp/hydra-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/hydra.yaml).tgz" -n auth \
+  -f deploy/gitops/base/values/hydra.values.yaml \
+  -f deploy/gitops/overlays/prod/values/hydra.values.yaml >"$tmp/hydra-prod.yaml"
+helm template kratos "$tmp/kratos-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/kratos.yaml).tgz" -n auth \
+  -f deploy/gitops/base/values/kratos.values.yaml \
+  -f deploy/gitops/overlays/prod/values/kratos.values.yaml >"$tmp/kratos-prod.yaml"
+helm template openfga "$tmp/openfga-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/openfga.yaml).tgz" -n auth \
+  -f deploy/gitops/base/values/openfga.values.yaml \
+  -f deploy/gitops/overlays/prod/values/openfga.values.yaml >"$tmp/openfga-prod.yaml"
+helm template traefik "$tmp/traefik-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/traefik.yaml).tgz" -n traefik \
+  -f deploy/gitops/base/values/traefik.values.yaml \
+  -f deploy/gitops/overlays/prod/values/traefik.values.yaml >"$tmp/traefik-prod.yaml"
+kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
+kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
+
+check_request_path_ha() {
+  local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"
+  local replicas required min_available
+  replicas="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.replicas" "$manifest" | tr -d '\n')"
+  required="$(yq -N "select(.kind == \"Deployment\" and .metadata.name == \"$deployment\") | .spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution | length" "$manifest" | tr -d '\n')"
+  min_available="$(yq -N "select(.kind == \"PodDisruptionBudget\" and .metadata.name == \"$pdb\") | .spec.minAvailable" "$pdb_manifest" | tr -d '\n')"
+  if ! [[ "$replicas" =~ ^[0-9]+$ ]] || (( replicas < 2 )); then
+    echo "FAIL: $label renders replicas '$replicas', want >=2" >&2
+    fail=1
+  fi
+  if ! [[ "$required" =~ ^[0-9]+$ ]] || (( required < 1 )); then
+    echo "FAIL: $label has no required hostname pod anti-affinity" >&2
+    fail=1
+  fi
+  if [ "$min_available" != "1" ]; then
+    echo "FAIL: $label PDB minAvailable is '$min_available', want 1" >&2
+    fail=1
+  fi
+}
+
+check_request_path_ha hydra "$tmp/hydra-prod.yaml" hydra "$tmp/hydra-prod.yaml" hydra
+check_request_path_ha kratos "$tmp/kratos-prod.yaml" kratos "$tmp/kratos-prod.yaml" kratos
+check_request_path_ha openfga "$tmp/openfga-prod.yaml" openfga "$tmp/prod-apps.yaml" openfga
+check_request_path_ha traefik "$tmp/traefik-prod.yaml" traefik "$tmp/traefik-prod.yaml" traefik
+check_request_path_ha bex-api "$tmp/bex-operator-prod.yaml" bex-api "$tmp/bex-operator-prod.yaml" bex-api
+
 # The authz model ships as DSL (model.fga, human-edited) + JSON (model.json,
 # applied) — guard the pair against drift when the fga CLI is available.
 if command -v fga >/dev/null 2>&1; then
