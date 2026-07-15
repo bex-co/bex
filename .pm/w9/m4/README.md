@@ -8,14 +8,14 @@
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ---------------------- |
 | t001 | Postgres lifecycle legs: create (with `--ip-allow-list`) · list/get-by-name · update flags (`--plan`/`--disk-size-gb`/`--high-availability`/`--ip-allow-list`/`--clear-ip-allow-list`) · rename · suspend/resume · delete | 45m | —                      |
 | t002 | Services create/update/delete + deploys list/create/cancel + logs legs                                             | 45m | —                      |
-| t003 | Environments + logout (OAuth-revoke) legs; update the checklist's Reproducing section to state full coverage       | 30m | t001, t002             |
+| t003 | Environments + real device-token logout leg; update the checklist's Reproducing section to state exact coverage    | 30m | t001, t002, w4/m25/t005 |
 | t004 | Simplify — `/simplify` over the verify-script diff                                                                 | 20m | t003                   |
 | t005 | Test coverage — prove the legs fail loudly: mutation checks against a broken response shape                        | 30m | t003                   |
 | t006 | Closeout — DoD met → move milestone to `done/`                                                                     | 10m | t005                   |
 
 ## Definition of done
 
-One green `scripts/cli-compat.sh verify` run (recorded in the checklist) exercises every ✅ checklist row that makes a bex-api call, using `checkFields`-style whole-shape assertions (never single-field spot checks — the RC14 lesson), self-creating and trap-cleaning every resource it touches; the checklist's "Reproducing the ✅ rows" section no longer lists any uncovered family; a deliberately broken response shape makes the relevant leg exit non-zero (mutation-proven).
+One green `scripts/cli-compat.sh verify` run (recorded in the checklist) exercises every ✅ checklist row that makes a bex-api call, using `checkFields`-style whole-shape assertions (never single-field spot checks — the RC14 lesson), self-creating and trap-cleaning every resource it touches; the checklist states browser/device login, refresh, and logout coverage separately from the `RENDER_API_KEY` override; a deliberately broken response shape makes the relevant leg exit non-zero (mutation-proven).
 
 ## Source + Goal linkage
 
