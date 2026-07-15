@@ -6,6 +6,9 @@ Push a Git repo (or a prebuilt image), get a running HTTPS service at `<name>.on
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![deploy](https://github.com/bex-co/bex/actions/workflows/deploy.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/deploy.yml) [![docs](https://github.com/bex-co/bex/actions/workflows/docs.yml/badge.svg)](https://github.com/bex-co/bex/actions/workflows/docs.yml)
 
+> [!WARNING]
+> **bex is under active development and is not yet ready for production use. APIs, configuration, and behavior may change without notice.**
+
 ## Why bex
 
 - **Own your PaaS.** Render's developer experience — deploy-from-git, custom domains + TLS, suspend/resume — on your own hardware, Apache-2.0.
