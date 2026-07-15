@@ -44,12 +44,15 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m38** — Full deploy status lifecycle + transition timestamps (9 tasks; DONE 2026-07-15 — eleven-state evidence-backed persistence, transition timestamps, filter/adapter parity, and dashboard timeline/polling) ← from `w5/m29`'s 2026-07-14 Render-parity audit; narrowed after w9/001 independently shipped commit id/message provenance
 - [ ] **m39** — SSH into running service instances (13 tasks) ← user explicitly reopened the narrow SSH surface from `.pm/DO_NOT_DO.md`, 2026-07-14; hosted sandboxes, ephemeral shells, jobs, and browser shell remain excluded
 - [ ] **m40** — Blueprint environment-scoped env groups (7 tasks) ← promotes `010` 2026-07-15; `projects[].environments[].envVarGroups` (Render's official nesting) currently returns a named unsupported error — the membership mechanism it needed shipped in `w6/m24`
+- [ ] **m41** — Blueprint Key Value resources + keyvalue `fromService` refs (9 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (`blueprint.go:73`'s wire-compat placeholder + `deploy.go:1200`'s named rejection + checklist line 84); makes all three managed resource types Blueprint-first-class
+- [ ] **m42** — Deploy commit author timestamp: `commit.createdAt` (7 tasks) ← promotes `011` 2026-07-15 (filed by `w2/m38`'s Render recheck); captured at deploy-open, never inferred from deploy time
 
 ## Inbox
 
-- `011.md` — capture and surface Render's optional deploy `commit.createdAt` author timestamp without inferring it from deploy time.
+- `012.md` — deploy-hook `imgURL`: design the safe image-origin override before building (`deployhook.go:256`) ← from `/pm-brainstorm` round 12, 2026-07-15
+- `013.md` — Blueprint `initialDeployHook` one-time command (ADR018:49; likely rides the w1/m33 pre-deploy Job mechanism) ← from `/pm-brainstorm` round 12, 2026-07-15
 
-_(`010.md` promoted to **m40** 2026-07-15; note moved to `done/`)_
+_(`011.md` promoted to **m42** 2026-07-15; note moved to `done/`. `010.md` promoted to **m40** 2026-07-15; note moved to `done/`)_
 
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.

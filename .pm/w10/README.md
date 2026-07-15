@@ -15,3 +15,4 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 ## Milestones
 
 - [x] **m1** — Restore operator reconciliation under namespace-scoped Secret RBAC (6 tasks) ← from `w10/001` production incident
+- [ ] **m2** — Docs & code truth sweep (9 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (this round's miners returned three false gaps traced to stale docs — ADR006:521/:285, `render-artifacts/key-value.md:27`; plus the twice-filed MCP-table backfill, `maxShutdownDelaySeconds` bex.yml drift, `gqlStr`×7, and the recurring 16-finding lint debt); coordinates with, never duplicates, `w5/013`

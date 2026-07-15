@@ -46,6 +46,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - [x] **m30** — Dockerfile path + start command dashboard controls (9 tasks) ← promotes `w6/015.md` (filed by `w6/m21`'s parity check) via `/pm-brainstorm` round 5 + `$pm`, 2026-07-14; closes missing detail projection/narrow GraphQL setters plus the UI gaps (`dockerfilePath` absent, `startCommand` create-only) — **DONE**
 - [ ] **m31** — Environments UX round 2: ACLs, membership, confirmations, create-selectors (9 tasks) ← from `/pm-brainstorm` rounds 8–9, 2026-07-15; folds `014`; `w6/m19`'s ACLs and `w6/m24`'s env-group membership shipped backend-only, and a protected service currently can't be deleted/suspended from the browser at all (no `ProtectedConfirmation` in `dashboard/src`)
 - [ ] **m32** — Dashboard parity walk: page-by-page against Render (6 tasks) ← from `/pm-brainstorm` round 10, 2026-07-15 (the m13 audit pattern at UI depth — no systematic page-level side-by-side since w3/m4.5/w6/m5; output = walk artifact + corrected ledger UI cells + filed polish notes, the backlog-refill for future rounds)
+- [ ] **m33** — Env Groups create completeness: initial contents + metadata (9 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (ADR018:62 — Render's POST accepts initial `envVars`/`secretFiles`/`serviceIds`, bex creates empty groups; dashboard omits `ownerId`/timestamps); one POST/one dialog mints a populated, linked group
 
 ## Inbox
 
