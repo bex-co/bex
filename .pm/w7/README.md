@@ -35,7 +35,8 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `003.md` — Secret scanning in CI (gitleaks over pushed diffs/history) — renumbered from `002.md` 2026-07-14: it had collided with the done HTTP-headers note (`done/002.md`, grouped into m10); this one was never done and stays open
+- `001.md` — Fresh tenant nodes cannot pull authenticated Zot images because App workloads carry no `imagePullSecret`; replace the live default-ServiceAccount patch with declared operator or GitOps ownership
+- `004.md` — Production CNPG bootstrap cannot reach the Kubernetes API through the tenant egress deny — exposed by the w9/m3 stable-ID rename smoke; split/narrow the Cilium policy without reopening node or metadata access
 
 ## Not in w7 (deliberate)
 
