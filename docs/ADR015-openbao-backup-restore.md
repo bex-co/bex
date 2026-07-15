@@ -1,6 +1,6 @@
 # OpenBao backup & restore
 
-**Why this exists:** OpenBao ([ADR013-secrets.md](ADR013-secrets.md)) holds every tenant credential in integrated Raft storage on a single PVC (`replicas: 1` — no quorum peer to heal from). Unlike the platform's other state, these secrets are **not** reproducible from git: a lost PVC = lost tenant credentials, permanently. A nightly Raft snapshot shipped off-cluster is the recovery story — the mirror of [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) for the secret store.
+**Why this exists:** OpenBao ([ADR013-secrets.md](ADR013-secrets.md)) holds every tenant credential in integrated Raft storage. Production runs a three-member Raft cluster; the disposable local overlay runs one member. Raft protects production from one member or volume failure, but it is not a backup: correlated loss or operator error can still destroy tenant credentials permanently. A nightly Raft snapshot shipped off-cluster is the recovery story — the mirror of [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md) for the secret store.
 
 Raft's `snapshot save` takes a point-in-time, internally-consistent copy of the **already-encrypted** store while OpenBao keeps serving — no seal, no downtime.
 
@@ -67,6 +67,64 @@ kubectl -n secrets create job --from=cronjob/openbao-backup openbao-backup-now
 kubectl -n secrets logs job/openbao-backup-now -c upload -f
 aws --endpoint-url "$TF_STATE_ENDPOINT" s3 ls "s3://$TF_STATE_BUCKET/openbao-snapshots/"
 ```
+
+## Node drain and rolling-maintenance unseal
+
+Production uses three Raft members with Shamir/manual unseal. A rescheduled member starts sealed, so node maintenance must proceed one member at a time: keep the other two members unsealed, unseal the rescheduled member, wait for all three peers to be healthy again, and only then allow the next node to drain. Never continue while two members are sealed or unavailable; that loses Raft quorum.
+
+Point `KUBECONFIG` at the target workload cluster before starting; do not copy or print its contents. Before the first drain, confirm all three pods are Ready and unsealed, and record which node hosts each member:
+
+```sh
+export KUBECONFIG=/path/to/app.kubeconfig
+kubectl -n secrets get pods -l app.kubernetes.io/name=openbao -o wide
+for pod in openbao-0 openbao-1 openbao-2; do
+  kubectl -n secrets exec "$pod" -- bao status -format=json \
+    | yq -e '.sealed == false' - >/dev/null
+done
+```
+
+For each node in the roll:
+
+1. Cordon/drain only that node (or let the CAPI `MachineDeployment` roll initiate the drain). Watch the OpenBao member leave and reschedule. Its `maxUnavailable: 1` PDB is the stop gate that prevents a second member from being evicted while this one is sealed.
+2. Wait for the same ordinal to reach `Running`. It will not become Ready until it is unsealed:
+
+   ```sh
+   TARGET=openbao-N
+   kubectl -n secrets get pod "$TARGET" -w
+   ```
+
+3. From the repository root, load the out-of-band keys without echoing them and run the idempotent unseal path. The script reaches every pod directly; already-unsealed members are left untouched, while the rescheduled member receives all three shares through request bodies rather than process arguments:
+
+   ```sh
+   set +x
+   set -a; source .env; set +a
+   bash scripts/bao-init.sh
+   ```
+
+   If the script is unavailable, the exact per-share interactive command is below. Run it three times and paste one distinct key at each hidden prompt; never put a key on the command line:
+
+   ```sh
+   kubectl -n secrets exec -it "$TARGET" -- \
+     env BAO_ADDR=http://127.0.0.1:8200 bao operator unseal
+   ```
+
+4. Prove the member rejoined before touching another node. The token is sent over stdin into the pod shell, not placed in `kubectl`'s arguments:
+
+   ```sh
+   kubectl -n secrets wait \
+     --for=condition=Ready "pod/$TARGET" --timeout=5m
+   printf '%s\n' "$BAO_ROOT_TOKEN" \
+     | kubectl -n secrets exec -i "$TARGET" -- sh -c \
+       'read -r BAO_TOKEN; export BAO_TOKEN; bao operator raft list-peers -format=json' \
+     | yq -e '.data.config.servers | length == 3' - >/dev/null
+   kubectl -n secrets get pdb openbao -o wide
+   ```
+
+5. Confirm all platform workloads are Ready and the OpenBao PDB again permits one disruption. Only then continue to the next node.
+
+For a rehearsal outside a real node roll, delete exactly one non-leader member pod, follow steps 2–5, and record the member, node change, sealed interval, peer count, and whether quorum stayed available. Do not use `rollout restart`; it can restart more than one member and defeats the one-at-a-time invariant.
+
+> **Rehearsed 2026-07-15 (w1/m38):** Deleted non-leader `openbao-2`; its replacement scheduled on the same platform node, started sealed, and the leader continued serving with all three peers visible. `scripts/bao-init.sh` unsealed only the restarted member, which returned Ready within 42 seconds. The peer count remained three and the PDB returned to one allowed disruption before the rehearsal ended.
 
 ## Restore
 

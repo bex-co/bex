@@ -16,7 +16,8 @@
 ---
 # bex-system: operator + bex-api
 # Allowed: bex-system itself (internal), traefik (HTTP to bex-api :8090),
-#   monitoring (Prometheus scrape of bex-api metrics).
+#   and monitoring (Prometheus scrape of bex-api metrics). The narrower policy
+#   below admits CNPG control traffic only to bex-db pods.
 # Blocked: tenant pods in the apps namespace.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -40,6 +41,30 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+
+---
+# CNPG's operator talks to each instance manager on TCP 8000 to observe status
+# and coordinate replica creation/switchovers. Keep this exception scoped to
+# bex-db pods instead of opening every bex-system workload to cnpg-system.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-bex-db-management
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: bex-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - protocol: TCP
+          port: 8000
 
 ---
 # bex-registry: zot OCI registry on :5000

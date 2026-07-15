@@ -221,6 +221,6 @@ Local-CAPD quirks (mock cluster only, none apply to prod):
 ## Consequences
 
 - bex-api is hard-dependent on Hydra by design: introspection outage ⇒ the whole API 503s (fail closed). Operational recovery during an Ory incident goes through kubectl, not bex-api — accepted trade-off of deleting the shared-secret escape hatch.
-- Like `bex-db`, both auth DBs are `instances: 1` with no backup schedule yet — **`kratos-db`/`hydra-db` must join the w1/m7 backup/HA work**; losing them loses all identities and clients.
+- The three auth DBs (`kratos-db`, `hydra-db`, `openfga-db`) and `bex-db` run two CNPG instances with required cross-node pod anti-affinity (w1/m38), so a platform-node drain can switch over instead of taking the auth/control plane down. The auth DBs still lack an off-cluster backup schedule; HA covers a node failure, not correlated storage loss.
 - Email flows are live (§11, w4/m7): Kratos's courier and bex-api's mailer share one out-of-band SMTP relay (SendGrid in prod, Mailpit locally), so account recovery, address verification, and workspace invites all send. A relay outage degrades gracefully — recovery/verification flows still initialize (the code is generated) but the mail never arrives, and bex-api records invites without emailing them; no verb hard-fails on a missing courier.
 - Prod DNS records for `auth.bex.co`/`oauth.bex.co` must exist before first sync, or ACME HTTP-01 will retry until they do.

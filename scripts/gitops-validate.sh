@@ -27,6 +27,55 @@ for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/;
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
 
+# Platform CNPG drain-safety guard (w1/m38): the auth/control-plane databases
+# must have a standby on another platform node. CNPG performs a planned
+# switchover before a drain evicts a primary, but only when a replica exists;
+# required anti-affinity makes that replica a real node-failure boundary rather
+# than a second pod on the same node. Explicit `primaryUpdateMethod: switchover`
+# also keeps later pod-template changes from restarting the primary in place.
+echo "==> platform CNPG clusters have HA + required pod anti-affinity"
+for db in \
+  "deploy/gitops/charts/auth-dbs/kratos-db.yaml:auth:kratos-db" \
+  "deploy/gitops/charts/auth-dbs/hydra-db.yaml:auth:hydra-db" \
+  "deploy/gitops/charts/auth-dbs/openfga-db.yaml:auth:openfga-db" \
+  "deploy/gitops/charts/bex-postgres/cluster.yaml:bex-system:bex-db"; do
+  manifest="${db%%:*}"
+  identity="${db#*:}"
+  namespace="${identity%%:*}"
+  name="${identity##*:}"
+  actual_identity="$(yq -N '.metadata.namespace + ":" + .metadata.name' "$manifest")"
+  instances="$(yq -N '.spec.instances' "$manifest")"
+  anti_affinity="$(yq -N '.spec.affinity.podAntiAffinityType' "$manifest")"
+  update_method="$(yq -N '.spec.primaryUpdateMethod' "$manifest")"
+
+  if [ "$actual_identity" != "$namespace:$name" ]; then
+    echo "FAIL: $manifest declares '$actual_identity', want '$namespace:$name'" >&2
+    fail=1
+  fi
+  if ! [[ "$instances" =~ ^[0-9]+$ ]] || [ "$instances" -lt 2 ]; then
+    echo "FAIL: $namespace/$name has spec.instances '$instances', want >=2 for drain-safe failover" >&2
+    fail=1
+  fi
+  if [ "$anti_affinity" != "required" ]; then
+    echo "FAIL: $namespace/$name has affinity.podAntiAffinityType '$anti_affinity', want required" >&2
+    fail=1
+  fi
+  if [ "$update_method" != "switchover" ]; then
+    echo "FAIL: $namespace/$name has primaryUpdateMethod '$update_method', want switchover" >&2
+    fail=1
+  fi
+done
+
+# The bex-db instance manager lives behind bex-system's default-deny ingress
+# policy. Without an explicit cnpg-system peer, the operator cannot extract
+# status, create a standby, or coordinate a switchover even when the Cluster
+# manifest itself is HA-shaped.
+cnpg_bex_ingress="$(yq -N '. | select(.kind == "NetworkPolicy" and .metadata.namespace == "bex-system" and .metadata.name == "allow-cnpg-bex-db-management") | [.spec.podSelector.matchLabels["cnpg.io/cluster"], .spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"], .spec.ingress[0].ports[0].protocol, .spec.ingress[0].ports[0].port] | join(":")' deploy/gitops/base/network-policies.yaml | tr -d '\n')"
+if [ "$cnpg_bex_ingress" != "bex-db:cnpg-system:TCP:8000" ]; then
+  echo "FAIL: bex-db must allow cnpg-system instance management on TCP 8000 only" >&2
+  fail=1
+fi
+
 # App SSH gateway trust-boundary guard (w2/m39, docs/ADR035-ssh.md): only the
 # namespace Role may grant pods/exec, and it grants create only. The bex-api
 # Role must stay read-only for pods and must never acquire exec.
