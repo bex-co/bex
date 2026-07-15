@@ -18,6 +18,7 @@ package projects
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -27,6 +28,18 @@ import (
 // rest.go is the projects REST fragment (bex extension matching Render's project
 // API shape: GET/POST /v1/projects, GET/PATCH/DELETE /v1/projects/{id},
 // PUT /v1/projects/{id}/service-links).
+
+// writeErr maps the projects feature's package-local unavailable sentinel to
+// the same 503 response as the unavailable sentinels declared in core. Core is
+// a leaf and cannot import this package, so core.WriteErr cannot recognize
+// ErrProjectsUnavailable directly.
+func writeErr(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrProjectsUnavailable) {
+		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error(), "message": err.Error(), "id": "unavailable"})
+		return
+	}
+	core.WriteErr(w, err)
+}
 
 // RegisterREST mounts the project CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
@@ -38,7 +51,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		ps, err := s.List(r.Context(), ownerID)
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, ps)
@@ -55,7 +68,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		p, err := s.Create(r.Context(), req.OwnerID, strings.TrimSpace(req.Name))
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusCreated, p)
@@ -64,7 +77,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/projects/{id}", func(w http.ResponseWriter, r *http.Request) {
 		p, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, p)
@@ -80,7 +93,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		p, err := s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(req.Name))
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, p)
@@ -88,7 +101,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	mux.HandleFunc("DELETE /v1/projects/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -110,7 +123,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		p, err := s.SetServices(r.Context(), r.PathValue("id"), req.ServiceIDs)
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, p)
@@ -132,7 +145,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		p, err := s.SetDatabases(r.Context(), r.PathValue("id"), req.DatabaseIDs)
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, p)
@@ -153,7 +166,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		p, err := s.SetKeyValues(r.Context(), r.PathValue("id"), req.KeyValueIDs)
 		if err != nil {
-			core.WriteErr(w, err)
+			writeErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, p)

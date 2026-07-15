@@ -46,10 +46,12 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -618,6 +620,41 @@ func TestAPIKeys_SessionCaller(t *testing.T) {
 // w4/m10's audit-coverage sweep, which reuses it so the two inventories can't
 // drift) walks by reflection. One list, shared, so a new feature added here
 // automatically joins both sweeps.
+type sweepProjectStore struct{}
+
+type sweepProjectResources struct{}
+
+func (sweepProjectResources) ListPostgres(context.Context, string) ([]postgres.PostgresView, error) {
+	return nil, nil
+}
+
+func (sweepProjectResources) ListKeyValues(context.Context, string) ([]keyvalue.KeyValueView, error) {
+	return nil, nil
+}
+
+func (sweepProjectResources) SetProjectID(context.Context, string, string) error { return nil }
+
+func (sweepProjectStore) CreateProject(_ context.Context, tenantID, name string) (store.Project, error) {
+	return store.Project{ID: "prj-sweep", TenantID: tenantID, Name: name}, nil
+}
+
+func (sweepProjectStore) GetProject(context.Context, string) (store.Project, error) {
+	return store.Project{ID: "prj-sweep", TenantID: "tea-b", Name: "sweep"}, nil
+}
+
+func (sweepProjectStore) ListProjects(context.Context, string) ([]store.Project, error) {
+	return nil, nil
+}
+
+func (sweepProjectStore) RenameProject(context.Context, string, string) error { return nil }
+func (sweepProjectStore) DeleteProject(context.Context, string) error         { return nil }
+func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string) error {
+	return nil
+}
+func (sweepProjectStore) ListProjectServices(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
 func sweepableServices(base *core.Base) []any {
 	return []any{
 		&apps.Service{Base: base},
@@ -634,6 +671,12 @@ func sweepableServices(base *core.Base) []any {
 		&github.Service{Base: base},
 		&registrycreds.Service{Base: base},
 		&environments.Service{Base: base},
+		&projects.Service{
+			Base:      base,
+			Store:     sweepProjectStore{},
+			Databases: sweepProjectResources{},
+			KeyValues: sweepProjectResources{},
+		},
 	}
 }
 

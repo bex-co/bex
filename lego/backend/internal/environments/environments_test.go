@@ -18,6 +18,7 @@ package environments
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -165,6 +166,15 @@ func (fakeDenyChecker) Check(context.Context, string, string, string) (bool, err
 	return false, nil
 }
 
+// denyObjectChecker permits the caller-workspace preflight but denies access
+// to one resource-owning workspace. That distinction is what lets the tests
+// below pin 403-before-404 for an existing cross-tenant id.
+type denyObjectChecker string
+
+func (d denyObjectChecker) Check(_ context.Context, _, _, object string) (bool, error) {
+	return object != string(d), nil
+}
+
 func newService(st EnvironmentStore) *Service {
 	return &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
 }
@@ -250,6 +260,37 @@ func TestDeleteEnvironment_NotFoundAfterDelete(t *testing.T) {
 	}
 }
 
+func TestGetCrossTenantIsForbiddenNotNotFound(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-other", TenantID: "tea-other", Name: "other"})
+	st.envs["env-other"] = store.Environment{
+		ID:        "env-other",
+		ProjectID: "prj-other",
+		TenantID:  "tea-other",
+		Name:      "production",
+	}
+	svc := &Service{
+		Base:  &core.Base{Authz: denyObjectChecker(core.WorkspaceObject("tea-other"))},
+		Store: st,
+	}
+
+	_, err := svc.Get(ctxAs("user-a"), "env-other")
+	if !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("cross-tenant Get: got %v, want ErrForbidden", err)
+	}
+	if errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("cross-tenant Get leaked nonexistence semantics: %v", err)
+	}
+}
+
+func TestGetNonexistentIsNotFound(t *testing.T) {
+	svc := newService(newFakeStore())
+	_, err := svc.Get(ctxAs("user-a"), "env-missing")
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("nonexistent Get: got %v, want ErrNotFound", err)
+	}
+}
+
 func TestSetServices_ReplacesFullList(t *testing.T) {
 	st := newFakeStore()
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
@@ -300,6 +341,52 @@ func TestREST_StoreUnavailableIs503(t *testing.T) {
 	mux.ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("GET /v1/environments with no store: got %d, want 503 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode REST body: %v", err)
+	}
+	if body["id"] != "unavailable" || body["message"] != ErrEnvironmentsUnavailable.Error() {
+		t.Fatalf("REST body = %#v, want Render unavailable envelope", body)
+	}
+}
+
+func TestREST_ListUsesRenderCursorEnvelope(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc := newService(st)
+	created, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/environments?projectId=prj-1", nil)
+	mux.ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var body []struct {
+		Cursor      string         `json:"cursor"`
+		Environment map[string]any `json:"environment"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v (body: %s)", err, rec.Body.String())
+	}
+	if len(body) != 1 || body[0].Cursor != created.ID {
+		t.Fatalf("list envelope = %#v, want one item cursor %q", body, created.ID)
+	}
+	got := body[0].Environment
+	if got["id"] != created.ID || got["projectId"] != "prj-1" || got["name"] != "staging" {
+		t.Fatalf("environment = %#v, want populated Render fields", got)
+	}
+	if _, ok := got["databasesIds"]; !ok {
+		t.Fatalf("environment = %#v, missing Render databasesIds alias", got)
+	}
+	if _, ok := got["redisIds"]; !ok {
+		t.Fatalf("environment = %#v, missing Render redisIds alias", got)
 	}
 }
 
