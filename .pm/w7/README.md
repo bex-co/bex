@@ -33,6 +33,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m31** — `renderSubdomainPolicy`: disable the platform subdomain (9 tasks) ← from `/pm-brainstorm` round 6, 2026-07-14 (field-level spec-grep: enum enabled|disabled on webServiceDetails + POST/PATCH, zero hits in `lego/`; bex mirror = drop `<slug>.onbex.co` from `effectiveHosts` while custom hosts serve); host policy is the m6 domain-guard territory
 - [x] **m32** — Service inbound `ipAllowList`: web services + static sites (10 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `[{cidrBlock, description}]` on webServiceDetails + staticSiteDetails POST/PATCH, zero hits in apps; the m5 Traefik-middleware mechanism, HTTP flavor)
 - [ ] **m33** — Fix CNPG bootstrap vs. the tenant egress deny (6 tasks) ← promotes `004` 2026-07-15 (production defect from the `w9/m3` rollout verification: new managed Postgres on tenant nodes stalls in CNPG init — the m4 egress-deny policy selects the workspace label the operator propagates onto CNPG pods, blocking their k8s-API traffic; deny-overrides-allow ⇒ the selectors must be split)
+- [ ] **m34** — Rate-limit response headers (verify-first) (7 tasks) ← from `/pm-brainstorm` round 10, 2026-07-15 (polishes `m3`: bex sends only `Retry-After` on the 429 itself — verified in `internal/api/ratelimit.go`; t001 captures Render's actual header contract from the live API + pinned spec, and a Render-ships-nothing finding closes the milestone as parity-by-absence)
 
 ## Inbox
 
