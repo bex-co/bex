@@ -86,6 +86,10 @@ type patchServiceRequest struct {
 	// "absent" (leave unchanged) is distinct from an explicit value; an
 	// unrecognized value is core.ErrBadRequest.
 	NotifyOnFail *string `json:"notifyOnFail"`
+	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field: "enabled"
+	// or "disabled". A pointer so "absent" (leave unchanged) is distinct from
+	// an explicit value. "disabled" without a custom domain is core.ErrBadRequest.
+	RenderSubdomainPolicy *string `json:"renderSubdomainPolicy"`
 	// Schedule + Command are a cron_job's schedule expression and entrypoint
 	// override (w5/m18). Only honored when the target App is a cron_job
 	// (core.ErrBadRequest otherwise). Pointers so "absent" (leave unchanged) is
@@ -182,6 +186,10 @@ type createServiceRequest struct {
 	// these via separate endpoints; bex also accepts them in the create body).
 	Routes  []renderRoute  `json:"routes"`
 	Headers []renderHeader `json:"headers"`
+	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field: "enabled"
+	// (default) or "disabled". Cannot be "disabled" without at least one custom
+	// domain in Domains.
+	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
 	// DryRun, when true, resolves the spec and returns a preview without any
 	// Kubernetes or store writes — zero side effects (w2/m29). Response status
 	// is 200 (not 201 Created) to signal that no resource was actually created.
@@ -390,6 +398,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Hosts:                   r.Domains,
 		AutoDeploy:              parseYesNo(r.AutoDeploy),
 		NotifyOnFail:            r.NotifyOnFail,
+		SubdomainPolicy:         r.RenderSubdomainPolicy,
 		PreDeployCommand:        preDeploy,
 		PublishPath:             publishPath,
 		Routes:                  routeViewsFromRender(r.Routes),
@@ -595,7 +604,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Name != nil {
 			displayName = req.Name
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil {
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -705,6 +714,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.NotifyOnFail != nil {
 			if app, err = s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.RenderSubdomainPolicy != nil {
+			if app, err = s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

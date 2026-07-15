@@ -62,6 +62,7 @@ limitations under the License.
 //	headers_changed             apps.SetHeaders
 //	custom_domain_added/removed apps.Add/DeleteDomain
 //	notify_on_fail_changed      apps.SetNotifyOnFail            (w4/m21, a bex-only name — Render's field has no dedicated event type)
+//	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
 //
 // # Redaction (structural, not filtered)
 //
@@ -155,9 +156,10 @@ const (
 	TypeCustomDomainAdded       = "custom_domain_added"
 	TypeCustomDomainRemoved     = "custom_domain_removed"
 	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
-	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
-	TypeJobStarted              = "job_started"
-	TypeJobCanceled             = "job_canceled"
+	TypeNotifyOnFailChanged        = "notify_on_fail_changed"
+	TypeSubdomainPolicyChanged     = "subdomain_policy_changed"
+	TypeJobStarted                 = "job_started"
+	TypeJobCanceled                = "job_canceled"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -185,6 +187,7 @@ var eventTypes = map[string]string{
 	"apps.CancelCurrentCronRun":    TypeCronJobRunEnded,
 	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
 	"apps.SetNotifyOnFail":         TypeNotifyOnFailChanged,
+	"apps.SetSubdomainPolicy":      TypeSubdomainPolicyChanged,
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
 	"apps.SetRootDir":              TypeRootDirectoryChanged,
 	"apps.SetBuildFilter":          TypeBuildFilterChanged,

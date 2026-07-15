@@ -106,6 +106,12 @@ export interface ServiceView {
    */
   preDeployCommand: string | null;
   /**
+   * Render's renderSubdomainPolicy (`spec.subdomainPolicy`, w7/m31):
+   * "enabled" (default, platform subdomain active) | "disabled" (platform host
+   * dropped; only custom domains serve). null when not selected (list query).
+   */
+  renderSubdomainPolicy: string | null;
+  /**
    * Built output directory a `static_site` serves (`spec.publishPath`, Render's
    * Publish Directory); null for other types / when not selected. Only the detail
    * `server` query selects it.

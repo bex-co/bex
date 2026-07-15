@@ -88,6 +88,10 @@ type renderService struct {
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
 	// empty means the default "/". Render's healthCheckPath field.
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
+	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
+	// (enabled|disabled), controlling whether the platform .onbex.co subdomain
+	// is active for this service (w7/m31). Always present and non-empty.
+	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
 }
 
 // renderAutoscaling is Render's autoscaling sub-object shape (verified against
@@ -208,6 +212,9 @@ func toRenderService(a AppView) renderService {
 	if a.HealthCheckPath != "" {
 		set("healthCheckPath", a.HealthCheckPath)
 	}
+	if a.RenderSubdomainPolicy != "" {
+		set("renderSubdomainPolicy", a.RenderSubdomainPolicy)
+	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {
 		ras = &renderAutoscaling{
@@ -219,37 +226,38 @@ func toRenderService(a AppView) renderService {
 		}
 	}
 	return renderService{
-		ID:                  publicID,
-		Name:                renderServiceName(a),
-		Slug:                a.Slug,
-		DisplayName:         a.DisplayName,
-		Type:                svcType,
-		Suspended:           core.SuspendedEnum(a.Suspended),
-		DashboardURL:        a.URL,
-		CreatedAt:           a.CreatedAt,
-		UpdatedAt:           a.CreatedAt,
-		ServiceDetails:      details,
-		ImagePath:           a.SourceImage,
-		Suspenders:          []string{},
-		OwnerID:             a.OwnerID,
-		EnvironmentID:       a.EnvironmentID,
-		Phase:               a.Phase,
-		Replicas:            a.Replicas,
-		Revision:            a.Revision,
-		URLs:                a.URLs,
-		Schedule:            a.Schedule,
-		Command:             a.Command,
-		Runs:                a.Runs,
-		LastSuccessfulRunAt: a.LastSuccessfulRunAt,
-		IdleTTLSeconds:      a.IdleTTLSeconds,
-		RootDir:             a.RootDir,
-		BuildFilter:         a.BuildFilter,
-		Repo:                a.Repo,
-		Branch:              a.Branch,
-		Autoscaling:         ras,
-		AutoDeploy:          yesNoEnum(a.AutoDeploy),
-		NotifyOnFail:        a.NotifyOnFail,
-		HealthCheckPath:     a.HealthCheckPath,
+		ID:                    publicID,
+		Name:                  renderServiceName(a),
+		Slug:                  a.Slug,
+		DisplayName:           a.DisplayName,
+		Type:                  svcType,
+		Suspended:             core.SuspendedEnum(a.Suspended),
+		DashboardURL:          a.URL,
+		CreatedAt:             a.CreatedAt,
+		UpdatedAt:             a.CreatedAt,
+		ServiceDetails:        details,
+		ImagePath:             a.SourceImage,
+		Suspenders:            []string{},
+		OwnerID:               a.OwnerID,
+		EnvironmentID:         a.EnvironmentID,
+		Phase:                 a.Phase,
+		Replicas:              a.Replicas,
+		Revision:              a.Revision,
+		URLs:                  a.URLs,
+		Schedule:              a.Schedule,
+		Command:               a.Command,
+		Runs:                  a.Runs,
+		LastSuccessfulRunAt:   a.LastSuccessfulRunAt,
+		IdleTTLSeconds:        a.IdleTTLSeconds,
+		RootDir:               a.RootDir,
+		BuildFilter:           a.BuildFilter,
+		Repo:                  a.Repo,
+		Branch:                a.Branch,
+		Autoscaling:           ras,
+		AutoDeploy:            yesNoEnum(a.AutoDeploy),
+		NotifyOnFail:          a.NotifyOnFail,
+		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
+		HealthCheckPath:       a.HealthCheckPath,
 	}
 }
 

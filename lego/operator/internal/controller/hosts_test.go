@@ -41,6 +41,14 @@ func mkAppSubdomain(name, subdomain, host string, expose bool, hosts ...string) 
 	return a
 }
 
+// mkAppDisabledSubdomain is mkApp with spec.subdomainPolicy=disabled — the
+// w7/m31 case where the tenant has opted the platform host out.
+func mkAppDisabledSubdomain(name string, expose bool, hosts ...string) *appv1alpha1.App {
+	a := mkApp(name, "", expose, hosts...)
+	a.Spec.SubdomainPolicy = appv1alpha1.SubdomainPolicyDisabled
+	return a
+}
+
 func TestEffectiveHosts(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -72,6 +80,13 @@ func TestEffectiveHosts(t *testing.T) {
 		{"dedup across sources", mkApp("a", "a.onbex.co", true, "a.onbex.co", "www.example.com"), "onbex.co",
 			[]string{"a.onbex.co", "www.example.com"}},
 		{"empty entries dropped", mkApp("a", "", false, "", "www.example.com"), "",
+			[]string{"www.example.com"}},
+		// w7/m31: subdomainPolicy=disabled drops the platform host; custom hosts still serve.
+		{"disabled subdomain drops platform host", mkAppDisabledSubdomain("a", true, "www.example.com"), "onbex.co",
+			[]string{"www.example.com"}},
+		{"disabled subdomain with no custom hosts", mkAppDisabledSubdomain("a", true), "onbex.co",
+			nil},
+		{"disabled subdomain without expose", mkAppDisabledSubdomain("a", false, "www.example.com"), "onbex.co",
 			[]string{"www.example.com"}},
 	}
 	for _, tc := range cases {

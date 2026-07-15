@@ -152,6 +152,13 @@ type preDeployCommandArgs struct {
 	PreDeployCommand string `json:"preDeployCommand" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); empty clears the step"`
 }
 
+// subdomainPolicyArgs is set_subdomain_policy's input — Render's
+// renderSubdomainPolicy field (enabled|disabled).
+type subdomainPolicyArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.onbex.co is active) or disabled (platform host dropped; only custom domains serve the App)"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -787,6 +794,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change the pre-deploy command (spec.preDeployCommand → Render's Pre-Deploy Command): a command run to completion against the new revision's image before it serves traffic (typically a database migration). A non-zero exit fails the deploy and leaves the previous revision serving. Pass an empty string to clear the step. Has no effect on cron_job or static_site services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in preDeployCommandArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetPreDeployCommand(ctx, in.ServiceID, in.PreDeployCommand)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_subdomain_policy",
+		Description: "Control whether the platform subdomain (<slug>.onbex.co) is active for a web or static-site service (Render's renderSubdomainPolicy field). 'enabled' (default) keeps the platform host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain to be already configured before disabling — otherwise the service becomes unreachable.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subdomainPolicyArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy)
 		if err != nil {
 			return nil, renderService{}, err
 		}
