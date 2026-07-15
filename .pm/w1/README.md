@@ -71,9 +71,10 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `021.md` — Bare-name resource ids block the Render CLI's client-side resource-type routing (`restart`/`ssh`/`psql`/`kv-cli`/`pgcli`) — architectural (reopens ADR020), flagged for design rather than a quick fix ← from `w9/m2` (Render CLI compatibility), 2026-07-15
 
 _(`018`, `019` promoted to `m30` 2026-07-13)_
+
+> `021.md` (`restart` CLI fix — bare-name fallback in `cli/pkg/resource/service.go`) fixed 2026-07-14, moved to `done/`.
 
 > `022.md` (REST error-body shape swallowing every CLI-visible error message) fixed 2026-07-15 (`dfff3034`), re-verified live against the official Render CLI — note moved to `done/`.
 
