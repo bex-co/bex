@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/jobs"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
@@ -677,6 +678,7 @@ func sweepableServices(base *core.Base) []any {
 			Databases: sweepProjectResources{},
 			KeyValues: sweepProjectResources{},
 		},
+		&jobs.Service{Base: base},
 	}
 }
 

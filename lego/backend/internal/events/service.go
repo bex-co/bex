@@ -154,6 +154,8 @@ const (
 	TypeCustomDomainRemoved     = "custom_domain_removed"
 	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
 	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
+	TypeJobStarted              = "job_started"
+	TypeJobCanceled             = "job_canceled"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -200,6 +202,8 @@ var eventTypes = map[string]string{
 	"envgroups.UnlinkService":      TypeEnvGroupUnlinked,
 	"envgroups.LinkEnvGroup":       TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
 	"deploys.RegenerateDeployHook": TypeDeployHookRegenerated,
+	"jobs.Create":                  TypeJobStarted,
+	"jobs.Cancel":                  TypeJobCanceled,
 }
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —
