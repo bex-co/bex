@@ -12,7 +12,9 @@ export BEX_SSH_HOST_KEY_FILE="$tmp/host"
 export TEST_PUBLIC_KEY_FILE="$tmp/host.pub"
 export TEST_TRACE="$tmp/kubectl.trace"
 export TEST_SCAN_TRACE="$tmp/keyscan.trace"
-export TEST_EDGE_ADDRESSES=$'192.0.2.10\n2001:db8::10'
+# Hetzner also reports the LB's private-network ingress. It must not become a
+# public-DNS requirement or appear in the activation mutation path.
+export TEST_EDGE_ADDRESSES=$'192.0.2.10\n2001:db8::10\n10.10.0.7\nfd00::7'
 export TEST_A_ADDRESSES=192.0.2.10
 export TEST_AAAA_ADDRESSES=2001:db8::10
 
@@ -58,6 +60,7 @@ output="$(bash "$activate" --check)"
 [[ "$(wc -l <"$TEST_TRACE" | tr -d ' ')" == 1 ]]
 assert_contains 'get service traefik' "$TEST_TRACE"
 [[ "$(wc -l <"$TEST_SCAN_TRACE" | tr -d ' ')" == 1 ]]
+[[ "$output" != *'10.10.0.7'* && "$output" != *'fd00::7'* ]]
 
 : >"$TEST_TRACE"
 : >"$TEST_SCAN_TRACE"

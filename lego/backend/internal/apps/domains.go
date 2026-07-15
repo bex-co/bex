@@ -369,7 +369,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 		return DomainView{}, false, errDomainInUse()
 	}
 	if s.Store != nil {
-		if id := app.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(app); id != "" {
 			if err := s.Store.AddDomain(ctx, id, hostname); err != nil {
 				if errors.Is(err, store.ErrConflict) { // lost a race to another App's add
 					return DomainView{}, false, errDomainInUse()
@@ -412,7 +412,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 		return nil // not present — idempotent
 	}
 	if s.Store != nil {
-		if id := app.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(app); id != "" {
 			if err := s.Store.RemoveDomain(ctx, id, hostname); err != nil {
 				return fmt.Errorf("update source of truth: %w", err)
 			}

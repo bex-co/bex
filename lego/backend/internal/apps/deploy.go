@@ -1414,7 +1414,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 				delete(existing.Labels, core.LabelNetworkIsolation)
 			}
 		}
-		if appID := existing.Labels[store.LabelAppID]; appID != "" {
+		if appID := managedAppID(existing); appID != "" {
 			environmentStore, ok := s.Store.(interface {
 				SetAppEnvironment(context.Context, string, string, string) error
 			})
@@ -1427,7 +1427,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		}
 	}
 	if deploySpecChanged && s.Store != nil {
-		if id := existing.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(existing); id != "" {
 			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
 			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation, commit); err != nil {
 				return AppView{}, fmt.Errorf("recording redeploy: %w", err)
