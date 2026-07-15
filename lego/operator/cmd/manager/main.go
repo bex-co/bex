@@ -59,6 +59,21 @@ func envOr(k, def string) string {
 	return def
 }
 
+// positiveEnvInt returns a strictly positive integer from k, or def when k is
+// unset, malformed, zero, or negative. Controller worker counts must never be
+// zero: controller-runtime interprets an unset value as its default of one.
+func positiveEnvInt(k string, def int) int {
+	v := os.Getenv(k)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return def
+	}
+	return n
+}
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -226,20 +241,21 @@ func main() {
 		}
 	}
 	appReconciler := &controller.AppReconciler{
-		Client:              mgr.GetClient(),
-		BuildClient:         buildClient,
-		Scheme:              mgr.GetScheme(),
-		Mode:                envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
-		Registry:            envOr("BEX_REGISTRY", "127.0.0.1:5050"),
-		KpackRegistry:       os.Getenv("BEX_KPACK_REGISTRY"),
-		CNBBuilder:          envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
-		BuildNamespace:      os.Getenv("BEX_BUILD_NAMESPACE"),
-		Runtime:             bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
-		BaseDomain:          envOr("BEX_BASE_DOMAIN", ""),
-		ClusterIssuer:       envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
-		ActivatorService:    envOr("BEX_ACTIVATOR_SERVICE", ""),
-		ActivatorPort:       activatorPort,
-		MaxConcurrentBuilds: maxConcurrentBuilds,
+		Client:                  mgr.GetClient(),
+		BuildClient:             buildClient,
+		Scheme:                  mgr.GetScheme(),
+		Mode:                    envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
+		Registry:                envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+		KpackRegistry:           os.Getenv("BEX_KPACK_REGISTRY"),
+		CNBBuilder:              envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
+		BuildNamespace:          os.Getenv("BEX_BUILD_NAMESPACE"),
+		Runtime:                 bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
+		BaseDomain:              envOr("BEX_BASE_DOMAIN", ""),
+		ClusterIssuer:           envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		ActivatorService:        envOr("BEX_ACTIVATOR_SERVICE", ""),
+		ActivatorPort:           activatorPort,
+		MaxConcurrentBuilds:     maxConcurrentBuilds,
+		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),
 		StaticStore: publish.Store{
 			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
 			Endpoint: envOr("BEX_STATIC_S3_ENDPOINT", ""),
