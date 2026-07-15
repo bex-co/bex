@@ -79,6 +79,11 @@ type updatePlanArgs struct {
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
+type updateVersionArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	Version    string `json:"version" jsonschema:"the target PostgreSQL major version (13 through 18); it must be newer than the running version"`
+}
+
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -147,6 +152,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		} else {
 			v, err = s.SetPlan(ctx, in.PostgresID, in.Plan)
 		}
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_postgres_version",
+		Description: "Upgrade a managed Postgres database to a newer supported major version. The database is offline during CNPG's pg_upgrade. Durable plans require a completed physical backup first; downgrades and unknown versions are rejected.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateVersionArgs) (*mcp.CallToolResult, PostgresView, error) {
+		v, err := s.SetVersion(ctx, in.PostgresID, in.Version)
 		return nil, v, err
 	})
 

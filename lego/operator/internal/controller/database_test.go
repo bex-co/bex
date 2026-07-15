@@ -150,7 +150,7 @@ func TestCnpgClusterSpecBackup(t *testing.T) {
 	}
 
 	// Backups on => barmanObjectStore + retention, credentials from the Secret.
-	on := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore})
+	on := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore, backupServerName: "d-pg16"})
 	backup := on["backup"].(map[string]any)
 	if backup["retentionPolicy"] != backupRetention {
 		t.Errorf("retentionPolicy = %v", backup["retentionPolicy"])
@@ -163,9 +163,10 @@ func TestCnpgClusterSpecBackup(t *testing.T) {
 	if creds["name"] != testStore.S3Secret || creds["key"] != "AWS_ACCESS_KEY_ID" {
 		t.Errorf("s3 credentials ref = %v", creds)
 	}
-	// A cluster's own backup uses the default serverName (its own cluster name).
-	if _, has := bos["serverName"]; has {
-		t.Error("own backup should not pin serverName (defaults to cluster name)")
+	// Major versions use distinct archive namespaces because pg_upgrade resets
+	// the PostgreSQL system ID/timeline.
+	if bos["serverName"] != "d-pg16" {
+		t.Errorf("own backup serverName = %v, want d-pg16", bos["serverName"])
 	}
 	// initdb bootstrap when not recovering.
 	if _, has := on["bootstrap"].(map[string]any)["initdb"]; !has {
@@ -175,7 +176,7 @@ func TestCnpgClusterSpecBackup(t *testing.T) {
 
 func TestCnpgClusterSpecRecovery(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
-	rec := &appv1alpha1.DatabaseRecovery{SourceDatabase: "src", TargetTime: "2026-07-09T10:00:00Z"}
+	rec := &appv1alpha1.DatabaseRecovery{SourceDatabase: "src", SourceBackupServerName: "src-pg16", TargetTime: "2026-07-09T10:00:00Z"}
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", store: &testStore, recovery: rec})
 
 	boot := spec["bootstrap"].(map[string]any)
@@ -194,7 +195,7 @@ func TestCnpgClusterSpecRecovery(t *testing.T) {
 	if ext["name"] != recoverySource {
 		t.Errorf("externalCluster name = %v", ext["name"])
 	}
-	if ext["barmanObjectStore"].(map[string]any)["serverName"] != "src" {
+	if ext["barmanObjectStore"].(map[string]any)["serverName"] != "src-pg16" {
 		t.Errorf("externalCluster serverName should be the source db, got %v", ext["barmanObjectStore"])
 	}
 }
@@ -226,6 +227,15 @@ func TestScheduledBackupSpec(t *testing.T) {
 	}
 	if sb["cluster"].(map[string]any)["name"] != "mydb" {
 		t.Errorf("scheduledBackup cluster = %v", sb["cluster"])
+	}
+}
+
+func TestVersionedBackupServerName(t *testing.T) {
+	if got := versionedBackupServerName("orders", "17"); got != "orders-pg17" {
+		t.Errorf("versioned serverName = %q", got)
+	}
+	if got := versionedBackupServerName("orders", ""); got != "orders" {
+		t.Errorf("legacy serverName = %q", got)
 	}
 }
 

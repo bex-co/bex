@@ -48,6 +48,11 @@ export function useDatabase(id: string): UseDatabaseResult {
     loading,
     error,
     refetch: () => {
+      // A successful lifecycle mutation updates desired state before the
+      // operator necessarily exposes its first converging status. Begin polling
+      // immediately so an eager refetch that still says "available" cannot hide
+      // the subsequent Upgrading/Provisioning transition.
+      startPolling(3000);
       void refetch();
     },
   };

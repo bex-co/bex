@@ -56,6 +56,10 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Creating",
     description: "Database status badge (provisioning)",
   },
+  "databases.statusUpgrading": {
+    message: "Upgrading",
+    description: "Database status badge (offline PostgreSQL major upgrade)",
+  },
   "databases.statusUnavailable": {
     message: "Unavailable",
     description: "Database status badge (provisioning failed)",
@@ -216,6 +220,59 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.metaVersion": {
     message: "Version",
     description: "Database detail metadata row label",
+  },
+  "databases.versionLabel": {
+    message: "PostgreSQL {version}",
+    description: "Formatted PostgreSQL major version label",
+  },
+  "databases.versionUpgradeAction": {
+    message: "Upgrade",
+    description: "Button opening the PostgreSQL major-version upgrade dialog",
+  },
+  "databases.versionUpgrading": {
+    message: "Upgrade in progress",
+    description:
+      "Version-row status while the database is offline for pg_upgrade",
+  },
+  "databases.versionUpgradeTitle": {
+    message: "Upgrade PostgreSQL",
+    description: "PostgreSQL major-version upgrade dialog title",
+  },
+  "databases.versionUpgradeDescription": {
+    message:
+      "Upgrade this database from PostgreSQL {version} to a newer supported major version.",
+    description: "PostgreSQL major-version upgrade dialog description",
+  },
+  "databases.versionUpgradeTarget": {
+    message: "Target version",
+    description: "PostgreSQL major-version upgrade target selector label",
+  },
+  "databases.versionUpgradeDowntime": {
+    message:
+      "The database will be unavailable while the offline upgrade runs. Test compatibility first and schedule downtime; large databases can take up to an hour.",
+    description:
+      "Downtime warning in the PostgreSQL major-version upgrade dialog",
+  },
+  "databases.versionUpgradeErrorTitle": {
+    message: "Upgrade blocked",
+    description:
+      "Inline backend-guard error title in the version upgrade dialog",
+  },
+  "databases.versionUpgradeCancel": {
+    message: "Cancel",
+    description: "PostgreSQL major-version upgrade dialog cancel button",
+  },
+  "databases.versionUpgradeConfirm": {
+    message: "Upgrade to PostgreSQL {version}",
+    description: "PostgreSQL major-version upgrade dialog confirmation button",
+  },
+  "databases.versionUpgradeAccepted": {
+    message: "Upgrade to PostgreSQL {version} started.",
+    description: "Toast after a PostgreSQL major-version upgrade is accepted",
+  },
+  "databases.versionUpgradeError": {
+    message: "Couldn't start the PostgreSQL upgrade. Please try again.",
+    description: "Fallback error when the PostgreSQL upgrade mutation fails",
   },
   "databases.metaDatabaseName": {
     message: "Database",

@@ -9,6 +9,7 @@ import type { DatabaseStatusKey } from "@/features/databases/types";
 export const STATUS_LABEL: Record<DatabaseStatusKey, keyof typeof en> = {
   available: "databases.statusAvailable",
   creating: "databases.statusCreating",
+  upgrading: "databases.statusUpgrading",
   unavailable: "databases.statusUnavailable",
   unknown: "databases.statusUnknown",
 };

@@ -388,6 +388,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name                   *string             `json:"name,omitempty"`
 		Plan                   *string             `json:"plan,omitempty"`
+		Version                *string             `json:"version,omitempty"`
 		DiskSizeGB             *int32              `json:"diskSizeGB,omitempty"`
 		EnableHighAvailability *bool               `json:"enableHighAvailability,omitempty"`
 		IPAllowList            *[]IPAllowListEntry `json:"ipAllowList,omitempty"`
@@ -406,7 +407,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, fmt.Errorf("%w: renaming a Postgres database isn't supported — bex uses the database name as its id (docs/ADR020-identifiers.md)", core.ErrBadRequest))
 		return
 	}
-	patch := PostgresPatch{Plan: req.Plan, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
+	patch := PostgresPatch{Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
 	if req.IPAllowList != nil {
 		cidrs := ipAllowListFromWire(*req.IPAllowList)
 		patch.IPAllowList = &cidrs

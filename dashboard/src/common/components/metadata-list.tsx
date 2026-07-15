@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -7,7 +8,7 @@ import {
 
 export interface MetadataRow {
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 export interface MetadataListProps {
@@ -35,7 +36,7 @@ export function MetadataList({ title, rows }: MetadataListProps) {
               className="flex justify-between gap-4 border-b pb-2 last:border-0 sm:last:border-b"
             >
               <dt className="text-sm text-muted-foreground">{row.label}</dt>
-              <dd className="truncate text-sm font-medium">{row.value}</dd>
+              <dd className="min-w-0 text-sm font-medium">{row.value}</dd>
             </div>
           ))}
         </dl>

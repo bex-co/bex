@@ -198,7 +198,11 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	}
 	version := req.Version
 	if version == "" {
-		version = src.Spec.Version
+		version = currentPostgresVersion(src)
+	}
+	sourceBackupServerName := src.Status.BackupServerName
+	if sourceBackupServerName == "" {
+		sourceBackupServerName = src.Name
 	}
 	newDB := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
@@ -206,8 +210,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 			Plan:    plan,
 			Version: version,
 			Recovery: &appv1alpha1.DatabaseRecovery{
-				SourceDatabase: name,
-				TargetTime:     req.TargetTime,
+				SourceDatabase:         name,
+				SourceBackupServerName: sourceBackupServerName,
+				TargetTime:             req.TargetTime,
 			},
 		},
 	}

@@ -75,6 +75,7 @@ export function toDatabaseDetailView(
           : null,
       })),
     externalHost: d.externalHost ?? null,
+    backupsEnabled: d.backupsEnabled ?? false,
   };
 }
 
@@ -84,6 +85,7 @@ export function toDatabaseDetailView(
 const STATUS_MAP: Record<string, DatabaseStatus> = {
   available: { key: "available", variant: "default" },
   creating: { key: "creating", variant: "outline" },
+  upgrading: { key: "upgrading", variant: "secondary" },
   unavailable: { key: "unavailable", variant: "destructive" },
 };
 
@@ -96,7 +98,8 @@ export function deriveStatus(d: { status: string }): DatabaseStatus {
 
 /** True while the database is still converging (used to poll the list live). */
 export function isConverging(d: { status: string }): boolean {
-  return deriveStatus(d).key === "creating";
+  const key = deriveStatus(d).key;
+  return key === "creating" || key === "upgrading";
 }
 
 /** Stat-tile counts computed from the live list (total / available / creating). */

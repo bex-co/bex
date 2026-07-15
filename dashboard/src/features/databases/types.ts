@@ -46,6 +46,8 @@ export interface DatabaseDetailView extends DatabaseView {
   readReplicas: ReadReplicaView[];
   /** SNI host for the external endpoint, or null when private. */
   externalHost: string | null;
+  /** Whether the operator has configured continuous physical backups. */
+  backupsEnabled: boolean;
 }
 
 /** Full connection strings (with password) for one named read replica. */
@@ -80,6 +82,7 @@ export interface DatabaseInstanceTypeView {
 export type DatabaseStatusKey =
   | "available"
   | "creating"
+  | "upgrading"
   | "unavailable"
   | "unknown";
 

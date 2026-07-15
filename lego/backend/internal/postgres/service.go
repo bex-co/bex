@@ -23,11 +23,13 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -35,6 +37,21 @@ import (
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+var supportedPostgresVersions = []string{"13", "14", "15", "16", "17", "18"}
+
+func postgresVersionKnown(version string) bool {
+	for _, supported := range supportedPostgresVersions {
+		if version == supported {
+			return true
+		}
+	}
+	return false
+}
+
+func supportedPostgresVersionText() string {
+	return strings.Join(supportedPostgresVersions, "|")
+}
 
 // Service exposes managed Postgres as Render's "postgres" shape.
 type Service struct {
@@ -237,6 +254,8 @@ func dbStatus(p appv1alpha1.DatabasePhase) string {
 	switch p {
 	case appv1alpha1.DBPhaseReady:
 		return "available"
+	case appv1alpha1.DBPhaseUpgrading:
+		return "upgrading"
 	case appv1alpha1.DBPhaseFailed:
 		return "unavailable"
 	default:
@@ -261,11 +280,15 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		}
 		replicas = append(replicas, rv)
 	}
+	version := d.Status.CurrentVersion
+	if version == "" {
+		version = d.Spec.Version
+	}
 	return PostgresView{
 		ID:                      d.Name,
 		Name:                    d.Name,
 		Plan:                    d.Spec.Plan,
-		Version:                 d.Spec.Version,
+		Version:                 version,
 		Status:                  dbStatus(d.Status.Phase),
 		DatabaseName:            dbn,
 		DatabaseUser:            dbn + "_user",
@@ -360,6 +383,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	}
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("name is required")
+	}
+	if req.Version != "" && !postgresVersionKnown(req.Version) {
+		return PostgresView{}, unknownPostgresVersionError(req.Version)
 	}
 	cidrs := ipAllowListFromWire(req.IPAllowList)
 	if err := core.ValidateCIDRs(cidrs); err != nil {
@@ -525,6 +551,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 // mirroring the pointer fields on the CLI's generated PostgresPATCHInput).
 type PostgresPatch struct {
 	Plan                   *string
+	Version                *string
 	DiskSizeGB             *int32
 	EnableHighAvailability *bool
 	IPAllowList            *[]string // nil = unchanged; non-nil empty slice clears it
@@ -539,6 +566,9 @@ func (patch PostgresPatch) validate() error {
 			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 		}
 	}
+	if patch.Version != nil && !postgresVersionKnown(*patch.Version) {
+		return unknownPostgresVersionError(*patch.Version)
+	}
 	if patch.IPAllowList != nil {
 		if err := core.ValidateCIDRs(*patch.IPAllowList); err != nil {
 			return err
@@ -550,6 +580,9 @@ func (patch PostgresPatch) validate() error {
 func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	if patch.Plan != nil {
 		d.Spec.Plan = *patch.Plan
+	}
+	if patch.Version != nil {
+		d.Spec.Version = *patch.Version
 	}
 	if patch.DiskSizeGB != nil {
 		d.Spec.StorageGB = *patch.DiskSizeGB
@@ -580,6 +613,11 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
+	if patch.Version != nil {
+		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
+			return PostgresView{}, err
+		}
+	}
 	return s.patchDatabaseObj(ctx, d, patch.apply)
 }
 
@@ -593,9 +631,120 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
+	if patch.Version != nil {
+		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
+			return PostgresView{}, err
+		}
+	}
 	preview := d.DeepCopy()
 	patch.apply(preview)
 	return pgView(preview), nil
+}
+
+func unknownPostgresVersionError(version string) error {
+	return core.NewBadRequestError(
+		"POSTGRES_VERSION_UNKNOWN",
+		fmt.Sprintf("PostgreSQL version %q is not supported; choose one of %s", version, supportedPostgresVersionText()),
+		map[string]any{"version": version, "supportedVersions": supportedPostgresVersions},
+	)
+}
+
+func currentPostgresVersion(d *appv1alpha1.Database) string {
+	if d.Status.CurrentVersion != "" {
+		return d.Status.CurrentVersion
+	}
+	return d.Spec.Version
+}
+
+func planRequiresUpgradeBackup(plan string) bool {
+	tier, ok := tiers.Postgres.ByID(plan)
+	return ok && tier.Backup
+}
+
+func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Database) bool {
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(cnpgBackupGVK)
+	if err := s.Client.List(ctx, list, client.InNamespace(s.Namespace), client.MatchingLabels{labelCNPGCluster: d.Name}); err != nil {
+		return false
+	}
+	serverName := d.Status.BackupServerName
+	if serverName == "" {
+		serverName = d.Name
+	}
+	for i := range list.Items {
+		backup := &list.Items[i]
+		phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")
+		backupServerName, _, _ := unstructured.NestedString(backup.Object, "status", "serverName")
+		// Older CNPG objects may omit serverName when it defaulted to the
+		// cluster name. Only that legacy generation may use the empty value.
+		if phase == "completed" && (backupServerName == serverName || (backupServerName == "" && serverName == d.Name)) {
+			return true
+		}
+	}
+	return false
+}
+
+// validateVersionUpgrade is the shared safety gate for the dedicated GraphQL/
+// MCP verb and REST's partial PATCH. Major versions are upward-only. A plan
+// whose durability contract includes backups must have a completed physical
+// backup before the offline pg_upgrade begins; checking BackupsEnabled alone is
+// insufficient because the first ScheduledBackup may still be pending.
+func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) error {
+	if !postgresVersionKnown(target) {
+		return unknownPostgresVersionError(target)
+	}
+	if d.Status.Phase == appv1alpha1.DBPhaseUpgrading {
+		return core.NewConflictError(
+			"POSTGRES_UPGRADE_IN_PROGRESS",
+			"a PostgreSQL major-version upgrade is already in progress",
+			map[string]any{"targetVersion": d.Spec.Version},
+		)
+	}
+	current := d.Status.CurrentVersion
+	currentMajor, currentErr := strconv.Atoi(current)
+	targetMajor, targetErr := strconv.Atoi(target)
+	if currentErr != nil || current == "" {
+		return core.NewConflictError(
+			"POSTGRES_VERSION_NOT_OBSERVED",
+			"the running PostgreSQL version has not been observed yet; wait for the database to become available",
+			map[string]any{"targetVersion": target},
+		)
+	}
+	if targetErr != nil || targetMajor <= currentMajor {
+		return core.NewBadRequestError(
+			"POSTGRES_VERSION_NOT_NEWER",
+			fmt.Sprintf("PostgreSQL version upgrades are upward-only: target %s must be newer than current version %s", target, current),
+			map[string]any{"currentVersion": current, "targetVersion": target},
+		)
+	}
+	requiresBackup := planRequiresUpgradeBackup(d.Spec.Plan)
+	if patchedPlan != nil {
+		requiresBackup = requiresBackup || planRequiresUpgradeBackup(*patchedPlan)
+	}
+	if requiresBackup && (!d.Status.BackupsEnabled || !s.hasCompletedBackup(ctx, d)) {
+		return core.NewConflictError(
+			"POSTGRES_UPGRADE_BACKUP_REQUIRED",
+			"a completed physical backup is required before upgrading this durable Postgres instance",
+			map[string]any{"currentVersion": current, "targetVersion": target, "plan": d.Spec.Plan},
+		)
+	}
+	return nil
+}
+
+// SetVersion requests an offline CNPG major-version upgrade. The operator
+// observes the spec change, updates Cluster.spec.imageName, and reports the
+// pg_upgrade lifecycle through Database.status.
+func (s *Service) SetVersion(ctx context.Context, name, target string) (PostgresView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if err := s.validateVersionUpgrade(ctx, d, target, nil); err != nil {
+		return PostgresView{}, err
+	}
+	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+		d.Spec.Version = target
+	})
 }
 
 // patchDatabaseObj applies mutate to an already-fetched Database and writes it
