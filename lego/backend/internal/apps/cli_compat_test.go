@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -41,6 +42,9 @@ func TestRenderServiceSupportsOfficialCLICloneAndRename(t *testing.T) {
 			Name:              "immutable-id",
 			Namespace:         "default",
 			CreationTimestamp: metav1.NewTime(time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)),
+			Annotations: map[string]string{
+				resourcemeta.UpdatedAtAnnotation: "2026-07-14T12:05:00Z",
+			},
 		},
 		Spec: appv1alpha1.AppSpec{
 			DisplayName: "Friendly API",
@@ -59,6 +63,9 @@ func TestRenderServiceSupportsOfficialCLICloneAndRename(t *testing.T) {
 	}
 	if got.CreatedAt == "" || got.UpdatedAt == "" {
 		t.Fatalf("CLI-required timestamps missing: created=%q updated=%q", got.CreatedAt, got.UpdatedAt)
+	}
+	if got.UpdatedAt == got.CreatedAt {
+		t.Fatalf("updatedAt aliases createdAt: %q", got.UpdatedAt)
 	}
 	if n, ok := got.ServiceDetails["numInstances"].(int); !ok || n != 2 {
 		t.Fatalf("serviceDetails.numInstances = %#v, want 2", got.ServiceDetails["numInstances"])

@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -955,7 +956,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	}
 	// Idempotent update: short-circuit when the create-owned fields already match.
 	if !createOwnedSpecChanged(existing.Spec, desired) {
-		return view(existing), nil
+		return s.view(existing), nil
 	}
 	// A real change to an EXISTING service via the stack-apply path is the
 	// "direct-deploy-override" w6/m19 names: a manual apply overriding what's
@@ -984,13 +985,14 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		existing.Spec.CloneSecret = secretName
 	}
 	existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	resourcemeta.Touch(existing, s.Now())
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
 		return AppView{}, err
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
-	return view(existing), nil
+	return s.view(existing), nil
 }
 
 // createOwnedSpecChanged reports whether applying `want`'s create-owned fields
@@ -1027,6 +1029,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDa
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		applyDatabaseSpec(&existing.Spec, db.spec)
+		resourcemeta.Touch(&existing, s.Now())
 		if err := s.Client.Patch(ctx, &existing, base); err != nil {
 			return StackDatabaseView{}, err
 		}
@@ -1042,6 +1045,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDa
 	if tenantID, ok := s.Tenant(ctx); ok {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
+	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		return StackDatabaseView{}, err
 	}

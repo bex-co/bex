@@ -24,7 +24,24 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
+
+type renderOwner struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
+	Type  string `json:"type"`
+}
+
+// renderPostgres is the REST-only Render enrichment. PostgresView remains the
+// neutral GraphQL/MCP contract and retains bex's ownerId extension.
+type renderPostgres struct {
+	PostgresView
+	Owner        *renderOwner `json:"owner,omitempty"`
+	Region       string       `json:"region,omitempty"`
+	DashboardURL string       `json:"dashboardUrl,omitempty"`
+}
 
 // postgresWithCursor is components.schemas.postgresWithCursor — the list-item
 // envelope GET /v1/postgres returns as a bare JSON array (cursor is a SIBLING
@@ -32,15 +49,41 @@ import (
 // serviceWithCursor/ownerWithCursor use), verified against the render-oss/cli
 // generated client.
 type postgresWithCursor struct {
-	Postgres PostgresView `json:"postgres"`
-	Cursor   string       `json:"cursor"`
+	Postgres renderPostgres `json:"postgres"`
+	Cursor   string         `json:"cursor"`
 }
 
-func toPostgresList(pgs []PostgresView) []postgresWithCursor {
+func (s *Service) renderPostgres(ctx context.Context, pgs []PostgresView) []renderPostgres {
+	ownerIDs := make([]string, 0, len(pgs))
+	for _, pg := range pgs {
+		ownerIDs = append(ownerIDs, pg.OwnerID)
+	}
+	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	out := make([]renderPostgres, 0, len(pgs))
+	for _, pg := range pgs {
+		rendered := renderPostgres{
+			PostgresView: pg,
+			Region:       s.Metadata.PlatformRegion(),
+			DashboardURL: s.Metadata.DashboardURL("databases", pg.ID),
+		}
+		if owner, ok := owners[pg.OwnerID]; ok && owner.Available() {
+			rendered.Owner = &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
+		}
+		out = append(out, rendered)
+	}
+	return out
+}
+
+func (s *Service) renderOnePostgres(ctx context.Context, pg PostgresView) renderPostgres {
+	return s.renderPostgres(ctx, []PostgresView{pg})[0]
+}
+
+func (s *Service) toPostgresList(ctx context.Context, pgs []PostgresView) []postgresWithCursor {
+	rendered := s.renderPostgres(ctx, pgs)
 	out := make([]postgresWithCursor, 0, len(pgs))
-	for _, p := range pgs {
+	for i, p := range pgs {
 		// cursor is opaque in Render; the Database name/id is a stable, valid cursor.
-		out = append(out, postgresWithCursor{Postgres: p, Cursor: p.ID})
+		out = append(out, postgresWithCursor{Postgres: rendered[i], Cursor: p.ID})
 	}
 	return out
 }
@@ -57,7 +100,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, status, pg)
+			core.WriteJSON(w, status, s.renderOnePostgres(r.Context(), pg))
 		}
 	}
 	for _, base := range []string{"/v1/postgres", "/v1/databases"} {
@@ -86,7 +129,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// Postgres objects breaks the official CLI's list decode.
 			after, limit := core.PageParams(q)
 			page := core.Page(out, after, limit, func(p PostgresView) string { return p.ID })
-			core.WriteJSON(w, http.StatusOK, toPostgresList(page)) // [{postgres, cursor}, ...]
+			core.WriteJSON(w, http.StatusOK, s.toPostgresList(r.Context(), page)) // [{postgres, cursor}, ...]
 		})
 		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 			var req CreatePostgresRequest
@@ -103,10 +146,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 			if req.DryRun {
-				core.WriteJSON(w, http.StatusOK, pg) // dry-run: 200 (nothing created, w2/m29)
+				core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg)) // dry-run: 200 (nothing created, w2/m29)
 				return
 			}
-			core.WriteJSON(w, http.StatusCreated, pg) // Render: create => 201
+			core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // Render: create => 201
 		})
 		mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 			pg, err := s.GetPostgres(r.Context(), r.PathValue("id"))
@@ -114,7 +157,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, pg)
+			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 		})
 		mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdatePostgres)
 		mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +227,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusCreated, pg) // a new instance => 201
+			core.WriteJSON(w, http.StatusCreated, s.renderOnePostgres(r.Context(), pg)) // a new instance => 201
 		})
 		listExports := func(w http.ResponseWriter, r *http.Request) {
 			out, err := s.ListExports(r.Context(), r.PathValue("id"))
@@ -238,7 +281,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, pg)
+			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 		})
 		mux.HandleFunc("GET "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
 			users, err := s.ListUsers(r.Context(), r.PathValue("id"))
@@ -325,7 +368,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, pg)
+			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 		})
 	}
 }
@@ -375,7 +418,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, pg)
+		core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 		return
 	}
 	pg, err := s.UpdatePostgres(r.Context(), id, patch)
@@ -383,5 +426,5 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	core.WriteJSON(w, http.StatusOK, pg)
+	core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 }

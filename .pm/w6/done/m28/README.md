@@ -1,21 +1,23 @@
 # w6 · m28 — Render resource metadata: owner · region · dashboard URL · updated timestamp
 
-**Worker:** worker6 **Goal:** Make Service, Postgres, and Key Value REST objects carry truthful Render-compatible `owner`, `region`, `dashboardUrl`, and `updatedAt` metadata so the unmodified official Render CLI and other Render clients show complete resource identity and navigation details. **Status:** todo
+**Worker:** worker6 **Goal:** Make Service, Postgres, and Key Value REST objects carry truthful Render-compatible `owner`, `region`, `dashboardUrl`, and `updatedAt` metadata so the unmodified official Render CLI and other Render clients show complete resource identity and navigation details. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Pin the Render metadata contract and choose authoritative region, URL, and timestamp sources | 40m | — |
-| t002 | Add a reusable workspace-owner lookup and wire it into all three resource services | 45m | t001 |
-| t003 | Complete Service REST metadata without conflating app URLs, dashboard routes, or timestamps | 45m | t002 |
-| t004 | Add the nested owner and remaining Render metadata to managed Postgres REST objects | 45m | t002 |
-| t005 | Reconcile Key Value's partial owner adapter and add its remaining truthful metadata | 40m | t002 |
-| t006 | Verify all resource shapes through the official CLI and update compatibility/architecture docs | 40m | t003, t004, t005 |
-| t007 | Render parity — audit REST · GraphQL · MCP · dashboard · official CLI metadata semantics | 30m | t006 |
-| t008 | Simplify — run `$simplify` over metadata projection, owner lookup, and server wiring | 30m | t007 |
-| t009 | Test coverage — harden shape, omission, authorization, and timestamp regression coverage | 45m | t007 |
-| t010 | Closeout — verify the DoD, move tasks/milestone to `done/`, and sync the w6 roadmap | 15m | t008, t009 |
+| t001 | Pin the Render metadata contract and choose authoritative region, URL, and timestamp sources | 40m | — — **DONE** |
+| t002 | Add a reusable workspace-owner lookup and wire it into all three resource services | 45m | t001 — **DONE** |
+| t003 | Complete Service REST metadata without conflating app URLs, dashboard routes, or timestamps | 45m | t002 — **DONE** |
+| t004 | Add the nested owner and remaining Render metadata to managed Postgres REST objects | 45m | t002 — **DONE** |
+| t005 | Reconcile Key Value's partial owner adapter and add its remaining truthful metadata | 40m | t002 — **DONE** |
+| t006 | Verify all resource shapes through the official CLI and update compatibility/architecture docs | 40m | t003, t004, t005 — **DONE** |
+| t007 | Render parity — audit REST · GraphQL · MCP · dashboard · official CLI metadata semantics | 30m | t006 — **DONE** |
+| t008 | Simplify — run `$simplify` over metadata projection, owner lookup, and server wiring | 30m | t007 — **DONE** |
+| t009 | Test coverage — harden shape, omission, authorization, and timestamp regression coverage | 45m | t007 — **DONE** |
+| t010 | Closeout — verify the DoD, move tasks/milestone to `done/`, and sync the w6 roadmap | 15m | t008, t009 — **DONE** |
+
+**Completed 2026-07-15.** One neutral `internal/resourcemeta` contract now owns the region/dashboard/update-time sources and batched owner resolution seam; package-local REST adapters preserve the Service/Postgres/Key Value wire shapes without leaking nested owners into GraphQL or MCP. `BEX_REGION` is explicit and optional, dashboard links use only `BEX_DASHBOARD_URL` plus existing detail routes, and API writes stamp an authoritative annotation while legacy reconciliation falls back to Kubernetes managed fields or honest omission. Cross-resource integration tests cover configured/unconfigured/store-off shapes, cross-tenant denial, workspace rename/deletion, and stable/advancing timestamps. The unmodified pinned Render CLI passed the strengthened self-cleaning verifier live against dev-9, including raw REST plus JSON/text projections and mutation timestamps. The CLI's generated Service text view has no workspace-name or region fields, so those two facts are deliberately asserted on raw REST; Postgres and Key Value text render both. Backend build/tests/lint, shell syntax, Markdown formatting, and cleanup checks pass. The requested `$simplify` skill was not installed in this session; a manual diff-wide simplification pass centralized the shared owner availability rule and removed the obsolete Service-list mapper while preserving package-local wire types.
 
 ## Definition of done
 

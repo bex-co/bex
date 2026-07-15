@@ -4,20 +4,23 @@
 # Invoked via `scripts/cli-compat.sh verify` (which sets up RENDER_HOST/
 # RENDER_API_KEY/RENDER_WORKSPACE first) — do not run this file directly.
 #
-# Two groups: side-effect-free rows re-run as-is (login, workspace current,
-# workspaces, projects); the KeyValue lifecycle (RC3/RC4 fix, 2026-07-15,
-# dfff3034) creates a uniquely-named real resource and cleans it up in a trap
-# so a failure mid-way never leaves it behind. `postgres create` is a genuine
-# ✅ too but isn't cleaned up here — see .pm/w9/done/m2/t002's evidence log.
+# Side-effect-free rows re-run as-is; lifecycle checks create uniquely named
+# resources and clean all of them up in a trap so failures leave no residue.
 set -uo pipefail
 RENDER_BIN="${RENDER_BIN:-.pm/w9/dev-9/bin/render}"
 fail=0
 INSTANCE_NAME=""
+PG_NAME=""
 KV_NAME=""
+EXPECTED_REGION="${BEX_EXPECTED_REGION:-local-capd}"
+EXPECTED_DASHBOARD_URL="${BEX_EXPECTED_DASHBOARD_URL:-http://localhost:50090}"
 
 cleanup() {
   if [ -n "$INSTANCE_NAME" ]; then
     "$RENDER_BIN" services delete "$INSTANCE_NAME" --confirm -o json >/dev/null 2>&1 || true
+  fi
+  if [ -n "$PG_NAME" ]; then
+    "$RENDER_BIN" postgres delete "$PG_NAME" --confirm -o json >/dev/null 2>&1 || true
   fi
   if [ -n "$KV_NAME" ]; then
     "$RENDER_BIN" keyvalues delete "$KV_NAME" --confirm -o json >/dev/null 2>&1 || true
@@ -91,6 +94,47 @@ for row in rows:
 '
 }
 
+# valid_raw_metadata KIND ID ROUTE — reads one raw bex-api REST object and
+# validates the metadata that some CLI output adapters intentionally flatten or
+# omit (Service has ownerId rather than nested owner; KeyValueOut drops
+# dashboardUrl). The unmodified CLI still performs the HTTP decode first, while
+# this assertion prevents its output projection from hiding a server regression.
+valid_raw_metadata() {
+  local kind="$1" id="$2" route="$3"
+  curl -sf -H "Authorization: Bearer $RENDER_API_KEY" "${RENDER_HOST%/}/$kind/$id" | \
+    EXPECTED_OWNER="$RENDER_WORKSPACE" EXPECTED_REGION="$EXPECTED_REGION" \
+    EXPECTED_DASHBOARD="$EXPECTED_DASHBOARD_URL/$route/$id" python3 -c '
+import datetime, json, os, sys
+d = json.load(sys.stdin)
+owner = d.get("owner")
+assert isinstance(owner, dict) and owner.get("id") == os.environ["EXPECTED_OWNER"]
+assert isinstance(owner.get("name"), str) and owner["name"]
+assert owner.get("type") == "team"
+assert d.get("dashboardUrl") == os.environ["EXPECTED_DASHBOARD"]
+region = d.get("region")
+if region is None:
+    region = d.get("serviceDetails", {}).get("region")
+assert region == os.environ["EXPECTED_REGION"]
+created = datetime.datetime.fromisoformat(d["createdAt"].replace("Z", "+00:00"))
+updated = datetime.datetime.fromisoformat(d["updatedAt"].replace("Z", "+00:00"))
+assert updated >= created
+'
+}
+
+raw_updated_at() {
+  local kind="$1" id="$2"
+  curl -sf -H "Authorization: Bearer $RENDER_API_KEY" "${RENDER_HOST%/}/$kind/$id" | \
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["updatedAt"])'
+}
+
+timestamp_advanced() {
+  BEFORE="$1" AFTER="$2" python3 -c '
+import datetime, os
+parse = lambda s: datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+assert parse(os.environ["AFTER"]) > parse(os.environ["BEFORE"])
+'
+}
+
 check "login recognizes RENDER_API_KEY" \
   "Success: CLI is already authenticated." \
   "$RENDER_BIN" login --confirm -o json
@@ -139,6 +183,23 @@ else
     echo "  got: $instance_create"
     fail=1
   else
+    if valid_raw_metadata services "$INSTANCE_ID" services; then
+      echo "PASS: service raw REST metadata has real owner/region/dashboard/timestamps"
+    else
+      echo "FAIL: service raw REST metadata has real owner/region/dashboard/timestamps"
+      fail=1
+    fi
+    service_updated_before=$(raw_updated_at services "$INSTANCE_ID" 2>/dev/null || true)
+    check "service update mutates through official CLI" \
+      '"healthCheckPath":[[:space:]]*"/metadata-ready"' \
+      "$RENDER_BIN" services update "$INSTANCE_NAME" --health-check-path /metadata-ready --confirm -o json
+    service_updated_after=$(raw_updated_at services "$INSTANCE_ID" 2>/dev/null || true)
+    if [ -n "$service_updated_before" ] && [ -n "$service_updated_after" ] && timestamp_advanced "$service_updated_before" "$service_updated_after"; then
+      echo "PASS: service updatedAt advances after update"
+    else
+      echo "FAIL: service updatedAt did not advance after update ($service_updated_before -> $service_updated_after)"
+      fail=1
+    fi
     instance_json=""
     instance_status=1
     for _ in $(seq 1 30); do
@@ -181,6 +242,44 @@ else
   fi
 fi
 
+# Postgres metadata lifecycle: the generated PostgresDetail keeps every target
+# field, so both JSON and text assertions run through the unmodified CLI.
+PG_NAME="verify-pg-$$"
+pg_create=$("$RENDER_BIN" postgres create --name "$PG_NAME" --plan free --version 16 --confirm -o json 2>&1)
+pg_create_status=$?
+if [ "$pg_create_status" != 0 ]; then
+  echo "FAIL: postgres metadata setup create (exit $pg_create_status)"
+  echo "  got: $pg_create"
+  fail=1
+else
+  if valid_raw_metadata postgres "$PG_NAME" databases; then
+    echo "PASS: postgres raw REST metadata has real owner/region/dashboard/timestamps"
+  else
+    echo "FAIL: postgres raw REST metadata has real owner/region/dashboard/timestamps"
+    fail=1
+  fi
+  check "postgres text renders Workspace" \
+    "Workspace:[[:space:]]+.*$RENDER_WORKSPACE" \
+    "$RENDER_BIN" postgres get "$PG_NAME" -o text
+  check "postgres text renders configured Region" \
+    "Region:[[:space:]]*$EXPECTED_REGION" \
+    "$RENDER_BIN" postgres get "$PG_NAME" -o text
+  check "postgres text renders dashboard route" \
+    "Dashboard:[[:space:]]*$EXPECTED_DASHBOARD_URL/databases/$PG_NAME" \
+    "$RENDER_BIN" postgres get "$PG_NAME" -o text
+  pg_updated_before=$(raw_updated_at postgres "$PG_NAME" 2>/dev/null || true)
+  check "postgres update mutates through official CLI" \
+    "\"plan\":[[:space:]]*\"basic-1gb\"" \
+    "$RENDER_BIN" postgres update "$PG_NAME" --plan basic-1gb -o json
+  pg_updated_after=$(raw_updated_at postgres "$PG_NAME" 2>/dev/null || true)
+  if [ -n "$pg_updated_before" ] && [ -n "$pg_updated_after" ] && timestamp_advanced "$pg_updated_before" "$pg_updated_after"; then
+    echo "PASS: postgres updatedAt advances after update"
+  else
+    echo "FAIL: postgres updatedAt did not advance ($pg_updated_before -> $pg_updated_after)"
+    fail=1
+  fi
+fi
+
 missing_output=$("$RENDER_BIN" services instances srv-00000000000000000000 -o json 2>&1)
 missing_status=$?
 if [ "$missing_status" = 0 ] || ! grep -qE '404|not found' <<<"$missing_output"; then
@@ -207,6 +306,21 @@ checkFields "keyvalues create: owner/options nested + underscore maxmemoryPolicy
   "$RENDER_BIN" keyvalues create --name "$KV_NAME" \
     --ip-allow-list "cidr=10.0.0.0/8,description=verify" --confirm -o json
 
+if valid_raw_metadata key-value "$KV_NAME" keyvalue; then
+  echo "PASS: key-value raw REST metadata has real owner/region/dashboard/timestamps"
+else
+  echo "FAIL: key-value raw REST metadata has real owner/region/dashboard/timestamps"
+  fail=1
+fi
+
+check "keyvalues text renders Workspace" \
+  "Workspace:[[:space:]]+.*$RENDER_WORKSPACE" \
+  "$RENDER_BIN" keyvalues get "$KV_NAME" -o text
+check "keyvalues text renders configured Region" \
+  "Region:[[:space:]]*$EXPECTED_REGION" \
+  "$RENDER_BIN" keyvalues get "$KV_NAME" -o text
+kv_updated_before=$(raw_updated_at key-value "$KV_NAME" 2>/dev/null || true)
+
 checkFields "keyvalues list: same fields survive the cursor envelope (RC3)" \
   "$RENDER_BIN" keyvalues list -o json
 
@@ -216,6 +330,14 @@ checkFields "keyvalues get: resolves by name (RC3) with every field intact" \
 check "keyvalues suspend resolves and applies" \
   "\"suspended\":[[:space:]]*true" \
   "$RENDER_BIN" keyvalues suspend "$KV_NAME" --confirm -o json
+
+kv_updated_after=$(raw_updated_at key-value "$KV_NAME" 2>/dev/null || true)
+if [ -n "$kv_updated_before" ] && [ -n "$kv_updated_after" ] && timestamp_advanced "$kv_updated_before" "$kv_updated_after"; then
+  echo "PASS: key-value updatedAt advances after suspend"
+else
+  echo "FAIL: key-value updatedAt did not advance ($kv_updated_before -> $kv_updated_after)"
+  fail=1
+fi
 
 # resume's downstream `status` field is async (K8s reconciliation may still say
 # "unavailable" moments after the call returns) — only exit 0 + the right id

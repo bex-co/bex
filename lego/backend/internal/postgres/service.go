@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -38,6 +39,8 @@ import (
 // Service exposes managed Postgres as Render's "postgres" shape.
 type Service struct {
 	*core.Base
+	Owners   resourcemeta.OwnerResolver
+	Metadata resourcemeta.Config
 	// ExportSigner mints short-lived object-store download URLs after the
 	// ListExports verb has passed can_view_sensitive. Production wires the
 	// Kubernetes Secret-backed S3 signer; tests can replace it.
@@ -78,6 +81,7 @@ type PostgresView struct {
 
 	Suspended string `json:"suspended"` // string enum, like services
 	CreatedAt string `json:"createdAt,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
@@ -270,6 +274,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		ReadReplicas:            replicas,
 		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
 		CreatedAt:               created,
+		UpdatedAt:               resourcemeta.UpdatedAt(d),
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
 		IPAllowList:             ipAllowListToWire(d.Spec.IPAllowList),
@@ -401,6 +406,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.DryRun {
 		return pgView(d), nil
 	}
+	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		return PostgresView{}, err
 	}
@@ -599,6 +605,7 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
 	patch := client.MergeFrom(d.DeepCopy())
 	mutate(d)
+	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Patch(ctx, d, patch); err != nil {
 		return PostgresView{}, err
 	}

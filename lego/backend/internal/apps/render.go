@@ -16,7 +16,12 @@ limitations under the License.
 
 package apps
 
-import "github.com/bex-co/bex/lego/backend/internal/core"
+import (
+	"context"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+)
 
 // render.go maps AppView onto Render's public-API "service" shape, verified
 // against Render's OpenAPI spec (render-public-api-1.json). A client written for
@@ -39,6 +44,7 @@ type renderService struct {
 	DashboardURL   string         `json:"dashboardUrl,omitempty"`
 	CreatedAt      string         `json:"createdAt,omitempty"`
 	UpdatedAt      string         `json:"updatedAt,omitempty"`
+	Owner          *renderOwner   `json:"owner,omitempty"` // safe Render superset; official Service clients still use ownerId
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
 	ImagePath      string         `json:"imagePath,omitempty"`
 	Suspenders     []string       `json:"suspenders"`
@@ -94,6 +100,13 @@ type renderService struct {
 	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
 }
 
+type renderOwner struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
+	Type  string `json:"type"`
+}
+
 // renderAutoscaling is Render's autoscaling sub-object shape (verified against
 // Render's PUT /v1/services/{id}/autoscaling request/response contract).
 type renderAutoscaling struct {
@@ -137,6 +150,10 @@ func yesNoEnum(autoDeploy bool) string {
 }
 
 func toRenderService(a AppView) renderService {
+	return toRenderServiceWithMetadata(a, resourcemeta.Config{})
+}
+
+func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) renderService {
 	publicID := a.ID
 	if publicID == "" {
 		publicID = a.Name // hand-applied/store-less compatibility
@@ -161,7 +178,13 @@ func toRenderService(a AppView) renderService {
 	if a.Runtime != "" {
 		set("runtime", a.Runtime)
 		set("env", a.Runtime) // deprecated Render response field, still required by its schema
-		set("region", "oregon")
+	}
+	region := metadata.PlatformRegion()
+	if region == "" {
+		region = a.Region
+	}
+	if region != "" {
+		set("region", region)
 	}
 	if a.Runtime == "docker" {
 		dockerDetails := map[string]any{
@@ -225,6 +248,10 @@ func toRenderService(a AppView) renderService {
 			TargetMemoryPercent: a.Autoscaling.TargetMemoryPercent,
 		}
 	}
+	dashboardURL := metadata.DashboardURL("services", publicID)
+	if dashboardURL == "" {
+		dashboardURL = a.DashboardURL
+	}
 	return renderService{
 		ID:                    publicID,
 		Name:                  renderServiceName(a),
@@ -232,9 +259,9 @@ func toRenderService(a AppView) renderService {
 		DisplayName:           a.DisplayName,
 		Type:                  svcType,
 		Suspended:             core.SuspendedEnum(a.Suspended),
-		DashboardURL:          a.URL,
+		DashboardURL:          dashboardURL,
 		CreatedAt:             a.CreatedAt,
-		UpdatedAt:             a.CreatedAt,
+		UpdatedAt:             a.UpdatedAt,
 		ServiceDetails:        details,
 		ImagePath:             a.SourceImage,
 		Suspenders:            []string{},
@@ -259,6 +286,41 @@ func toRenderService(a AppView) renderService {
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
 	}
+}
+
+func ownerToRender(owner resourcemeta.Owner) *renderOwner {
+	if !owner.Available() {
+		return nil
+	}
+	return &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
+}
+
+// renderService projects metadata shared by REST/GraphQL/MCP without adding
+// REST-only nested owner structure.
+func (s *Service) renderService(a AppView) renderService {
+	return toRenderServiceWithMetadata(a, s.Metadata)
+}
+
+// restServices enriches a whole page through one owner batch lookup.
+func (s *Service) restServices(ctx context.Context, apps []AppView) []renderService {
+	ownerIDs := make([]string, 0, len(apps))
+	for _, app := range apps {
+		ownerIDs = append(ownerIDs, app.OwnerID)
+	}
+	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	out := make([]renderService, 0, len(apps))
+	for _, app := range apps {
+		rendered := s.renderService(app)
+		if owner, ok := owners[app.OwnerID]; ok {
+			rendered.Owner = ownerToRender(owner)
+		}
+		out = append(out, rendered)
+	}
+	return out
+}
+
+func (s *Service) restService(ctx context.Context, app AppView) renderService {
+	return s.restServices(ctx, []AppView{app})[0]
 }
 
 // renderServiceName maps bex's immutable public name + mutable display label
@@ -349,11 +411,11 @@ func toRenderServices(apps []AppView) []renderService {
 	return out
 }
 
-func toServiceList(apps []AppView) []serviceWithCursor {
+func (s *Service) restServiceList(ctx context.Context, apps []AppView) []serviceWithCursor {
+	rendered := s.restServices(ctx, apps)
 	out := make([]serviceWithCursor, 0, len(apps))
-	for _, a := range apps {
-		// cursor is opaque in Render; the App name is a stable, valid cursor.
-		out = append(out, serviceWithCursor{Service: toRenderService(a), Cursor: a.Name})
+	for i, app := range apps {
+		out = append(out, serviceWithCursor{Service: rendered[i], Cursor: app.Name})
 	}
 	return out
 }

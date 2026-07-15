@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -141,6 +142,7 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 		return CreateUserResult{}, err
 	}
 	d.Spec.Users = append(d.Spec.Users, appv1alpha1.DatabaseUser{Name: role, SecretName: secretName})
+	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Patch(ctx, d, client.MergeFrom(orig)); err != nil {
 		return CreateUserResult{}, err
 	}
@@ -169,6 +171,7 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 	}
 	secretName := d.Spec.Users[idx].SecretName
 	d.Spec.Users = append(d.Spec.Users[:idx], d.Spec.Users[idx+1:]...)
+	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Patch(ctx, d, client.MergeFrom(orig)); err != nil {
 		return err
 	}

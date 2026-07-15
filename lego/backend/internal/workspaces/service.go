@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -336,6 +337,45 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 		out = append(out, OwnerView{WorkspaceView: w, Email: email})
 	}
 	return out, nil
+}
+
+// ResolveResourceOwners implements resourcemeta.OwnerResolver for the three
+// resource REST adapters. One membership-scoped workspace query resolves every
+// unique id in a list response; an id absent from that result is omitted, so a
+// resource adapter can never use this seam to reveal another workspace. Email
+// remains best-effort and is looked up once per unique workspace, not once per
+// resource.
+func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) map[string]resourcemeta.Owner {
+	if s.Store == nil || len(ownerIDs) == 0 {
+		return nil
+	}
+	identity, ok := core.IdentityFrom(ctx)
+	if !ok || identity.Subject == "" {
+		return nil
+	}
+	wanted := make(map[string]struct{}, len(ownerIDs))
+	for _, id := range ownerIDs {
+		if id != "" {
+			wanted[id] = struct{}{}
+		}
+	}
+	if len(wanted) == 0 {
+		return nil
+	}
+	tenants, err := s.Store.ListTenantsForSubject(ctx, identity.Subject)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]resourcemeta.Owner, len(wanted))
+	for _, tenant := range tenants {
+		if _, ok := wanted[tenant.ID]; !ok {
+			continue
+		}
+		out[tenant.ID] = resourcemeta.Owner{
+			ID: tenant.ID, Name: tenant.Name, Email: s.ownerEmail(ctx, tenant.ID), Type: "team",
+		}
+	}
+	return out
 }
 
 // ownerEmail resolves the workspace's contact email — the earliest-admin

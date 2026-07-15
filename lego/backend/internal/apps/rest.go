@@ -500,7 +500,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// service's cursor is its name; `cursor`/`limit` page the result.
 		after, limit := core.PageParams(q)
 		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
-		core.WriteJSON(w, http.StatusOK, toServiceList(page)) // [{service, cursor}, ...]
+		core.WriteJSON(w, http.StatusOK, s.restServiceList(r.Context(), page)) // [{service, cursor}, ...]
 	}
 	get := func(w http.ResponseWriter, r *http.Request) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
@@ -508,7 +508,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderService(app))
+		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
 	}
 	listInstances := func(w http.ResponseWriter, r *http.Request) {
 		instances, err := s.ListInstances(r.Context(), r.PathValue("id"))
@@ -531,7 +531,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, status, toRenderService(app))
+			core.WriteJSON(w, status, s.restService(r.Context(), app))
 		}
 	}
 	// patch handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
@@ -598,7 +598,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, toRenderService(app))
+			core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
 			return
 		}
 
@@ -732,7 +732,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderService(app))
+		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
 	}
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
@@ -747,7 +747,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusAccepted, toRenderService(app)) // Render: scale => 202
+		core.WriteJSON(w, http.StatusAccepted, s.restService(r.Context(), app)) // Render: scale => 202
 	}
 
 	// create handles POST /v1/services — create-or-update a service from a
@@ -776,11 +776,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		if req.DryRun {
-			core.WriteJSON(w, http.StatusOK, toRenderService(app)) // dry-run: 200 (nothing created)
+			core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app)) // dry-run: 200 (nothing created)
 			return
 		}
 		// Render: create => 201, body wraps the service under serviceAndDeploy.
-		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: toRenderService(app)})
+		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app)})
 	}
 
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the

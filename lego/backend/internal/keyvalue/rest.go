@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
 // ipAllowEntry is components.schemas.cidrBlockAndDescription — Render's
@@ -54,14 +55,12 @@ func fromIPAllowList(entries []ipAllowEntry) []string {
 	return out
 }
 
-// keyValueOwner is components.schemas.owner's fields bex has a real
-// equivalent for (mirrors internal/workspaces/render.go's renderOwner; bex
-// only ever reports team-type owners and has no separate tenant display name
-// or email wired into this package, so both id and name read the tenant id).
+// keyValueOwner is components.schemas.owner's resource wire subset.
 type keyValueOwner struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
+	Type  string `json:"type"`
 }
 
 // keyValueOptionsView is components.schemas.keyValueOptions — Render nests
@@ -86,7 +85,11 @@ type renderKeyValue struct {
 	Status        string              `json:"status"`
 	Suspended     string              `json:"suspended"`
 	CreatedAt     string              `json:"createdAt,omitempty"`
-	Owner         keyValueOwner       `json:"owner"`
+	UpdatedAt     string              `json:"updatedAt,omitempty"`
+	Owner         *keyValueOwner      `json:"owner,omitempty"`
+	Region        string              `json:"region,omitempty"`
+	DashboardURL  string              `json:"dashboardUrl,omitempty"`
+	Version       string              `json:"version,omitempty"`
 	Options       keyValueOptionsView `json:"options"`
 	IPAllowList   []ipAllowEntry      `json:"ipAllowList,omitempty"`
 	EnvironmentID string              `json:"environmentId,omitempty"`
@@ -103,7 +106,8 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 		Status:    kv.Status,
 		Suspended: kv.Suspended,
 		CreatedAt: kv.CreatedAt,
-		Owner:     keyValueOwner{ID: kv.OwnerID, Name: kv.OwnerID, Type: "team"},
+		UpdatedAt: kv.UpdatedAt,
+		Version:   kv.Version,
 		Options: keyValueOptionsView{
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,
@@ -116,6 +120,29 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 	}
 }
 
+func (s *Service) renderKeyValues(ctx context.Context, kvs []KeyValueView) []renderKeyValue {
+	ownerIDs := make([]string, 0, len(kvs))
+	for _, kv := range kvs {
+		ownerIDs = append(ownerIDs, kv.OwnerID)
+	}
+	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	out := make([]renderKeyValue, 0, len(kvs))
+	for _, kv := range kvs {
+		rendered := toRenderKeyValue(kv)
+		rendered.Region = s.Metadata.PlatformRegion()
+		rendered.DashboardURL = s.Metadata.DashboardURL("keyvalue", kv.ID)
+		if owner, ok := owners[kv.OwnerID]; ok && owner.Available() {
+			rendered.Owner = &keyValueOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
+		}
+		out = append(out, rendered)
+	}
+	return out
+}
+
+func (s *Service) renderOneKeyValue(ctx context.Context, kv KeyValueView) renderKeyValue {
+	return s.renderKeyValues(ctx, []KeyValueView{kv})[0]
+}
+
 // keyValueWithCursor is components.schemas.keyValueWithCursor — the list-item
 // envelope GET /v1/key-value returns as a bare JSON array (cursor is a
 // SIBLING of the keyValue object, not a wrapper member; the same shape
@@ -126,11 +153,12 @@ type keyValueWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-func toKeyValueList(kvs []KeyValueView) []keyValueWithCursor {
+func (s *Service) toKeyValueList(ctx context.Context, kvs []KeyValueView) []keyValueWithCursor {
+	rendered := s.renderKeyValues(ctx, kvs)
 	out := make([]keyValueWithCursor, 0, len(kvs))
-	for _, kv := range kvs {
+	for i, kv := range kvs {
 		// cursor is opaque in Render; the KeyValue name/id is a stable, valid cursor.
-		out = append(out, keyValueWithCursor{KeyValue: toRenderKeyValue(kv), Cursor: kv.ID})
+		out = append(out, keyValueWithCursor{KeyValue: rendered[i], Cursor: kv.ID})
 	}
 	return out
 }
@@ -174,7 +202,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// CLI's list decode (ListKeyValueResponse.JSON200 is *[]KeyValueWithCursor).
 		after, limit := core.PageParams(q)
 		page := core.Page(out, after, limit, func(kv KeyValueView) string { return kv.ID })
-		core.WriteJSON(w, http.StatusOK, toKeyValueList(page)) // [{keyValue, cursor}, ...]
+		core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
 	})
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 		var wire struct {
@@ -196,10 +224,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		if req.DryRun {
-			core.WriteJSON(w, http.StatusOK, toRenderKeyValue(kv)) // dry-run: 200 (nothing created, w2/m29)
+			core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv)) // dry-run: 200 (nothing created, w2/m29)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, toRenderKeyValue(kv)) // Render: create => 201
+		core.WriteJSON(w, http.StatusCreated, s.renderOneKeyValue(r.Context(), kv)) // Render: create => 201
 	})
 	mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 		kv, err := s.GetKeyValue(r.Context(), r.PathValue("id"))
@@ -207,7 +235,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderKeyValue(kv))
+		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 	})
 	mux.HandleFunc("PATCH "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -225,7 +253,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, toRenderKeyValue(kv))
+			core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 			return
 		}
 		kv, err := s.SetPlan(r.Context(), r.PathValue("id"), req.Plan)
@@ -233,7 +261,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderKeyValue(kv))
+		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 	})
 	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteKeyValue(r.Context(), r.PathValue("id")); err != nil {
@@ -260,7 +288,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusAccepted, toRenderKeyValue(kv))
+			core.WriteJSON(w, http.StatusAccepted, s.renderOneKeyValue(r.Context(), kv))
 		})
 	}
 	lifecycle("/suspend", s.Suspend)
@@ -294,6 +322,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderKeyValue(kv))
+		core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
 	})
 }

@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -211,8 +212,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		},
 	}
 	if tenantID, ok := s.Tenant(ctx); ok {
-		newDB.Labels = map[string]string{core.LabelWorkspace: tenantID}
+		newDB.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
+	resourcemeta.Touch(newDB, s.Now())
 	if err := s.Client.Create(ctx, newDB); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return PostgresView{}, fmt.Errorf("%w: a database named %q already exists", core.ErrBadRequest, req.Name)
@@ -309,6 +311,7 @@ func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, er
 	exportID := id.New(id.Export)
 	requestedAt := now.Format(time.RFC3339)
 	d.Spec.Exports = append(d.Spec.Exports, appv1alpha1.DatabaseExportRequest{ID: exportID, RequestedAt: requestedAt})
+	resourcemeta.Touch(d, now)
 	if err := s.Client.Update(ctx, d); err != nil {
 		return ExportView{}, err
 	}
