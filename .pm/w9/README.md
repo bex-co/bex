@@ -16,3 +16,4 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 
 - [x] **m1** — Deploy detail page: Manual Deploy jumps to a per-deploy page with its logs (9 tasks) ← from user request 2026-07-14
 - [x] **m2** — Render CLI compatibility: run the official CLI against bex-api → `docs/cli-compatibility-checklist.md` (7 tasks) ← user decision 2026-07-14 (`/pm-brainstorm` round 8): never build a CLI from scratch (new `.pm/DO_NOT_DO.md` entry); verify `render-oss/cli` as the fifth surface instead
+- [ ] **m3** — Managed Postgres rename: stable `dpg-…` identity + mutable name, rolled through prod and every `dev-*` environment (12 tasks) ← user request 2026-07-14 + the Postgres half of `.pm/w1/done/021.md` / `docs/cli-compatibility-checklist.md`
