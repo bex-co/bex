@@ -1,0 +1,12 @@
+# Production auth-plane availability. The PDB is a sibling raw manifest because
+# openfga chart 0.3.10 has no PodDisruptionBudget value.
+replicaCount: 2
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: openfga
+            app.kubernetes.io/name: openfga
+        topologyKey: kubernetes.io/hostname

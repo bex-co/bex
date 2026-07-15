@@ -5,7 +5,49 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+  - openfga-pdb.yaml
 patches:
+  # Auth servers: two required-anti-affinity replicas keep the public and admin
+  # Services available while one platform node drains. Local keeps the charts'
+  # single-replica defaults so the one-worker CAPD mock remains schedulable.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: hydra
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/hydra.values.yaml
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: kratos
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/kratos.values.yaml
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: openfga
+    patch: |-
+      - op: add
+        path: /spec/sources/0/helm/valueFiles/-
+        value: $values/deploy/gitops/overlays/prod/values/openfga.values.yaml
+  # The production operator overlay makes bex-api HA while leaving the local
+  # one-worker mock on config/default's single replica.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: bex-operator
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: lego/operator/config/prod
   # OpenBao: layer the prod values file (server.ha.replicas: 3 for quorum, no
   # local-path storageClass — falls back to the cluster's default provisioner)
   # over the base values. Argo merges valueFiles in order, later wins — the

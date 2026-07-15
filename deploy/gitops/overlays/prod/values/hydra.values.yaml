@@ -1,0 +1,17 @@
+# Production auth-plane availability: a drain may evict one Hydra pod while a
+# second, node-separated replica continues serving OAuth and admin traffic.
+replicaCount: 2
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: hydra
+            app.kubernetes.io/name: hydra
+        topologyKey: kubernetes.io/hostname
+
+pdb:
+  enabled: true
+  spec:
+    minAvailable: 1

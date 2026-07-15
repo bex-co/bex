@@ -1,0 +1,19 @@
+# Production auth-plane availability: keep identity serving on a second node
+# while one platform node drains. The courier remains single-copy; it is
+# asynchronous and does not sit on the login/session request path.
+replicaCount: 2
+
+deployment:
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: kratos
+              app.kubernetes.io/name: kratos
+          topologyKey: kubernetes.io/hostname
+
+pdb:
+  enabled: true
+  spec:
+    minAvailable: 1
