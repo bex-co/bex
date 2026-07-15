@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -379,6 +380,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = append(app.Spec.Hosts, hostname)
+	resourcemeta.Touch(app, s.Now())
 	if err := s.Client.Patch(ctx, app, base); err != nil {
 		return DomainView{}, false, err
 	}
@@ -418,6 +420,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = updated
+	resourcemeta.Touch(app, s.Now())
 	return s.Client.Patch(ctx, app, base)
 }
 

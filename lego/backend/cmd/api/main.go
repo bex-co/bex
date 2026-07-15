@@ -98,7 +98,10 @@ func main() {
 	deps := api.Deps{
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
-		BaseDomain:    os.Getenv("BEX_BASE_DOMAIN"),
+		BaseDomain: os.Getenv("BEX_BASE_DOMAIN"),
+		// BEX_REGION is the explicit platform placement surfaced in Render
+		// resource metadata. Empty is honestly omitted.
+		Region:        os.Getenv("BEX_REGION"),
 		PodLogs:       logs.NewPodLogSource(cs),
 		PodLogsFollow: logs.NewPodLogStream(cs), // live tail for GET /v1/logs/subscribe (always pod logs)
 		// Resource metrics (cpu/memory) via metrics-server — the snapshot fallback

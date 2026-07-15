@@ -146,6 +146,12 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 ---
 
+## Resource-object metadata parity (w6/m28)
+
+Service, Postgres, and Key Value REST responses now carry truthful Render-compatible metadata from one shared backend contract: tenant-store `owner` objects, configured `BEX_REGION`, configured `BEX_DASHBOARD_URL` routes, and authoritative `updatedAt` values. Owner lookup is caller-scoped and batched; unresolved or unauthorized workspaces are omitted rather than guessed. Region and dashboard URL are also omitted when unconfigured. Dashboard links resolve to the existing `/services/{id}`, `/databases/{id}`, and `/keyvalue/{id}` pages. API writes stamp `app.bex.co/updated-at`; legacy reconciled resources may use Kubernetes managed-field time, and resources with neither source omit `updatedAt` instead of copying creation time.
+
+This is a REST-boundary enrichment. Existing ids, list cursor envelopes, Core/GraphQL/MCP `ownerId`, and authorization behavior remain unchanged. The pinned official CLI renders workspace and region in Postgres and Key Value text output. Its generated Service text type exposes owner ID and dashboard URL but has no workspace-name or region fields, so the live verifier checks the complete Service metadata directly on the raw REST response after the unmodified CLI has decoded and created the resource. See [ADR006 § Resource metadata contract](ADR006-bex-api.md#resource-metadata-contract-w6m28) and the [CLI compatibility checklist](cli-compatibility-checklist.md#systemic-root-causes).
+
 ## bex ahead of Render
 
 Verbs where bex's AI-native posture exposes _more_ than Render does — tracked here so they read as deliberate supersets, not accidental drift:

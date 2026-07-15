@@ -43,8 +43,10 @@ spec:
               value: ":8090"
             - name: BEX_API_PUBLIC_URL # public origin used in copy-ready deploy-hook URLs
               value: https://api.bex.co
-            - name: BEX_DASHBOARD_URL # trusted browser redirect origin for GitHub callbacks and invite links
+            - name: BEX_DASHBOARD_URL # trusted browser origin for callbacks, invites, and resource links
               value: https://dashboard.bex.co
+            - name: BEX_REGION # explicit platform placement for Render resource metadata
+              value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
               value: default
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's

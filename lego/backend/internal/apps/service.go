@@ -34,6 +34,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -44,6 +45,10 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// Owners and Metadata are the shared Render resource-metadata dependencies.
+	// The neutral AppView stays independent of nested REST owner wire shapes.
+	Owners   resourcemeta.OwnerResolver
+	Metadata resourcemeta.Config
 	// BaseDomain is the platform wildcard domain (BEX_BASE_DOMAIN, e.g. "onbex.co")
 	// — the same value the operator computes app URLs from. The custom-domain DNS
 	// instructions need it to name the CNAME/ALIAS target `<app>.<BaseDomain>` the
@@ -266,6 +271,11 @@ type AppView struct {
 	Plan      string `json:"plan,omitempty"`
 	Revision  string `json:"revision"`
 	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+	// DashboardURL is the control-plane detail route. URL above remains the
+	// hosted data-plane endpoint; the two are never interchangeable.
+	DashboardURL string `json:"dashboardUrl,omitempty"`
+	Region       string `json:"region,omitempty"`
 	// IdleTTLSeconds is how long a free-tier App may be idle before it
 	// auto-hibernates ("sleep = free", spec.idleTTLSeconds). 0 = the controller
 	// default. A bex extension with no Render counterpart (Render's spin-down
@@ -501,6 +511,7 @@ func view(a *appv1alpha1.App) AppView {
 		Plan:                  plan,
 		Revision:              a.Status.ActiveRevision,
 		CreatedAt:             created,
+		UpdatedAt:             resourcemeta.UpdatedAt(a),
 		IdleTTLSeconds:        a.Spec.IdleTTLSeconds,
 		OwnerID:               a.Labels[core.LabelTenant],
 		ProjectID:             a.Labels[core.LabelProject],
@@ -523,6 +534,13 @@ func view(a *appv1alpha1.App) AppView {
 		Routes:           staticRouteViews(a.Spec.Routes),
 		Headers:          staticHeaderViews(a.Spec.Headers),
 	}
+}
+
+func (s *Service) view(a *appv1alpha1.App) AppView {
+	v := view(a)
+	v.DashboardURL = s.Metadata.DashboardURL("services", v.ID)
+	v.Region = s.Metadata.PlatformRegion()
+	return v
 }
 
 func publicID(a *appv1alpha1.App) string {
@@ -611,7 +629,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	}
 	out := make([]AppView, 0, len(list.Items))
 	for i := range list.Items {
-		out = append(out, view(&list.Items[i]))
+		out = append(out, s.view(&list.Items[i]))
 	}
 	return out, nil
 }
@@ -668,7 +686,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err != nil {
 		return AppView{}, err
 	}
-	return view(a), nil
+	return s.view(a), nil
 }
 
 // ListInstances projects a long-running App's live replica Pods into Render's
@@ -922,7 +940,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 			a.Labels[core.LabelProject] = environment.ProjectID
 			a.Labels[core.LabelEnvironment] = environment.ID
 		}
-		return view(a), nil
+		return s.view(a), nil
 	}
 
 	// Duplicate check, scoped to exactly the target workspace (w4/m19) —
@@ -1061,13 +1079,14 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, rollbackStoreRow(err)
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
+	resourcemeta.Touch(a, s.Now())
 	if err := s.Client.Create(ctx, a); err != nil {
 		return AppView{}, rollbackStoreRow(err)
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
-	return view(a), nil
+	return s.view(a), nil
 }
 
 // nameTaken reports whether name is already claimed in the exactly-one
@@ -1193,13 +1212,14 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		return AppView{}, err
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
+	resourcemeta.Touch(a, s.Now())
 	if err := s.Client.Create(ctx, a); err != nil {
 		return AppView{}, err
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
-	return view(a), nil
+	return s.view(a), nil
 }
 
 // Delete removes a service — the single implementation the three adapters
@@ -1802,7 +1822,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	}
 	preview := a.DeepCopy()
 	preview.Spec.Tier = t.ID
-	return view(preview), nil
+	return s.view(preview), nil
 }
 
 // Scale sets the App's desired running instance count (Render's manual-scaling
@@ -2238,10 +2258,11 @@ func (s *Service) patch(ctx context.Context, relation, name string, mutate func(
 func (s *Service) patchFetched(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
 	base := client.MergeFrom(a.DeepCopy())
 	mutate(a)
+	resourcemeta.Touch(a, s.Now())
 	if err := s.Client.Patch(ctx, a, base); err != nil {
 		return AppView{}, err
 	}
-	return view(a), nil
+	return s.view(a), nil
 }
 
 // routesFromViews / headersFromViews convert surface input (neutral views) into

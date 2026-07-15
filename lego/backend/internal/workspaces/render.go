@@ -66,7 +66,7 @@ func toOwnerList(os []OwnerView) []ownerWithCursor {
 	out := make([]ownerWithCursor, 0, len(os))
 	for _, o := range os {
 		// cursor is opaque in Render; the workspace id is a stable, valid cursor
-		// (same convention apps.toServiceList uses for services).
+		// (the same convention the services list adapter uses).
 		out = append(out, ownerWithCursor{Owner: toRenderOwner(o), Cursor: o.ID})
 	}
 	return out

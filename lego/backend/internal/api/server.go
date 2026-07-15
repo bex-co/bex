@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -185,6 +186,10 @@ type Deps struct {
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
 	BaseDomain string
+	// Region is BEX_REGION, the explicit platform placement name projected onto
+	// Render resource metadata. Empty means region is unavailable and omitted;
+	// it is never inferred from an object-store or provider setting.
+	Region string
 	// Workspace lifecycle (w6/m1): the control-plane store seam + the OpenFGA
 	// grant/revoke sides + the projector nudge. All nil when BEX_CP_DB_URI is
 	// unset — the workspace verbs then answer ErrWorkspacesUnavailable.
@@ -298,6 +303,20 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// apps/postgres list tools (read) — w6/m2/t005. Always wired: with no MCP
 	// transport in use, it simply never gets a Get/Set call.
 	selections := core.NewWorkspaceSelections()
+	workspaceSvc := &workspaces.Service{
+		Base:         base,
+		Store:        d.WorkspaceStore,
+		Granter:      d.WorkspaceGranter,
+		Revoker:      d.WorkspaceRevoker,
+		Kick:         d.WorkspaceKick,
+		Purgers:      d.WorkspacePurgers,
+		Identities:   d.Identities,
+		Selections:   selections,
+		MaxServices:  d.MaxServices,
+		MaxPostgres:  d.MaxPostgres,
+		MaxKeyValues: d.MaxKeyValues,
+	}
+	resourceMetadata := resourcemeta.Config{Region: d.Region, DashboardBaseURL: d.DashboardURL}
 	// The GitHub-connect service is also the apps deploy path's clone-token seam
 	// (docs/ADR026-github-integration.md), so build it once and share it. Always
 	// non-nil; its verbs 503 until BEX_GITHUB_APP_* + the store are wired.
@@ -327,8 +346,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		ExportSigner: exportSigner,
 		Selections:   selections,
 		MaxPostgres:  d.MaxPostgres,
+		Owners:       workspaceSvc,
+		Metadata:     resourceMetadata,
 	}
-	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
+	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:
 	// apps.EnvSeeder / apps.EnvGroupApplier) — built once and shared. They are
 	// wired onto Apps ONLY when OpenBao (d.Secrets) is on, so a nil seam is the
@@ -376,7 +397,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return e.OwnerID, nil
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -403,20 +424,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			DeployHookBaseURL: d.DeployHookBaseURL,
 			DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
 		},
-		Events: &events.Service{Base: base, Store: d.EventStore},
-		Workspaces: &workspaces.Service{
-			Base:         base,
-			Store:        d.WorkspaceStore,
-			Granter:      d.WorkspaceGranter,
-			Revoker:      d.WorkspaceRevoker,
-			Kick:         d.WorkspaceKick,
-			Purgers:      d.WorkspacePurgers,
-			Identities:   d.Identities,
-			Selections:   selections,
-			MaxServices:  d.MaxServices,
-			MaxPostgres:  d.MaxPostgres,
-			MaxKeyValues: d.MaxKeyValues,
-		},
+		Events:     &events.Service{Base: base, Store: d.EventStore},
+		Workspaces: workspaceSvc,
 		Members: &members.Service{
 			Base:          base,
 			Store:         d.MembersStore,

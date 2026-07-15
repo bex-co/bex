@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -47,6 +48,8 @@ import (
 // Service exposes managed key-value stores as Render's "key-value" shape.
 type Service struct {
 	*core.Base
+	Owners   resourcemeta.OwnerResolver
+	Metadata resourcemeta.Config
 	// Selections is the shared MCP per-session workspace selection
 	// (w6/m2/t005): list_key_value_instances falls back to the caller's
 	// selected workspace when its ownerId argument is omitted. Read-only
@@ -70,6 +73,7 @@ type KeyValueView struct {
 	Status    string `json:"status"`    // Render keyValueStatus enum
 	Suspended string `json:"suspended"` // Render string enum (like services/postgres)
 	CreatedAt string `json:"createdAt,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 
 	// MaxmemoryPolicy / PersistenceMode mirror Render's Key Value settings, read
 	// from the CR spec (empty until set — the operator applies its default then).
@@ -187,6 +191,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Status:          kvStatus(kv.Status.Phase),
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
+		UpdatedAt:       resourcemeta.UpdatedAt(kv),
 		IPAllowList:     kv.Spec.IPAllowList,
 		MaxmemoryPolicy: crdToRender(kv.Spec.MaxmemoryPolicy),
 		PersistenceMode: crdToRender(kv.Spec.PersistenceMode),
@@ -329,6 +334,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if req.DryRun {
 		return kvView(kv), nil
 	}
+	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
 		return KeyValueView{}, err
 	}
@@ -366,6 +372,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	}
 	if kv.Spec.Suspended != suspended {
 		kv.Spec.Suspended = suspended
+		resourcemeta.Touch(kv, s.Now())
 		if err := s.Client.Update(ctx, kv); err != nil {
 			return KeyValueView{}, err
 		}
@@ -390,6 +397,7 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 		}
 		kv.Labels[core.LabelProject] = projectID
 	}
+	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Update(ctx, kv)
 }
 
@@ -411,6 +419,7 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID stri
 		}
 		kv.Labels[core.LabelEnvironment] = environmentID
 	}
+	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Update(ctx, kv)
 }
 
@@ -441,6 +450,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	} else {
 		kv.Spec.IPAllowList = cidrs
 	}
+	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Update(ctx, kv); err != nil {
 		return KeyValueView{}, err
 	}
@@ -487,6 +497,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyVal
 func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue, mutate func(kv *appv1alpha1.KeyValue)) (KeyValueView, error) {
 	patch := client.MergeFrom(kv.DeepCopy())
 	mutate(kv)
+	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Patch(ctx, kv, patch); err != nil {
 		return KeyValueView{}, err
 	}

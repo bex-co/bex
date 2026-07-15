@@ -137,6 +137,8 @@ nohup env \
   BEX_CP_ADDR=":$BEX_CP_PORT" \
   BEX_API_NAMESPACE="$DEV_NS" \
   BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
+  BEX_DASHBOARD_URL="http://localhost:$DASHBOARD_PORT" \
+  BEX_REGION="local-capd" \
   BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
   BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
   BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
