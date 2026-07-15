@@ -60,24 +60,26 @@ type Service struct {
 // Event is the neutral projection of a store.AuditRow the adapters render in
 // Render's audit-log shape.
 type Event struct {
-	ID           string
-	Caller       string
-	CallerMethod string
-	Verb         string
-	Resource     string
-	Outcome      string
-	At           time.Time
+	ID                string
+	Caller            string
+	CallerMethod      string
+	Verb              string
+	Resource          string
+	Outcome           string
+	At                time.Time
+	MaintenanceModeTo *bool
 }
 
 func view(r store.AuditRow) Event {
 	return Event{
-		ID:           r.ID,
-		Caller:       r.Caller,
-		CallerMethod: r.CallerMethod,
-		Verb:         r.Verb,
-		Resource:     r.Resource,
-		Outcome:      r.Outcome,
-		At:           r.At,
+		ID:                r.ID,
+		Caller:            r.Caller,
+		CallerMethod:      r.CallerMethod,
+		Verb:              r.Verb,
+		Resource:          r.Resource,
+		Outcome:           r.Outcome,
+		At:                r.At,
+		MaintenanceModeTo: r.MaintenanceModeTo,
 	}
 }
 

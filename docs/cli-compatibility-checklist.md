@@ -4,6 +4,8 @@ Render's own CLI ([render.com/docs/cli](https://render.com/docs/cli), open-sourc
 
 **Method.** One command per row (or one row per family where every subcommand shares a single root cause), each run for real against a live bex-api instance with real data (a deployed `web_service`, a `Database`, a `KeyValue`), evidence linked to [`.pm/w9/done/m2/evidence/log.md`](../.pm/w9/done/m2/evidence/log.md). Legend mirrors ADR018: ✅ works · ◐ works with a named divergence · ✖ fails (gap — owner in the backlog below) · — deliberate non-goal (`.pm/DO_NOT_DO.md`).
 
+**Maintenance Mode applicability (w1/m37).** The pinned CLI exposes neither a maintenance-mode command nor a generic service PATCH flag that can carry `serviceDetails.maintenanceMode`. There is therefore no unmodified CLI case to grade or fake. Maintenance Mode is verified on Render's actual REST object plus bex's GraphQL/MCP/dashboard adapters; see [render-artifacts/maintenance-mode.md](render-artifacts/maintenance-mode.md).
+
 ## Harness (reproduction)
 
 |  |  |

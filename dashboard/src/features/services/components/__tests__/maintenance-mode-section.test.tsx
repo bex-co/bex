@@ -40,6 +40,21 @@ describe("MaintenanceModeSection", () => {
     );
   });
 
+  it("disables maintenance controls on the free plan", () => {
+    render(
+      <MaintenanceModeSection
+        serviceId="web"
+        serviceName="web"
+        plan="free"
+        maintenanceMode={{ enabled: false, uri: "" }}
+      />,
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(
+      screen.getByText("Maintenance mode is available on paid web service plans."),
+    ).toBeInTheDocument();
+  });
+
   it("confirms before enabling, then calls setMaintenanceMode(true, uri)", async () => {
     const user = userEvent.setup();
     render(

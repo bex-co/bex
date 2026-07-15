@@ -139,13 +139,13 @@ func TestShouldAutoHibernate(t *testing.T) {
 			false,
 		},
 		{
-			"maintenance mode enabled: auto-hibernate defers to it (pods must stay up)",
+			"legacy free maintenance still auto-hibernates its workload",
 			func() *appv1alpha1.App {
 				app := mkIdleApp("free", 300, now.Add(-10*time.Minute), false)
 				app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
 				return app
 			}(),
-			false,
+			true,
 		},
 		{
 			"maintenance mode struct present but disabled: auto-hibernate unaffected",

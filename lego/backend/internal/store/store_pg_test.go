@@ -378,6 +378,11 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 			Outcome:  outcome,
 			At:       base.Add(time.Duration(i) * time.Minute),
 		}
+		if i == 2 {
+			disabled := false
+			ev.Verb = "apps.SetMaintenanceMode"
+			ev.MaintenanceModeTo = &disabled
+		}
 		if err := s.Record(ctx, ev); err != nil {
 			t.Fatalf("record audit event %d: %v", i, err)
 		}
@@ -398,7 +403,8 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 	if all[0].At.Before(all[1].At) || all[1].At.Before(all[2].At) {
 		t.Fatalf("list audit events not newest-first: %+v", all)
 	}
-	if all[0].Outcome != string(core.AuditAllowed) || all[0].Verb != "apps.Suspend" || all[0].Caller != "user-x" {
+	if all[0].Outcome != string(core.AuditAllowed) || all[0].Verb != "apps.SetMaintenanceMode" || all[0].Caller != "user-x" ||
+		all[0].MaintenanceModeTo == nil || *all[0].MaintenanceModeTo {
 		t.Errorf("newest row = %+v", all[0])
 	}
 	recorded = all

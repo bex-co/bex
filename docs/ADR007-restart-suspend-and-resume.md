@@ -60,6 +60,18 @@ stateDiagram-v2
     Hibernated --> Running: suspended=false (scale back, readiness-gated)
 ```
 
+### Maintenance-mode interaction (w1/m37)
+
+Maintenance mode is a separate public-routing intent, not another lifecycle phase. A paid web service with `spec.maintenanceMode.enabled: true` keeps its Deployment and tenant Kubernetes Service unchanged while the operator points every public platform/custom-host Ingress rule at the maintenance responder (through an App-owned namespace-local alias when the responder is in another namespace). Deploys continue and preserve the field; a toggle or URI edit does not change `restartedAt` or open a deploy record.
+
+The precedence is explicit:
+
+1. Maintenance mode owns the public Ingress backend when enabled.
+2. Otherwise an auto-sleep-capable service routes through the wake activator.
+3. Otherwise public traffic routes directly to the tenant Service.
+
+Valid API state does not normally combine maintenance and auto-sleep because maintenance is paid-only while bex auto-sleep is free-plan behavior; the ordering still makes hand-applied legacy CRs deterministic. Suspension continues to scale the Deployment to zero but does not clear maintenance state or its public page; resume restores the configured replica count behind that page. Render does not publish these combined-state rules, so the suspend/auto-sleep precedence is a tested bex policy rather than a parity claim. A plan downgrade to free is rejected until maintenance is disabled; REST accepts a disable and downgrade in the same PATCH and applies the disable first.
+
 ### Who writes the fields
 
 Two ways, same field write:
@@ -83,7 +95,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 ## Consequences
 
 - Every verb is auditable, idempotent, and replayable — rebuilding the cluster from App CRs reproduces suspended state correctly.
-- A suspended App still owns its hostname and Ingress; visitors see a bare edge error (404/503) rather than something friendly — deliberately unchanged by w1/m37's maintenance mode (docs/render-artifacts/maintenance-mode.md), which fills the _other_ gap this ADR leaves open: deliberate downtime with a friendly interstitial and the pods still running (`spec.maintenanceMode.enabled`, not `spec.suspended`). Suspend still wins when both are set — it's the cost-saving verb (scales to 0), maintenance mode is the visibility verb (routes away without touching replicas); a tenant who wants a friendly page without paying to keep pods up still has no first-class answer (suspend stays raw by design — friendliness there would cost a still-serving interstitial component even at zero replicas, the auto-sleep activator's job, not suspend's).
+- A suspended App still owns its hostname and Ingress. Without maintenance mode, visitors follow the ordinary suspended/activator behavior; with maintenance mode enabled, the 503 maintenance page remains public while the workload is scaled to zero.
 - Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism. For agent **sandboxes**, that idle-hibernate + wake-on-connect is designed in [ADR014-sandboxes.md](ADR014-sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
 - Implementation size: 2 CRD fields + ~40 lines in `reconcileKubernetes` + envtest cases (suspend keeps Ingress/TLS and zeroes replicas; restart changes only the template annotation; resume restores and readiness-gates).
 

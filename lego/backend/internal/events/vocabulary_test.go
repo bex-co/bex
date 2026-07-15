@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // TestEveryTargetedVerbIsNamedOrExcused is the guard that keeps this feed
@@ -48,13 +50,14 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// eventTypes doc comment; the reason lives here so the guard fails loudly if
 	// someone deletes the entry rather than the rationale.
 	excusedVerbs := map[string]string{
-		"apps.Create":            "its first deploy already appears as deploy_started with trigger.firstBuild",
-		"apps.Delete":            "the service and its feed are gone; the row stays in the workspace audit log",
-		"apps.Deploy":            "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
-		"apps.DeployStack":       "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
-		"apps.SyncBlueprint":     "Blueprint sync delegates to stack apply, whose changed-service deploy rows already produce the events",
-		"deploys.Trigger":        "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
-		"apps.ResolveSSHSession": "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
+		"apps.Create":                   "its first deploy already appears as deploy_started with trigger.firstBuild",
+		"apps.Delete":                   "the service and its feed are gone; the row stays in the workspace audit log",
+		"apps.Deploy":                   "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
+		"apps.DeployStack":              "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
+		"apps.SyncBlueprint":            "Blueprint sync delegates to the same maintenance effects or changed-service deploy rows",
+		"apps.ConfigureMaintenanceMode": "one atomic write records its typed field effects only after the patch succeeds",
+		"deploys.Trigger":               "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		"apps.ResolveSSHSession":        "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
 		// w6/m20: new verbs from scratch (not a w6/m17 seam-collapse side
 		// effect — see below), deliberately deferred the same way their
 		// SetProjectID siblings were: postgres/keyvalue have no events feed
@@ -128,9 +131,14 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		}
 	}
 	// The converse: a vocabulary entry for a verb that no longer targets anything
-	// is dead weight that silently never fires.
+	// is dead weight that silently never fires. Maintenance mode is the deliberate
+	// exception: one atomic Core verb emits two fixed field-effect rows.
+	syntheticVerbs := map[string]bool{
+		core.AuditVerbMaintenanceModeEnabled:    true,
+		core.AuditVerbMaintenanceModeURIUpdated: true,
+	}
 	for verb := range eventTypes {
-		if !found[verb] {
+		if !found[verb] && !syntheticVerbs[verb] {
 			t.Errorf("eventTypes names %s, but no verb by that name calls AuthorizeTarget — "+
 				"the mapping is dead (verb renamed or reverted to plain Authorize?)", verb)
 		}

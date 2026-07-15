@@ -56,8 +56,9 @@ func (f *fakeAuditStore) PurgeSSHSessions(context.Context, time.Time) (int64, er
 // shared-verb architecture.
 func TestAuditSurfaceParity(t *testing.T) {
 	at := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	maintenanceDisabled := false
 	fakeStore := &fakeAuditStore{rows: []store.AuditRow{
-		{ID: "aud-1", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "session", Verb: "apps.Suspend", Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at},
+		{ID: "aud-1", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "session", Verb: "apps.SetMaintenanceMode", Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at, MaintenanceModeTo: &maintenanceDisabled},
 		{ID: "aud-2", WorkspaceID: "tea-a", Caller: "user-y", CallerMethod: "oauth2", Verb: "workspaces.Delete", Resource: "workspace:tea-other", Outcome: string(core.AuditDenied), At: at.Add(-time.Minute)},
 	}}
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: &fakeChecker{allow: true}}
@@ -77,6 +78,9 @@ func TestAuditSurfaceParity(t *testing.T) {
 			Action      string `json:"action"`
 			Status      string `json:"status"`
 			Resource    string `json:"resource"`
+			Metadata    *struct {
+				To *bool `json:"to"`
+			} `json:"metadata"`
 		} `json:"auditLog"`
 		Cursor string `json:"cursor"`
 	}
@@ -87,7 +91,7 @@ func TestAuditSurfaceParity(t *testing.T) {
 		t.Fatalf("REST list = %d events, want 2", len(restList))
 	}
 
-	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod action status resource } }`)
+	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod action status resource metadata { to } } }`)
 	gqlList, ok := gqlData["auditLogs"].([]any)
 	if !ok || len(gqlList) != 2 {
 		t.Fatalf("GraphQL auditLogs = %v, want 2 events", gqlData["auditLogs"])
@@ -101,6 +105,16 @@ func TestAuditSurfaceParity(t *testing.T) {
 			rest.AuditLog.Resource != g["resource"] {
 			t.Errorf("event %d diverges: REST=%+v GraphQL=%+v", i, rest.AuditLog, g)
 		}
+	}
+	if restList[0].AuditLog.Metadata == nil || restList[0].AuditLog.Metadata.To == nil || *restList[0].AuditLog.Metadata.To ||
+		gqlList[0].(map[string]any)["metadata"].(map[string]any)["to"] != false {
+		t.Fatalf("maintenance metadata.to=false diverges: REST=%+v GraphQL=%+v", restList[0].AuditLog.Metadata, gqlList[0])
+	}
+	if restList[0].AuditLog.Action != "MaintenanceModeEnabledEvent" {
+		t.Fatalf("maintenance audit action = %q, want Render event name", restList[0].AuditLog.Action)
+	}
+	if restList[1].AuditLog.Metadata != nil || gqlList[1].(map[string]any)["metadata"] != nil {
+		t.Fatalf("non-maintenance metadata should be omitted/null: REST=%+v GraphQL=%+v", restList[1].AuditLog.Metadata, gqlList[1])
 	}
 	// Newest first on both surfaces.
 	if restList[0].AuditLog.ID != "aud-1" || restList[1].AuditLog.ID != "aud-2" {

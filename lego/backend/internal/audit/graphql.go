@@ -21,6 +21,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -29,6 +30,18 @@ import (
 // Resolves through the same List verb as REST, so the two surfaces can't
 // diverge (t007 asserts this).
 
+var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AuditLogMetadata",
+	Fields: graphql.Fields{
+		"to": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e Event) any {
+			if e.MaintenanceModeTo == nil {
+				return nil
+			}
+			return *e.MaintenanceModeTo
+		})},
+	},
+})
+
 var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AuditLog",
 	Fields: graphql.Fields{
@@ -36,9 +49,15 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"timestamp":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.At.UTC().Format(time.RFC3339) })},
 		"actor":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Caller })},
 		"actorMethod": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.CallerMethod })},
-		"action":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Verb })},
+		"action":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderAction(e.Verb) })},
 		"status":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderStatus(e.Outcome) })},
 		"resource":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Resource })},
+		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
+			if e.MaintenanceModeTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
+				return nil
+			}
+			return e
+		})},
 	},
 })
 

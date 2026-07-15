@@ -14,6 +14,10 @@ spec:
         app.bex.co/component: activator
     spec:
       serviceAccountName: activator
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       # w1/m19 t003: platform pool
       nodeSelector:
         bex.co/pool: platform
@@ -37,3 +41,9 @@ spec:
               port: 8888
             initialDelaySeconds: 2
             periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true

@@ -217,30 +217,36 @@ type bexService struct {
 	RootDir   string    `json:"rootDir"`
 	// BuildFilter is render.yaml's Build Filters (paths/ignoredPaths globs) — the
 	// same {paths, ignoredPaths} shape every surface uses (BuildFilterView).
-	BuildFilter       *BuildFilterView `json:"buildFilter"`
-	BuildCommand      string           `json:"buildCommand"`
-	StartCommand      string           `json:"startCommand"`
-	DockerfilePath    string           `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
-	NumInstances      int32            `json:"numInstances"`   // render.yaml; alias for replicas
-	Replicas          int32            `json:"replicas"`       // bex alias
-	Port              int32            `json:"port"`           // bex (Render infers PORT env)
-	HealthCheckPath   string           `json:"healthCheckPath"`
-	Domains           []string         `json:"domains"`
-	Schedule          string           `json:"schedule"`          // cron expression, required when type is cron
-	PreDeployCommand  string           `json:"preDeployCommand"`  // render.yaml Pre-Deploy Command (spec.preDeployCommand)
-	AutoDeploy        *bool            `json:"autoDeploy"`        // deprecated render.yaml bool; nil => default
-	AutoDeployTrigger string           `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
-	StaticPublishPath string           `json:"staticPublishPath"` // render.yaml static-site publish dir
-	PublishPath       string           `json:"publishPath"`       // bex alias
-	EnvVars           []bexEnvVar      `json:"envVars"`
-	IPAllowList       []bexIPEntry     `json:"ipAllowList"`
-	MaxmemoryPolicy   string           `json:"maxmemoryPolicy"`
-	PersistenceMode   string           `json:"persistenceMode"`
+	BuildFilter       *BuildFilterView    `json:"buildFilter"`
+	BuildCommand      string              `json:"buildCommand"`
+	StartCommand      string              `json:"startCommand"`
+	DockerfilePath    string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
+	NumInstances      int32               `json:"numInstances"`   // render.yaml; alias for replicas
+	Replicas          int32               `json:"replicas"`       // bex alias
+	Port              int32               `json:"port"`           // bex (Render infers PORT env)
+	HealthCheckPath   string              `json:"healthCheckPath"`
+	Domains           []string            `json:"domains"`
+	Schedule          string              `json:"schedule"`          // cron expression, required when type is cron
+	PreDeployCommand  string              `json:"preDeployCommand"`  // render.yaml Pre-Deploy Command (spec.preDeployCommand)
+	MaintenanceMode   *bexMaintenanceMode `json:"maintenanceMode"`   // Render: paid web services only; uri optional
+	AutoDeploy        *bool               `json:"autoDeploy"`        // deprecated render.yaml bool; nil => default
+	AutoDeployTrigger string              `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
+	StaticPublishPath string              `json:"staticPublishPath"` // render.yaml static-site publish dir
+	PublishPath       string              `json:"publishPath"`       // bex alias
+	EnvVars           []bexEnvVar         `json:"envVars"`
+	IPAllowList       []bexIPEntry        `json:"ipAllowList"`
+	MaxmemoryPolicy   string              `json:"maxmemoryPolicy"`
+	PersistenceMode   string              `json:"persistenceMode"`
 	// Neither field exists in Render's Blueprint service schema. Keeping them
 	// explicit lets bex reject the common create-body/Blueprint mix-up by name
 	// instead of silently dropping it.
 	EnvironmentID string            `json:"environmentId"`
 	SecretFiles   []secretFileInput `json:"secretFiles"`
+}
+
+type bexMaintenanceMode struct {
+	Enabled bool   `json:"enabled"`
+	URI     string `json:"uri"`
 }
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
@@ -445,6 +451,9 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err != nil {
 		return StackResult{}, err
 	}
+	if err := s.validateBlueprintServices(st); err != nil {
+		return StackResult{}, err
+	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
 	// whose backing store isn't wired is rejected here, as is an unknown fromGroup
@@ -527,6 +536,27 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		s.upsertBlueprint(ctx, req)
 	}
 	return res, nil
+}
+
+// validateBlueprintServices runs the ordinary create boundary over every
+// parsed service before deployStack writes groupings or resources. URL
+// ownership needs the configured base domain, so it lives here rather than in
+// the context-free YAML parser and is shared by ValidateBlueprint.
+func (s *Service) validateBlueprintServices(st parsedStack) error {
+	for _, svc := range st.services {
+		desired, err := specFromCreate(svc.req)
+		if err != nil {
+			return fmt.Errorf("service %q: %w", svc.req.Name, err)
+		}
+		if desired.MaintenanceMode == nil {
+			continue
+		}
+		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: svc.req.Name}, Spec: desired}
+		if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+			return fmt.Errorf("service %q: %w", svc.req.Name, err)
+		}
+	}
+	return nil
 }
 
 // applyBlueprintGroupings resolves or creates the Project/Environment rows
@@ -931,6 +961,21 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	if plan == "" {
 		plan = a.Tier
 	}
+	// Render Blueprints default a service carrying this paid-only field to a
+	// paid starter plan when no plan is declared.
+	if plan == "" && a.MaintenanceMode != nil {
+		plan = "starter"
+	}
+	var maintenanceMode *MaintenanceModeView
+	if a.MaintenanceMode != nil {
+		maintenanceMode = &MaintenanceModeView{
+			Enabled: a.MaintenanceMode.Enabled,
+			URI:     a.MaintenanceMode.URI,
+		}
+		if _, err := parseMaintenanceURI(maintenanceMode.URI); err != nil {
+			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q maintenanceMode.uri: %v", core.ErrBadRequest, a.Name, err)
+		}
+	}
 	// Replicas: render.yaml `numInstances` or the bex `replicas` alias.
 	replicas := a.NumInstances
 	if replicas == 0 {
@@ -1021,6 +1066,7 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 		Hosts:            a.Domains,
 		AutoDeploy:       autoDeploy,
 		PreDeployCommand: a.PreDeployCommand,
+		MaintenanceMode:  maintenanceMode,
 		PublishPath:      publish,
 	}, se, nil
 }
@@ -1287,7 +1333,20 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		return AppView{}, err
 	}
 	if errors.Is(err, core.ErrNotFound) {
+		if desired.MaintenanceMode != nil {
+			probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
+			if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+				return AppView{}, err
+			}
+		}
 		return s.createNewApp(ctx, req, desired)
+	}
+	final := existing.DeepCopy()
+	applyCreateToSpec(&final.Spec, desired)
+	if final.Spec.MaintenanceMode != nil {
+		if err := s.validateMaintenanceMode(final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
+			return AppView{}, err
+		}
 	}
 	specChanged := createOwnedSpecChanged(existing.Spec, desired)
 	var assignment core.EnvironmentAssignment
@@ -1320,9 +1379,23 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
 		return AppView{}, err
 	}
+	maintenanceOnly := specChanged && createOwnedSpecChangedOnlyByMaintenance(existing.Spec, desired)
+	if maintenanceOnly && !environmentChanged {
+		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(desired.MaintenanceMode))
+	}
+	maintenanceChanged := desired.MaintenanceMode != nil &&
+		!reflect.DeepEqual(existing.Spec.MaintenanceMode, desired.MaintenanceMode)
+	var currentMaintenance *appv1alpha1.MaintenanceModeSpec
+	if existing.Spec.MaintenanceMode != nil {
+		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
+	}
+	deploySpecChanged := specChanged && !maintenanceOnly
 	base := client.MergeFrom(existing.DeepCopy())
-	if specChanged {
+	if deploySpecChanged {
 		applyCreateToSpec(&existing.Spec, desired)
+		if maintenanceChanged {
+			existing.Spec.MaintenanceMode = currentMaintenance
+		}
 	}
 	if environmentChanged {
 		if existing.Labels == nil {
@@ -1353,7 +1426,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			}
 		}
 	}
-	if specChanged && s.Store != nil {
+	if deploySpecChanged && s.Store != nil {
 		if id := existing.Labels[store.LabelAppID]; id != "" {
 			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
 			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation, commit); err != nil {
@@ -1361,7 +1434,7 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			}
 		}
 	}
-	if specChanged {
+	if deploySpecChanged {
 		secretName, err := s.ensureCloneSecret(ctx, existing)
 		if err != nil {
 			return AppView{}, err
@@ -1378,7 +1451,20 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	if s.Kick != nil {
 		s.Kick()
 	}
+	if maintenanceChanged {
+		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(desired.MaintenanceMode))
+	}
 	return s.view(existing), nil
+}
+
+func createOwnedSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
+	probe := cur
+	applyCreateToSpec(&probe, want)
+	if reflect.DeepEqual(probe.MaintenanceMode, cur.MaintenanceMode) {
+		return false
+	}
+	probe.MaintenanceMode = cur.MaintenanceMode
+	return reflect.DeepEqual(probe, cur)
 }
 
 // createOwnedSpecChanged reports whether applying `want`'s create-owned fields

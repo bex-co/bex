@@ -254,6 +254,9 @@ func main() {
 		ClusterIssuer:           envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		ActivatorService:        envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorPort:           activatorPort,
+		MaintenanceService:      envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
+		MaintenanceNamespace:    envOr("POD_NAMESPACE", "bex-system"),
+		MaintenancePort:         activatorPort,
 		MaxConcurrentBuilds:     maxConcurrentBuilds,
 		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),
 		StaticStore: publish.Store{

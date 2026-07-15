@@ -165,6 +165,12 @@ export interface MaintenanceModeView {
   uri: string;
 }
 
+export interface MaintenanceModeView {
+  enabled: boolean;
+  /** Empty selects the platform's default 503 maintenance page. */
+  uri: string;
+}
+
 /**
  * Render's Build Filters object (`spec.buildFilter`): the glob patterns gating
  * git-push auto-deploys. `paths` are include globs (empty = every path);

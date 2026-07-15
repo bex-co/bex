@@ -25,12 +25,15 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -424,7 +427,7 @@ func staticHeaderViews(headers []appv1alpha1.StaticHeader) []StaticHeaderView {
 // surface. Unlike BuildFilterView, a value type (never nil) — nil/unset
 // spec.maintenanceMode reads back as the zero value {enabled:false, uri:""},
 // matching docs/render-artifacts/maintenance-mode.md ("nil/unset is the same
-// as {enabled: false}"), so a read never has to distinguish "never
+// as {enabled: false, uri: \"\"}"), so a read never has to distinguish "never
 // configured" from "explicitly disabled" the way BuildFilter does.
 type MaintenanceModeView struct {
 	Enabled bool   `json:"enabled"`
@@ -444,10 +447,9 @@ func maintenanceModeView(m *appv1alpha1.MaintenanceModeSpec) MaintenanceModeView
 // projects it onto the CRD spec type. nil input means unset (create didn't
 // mention it) => nil spec, the same as never having enabled it. A non-empty
 // uri must be an absolute http(s) URL (docs/render-artifacts/
-// maintenance-mode.md); bex does not special-case a uri that points at the
-// service's own host (Render's documented advice, not a validated rule) — a
-// self-referencing uri is left to fail its own fetch at request time, same as
-// any other unreachable uri.
+// maintenance-mode.md). Service-level validation additionally rejects a URI
+// that points back at any host owned by the same service, avoiding a fetch
+// loop before the change reaches the CR.
 func normalizeMaintenanceMode(in *MaintenanceModeView) (*appv1alpha1.MaintenanceModeSpec, error) {
 	if in == nil {
 		return nil, nil
@@ -461,6 +463,83 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 		return nil, core.ErrNotAbsoluteHTTPURL("maintenanceMode.uri")
 	}
 	return &appv1alpha1.MaintenanceModeSpec{Enabled: enabled, URI: uri}, nil
+}
+
+func validateMaintenanceEligibility(serviceType, tier string, mode *MaintenanceModeView) error {
+	if mode == nil {
+		return nil
+	}
+	if serviceType != appv1alpha1.TypeWebService {
+		return fmt.Errorf("%w: maintenanceMode is available only for web services", core.ErrBadRequest)
+	}
+	if tier == "" || tier == "free" {
+		return fmt.Errorf("%w: maintenanceMode requires a paid web service plan", core.ErrBadRequest)
+	}
+	return nil
+}
+
+func (s *Service) validateMaintenanceMode(a *appv1alpha1.App, mode MaintenanceModeView) error {
+	if err := validateMaintenanceEligibility(effectiveType(a.Spec.Type), a.Spec.Tier, &mode); err != nil {
+		return err
+	}
+	u, err := parseMaintenanceURI(mode.URI)
+	if err != nil || u == nil {
+		return err
+	}
+	host := canonicalHost(u.Hostname())
+	for owned := range s.maintenanceHosts(a) {
+		if host == owned {
+			return fmt.Errorf("%w: maintenanceMode.uri cannot point to the same service", core.ErrBadRequest)
+		}
+	}
+	return nil
+}
+
+func parseMaintenanceURI(raw string) (*url.URL, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return nil, fmt.Errorf("%w: maintenanceMode.uri must be an absolute HTTP(S) URL", core.ErrBadRequest)
+	}
+	if u.User != nil {
+		return nil, fmt.Errorf("%w: maintenanceMode.uri must not contain credentials", core.ErrBadRequest)
+	}
+	return u, nil
+}
+
+func (s *Service) maintenanceHosts(a *appv1alpha1.App) map[string]struct{} {
+	hosts := make(map[string]struct{})
+	add := func(value string) {
+		if u, err := url.Parse(value); err == nil && u.Hostname() != "" {
+			hosts[canonicalHost(u.Hostname())] = struct{}{}
+			return
+		}
+		if host := canonicalHost(value); host != "" {
+			hosts[host] = struct{}{}
+		}
+	}
+	add(a.Spec.Host)
+	for _, host := range a.Spec.Hosts {
+		add(host)
+	}
+	add(a.Status.URL)
+	for _, value := range a.Status.URLs {
+		add(value)
+	}
+	if s.BaseDomain != "" {
+		add(a.Spec.PlatformSubdomain(a.Name) + "." + s.BaseDomain)
+	}
+	return hosts
+}
+
+func canonicalHost(value string) string {
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		value = host
+	}
+	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
 // BuildFilterView is the neutral projection of Render's Build Filters object
@@ -1165,6 +1244,12 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
+	if desired.MaintenanceMode != nil {
+		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
+		if err := s.validateMaintenanceMode(probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+			return AppView{}, err
+		}
+	}
 	// The workspace this create acts in: the one named by req.OwnerID (already
 	// membership-checked by Create's Authorize) or the caller's default. Empty
 	// when the store is off or the caller is unbound. Resolved BEFORE the
@@ -1631,11 +1716,11 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	} else if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
 	}
-	if req.MaintenanceMode != nil && svcType != appv1alpha1.TypeWebService {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: maintenanceMode only applies to a web_service", core.ErrBadRequest)
-	}
 	tier, err := normalizeTierOrPlan(req.Plan)
 	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
+	if err := validateMaintenanceEligibility(svcType, tier, req.MaintenanceMode); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
 	if req.Port < 0 || req.Port > 65535 {
@@ -1863,12 +1948,9 @@ func cloneInt32(value *int32) *int32 {
 
 // applyCreateToSpec copies the create-owned fields of want onto an existing
 // spec, leaving fields owned by the operator or other features (EnvFromSecret,
-// Suspended, IdleTTLSeconds, RestartedAt, MaintenanceMode) untouched — the same
-// discipline the store projector's applyOwnedSpec follows. MaintenanceMode is
-// create-accepted (Render's POST accepts it) but redeploy-inert: a repeated
-// Create/deploy call must not clear an active maintenance window or silently
-// re-enable one — docs/render-artifacts/maintenance-mode.md's "deploys proceed
-// normally... the maintenance page persists... until explicitly disabled".
+// Suspended, IdleTTLSeconds, RestartedAt) untouched. MaintenanceMode is
+// Blueprint-owned only when explicitly present; omission preserves an active
+// maintenance window across ordinary deploys.
 func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Type = want.Type
 	dst.Schedule = want.Schedule
@@ -1893,6 +1975,9 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.NotifyOnFail = want.NotifyOnFail
 	dst.SubdomainPolicy = want.SubdomainPolicy
 	dst.PreDeployCommand = want.PreDeployCommand
+	if want.MaintenanceMode != nil {
+		dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
+	}
 	dst.IPAllowList = want.IPAllowList
 	dst.Expose = want.Expose
 	dst.Host = want.Host
@@ -2139,6 +2224,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
+	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
+		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
+	}
 	return s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
@@ -2155,6 +2243,9 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	t, ok := tiers.Compute.ByRenderPlan(plan)
 	if !ok {
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	}
+	if t.ID == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
+		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}
 	preview := a.DeepCopy()
 	preview.Spec.Tier = t.ID
@@ -2530,26 +2621,51 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []strin
 	})
 }
 
-// SetMaintenanceMode changes Render's maintenanceMode object ({enabled, uri})
-// on a web service — the toggle that takes it offline behind an interstitial
-// page without touching the running pods (docs/render-artifacts/
-// maintenance-mode.md). A direct CR patch (like SetBuildFilter/SetRoutes):
-// maintenanceMode is not a control-plane-store-owned field.
+// ConfigureMaintenanceMode is the explicit atomic-object spelling used by the
+// REST and Blueprint adapters. SetMaintenanceMode remains the canonical Core
+// verb name recorded by audit, activity, and webhook projections.
+func (s *Service) ConfigureMaintenanceMode(ctx context.Context, name string, in MaintenanceModeView) (AppView, error) {
+	return s.SetMaintenanceMode(ctx, name, in)
+}
+
+// SetMaintenanceMode validates and writes Render's two-key object in one
+// patch. Field-level audit/activity/webhook effects are emitted only after the
+// patch succeeds, URI first and then enabled when both changed.
 func (s *Service) SetMaintenanceMode(ctx context.Context, name string, in MaintenanceModeView) (AppView, error) {
-	spec, err := validatedMaintenanceModeSpec(in.Enabled, in.URI)
+	return s.setMaintenanceMode(ctx, name, in)
+}
+
+// setMaintenanceMode is deliberately unexported so callerVerb walks through
+// it to SetMaintenanceMode, including for denied writes entering through the
+// Configure alias above.
+func (s *Service) setMaintenanceMode(ctx context.Context, name string, in MaintenanceModeView) (AppView, error) {
+	auditCtx := core.WithDeferredAllowedWriteAudit(ctx)
+	a, err := s.AuthorizeApp(auditCtx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
-	if err != nil {
+	in.URI = strings.TrimSpace(in.URI)
+	if err := s.validateMaintenanceMode(a, in); err != nil {
 		return AppView{}, err
 	}
-	if err := requireWebService(a, name); err != nil {
-		return AppView{}, err
+	current := maintenanceModeView(a.Spec.MaintenanceMode)
+	if current == in {
+		return s.view(a), nil
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.MaintenanceMode = spec
+	uriChanged := current.URI != in.URI
+	var enabledChanged *bool
+	if current.Enabled != in.Enabled {
+		enabled := in.Enabled
+		enabledChanged = &enabled
+	}
+	result, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: in.Enabled, URI: in.URI}
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordMaintenanceModeEffects(ctx, a, uriChanged, enabledChanged)
+	return result, nil
 }
 
 // SetDisplayName changes the human-facing label for an App without changing

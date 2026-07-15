@@ -135,6 +135,13 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-maintenance-mode", () => ({
+  useMaintenanceMode: () => ({
+    setMaintenanceMode: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 vi.mock("@/features/services/hooks/use-static-site", () => ({
   useStaticSiteMutations: () => ({
     setRoutes: vi.fn(async () => true),
@@ -215,6 +222,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     revision: "r1",
     plan: null,
     idleTTLSeconds: 0,
+    maintenanceMode: { enabled: false, uri: "" },
     schedule: null,
     command: null,
     runs: [],
@@ -277,6 +285,7 @@ describe("ServiceSettingsPage", () => {
     expect(screen.getByText("Instance count")).toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
     expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
+    expect(screen.getByText("Maintenance Mode")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
 
@@ -286,6 +295,7 @@ describe("ServiceSettingsPage", () => {
 
     expect(await screen.findByText("Instance count")).toBeInTheDocument();
     expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
+    expect(screen.queryByText("Maintenance Mode")).not.toBeInTheDocument();
   });
 
   it("shows a Deploy section (schedule + command), hides Custom Domains, Idle timeout, and instance count for a cron job", async () => {

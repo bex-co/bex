@@ -345,7 +345,8 @@ func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, 
 	if err == nil {
 		err = b.checkAuthz(ctx, relation, object)
 	}
-	if writeRelations[relation] || (readRelations[relation] && err != nil) {
+	if (writeRelations[relation] || (readRelations[relation] && err != nil)) &&
+		!(err == nil && defersAllowedWriteAudit(ctx)) {
 		b.emit(ctx, verb, object, target, err)
 	}
 	return err

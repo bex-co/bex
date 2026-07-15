@@ -121,18 +121,21 @@ type AppReconciler struct {
 	// namespaces; a cached client would try to establish forbidden cluster-wide
 	// informers before performing a namespaced Get. Tests may leave it nil and
 	// use Client.
-	BuildClient      client.Client
-	Scheme           *runtime.Scheme
-	Mode             string                  // ModeOpenSandbox | ModeKubernetes
-	Registry         string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
-	KpackRegistry    string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
-	CNBBuilder       string                  // e.g. paketobuildpacks/builder-jammy-base
-	BuildNamespace   string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
-	Runtime          *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
-	BaseDomain       string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
-	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
-	ActivatorService string                  // k8s Service name of the activator (wake-on-request + maintenance-mode responder); empty => auto-sleep and maintenance mode both unroutable
-	ActivatorPort    int                     // activator listen port (default 8888)
+	BuildClient          client.Client
+	Scheme               *runtime.Scheme
+	Mode                 string                  // ModeOpenSandbox | ModeKubernetes
+	Registry             string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	KpackRegistry        string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
+	CNBBuilder           string                  // e.g. paketobuildpacks/builder-jammy-base
+	BuildNamespace       string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Runtime              *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
+	BaseDomain           string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
+	ClusterIssuer        string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	ActivatorService     string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorPort        int                     // activator listen port (default 8888)
+	MaintenanceService   string                  // shared public maintenance responder Service (default bex-activator)
+	MaintenanceNamespace string                  // namespace of the shared responder Service (default bex-system)
+	MaintenancePort      int                     // maintenance responder Service port (default 8888)
 	// StaticStore is the object-store target for static_site publishing
 	// (BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET). Unconfigured => static_site Apps are
 	// rejected with a clear status, the way unset backup vars disable backups.
@@ -482,12 +485,6 @@ func shouldAutoHibernate(app *appv1alpha1.App) bool {
 	if app.Spec.Suspended {
 		return false
 	}
-	// Maintenance mode promises the pods stay running for the duration it's
-	// enabled — disabling it should never wake a cold app. See
-	// docs/render-artifacts/maintenance-mode.md.
-	if maintenanceEnabled(app) {
-		return false
-	}
 	if app.Spec.IdleTTLSeconds <= 0 {
 		return false
 	}
@@ -545,13 +542,6 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// touching spec.suspended, so manual-suspend semantics are preserved. A worker
 	// never auto-hibernates — it has no Ingress, so a request could never wake it.
 	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
-
-	// Maintenance mode: route traffic to the activator without touching
-	// replicas — pods keep running, only the Ingress backend changes. Suspend
-	// wins outright (its own early-return below runs before the Ingress
-	// backend is ever read), so it's excluded here rather than left to race.
-	// A worker has no Ingress to route, same reasoning as autoHibernating.
-	maintenanceActive := !worker && r.ActivatorService != "" && !app.Spec.Suspended && maintenanceEnabled(app)
 
 	replicas := effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
@@ -708,14 +698,19 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Ingress, so the ingress controller (traefik today) stays swappable.
 	hosts := effectiveHosts(app, r.BaseDomain)
 
-	// When auto-hibernating, route all traffic to the activator so it can wake
-	// the app on the next request; when in maintenance mode, route to the same
-	// activator so it can serve the interstitial instead (pods keep running,
-	// unlike auto-hibernate — the activator distinguishes the two by re-reading
-	// spec.maintenanceMode itself); restore the app's own service otherwise.
+	// Maintenance has public-routing precedence over both auto-hibernation and
+	// manual suspension. It changes only the public Ingress backend; the workload
+	// follows its independent replica/suspension policy.
 	ingressSvc := app.Name
 	ingressPort := int32(port)
-	if autoHibernating || maintenanceActive {
+	if maintenanceEnabled(app) {
+		maintenanceSvc, err := r.reconcileMaintenanceAlias(ctx, app)
+		if err != nil {
+			return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
+		}
+		ingressSvc = maintenanceSvc
+		ingressPort = int32(r.maintenancePort())
+	} else if autoHibernating {
 		ingressSvc = r.ActivatorService
 		ingressPort = int32(r.ActivatorPort)
 	}
@@ -1088,6 +1083,58 @@ func (r *AppReconciler) staticServerPort() int {
 		return r.StaticServerPort
 	}
 	return 8080
+}
+
+func (r *AppReconciler) maintenanceService() string {
+	if r.MaintenanceService != "" {
+		return r.MaintenanceService
+	}
+	return "bex-activator"
+}
+
+func (r *AppReconciler) maintenanceNamespace() string {
+	if r.MaintenanceNamespace != "" {
+		return r.MaintenanceNamespace
+	}
+	return "bex-system"
+}
+
+func (r *AppReconciler) maintenancePort() int {
+	if r.MaintenancePort > 0 {
+		return r.MaintenancePort
+	}
+	return 8888
+}
+
+// Ingress backends must live in the Ingress namespace. When the shared
+// responder is in the platform namespace, create an App-owned ExternalName
+// alias without replacing the tenant's private ClusterIP Service.
+func (r *AppReconciler) reconcileMaintenanceAlias(ctx context.Context, app *appv1alpha1.App) (string, error) {
+	if app.Namespace == r.maintenanceNamespace() {
+		return r.maintenanceService(), nil
+	}
+	name := maintenanceAliasName(app.Name)
+	alias := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, alias, func() error {
+		alias.Spec.Type = corev1.ServiceTypeExternalName
+		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", r.maintenanceService(), r.maintenanceNamespace())
+		alias.Spec.Selector = nil
+		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: int32(r.maintenancePort())}}
+		return controllerutil.SetControllerReference(app, alias, r.Scheme)
+	}); err != nil {
+		return "", fmt.Errorf("reconciling maintenance responder alias: %w", err)
+	}
+	return name, nil
+}
+
+func maintenanceAliasName(appName string) string {
+	const prefix = "bex-maintenance-"
+	if len(prefix)+len(appName) <= 63 {
+		return prefix + appName
+	}
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
+	keep := 63 - len(prefix) - 1 - len(sum)
+	return prefix + appName[:keep] + "-" + sum
 }
 
 // maxCronRuns caps how many recent runs the status carries — enough to show a

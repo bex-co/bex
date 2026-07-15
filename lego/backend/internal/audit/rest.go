@@ -41,13 +41,20 @@ import (
 // action that started and then errored). resource is a bex extra (the OpenFGA
 // object authorized against) Render has no equivalent field for.
 type renderAuditLog struct {
-	ID          string `json:"id"`
-	Timestamp   string `json:"timestamp"`
-	Actor       string `json:"actor"`
-	ActorMethod string `json:"actorMethod,omitempty"` // bex extra: "oauth2" | "session"
-	Action      string `json:"action"`
-	Status      string `json:"status"`             // "success" | "denied"
-	Resource    string `json:"resource,omitempty"` // bex extra
+	ID          string               `json:"id"`
+	Timestamp   string               `json:"timestamp"`
+	Actor       string               `json:"actor"`
+	ActorMethod string               `json:"actorMethod,omitempty"` // bex extra: "oauth2" | "session"
+	Action      string               `json:"action"`
+	Status      string               `json:"status"`             // "success" | "denied"
+	Resource    string               `json:"resource,omitempty"` // bex extra
+	Metadata    *renderAuditMetadata `json:"metadata,omitempty"`
+}
+
+// renderAuditMetadata is intentionally closed: Render defines `to` for a
+// MaintenanceModeEnabledEvent, and no arbitrary verb argument can be added.
+type renderAuditMetadata struct {
+	To *bool `json:"to,omitempty"`
 }
 
 func renderStatus(outcome string) string {
@@ -57,16 +64,33 @@ func renderStatus(outcome string) string {
 	return "success"
 }
 
+func renderAction(verb string) string {
+	switch verb {
+	case core.AuditVerbMaintenanceModeEnabled:
+		return "MaintenanceModeEnabledEvent"
+	case core.AuditVerbMaintenanceModeURIUpdated:
+		return "MaintenanceModeURIUpdatedEvent"
+	default:
+		return verb
+	}
+}
+
 func toRenderAuditLog(e Event) renderAuditLog {
-	return renderAuditLog{
+	out := renderAuditLog{
 		ID:          e.ID,
 		Timestamp:   e.At.UTC().Format(time.RFC3339),
 		Actor:       e.Caller,
 		ActorMethod: e.CallerMethod,
-		Action:      e.Verb,
+		Action:      renderAction(e.Verb),
 		Status:      renderStatus(e.Outcome),
 		Resource:    e.Resource,
 	}
+	if e.MaintenanceModeTo != nil {
+		out.Metadata = &renderAuditMetadata{To: e.MaintenanceModeTo}
+	} else if e.Verb == core.AuditVerbMaintenanceModeURIUpdated {
+		out.Metadata = &renderAuditMetadata{}
+	}
+	return out
 }
 
 // auditLogWithCursor is the list-item envelope — the same {object, cursor}
