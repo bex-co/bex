@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,6 +29,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -459,6 +461,162 @@ var _ = Describe("App Controller", func() {
 			Expect(c.EnvFrom).To(HaveLen(1))
 			Expect(c.EnvFrom[0].SecretRef).NotTo(BeNil())
 			Expect(c.EnvFrom[0].SecretRef.Name).To(Equal(name + "-env"))
+		})
+	})
+
+	Context("Maintenance mode (kubernetes runtime)", func() {
+		const name = "maintenance-app"
+		ctx := context.Background()
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+
+		var r *AppReconciler
+		BeforeEach(func() {
+			r = &AppReconciler{
+				Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+				ActivatorService: "bex-activator", ActivatorPort: 8888,
+			}
+		})
+		reconcileN := func() {
+			for range 3 {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		getDep := func() *appsv1.Deployment {
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			return dep
+		}
+		getApp := func() *appv1alpha1.App {
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			return app
+		}
+		getIngress := func() *networkingv1.Ingress {
+			ing := &networkingv1.Ingress{}
+			Expect(k8sClient.Get(ctx, nn, ing)).To(Succeed())
+			return ing
+		}
+		backendOf := func(ing *networkingv1.Ingress, ruleIdx int) (string, int32) {
+			b := ing.Spec.Rules[ruleIdx].HTTP.Paths[0].Backend.Service
+			return b.Name, b.Port.Number
+		}
+
+		AfterEach(func() {
+			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcileN()
+			}
+		})
+
+		It("routes every host to the activator while enabled, restores on disable, pods untouched throughout", func() {
+			By("creating a running App with two hosts")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000, Replicas: 2,
+					Host:  "maint.1.2.3.4.sslip.io",
+					Hosts: []string{"www.maint-example.com"},
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+			ing := getIngress()
+			Expect(ing.Spec.Rules).To(HaveLen(2))
+			for i := range ing.Spec.Rules {
+				svc, port := backendOf(ing, i)
+				Expect(svc).To(Equal(name))
+				Expect(port).To(Equal(int32(3000)))
+			}
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)))
+
+			By("enabling maintenance mode: every host's Ingress backend swaps to the activator")
+			app = getApp()
+			app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			ing = getIngress()
+			Expect(ing.Spec.Rules).To(HaveLen(2))
+			for i := range ing.Spec.Rules {
+				svc, port := backendOf(ing, i)
+				Expect(svc).To(Equal("bex-activator"))
+				Expect(port).To(Equal(int32(8888)))
+			}
+			By("the Deployment is left running at its configured replica count — no scale change")
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)))
+			Expect(getDep().Spec.Template.Spec.Containers).To(HaveLen(1), "pods themselves are untouched")
+
+			By("disabling maintenance mode restores the app's own Service as the backend")
+			app = getApp()
+			app.Spec.MaintenanceMode.Enabled = false
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			ing = getIngress()
+			for i := range ing.Spec.Rules {
+				svc, port := backendOf(ing, i)
+				Expect(svc).To(Equal(name))
+				Expect(port).To(Equal(int32(3000)))
+			}
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)))
+		})
+
+		It("suspend wins: a suspended App's Ingress backend is unaffected by maintenance mode", func() {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000,
+					Host:            "maint.1.2.3.4.sslip.io",
+					Suspended:       true,
+					MaintenanceMode: &appv1alpha1.MaintenanceModeSpec{Enabled: true},
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+
+			By("suspend scales to 0 regardless of maintenance mode")
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)))
+			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+
+			By("suspend keeps the Ingress pointed at the app's own Service, not the activator")
+			svc, port := backendOf(getIngress(), 0)
+			Expect(svc).To(Equal(name))
+			Expect(port).To(Equal(int32(3000)))
+		})
+
+		It("waking into maintenance: an already auto-hibernated app un-hibernates when maintenance mode is enabled", func() {
+			By("creating a free-tier App idle past its TTL — it auto-hibernates")
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000, Replicas: 2,
+					Host:           "maint.1.2.3.4.sslip.io",
+					IdleTTLSeconds: 300,
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN()
+			app = getApp()
+			base := app.DeepCopy()
+			if app.Annotations == nil {
+				app.Annotations = map[string]string{}
+			}
+			app.Annotations[annotLastActive] = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+			Expect(k8sClient.Patch(ctx, app, client.MergeFrom(base))).To(Succeed())
+			reconcileN()
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)), "idle past its TTL, the app auto-hibernates")
+			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+
+			By("enabling maintenance mode un-hibernates it — pods must be running while in maintenance")
+			app = getApp()
+			app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN()
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)), "maintenance mode must restore replicas, not leave it scaled to 0")
+
+			By("the Ingress still routes to the activator throughout (auto-hibernate, then maintenance)")
+			svc, port := backendOf(getIngress(), 0)
+			Expect(svc).To(Equal("bex-activator"))
+			Expect(port).To(Equal(int32(8888)))
 		})
 	})
 })

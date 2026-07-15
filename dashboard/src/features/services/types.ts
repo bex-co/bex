@@ -142,6 +142,25 @@ export interface ServiceView {
    * query fetches it for the Networking section.
    */
   ipAllowList: Array<string | null> | null;
+  /**
+   * Render's maintenanceMode object (`spec.maintenanceMode`, w1/m37): takes a
+   * web_service offline behind an interstitial page without suspending it.
+   * null when not selected (list query); the detail `server` query always
+   * selects a concrete object (bex-api reports the zero value
+   * `{enabled: false, uri: ""}` even when never configured).
+   */
+  maintenanceMode: MaintenanceModeView | null;
+}
+
+/**
+ * Render's maintenanceMode object (`spec.maintenanceMode`, w1/m37):
+ * `enabled` takes the service offline behind an interstitial page; `uri` is
+ * an optional absolute http(s) URL to a custom page (empty uses bex's
+ * default page).
+ */
+export interface MaintenanceModeView {
+  enabled: boolean;
+  uri: string;
 }
 
 /**

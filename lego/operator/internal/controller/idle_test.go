@@ -138,6 +138,24 @@ func TestShouldAutoHibernate(t *testing.T) {
 			mkIdleApp("free", 300, time.Time{}, false),
 			false,
 		},
+		{
+			"maintenance mode enabled: auto-hibernate defers to it (pods must stay up)",
+			func() *appv1alpha1.App {
+				app := mkIdleApp("free", 300, now.Add(-10*time.Minute), false)
+				app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+				return app
+			}(),
+			false,
+		},
+		{
+			"maintenance mode struct present but disabled: auto-hibernate unaffected",
+			func() *appv1alpha1.App {
+				app := mkIdleApp("free", 300, now.Add(-6*time.Minute), false)
+				app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: false}
+				return app
+			}(),
+			true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

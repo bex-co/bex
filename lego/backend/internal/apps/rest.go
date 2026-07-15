@@ -46,8 +46,11 @@ type patchServiceRequest struct {
 		BuildCommand     *string         `json:"buildCommand"`
 		EnvSpecific      json.RawMessage `json:"envSpecificDetails"`
 		Previews         json.RawMessage `json:"previews"`
-		MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
-		IPAllowList      json.RawMessage `json:"ipAllowList"`
+		// MaintenanceMode is Render's maintenanceMode object (webServiceDetails,
+		// docs/render-artifacts/maintenance-mode.md). A pointer so "absent" (leave
+		// unchanged) is distinct from an explicit object; web_service only.
+		MaintenanceMode *MaintenanceModeView `json:"maintenanceMode"`
+		IPAllowList     json.RawMessage      `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -241,8 +244,10 @@ type serviceDetailsReq struct {
 	// (Render-faithful) or at the top level (top level wins).
 	PreDeployCommand string          `json:"preDeployCommand"`
 	Previews         json.RawMessage `json:"previews"`
-	MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
-	IPAllowList      json.RawMessage `json:"ipAllowList"`
+	// MaintenanceMode is Render's maintenanceMode object (webServiceDetails,
+	// docs/render-artifacts/maintenance-mode.md). nil means unset (disabled).
+	MaintenanceMode *MaintenanceModeView `json:"maintenanceMode"`
+	IPAllowList     json.RawMessage      `json:"ipAllowList"`
 }
 
 type envSpecificDetailsReq struct {
@@ -267,9 +272,6 @@ func (r createServiceRequest) unsupportedField() string {
 	if len(r.ServiceDetails.Previews) > 0 {
 		return "previews"
 	}
-	if len(r.ServiceDetails.MaintenanceMode) > 0 {
-		return "maintenanceMode"
-	}
 	if r.ServiceDetails.EnvSpecificDetails != nil && len(r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID) > 0 {
 		return "registryCredentialId"
 	}
@@ -285,9 +287,6 @@ func (r patchServiceRequest) unsupportedField() string {
 	}
 	if len(r.ServiceDetails.Previews) > 0 {
 		return "previews"
-	}
-	if len(r.ServiceDetails.MaintenanceMode) > 0 {
-		return "maintenanceMode"
 	}
 	if len(r.ServiceDetails.EnvSpecific) > 0 {
 		var fields map[string]json.RawMessage
@@ -341,7 +340,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	preDeploy := r.PreDeployCommand
 	var replicas int32
 	var maxShutdownDelaySeconds *int32
+	var maintenanceMode *MaintenanceModeView
 	if r.ServiceDetails != nil {
+		maintenanceMode = r.ServiceDetails.MaintenanceMode
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
@@ -420,6 +421,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		StartCommand:            startCommand,
 		RootDir:                 rootDir,
 		BuildFilter:             r.BuildFilter,
+		MaintenanceMode:         maintenanceMode,
 		DockerfilePath:          dockerfilePath,
 		Port:                    r.Port,
 		Replicas:                replicas,
@@ -650,7 +652,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Name != nil {
 			displayName = req.Name
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil {
+		var maintenanceMode *MaintenanceModeView
+		if req.ServiceDetails != nil {
+			maintenanceMode = req.ServiceDetails.MaintenanceMode
+		}
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil && maintenanceMode == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -778,6 +784,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if patchIPAllowList != nil {
 			if app, err = s.SetIPAllowList(r.Context(), id, *patchIPAllowList); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if maintenanceMode != nil {
+			if app, err = s.SetMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

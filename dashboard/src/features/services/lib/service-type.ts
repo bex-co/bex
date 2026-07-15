@@ -56,6 +56,15 @@ export function isWorker(s: ServiceView): boolean {
   return s.type === "background_worker";
 }
 
+/**
+ * True for a web_service — the only type maintenance mode applies to
+ * (Render parity, w1/m37). Empty spec.type reads back as web_service from
+ * bex-api, so a legacy App with no explicit type still matches.
+ */
+export function isWebService(s: ServiceView): boolean {
+  return s.type === "web_service";
+}
+
 /** True when the service owns a long-running pod with a SIGTERM grace window. */
 export function supportsMaxShutdownDelay(s: ServiceView): boolean {
   return (

@@ -233,4 +233,27 @@ describe("ServiceDetailHeader", () => {
       await screen.findByRole("button", { name: "Open actions menu" }),
     ).toBeDisabled();
   });
+
+  it("shows the maintenance-mode banner when enabled", async () => {
+    renderHeader(svc({ maintenanceMode: { enabled: true, uri: "" } }));
+
+    expect(
+      await screen.findByText("Maintenance mode is on"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no banner when maintenance mode is disabled or unselected", async () => {
+    renderHeader(svc({ maintenanceMode: { enabled: false, uri: "" } }));
+    expect(
+      await screen.findByRole("heading", { name: "app" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Maintenance mode is on"),
+    ).not.toBeInTheDocument();
+
+    renderHeader(svc({ maintenanceMode: null }));
+    expect(
+      screen.queryByText("Maintenance mode is on"),
+    ).not.toBeInTheDocument();
+  });
 });

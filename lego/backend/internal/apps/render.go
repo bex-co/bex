@@ -165,10 +165,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if publicID == "" {
 		publicID = a.Name // hand-applied/store-less compatibility
 	}
-	svcType := a.Type
-	if svcType == "" {
-		svcType = renderWebService // defensive; view() already defaults this
-	}
+	svcType := effectiveType(a.Type) // defensive; view() already defaults this
 	var details map[string]any
 	set := func(k string, v any) {
 		if details == nil {
@@ -244,6 +241,15 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	}
 	if a.RenderSubdomainPolicy != "" {
 		set("renderSubdomainPolicy", a.RenderSubdomainPolicy)
+	}
+	if svcType == renderWebService {
+		// Render's maintenanceMode is required on webServiceDetails (never
+		// omitted), unlike the mostly-optional fields above — docs/render-
+		// artifacts/maintenance-mode.md.
+		set("maintenanceMode", map[string]any{
+			"enabled": a.MaintenanceMode.Enabled,
+			"uri":     a.MaintenanceMode.URI,
+		})
 	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {

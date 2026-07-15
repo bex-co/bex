@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: bex-static-server
+  name: static-server
   namespace: bex-system
 rules:
   # Read Apps to map an incoming host to its static_site's current revision and

@@ -166,6 +166,12 @@ spec:
             value: static-s3
           - name: BEX_STATIC_SERVER_SERVICE
             value: bex-static-server
+          # The activator (w1/m4 wake-on-request, w1/m37 maintenance mode):
+          # the Ingress backend swaps to this Service in either state.
+          - name: BEX_ACTIVATOR_SERVICE
+            value: bex-activator
+          - name: BEX_ACTIVATOR_PORT
+            value: "8888"
         ports:
         - containerPort: 8081
           name: health

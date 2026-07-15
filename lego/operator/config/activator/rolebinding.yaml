@@ -1,13 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: bex-activator
-  namespace: bex-system
+  name: activator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: bex-activator
+  kind: ClusterRole
+  name: activator
 subjects:
   - kind: ServiceAccount
-    name: bex-activator
+    name: activator
     namespace: bex-system

@@ -1,6 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Github } from "lucide-react";
+import { AlertTriangle, Github } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge.tsx";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert.tsx";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -157,6 +162,16 @@ export function ServiceDetailHeader({
         <p className="text-muted-foreground text-sm">
           {t("services.statusSleepingHint")}
         </p>
+      ) : null}
+
+      {service.maintenanceMode?.enabled ? (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>{t("services.maintenanceModeBannerTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("services.maintenanceModeBannerBody")}
+          </AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );

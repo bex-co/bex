@@ -70,7 +70,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -405,9 +404,8 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 // host. Returned trimmed — what the store keeps and the sender POSTs to.
 func parseDestination(raw string) (string, error) {
 	dest := strings.TrimSpace(raw)
-	u, err := url.Parse(dest)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return "", fmt.Errorf("%w: url must be absolute http(s)", core.ErrBadRequest)
+	if !core.ValidAbsoluteHTTPURL(dest) {
+		return "", core.ErrNotAbsoluteHTTPURL("url")
 	}
 	return dest, nil
 }

@@ -422,6 +422,14 @@ type AppSpec struct {
 	// private_service, background_worker, and cron_job.
 	// +optional
 	IPAllowList []string `json:"ipAllowList,omitempty"`
+
+	// MaintenanceMode takes the service intentionally offline behind an
+	// interstitial page without suspending it — pods keep running, only the
+	// Ingress routing changes. Render's maintenanceMode (web_service only;
+	// other types rejected at the bex-api layer). nil/unset is the same as
+	// {enabled: false}. See docs/render-artifacts/maintenance-mode.md.
+	// +optional
+	MaintenanceMode *MaintenanceModeSpec `json:"maintenanceMode,omitempty"`
 }
 
 // PlatformSubdomain returns the slug the platform hostname is built from:
@@ -473,6 +481,27 @@ type AutoscalingSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+}
+
+// MaintenanceModeSpec declares whether a web service is taking itself offline
+// behind an interstitial page (Render's maintenanceMode). Mirrors Render's
+// object shape exactly: {enabled, uri}.
+type MaintenanceModeSpec struct {
+	// Enabled turns maintenance mode on. While true, every host the App serves
+	// answers 503 with the maintenance page instead of reaching the app's pods;
+	// the pods themselves are left running untouched. Required.
+	Enabled bool `json:"enabled"`
+
+	// URI is an absolute http(s) URL to a custom maintenance page, fetched and
+	// served in place of the default page (not a redirect — the visitor's
+	// address bar stays on the service's own host). Empty serves bex's default
+	// page. Must not point at the service itself, which is unreachable while
+	// maintenance mode is enabled — Render's own documented constraint; bex
+	// does not special-case it, the fetch simply fails and that failure is
+	// surfaced to the visitor, same as any other unreachable uri.
+	// +optional
+	// +kubebuilder:validation:MaxLength=2048
+	URI string `json:"uri,omitempty"`
 }
 
 // BuildFilterSpec is Render's Build Filters object (spec.buildFilter):

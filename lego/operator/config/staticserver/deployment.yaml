@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bex-static-server
+  name: static-server
   namespace: bex-system
 spec:
   replicas: 1
@@ -13,7 +13,7 @@ spec:
       labels:
         app.bex.co/component: static-server
     spec:
-      serviceAccountName: bex-static-server
+      serviceAccountName: static-server
       # w1/m19 t003: platform pool (same placement as the activator/operator).
       nodeSelector:
         bex.co/pool: platform

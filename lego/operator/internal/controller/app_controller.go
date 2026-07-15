@@ -125,7 +125,7 @@ type AppReconciler struct {
 	Runtime          *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
 	BaseDomain       string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer    string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
-	ActivatorService string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorService string                  // k8s Service name of the activator (wake-on-request + maintenance-mode responder); empty => auto-sleep and maintenance mode both unroutable
 	ActivatorPort    int                     // activator listen port (default 8888)
 	// StaticStore is the object-store target for static_site publishing
 	// (BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET). Unconfigured => static_site Apps are
@@ -476,6 +476,12 @@ func shouldAutoHibernate(app *appv1alpha1.App) bool {
 	if app.Spec.Suspended {
 		return false
 	}
+	// Maintenance mode promises the pods stay running for the duration it's
+	// enabled — disabling it should never wake a cold app. See
+	// docs/render-artifacts/maintenance-mode.md.
+	if maintenanceEnabled(app) {
+		return false
+	}
 	if app.Spec.IdleTTLSeconds <= 0 {
 		return false
 	}
@@ -503,6 +509,12 @@ func idleRequeueAfter(app *appv1alpha1.App, now time.Time) time.Duration {
 	return remaining
 }
 
+// maintenanceEnabled reports whether the App has requested maintenance mode,
+// nil-safe (unset spec.maintenanceMode == {enabled: false}).
+func maintenanceEnabled(app *appv1alpha1.App) bool {
+	return app.Spec.MaintenanceMode != nil && app.Spec.MaintenanceMode.Enabled
+}
+
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 //
@@ -527,6 +539,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// touching spec.suspended, so manual-suspend semantics are preserved. A worker
 	// never auto-hibernates — it has no Ingress, so a request could never wake it.
 	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
+
+	// Maintenance mode: route traffic to the activator without touching
+	// replicas — pods keep running, only the Ingress backend changes. Suspend
+	// wins outright (its own early-return below runs before the Ingress
+	// backend is ever read), so it's excluded here rather than left to race.
+	// A worker has no Ingress to route, same reasoning as autoHibernating.
+	maintenanceActive := !worker && r.ActivatorService != "" && !app.Spec.Suspended && maintenanceEnabled(app)
 
 	replicas := effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
@@ -681,10 +700,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	hosts := effectiveHosts(app, r.BaseDomain)
 
 	// When auto-hibernating, route all traffic to the activator so it can wake
-	// the app on the next request; restore the app's own service when running.
+	// the app on the next request; when in maintenance mode, route to the same
+	// activator so it can serve the interstitial instead (pods keep running,
+	// unlike auto-hibernate — the activator distinguishes the two by re-reading
+	// spec.maintenanceMode itself); restore the app's own service otherwise.
 	ingressSvc := app.Name
 	ingressPort := int32(port)
-	if autoHibernating {
+	if autoHibernating || maintenanceActive {
 		ingressSvc = r.ActivatorService
 		ingressPort = int32(r.ActivatorPort)
 	}

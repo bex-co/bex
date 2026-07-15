@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: bex-activator
+  name: activator
   namespace: bex-system
 spec:
   selector:

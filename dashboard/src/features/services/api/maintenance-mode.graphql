@@ -1,0 +1,14 @@
+# setMaintenanceMode takes a web service offline behind an interstitial page
+# without suspending it (w1/m37, Render's maintenanceMode field).
+mutation SetMaintenanceMode(
+  $id: String!
+  $maintenanceMode: MaintenanceModeInput!
+) {
+  setMaintenanceMode(id: $id, maintenanceMode: $maintenanceMode) {
+    id
+    maintenanceMode {
+      enabled
+      uri
+    }
+  }
+}

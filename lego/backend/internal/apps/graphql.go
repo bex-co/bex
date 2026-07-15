@@ -111,6 +111,40 @@ var secretFileInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
+// maintenanceModeGQLType renders Render's maintenanceMode object
+// (spec.maintenanceMode): {enabled, uri}; maintenanceModeInputType is its
+// mutation input (createService + setMaintenanceMode). Unlike BuildFilter,
+// never null — MaintenanceModeView is a value type that's always present
+// (zero value == disabled), matching docs/render-artifacts/maintenance-mode.md.
+var maintenanceModeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "MaintenanceMode",
+	Fields: graphql.Fields{
+		"enabled": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(m MaintenanceModeView) any { return m.Enabled })},
+		"uri":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(m MaintenanceModeView) any { return m.URI })},
+	},
+})
+
+var maintenanceModeInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "MaintenanceModeInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"enabled": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+		"uri":     &graphql.InputObjectFieldConfig{Type: graphql.String},
+	},
+})
+
+// gqlMaintenanceModeInput parses a MaintenanceModeInput argument into the
+// neutral view. Returns nil when the argument is absent, so create leaves
+// maintenanceMode unset (disabled) — same absence convention as
+// gqlBuildFilterInput.
+func gqlMaintenanceModeInput(args map[string]any, key string) *MaintenanceModeView {
+	m, ok := args[key].(map[string]any)
+	if !ok {
+		return nil
+	}
+	enabled, _ := m["enabled"].(bool)
+	return &MaintenanceModeView{Enabled: enabled, URI: gqlStr(m, "uri")}
+}
+
 // gqlBuildFilterInput parses a BuildFilterInput argument into the neutral view
 // (graphql-go delivers the input object as map[string]any and each [String] list
 // as []any of strings). Returns nil when the argument is absent, so create leaves
@@ -360,6 +394,14 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ipAllowList": &graphql.Field{
 			Type:    graphql.NewList(graphql.String),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
+		},
+		// maintenanceMode is Render's maintenanceMode object (web_service only;
+		// every other type reports the zero value {enabled:false, uri:""}). The
+		// Settings → Maintenance Mode section reads it and writes it via
+		// setMaintenanceMode.
+		"maintenanceMode": &graphql.Field{
+			Type:    graphql.NewNonNull(maintenanceModeGQLType),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.MaintenanceMode }),
 		},
 	},
 })
@@ -824,6 +866,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"maxShutdownDelaySeconds": &graphql.ArgumentConfig{Type: graphql.Int},
 				// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand, w1/m33).
 				"preDeployCommand": &graphql.ArgumentConfig{Type: graphql.String},
+				// maintenanceMode is Render's maintenanceMode object at create time
+				// (w1/m37); web_service only. Omitted => disabled.
+				"maintenanceMode": &graphql.ArgumentConfig{Type: maintenanceModeInputType},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
@@ -863,6 +908,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					HealthCheckPath:         gqlStr(p.Args, "healthCheckPath"),
 					MaxShutdownDelaySeconds: gqlInt32Ptr(p.Args, "maxShutdownDelaySeconds"),
 					PreDeployCommand:        gqlStr(p.Args, "preDeployCommand"),
+					MaintenanceMode:         gqlMaintenanceModeInput(p.Args, "maintenanceMode"),
 					DryRun:                  dryRun,
 				})
 			},
@@ -1030,6 +1076,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetBuildFilter(p.Context, p.Args["id"].(string), gqlBuildFilterInput(p.Args, "buildFilter"))
+			},
+		},
+		// setMaintenanceMode: the Settings → Maintenance Mode toggle (w1/m37)
+		// writes Render's maintenanceMode object (spec.maintenanceMode) — takes a
+		// web service offline behind an interstitial page without touching its
+		// pods. Rejected for a non-web_service (core.ErrBadRequest).
+		"setMaintenanceMode": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":              &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"maintenanceMode": &graphql.ArgumentConfig{Type: graphql.NewNonNull(maintenanceModeInputType)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				in := gqlMaintenanceModeInput(p.Args, "maintenanceMode")
+				return s.SetMaintenanceMode(p.Context, p.Args["id"].(string), *in)
 			},
 		},
 		// setHealthCheckPath: the Settings → Health & Alerts health-check path

@@ -403,6 +403,34 @@ spec:
                 items:
                   type: string
                 type: array
+              maintenanceMode:
+                description: |-
+                  MaintenanceMode takes the service intentionally offline behind an
+                  interstitial page without suspending it — pods keep running, only the
+                  Ingress routing changes. Render's maintenanceMode (web_service only;
+                  other types rejected at the bex-api layer). nil/unset is the same as
+                  {enabled: false}. See docs/render-artifacts/maintenance-mode.md.
+                properties:
+                  enabled:
+                    description: |-
+                      Enabled turns maintenance mode on. While true, every host the App serves
+                      answers 503 with the maintenance page instead of reaching the app's pods;
+                      the pods themselves are left running untouched. Required.
+                    type: boolean
+                  uri:
+                    description: |-
+                      URI is an absolute http(s) URL to a custom maintenance page, fetched and
+                      served in place of the default page (not a redirect — the visitor's
+                      address bar stays on the service's own host). Empty serves bex's default
+                      page. Must not point at the service itself, which is unreachable while
+                      maintenance mode is enabled — Render's own documented constraint; bex
+                      does not special-case it, the fetch simply fails and that failure is
+                      surfaced to the visitor, same as any other unreachable uri.
+                    maxLength: 2048
+                    type: string
+                required:
+                - enabled
+                type: object
               maxShutdownDelaySeconds:
                 description: |-
                   MaxShutdownDelaySeconds is the maximum graceful-shutdown window after

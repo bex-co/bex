@@ -1,14 +1,19 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: bex-activator
-  namespace: bex-system
+  name: activator
 rules:
-  # Read Apps to find which app owns an incoming host.
+  # Read Apps to find which app owns an incoming host. Cluster-scoped: Apps
+  # live in tenant namespaces (default, dev-*, …), never bex-system itself —
+  # a namespaced Role here would make every List() call 403 (discovered
+  # w1/m37: the activator was built at w1/m4 but never actually deployed
+  # until this milestone wired it into config/default, so this gap was
+  # dormant and untested until now).
   - apiGroups: ["app.bex.co"]
     resources: ["apps"]
     verbs: ["get", "list", "watch", "patch"]
-  # Bump Deployment replicas to 1 to trigger the operator reconcile.
+  # Bump Deployment replicas to 1 to trigger the operator reconcile — same
+  # cross-namespace reasoning as above.
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "patch"]

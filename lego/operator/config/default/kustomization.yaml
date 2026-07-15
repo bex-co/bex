@@ -20,6 +20,13 @@ resources:
 - ../manager
 # The control-plane-seed API (REST + GraphQL for restart/suspend/resume).
 - ../api
+# The shared interstitial responder (w1/m4): wakes auto-hibernated free-tier
+# apps on request, and serves the maintenance-mode page (w1/m37) — same
+# component, two states. Same image as the manager, different entrypoint
+# (/activator). Previously built but never wired into this kustomization
+# (w1/m37 t003 fix) — auto-sleep and maintenance mode were both unroutable
+# until now, since BEX_ACTIVATOR_SERVICE below had nothing to point at.
+- ../activator
 # The shared static-site origin proxy (w1/m21): serves static_site Apps from the
 # object store. Same image as the manager, different entrypoint (/staticserver).
 - ../staticserver
@@ -40,6 +47,24 @@ resources:
 # Only CR(s) which requires webhooks and are applied on namespaces labeled with 'webhooks: enabled' will
 # be able to communicate with the Webhook Server.
 #- ../network-policy
+
+# The one image reference every component's manifest carries as the literal
+# placeholder "controller:latest" (manager, activator, static-server — same
+# image, different entrypoints per Deployment's `command:`). Set here, at the
+# top-level kustomization, not in config/manager/ alone — an `images:`
+# transformer only rewrites resources within the SAME kustomization's own
+# build tree, so scoping it to config/manager (kubebuilder's original
+# scaffold location) silently missed the sibling ../activator and
+# ../staticserver components once they started sharing the placeholder
+# (w1/m37 fix; `make deploy IMG=...` — see the Makefile — now edits this
+# file's `images:` entry instead of config/manager's). Matches how the real
+# deploy already works: Argo CD's own `kustomize.images` override targets
+# this exact path (deploy/gitops/base/bex.yaml), so this bootstrap value only
+# matters locally.
+images:
+- name: controller
+  newName: controller
+  newTag: latest
 
 # Uncomment the patches line if you enable Metrics
 patches:

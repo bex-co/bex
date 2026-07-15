@@ -24,9 +24,11 @@ import { DisplayNameRow } from "@/features/services/components/display-name-row"
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
+import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
 import {
   isCron,
   isStaticSite,
+  isWebService,
   isWorker,
   supportsMaxShutdownDelay,
 } from "@/features/services/lib/service-type";
@@ -197,6 +199,15 @@ export function ServiceSettingsPage() {
             currentAllowList={service?.ipAllowList}
             onSaved={refetch}
           />
+          {/* Maintenance Mode (w1/m37): web_service only, matching the
+              backend's requireWebService guard. */}
+          {service && isWebService(service) && (
+            <MaintenanceModeSection
+              serviceId={serviceId}
+              serviceName={service.name}
+              maintenanceMode={service.maintenanceMode}
+            />
+          )}
         </>
       )}
 
