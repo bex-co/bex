@@ -80,12 +80,16 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 				},
 				{
 					APIGroups: []string{batchv1.GroupName},
-					Resources: []string{"cronjobs"},
+					// App reconciliation lists Jobs for cron-run projection and
+					// finalizer cleanup. Grant the non-Secret workload permission
+					// this fixture needs while keeping the assertion's cluster-wide
+					// Secret denial intact.
+					Resources: []string{"cronjobs", "jobs"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{""},
-					Resources: []string{"services"},
+					Resources: []string{"pods", "services"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},

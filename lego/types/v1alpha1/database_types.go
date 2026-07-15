@@ -18,13 +18,31 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
+
+// ValidDatabaseName reports whether name is a valid user-facing managed
+// Postgres name. Keeping this next to DatabaseSpec.Name makes the CRD contract
+// and every API/Blueprint writer share one validation rule.
+func ValidDatabaseName(name string) bool {
+	return len(name) <= 30 && len(validation.IsDNS1123Label(name)) == 0
+}
 
 // DatabaseSpec is the desired state of a managed PostgreSQL — the Render-style
 // "add a Postgres" unit. The operator projects it to a CloudNativePG Cluster in
 // the same namespace; the plan sets resources/storage. See
 // docs/ADR009-postgresql-management.md.
 type DatabaseSpec struct {
+	// Name is the mutable, user-facing database name. metadata.name is the
+	// immutable dpg-... resource id and the data-plane identity used for every
+	// CNPG/PVC/Secret/route name. Empty is the legacy representation: readers
+	// fall back to metadata.name until the backfill sets this field.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=30
+	// +kubebuilder:validation:Pattern=`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`
+	Name string `json:"name,omitempty"`
+
 	// Plan selects the resource allocation (compute + storage + availability).
 	// MVP plans are single-instance and fit one node.
 	// +optional
@@ -399,6 +417,16 @@ type Database struct {
 	Spec DatabaseSpec `json:"spec"`
 	// +optional
 	Status DatabaseStatus `json:"status,omitzero"`
+}
+
+// DisplayName returns the mutable user-facing name. Database CRs created before
+// spec.name existed keep working by falling back to their metadata.name until
+// the migration backfills the field.
+func (d *Database) DisplayName() string {
+	if d.Spec.Name != "" {
+		return d.Spec.Name
+	}
+	return d.Name
 }
 
 // +kubebuilder:object:root=true

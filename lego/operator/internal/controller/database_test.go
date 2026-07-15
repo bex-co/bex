@@ -17,12 +17,56 @@ limitations under the License.
 package controller
 
 import (
+	"reflect"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity is the rename safety
+// invariant. spec.name is API/display metadata only; every CNPG object,
+// credential, route, backup path, database/user identifier, and connection host
+// remains derived from immutable metadata.name. Reconcile therefore updates no
+// data-plane identity when only spec.name changes.
+func TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity(t *testing.T) {
+	before := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-c185th5c2rvvnhbfiltg", Namespace: "tenant-a"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Name:             "orders-old",
+			Plan:             "basic-1gb",
+			Public:           true,
+			Pooler:           true,
+			HighAvailability: true,
+		},
+	}
+	after := before.DeepCopy()
+	after.Spec.Name = "orders-new"
+
+	identity := func(db *appv1alpha1.Database) map[string]any {
+		plan, storageGB := resolvePlan(db.Spec)
+		dbname := normalizeIdent(db.Name)
+		return map[string]any{
+			"cluster":         db.Name,
+			"clusterSpec":     cnpgClusterSpec(clusterParams{plan: plan, storageGB: storageGB, dbname: dbname, owner: dbname + "_user", highAvailability: db.Spec.HighAvailability}),
+			"database":        dbname,
+			"owner":           dbname + "_user",
+			"host":            db.Name + "-rw." + db.Namespace + ".svc",
+			"secret":          db.Name + "-app",
+			"scheduledBackup": db.Name + "-backup",
+			"pooler":          db.Name + "-pooler",
+			"publicRoute":     db.Name + "-pg",
+			"poolRoute":       db.Name + "-pool",
+			"backupServer":    db.Name,
+		}
+	}
+
+	if !reflect.DeepEqual(identity(before), identity(after)) {
+		t.Fatalf("spec.name changed a data-plane identity:\nbefore=%v\nafter=%v", identity(before), identity(after))
+	}
+}
 
 var testStore = BackupStore{
 	DestinationPath: "s3://bex-tfstate/postgres",

@@ -26,12 +26,12 @@ import (
 	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -118,10 +118,11 @@ type StackResult struct {
 }
 
 // StackDatabaseView is the minimal managed-Postgres projection a stack deploy
-// returns — enough for an agent to poll (name + phase). The full Render-shaped
+// returns — enough for an agent to poll (stable id + name + phase). The full Render-shaped
 // postgres object (connection info, replicas) is the postgres feature's
 // get_postgres / GET /v1/postgres/{id} surface; a stack deploy does not duplicate it.
 type StackDatabaseView struct {
+	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status"` // Database phase (Pending|Provisioning|Ready|Failed)
 }
@@ -292,6 +293,7 @@ type parsedEnvGroup struct {
 // once into the mutable env store (never spec.Env, so a dashboard edit wins).
 type parsedService struct {
 	req           CreateRequest
+	databaseRefs  []bexEnvVar       // resolved after database IDs are known
 	groupLinks    []string          // fromGroup names to link after create
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
@@ -303,7 +305,7 @@ type parsedDatabase struct {
 }
 
 // dbPropertyKey maps a render.yaml fromDatabase property to the key in the CNPG
-// "<name>-app" connection Secret (the Secret vocabulary
+// "<stable-id>-app" connection Secret (the Secret vocabulary
 // docs/ADR009-postgresql-management.md documents: username, password, dbname,
 // host, port, uri).
 var dbPropertyKey = map[string]string{
@@ -374,6 +376,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = withConfirm(ctx, req.Confirm)
 	res := StackResult{}
+	databaseIDs := make(map[string]string, len(st.databases))
 	// Env groups first: a service's fromGroup links one, which needs the group
 	// (and its projection Secret) to exist before the service is patched.
 	for _, g := range st.envGroups {
@@ -382,7 +385,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		}
 	}
 	// Databases next: a service's fromDatabase env points (via secretRef) at the
-	// CNPG "<name>-app" Secret, which only exists once the Database converges —
+	// CNPG "<stable-id>-app" Secret, which only exists once the Database converges —
 	// applying the dependent first would leave it Pending on a missing Secret
 	// anyway, but applying the DB first starts its provisioning immediately.
 	for _, db := range st.databases {
@@ -391,8 +394,16 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 			return res, err
 		}
 		res.Databases = append(res.Databases, v)
+		databaseIDs[db.name] = v.ID
 	}
 	for _, svc := range st.services {
+		for _, ref := range svc.databaseRefs {
+			ev, err := resolveDatabaseRef(ref, databaseIDs)
+			if err != nil {
+				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+			}
+			svc.req.Env = append(svc.req.Env, ev)
+		}
 		v, err := s.applyCreate(ctx, svc.req)
 		if err != nil {
 			return res, err
@@ -510,6 +521,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 
 	// Databases next into the stack (and into the name index services reference).
 	names := make(map[string]bool, len(services)+len(m.Databases))
+	databaseNames := make(map[string]bool, len(m.Databases))
 	for _, d := range m.Databases {
 		ds, err := parseDatabase(d)
 		if err != nil {
@@ -519,6 +531,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, ds.name)
 		}
 		names[ds.name] = true
+		databaseNames[ds.name] = true
 		st.databases = append(st.databases, ds)
 	}
 
@@ -562,12 +575,19 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		}
 	}
 
-	// Resolve reference env (fromDatabase -> secretRef, fromService property ->
-	// literal, fromService.envVarKey -> sibling's value) now that every name, port,
-	// and known-env is available; an unknown target names the offender.
+	// Resolve service references now that every name, port, and known-env is
+	// available. Database references are validated here but retained until apply:
+	// only then do we know the immutable dpg-... id that names the CNPG Secret.
 	for _, p := range pendings {
 		svc := p.svc
 		for _, r := range p.refVars {
+			if r.FromDatabase != nil {
+				if !databaseNames[r.FromDatabase.Name] {
+					return parsedStack{}, fmt.Errorf("%w: service %q: fromDatabase references unknown database %q (declare it under databases: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromDatabase.Name)
+				}
+				svc.databaseRefs = append(svc.databaseRefs, r)
+				continue
+			}
 			ev, err := resolveRef(r, names, servicePorts, serviceKnownEnv)
 			if err != nil {
 				return parsedStack{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
@@ -753,6 +773,9 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.Name == "" {
 		return parsedDatabase{}, fmt.Errorf("%w: a database entry is missing its name", core.ErrBadRequest)
 	}
+	if !appv1alpha1.ValidDatabaseName(d.Name) {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest, d.Name)
+	}
 	plan := d.Plan
 	if plan != "" {
 		if _, ok := tiers.Postgres.ByID(plan); !ok {
@@ -776,6 +799,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	}
 	ha := d.HighAvailability != nil && d.HighAvailability.Enabled
 	spec := appv1alpha1.DatabaseSpec{
+		Name:             d.Name,
 		Plan:             plan,
 		Version:          d.PostgresMajorVersion,
 		StorageGB:        d.DiskSizeGB,
@@ -836,29 +860,34 @@ func validateKeyedEnv(e bexEnvVar) error {
 	return nil
 }
 
-// resolveRef turns one fromDatabase / fromService env entry into a concrete
-// EnvVar now that every resource name, service port, and parse-time-known env is
-// available. fromDatabase becomes a secretRef into the CNPG "<name>-app"
-// connection Secret — never a plaintext copy (survives credential rotation;
-// nothing sensitive in the spec). fromService with a property becomes a literal
-// (the same-file service's in-cluster host/port); fromService.envVarKey copies the
-// sibling's declared var by value. Unknown target names the offender (all-or-nothing).
+// resolveDatabaseRef turns a validated fromDatabase entry into a Secret ref
+// after applyDatabase has resolved the display name to an immutable resource id.
+// Credentials remain indirect so rotation never writes plaintext into an App.
+func resolveDatabaseRef(e bexEnvVar, databaseIDs map[string]string) (appv1alpha1.EnvVar, error) {
+	ref := e.FromDatabase
+	if ref == nil {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("not a database reference")
+	}
+	databaseID := databaseIDs[ref.Name]
+	if databaseID == "" {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("fromDatabase references unresolved database %q", ref.Name)
+	}
+	return appv1alpha1.EnvVar{
+		Name: e.Key,
+		ValueFrom: &appv1alpha1.EnvVarSource{
+			SecretKeyRef: &appv1alpha1.SecretKeySelector{
+				Name: databaseID + "-app",
+				Key:  dbPropertyKey[ref.Property],
+			},
+		},
+	}, nil
+}
+
+// resolveRef turns one fromService env entry into a concrete EnvVar now that
+// every resource name, service port, and parse-time-known env is available.
+// Unknown targets name the offender (all-or-nothing).
 func resolveRef(e bexEnvVar, names map[string]bool, ports map[string]int32, knownEnv map[string]map[string]string) (appv1alpha1.EnvVar, error) {
 	switch {
-	case e.FromDatabase != nil:
-		ref := e.FromDatabase
-		if !names[ref.Name] {
-			return appv1alpha1.EnvVar{}, fmt.Errorf("fromDatabase references unknown database %q (declare it under databases: in the same file)", ref.Name)
-		}
-		return appv1alpha1.EnvVar{
-			Name: e.Key,
-			ValueFrom: &appv1alpha1.EnvVarSource{
-				SecretKeyRef: &appv1alpha1.SecretKeySelector{
-					Name: ref.Name + "-app",
-					Key:  dbPropertyKey[ref.Property],
-				},
-			},
-		}, nil
 	case e.FromService != nil:
 		ref := e.FromService
 		if !names[ref.Name] {
@@ -1021,25 +1050,39 @@ func databaseOwnedSpecChanged(cur, want appv1alpha1.DatabaseSpec) bool {
 // else merge-patch the owned spec fields only when they changed. An unchanged
 // re-apply is a no-op.
 func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDatabaseView, error) {
-	var existing appv1alpha1.Database
-	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: db.name}, &existing)
-	if err == nil {
+	var databases appv1alpha1.DatabaseList
+	if err := s.Client.List(ctx, &databases, client.InNamespace(s.Namespace)); err != nil {
+		return StackDatabaseView{}, err
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	var existing *appv1alpha1.Database
+	for i := range databases.Items {
+		candidate := &databases.Items[i]
+		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
+			continue
+		}
+		if candidate.DisplayName() != db.name {
+			continue
+		}
+		if existing != nil {
+			return StackDatabaseView{}, fmt.Errorf("%w: database name %q is already used more than once in this workspace; run the Postgres name migration before applying this Blueprint", core.ErrConflict, db.name)
+		}
+		existing = candidate
+	}
+	if existing != nil {
 		if !databaseOwnedSpecChanged(existing.Spec, db.spec) {
-			return stackDatabaseView(&existing), nil
+			return stackDatabaseView(existing), nil
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		applyDatabaseSpec(&existing.Spec, db.spec)
-		resourcemeta.Touch(&existing, s.Now())
-		if err := s.Client.Patch(ctx, &existing, base); err != nil {
+		resourcemeta.Touch(existing, s.Now())
+		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return StackDatabaseView{}, err
 		}
-		return stackDatabaseView(&existing), nil
-	}
-	if !apierrors.IsNotFound(err) {
-		return StackDatabaseView{}, err
+		return stackDatabaseView(existing), nil
 	}
 	d := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: db.name, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
 		Spec:       db.spec,
 	}
 	if tenantID, ok := s.Tenant(ctx); ok {
@@ -1057,6 +1100,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDa
 // recovery, suspended, restartedAt, failoverAt) are left untouched, mirroring
 // applyCreateToSpec's discipline.
 func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec) {
+	dst.Name = want.Name
 	dst.Plan = want.Plan
 	dst.Version = want.Version
 	dst.StorageGB = want.StorageGB
@@ -1066,5 +1110,5 @@ func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseS
 }
 
 func stackDatabaseView(d *appv1alpha1.Database) StackDatabaseView {
-	return StackDatabaseView{Name: d.Name, Status: string(d.Status.Phase)}
+	return StackDatabaseView{ID: d.Name, Name: d.DisplayName(), Status: string(d.Status.Phase)}
 }

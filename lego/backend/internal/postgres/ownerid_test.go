@@ -139,7 +139,7 @@ func TestCreatePostgres_StampsBothLabels(t *testing.T) {
 		t.Fatalf("created view OwnerID = %q, want tea-a", view.OwnerID)
 	}
 	var d appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "db1"}, &d); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &d); err != nil {
 		t.Fatalf("get Database: %v", err)
 	}
 	if d.Labels[core.LabelTenant] != "tea-a" || d.Labels[core.LabelWorkspace] != "tea-a" {
@@ -212,6 +212,29 @@ func TestGetPostgres_CrossTenantByNameIsForbidden(t *testing.T) {
 	}
 	if err := svc.DeletePostgres(ctxAs("mallory"), "acme-db"); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("DeletePostgres on another workspace's database: got %v, want ErrForbidden", err)
+	}
+	newName := "stolen-name"
+	if _, err := svc.UpdatePostgres(ctxAs("mallory"), "acme-db", PostgresPatch{Name: &newName}); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("UpdatePostgres rename on another workspace's database: got %v, want ErrForbidden", err)
+	}
+}
+
+func TestCreatePostgresAllowsSameDisplayNameInDifferentWorkspaces(t *testing.T) {
+	workspace := fakeWorkspace{"alice": "tea-a", "bob": "tea-b"}
+	svc, _ := newTenantService(workspace)
+	a, err := svc.CreatePostgres(ctxAs("alice"), CreatePostgresRequest{Name: "shared-name", Plan: "free"})
+	if err != nil {
+		t.Fatalf("create in tea-a: %v", err)
+	}
+	b, err := svc.CreatePostgres(ctxAs("bob"), CreatePostgresRequest{Name: "shared-name", Plan: "free"})
+	if err != nil {
+		t.Fatalf("same display name in tea-b: %v", err)
+	}
+	if a.ID == b.ID || a.Name != b.Name || a.OwnerID == b.OwnerID {
+		t.Fatalf("workspace-scoped names = a:%+v b:%+v", a, b)
+	}
+	if _, err := svc.CreatePostgres(ctxAs("alice"), CreatePostgresRequest{Name: "shared-name", Plan: "free"}); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate display name in tea-a: got %v, want ErrConflict", err)
 	}
 }
 

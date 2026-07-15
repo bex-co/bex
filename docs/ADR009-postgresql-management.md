@@ -45,7 +45,7 @@ flowchart LR
 |  | Render | bex (CNPG) |
 | --- | --- | --- |
 | **Internal URL** | `dpg-<id>-a` private host | the CNPG **`<cluster>-rw` ClusterIP Service**: `postgresql://user:pass@<cluster>-rw.<tenant-ns>.svc:5432/db` — in-cluster only, for the tenant's Apps. Free; CNPG creates the Service. |
-| **External URL** | `<id>.<region>-postgres.render.com` + SSL | the **`bex-pg-sni-proxy` DaemonSet** on `:5432`, routing by SNI to the right CNPG `<name>-rw` ClusterIP Service after handling the PostgreSQL SSLRequest preamble. `sslmode=require` works for all standard clients (PG 13–18). One wildcard `*.db.bex.co` fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
+| **External URL** | `<id>.<region>-postgres.render.com` + SSL | the **`bex-pg-sni-proxy` DaemonSet** on `:5432`, routing by SNI to the right CNPG `<id>-rw` ClusterIP Service after handling the PostgreSQL SSLRequest preamble. `sslmode=require` works for all standard clients (PG 13–18). One wildcard `*.db.bex.co` fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
 
 The external route is created by the operator only when `spec.public: true` and `BEX_DB_DOMAIN` is set (private by default). Key constraints:
 
@@ -87,8 +87,9 @@ Apply this with `kubectl -n bex-system apply -f pg-sni-proxy-lb.yaml` after depl
 
 Render's URL is engineered for three constraints at once; bex should satisfy the same:
 
-- **Normalized db/role name** — Postgres unquoted identifiers allow only `[a-z0-9_]`, lowercased. Render turns `my-db` into `my_db` so the name works **unquoted everywhere** (queries, `pg_hba`, ORMs). Do the same.
-- **`<name>_user` role** — one owner role per DB, distinct from the db name, greppable and predictable.
+- **Identity and display name are separate.** New resources mint `Database.metadata.name = dpg-<xid>` through `internal/id`; this immutable value is the REST/GraphQL/MCP id and the root of every physical object name. `Database.spec.name` is the mutable, user-facing DNS-label name. Legacy CRs with no `spec.name` expose `metadata.name` as a fallback and retain that value as their grandfathered stable id.
+- **Normalized db/role name** — Postgres unquoted identifiers allow only `[a-z0-9_]`, lowercased. The physical database and owner role are derived from the immutable id (`dpg-…` → `dpg_…`), not the mutable display name, so a rename cannot change credentials or SQL identifiers.
+- **`<id>_user` role** — one owner role per DB, distinct from the database identifier, greppable and predictable.
 - **Typed opaque ID in the SNI hostname** — the immutable ID (not the mutable name) lives in `<id>.db.bex.co`, so a **rename never breaks a connection string**, the ID is unique/non-guessable, and one wildcard endpoint routes by SNI to the right backend. (Render: `dpg-<id>-a` where `-a` is the primary-instance address.)
 - **Brand domain** — external endpoint on `db.bex.co` (the brand), not the app-hosting `onbex.co` — same rule as `api.bex.co` vs `onrender.com`.
 
@@ -109,10 +110,23 @@ Every Render Postgres feature (per-tenant version, daily backup, PITR, HA, pooli
 
 ### 6. Lifecycle (create → URLs → connect → delete)
 
-1. **Create** `Database{name, plan, version, storage}`.
-2. **Provision** → CNPG `Cluster` in the tenant namespace from the plan catalog; CNPG generates the `<name>_user` role + password into a namespace Secret.
+1. **Create** `Database{metadata.name: dpg-<xid>, spec: {name, plan, version, storage}}`.
+2. **Provision** → CNPG `Cluster` in the tenant namespace from the plan catalog; CNPG generates the `<id>_user` role + password into a namespace Secret.
 3. **Surface connection info** → the control plane assembles both URLs + host/port/db/user/password/psql-command from the Secret and the `-rw` Service (the Connections panel).
 4. **Delete** → deleting the `Database` deletes the Cluster + Service + Secret + PVC and drops the external SNI route. (Optionally a final backup first.)
+
+### Rename and legacy migration
+
+`PATCH /v1/postgres/{id}` changes only `spec.name`. The `Database` metadata name/UID, CNPG Cluster, PVC, credential Secret, Services, pooler, routes, backup server/prefix, exports, recovery references, project/environment membership, connection strings, SQL database, and owner role remain attached to the immutable id. The same core mutation backs REST, GraphQL `renameDatabase`, MCP `rename_postgres`, and the dashboard; `dryRun=true` runs identical validation without writing.
+
+Rollout is deliberately expand-then-adopt:
+
+1. Apply the CRD containing optional `spec.name`, then deploy the compatible operator and API. Older CRs remain readable through the metadata-name fallback.
+2. Run `scripts/postgres-name-migrate.sh` without `--apply` for the target namespace, review invalid/duplicate-name preflight, then rerun with `--apply`. A second apply must report already complete.
+3. Before a live rename, capture identities with `scripts/postgres-rename-verify.sh snapshot`; run the official-CLI smoke (`scripts/postgres-rename-cli-smoke.sh`), which resolves the new name back to the same id; compare the snapshot afterward.
+4. Repeat for `dev-1` through `dev-9`, then production through the normal authorized ship/deploy workflow. Scripts use the active kubeconfig but never print it or Secret data.
+
+Rollback does not remove `spec.name`, revert the CRD, or rename metadata. The old API/operator can ignore the additive field while the compatible release is restored; leaving the backfill in place is safe and idempotent.
 
 ### 7. Security floor (not optional, even in MVP)
 
@@ -168,8 +182,8 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 ### Access & connection
 
 - **IP allowlist** (`spec.ipAllowList`) gates the **external** SNI route only: the controller projects a Traefik `ipAllowList` `MiddlewareTCP` (source-range) referenced by the route, so only listed CIDRs reach the public endpoint. Empty ⇒ open to all source IPs; the internal `-rw` path is never gated. This closes the "public was an on/off toggle with no source restriction" gap (§7).
-- **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<name>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, via a `<name>-pool.<domain>` SNI route). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
-- **Postgres users** (`spec.users`) are additional managed login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<db>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The owner role (`<db>_user`) stays CNPG-managed.
+- **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<id>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, via an `<id>-pool.<domain>` SNI route). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
+- **Postgres users** (`spec.users`) are additional managed PostgreSQL login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<id>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The owner role (`<id>_user`, with hyphens normalized to underscores) stays CNPG-managed.
 
 ## HA · failover · read replicas (w1/m22)
 
@@ -189,7 +203,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 ### Named read replicas
 
-- `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. Each entry gets its own Traefik `IngressRouteTCP` routing to the CNPG `-ro` service (which load-balances across standbys). Naming is `<db>-ro-<name>.<BEX_DB_DOMAIN>` for the external SNI hostname; the internal host is the shared CNPG `-ro` service.
+- `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. Each entry gets its own Traefik `IngressRouteTCP` routing to the CNPG `-ro` service (which load-balances across standbys). Naming is `<id>-ro-<name>.<BEX_DB_DOMAIN>` for the external SNI hostname; the internal host is the shared CNPG `-ro` service.
 - `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. Route cleanup: when a replica is removed from spec, the operator finds it in the previous `status.readReplicaStatuses` and deletes its Traefik route.
 - Connection strings (with password) are in `connection-info` as `readReplicaConnectionStrings: [{name, internalConnectionString, externalConnectionString}]` — host-only info (without password) is also in the view.
 
@@ -197,7 +211,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 - Deferred: storage autoscaling, the Accelerated tier, metering/billing. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**.
 - **`bex-db` (the control plane's own DB) should go `instances:3` + backups before you depend on it** — today it's `instances:1`, 5Gi, no backup config; losing it loses every tenant mapping. Higher priority than any single tenant DB.
-- The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds a `<name>-pool.<domain>` SNI hostname.
+- The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds an `<id>-pool.<domain>` SNI hostname.
 
 ## Verification
 

@@ -277,8 +277,8 @@ func (s *Service) compact(ctx context.Context) {
 
 // datastoreEntry holds the metering attributes for one Database or KeyValue CR.
 type datastoreEntry struct {
-	ID       string // CR name (== service_id in usage rows; name-as-id)
-	Name     string // same as ID
+	ID       string // immutable CR name (== service_id in usage rows)
+	Name     string // immutable data-plane name used in Prometheus selectors
 	TenantID string // from core.LabelTenant
 	Plan     string // Spec.Plan (== tier in usage rows)
 	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue

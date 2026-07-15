@@ -543,3 +543,30 @@ export const UpdateDatabaseVersionDocument = gql`
   UpdateDatabaseVersionMutation,
   UpdateDatabaseVersionVars
 >;
+
+// --- display-name update (w9/m3) ---
+
+export interface RenameDatabaseVars {
+  id: string;
+  name: string;
+}
+export interface RenameDatabaseMutation {
+  renameDatabase: {
+    id: string | null;
+    name: string | null;
+    databaseName: string | null;
+    databaseUser: string | null;
+    externalHost: string | null;
+  } | null;
+}
+export const RenameDatabaseDocument = gql`
+  mutation RenameDatabase($id: String!, $name: String!) {
+    renameDatabase(id: $id, name: $name) {
+      id
+      name
+      databaseName
+      databaseUser
+      externalHost
+    }
+  }
+` as unknown as TypedDocumentNode<RenameDatabaseMutation, RenameDatabaseVars>;

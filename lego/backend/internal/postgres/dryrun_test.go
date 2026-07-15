@@ -72,7 +72,7 @@ func TestRESTDryRunCreatePostgres(t *testing.T) {
 	}
 	var got PostgresView
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if got.ID != "preview-db" || got.Plan != "basic-1gb" {
+	if !strings.HasPrefix(got.ID, "dpg-") || got.Name != "preview-db" || got.Plan != "basic-1gb" {
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countDatabases(t, cl); n != 0 {
@@ -140,14 +140,14 @@ func TestGraphQLDryRunCreateDatabase(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `mutation { createDatabase(name:"gql-preview", plan:"basic-1gb", dryRun:true) { id plan } }`,
+		RequestString: `mutation { createDatabase(name:"gql-preview", plan:"basic-1gb", dryRun:true) { id name plan } }`,
 		Context:       context.Background(),
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("gql createDatabase dryRun: %v", res.Errors)
 	}
 	data := res.Data.(map[string]any)["createDatabase"].(map[string]any)
-	if data["id"] != "gql-preview" || data["plan"] != "basic-1gb" {
+	if !strings.HasPrefix(data["id"].(string), "dpg-") || data["name"] != "gql-preview" || data["plan"] != "basic-1gb" {
 		t.Fatalf("preview wrong: %+v", data)
 	}
 	if n := countDatabases(t, cl); n != 0 {
@@ -221,7 +221,7 @@ func TestMCPDryRunCreatePostgres(t *testing.T) {
 		"plan":   "basic-1gb",
 		"dryRun": true,
 	})
-	if got["id"] != "mcp-preview" || got["plan"] != "basic-1gb" {
+	if !strings.HasPrefix(got["id"].(string), "dpg-") || got["name"] != "mcp-preview" || got["plan"] != "basic-1gb" {
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countDatabases(t, cl); n != 0 {

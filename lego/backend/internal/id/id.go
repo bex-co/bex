@@ -58,12 +58,13 @@ func (k Kind) Desc() string   { return k.desc }
 // adds its Kind here (and nowhere else); the guard test then holds it to the
 // format + uniqueness + DNS-safety contract automatically.
 var (
-	Workspace    = Kind{prefix: "tea", desc: "workspace (tenant/team)"} // Render: teams are tea-
-	Service      = Kind{prefix: "srv", desc: "service (app)"}           // Render: services are srv-
-	Domain       = Kind{prefix: "cdm", desc: "custom domain"}           // Render: custom domains are cdm-
-	EnvGroup     = Kind{prefix: "evg", desc: "environment group"}       // Render: env groups are evg-
-	Deploy       = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
-	Invite       = Kind{prefix: "inv", desc: "workspace member invite"} // w4/m12 team invites
+	Workspace    = Kind{prefix: "tea", desc: "workspace (tenant/team)"}   // Render: teams are tea-
+	Service      = Kind{prefix: "srv", desc: "service (app)"}             // Render: services are srv-
+	Postgres     = Kind{prefix: "dpg", desc: "managed Postgres database"} // Render: Postgres databases are dpg-
+	Domain       = Kind{prefix: "cdm", desc: "custom domain"}             // Render: custom domains are cdm-
+	EnvGroup     = Kind{prefix: "evg", desc: "environment group"}         // Render: env groups are evg-
+	Deploy       = Kind{prefix: "dep", desc: "deploy"}                    // Render: deploys are dep-
+	Invite       = Kind{prefix: "inv", desc: "workspace member invite"}   // w4/m12 team invites
 	Export       = Kind{prefix: "exp", desc: "managed-postgres logical export"}
 	Audit        = Kind{prefix: "aud", desc: "audit log event"}                            // w4/m10 audit log
 	Owner        = Kind{prefix: "own", desc: "user identity (Render own-)"}                // w6/m7: opaque per-subject user id
@@ -93,7 +94,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job}
+var kinds = []Kind{Workspace, Service, Postgres, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

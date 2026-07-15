@@ -794,6 +794,37 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't update the plan. Please try again.",
     description: "Toast when a plan update fails",
   },
+  // --- Name section (w9/m3) ---
+  "databases.nameTitle": {
+    message: "Database name",
+    description: "Database detail rename card title",
+  },
+  "databases.nameDescription": {
+    message:
+      "Change the display name. The database ID and all connection details stay the same.",
+    description: "Database detail rename card description",
+  },
+  "databases.nameSave": {
+    message: "Save name",
+    description: "Database rename save button",
+  },
+  "databases.nameSuccess": {
+    message: "Renamed database to {name}.",
+    description: "Toast after a database rename succeeds",
+  },
+  "databases.nameError": {
+    message: "Couldn't rename the database. Please try again.",
+    description: "Toast when a database rename fails unexpectedly",
+  },
+  "databases.nameConflict": {
+    message: "A database with that name already exists in this workspace.",
+    description: "Toast when a database rename collides with another name",
+  },
+  "databases.nameInvalid": {
+    message:
+      "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
+    description: "Database rename validation message",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "Insights",

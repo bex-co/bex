@@ -244,6 +244,16 @@ mutation UpdateDatabaseVersion($id: String!, $version: String!) {
   }
 }
 
+mutation RenameDatabase($id: String!, $name: String!) {
+  renameDatabase(id: $id, name: $name) {
+    id
+    name
+    databaseName
+    databaseUser
+    externalHost
+  }
+}
+
 mutation DeleteDatabase($id: String!) {
   deleteDatabase(id: $id)
 }

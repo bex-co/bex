@@ -5,7 +5,7 @@
 // pages never re-derive Render's encoding (mirrors services' ServiceView).
 
 export interface DatabaseView {
-  /** Database name — Render's opaque id; also the detail-page deep-link param. */
+  /** Immutable Postgres id (dpg-... for new resources); detail-page deep-link param. */
   id: string;
   name: string;
   /** Render's databaseStatus enum, verbatim (available/creating/unavailable). */

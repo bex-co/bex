@@ -270,7 +270,7 @@ spec:
                               type: string
                             name:
                               description: Name is the Secret name (e.g. a Database's
-                                "<name>-app" connection Secret).
+                                "<stable-id>-app" connection Secret).
                               type: string
                           required:
                           - key

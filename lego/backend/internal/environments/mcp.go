@@ -51,7 +51,7 @@ type setEnvironmentServicesArgs struct {
 
 type setEnvironmentDatabasesArgs struct {
 	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
-	DatabaseIDs []string `json:"databaseIds" jsonschema:"Database CR names (same as the id field on a postgres instance) to assign to the environment — replaces the full list; also joins these databases to the environment's project"`
+	DatabaseIDs []string `json:"databaseIds" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) to assign to the environment — replaces the full list; also joins these databases to the environment's project"`
 }
 
 type setEnvironmentKeyValuesArgs struct {
@@ -134,7 +134,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_environment_databases",
-		Description: "Assign managed Postgres databases to an environment (replaces the full list); also joins them to the environment's project. Pass databaseIds as Database CR names — the same id shown by list_postgres_instances. bex extension.",
+		Description: "Assign managed Postgres databases to an environment (replaces the full list); also joins them to the environment's project. Pass immutable databaseIds — the id shown by list_postgres_instances. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentDatabasesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
 		if in.DatabaseIDs == nil {
 			in.DatabaseIDs = []string{}

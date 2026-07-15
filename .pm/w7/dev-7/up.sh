@@ -126,26 +126,35 @@ hostDsn() {
   local cluster="$1" db="$2" port="$3" user pass
   { read -r user; read -r pass; } < <(kubectl -n "$DEV_AUTH_NS" get secret "$cluster-app" \
     -o go-template='{{.data.username | base64decode}}{{"\n"}}{{.data.password | base64decode}}')
-  printf 'postgres://%s:%s@localhost:%s/%s?sslmode=require' "$user" "$pass" "$port" "$db"
+  printf 'postgres://%s:%s@localhost:%s/%s?sslmode=disable' "$user" "$pass" "$port" "$db"
 }
 
 echo "==> starting bex-api on :$BEX_API_PORT (namespace $DEV_NS)"
 kill_if_running "$ENVDIR/.pids/bex-api.pid"
-nohup env \
-  KUBECONFIG="$PWD/$KUBECONFIG_FILE" \
-  BEX_API_ADDR=":$BEX_API_PORT" \
-  BEX_CP_ADDR=":$BEX_CP_PORT" \
-  BEX_API_NAMESPACE="$DEV_NS" \
-  BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
-  BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
-  BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
-  BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
-  BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
-  BEX_CP_APPS_NAMESPACE="$DEV_NS" \
-  BEX_BASE_DOMAIN="onbex.co" \
-  "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
-sleep 3
-if ! kill -0 "$(cat "$ENVDIR/.pids/bex-api.pid")" 2>/dev/null; then
+api_started=0
+for attempt in $(seq 1 5); do
+  nohup env \
+    KUBECONFIG="$PWD/$KUBECONFIG_FILE" \
+    BEX_API_ADDR=":$BEX_API_PORT" \
+    BEX_CP_ADDR=":$BEX_CP_PORT" \
+    BEX_API_NAMESPACE="$DEV_NS" \
+    BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
+    BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
+    BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
+    BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
+    BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
+    BEX_CP_APPS_NAMESPACE="$DEV_NS" \
+    BEX_BASE_DOMAIN="onbex.co" \
+    "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
+  sleep 3
+  if kill -0 "$(cat "$ENVDIR/.pids/bex-api.pid")" 2>/dev/null; then
+    api_started=1
+    break
+  fi
+  echo "    bex-api start attempt $attempt hit a transient DB-forward failure; retrying..."
+  sleep 2
+done
+if [ "$api_started" -ne 1 ]; then
   echo "error: bex-api exited immediately — see $ENVDIR/logs/bex-api.log" >&2
   tail -20 "$ENVDIR/logs/bex-api.log" >&2
   exit 1

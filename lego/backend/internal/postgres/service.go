@@ -28,11 +28,13 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -79,7 +81,7 @@ type Service struct {
 
 // PostgresView is the Render-shaped "postgres" object.
 type PostgresView struct {
-	ID           string `json:"id"` // Render ids are opaque; bex uses the Database name
+	ID           string `json:"id"` // immutable dpg-... id (legacy CRs retain their metadata.name)
 	Name         string `json:"name"`
 	Plan         string `json:"plan"`
 	Version      string `json:"version,omitempty"`
@@ -249,6 +251,13 @@ type CreatePostgresRequest struct {
 // identifier (lowercase, hyphens -> underscores).
 func pgIdent(name string) string { return strings.ToLower(strings.ReplaceAll(name, "-", "_")) }
 
+func validateDatabaseName(name string) error {
+	if !appv1alpha1.ValidDatabaseName(name) {
+		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
+	}
+	return nil
+}
+
 // dbStatus maps bex's Database phase onto Render's databaseStatus enum.
 func dbStatus(p appv1alpha1.DatabasePhase) string {
 	switch p {
@@ -286,7 +295,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 	return PostgresView{
 		ID:                      d.Name,
-		Name:                    d.Name,
+		Name:                    d.DisplayName(),
 		Plan:                    d.Spec.Plan,
 		Version:                 version,
 		Status:                  dbStatus(d.Status.Phase),
@@ -319,7 +328,7 @@ func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*ap
 	return s.AuthorizeDatabase(ctx, relation, name)
 }
 
-// loadAppSecret resolves a Database and its CNPG-generated "<name>-app" Secret
+// loadAppSecret resolves a Database and its CNPG-generated "<stable-id>-app" Secret
 // (username/password/dbname/uri) — the credential path both connection-info and
 // the read-only query verb share. Returns core.ErrNotFound when the Database or
 // its Secret isn't provisioned yet.
@@ -374,6 +383,27 @@ func (s *Service) GetPostgres(ctx context.Context, name string) (PostgresView, e
 	return pgView(d), nil
 }
 
+// ensureDatabaseNameAvailable enforces Render's workspace-scoped display-name
+// uniqueness without coupling identity to that name. excludeID is the stable
+// metadata.name of an object being renamed. Unlabelled legacy/dev objects form
+// their own scope when the control-plane tenant resolver is disabled.
+func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, name, excludeID string) error {
+	var list appv1alpha1.DatabaseList
+	if err := s.Client.List(ctx, &list, client.InNamespace(s.Namespace)); err != nil {
+		return fmt.Errorf("checking database name: %w", err)
+	}
+	for i := range list.Items {
+		d := &list.Items[i]
+		if d.Name == excludeID || d.Labels[core.LabelTenant] != tenantID {
+			continue
+		}
+		if d.DisplayName() == name {
+			return fmt.Errorf("%w: a Postgres database named %q already exists in this workspace", core.ErrConflict, name)
+		}
+	}
+	return nil
+}
+
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
@@ -381,8 +411,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return PostgresView{}, err
 	}
-	if req.Name == "" {
-		return PostgresView{}, fmt.Errorf("name is required")
+	if err := validateDatabaseName(req.Name); err != nil {
+		return PostgresView{}, err
+	}
+	tenantID, _ := s.Tenant(ctx)
+	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
+		return PostgresView{}, err
 	}
 	if req.Version != "" && !postgresVersionKnown(req.Version) {
 		return PostgresView{}, unknownPostgresVersionError(req.Version)
@@ -408,8 +442,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		crReplicas = append(crReplicas, appv1alpha1.DatabaseReadReplica{Name: r.Name})
 	}
 	d := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
+			Name:             req.Name,
 			Plan:             req.Plan,
 			Version:          req.Version,
 			StorageGB:        req.DiskSizeGB,
@@ -425,7 +460,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	// it to CNPG pod metadata for same-workspace NetworkPolicy selectors,
 	// docs/ADR022-tenant-isolation.md), mirroring the App CR dual-stamp
 	// (store/reconciler.go's stampLabels). Skip when the store is off (no resolver).
-	if tenantID, ok := s.Tenant(ctx); ok {
+	if tenantID != "" {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
@@ -434,6 +469,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
+		}
 		return PostgresView{}, err
 	}
 	return pgView(d), nil
@@ -450,7 +488,7 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 }
 
 // PostgresConnectionInfo assembles the internal + external connection strings
-// from CNPG's generated "<name>-app" Secret (the only place the password is
+// from CNPG's generated "<id>-app" Secret (the only place the password is
 // surfaced, to an authenticated caller).
 func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (PostgresConnectionInfo, error) {
 	d, sec, err := s.loadAppSecret(ctx, core.RelCanViewSensitive, name)
@@ -466,7 +504,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		Password:                 pass,
 		InternalConnectionString: internal,
 		PSQLCommand: fmt.Sprintf("PGPASSWORD=%s psql -h %s-rw.%s.svc -U %s %s",
-			pass, name, s.Namespace, user, dbn),
+			pass, d.Name, s.Namespace, user, dbn),
 	}
 	if d.Status.ExternalHost != "" {
 		// Standard sslmode=require works for all clients: the pg-sni-proxy
@@ -550,6 +588,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 // "only the fields you pass are changed" semantics (nil = leave unchanged,
 // mirroring the pointer fields on the CLI's generated PostgresPATCHInput).
 type PostgresPatch struct {
+	Name                   *string
 	Plan                   *string
 	Version                *string
 	DiskSizeGB             *int32
@@ -561,6 +600,11 @@ type PostgresPatch struct {
 // before any write; shared by UpdatePostgres and PreviewUpdatePostgres so the
 // two paths can never accept different inputs.
 func (patch PostgresPatch) validate() error {
+	if patch.Name != nil {
+		if err := validateDatabaseName(*patch.Name); err != nil {
+			return err
+		}
+	}
 	if patch.Plan != nil {
 		if _, ok := tiers.Postgres.ByID(*patch.Plan); !ok {
 			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
@@ -578,6 +622,9 @@ func (patch PostgresPatch) validate() error {
 }
 
 func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
+	if patch.Name != nil {
+		d.Spec.Name = *patch.Name
+	}
 	if patch.Plan != nil {
 		d.Spec.Plan = *patch.Plan
 	}
@@ -613,6 +660,11 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
+	if patch.Name != nil {
+		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
+			return PostgresView{}, err
+		}
+	}
 	if patch.Version != nil {
 		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
 			return PostgresView{}, err
@@ -630,6 +682,11 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	}
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
+	}
+	if patch.Name != nil {
+		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
+			return PostgresView{}, err
+		}
 	}
 	if patch.Version != nil {
 		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
