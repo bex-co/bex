@@ -42,6 +42,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m36** — Cron-job runs API: list · get · cancel (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (only the run trigger exists — `apps/rest.go:504`; Render additionally ships list/get/cancel run endpoints; extends the deploys-as-objects pattern m5/m10/m31 established)
 - [ ] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `servicePOST.secretFiles` + `environmentId` on the three create inputs are silently dropped today; thin threading over w1/m16 + w1/m32 verbs)
 - [ ] **m38** — Full deploy status lifecycle + transition timestamps (9 tasks) ← from `w5/m29`'s 2026-07-14 Render-parity audit; narrowed after w9/001 independently shipped commit id/message provenance
+- [ ] **m39** — SSH into running service instances (13 tasks) ← user explicitly reopened the narrow SSH surface from `.pm/DO_NOT_DO.md`, 2026-07-14; hosted sandboxes, ephemeral shells, jobs, and browser shell remain excluded
 
 ## Inbox
 
