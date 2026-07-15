@@ -1,6 +1,6 @@
 # w9 · m3 — Managed Postgres rename: stable identity + mutable name
 
-**Worker:** worker9 **Goal:** Make `render postgres update <database> --name <new-name>` work end to end by separating a managed Postgres resource's immutable identity from its mutable display name, without recreating or renaming the live Kubernetes/CNPG objects that hold its data; roll the compatible schema and API through production and all ten isolated `dev-*` environments. **Status:** todo (t001–t006 done; t007 next)
+**Worker:** worker9 **Goal:** Make `render postgres update <database> --name <new-name>` work end to end by separating a managed Postgres resource's immutable identity from its mutable display name, without recreating or renaming the live Kubernetes/CNPG objects that hold its data; roll the compatible schema and API through production and all ten isolated `dev-*` environments. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,12 +12,12 @@
 | t004 | Carry rename semantics through GraphQL, MCP, and the dashboard without changing resource URLs          | 45m | t003            | — **DONE** |
 | t005 | Build an idempotent, non-destructive legacy-Database name backfill and rollout verifier                | 40m | t004            | — **DONE** |
 | t006 | Upgrade and verify `dev-1` through `dev-10`, including official-CLI rename smoke tests                  | 45m | t005            | — **DONE** |
-| t007 | Roll out to production and prove existing CNPG data-plane identities stayed unchanged                  | 45m | t006            | —         |
-| t008 | Update ADR009/ADR020 and the CLI compatibility checklist with migration and live evidence              | 30m | t007            | —         |
-| t009 | Render parity — audit REST · GraphQL · MCP · dashboard · official CLI behavior after the identity split | 30m | t008            | —         |
-| t010 | Simplify — run `$simplify` over the identity, lookup, migration, and UI changes                         | 30m | t009            | —         |
-| t011 | Test coverage — harden rename, compatibility, no-recreation, and rollout regression coverage           | 45m | t009            | —         |
-| t012 | Closeout — verify the DoD, move tasks/milestone to `done/`, and sync the w9 roadmap                    | 15m | t010, t011      | —         |
+| t007 | Roll out to production and prove existing CNPG data-plane identities stayed unchanged                  | 45m | t006            | — **DONE** |
+| t008 | Update ADR009/ADR020 and the CLI compatibility checklist with migration and live evidence              | 30m | t007            | — **DONE** |
+| t009 | Render parity — audit REST · GraphQL · MCP · dashboard · official CLI behavior after the identity split | 30m | t008            | — **DONE** |
+| t010 | Simplify — run `$simplify` over the identity, lookup, migration, and UI changes                         | 30m | t009            | — **DONE** |
+| t011 | Test coverage — harden rename, compatibility, no-recreation, and rollout regression coverage           | 45m | t009            | — **DONE** |
+| t012 | Closeout — verify the DoD, move tasks/milestone to `done/`, and sync the w9 roadmap                    | 15m | t010, t011      | — **DONE** |
 
 ## Definition of done
 
@@ -29,8 +29,12 @@ New managed Postgres resources are created with an immutable, typed `dpg-<xid>` 
 - `scripts/postgres-name-migrate.test.sh` exercises dry-run, spec-name-only apply, second-run idempotence, cross-workspace same-name acceptance, same-workspace duplicate rejection, invalid legacy-name rejection, and no unrelated spec-value output without a cluster. The live all-namespace dry-run reports the local cluster already complete.
 - The shared mock cluster ran the generated CRD with `spec.name` and the current operator with all three controllers started. `dev-5` and the rebuilt `dev-7` finished with their auth pods Ready and their pre-existing `srv-d9bhpuq9086r22a6406g` projected service Running.
 - Operational incident: starting fresh control-plane projectors during `dev-5`/`dev-7` verification pruned that pre-existing projected service CR in both namespaces. It was restored from the surviving control-plane row with the same service id and desired spec, and the missing `dev-7` control-plane row/deploy history was restored before a live projector resync. Kubernetes assigned new App UIDs; no Database/CNPG/PVC/Secret identity in the Postgres rename smoke changed.
-- Full backend `go test ./...`, operator `make test`, dashboard `yarn typecheck && yarn lint && yarn test` (1,063 tests), `make lint-backend` (0 issues), shell syntax checks, Markdown formatting, and `git diff --check` pass. Full `make lint` still reports the repository's pre-existing untouched operator warnings.
-- Production is deliberately not claimed: no commit, push, or production mutation is authorized without `$ship`. t007 remains the next task; the checklist stays ◐ until its production migration and identity comparison pass.
+- After rebasing over the concurrent Postgres major-version work, full backend `go test ./...`, operator `make test`, dashboard `yarn typecheck && yarn lint && yarn test` (1,090 tests), backend lint, script tests, Markdown formatting, and `git diff --check` passed locally and in GitHub Actions.
+- Production deploy run 29406643202 completed successfully from commit `084c2c3e` and pinned operator/API digest `ba32bf76ab6e`; the generated Database CRD serves `spec.name`, and both `bex-controller-manager` and `bex-api` reached Ready. The all-namespace migration planned one legacy CR, backfilled it once, and immediately reported already complete on the idempotence rerun.
+- The production legacy resource `default/biliblilitest` was already Provisioning with CNPG `Cluster is unrecoverable and needs manual intervention`, no ready instance, and no completed backup before rollout. The migration preserved its Database UID and all 11 recorded CNPG/PVC/Secret/Service/Job identities exactly; this milestone did not delete or repair it.
+- The pinned unmodified Render CLI (`c23438e`) created `dpg-d9blrvlt7tes739fgd50`, resolved its old name, renamed it, resolved the new name to the same id, and preserved its Database, CNPG Cluster, PVC, credential Secret, and connection Service UIDs on production. The throwaway Database, workspace, OAuth client, and OpenFGA tuple were removed afterward.
+- A deliberately stronger post-rename SQL-readiness gate exposed the pre-existing Cilium defect that also explains the legacy Database failure: CNPG init pods carrying `app.bex.co/workspace` are selected by `deny-tenant-node-and-metadata-egress`, and its `remote-node` deny blocks Kubernetes API service access. That adjacent infrastructure repair is recorded separately in `.pm/w7/004.md`; it does not invalidate the completed rename/API/identity proof.
+- The `$simplify` skill was not installed in this session. A manual equivalent removed formatter-only dashboard churn, consolidated rename validation/effective-name lookup in the shared Postgres core, kept one idempotent migration path, and composed cleanly with the concurrent major-version PATCH fields; no additional behavior-preserving simplification remained after review.
 
 ## Source + Goal linkage
 

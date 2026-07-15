@@ -124,7 +124,7 @@ Rollout is deliberately expand-then-adopt:
 1. Apply the CRD containing optional `spec.name`, then deploy the compatible operator and API. Older CRs remain readable through the metadata-name fallback.
 2. Run `scripts/postgres-name-migrate.sh` without `--apply` for the target namespace, review invalid/duplicate-name preflight, then rerun with `--apply`. A second apply must report already complete.
 3. Before a live rename, capture identities with `scripts/postgres-rename-verify.sh snapshot`; run the official-CLI smoke (`scripts/postgres-rename-cli-smoke.sh`), which resolves the new name back to the same id; compare the snapshot afterward.
-4. Repeat for `dev-1` through `dev-9`, then production through the normal authorized ship/deploy workflow. Scripts use the active kubeconfig but never print it or Secret data.
+4. Repeat for `dev-1` through `dev-10`, then production through the normal authorized ship/deploy workflow. Scripts use the active kubeconfig but never print it or Secret data. The 2026-07-15 rollout completed this sequence on production digest `ba32bf76ab6e`: one legacy CR was backfilled idempotently with all 11 recorded object UIDs unchanged, and the pinned official CLI renamed a fresh `dpg-…` resource without changing its Database, CNPG Cluster, PVC, credential Secret, or connection Service identity.
 
 Rollback does not remove `spec.name`, revert the CRD, or rename metadata. The old API/operator can ignore the additive field while the compatible release is restored; leaving the backfill in place is safe and idempotent.
 
