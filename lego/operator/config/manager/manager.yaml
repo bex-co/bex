@@ -124,6 +124,13 @@ spec:
           # App's own namespace.
           - name: BEX_BUILD_NAMESPACE
             value: bex-system
+          # Source builds block their App reconcile until the Build Job exits.
+          # Two controller workers let two independent Apps build concurrently;
+          # the workspace cap prevents either tenant from exceeding that budget.
+          - name: BEX_APP_RECONCILE_WORKERS
+            value: "2"
+          - name: BEX_MAX_CONCURRENT_BUILDS
+            value: "2"
           # cert-manager ClusterIssuer for App Ingresses. Start on staging; flip to
           # letsencrypt-prod once the chain verifies (changing this re-rolls the pod
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).

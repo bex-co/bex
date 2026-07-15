@@ -91,6 +91,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_MAX_SERVICES` | per-workspace service creation cap (docs/ADR006-bex-api.md §Per-workspace resource caps); `0` = unlimited (default, byte-identical). Render Hobby anchor: 25 |
 | bex-api | `BEX_MAX_POSTGRES` | per-workspace Postgres creation cap; `0` = unlimited. Render Hobby anchor: 1 |
 | bex-api | `BEX_MAX_KEYVALUES` | per-workspace key-value creation cap; `0` = unlimited. Render Hobby anchor: 1 |
+| operator | `BEX_APP_RECONCILE_WORKERS` | concurrent App reconcile loops (default `1`); source builds currently wait synchronously inside a reconcile, so production uses `2` for two independently dispatched builds (ADR034) |
 | operator | `BEX_MAX_CONCURRENT_BUILDS` | max concurrent active build Jobs per workspace; `0` = unlimited. Newest-wins per App is always active (independent of this cap) |
 | dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent at `/auth/consent` (docs/ADR012-auth.md §7): Hydra's admin API + the allowlist of clients that skip the consent screen (headless auto-accept); every other client gets the user-facing consent page (w4/m16). Server-only (not `VITE_`); `HYDRA_ADMIN_URL` unset ⇒ consent 503 |
 
@@ -128,6 +129,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR028-security-review.md](docs/ADR028-security-review.md) — evidence-backed audit (RBAC, supply chain, injection surface, network isolation, secrets hygiene, OAuth) with severities, remediation status, and a follow-up register.
 - [docs/ADR031-platform-data-backup.md](docs/ADR031-platform-data-backup.md) — consolidated platform data-backup policy: etcd, OpenBao, and bex-db backup mechanisms, one-time setup, restore runbooks, drill records, and re-drill cadence.
 - [docs/ADR032-environments.md](docs/ADR032-environments.md) — Environments: named subsets of a Project's services (staging/production), layered on `internal/projects` (w1/m31); assignment auto-joins the project, REST/GraphQL/MCP surface, MVP scope (no protected-environment ACLs, no dashboard UX).
+- [docs/ADR034-scalable-build-pipeline.md](docs/ADR034-scalable-build-pipeline.md) — scalable in-cluster builds: ephemeral BuildKit workers, reconcile/admission concurrency, Pod-versus-machine capacity, and the non-blocking evolution path.
 
 ## Rules
 

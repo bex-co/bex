@@ -477,19 +477,23 @@ The cap is per-workspace (tenant-scoped): workspace B can always create even whe
 
 **Build concurrency cap (operator, w7/m9):**
 
-The operator enforces two additional limits:
+The complete control/execution/capacity model and its non-blocking evolution are documented in [ADR034](ADR034-scalable-build-pipeline.md). The settings below describe the current synchronous implementation.
+
+The operator applies three build-concurrency controls:
 
 - **Newest-wins per App:** when a new build is triggered for an App that already has an active build Job, the old Job is deleted before the new one starts (a push-spam burst yields at most one active build per App).
-- **Per-workspace concurrent-build cap:** if `BEX_MAX_CONCURRENT_BUILDS > 0` and the workspace already has that many active build Jobs, the reconcile loop requeues with `BuildQueued` phase and retries after 30 s. The new build starts as soon as a slot opens.
+- **Global App workers:** `BEX_APP_RECONCILE_WORKERS` controls how many independent App reconciles may run concurrently (default `1`). Because a source build waits synchronously inside its App reconcile, values above one are what actually allow multiple Build Jobs to run in parallel. Production sets `2`.
+- **Per-workspace concurrent-build cap:** if `BEX_MAX_CONCURRENT_BUILDS > 0` and the workspace already has that many active build Jobs, the reconcile loop requeues with `BuildQueued` phase and retries after 30 s. The new build starts as soon as a slot opens. This current list-then-create gate is best-effort under concurrent reconciles; ADR034 records the atomic-admission requirement for strict enforcement at larger scale.
 
-| Cap | Render anchor | Env var | 0 = |
+| Cap | Render anchor | Env var | Unset / `0` behavior |
 | --- | --- | --- | --- |
 | Services per workspace | 25 (Hobby) | `BEX_MAX_SERVICES` | unlimited |
 | Postgres instances per workspace | 1 (Hobby) | `BEX_MAX_POSTGRES` | unlimited |
 | Key-Value instances per workspace | 1 (Hobby) | `BEX_MAX_KEYVALUES` | unlimited |
+| Concurrent App reconcile workers | — (bex extension) | `BEX_APP_RECONCILE_WORKERS` | default `1` (values below 1 also use `1`) |
 | Concurrent build Jobs per workspace | — (bex extension) | `BEX_MAX_CONCURRENT_BUILDS` | unlimited |
 
-All default to `0` (unlimited) so an unset environment is byte-identical to before.
+Resource caps default to `0` (unlimited), while the App worker count defaults to `1`, so an unset environment is byte-identical to before.
 
 ## Scope
 

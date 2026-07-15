@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crcontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -162,6 +163,11 @@ type AppReconciler struct {
 	// starting another build. 0 = unlimited (the default; byte-identical to before).
 	// Has no effect for Apps without the workspace label (legacy/hand-applied).
 	MaxConcurrentBuilds int
+	// MaxConcurrentReconciles controls how many App reconcile loops may run at
+	// once. Source builds wait synchronously for their Build Jobs, so the
+	// controller-runtime default of one serializes otherwise independent Apps.
+	// Values below 1 retain controller-runtime's safe default of one worker.
+	MaxConcurrentReconciles int
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -1868,6 +1874,10 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})); err != nil {
 		return err
 	}
+	workers := r.MaxConcurrentReconciles
+	if workers < 1 {
+		workers = 1
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.App{}).
 		Owns(&appsv1.Deployment{}).
@@ -1875,6 +1885,7 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&networkingv1.NetworkPolicy{}).
 		Owns(&batchv1.CronJob{}).
 		WithEventFilter(generationOrDeletionPredicate{}).
+		WithOptions(crcontroller.Options{MaxConcurrentReconciles: workers}).
 		Named("app").
 		Complete(r)
 }
