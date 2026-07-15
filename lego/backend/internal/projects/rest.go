@@ -17,12 +17,15 @@ limitations under the License.
 package projects
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // rest.go is the projects REST fragment (bex extension matching Render's project
@@ -41,6 +44,60 @@ func writeErr(w http.ResponseWriter, err error) {
 	core.WriteErr(w, err)
 }
 
+type renderOwner struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Type  string `json:"type"`
+}
+
+type renderProject struct {
+	ID             string      `json:"id"`
+	Name           string      `json:"name"`
+	Owner          renderOwner `json:"owner"`
+	EnvironmentIDs []string    `json:"environmentIds"`
+	CreatedAt      time.Time   `json:"createdAt"`
+	UpdatedAt      time.Time   `json:"updatedAt"`
+}
+
+type renderProjectWithCursor struct {
+	Project renderProject `json:"project"`
+	Cursor  string        `json:"cursor"`
+}
+
+type projectEnvironmentLister interface {
+	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+}
+
+func toRenderProject(p ProjectView, environmentIDs []string) renderProject {
+	if environmentIDs == nil {
+		environmentIDs = []string{}
+	}
+	return renderProject{
+		ID:             p.ID,
+		Name:           p.Name,
+		Owner:          renderOwner{ID: p.OwnerID, Type: "team"},
+		EnvironmentIDs: environmentIDs,
+		CreatedAt:      p.CreatedAt,
+		UpdatedAt:      p.CreatedAt,
+	}
+}
+
+func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProject, error) {
+	var ids []string
+	if lister, ok := s.Store.(projectEnvironmentLister); ok {
+		environments, err := lister.ListEnvironments(ctx, p.ID)
+		if err != nil {
+			return renderProject{}, err
+		}
+		ids = make([]string, len(environments))
+		for i := range environments {
+			ids[i] = environments[i].ID
+		}
+	}
+	return toRenderProject(p, ids), nil
+}
+
 // RegisterREST mounts the project CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/projects", func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +111,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, ps)
+		out := make([]renderProjectWithCursor, 0, len(ps))
+		for _, p := range ps {
+			rendered, err := s.renderProject(r.Context(), p)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			out = append(out, renderProjectWithCursor{Project: rendered, Cursor: p.ID})
+		}
+		core.WriteJSON(w, http.StatusOK, out)
 	})
 
 	mux.HandleFunc("POST /v1/projects", func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +146,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, p)
+		rendered, err := s.renderProject(r.Context(), p)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, rendered)
 	})
 
 	mux.HandleFunc("PATCH /v1/projects/{id}", func(w http.ResponseWriter, r *http.Request) {

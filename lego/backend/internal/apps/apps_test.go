@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -470,6 +471,17 @@ type recordingStore struct {
 	// an id absent from the map reports "unprotected", matching the store's
 	// own default for an App outside any environment.
 	protectedStatus map[string]string
+	environments    map[string]store.Environment
+}
+
+func (r *recordingStore) GetEnvironment(_ context.Context, id string) (store.Environment, error) {
+	if r.err != nil {
+		return store.Environment{}, r.err
+	}
+	if environment, ok := r.environments[id]; ok {
+		return environment, nil
+	}
+	return store.Environment{}, fmt.Errorf("environment: %w", store.ErrNotFound)
 }
 
 func (r *recordingStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {
@@ -553,6 +565,10 @@ func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int
 		seconds int32
 	}{id, seconds})
 	return nil
+}
+
+func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string) error {
+	return r.err
 }
 
 func (r *recordingStore) AddDomain(_ context.Context, id, host string) error {

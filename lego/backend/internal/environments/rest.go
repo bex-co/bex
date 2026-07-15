@@ -31,15 +31,24 @@ import (
 // projectId (the project's own workspace scoping already gates authorization,
 // so no separate ownerId param is needed here).
 
-// renderEnvironment preserves bex's cross-surface field names while adding
-// Render's REST spellings for the two managed-datastore lists. Render calls
-// these databasesIds and redisIds; GraphQL/MCP use the product-neutral
-// databaseIds and keyValueIds. Keeping both makes the REST object compatible
-// with the official CLI without breaking existing bex REST clients.
+type renderCIDR struct {
+	CIDRBlock   string `json:"cidrBlock"`
+	Description string `json:"description"`
+}
+
 type renderEnvironment struct {
-	EnvironmentView
-	DatabasesIDs []string `json:"databasesIds"`
-	RedisIDs     []string `json:"redisIds"`
+	ID                      string       `json:"id"`
+	ProjectID               string       `json:"projectId"`
+	Name                    string       `json:"name"`
+	ServiceIDs              []string     `json:"serviceIds"`
+	DatabaseIDs             []string     `json:"databaseIds"`
+	KeyValueIDs             []string     `json:"keyValueIds"`
+	DatabasesIDs            []string     `json:"databasesIds"`
+	RedisIDs                []string     `json:"redisIds"`
+	EnvGroupIDs             []string     `json:"envGroupIds"`
+	ProtectedStatus         string       `json:"protectedStatus"`
+	NetworkIsolationEnabled bool         `json:"networkIsolationEnabled"`
+	IPAllowList             []renderCIDR `json:"ipAllowList"`
 }
 
 type environmentWithCursor struct {
@@ -48,15 +57,30 @@ type environmentWithCursor struct {
 }
 
 func toRenderEnvironment(e EnvironmentView) renderEnvironment {
-	return renderEnvironment{EnvironmentView: e, DatabasesIDs: e.DatabaseIDs, RedisIDs: e.KeyValueIDs}
-}
-
-func toEnvironmentList(environments []EnvironmentView) []environmentWithCursor {
-	out := make([]environmentWithCursor, 0, len(environments))
-	for _, e := range environments {
-		out = append(out, environmentWithCursor{Environment: toRenderEnvironment(e), Cursor: e.ID})
+	cidrs := make([]renderCIDR, len(e.IPAllowList))
+	for i := range e.IPAllowList {
+		cidrs[i] = renderCIDR{CIDRBlock: e.IPAllowList[i]}
 	}
-	return out
+	empty := func(in []string) []string {
+		if in == nil {
+			return []string{}
+		}
+		return in
+	}
+	return renderEnvironment{
+		ID:                      e.ID,
+		ProjectID:               e.ProjectID,
+		Name:                    e.Name,
+		ServiceIDs:              empty(e.ServiceIDs),
+		DatabaseIDs:             empty(e.DatabaseIDs),
+		KeyValueIDs:             empty(e.KeyValueIDs),
+		DatabasesIDs:            empty(e.DatabaseIDs),
+		RedisIDs:                empty(e.KeyValueIDs),
+		EnvGroupIDs:             empty(e.EnvGroupIDs),
+		ProtectedStatus:         e.ProtectedStatus,
+		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
+		IPAllowList:             cidrs,
+	}
 }
 
 // writeErr maps ErrEnvironmentsUnavailable to 503 before falling back to
@@ -77,22 +101,38 @@ func writeErr(w http.ResponseWriter, err error) {
 // RegisterREST mounts the environment CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/environments", func(w http.ResponseWriter, r *http.Request) {
-		projectID := r.URL.Query().Get("projectId")
-		if projectID == "" {
+		var projectIDs []string
+		for _, raw := range r.URL.Query()["projectId"] {
+			for _, id := range strings.Split(raw, ",") {
+				if id = strings.TrimSpace(id); id != "" {
+					projectIDs = append(projectIDs, id)
+				}
+			}
+		}
+		if len(projectIDs) == 0 {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		es, err := s.List(r.Context(), projectID)
-		if err != nil {
-			writeErr(w, err)
-			return
+		var out []environmentWithCursor
+		for _, projectID := range projectIDs {
+			es, err := s.List(r.Context(), projectID)
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			for _, e := range es {
+				out = append(out, environmentWithCursor{Environment: toRenderEnvironment(e), Cursor: e.ID})
+			}
 		}
 		// Render's list schema is [{environment, cursor}], not a flat array.
 		// The official CLI unwraps the environment member and otherwise decodes
 		// every flat object as an all-zero Environment.
 		after, limit := core.PageParams(r.URL.Query())
-		page := core.Page(es, after, limit, func(e EnvironmentView) string { return e.ID })
-		core.WriteJSON(w, http.StatusOK, toEnvironmentList(page))
+		out = core.Page(out, after, limit, func(e environmentWithCursor) string { return e.Cursor })
+		if out == nil {
+			out = []environmentWithCursor{}
+		}
+		core.WriteJSON(w, http.StatusOK, out)
 	})
 
 	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {

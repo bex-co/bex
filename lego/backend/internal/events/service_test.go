@@ -136,6 +136,14 @@ func TestViewMapsEverySource(t *testing.T) {
 		row:      store.ServiceEventRow{Key: "aud-6:", Source: store.EventSourceAudit, Verb: "apps.SetDisplayName", Caller: "user-x"},
 		wantType: TypeDisplayNameChanged,
 	}, {
+		name:     "command change is recorded without leaking the commands",
+		row:      store.ServiceEventRow{Key: "aud-commands:", Source: store.EventSourceAudit, Verb: "apps.SetCommands", Caller: "user-x"},
+		wantType: TypeCommandsChanged,
+	}, {
+		name:     "source change is recorded without leaking the source",
+		row:      store.ServiceEventRow{Key: "aud-source:", Source: store.EventSourceAudit, Verb: "apps.SetSource", Caller: "user-x"},
+		wantType: TypeSourceChanged,
+	}, {
 		name:     "env-var write carries neither key nor value",
 		row:      store.ServiceEventRow{Key: "aud-7:", Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
 		wantType: TypeEnvVarsChanged,
@@ -302,6 +310,8 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		{TypeDeployStarted, nil, []string{store.EventPhaseStarted}},
 		{TypeDeployEnded, nil, []string{store.EventPhaseEnded}},
 		{TypeSuspenderAdded, []string{"apps.Suspend"}, nil},
+		{TypeCommandsChanged, []string{"apps.SetCommands"}, nil},
+		{TypeSourceChanged, []string{"apps.SetSource"}, nil},
 		// One type, four verbs — all must reach the query, or an env-var delete (or
 		// a blueprint seed) would silently vanish from an env_vars_changed filter.
 		{TypeEnvVarsChanged, []string{"secrets.DeleteEnvVar", "secrets.SeedEnvVars", "secrets.SetEnvVar", "secrets.SetEnvVars"}, nil},

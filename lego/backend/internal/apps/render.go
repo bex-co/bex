@@ -30,7 +30,7 @@ const renderWebService = "web_service"
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
-	ID             string         `json:"id"` // Render-shaped srv- id; AppView falls back for legacy hand-applied CRs
+	ID             string         `json:"id"` // stable Render-shaped srv- id; legacy hand-applied CRs fall back to their name
 	Name           string         `json:"name"`
 	Slug           string         `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
 	DisplayName    string         `json:"displayName"`
@@ -38,11 +38,16 @@ type renderService struct {
 	Suspended      string         `json:"suspended"`
 	DashboardURL   string         `json:"dashboardUrl,omitempty"`
 	CreatedAt      string         `json:"createdAt,omitempty"`
+	UpdatedAt      string         `json:"updatedAt,omitempty"`
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
+	ImagePath      string         `json:"imagePath,omitempty"`
+	Suspenders     []string       `json:"suspenders"`
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
 	// Apps the control-plane projector never labeled (see AppView.OwnerID).
 	OwnerID string `json:"ownerId,omitempty"`
+	// EnvironmentID is Render's top-level environment membership field.
+	EnvironmentID string `json:"environmentId,omitempty"`
 
 	// bex-native superset (ignored by Render clients).
 	Phase    string   `json:"phase,omitempty"`
@@ -112,6 +117,12 @@ type serviceAndDeploy struct {
 	Service renderService `json:"service"`
 }
 
+// renderServiceInstance is the official CLI's serviceInstance wire shape.
+type renderServiceInstance struct {
+	ID        string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+}
+
 // yesNoEnum renders Render's autoDeploy bool as its wire enum ("yes"/"no").
 func yesNoEnum(autoDeploy bool) string {
 	if autoDeploy {
@@ -121,6 +132,10 @@ func yesNoEnum(autoDeploy bool) string {
 }
 
 func toRenderService(a AppView) renderService {
+	publicID := a.ID
+	if publicID == "" {
+		publicID = a.Name // hand-applied/store-less compatibility
+	}
 	svcType := a.Type
 	if svcType == "" {
 		svcType = renderWebService // defensive; view() already defaults this
@@ -141,17 +156,27 @@ func toRenderService(a AppView) renderService {
 	if a.Runtime != "" {
 		set("runtime", a.Runtime)
 		set("env", a.Runtime) // deprecated Render response field, still required by its schema
+		set("region", "oregon")
 	}
 	if a.Runtime == "docker" {
-		set("envSpecificDetails", map[string]any{
+		dockerDetails := map[string]any{
 			"dockerCommand":  a.StartCommand,
 			"dockerContext":  a.RootDir,
 			"dockerfilePath": a.DockerfilePath,
-		})
-	} else if a.BuildCommand != "" || a.StartCommand != "" {
+		}
+		if a.PreDeployCommand != "" {
+			dockerDetails["preDeployCommand"] = a.PreDeployCommand
+		}
+		set("envSpecificDetails", dockerDetails)
+	} else if a.Runtime != "" {
+		startCommand := a.StartCommand
+		if svcType == "cron_job" {
+			startCommand = a.Command
+		}
 		set("envSpecificDetails", map[string]any{
-			"buildCommand": a.BuildCommand,
-			"startCommand": a.StartCommand,
+			"buildCommand":     a.BuildCommand,
+			"startCommand":     startCommand,
+			"preDeployCommand": a.PreDeployCommand,
 		})
 	}
 	if a.Schedule != "" {
@@ -163,6 +188,9 @@ func toRenderService(a AppView) renderService {
 	if a.PublishPath != "" {
 		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
 	}
+	if svcType == "static_site" {
+		set("buildCommand", a.BuildCommand)
+	}
 	if a.PreDeployCommand != "" {
 		set("preDeployCommand", a.PreDeployCommand) // webServiceDetails.preDeployCommand (w1/m33)
 	}
@@ -171,6 +199,10 @@ func toRenderService(a AppView) renderService {
 		// view() supplies the shared Render/Kubernetes default (30) when the CR
 		// pointer is unset, so legacy services read back exactly like Render.
 		set("maxShutdownDelaySeconds", a.MaxShutdownDelaySeconds)
+	}
+	set("numInstances", int(a.Replicas))
+	if a.HealthCheckPath != "" {
+		set("healthCheckPath", a.HealthCheckPath)
 	}
 	var ras *renderAutoscaling
 	if a.Autoscaling != nil {
@@ -183,16 +215,20 @@ func toRenderService(a AppView) renderService {
 		}
 	}
 	return renderService{
-		ID:              a.ID,
-		Name:            a.Name,
+		ID:              publicID,
+		Name:            renderServiceName(a),
 		Slug:            a.Slug,
 		DisplayName:     a.DisplayName,
 		Type:            svcType,
 		Suspended:       core.SuspendedEnum(a.Suspended),
 		DashboardURL:    a.URL,
 		CreatedAt:       a.CreatedAt,
+		UpdatedAt:       a.CreatedAt,
 		ServiceDetails:  details,
+		ImagePath:       a.SourceImage,
+		Suspenders:      []string{},
 		OwnerID:         a.OwnerID,
+		EnvironmentID:   a.EnvironmentID,
 		Phase:           a.Phase,
 		Replicas:        a.Replicas,
 		Revision:        a.Revision,
@@ -210,6 +246,16 @@ func toRenderService(a AppView) renderService {
 		NotifyOnFail:    a.NotifyOnFail,
 		HealthCheckPath: a.HealthCheckPath,
 	}
+}
+
+// renderServiceName maps bex's immutable public name + mutable display label
+// onto Render's contract, where service.name itself is mutable. The typed id
+// remains stable and continues to address the App CR through LabelAppID.
+func renderServiceName(a AppView) string {
+	if a.DisplayName != "" {
+		return a.DisplayName
+	}
+	return a.Name
 }
 
 // renderRoute mirrors Render's static-site route shape
