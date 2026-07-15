@@ -1,4 +1,4 @@
--- w2/m38: persist Render's full evidence-backed deploy lifecycle. updated_at
+-- w2/m38 migration 0033: persist Render's full evidence-backed deploy lifecycle. updated_at
 -- advances only when a stored fact changes; existing rows are backfilled from
 -- their last authoritative timestamp rather than migration wall-clock time.
 ALTER TABLE deploys ADD COLUMN updated_at timestamptz;

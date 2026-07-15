@@ -162,7 +162,7 @@ func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 	}
 	defer pool.Close()
 
-	sql, err := migrationsFS.ReadFile("migrations/0032_deploy_lifecycle.up.sql")
+	sql, err := migrationsFS.ReadFile("migrations/0033_deploy_lifecycle.up.sql")
 	if err != nil {
 		t.Fatalf("read migration: %v", err)
 	}
@@ -172,8 +172,8 @@ func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, `
-		CREATE SCHEMA migration_0032_deploy_lifecycle;
-		SET LOCAL search_path TO migration_0032_deploy_lifecycle;
+		CREATE SCHEMA migration_0033_deploy_lifecycle;
+		SET LOCAL search_path TO migration_0033_deploy_lifecycle;
 		CREATE TABLE deploys (
 			id text PRIMARY KEY,
 			app_id text NOT NULL,
