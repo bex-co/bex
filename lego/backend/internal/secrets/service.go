@@ -45,9 +45,17 @@ import (
 // serviceEnvVar) the REST adapter uses. The GraphQL surface renders the neutral
 // core.EnvVar ({id,key,value}) nested under a Service instead — REST tracks
 // Render's public API, GraphQL the dashboard.
+//
+// Generate is Render's generateValue (w8/m10): when true and Value is empty, the
+// write verb mints a cryptographically random value server-side (core.GenerateValue,
+// base64 256-bit) and stores it like any other value; the minted value comes back
+// in the write response so the caller can read what was generated. Value + Generate
+// together is rejected (Render leaves the combination undocumented — an explicit
+// value and "please generate one" are contradictory intent).
 type EnvVarView struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key      string `json:"key"`
+	Value    string `json:"value"`
+	Generate bool   `json:"generateValue,omitempty"`
 }
 
 // Service reads/writes tenant env vars + secret files over the injected
@@ -118,7 +126,11 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 			// Names only in the error — never the value (docs/ADR013-secrets.md, t005).
 			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
-		env[key] = v.Value
+		value, err := resolveValue(key, v.Value, v.Generate)
+		if err != nil {
+			return nil, err
+		}
+		env[key] = value
 	}
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return nil, err
@@ -127,6 +139,20 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 		return nil, err
 	}
 	return envVarViews(env), nil
+}
+
+// resolveValue applies Render's generateValue semantics to one env-var write:
+// generate=true with no explicit value mints a random secret (core.GenerateValue);
+// generate=true WITH a value is a contradiction and rejected; otherwise the value
+// passes through unchanged. Shared by every write path so the rule lives once.
+func resolveValue(key, value string, generate bool) (string, error) {
+	if !generate {
+		return value, nil
+	}
+	if value != "" {
+		return "", fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, key)
+	}
+	return core.GenerateValue()
 }
 
 // SetEnvVar adds or updates one variable (Render's PUT .../env-vars/{key}, body
@@ -176,6 +202,64 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		return core.ErrNotFound
 	}
 	delete(env, key)
+	if err := s.storeMap(ctx, envPath(service), env); err != nil {
+		return err
+	}
+	return s.materializeEnv(ctx, a, env)
+}
+
+// SeedEnvVars is the blueprint apply path's seam (w1/m35): it seeds a service's
+// sync:false and generateValue env vars into the OpenBao env store SEED-ONCE — a
+// key already present keeps its live value, so a later blueprint sync never
+// overwrites a dashboard edit (Render's "dashboard value wins" for sync:false, and
+// generated values persist rather than re-minting). literals seed to their given
+// value; generates mint a fresh core.GenerateValue when the key is unset. Because
+// these land in the mutable env store (not the App's spec.Env), the env-vars API
+// naturally overrides them later. A no-op when every key is already present: no
+// Secret write, no pod roll — the stack re-apply idempotency contract. Manage scope.
+func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	env, err := s.Store.Get(ctx, envPath(service))
+	if err != nil {
+		return err
+	}
+	changed := false
+	seed := func(key, value string, generate bool) error {
+		key = strings.TrimSpace(key)
+		if !core.ValidEnvKey(key) {
+			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		}
+		if _, ok := env[key]; ok {
+			return nil // seed-once: an already-set key keeps its live value
+		}
+		v, err := resolveValue(key, value, generate)
+		if err != nil {
+			return err
+		}
+		env[key] = v
+		changed = true
+		return nil
+	}
+	// Sort keys so a rand.Read failure (or a bad name) is deterministic across runs.
+	for _, key := range core.SortedKeys(literals) {
+		if err := seed(key, literals[key], false); err != nil {
+			return err
+		}
+	}
+	for _, key := range generates {
+		if err := seed(key, "", true); err != nil {
+			return err
+		}
+	}
+	if !changed {
+		return nil // every key already seeded — no Secret write, no roll
+	}
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return err
 	}

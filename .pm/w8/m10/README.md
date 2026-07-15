@@ -1,12 +1,12 @@
 # w8 · m10 — Env vars: `generateValue` + cursor pagination
 
-**Worker:** worker8 **Goal:** Close the env-vars row's two documented omissions — Render's `generateValue: true` (server-minted random value) and list pagination — identically across REST, GraphQL, MCP, and the dashboard. **Status:** todo
+**Worker:** worker8 **Goal:** Close the env-vars row's two documented omissions — Render's `generateValue: true` (server-minted random value) and list pagination — identically across REST, GraphQL, MCP, and the dashboard. **Status:** in progress (t001 done — landed alongside w1/m35, 2026-07-14; t002–t008 open)
 
 ## Tasks (in order)
 
 | id   | title                                                 | est | depends_on |
 | ---- | ----------------------------------------------------- | --- | ---------- |
-| t001 | Core: `generateValue` on the env-var write verb       | 45m | —          |
+| t001 | Core: `generateValue` on the env-var write verb       | 45m | — — **DONE** (2026-07-14, w/ w1/m35) |
 | t002 | Thread `generateValue` through REST · GraphQL · MCP   | 40m | t001       |
 | t003 | Cursor pagination on env-var list endpoints           | 45m | —          |
 | t004 | Dashboard: Generate-value affordance + paged list     | 40m | t002, t003 |

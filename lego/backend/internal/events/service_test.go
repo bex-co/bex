@@ -302,9 +302,9 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		{TypeDeployStarted, nil, []string{store.EventPhaseStarted}},
 		{TypeDeployEnded, nil, []string{store.EventPhaseEnded}},
 		{TypeSuspenderAdded, []string{"apps.Suspend"}, nil},
-		// One type, three verbs — all three must reach the query, or an env-var
-		// delete would silently vanish from an env_vars_changed filter.
-		{TypeEnvVarsChanged, []string{"secrets.DeleteEnvVar", "secrets.SetEnvVar", "secrets.SetEnvVars"}, nil},
+		// One type, four verbs — all must reach the query, or an env-var delete (or
+		// a blueprint seed) would silently vanish from an env_vars_changed filter.
+		{TypeEnvVarsChanged, []string{"secrets.DeleteEnvVar", "secrets.SeedEnvVars", "secrets.SetEnvVar", "secrets.SetEnvVars"}, nil},
 		// An unknown type asks the store for nothing at all: an empty feed, not a
 		// page of zero items a client can't tell from the end of the feed.
 		{"no_such_type", nil, nil},

@@ -1,21 +1,21 @@
 # w1 · m35 — Blueprint field completeness: envVarGroups · fromGroup · sync:false · fromService
 
-**Worker:** worker1 **Goal:** The `bex.yml` fields currently rejected with a named error — `envVarGroups`/`fromGroup`, `sync: false`, `fromService.envVarKey`, plus `generateValue` acceptance — work, so real-world `render.yaml` files deploy unmodified. **Status:** todo
+**Worker:** worker1 **Goal:** The `bex.yml` fields currently rejected with a named error — `envVarGroups`/`fromGroup`, `sync: false`, `fromService.envVarKey`, plus `generateValue` acceptance — work, so real-world `render.yaml` files deploy unmodified. **Status:** done (2026-07-14)
 
 ## Tasks (in order)
 
 | id   | title                                                        | est | depends_on                   |
 | ---- | ------------------------------------------------------------ | --- | ---------------------------- |
-| t001 | `envVarGroups:` blocks create/update env groups at apply     | 45m | —                            |
-| t002 | `fromGroup` links a declared group to the service            | 30m | t001                         |
-| t003 | `sync: false` semantics on blueprint sync                    | 40m | —                            |
-| t004 | `fromService.envVarKey` cross-service references             | 45m | —                            |
-| t005 | Accept `generateValue` in bex.yml (rides w8/m10's core verb) | 30m | t001                         |
-| t006 | `validate_bex_yml` accepts all; ADR006 field ledger update   | 30m | t001, t002, t003, t004, t005 |
-| t007 | Render parity                                                | 30m | t006                         |
-| t008 | Simplify                                                     | 30m | t007                         |
-| t009 | Test coverage                                                | 45m | t007                         |
-| t010 | Closeout                                                     | 15m | t009                         |
+| t001 | `envVarGroups:` blocks create/update env groups at apply     | 45m | — — **DONE**                 |
+| t002 | `fromGroup` links a declared group to the service            | 30m | t001 — **DONE**              |
+| t003 | `sync: false` semantics on blueprint sync                    | 40m | — — **DONE**                 |
+| t004 | `fromService.envVarKey` cross-service references             | 45m | — — **DONE**                 |
+| t005 | Accept `generateValue` in bex.yml (rides w8/m10's core verb) | 30m | t001 — **DONE**              |
+| t006 | `validate_bex_yml` accepts all; ADR006 field ledger update   | 30m | t001, t002, t003, t004, t005 — **DONE** |
+| t007 | Render parity                                                | 30m | t006 — **DONE**              |
+| t008 | Simplify                                                     | 30m | t007 — **DONE**              |
+| t009 | Test coverage                                                | 45m | t007 — **DONE**              |
+| t010 | Closeout                                                     | 15m | t009 — **DONE**              |
 
 ## Definition of done
 

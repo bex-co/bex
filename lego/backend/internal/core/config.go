@@ -16,10 +16,42 @@ limitations under the License.
 
 package core
 
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"sort"
+)
+
 // config.go holds the validation rules shared by the two config features
 // (internal/secrets env vars + secret files, internal/envgroups) — both write
 // into per-app Kubernetes Secrets, so both must reject names that aren't legal
 // Secret keys before the write reaches the apiserver with a cryptic error.
+
+// GenerateValue mints a cryptographically random secret value in Render's
+// documented generateValue shape: a base64-encoded 256-bit value (32 random
+// bytes → 44-char standard-base64 string, e.g. "B0jrphAPOY7pg…KFUk="). Shared by
+// the two features that honor render.yaml's generateValue — env vars
+// (internal/secrets) and env groups (internal/envgroups) — so both mint the same
+// format. A rand.Read failure is surfaced, never silently substituted.
+func GenerateValue() (string, error) {
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b[:]), nil
+}
+
+// SortedKeys returns a string-map's keys in sorted order — the deterministic
+// iteration order the two config features (secrets seeding, env-group apply) rely
+// on so a blueprint seed's minting order (and any rand failure) is reproducible.
+func SortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
 
 // ValidEnvKey reports whether k is a C-locale environment variable name
 // ([A-Za-z_][A-Za-z0-9_]*): what a shell and Kubernetes' Secret-key validation

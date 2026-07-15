@@ -183,8 +183,10 @@ var eventTypes = map[string]string{
 	"secrets.SetEnvVars":           TypeEnvVarsChanged,
 	"secrets.SetEnvVar":            TypeEnvVarsChanged,
 	"secrets.DeleteEnvVar":         TypeEnvVarsChanged,
+	"secrets.SeedEnvVars":          TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
 	"envgroups.LinkService":        TypeEnvGroupLinked,
 	"envgroups.UnlinkService":      TypeEnvGroupUnlinked,
+	"envgroups.LinkEnvGroup":       TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
 	"deploys.RegenerateDeployHook": TypeDeployHookRegenerated,
 }
 

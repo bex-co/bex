@@ -323,6 +323,20 @@ func NewServer(base *core.Base, d Deps) *Server {
 		MaxPostgres:  d.MaxPostgres,
 	}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
+	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:
+	// apps.EnvSeeder / apps.EnvGroupApplier) — built once and shared. They are
+	// wired onto Apps ONLY when OpenBao (d.Secrets) is on, so a nil seam is the
+	// honest "unavailable" signal the stack pre-flight rejects against (a bex.yml
+	// using envVarGroups/fromGroup/sync:false/generateValue then fails before any
+	// write, never silently drops the var).
+	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets}
+	var envSeeder apps.EnvSeeder
+	var envGroupApplier apps.EnvGroupApplier
+	if d.Secrets != nil {
+		envSeeder = secretsSvc
+		envGroupApplier = envGroupsSvc
+	}
 	// Usage is constructed and its metering loop started in cmd/api/main.go
 	// (before NewServer runs), so it can't take Selections as a constructor
 	// arg like pg/kv above — wire it onto the already-built pointer instead, so
@@ -332,7 +346,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		d.Usage.Selections = selections
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -349,8 +363,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, Selections: selections},
 		Postgres:  pg,
 		KeyValue:  kv,
-		Secrets:   &secrets.Service{Base: base, Store: d.Secrets},
-		EnvGroups: &envgroups.Service{Base: base, Store: d.Secrets},
+		Secrets:   secretsSvc,
+		EnvGroups: envGroupsSvc,
 		Deploys: &deploys.Service{
 			Base:              base,
 			Store:             d.DeployStore,

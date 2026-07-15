@@ -101,6 +101,17 @@ type Service struct {
 	// (they are purged on workspace delete via WorkspacePurger). Satisfied
 	// structurally by *secrets.WorkspacePurger so apps never imports secrets.
 	SecretsEraser AppSecretsEraser
+	// EnvGroups, when set (OpenBao is wired), materializes a bex.yml's
+	// envVarGroups: and links them to services via fromGroup (w1/m35), riding the
+	// env-groups feature through a narrow seam. nil => a manifest using
+	// envVarGroups/fromGroup is rejected before any write (env groups unavailable),
+	// never silently dropped.
+	EnvGroups EnvGroupApplier
+	// EnvSeeder, when set (OpenBao is wired), seeds a bex.yml's sync:false and
+	// generateValue vars into the mutable env-vars store SEED-ONCE (w1/m35), so a
+	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a
+	// manifest using those forms is rejected before any write.
+	EnvSeeder EnvSeeder
 }
 
 // AppSecretsEraser clears per-app secrets from the external store on service

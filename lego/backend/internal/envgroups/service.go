@@ -29,6 +29,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -440,6 +441,14 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 	if err != nil {
 		return err
 	}
+	return s.linkFetched(ctx, gid, service, a)
+}
+
+// linkFetched is LinkService's post-authorize body, shared with LinkEnvGroup (the
+// blueprint seam) so the two link paths authorize + audit exactly once each. It
+// appends the group's Secret refs to the already-fetched App, rolls it, and
+// records the service in the group's link set.
+func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1alpha1.App) error {
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
@@ -528,6 +537,166 @@ func (s *Service) rollLinked(ctx context.Context, links []string) error {
 		}
 	}
 	return nil
+}
+
+// --- blueprint apply seam (w1/m35) --------------------------------------------
+
+// GroupNames returns the names of every existing env group. The blueprint apply
+// path uses it to pre-flight `fromGroup` references (an unknown group name is a
+// per-entry validation error before any resource is written). View scope.
+func (s *Service) GroupNames(ctx context.Context) ([]string, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if s.Store == nil {
+		return nil, core.ErrSecretsUnavailable
+	}
+	ids, err := s.Store.List(ctx, "env-groups")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(ids))
+	for _, gid := range ids {
+		m, err := s.readMeta(ctx, gid)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m.name)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// ApplyEnvGroup materializes one blueprint `envVarGroups:` entry (w1/m35),
+// keyed by NAME (Render's env groups are name-addressed): create the group if no
+// group of that name exists, else reuse it, then reconcile its vars — literals set
+// to their declared value (re-synced each apply), generates minted once
+// (core.GenerateValue) and thereafter preserved, so a re-sync never re-mints. Keys
+// already in the group but absent from the blueprint are retained (Render's
+// preservation rule). Idempotent: when the reconciled set already matches, no
+// Secret write and no roll of linked services. Manage scope.
+func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
+	}
+	gid, m, found, err := s.findGroupByName(ctx, name)
+	if err != nil {
+		return err
+	}
+	if !found {
+		gid = id.New(id.EnvGroup)
+		m = meta{name: name}
+		if err := s.writeMeta(ctx, gid, m); err != nil {
+			return err
+		}
+	}
+	env, err := s.Store.Get(ctx, envPath(gid))
+	if err != nil {
+		return err
+	}
+	next := make(map[string]string, len(env))
+	for k, v := range env {
+		next[k] = v // retain existing keys (preservation rule)
+	}
+	for _, key := range core.SortedKeys(literals) {
+		if !core.ValidEnvKey(key) {
+			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		}
+		next[key] = literals[key] // literals re-sync to the declared value
+	}
+	for _, key := range generates {
+		if !core.ValidEnvKey(key) {
+			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		}
+		if _, ok := next[key]; ok {
+			continue // generate-once: an existing value persists across syncs
+		}
+		v, err := core.GenerateValue()
+		if err != nil {
+			return err
+		}
+		next[key] = v
+	}
+	// A freshly created group still needs its (possibly empty) projection Secret so
+	// a link can reference it; an existing group with an unchanged set is a no-op.
+	if found && reflect.DeepEqual(env, next) {
+		return nil
+	}
+	if err := s.storeMap(ctx, envPath(gid), next); err != nil {
+		return err
+	}
+	if err := s.upsertSecret(ctx, envSecretName(gid), next); err != nil {
+		return err
+	}
+	// A brand-new group also needs its files projection Secret to exist (parity with
+	// CreateEnvGroup), so a later files write / delete finds it.
+	if !found {
+		if err := s.upsertSecret(ctx, filesSecretName(gid), nil); err != nil {
+			return err
+		}
+	}
+	return s.rollLinked(ctx, m.links)
+}
+
+// LinkEnvGroup links the named group to a service for the blueprint apply path
+// (w1/m35's `fromGroup`). Unknown group name is an error (the apply pre-flights
+// existence, but this guards the direct call too). Idempotent: an already-linked
+// service is not re-patched, so a stack re-apply neither churns the spec nor rolls
+// the pod. Manage scope (via LinkService's AuthorizeApp).
+func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service) // authorize (+ audit) FIRST
+	if err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	gid, _, found, err := s.findGroupByName(ctx, name)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: env group %q does not exist", core.ErrBadRequest, name)
+	}
+	// Skip the patch (and the roll) when the service is already linked — a re-link
+	// would bump restartedAt and break stack re-apply idempotency.
+	if m, err := s.requireGroup(ctx, gid); err == nil {
+		for _, svc := range m.links {
+			if svc == service {
+				return nil
+			}
+		}
+	}
+	return s.linkFetched(ctx, gid, service, a)
+}
+
+// findGroupByName resolves an env group by its display name (Render addresses
+// groups by name; bex stores them by id). Returns found=false when no group of
+// that name exists. The first match wins if names ever collide (CreateEnvGroup
+// does not enforce uniqueness) — deterministic because the id list is sorted.
+func (s *Service) findGroupByName(ctx context.Context, name string) (string, meta, bool, error) {
+	ids, err := s.Store.List(ctx, "env-groups")
+	if err != nil {
+		return "", meta{}, false, err
+	}
+	sort.Strings(ids)
+	for _, gid := range ids {
+		m, err := s.readMeta(ctx, gid)
+		if err != nil {
+			return "", meta{}, false, err
+		}
+		if m.name == name {
+			return gid, m, true, nil
+		}
+	}
+	return "", meta{}, false, nil
 }
 
 // --- store + secret helpers ---------------------------------------------------

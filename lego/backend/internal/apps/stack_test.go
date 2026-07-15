@@ -202,13 +202,18 @@ services:
 	}
 }
 
-func TestParseStackRejectsUnsupportedEnvForms(t *testing.T) {
+func TestParseStackRejectsBadEnvForms(t *testing.T) {
+	// The five w1/m35 forms (envVarGroups/fromGroup/sync:false/generateValue/
+	// fromService.envVarKey) now WORK; these are the genuinely-malformed shapes
+	// that must still reject per-entry (all-or-nothing).
 	cases := map[string]string{
-		"generateValue":         "services:\n  - {name: web, image: x, envVars: [{key: S, generateValue: true}]}\n",
-		"sync false":            "services:\n  - {name: web, image: x, envVars: [{key: S, sync: false}]}\n",
-		"fromGroup":             "services:\n  - {name: web, image: x, envVars: [{key: S, fromGroup: g}]}\n",
-		"fromService envVarKey": "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: X}}]}\n",
+		"fromGroup with a key":  "services:\n  - {name: web, image: x, envVars: [{key: S, fromGroup: g}]}\n",
+		"value + generateValue": "services:\n  - {name: web, image: x, envVars: [{key: S, value: v, generateValue: true}]}\n",
+		"dangling envVarKey":    "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: NOPE}}]}\n",
+		"envVarKey + property":  "services:\n  - {name: web, image: x, envVars: [{key: S, fromService: {name: web, envVarKey: X, property: host}}]}\n",
 		"bad db property":       "services:\n  - {name: web, image: x, envVars: [{key: S, fromDatabase: {name: db, property: url}}]}\ndatabases:\n  - {name: db}\n",
+		"group var referencing": "envVarGroups:\n  - name: g\n    envVars: [{key: S, fromService: {name: web, property: host}}]\nservices:\n  - {name: web, image: x}\n",
+		"group var sync false":  "envVarGroups:\n  - name: g\n    envVars: [{key: S, value: v, sync: false}]\nservices:\n  - {name: web, image: x}\n",
 	}
 	for name, manifest := range cases {
 		t.Run(name, func(t *testing.T) {
