@@ -14,30 +14,57 @@ interface IdVars {
   id: string;
 }
 
+// One allowlist entry: the CIDR plus the operator-facing label a human gave
+// it — both persist end to end (w4/m24).
+export interface IpAllowListEntry {
+  cidrBlock: string;
+  description: string;
+}
 export interface KeyValueIpAllowListQuery {
-  keyValueIpAllowList: Array<string | null> | null;
+  keyValue: {
+    id: string | null;
+    ipAllowListEntries: Array<{
+      cidrBlock: string;
+      description: string | null;
+    } | null> | null;
+  } | null;
 }
 export const KeyValueIpAllowListDocument = gql`
   query KeyValueIpAllowList($id: String!) {
-    keyValueIpAllowList(id: $id)
+    keyValue(id: $id) {
+      id
+      ipAllowListEntries {
+        cidrBlock
+        description
+      }
+    }
   }
 ` as unknown as TypedDocumentNode<KeyValueIpAllowListQuery, IdVars>;
 
 export interface SetKeyValueIpAllowListMutation {
   setKeyValueIpAllowList: {
     id: string | null;
-    ipAllowList: Array<string | null> | null;
+    ipAllowListEntries: Array<{
+      cidrBlock: string;
+      description: string | null;
+    } | null> | null;
   } | null;
 }
 interface SetKeyValueIpAllowListVars {
   id: string;
-  cidrs: string[];
+  entries: IpAllowListEntry[];
 }
 export const SetKeyValueIpAllowListDocument = gql`
-  mutation SetKeyValueIpAllowList($id: String!, $cidrs: [String]) {
-    setKeyValueIpAllowList(id: $id, cidrs: $cidrs) {
+  mutation SetKeyValueIpAllowList(
+    $id: String!
+    $entries: [IPAllowListEntryInput!]
+  ) {
+    setKeyValueIpAllowList(id: $id, entries: $entries) {
       id
-      ipAllowList
+      ipAllowListEntries {
+        cidrBlock
+        description
+      }
     }
   }
 ` as unknown as TypedDocumentNode<

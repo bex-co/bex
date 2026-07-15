@@ -597,6 +597,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Add",
     description: "Access panel button to add a CIDR to the draft allowlist",
   },
+  "databases.accessAllowListDescription": {
+    message: "Description (optional)",
+    description:
+      "Placeholder for the optional per-entry allowlist description input",
+  },
   "databases.accessAllowListRemove": {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",

@@ -27,34 +27,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
-// ipAllowEntry is components.schemas.cidrBlockAndDescription — Render's
-// ipAllowList wire shape is a list of {cidrBlock, description} objects, not
-// bare CIDR strings. bex's core KeyValueView/CreateKeyValueRequest (shared
-// with GraphQL/MCP, which set []string directly in Go, never via JSON decode)
-// stays []string; only the REST wire boundary translates, same as
-// toRenderKeyValue below. The description bex doesn't store is dropped on
-// input and left empty on output — never fabricated.
-type ipAllowEntry struct {
-	CidrBlock   string `json:"cidrBlock"`
-	Description string `json:"description"`
-}
-
-func toIPAllowList(cidrs []string) []ipAllowEntry {
-	out := make([]ipAllowEntry, 0, len(cidrs))
-	for _, c := range cidrs {
-		out = append(out, ipAllowEntry{CidrBlock: c})
-	}
-	return out
-}
-
-func fromIPAllowList(entries []ipAllowEntry) []string {
-	out := make([]string, 0, len(entries))
-	for _, e := range entries {
-		out = append(out, e.CidrBlock)
-	}
-	return out
-}
-
 // keyValueOwner is components.schemas.owner's resource wire subset.
 type keyValueOwner struct {
 	ID    string `json:"id"`
@@ -73,29 +45,30 @@ type keyValueOptionsView struct {
 // renderKeyValue is the Render-shaped wire response for a single KeyValue —
 // every REST handler below returns this, not a bare KeyValueView. Verified
 // against the render-oss/cli generated KeyValueDetail type: bex's flat
-// ownerId/maxmemoryPolicy/persistenceMode/ipAllowList-of-strings (the shape
-// GraphQL/MCP read directly off KeyValueView) silently zero-valued or failed
-// to decode client-side because Render's real contract nests owner/options
-// and uses {cidrBlock,description} allow-list entries. Region/version are
-// deliberately omitted rather than faked — bex doesn't track either.
+// ownerId/maxmemoryPolicy/persistenceMode (the shape GraphQL/MCP read directly
+// off KeyValueView) silently zero-valued or failed to decode client-side
+// because Render's real contract nests owner/options. The allow list is
+// core.IPAllowListEntry — already Render's {cidrBlock, description} shape.
+// Region/version are deliberately omitted rather than faked — bex doesn't
+// track either.
 type renderKeyValue struct {
-	ID            string              `json:"id"`
-	Name          string              `json:"name"`
-	Plan          string              `json:"plan"`
-	Status        string              `json:"status"`
-	Suspended     string              `json:"suspended"`
-	CreatedAt     string              `json:"createdAt,omitempty"`
-	UpdatedAt     string              `json:"updatedAt,omitempty"`
-	Owner         *keyValueOwner      `json:"owner,omitempty"`
-	Region        string              `json:"region,omitempty"`
-	DashboardURL  string              `json:"dashboardUrl,omitempty"`
-	Version       string              `json:"version,omitempty"`
-	Options       keyValueOptionsView `json:"options"`
-	IPAllowList   []ipAllowEntry      `json:"ipAllowList,omitempty"`
-	EnvironmentID string              `json:"environmentId,omitempty"`
-	ExternalHost  string              `json:"externalHost,omitempty"`
-	Public        bool                `json:"public"`
-	ProjectID     string              `json:"projectId,omitempty"`
+	ID            string                  `json:"id"`
+	Name          string                  `json:"name"`
+	Plan          string                  `json:"plan"`
+	Status        string                  `json:"status"`
+	Suspended     string                  `json:"suspended"`
+	CreatedAt     string                  `json:"createdAt,omitempty"`
+	UpdatedAt     string                  `json:"updatedAt,omitempty"`
+	Owner         *keyValueOwner          `json:"owner,omitempty"`
+	Region        string                  `json:"region,omitempty"`
+	DashboardURL  string                  `json:"dashboardUrl,omitempty"`
+	Version       string                  `json:"version,omitempty"`
+	Options       keyValueOptionsView     `json:"options"`
+	IPAllowList   []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	EnvironmentID string                  `json:"environmentId,omitempty"`
+	ExternalHost  string                  `json:"externalHost,omitempty"`
+	Public        bool                    `json:"public"`
+	ProjectID     string                  `json:"projectId,omitempty"`
 }
 
 func toRenderKeyValue(kv KeyValueView) renderKeyValue {
@@ -112,7 +85,7 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,
 		},
-		IPAllowList:   toIPAllowList(kv.IPAllowList),
+		IPAllowList:   kv.IPAllowList,
 		EnvironmentID: kv.EnvironmentID,
 		ExternalHost:  kv.ExternalHost,
 		Public:        kv.Public,
@@ -207,16 +180,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
 	})
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
-		var wire struct {
-			CreateKeyValueRequest
-			IPAllowList []ipAllowEntry `json:"ipAllowList,omitempty"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&wire); err != nil {
+		// CreateKeyValueRequest.IPAllowList decodes Render's {cidrBlock,
+		// description} objects directly (and tolerates bare CIDR strings, the
+		// pre-m24 lenient shape) — no wire wrapper needed since w4/m24.
+		var req CreateKeyValueRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeBadRequestBody(w, err)
 			return
 		}
-		req := wire.CreateKeyValueRequest
-		req.IPAllowList = fromIPAllowList(wire.IPAllowList)
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true
 		}
@@ -301,19 +272,23 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// by the official CLI's KeyValue commands directly (`keyvalues update
 	// --ip-allow-list` goes through PATCH instead — that flow isn't wired up
 	// on bex's side yet, a separate gap from this REST wire-shape fix), but
-	// {"cidrs": [...]} stays bex-native-plain here since nothing Render-side
-	// depends on this specific endpoint's shape.
+	// {"cidrs": [...]} stays bex-native-plain in the response since nothing
+	// Render-side depends on this endpoint's shape; descriptions travel
+	// through the Render-shaped create/get/list. The PUT body's array elements
+	// decode as either bare CIDR strings or {cidrBlock, description} objects
+	// (core.IPAllowListEntry's union), so a client that writes back entries
+	// keeps their descriptions; a string-only full replace clears them.
 	mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": list})
+		core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": core.AllowListCIDRs(list)})
 	})
 	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			CIDRs []string `json:"cidrs"`
+			CIDRs []core.IPAllowListEntry `json:"cidrs"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeBadRequestBody(w, err)

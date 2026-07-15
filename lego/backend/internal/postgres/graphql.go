@@ -49,7 +49,8 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.CreatedAt })},
 		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ExternalHost })},
 		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Public })},
-		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v PostgresView) any { return ipAllowListFromWire(v.IPAllowList) })},
+		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v PostgresView) any { return core.AllowListCIDRs(v.IPAllowList) })},
+		"ipAllowListEntries":      &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(v PostgresView) any { return v.IPAllowList })},
 		"poolerEnabled":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.PoolerEnabled })},
 		"backupsEnabled":          &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.BackupsEnabled })},
 		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.OwnerID })},
@@ -399,11 +400,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.ListUsers(p.Context, p.Args["id"].(string))
 			},
 		},
-		"databaseIpAllowList": &graphql.Field{ // external-endpoint CIDR allowlist
+		"databaseIpAllowList": &graphql.Field{ // external-endpoint CIDR allowlist (strings; the Database type's ipAllowListEntries carries descriptions)
 			Type: graphql.NewList(graphql.String),
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetIPAllowList(p.Context, p.Args["id"].(string))
+				list, err := s.GetIPAllowList(p.Context, p.Args["id"].(string))
+				if err != nil {
+					return nil, err
+				}
+				return core.AllowListCIDRs(list), nil
 			},
 		},
 		// --- insights (m25) ---
@@ -611,9 +616,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				// entries is the description-carrying form; precedence over cidrs
+				// lives in core.AllowListOrCIDRs.
+				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetIPAllowList(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["cidrs"]))
+				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["entries"]), gqlutil.StringList(p.Args["cidrs"]))
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), entries)
 			},
 		},
 		"createDatabaseUser": &graphql.Field{

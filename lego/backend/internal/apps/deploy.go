@@ -119,7 +119,7 @@ type BlueprintGroupingStore interface {
 	CreateProject(ctx context.Context, tenantID, name string) (store.Project, error)
 	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
 	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
-	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error
+	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
 }
 
 // StackResult is the set of resources one stack deploy created (or converged):
@@ -1090,7 +1090,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a bex Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
 		}
 	}
-	var allow []string
+	var allow []appv1alpha1.IPAllowEntry
 	for _, e := range d.IPAllowList {
 		if e.Source == "" {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q has an ipAllowList entry without a source", core.ErrBadRequest, d.Name)
@@ -1098,7 +1098,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		if err := core.ValidateCIDRs([]string{e.Source}); err != nil {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q ipAllowList: %v", core.ErrBadRequest, d.Name, err)
 		}
-		allow = append(allow, e.Source)
+		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: e.Source, Description: e.Description})
 	}
 	for _, r := range d.ReadReplicas {
 		if r.Name == "" {
@@ -1133,7 +1133,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.IDs(), "|"))
 		}
 	}
-	allow := make([]string, 0, len(k.IPAllowList))
+	allow := make([]appv1alpha1.IPAllowEntry, 0, len(k.IPAllowList))
 	for _, entry := range k.IPAllowList {
 		if entry.Source == "" {
 			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q has an ipAllowList entry without a source", core.ErrBadRequest, k.Name)
@@ -1141,7 +1141,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 		if err := core.ValidateCIDRs([]string{entry.Source}); err != nil {
 			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q ipAllowList: %v", core.ErrBadRequest, k.Name, err)
 		}
-		allow = append(allow, entry.Source)
+		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: entry.Source, Description: entry.Description})
 	}
 	validMaxmemory := map[string]bool{
 		"noeviction": true, "allkeys-lru": true, "allkeys-lfu": true,

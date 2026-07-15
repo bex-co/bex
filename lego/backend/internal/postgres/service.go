@@ -111,7 +111,7 @@ type PostgresView struct {
 
 	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
 	// ipAllowList). Empty => the external route is open to all source IPs.
-	IPAllowList []IPAllowListEntry `json:"ipAllowList,omitempty"`
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// PoolerEnabled reports whether a PgBouncer pooler is provisioned (its pooled
 	// connection strings appear in connection-info).
 	PoolerEnabled bool `json:"poolerEnabled"`
@@ -136,43 +136,6 @@ type PostgresView struct {
 	// unassigned. Set via SetEnvironmentID; the environments feature is the
 	// only writer.
 	EnvironmentID string `json:"environmentId,omitempty"`
-}
-
-// IPAllowListEntry is Render's ipAllowList wire shape (components.schemas
-// cidrBlockAndDescription: {cidrBlock, description}), verified against the
-// render-oss/cli generated client (`client.CidrBlockAndDescription`) — a bare
-// CIDR-string array breaks the CLI's decode of both `postgres create
-// --ip-allow-list` and `postgres get`/`list`. bex doesn't persist a
-// per-entry description (the Database CR's spec.ipAllowList is just
-// []string); an incoming Description is accepted but dropped, and read back
-// entries always carry an empty one — a deliberate, documented subset.
-type IPAllowListEntry struct {
-	CIDRBlock   string `json:"cidrBlock"`
-	Description string `json:"description,omitempty"`
-}
-
-// ipAllowListToWire/ipAllowListFromWire convert between bex's internal CIDR-
-// string storage and Render's {cidrBlock, description} wire entries.
-func ipAllowListToWire(cidrs []string) []IPAllowListEntry {
-	if len(cidrs) == 0 {
-		return nil
-	}
-	out := make([]IPAllowListEntry, len(cidrs))
-	for i, c := range cidrs {
-		out[i] = IPAllowListEntry{CIDRBlock: c}
-	}
-	return out
-}
-
-func ipAllowListFromWire(entries []IPAllowListEntry) []string {
-	if len(entries) == 0 {
-		return nil
-	}
-	out := make([]string, len(entries))
-	for i, e := range entries {
-		out[i] = e.CIDRBlock
-	}
-	return out
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
@@ -233,9 +196,10 @@ type CreatePostgresRequest struct {
 	Version       string `json:"version,omitempty"`
 	DiskSizeGB    int32  `json:"diskSizeGB,omitempty"`
 	Public        bool   `json:"public,omitempty"`
-	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
-	// Render's wire shape ({cidrBlock, description} entries) — see IPAllowListEntry.
-	IPAllowList []IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// IPAllowList optionally seeds the external-endpoint allowlist at create.
+	// Render's wire shape ({cidrBlock, description} entries) — see
+	// core.IPAllowListEntry; both fields persist on the CR (w4/m24).
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// Pooler optionally provisions a PgBouncer pooler at create.
 	Pooler bool `json:"pooler,omitempty"`
 	// EnableHighAvailability provisions a replicated CNPG cluster (primary +
@@ -313,7 +277,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		UpdatedAt:               resourcemeta.UpdatedAt(d),
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
-		IPAllowList:             ipAllowListToWire(d.Spec.IPAllowList),
+		IPAllowList:             core.AllowListFromSpec(d.Spec.IPAllowList),
 		PoolerEnabled:           d.Spec.Pooler,
 		BackupsEnabled:          d.Status.BackupsEnabled,
 		OwnerID:                 d.Labels[core.LabelTenant],
@@ -425,8 +389,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.Version != "" && !postgresVersionKnown(req.Version) {
 		return PostgresView{}, unknownPostgresVersionError(req.Version)
 	}
-	cidrs := ipAllowListFromWire(req.IPAllowList)
-	if err := core.ValidateCIDRs(cidrs); err != nil {
+	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return PostgresView{}, err
 	}
 	var environment core.EnvironmentAssignment
@@ -464,7 +427,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Version:          req.Version,
 			StorageGB:        req.DiskSizeGB,
 			Public:           req.Public,
-			IPAllowList:      cidrs,
+			IPAllowList:      core.AllowListToSpec(req.IPAllowList),
 			Pooler:           req.Pooler,
 			HighAvailability: req.EnableHighAvailability,
 			ReadReplicas:     crReplicas,
@@ -612,7 +575,7 @@ type PostgresPatch struct {
 	Version                *string
 	DiskSizeGB             *int32
 	EnableHighAvailability *bool
-	IPAllowList            *[]string // nil = unchanged; non-nil empty slice clears it
+	IPAllowList            *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
@@ -633,7 +596,7 @@ func (patch PostgresPatch) validate() error {
 		return unknownPostgresVersionError(*patch.Version)
 	}
 	if patch.IPAllowList != nil {
-		if err := core.ValidateCIDRs(*patch.IPAllowList); err != nil {
+		if err := core.ValidateAllowList(*patch.IPAllowList); err != nil {
 			return err
 		}
 	}
@@ -657,11 +620,7 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 		d.Spec.HighAvailability = *patch.EnableHighAvailability
 	}
 	if patch.IPAllowList != nil {
-		if len(*patch.IPAllowList) == 0 {
-			d.Spec.IPAllowList = nil
-		} else {
-			d.Spec.IPAllowList = *patch.IPAllowList
-		}
+		d.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
 	}
 }
 

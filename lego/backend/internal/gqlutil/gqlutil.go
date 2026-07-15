@@ -15,11 +15,16 @@ limitations under the License.
 */
 
 // Package gqlutil holds the presentation helpers the feature GraphQL fragments
-// share: a typed resolver adapter and the common id argument. It is a leaf that
-// imports only graphql-go — a shared presentation utility, not domain logic.
+// share: a typed resolver adapter and the common id argument. It imports only
+// graphql-go and core's wire types — a shared presentation utility, not domain
+// logic.
 package gqlutil
 
-import "github.com/graphql-go/graphql"
+import (
+	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+)
 
 // Field adapts a typed projection into a GraphQL resolver: it type-asserts the
 // source and applies f, resolving nil for a foreign source. One helper for every
@@ -55,6 +60,51 @@ var EnvVarInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 		"generateValue": &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
 	},
 })
+
+// IPAllowEntryType / IPAllowEntryInputType are the shared {cidrBlock,
+// description} allow-list entry shape (Render's cidrBlockAndDescription,
+// core.IPAllowListEntry) used by the ipAllowListEntries fields/arguments the
+// postgres, keyvalue, and environments fragments expose (w4/m24). Defined once
+// here so the composed schema never has duplicate type names. The legacy
+// string-list ipAllowList fields/arguments stay — these extend them with the
+// description-carrying form.
+var IPAllowEntryType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "IPAllowListEntry",
+	Fields: graphql.Fields{
+		"cidrBlock":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: Field(func(e core.IPAllowListEntry) any { return e.CIDRBlock })},
+		"description": &graphql.Field{Type: graphql.String, Resolve: Field(func(e core.IPAllowListEntry) any { return e.Description })},
+	},
+})
+
+var IPAllowEntryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "IPAllowListEntryInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"cidrBlock":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"description": &graphql.InputObjectFieldConfig{Type: graphql.String},
+	},
+})
+
+// AllowList coerces an `[IPAllowListEntryInput!]` argument value ([]any of
+// maps from graphql-go) into core entries. Nil or absent => nil, so callers
+// can distinguish "argument omitted" from an explicit empty list.
+func AllowList(arg any) []core.IPAllowListEntry {
+	raw, ok := arg.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]core.IPAllowListEntry, 0, len(raw))
+	for _, v := range raw {
+		m, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		e := core.IPAllowListEntry{}
+		e.CIDRBlock, _ = m["cidrBlock"].(string)
+		e.Description, _ = m["description"].(string)
+		out = append(out, e)
+	}
+	return out
+}
 
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the

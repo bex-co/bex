@@ -325,6 +325,28 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("get after rename = %+v (err %v)", got, err)
 	}
 
+	// The ACL triple round-trips with per-entry descriptions (w4/m24,
+	// migration 0034: ip_allow_list is jsonb {cidrBlock, description} entries).
+	acl := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}, {CIDRBlock: "192.0.2.0/24"}}
+	if err := s.SetEnvironmentACL(ctx, env.ID, "protected", true, acl); err != nil {
+		t.Fatalf("SetEnvironmentACL: %v", err)
+	}
+	if got, err := s.GetEnvironment(ctx, env.ID); err != nil ||
+		got.ProtectedStatus != "protected" || !got.NetworkIsolationEnabled ||
+		len(got.IPAllowList) != 2 || got.IPAllowList[0] != acl[0] || got.IPAllowList[1] != acl[1] {
+		t.Fatalf("ACL round-trip = %+v (err %v), want %+v", got.IPAllowList, err, acl)
+	}
+	// A pre-m24 row holds bare CIDR strings (exactly what migration 0034's
+	// to_jsonb conversion leaves in place) — it must read back with empty
+	// descriptions, never an error or a fabricated description.
+	if _, err := pool.Exec(ctx, `UPDATE environments SET ip_allow_list = '["203.0.113.0/24"]'::jsonb WHERE id = $1`, env.ID); err != nil {
+		t.Fatalf("seed legacy ip_allow_list row: %v", err)
+	}
+	if got, err := s.GetEnvironment(ctx, env.ID); err != nil ||
+		len(got.IPAllowList) != 1 || got.IPAllowList[0] != (core.IPAllowListEntry{CIDRBlock: "203.0.113.0/24"}) {
+		t.Fatalf("legacy string-list row = %+v (err %v), want cidr-only entry", got.IPAllowList, err)
+	}
+
 	// Deleting an environment un-assigns its services but leaves their
 	// project membership untouched (only setProjectServices/deleting the
 	// PROJECT does that).

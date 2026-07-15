@@ -27,7 +27,7 @@ type EnvironmentAssignment struct {
 	ProjectID               string
 	WorkspaceID             string
 	NetworkIsolationEnabled bool
-	IPAllowList             []string
+	IPAllowList             []IPAllowListEntry
 }
 
 // EnvironmentResolver validates that environmentID belongs to workspaceID and

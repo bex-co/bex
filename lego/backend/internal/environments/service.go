@@ -54,7 +54,7 @@ type EnvironmentStore interface {
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
-	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error
+	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
 }
 
 // DatabaseIndex is the narrow contract environments needs from managed
@@ -73,7 +73,7 @@ type DatabaseIndex interface {
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetIPAllowList(ctx context.Context, name string, cidrs []string) (postgres.PostgresView, error)
+	SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (postgres.PostgresView, error)
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -82,7 +82,7 @@ type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetIPAllowList(ctx context.Context, name string, cidrs []string) (keyvalue.KeyValueView, error)
+	SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (keyvalue.KeyValueView, error)
 }
 
 // EnvGroupIndex is the narrow cross-feature contract environments needs to
@@ -134,7 +134,7 @@ func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspace
 		ProjectID:               e.ProjectID,
 		WorkspaceID:             e.TenantID,
 		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
-		IPAllowList:             append([]string(nil), e.IPAllowList...),
+		IPAllowList:             append([]core.IPAllowListEntry(nil), e.IPAllowList...),
 	}, nil
 }
 
@@ -177,7 +177,9 @@ type EnvironmentView struct {
 	EnvGroupIDs             []string  `json:"envGroupIds"`
 	ProtectedStatus         string    `json:"protectedStatus"`
 	NetworkIsolationEnabled bool      `json:"networkIsolationEnabled"`
-	IPAllowList             []string  `json:"ipAllowList"`
+	// IPAllowList is Render's [{cidrBlock, description}] objects — descriptions
+	// persist in the store row since w4/m24.
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 }
 
 // databaseIDsByEnvironment lists workspaceID's Databases once and groups
@@ -595,7 +597,7 @@ func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []str
 //   - ipAllowList is fanned out to every Database/KeyValue whose
 //     core.LabelEnvironment (w6/m20) names this environment
 //     (propagateIPAllowList).
-func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) (EnvironmentView, error) {
+func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -607,7 +609,7 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 		return EnvironmentView{}, err
 	}
 	if ipAllowList == nil {
-		ipAllowList = []string{}
+		ipAllowList = []core.IPAllowListEntry{}
 	}
 	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
 		return EnvironmentView{}, mapStoreErr(err)
@@ -646,11 +648,11 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 // validateACL is SetACL's input check, factored out so the Render-shaped
 // REST create can reject a bad ACL BEFORE creating the environment (w4/017)
 // — one source of truth, no orphan row on a 400.
-func validateACL(protectedStatus string, ipAllowList []string) error {
+func validateACL(protectedStatus string, ipAllowList []core.IPAllowListEntry) error {
 	if protectedStatus != ProtectedStatusProtected && protectedStatus != ProtectedStatusUnprotected {
 		return fmt.Errorf("%w: protectedStatus must be %q or %q", core.ErrBadRequest, ProtectedStatusProtected, ProtectedStatusUnprotected)
 	}
-	return core.ValidateCIDRs(ipAllowList)
+	return core.ValidateAllowList(ipAllowList)
 }
 
 // requireProject fetches a project and authorizes it against the workspace it
@@ -727,7 +729,7 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs, envGroupI
 	}
 	ipAllowList := e.IPAllowList
 	if ipAllowList == nil {
-		ipAllowList = []string{}
+		ipAllowList = []core.IPAllowListEntry{}
 	}
 	return EnvironmentView{
 		ID:                      e.ID,
@@ -827,7 +829,7 @@ func (s *Service) setAppEnvironmentLabel(ctx context.Context, name, envID string
 // environment — the same membership SetDatabases/SetKeyValues manage.
 // Databases/KeyValues nil (unwired) => no-op, matching internal/projects' own
 // degrade.
-func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, cidrs []string) error {
+func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, entries []core.IPAllowListEntry) error {
 	if s.Databases != nil {
 		dbs, err := s.Databases.ListPostgres(ctx, tenantID)
 		if err != nil {
@@ -837,7 +839,7 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if d.EnvironmentID != environmentID {
 				continue
 			}
-			if _, err := s.Databases.SetIPAllowList(ctx, d.ID, cidrs); err != nil {
+			if _, err := s.Databases.SetIPAllowList(ctx, d.ID, entries); err != nil {
 				return err
 			}
 		}
@@ -851,7 +853,7 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if kv.EnvironmentID != environmentID {
 				continue
 			}
-			if _, err := s.KeyValues.SetIPAllowList(ctx, kv.ID, cidrs); err != nil {
+			if _, err := s.KeyValues.SetIPAllowList(ctx, kv.ID, entries); err != nil {
 				return err
 			}
 		}

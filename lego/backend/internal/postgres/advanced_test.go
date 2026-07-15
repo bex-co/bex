@@ -248,7 +248,7 @@ func TestIPAllowList(t *testing.T) {
 	ctx := context.Background()
 
 	// invalid CIDR rejected before any write
-	if _, err := svc.SetIPAllowList(ctx, "acl-db", []string{"nonsense"}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SetIPAllowList(ctx, "acl-db", []core.IPAllowListEntry{{CIDRBlock: "nonsense"}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("bad CIDR should be ErrBadRequest, got %v", err)
 	}
 	var db appv1alpha1.Database
@@ -258,18 +258,18 @@ func TestIPAllowList(t *testing.T) {
 	}
 
 	// the create-time seed goes through the same gate (core.ValidateCIDRs)
-	if _, err := svc.CreatePostgres(ctx, CreatePostgresRequest{Name: "acl-bad", IPAllowList: []IPAllowListEntry{{CIDRBlock: "nonsense"}}}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreatePostgres(ctx, CreatePostgresRequest{Name: "acl-bad", IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "nonsense"}}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("create with bad CIDR should be ErrBadRequest, got %v", err)
 	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-bad"}, &db); err == nil {
 		t.Fatal("a rejected create must not write the CR")
 	}
 
-	if _, err := svc.SetIPAllowList(ctx, "acl-db", []string{"203.0.113.0/24", "10.0.0.0/8"}); err != nil {
+	if _, err := svc.SetIPAllowList(ctx, "acl-db", []core.IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}, {CIDRBlock: "10.0.0.0/8"}}); err != nil {
 		t.Fatalf("SetIPAllowList => %v", err)
 	}
 	got, err := svc.GetIPAllowList(ctx, "acl-db")
-	if err != nil || len(got) != 2 || got[0] != "203.0.113.0/24" {
+	if err != nil || len(got) != 2 || got[0].CIDRBlock != "203.0.113.0/24" || got[0].Description != "office" {
 		t.Fatalf("GetIPAllowList = %v (err %v)", got, err)
 	}
 	// empty clears it

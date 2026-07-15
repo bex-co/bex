@@ -44,7 +44,7 @@ export function KeyValueNetworkingPanel({
         {/* key remounts the editable draft from the server list whenever it
             changes (e.g. after a save), avoiding an effect-based state sync. */}
         <AllowListEditor
-          key={networking.allowList.join(",")}
+          key={entryKey(networking.allowList)}
           networking={networking}
         />
       </CardContent>
@@ -54,20 +54,30 @@ export function KeyValueNetworkingPanel({
 
 type Networking = ReturnType<typeof useKeyValueNetworking>;
 
+// One canonical serialization of an entry list — used both as the editor's
+// remount key and for the dirty check, so the two can't disagree.
+function entryKey(list: { cidrBlock: string; description: string }[]) {
+  return list.map((e) => `${e.cidrBlock}=${e.description}`).join(",");
+}
+
 function AllowListEditor({ networking }: { networking: Networking }) {
   const { t } = useTranslations();
   // Local editable copy, seeded from the server list; dirty until saved.
-  const [draft, setDraft] = useState<string[]>(networking.allowList);
+  // Entries carry {cidrBlock, description} — the description persists end to
+  // end (w4/m24), so the label a human gives an entry survives the round-trip.
+  const [draft, setDraft] = useState(networking.allowList);
   const [entry, setEntry] = useState("");
+  const [description, setDescription] = useState("");
 
-  const dirty =
-    draft.length !== networking.allowList.length ||
-    draft.some((c, i) => c !== networking.allowList[i]);
+  const dirty = entryKey(draft) !== entryKey(networking.allowList);
 
   function add() {
     const c = entry.trim();
-    if (c && !draft.includes(c)) setDraft([...draft, c]);
+    if (c && !draft.some((e) => e.cidrBlock === c)) {
+      setDraft([...draft, { cidrBlock: c, description: description.trim() }]);
+    }
     setEntry("");
+    setDescription("");
   }
 
   return (
@@ -81,16 +91,23 @@ function AllowListEditor({ networking }: { networking: Networking }) {
             {t("keyvalue.networkingOpen")}
           </span>
         ) : (
-          draft.map((c) => (
+          draft.map((e) => (
             <span
-              key={c}
+              key={e.cidrBlock}
               className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-1 text-xs"
             >
-              <code className="font-mono">{c}</code>
+              <code className="font-mono">{e.cidrBlock}</code>
+              {e.description ? (
+                <span className="text-muted-foreground">{e.description}</span>
+              ) : null}
               <button
                 type="button"
-                aria-label={t("keyvalue.networkingRemove", { cidr: c })}
-                onClick={() => setDraft(draft.filter((x) => x !== c))}
+                aria-label={t("keyvalue.networkingRemove", {
+                  cidr: e.cidrBlock,
+                })}
+                onClick={() =>
+                  setDraft(draft.filter((x) => x.cidrBlock !== e.cidrBlock))
+                }
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Trash2 className="size-3" />
@@ -99,12 +116,19 @@ function AllowListEditor({ networking }: { networking: Networking }) {
           ))
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Input
           value={entry}
           onChange={(e) => setEntry(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
           placeholder="203.0.113.0/24"
+          className="max-w-xs"
+        />
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+          placeholder={t("keyvalue.networkingEntryDescription")}
           className="max-w-xs"
         />
         <Button

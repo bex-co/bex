@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the environments MCP fragment, mirroring internal/projects/
@@ -69,6 +71,9 @@ type setEnvironmentACLArgs struct {
 	ProtectedStatus         string   `json:"protectedStatus" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services"`
 	NetworkIsolationEnabled bool     `json:"networkIsolationEnabled" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment, denying traffic to/from the rest of the workspace"`
 	IPAllowList             []string `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks allowed to reach member Postgres/KeyValue resources externally — propagated onto every Database/KeyValue in this environment; empty/omitted means open"`
+	// IPAllowListEntries is the description-carrying form (w4/m24); when
+	// present it wins over ipAllowList.
+	IPAllowListEntries []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
 }
 
 type environmentsResult struct {
@@ -169,7 +174,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "set_environment_acl",
 		Description: "Set an environment's protected-environment ACL: protectedStatus, networkIsolationEnabled, and ipAllowList. Full-replace — pass the current value of any field you don't mean to change. bex extension (Render parity: w6/m19).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentACLArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.SetACL(ctx, in.ID, in.ProtectedStatus, in.NetworkIsolationEnabled, in.IPAllowList)
+		entries := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
+		e, err := s.SetACL(ctx, in.ID, in.ProtectedStatus, in.NetworkIsolationEnabled, entries)
 		return nil, e, err
 	})
 }

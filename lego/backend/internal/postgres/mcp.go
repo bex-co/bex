@@ -282,7 +282,10 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 // ipAllowListArgs / userArgs are the access-tool inputs.
 type ipAllowListArgs struct {
 	PostgresID string   `json:"postgresId" jsonschema:"the postgres id (bex Database name)"`
-	CIDRs      []string `json:"cidrs" jsonschema:"the CIDR allowlist for the external endpoint; an empty list opens it to all source IPs"`
+	CIDRs      []string `json:"cidrs,omitempty" jsonschema:"the CIDR allowlist for the external endpoint; an empty list opens it to all source IPs"`
+	// Entries is the description-carrying form (w4/m24); when present it wins
+	// over cidrs. Both are a full replace.
+	Entries []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of cidrs to keep per-entry descriptions"`
 }
 
 type userArgs struct {
@@ -292,7 +295,11 @@ type userArgs struct {
 
 // allowListResult / usersResult wrap arrays for MCP object outputs.
 type allowListResult struct {
+	// CIDRs is kept for compatibility with agents that parsed this tool's
+	// pre-m24 {cidrs} result; it is always AllowListCIDRs(Entries).
 	CIDRs []string `json:"cidrs"`
+	// Entries carries each entry's description alongside its CIDR (w4/m24).
+	Entries []core.IPAllowListEntry `json:"entries"`
 }
 type usersResult struct {
 	Users []PostgresUserView `json:"users"`
@@ -308,13 +315,13 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, allowListResult{}, err
 		}
-		return nil, allowListResult{CIDRs: list}, nil
+		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
 	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_postgres_ip_allow_list",
-		Description: "Replace the CIDR allowlist gating a managed Postgres database's external endpoint. Each entry must be a valid CIDR; an empty list opens the endpoint to all source IPs.",
+		Description: "Replace the CIDR allowlist gating a managed Postgres database's external endpoint. Each entry must be a valid CIDR; an empty list opens the endpoint to all source IPs. Pass entries ({cidrBlock, description} objects) to keep per-entry descriptions; cidrs is the plain-string alternative.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in ipAllowListArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.SetIPAllowList(ctx, in.PostgresID, in.CIDRs)
+		v, err := s.SetIPAllowList(ctx, in.PostgresID, core.AllowListOrCIDRs(in.Entries, in.CIDRs))
 		return nil, v, err
 	})
 	mcp.AddTool(srv, &mcp.Tool{

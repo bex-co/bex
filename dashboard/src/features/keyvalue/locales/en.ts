@@ -432,6 +432,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Add",
     description: "Networking button to add a CIDR to the draft allowlist",
   },
+  "keyvalue.networkingEntryDescription": {
+    message: "Description (optional)",
+    description:
+      "Placeholder for the optional per-entry allowlist description input",
+  },
   "keyvalue.networkingRemove": {
     message: "Remove {cidr}",
     description: "Accessible label to remove a CIDR chip",

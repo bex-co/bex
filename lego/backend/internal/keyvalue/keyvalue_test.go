@@ -543,7 +543,7 @@ func TestIPAllowList(t *testing.T) {
 	ctx := context.Background()
 
 	// invalid CIDR rejected before any write
-	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []string{"nonsense"}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []core.IPAllowListEntry{{CIDRBlock: "nonsense"}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("bad CIDR should be ErrBadRequest, got %v", err)
 	}
 	var kv appv1alpha1.KeyValue
@@ -552,11 +552,11 @@ func TestIPAllowList(t *testing.T) {
 		t.Fatal("a rejected allowlist must not be written")
 	}
 
-	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []string{"203.0.113.0/24", "10.0.0.0/8"}); err != nil {
+	if _, err := svc.SetIPAllowList(ctx, "acl-kv", []core.IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}, {CIDRBlock: "10.0.0.0/8"}}); err != nil {
 		t.Fatalf("SetIPAllowList => %v", err)
 	}
 	got, err := svc.GetIPAllowList(ctx, "acl-kv")
-	if err != nil || len(got) != 2 || got[0] != "203.0.113.0/24" {
+	if err != nil || len(got) != 2 || got[0].CIDRBlock != "203.0.113.0/24" || got[0].Description != "office" {
 		t.Fatalf("GetIPAllowList = %v (err %v)", got, err)
 	}
 	// empty clears it
@@ -593,7 +593,7 @@ func TestRESTIPAllowList(t *testing.T) {
 	}
 	var view renderKeyValue
 	_ = json.Unmarshal(w.Body.Bytes(), &view)
-	if len(view.IPAllowList) != 2 || view.IPAllowList[0].CidrBlock != "10.0.0.0/8" {
+	if len(view.IPAllowList) != 2 || view.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
 		t.Fatalf("put view ipAllowList = %+v", view.IPAllowList)
 	}
 
@@ -660,8 +660,22 @@ func TestGraphQLIPAllowList(t *testing.T) {
 	// create with a seed
 	run(`mutation { createKeyValue(name:"acl-gql-new", ipAllowList:["10.0.0.0/8"]) { id } }`)
 	var made appv1alpha1.KeyValue
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-gql-new"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0] != "10.0.0.0/8" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-gql-new"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0].CIDR != "10.0.0.0/8" {
 		t.Fatalf("createKeyValue must seed spec.ipAllowList: %v %+v", err, made.Spec)
+	}
+
+	// The description-carrying extension (w4/m24): the entries argument wins,
+	// the description persists on the CR, and ipAllowListEntries returns it.
+	set = run(`mutation { setKeyValueIpAllowList(id:"acl-gql", entries:[{cidrBlock:"192.0.2.0/24", description:"office"}]) { ipAllowListEntries { cidrBlock description } } }`)["setKeyValueIpAllowList"].(map[string]any)
+	if l := set["ipAllowListEntries"].([]any); len(l) != 1 {
+		t.Fatalf("setKeyValueIpAllowList entries => %v", set)
+	} else if e := l[0].(map[string]any); e["cidrBlock"] != "192.0.2.0/24" || e["description"] != "office" {
+		t.Fatalf("entries round-trip => %v", e)
+	}
+	var relabeled appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "acl-gql"}, &relabeled); err != nil ||
+		len(relabeled.Spec.IPAllowList) != 1 || relabeled.Spec.IPAllowList[0] != (appv1alpha1.IPAllowEntry{CIDR: "192.0.2.0/24", Description: "office"}) {
+		t.Fatalf("entries must persist on the CR spec: %v %+v", err, relabeled.Spec.IPAllowList)
 	}
 }
 
@@ -696,8 +710,13 @@ func TestMCPCreateIPAllowList(t *testing.T) {
 	out := map[string]any{}
 	b, _ := json.Marshal(res.StructuredContent)
 	_ = json.Unmarshal(b, &out)
-	if l, ok := out["ipAllowList"].([]any); !ok || len(l) != 1 || l[0] != "203.0.113.0/24" {
+	// The MCP view carries {cidrBlock, description} entries since w4/m24
+	// (bare-string ipAllowList input still accepted, lifted with an empty
+	// description).
+	if l, ok := out["ipAllowList"].([]any); !ok || len(l) != 1 {
 		t.Fatalf("create_key_value view ipAllowList = %v", out["ipAllowList"])
+	} else if e, ok := l[0].(map[string]any); !ok || e["cidrBlock"] != "203.0.113.0/24" || e["description"] != "" {
+		t.Fatalf("create_key_value view ipAllowList entry = %v", l[0])
 	}
 	var made appv1alpha1.KeyValue
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "acl-mcp"}, &made); err != nil || len(made.Spec.IPAllowList) != 1 {

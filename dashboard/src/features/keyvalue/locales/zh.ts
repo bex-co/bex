@@ -427,6 +427,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "添加",
     description: "Networking button to add a CIDR to the draft allowlist",
   },
+  "keyvalue.networkingEntryDescription": {
+    message: "描述（可选）",
+    description:
+      "Placeholder for the optional per-entry allowlist description input",
+  },
   "keyvalue.networkingRemove": {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",

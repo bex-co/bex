@@ -105,8 +105,16 @@ query DatabaseUsers($id: String!) {
   }
 }
 
+# Entries carry a per-entry description alongside the CIDR (w4/m24) — the
+# editor round-trips both, so the label a human gave an entry survives edits.
 query DatabaseIpAllowList($id: String!) {
-  databaseIpAllowList(id: $id)
+  database(id: $id) {
+    id
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
+  }
 }
 
 mutation FailoverDatabase($id: String!) {
@@ -171,10 +179,13 @@ mutation CreateDatabaseExport($id: String!) {
   }
 }
 
-mutation SetDatabaseIpAllowList($id: String!, $cidrs: [String]) {
-  setDatabaseIpAllowList(id: $id, cidrs: $cidrs) {
+mutation SetDatabaseIpAllowList($id: String!, $entries: [IPAllowListEntryInput!]) {
+  setDatabaseIpAllowList(id: $id, entries: $entries) {
     id
-    ipAllowList
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
   }
 }
 

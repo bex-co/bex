@@ -8,6 +8,7 @@ import {
   CreateDatabaseUserDocument,
   DeleteDatabaseUserDocument,
   DatabasePooledConnectionDocument,
+  type IpAllowListEntry,
 } from "@/features/databases/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -45,9 +46,13 @@ export function useAccessControl(id: string) {
   );
   const [deleteUserMut] = useMutation(DeleteDatabaseUserDocument);
 
-  const allowList: string[] = (
-    allowListQuery.data?.databaseIpAllowList ?? []
-  ).filter((c): c is string => typeof c === "string");
+  // Entries, not bare CIDRs: each carries the operator-facing description a
+  // human gave it, which persists end to end (w4/m24).
+  const allowList: IpAllowListEntry[] = (
+    allowListQuery.data?.database?.ipAllowListEntries ?? []
+  )
+    .filter((e): e is NonNullable<typeof e> => e != null)
+    .map((e) => ({ cidrBlock: e.cidrBlock, description: e.description ?? "" }));
 
   const users: string[] = (usersQuery.data?.databaseUsers ?? [])
     .filter((u): u is NonNullable<typeof u> => u != null)
@@ -55,9 +60,9 @@ export function useAccessControl(id: string) {
     .filter((n) => n !== "");
 
   const saveAllowList = useCallback(
-    async (cidrs: string[]): Promise<boolean> => {
+    async (entries: IpAllowListEntry[]): Promise<boolean> => {
       try {
-        await setAllowListMut({ variables: { id, cidrs } });
+        await setAllowListMut({ variables: { id, entries } });
         toast.success(t("databases.accessAllowListSaved"));
         void allowListQuery.refetch();
         return true;

@@ -65,12 +65,19 @@ query KeyValueInstanceTypes {
   }
 }
 
-# The external-endpoint CIDR allowlist (Render's Networking control), the
+# The external-endpoint allowlist (Render's Networking control), the
 # managed-Postgres databaseIpAllowList sibling. Empty => open to all source IPs;
 # only meaningful when the store is public. Read/edited by the detail page's
-# Networking section.
+# Networking section. Entries carry a per-entry description alongside the CIDR
+# (w4/m24) — the editor round-trips both.
 query KeyValueIpAllowList($id: String!) {
-  keyValueIpAllowList(id: $id)
+  keyValue(id: $id) {
+    id
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
+  }
 }
 
 # `ownerId` (w6/m14) names the workspace to create the store in — the switcher's
@@ -107,10 +114,13 @@ mutation CreateKeyValue(
   }
 }
 
-mutation SetKeyValueIpAllowList($id: String!, $cidrs: [String]) {
-  setKeyValueIpAllowList(id: $id, cidrs: $cidrs) {
+mutation SetKeyValueIpAllowList($id: String!, $entries: [IPAllowListEntryInput!]) {
+  setKeyValueIpAllowList(id: $id, entries: $entries) {
     id
-    ipAllowList
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
   }
 }
 

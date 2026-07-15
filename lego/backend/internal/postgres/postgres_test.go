@@ -258,8 +258,10 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
-		t.Errorf("ipAllowList in create response = %+v, want one entry with cidrBlock 10.0.0.0/8", pg.IPAllowList)
+	// Both fields round-trip: the description persists on the CR (w4/m24), no
+	// longer accepted-but-dropped.
+	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" || pg.IPAllowList[0].Description != "internal" {
+		t.Errorf("ipAllowList in create response = %+v, want one {10.0.0.0/8, internal} entry", pg.IPAllowList)
 	}
 
 	// a bad CIDR inside a well-formed entry is still rejected.
@@ -602,14 +604,16 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
-		t.Errorf("ipAllowList in response = %+v, want one entry with cidrBlock 10.0.0.0/8", pg.IPAllowList)
+	if len(pg.IPAllowList) != 1 || pg.IPAllowList[0].CIDRBlock != "10.0.0.0/8" || pg.IPAllowList[0].Description != "internal" {
+		t.Errorf("ipAllowList in response = %+v, want one {10.0.0.0/8, internal} entry", pg.IPAllowList)
 	}
 	if w2 := serveREST(svc, "GET", "/v1/postgres/upd-db", ""); w2.Code == 200 {
 		var reGet PostgresView
 		_ = json.Unmarshal(w2.Body.Bytes(), &reGet)
-		if len(reGet.IPAllowList) != 1 || reGet.IPAllowList[0].CIDRBlock != "10.0.0.0/8" {
-			t.Errorf("GET after PATCH ipAllowList = %+v, want the entry to persist", reGet.IPAllowList)
+		// The description persists on the CR (w4/m24) — a re-read returns it,
+		// never an empty stand-in.
+		if len(reGet.IPAllowList) != 1 || reGet.IPAllowList[0].CIDRBlock != "10.0.0.0/8" || reGet.IPAllowList[0].Description != "internal" {
+			t.Errorf("GET after PATCH ipAllowList = %+v, want the full entry to persist", reGet.IPAllowList)
 		}
 	}
 

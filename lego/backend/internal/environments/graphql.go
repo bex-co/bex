@@ -19,6 +19,7 @@ package environments
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -41,7 +42,8 @@ var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"envGroupIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.EnvGroupIDs })},
 		"protectedStatus":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProtectedStatus })},
 		"networkIsolationEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.NetworkIsolationEnabled })},
-		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.IPAllowList })},
+		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return core.AllowListCIDRs(e.IPAllowList) })},
+		"ipAllowListEntries":      &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.IPAllowList })},
 	},
 })
 
@@ -174,14 +176,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
 				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+				// ipAllowListEntries is the description-carrying form; precedence
+				// over ipAllowList lives in core.AllowListOrCIDRs.
+				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				raw, _ := p.Args["ipAllowList"].([]any)
-				cidrs := make([]string, len(raw))
-				for i, v := range raw {
-					cidrs[i], _ = v.(string)
-				}
-				return s.SetACL(p.Context, p.Args["id"].(string), p.Args["protectedStatus"].(string), p.Args["networkIsolationEnabled"].(bool), cidrs)
+				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
+				return s.SetACL(p.Context, p.Args["id"].(string), p.Args["protectedStatus"].(string), p.Args["networkIsolationEnabled"].(bool), entries)
 			},
 		},
 	}
