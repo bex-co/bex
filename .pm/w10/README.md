@@ -1,0 +1,15 @@
+# w10 — Roadmap capacity (worker10)
+
+**Worker:** worker10 Reserved 2026-07-15 as an empty workstream for future `/pm` scheduling; milestones will be added only when their scope and goal linkage are known.
+
+## Local dev environment
+
+Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the shared local kind/CAPD cluster — never the shared cluster's default `auth`/`bex-system` namespaces or standard ports (5173/4433/4445/8090/8091/5432), which any other worker's session may also be using. `dev-10` gets its own Kratos + Hydra + Mailpit (namespace `dev-10-auth`) and app namespace (`dev-10`), reusing the shared cluster's CNPG operator and bex operator, plus a locally-built `bex-api` on dedicated ports derived from N=10 (`dev-10/ports.env`) so it never collides with any other workstream's `dev-N`.
+
+- `bash .pm/w10/dev-10/up.sh` — bring it up (idempotent — safe to re-run)
+- `bash .pm/w10/dev-10/status.sh` — health check (processes, pods, HTTP)
+- `bash .pm/w10/dev-10/down.sh` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+
+`up.sh` prints the dashboard command to point at it once bex-api is running.
+
+## Milestones
