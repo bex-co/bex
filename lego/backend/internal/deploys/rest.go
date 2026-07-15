@@ -31,8 +31,8 @@ import (
 
 // rest.go is the deploy-history REST fragment (w2/m5's list/get/trigger,
 // w2/m10's cancel/rollback): Render's GET .../deploys (the {deploy, cursor}
-// list envelope, honoring status/createdBefore/createdAfter/cursor/limit
-// since w2/m31), GET .../deploys/{id}, POST .../deploys (trigger),
+// list envelope, honoring status, created/updated/finished time bounds,
+// cursor, and limit), GET .../deploys/{id}, POST .../deploys (trigger),
 // POST .../deploys/{id}/cancel, and POST .../rollback. Served under both
 // /v1/services and /v1/apps, same as every other apps-adjacent route.
 // Behavior lives in the Service, so GraphQL and MCP stay identical.
@@ -67,6 +67,7 @@ type renderDeploy struct {
 	RollbackOf string             `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
 	Commit     *renderCommit      `json:"commit,omitempty"`
 	CreatedAt  string             `json:"createdAt,omitempty"`
+	UpdatedAt  string             `json:"updatedAt,omitempty"`
 	StartedAt  string             `json:"startedAt,omitempty"`
 	FinishedAt string             `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome (bex extra, w1/m33):
@@ -80,7 +81,10 @@ func formatTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.UTC().Format(time.RFC3339)
+	// Preserve sub-second transition order. The store guarantees updated_at is
+	// monotonic even when multiple facts land in one wall-clock second; dropping
+	// fractional precision here would make those real advances look identical.
+	return t.UTC().Format(time.RFC3339Nano)
 }
 
 func formatTimePtr(t *time.Time) string {
@@ -97,6 +101,7 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
 		CreatedAt:       formatTime(d.CreatedAt),
+		UpdatedAt:       formatTime(d.UpdatedAt),
 		StartedAt:       formatTimePtr(d.StartedAt),
 		FinishedAt:      formatTimePtr(d.FinishedAt),
 		PreDeployStatus: d.PreDeployStatus,
@@ -126,8 +131,9 @@ func toDeployList(deploys []DeployView) []deployWithCursor {
 	return out
 }
 
-// filterFromQuery translates Render's ListDeploysParams query params —
-// status (repeatable), createdBefore/createdAfter (RFC3339), cursor, limit —
+// filterFromQuery translates Render's ListDeploysParams query params — status
+// (repeatable), created/updated/finished before/after bounds (RFC3339), cursor,
+// and limit —
 // into a ListFilter (w2/m31), over the one shared translator (FilterOf) the
 // GraphQL and MCP fragments also use. Absent limit means the full history
 // (the pre-m31 contract — a documented divergence from Render's default-20
@@ -144,7 +150,13 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 		}
 		limit = n
 	}
-	return FilterOf(q["status"], q.Get("createdBefore"), q.Get("createdAfter"), q.Get("cursor"), limit)
+	return FilterOf(
+		q["status"],
+		q.Get("createdBefore"), q.Get("createdAfter"),
+		q.Get("updatedBefore"), q.Get("updatedAfter"),
+		q.Get("finishedBefore"), q.Get("finishedAfter"),
+		q.Get("cursor"), limit,
+	)
 }
 
 // RegisterREST adds the Render-shaped deploy-history endpoints. Store

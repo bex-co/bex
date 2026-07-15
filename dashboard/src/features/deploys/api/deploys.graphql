@@ -9,6 +9,10 @@ query Deploys(
   $status: [String]
   $createdBefore: String
   $createdAfter: String
+  $updatedBefore: String
+  $updatedAfter: String
+  $finishedBefore: String
+  $finishedAfter: String
   $cursor: String
   $limit: Int
 ) {
@@ -17,6 +21,10 @@ query Deploys(
     status: $status
     createdBefore: $createdBefore
     createdAfter: $createdAfter
+    updatedBefore: $updatedBefore
+    updatedAfter: $updatedAfter
+    finishedBefore: $finishedBefore
+    finishedAfter: $finishedAfter
     cursor: $cursor
     limit: $limit
   ) {
@@ -28,6 +36,7 @@ query Deploys(
     commitId
     commitMessage
     createdAt
+    updatedAt
     startedAt
     finishedAt
     preDeployStatus

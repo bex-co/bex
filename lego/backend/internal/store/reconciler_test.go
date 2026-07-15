@@ -299,7 +299,7 @@ func TestRecordDeployClosesLiveOnHealthy(t *testing.T) {
 	if err := rec.ReconcileOnce(ctx); err != nil { // pass 1: creates the CR, no status yet
 		t.Fatalf("reconcile: %v", err)
 	}
-	if open, ok, _ := openDeployFor(ctx, store, row.ID); !ok || open.Status != DeployUpdateInProgress {
+	if open, ok, _ := openDeployFor(ctx, store, row.ID); !ok || open.Status != DeployCreated {
 		t.Fatalf("deploy after create = %+v ok=%v, want one open row", open, ok)
 	}
 
@@ -400,8 +400,8 @@ func TestRecordDeployProjectsPreDeployStatus(t *testing.T) {
 		t.Fatalf("deploys = %+v (err %v), want exactly one", deploys, err)
 	}
 	d := deploys[0]
-	if d.Status != DeployUpdateFailed || d.PreDeployStatus != PreDeployFailed {
-		t.Errorf("deploy = %+v, want update_failed with pre_deploy_status=failed (migration failure, not health check)", d)
+	if d.Status != DeployPreDeployFailed || d.PreDeployStatus != PreDeployFailed {
+		t.Errorf("deploy = %+v, want pre_deploy_failed with pre_deploy_status=failed (migration failure, not health check)", d)
 	}
 }
 
@@ -421,6 +421,90 @@ func TestPreDeployStatusForIgnoresStaleGeneration(t *testing.T) {
 	}
 }
 
+func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
+	gen := int64(7)
+	ready := func(reason string) []metav1.Condition {
+		return []metav1.Condition{{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+			ObservedGeneration: gen,
+		}}
+	}
+	app := func(phase appv1alpha1.AppPhase, reason string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Generation: gen},
+			Status: appv1alpha1.AppStatus{
+				Phase: phase, Conditions: ready(reason),
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		open     Deploy
+		app      *appv1alpha1.App
+		timedOut bool
+		want     string
+	}{
+		{"queued build", Deploy{Generation: gen, Status: DeployCreated}, app(appv1alpha1.PhaseBuilding, "BuildQueued"), false, DeployQueued},
+		{"running build", Deploy{Generation: gen, Status: DeployQueued}, app(appv1alpha1.PhaseBuilding, "Building"), false, DeployBuildInProgress},
+		{"build failed", Deploy{Generation: gen, Status: DeployBuildInProgress}, app(appv1alpha1.PhaseFailed, "BuildFailed"), false, DeployBuildFailed},
+		{"build succeeded and rollout began", Deploy{Generation: gen, Status: DeployBuildInProgress}, app(appv1alpha1.PhaseDeploying, "Deploying"), false, DeployUpdateInProgress},
+		{"rollout failed", Deploy{Generation: gen, Status: DeployUpdateInProgress}, app(appv1alpha1.PhaseFailed, "IngressFailed"), false, DeployUpdateFailed},
+		{"build timed out", Deploy{Generation: gen, Status: DeployBuildInProgress}, app(appv1alpha1.PhasePending, ""), true, DeployBuildFailed},
+		{"pre-deploy timed out", Deploy{Generation: gen, Status: DeployPreDeployInProgress}, app(appv1alpha1.PhasePending, ""), true, DeployPreDeployFailed},
+		{"rollout timed out", Deploy{Generation: gen, Status: DeployUpdateInProgress}, app(appv1alpha1.PhaseDeploying, ""), true, DeployUpdateFailed},
+	}
+
+	preRunning := app(appv1alpha1.PhaseDeploying, "PreDeploy")
+	preRunning.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Generation: gen, Status: appv1alpha1.PreDeployRunning}
+	tests = append(tests, struct {
+		name     string
+		open     Deploy
+		app      *appv1alpha1.App
+		timedOut bool
+		want     string
+	}{"pre-deploy running", Deploy{Generation: gen, Status: DeployBuildInProgress}, preRunning, false, DeployPreDeployInProgress})
+
+	preFailed := app(appv1alpha1.PhaseFailed, "PreDeployFailed")
+	preFailed.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Generation: gen, Status: appv1alpha1.PreDeployFailed}
+	tests = append(tests, struct {
+		name     string
+		open     Deploy
+		app      *appv1alpha1.App
+		timedOut bool
+		want     string
+	}{"pre-deploy failed", Deploy{Generation: gen, Status: DeployPreDeployInProgress}, preFailed, false, DeployPreDeployFailed})
+
+	live := app(appv1alpha1.PhaseRunning, "Deployed")
+	live.Status.ObservedGeneration = gen
+	tests = append(tests, struct {
+		name     string
+		open     Deploy
+		app      *appv1alpha1.App
+		timedOut bool
+		want     string
+	}{"live", Deploy{Generation: gen, Status: DeployUpdateInProgress}, live, false, DeployLive})
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := observedDeployStatus(tc.open, tc.app, tc.timedOut); got != tc.want {
+				t.Errorf("observedDeployStatus = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	stale := app(appv1alpha1.PhaseFailed, "BuildFailed")
+	stale.Status.Conditions[0].ObservedGeneration = gen - 1
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployBuildInProgress}, stale, false); got != "" {
+		t.Errorf("stale condition emitted %q, want no transition", got)
+	}
+	newer := app(appv1alpha1.PhaseDeploying, "Deploying")
+	newer.Generation = gen + 1
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployCreated}, newer, false); got != "" {
+		t.Errorf("different App generation emitted %q, want no transition", got)
+	}
+}
+
 // TestRecordDeployClosesFailedOnCRFailed mirrors the above for the CR's own
 // Failed phase (a build error, say) — closes update_failed immediately, no
 // need to wait out the gate window.
@@ -435,6 +519,10 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 	}
 	app := getApp(t, cl)
 	app.Status.Phase = appv1alpha1.PhaseFailed
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "IngressFailed",
+		ObservedGeneration: app.Generation,
+	}}
 	if err := cl.Status().Update(ctx, app); err != nil {
 		t.Fatal(err)
 	}

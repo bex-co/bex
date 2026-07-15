@@ -21,10 +21,10 @@ export interface DeployTimelineStep {
 
 /**
  * Builds an honest sequence from facts bex actually stores. It never invents
- * build/pre-deploy phases: createdAt and startedAt come from the deploy row;
- * the matching deploy_ended event supplies the terminal timestamp when present,
- * with finishedAt as the row-backed fallback. A non-terminal current status is
- * shown without a timestamp because bex does not record when that state began.
+ * build/pre-deploy phases: createdAt, startedAt, updatedAt, and finishedAt come
+ * from the deploy row. updatedAt timestamps the current observed state; a
+ * deactivated deploy retains its original live finishedAt and adds the later
+ * deactivation transition.
  */
 export function buildDeployTimeline(
   deploy: DeployView,
@@ -46,17 +46,29 @@ export function buildDeployTimeline(
     steps.push({
       id: "current",
       kind: "in_progress",
-      timestamp: null,
+      timestamp: deploy.updatedAt,
       status: deploy.status,
     });
     return steps;
+  }
+
+  if (deploy.status === "deactivated" && deploy.finishedAt) {
+    steps.push({
+      id: "live",
+      kind: "live",
+      timestamp: deploy.finishedAt,
+      status: "live",
+    });
   }
 
   const kind = terminalKind(deploy.status);
   steps.push({
     id: "terminal",
     kind,
-    timestamp: endedEvent?.timestamp ?? deploy.finishedAt,
+    timestamp:
+      deploy.status === "deactivated"
+        ? deploy.updatedAt
+        : (endedEvent?.timestamp ?? deploy.finishedAt ?? deploy.updatedAt),
     status: deploy.status,
   });
   return steps;

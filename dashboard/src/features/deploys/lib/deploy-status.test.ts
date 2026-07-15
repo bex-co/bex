@@ -3,17 +3,27 @@ import { describe, expect, it } from "vitest";
 import {
   deployStatusKey,
   deployStatusVariant,
+  isCancelableDeployStatus,
   isTerminalDeployStatus,
 } from "./deploy-status";
 
 describe("deployStatusKey", () => {
-  it("maps the supported deploy statuses to namespaced translation keys", () => {
-    expect(deployStatusKey("live")).toBe("deploys.statusLive");
-    expect(deployStatusKey("update_in_progress")).toBe(
-      "deploys.statusUpdateInProgress",
-    );
-    expect(deployStatusKey("update_failed")).toBe("deploys.statusUpdateFailed");
-    expect(deployStatusKey("canceled")).toBe("deploys.statusCanceled");
+  it.each([
+    ["created", "deploys.statusCreated", false],
+    ["queued", "deploys.statusQueued", false],
+    ["build_in_progress", "deploys.statusBuildInProgress", false],
+    ["build_failed", "deploys.statusBuildFailed", true],
+    ["pre_deploy_in_progress", "deploys.statusPreDeployInProgress", false],
+    ["pre_deploy_failed", "deploys.statusPreDeployFailed", true],
+    ["update_in_progress", "deploys.statusUpdateInProgress", false],
+    ["update_failed", "deploys.statusUpdateFailed", true],
+    ["live", "deploys.statusLive", true],
+    ["deactivated", "deploys.statusDeactivated", true],
+    ["canceled", "deploys.statusCanceled", true],
+  ] as const)("maps %s to %s and terminal=%s", (status, key, terminal) => {
+    expect(deployStatusKey(status)).toBe(key);
+    expect(isTerminalDeployStatus(status)).toBe(terminal);
+    expect(isCancelableDeployStatus(status)).toBe(!terminal);
   });
 
   it("classifies terminal failures consistently", () => {

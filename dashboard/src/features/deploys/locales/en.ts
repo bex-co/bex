@@ -53,6 +53,10 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Created",
     description: "Deploy header: created-at label",
   },
+  "deploys.updated": {
+    message: "Updated",
+    description: "Label for the deploy's latest stored transition time",
+  },
   "deploys.started": {
     message: "Started",
     description: "Deploy header: started-at label",

@@ -57,7 +57,7 @@ type DeployStore interface {
 	// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10)
 	// restoring image, provenance-tagged with the source deploy id and the
 	// target's own commit metadata (w9/001).
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit store.CommitInfo) (store.Deploy, error)
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo) (store.Deploy, error)
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
 	// CloseDeploy transitions a still-open deploy row terminal, CAS-guarded
@@ -102,6 +102,7 @@ type DeployView struct {
 	CommitID      string
 	CommitMessage string
 	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	StartedAt     *time.Time
 	FinishedAt    *time.Time
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy (w1/m33):
@@ -123,6 +124,7 @@ func view(d store.Deploy) DeployView {
 		CommitID:        d.Commit,
 		CommitMessage:   d.CommitMessage,
 		CreatedAt:       d.CreatedAt,
+		UpdatedAt:       d.UpdatedAt,
 		StartedAt:       d.StartedAt,
 		FinishedAt:      d.FinishedAt,
 		PreDeployStatus: d.PreDeployStatus,
@@ -189,18 +191,20 @@ func (s *Service) patchApp(ctx context.Context, a *appv1alpha1.App, mutate func(
 // has deploy history.
 func appStoreID(a *appv1alpha1.App) string { return a.Labels[store.LabelAppID] }
 
-// ListFilter narrows List (w2/m31) — the neutral shape the REST/GraphQL/MCP
-// adapters translate Render's status/createdBefore/createdAfter/cursor/limit
-// params into, mirroring store.DeployFilter field-for-field: Statuses (empty
-// ⇒ all), exclusive CreatedBefore/CreatedAfter bounds, keyset Cursor (a
-// previously returned deploy's id), and Limit (0 ⇒ the full history — the
-// pre-m31 contract; the store clamps anything above core.MaxPageLimit).
+// ListFilter is the neutral shape the REST/GraphQL/MCP adapters translate
+// Render's status, exclusive created/updated/finished time bounds, keyset
+// cursor, and limit params into. A zero limit preserves the pre-m31 full-history
+// contract; the store clamps values above core.MaxPageLimit.
 type ListFilter struct {
-	Statuses      []string
-	CreatedBefore time.Time
-	CreatedAfter  time.Time
-	Cursor        string
-	Limit         int
+	Statuses       []string
+	CreatedBefore  time.Time
+	CreatedAfter   time.Time
+	UpdatedBefore  time.Time
+	UpdatedAfter   time.Time
+	FinishedBefore time.Time
+	FinishedAfter  time.Time
+	Cursor         string
+	Limit          int
 }
 
 // FilterOf builds a ListFilter from the params in the string form every
@@ -213,7 +217,7 @@ type ListFilter struct {
 // which is what the store reads <=0 as) would return the unfiltered history
 // as if it were the filtered one. The upper limit bound is the store's
 // invariant (store.DeployFilter), not re-clamped here.
-func FilterOf(statuses []string, createdBefore, createdAfter, cursor string, limit int) (ListFilter, error) {
+func FilterOf(statuses []string, createdBefore, createdAfter, updatedBefore, updatedAfter, finishedBefore, finishedAfter, cursor string, limit int) (ListFilter, error) {
 	if limit < 0 {
 		return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
 	}
@@ -223,6 +227,18 @@ func FilterOf(statuses []string, createdBefore, createdAfter, cursor string, lim
 		return ListFilter{}, err
 	}
 	if f.CreatedAfter, err = parseTime("createdAfter", createdAfter); err != nil {
+		return ListFilter{}, err
+	}
+	if f.UpdatedBefore, err = parseTime("updatedBefore", updatedBefore); err != nil {
+		return ListFilter{}, err
+	}
+	if f.UpdatedAfter, err = parseTime("updatedAfter", updatedAfter); err != nil {
+		return ListFilter{}, err
+	}
+	if f.FinishedBefore, err = parseTime("finishedBefore", finishedBefore); err != nil {
+		return ListFilter{}, err
+	}
+	if f.FinishedAfter, err = parseTime("finishedAfter", finishedAfter); err != nil {
 		return ListFilter{}, err
 	}
 	return f, nil
@@ -258,11 +274,15 @@ func (s *Service) List(ctx context.Context, service string, filter ListFilter) (
 		return []DeployView{}, nil
 	}
 	deploys, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{
-		Statuses:      filter.Statuses,
-		CreatedBefore: filter.CreatedBefore,
-		CreatedAfter:  filter.CreatedAfter,
-		Cursor:        filter.Cursor,
-		Limit:         filter.Limit,
+		Statuses:       filter.Statuses,
+		CreatedBefore:  filter.CreatedBefore,
+		CreatedAfter:   filter.CreatedAfter,
+		UpdatedBefore:  filter.UpdatedBefore,
+		UpdatedAfter:   filter.UpdatedAfter,
+		FinishedBefore: filter.FinishedBefore,
+		FinishedAfter:  filter.FinishedAfter,
+		Cursor:         filter.Cursor,
+		Limit:          filter.Limit,
 	})
 	if err != nil {
 		return nil, err
@@ -370,6 +390,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
 	commit := s.resolveCommit(ctx, a, p.CommitID)
+	previousGeneration := a.Generation
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		// Always write BuildCommit — set to the requested ref, or "" to reset to
@@ -379,12 +400,22 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, a.Generation, commit)
+	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, patchedGeneration(previousGeneration, a.Generation), commit)
 	if err != nil {
 		return DeployView{}, err
 	}
-	s.notifyDeployStarted(ctx, a, service)
+	if store.IsOpenDeployStatus(d.Status) {
+		s.notifyDeployStarted(ctx, a, service)
+	}
 	return view(d), nil
+}
+
+// patchedGeneration returns the generation the spec patch initiated. A real
+// API server returns the incremented metadata.generation on Patch; controller-
+// runtime's fake client does not, so the monotonic fallback keeps unit tests
+// and off-cluster adapters aligned with Kubernetes semantics.
+func patchedGeneration(before, after int64) int64 {
+	return max(after, before+1)
 }
 
 // notifyDeployStarted detaches delivery from the request hot path, matching the
@@ -449,9 +480,8 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 // converging rollout gets there first wins, so a race can never leave the
 // row half-canceled. Canceling the k8s rollout itself is out of scope
 // (matches Render: an image-backed deploy has no build to interrupt in the
-// first place). A deploy that already reached a terminal status
-// (live/update_failed/canceled) is past the cancelable window: Render's 409,
-// never a silent no-op.
+// first place). A deploy that already reached any terminal status is past the
+// cancelable window: Render's 409, never a silent no-op.
 func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
@@ -503,9 +533,10 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if !won {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already terminal", core.ErrConflict, deployID)
 	}
-	d.Status = store.DeployCanceled
-	now := s.Now()
-	d.FinishedAt = &now
+	d, err = s.Store.GetDeploy(ctx, appID, deployID)
+	if err != nil {
+		return DeployView{}, err
+	}
 	return view(d), nil
 }
 
@@ -539,7 +570,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 		}
 		return DeployView{}, err
 	}
-	if target.Status != store.DeployLive || target.ResolvedImage == "" {
+	if (target.Status != store.DeployLive && target.Status != store.DeployDeactivated) || target.ResolvedImage == "" {
 		return DeployView{}, fmt.Errorf("%w: deploy %q never went live — nothing to roll back to", core.ErrConflict, deployID)
 	}
 	// Row-first: the projector owns spec.image for store-managed Apps, so the
@@ -549,15 +580,16 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	if err := s.Store.SetAppImage(ctx, appID, target.ResolvedImage); err != nil {
 		return DeployView{}, fmt.Errorf("update source of truth: %w", err)
 	}
-	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID,
-		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage})
-	if err != nil {
-		return DeployView{}, err
-	}
+	previousGeneration := a.Generation
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Image = target.ResolvedImage
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 	}); err != nil {
+		return DeployView{}, err
+	}
+	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, patchedGeneration(previousGeneration, a.Generation),
+		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage})
+	if err != nil {
 		return DeployView{}, err
 	}
 	return view(d), nil

@@ -168,9 +168,8 @@ func (s *Service) NotifyDeployStarted(ctx context.Context, tenantID, appName, no
 // it closes a deploy as succeeded or failed, in the same reconcile pass as
 // the status write (the milestone's DoD). NOT a caller verb — no Authorize;
 // the reconciler is a trusted internal caller, same as CloneSecreter. A
-// status other than DeployLive/DeployUpdateFailed (e.g. a future addition)
-// is silently ignored rather than erroring, so this stays forward-compatible
-// without a matching change here. n.NotifyOnFail (w4/m21, docs/render-
+// build/pre-deploy/update failures all use the same member preference; other
+// terminal states are silently ignored. n.NotifyOnFail (w4/m21, docs/render-
 // artifacts/notify-on-fail.md) governs FAILURE notifications only — a
 // succeeded deploy always follows each member's own preference, unmodified.
 func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) {
@@ -178,7 +177,7 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 	switch n.Status {
 	case store.DeployLive:
 		kind = deployMailSucceeded
-	case store.DeployUpdateFailed:
+	case store.DeployBuildFailed, store.DeployPreDeployFailed, store.DeployUpdateFailed:
 		kind = deployMailFailed
 	default:
 		return

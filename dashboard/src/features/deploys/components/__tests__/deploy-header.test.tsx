@@ -13,6 +13,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     commitId: "",
     commitMessage: "",
     createdAt: "2026-07-14T00:00:00Z",
+    updatedAt: "2026-07-14T00:01:00Z",
     startedAt: "2026-07-14T00:00:01Z",
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",

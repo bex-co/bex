@@ -60,7 +60,7 @@ func TestCreateAppOpensFirstDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
-	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Image != "img:1" || deploys[0].Status != DeployUpdateInProgress {
+	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Image != "img:1" || deploys[0].Status != DeployCreated {
 		t.Fatalf("deploy #1 = %+v", deploys)
 	}
 
@@ -109,6 +109,113 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 	}
 }
 
+func TestTransitionDeployAdvancesTimestampsOnlyOnRealStateChanges(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	d, _, _ := openDeployFor(ctx, s, app.ID)
+	if d.Status != DeployCreated || d.UpdatedAt.IsZero() || !d.UpdatedAt.Equal(d.CreatedAt) {
+		t.Fatalf("new deploy = %+v, want created with updated_at=created_at", d)
+	}
+
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, ""); err != nil || !changed {
+		t.Fatalf("transition to update_in_progress: changed=%v err=%v", changed, err)
+	}
+	progress, _ := s.GetDeploy(ctx, app.ID, d.ID)
+	if progress.StartedAt == nil || !progress.UpdatedAt.After(d.UpdatedAt) || progress.FinishedAt != nil {
+		t.Fatalf("in-progress deploy = %+v, want started/updated and unfinished", progress)
+	}
+
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, ""); err != nil || changed {
+		t.Fatalf("repeated transition: changed=%v err=%v, want no-op", changed, err)
+	}
+	repeated, _ := s.GetDeploy(ctx, app.ID, d.ID)
+	if !repeated.UpdatedAt.Equal(progress.UpdatedAt) {
+		t.Errorf("no-op changed updated_at: %s -> %s", progress.UpdatedAt, repeated.UpdatedAt)
+	}
+	if changed, err := s.TransitionDeploy(ctx, d.ID, DeployBuildInProgress, ""); err != nil || changed {
+		t.Fatalf("regression: changed=%v err=%v, want rejected", changed, err)
+	}
+	regressed, _ := s.GetDeploy(ctx, app.ID, d.ID)
+	if regressed.Status != DeployUpdateInProgress || !regressed.UpdatedAt.Equal(progress.UpdatedAt) {
+		t.Errorf("rejected regression mutated deploy: %+v", regressed)
+	}
+}
+
+func TestLiveTransitionDeactivatesPriorLiveDeploy(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+	if won, err := s.CloseDeploy(ctx, first.ID, DeployLive, "img:1"); err != nil || !won {
+		t.Fatalf("first live: won=%v err=%v", won, err)
+	}
+	firstLive, _ := s.GetDeploy(ctx, app.ID, first.ID)
+
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if won, err := s.CloseDeploy(ctx, second.ID, DeployLive, "img:2"); err != nil || !won {
+		t.Fatalf("second live: won=%v err=%v", won, err)
+	}
+	prior, _ := s.GetDeploy(ctx, app.ID, first.ID)
+	current, _ := s.GetDeploy(ctx, app.ID, second.ID)
+	if prior.Status != DeployDeactivated || current.Status != DeployLive {
+		t.Fatalf("prior/current = %+v / %+v, want deactivated/live", prior, current)
+	}
+	if prior.FinishedAt == nil || firstLive.FinishedAt == nil || !prior.FinishedAt.Equal(*firstLive.FinishedAt) {
+		t.Errorf("deactivation changed the prior live finished_at: before=%v after=%v", firstLive.FinishedAt, prior.FinishedAt)
+	}
+	if !prior.UpdatedAt.After(firstLive.UpdatedAt) {
+		t.Errorf("deactivation did not advance updated_at: %s -> %s", firstLive.UpdatedAt, prior.UpdatedAt)
+	}
+}
+
+func TestCreateDeployCancelsOlderOpenDeployNewestWins(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Repo: "https://example.com/repo.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, ""); err != nil || !changed {
+		t.Fatalf("start first build: changed=%v err=%v", changed, err)
+	}
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 2, CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, _ := s.GetDeploy(ctx, app.ID, first.ID)
+	if old.Status != DeployCanceled || old.FinishedAt == nil {
+		t.Fatalf("superseded deploy = %+v, want canceled terminal", old)
+	}
+	open, ok, _ := openDeployFor(ctx, s, app.ID)
+	if !ok || open.ID != second.ID || open.Status != DeployCreated {
+		t.Fatalf("newest open deploy = %+v ok=%v, want %s created", open, ok, second.ID)
+	}
+}
+
+func TestDelayedLowerGenerationDeployCannotSupersedeNewerOpenDeploy(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	newer, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:3", 3, CommitInfo{})
+	if err != nil || newer.Status != DeployCreated {
+		t.Fatalf("newer deploy = %+v (err %v), want created", newer, err)
+	}
+	delayed, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{})
+	if err != nil || delayed.Status != DeployCanceled || delayed.FinishedAt == nil {
+		t.Fatalf("delayed deploy = %+v (err %v), want immediately canceled", delayed, err)
+	}
+	open, ok, err := openDeployFor(ctx, s, app.ID)
+	if err != nil || !ok || open.ID != newer.ID || open.Generation != 3 {
+		t.Fatalf("open deploy = %+v ok=%v (err %v), want higher-generation %s", open, ok, err, newer.ID)
+	}
+}
+
 // TestCreateRollbackDeployRecordsProvenanceAndResolvedImage covers w2/m10's
 // t001: unlike a normal trigger, a rollback deploy already knows the exact
 // image it restores (it ran live before), so ResolvedImage is set immediately
@@ -120,7 +227,7 @@ func TestCreateRollbackDeployRecordsProvenanceAndResolvedImage(t *testing.T) {
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	first, _, _ := openDeployFor(ctx, s, app.ID)
 
-	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, CommitInfo{})
+	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, 2, CommitInfo{})
 	if err != nil {
 		t.Fatalf("create rollback deploy: %v", err)
 	}

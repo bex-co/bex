@@ -38,9 +38,16 @@ import (
 // pkg/deploy/tools.go: limit default 10, clamped to [1,100]; cursor from the
 // previous result).
 type listDeploysArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
-	Limit     int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 10)"`
-	Cursor    string `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the previous list_deploys result); omit for the first page"`
+	ServiceID      string   `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Statuses       []string `json:"status,omitempty" jsonschema:"include deploys in any of these Render lifecycle statuses"`
+	CreatedBefore  string   `json:"createdBefore,omitempty" jsonschema:"include deploys created before this RFC3339 timestamp"`
+	CreatedAfter   string   `json:"createdAfter,omitempty" jsonschema:"include deploys created after this RFC3339 timestamp"`
+	UpdatedBefore  string   `json:"updatedBefore,omitempty" jsonschema:"include deploys updated before this RFC3339 timestamp"`
+	UpdatedAfter   string   `json:"updatedAfter,omitempty" jsonschema:"include deploys updated after this RFC3339 timestamp"`
+	FinishedBefore string   `json:"finishedBefore,omitempty" jsonschema:"include deploys finished before this RFC3339 timestamp"`
+	FinishedAfter  string   `json:"finishedAfter,omitempty" jsonschema:"include deploys finished after this RFC3339 timestamp"`
+	Limit          int      `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 10)"`
+	Cursor         string   `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the previous list_deploys result); omit for the first page"`
 }
 
 // getDeployArgs is get_deploy's input — the deploy to poll after a trigger.
@@ -84,7 +91,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
-		Description: "List a service's deploy history, newest first — status transitions build_in_progress/update_in_progress -> live, *_failed, or canceled. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",
+		Description: "List a service's deploy history, newest first, with Render lifecycle status and created/updated/finished timestamp filters. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, listDeploysResult, error) {
 		// Render's own tool's bounds: default 10 when unset, clamped to [1,100].
 		// The default is an intentional w2/m31 behavior change from bex's prior
@@ -94,7 +101,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if limit < 1 {
 			limit = 10
 		}
-		filter, err := FilterOf(nil, "", "", in.Cursor, limit)
+		filter, err := FilterOf(
+			in.Statuses,
+			in.CreatedBefore, in.CreatedAfter,
+			in.UpdatedBefore, in.UpdatedAfter,
+			in.FinishedBefore, in.FinishedAfter,
+			in.Cursor, limit,
+		)
 		if err != nil {
 			return nil, listDeploysResult{}, err
 		}

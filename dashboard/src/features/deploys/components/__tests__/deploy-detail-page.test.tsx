@@ -13,6 +13,7 @@ const deployState = {
     commitId: "",
     commitMessage: "",
     createdAt: "2026-07-14T00:00:00Z",
+    updatedAt: "2026-07-14T00:01:00Z",
     startedAt: null,
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",
