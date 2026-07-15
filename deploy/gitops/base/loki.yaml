@@ -8,7 +8,7 @@
 # the pre-Loki behavior. The live SSE tail always reads pod logs, never Loki.
 #
 # Single-binary mode on a filesystem PVC — the same "buy, don't build, keep it
-# single-node" posture as prometheus.yaml: no object store (S3/minio), no
+# single-replica" posture as prometheus.yaml: no object store (S3/minio), no
 # read/write/backend split, no caches. The log-shipper DaemonSet
 # (log-shipper.yaml) tails App pod logs into it, labelled namespace/app/pod/
 # container so bex-api can select on the App's namespace+name.
@@ -44,7 +44,7 @@ spec:
           commonConfig:
             replication_factor: 1
           storage:
-            type: filesystem     # no object store — single-node filesystem, like Prometheus's PV
+            type: filesystem     # no object store — single-replica filesystem, like Prometheus's PV
           schemaConfig:
             configs:
               - from: "2024-04-01"
