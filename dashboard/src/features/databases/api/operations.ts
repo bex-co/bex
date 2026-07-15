@@ -519,3 +519,27 @@ export const UpdateDatabasePlanDocument = gql`
   UpdateDatabasePlanMutation,
   UpdateDatabasePlanVars
 >;
+
+export interface UpdateDatabaseVersionVars {
+  id: string;
+  version: string;
+}
+export interface UpdateDatabaseVersionMutation {
+  updateDatabaseVersion: {
+    id: string | null;
+    version: string | null;
+    status: string | null;
+  } | null;
+}
+export const UpdateDatabaseVersionDocument = gql`
+  mutation UpdateDatabaseVersion($id: String!, $version: String!) {
+    updateDatabaseVersion(id: $id, version: $version) {
+      id
+      version
+      status
+    }
+  }
+` as unknown as TypedDocumentNode<
+  UpdateDatabaseVersionMutation,
+  UpdateDatabaseVersionVars
+>;

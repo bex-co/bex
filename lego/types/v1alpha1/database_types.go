@@ -167,6 +167,13 @@ type DatabaseRecovery struct {
 	// +required
 	SourceDatabase string `json:"sourceDatabase"`
 
+	// SourceBackupServerName is the exact CNPG archive generation to restore.
+	// Major upgrades move WAL/base backups to a new per-major serverName; keeping
+	// the resolved value in recovery intent avoids guessing whether a source is
+	// still on its legacy unsuffixed archive.
+	// +optional
+	SourceBackupServerName string `json:"sourceBackupServerName,omitempty"`
+
 	// TargetTime is the RFC3339 point in time to recover to (PITR). Empty =>
 	// recover to the latest available point (the end of the WAL stream).
 	// +optional
@@ -240,13 +247,14 @@ type DatabaseExportStatus struct {
 	FailureReason string `json:"failureReason,omitempty"`
 }
 
-// DatabasePhase mirrors the provisioning lifecycle.
-// +kubebuilder:validation:Enum=Pending;Provisioning;Ready;Failed
+// DatabasePhase mirrors the provisioning and major-upgrade lifecycle.
+// +kubebuilder:validation:Enum=Pending;Provisioning;Upgrading;Ready;Failed
 type DatabasePhase string
 
 const (
 	DBPhasePending      DatabasePhase = "Pending"
 	DBPhaseProvisioning DatabasePhase = "Provisioning"
+	DBPhaseUpgrading    DatabasePhase = "Upgrading"
 	DBPhaseReady        DatabasePhase = "Ready"
 	DBPhaseFailed       DatabasePhase = "Failed"
 )
@@ -256,6 +264,12 @@ type DatabaseStatus struct {
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase DatabasePhase `json:"phase,omitempty"`
+
+	// CurrentVersion is the PostgreSQL major version reported by CNPG for the
+	// active PGDATA image. During a major upgrade this remains the source version
+	// until pg_upgrade succeeds, while spec.version already holds the target.
+	// +optional
+	CurrentVersion string `json:"currentVersion,omitempty"`
 
 	// Host is the in-cluster read-write hostname (CNPG "<cluster>-rw" Service).
 	// +optional
@@ -294,6 +308,13 @@ type DatabaseStatus struct {
 	// configured) — the signal that recovery/PITR is available.
 	// +optional
 	BackupsEnabled bool `json:"backupsEnabled,omitempty"`
+
+	// BackupServerName is the CNPG barman archive generation currently receiving
+	// WAL and base backups. The first major uses the legacy Database name; each
+	// successful major upgrade moves to <name>-pg<major> to avoid timeline/system
+	// ID collisions across pg_upgrade boundaries.
+	// +optional
+	BackupServerName string `json:"backupServerName,omitempty"`
 
 	// BackupEndpointURL and BackupS3SecretName are the non-secret coordinates
 	// bex-api needs to presign an available logical export. Credentials remain in

@@ -56,6 +56,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "创建中",
     description: "Database status badge (provisioning)",
   },
+  "databases.statusUpgrading": {
+    message: "升级中",
+    description: "Database status badge (offline PostgreSQL major upgrade)",
+  },
   "databases.statusUnavailable": {
     message: "不可用",
     description: "Database status badge (provisioning failed)",
@@ -216,6 +220,58 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.metaVersion": {
     message: "版本",
     description: "Database detail metadata row label",
+  },
+  "databases.versionLabel": {
+    message: "PostgreSQL {version}",
+    description: "Formatted PostgreSQL major version label",
+  },
+  "databases.versionUpgradeAction": {
+    message: "升级",
+    description: "Button opening the PostgreSQL major-version upgrade dialog",
+  },
+  "databases.versionUpgrading": {
+    message: "升级正在进行",
+    description:
+      "Version-row status while the database is offline for pg_upgrade",
+  },
+  "databases.versionUpgradeTitle": {
+    message: "升级 PostgreSQL",
+    description: "PostgreSQL major-version upgrade dialog title",
+  },
+  "databases.versionUpgradeDescription": {
+    message: "将此数据库从 PostgreSQL {version} 升级到更新的受支持主版本。",
+    description: "PostgreSQL major-version upgrade dialog description",
+  },
+  "databases.versionUpgradeTarget": {
+    message: "目标版本",
+    description: "PostgreSQL major-version upgrade target selector label",
+  },
+  "databases.versionUpgradeDowntime": {
+    message:
+      "离线升级期间数据库将不可用。请先测试兼容性并安排停机时间；大型数据库可能需要长达一小时。",
+    description:
+      "Downtime warning in the PostgreSQL major-version upgrade dialog",
+  },
+  "databases.versionUpgradeErrorTitle": {
+    message: "升级被阻止",
+    description:
+      "Inline backend-guard error title in the version upgrade dialog",
+  },
+  "databases.versionUpgradeCancel": {
+    message: "取消",
+    description: "PostgreSQL major-version upgrade dialog cancel button",
+  },
+  "databases.versionUpgradeConfirm": {
+    message: "升级到 PostgreSQL {version}",
+    description: "PostgreSQL major-version upgrade dialog confirmation button",
+  },
+  "databases.versionUpgradeAccepted": {
+    message: "已开始升级到 PostgreSQL {version}。",
+    description: "Toast after a PostgreSQL major-version upgrade is accepted",
+  },
+  "databases.versionUpgradeError": {
+    message: "无法开始 PostgreSQL 升级。请重试。",
+    description: "Fallback error when the PostgreSQL upgrade mutation fails",
   },
   "databases.metaDatabaseName": {
     message: "数据库",

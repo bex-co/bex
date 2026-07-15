@@ -172,6 +172,13 @@ spec:
                   first provision. Recovery requires the controller's backup store to be
                   configured. See docs/ADR009-postgresql-management.md.
                 properties:
+                  sourceBackupServerName:
+                    description: |-
+                      SourceBackupServerName is the exact CNPG archive generation to restore.
+                      Major upgrades move WAL/base backups to a new per-major serverName; keeping
+                      the resolved value in recovery intent avoids guessing whether a source is
+                      still on its legacy unsuffixed archive.
+                    type: string
                   sourceDatabase:
                     description: |-
                       SourceDatabase is the name of the Database whose object-store backups to
@@ -256,6 +263,13 @@ spec:
                 type: string
               backupS3SecretName:
                 type: string
+              backupServerName:
+                description: |-
+                  BackupServerName is the CNPG barman archive generation currently receiving
+                  WAL and base backups. The first major uses the legacy Database name; each
+                  successful major upgrade moves to <name>-pg<major> to avoid timeline/system
+                  ID collisions across pg_upgrade boundaries.
+                type: string
               backupsEnabled:
                 description: |-
                   BackupsEnabled is true when the controller projected a barmanObjectStore +
@@ -327,6 +341,12 @@ spec:
                   CurrentPrimary is the CNPG pod name currently serving as primary, surfaced
                   as an observability aid after a failover. Empty until HA is active.
                   bex extension (Render reports HA state but not the pod name).
+                type: string
+              currentVersion:
+                description: |-
+                  CurrentVersion is the PostgreSQL major version reported by CNPG for the
+                  active PGDATA image. During a major upgrade this remains the source version
+                  until pg_upgrade succeeds, while spec.version already holds the target.
                 type: string
               exports:
                 description: |-
@@ -418,6 +438,7 @@ spec:
                 enum:
                 - Pending
                 - Provisioning
+                - Upgrading
                 - Ready
                 - Failed
                 type: string

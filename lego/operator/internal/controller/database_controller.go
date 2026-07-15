@@ -59,6 +59,7 @@ var traefikMiddlewareTCPGVK = schema.GroupVersionKind{Group: "traefik.io", Versi
 // Database projects for durability (a daily base backup) and connection pooling
 // (a PgBouncer instance). Projected via unstructured like the Cluster.
 var cnpgScheduledBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "ScheduledBackup"}
+var cnpgBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Backup"}
 var cnpgPoolerGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Pooler"}
 
 const (
@@ -150,6 +151,10 @@ type clusterParams struct {
 	// A cluster gets its own backup stanza when the plan opts in (plan.Backup) and
 	// store is set — derived, not passed.
 	store *BackupStore
+	// backupServerName isolates physical archives by PostgreSQL major. CNPG
+	// resets the system ID/timeline during pg_upgrade, so reusing one archive
+	// prefix across majors can corrupt PITR history.
+	backupServerName string
 	// recovery, when non-nil (with store set), bootstraps the cluster by restoring
 	// a source Database's backups instead of a fresh initdb.
 	recovery *appv1alpha1.DatabaseRecovery
@@ -162,6 +167,25 @@ type clusterParams struct {
 	// Database.spec.parameters. Merged on top of the built-in defaults;
 	// shared_preload_libraries is always forced to include pg_stat_statements.
 	parameters map[string]string
+}
+
+func versionedBackupServerName(name, version string) string {
+	if version == "" {
+		return name
+	}
+	return fmt.Sprintf("%s-pg%s", name, version)
+}
+
+func databaseBackupServerNames(db *appv1alpha1.Database) (current, target string) {
+	current = db.Status.BackupServerName
+	if current == "" {
+		current = db.Name
+	}
+	target = current
+	if db.Spec.Version != "" && db.Status.CurrentVersion != "" && db.Spec.Version != db.Status.CurrentVersion {
+		target = versionedBackupServerName(db.Name, db.Spec.Version)
+	}
+	return current, target
 }
 
 // barmanObjectStore builds a CNPG barmanObjectStore config pointing at the S3
@@ -246,7 +270,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		spec["bootstrap"] = map[string]any{"recovery": rec}
 		spec["externalClusters"] = []any{map[string]any{
 			"name":              recoverySource,
-			"barmanObjectStore": barmanObjectStore(*p.store, p.recovery.SourceDatabase),
+			"barmanObjectStore": barmanObjectStore(*p.store, p.recovery.SourceBackupServerName),
 		}}
 	} else {
 		spec["bootstrap"] = map[string]any{
@@ -281,7 +305,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// when the plan opts in and a store is configured.
 	if p.plan.Backup && p.store != nil {
 		spec["backup"] = map[string]any{
-			"barmanObjectStore": barmanObjectStore(*p.store, ""),
+			"barmanObjectStore": barmanObjectStore(*p.store, p.backupServerName),
 			"retentionPolicy":   backupRetention,
 		}
 	}
@@ -301,6 +325,13 @@ func scheduledBackupSpec(clusterName string) map[string]any {
 		"immediate":            true,
 		"cluster":              map[string]any{"name": clusterName},
 		"method":               "barmanObjectStore",
+	}
+}
+
+func onDemandBackupSpec(clusterName string) map[string]any {
+	return map[string]any{
+		"cluster": map[string]any{"name": clusterName},
+		"method":  "barmanObjectStore",
 	}
 }
 
@@ -385,7 +416,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
-// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
@@ -418,8 +449,6 @@ func deleteOwned(ctx context.Context, c client.Client, owner client.Object, gvk 
 }
 
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-
 	var db appv1alpha1.Database
 	if err := r.Get(ctx, req.NamespacedName, &db); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -454,6 +483,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		store = &r.Backup
 	}
 	backupEnabled := plan.Backup && storeConfigured
+	currentBackupServerName, targetBackupServerName := databaseBackupServerNames(&db)
 	if db.Spec.Recovery != nil && !storeConfigured {
 		return r.dbFail(ctx, &db, "RecoveryUnavailable",
 			fmt.Errorf("recovery requested but no backup store is configured"))
@@ -468,7 +498,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		spec := cnpgClusterSpec(clusterParams{
 			plan: plan, storageGB: storageGB, version: db.Spec.Version,
 			dbname: dbname, owner: owner, store: store,
-			recovery: db.Spec.Recovery, users: db.Spec.Users,
+			backupServerName: targetBackupServerName,
+			recovery:         db.Spec.Recovery, users: db.Spec.Users,
 			highAvailability: db.Spec.HighAvailability,
 			parameters:       db.Spec.Parameters,
 		})
@@ -493,6 +524,9 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	db.Status.SecretName = db.Name + "-app"
 	db.Status.ObservedGeneration = db.Generation
 	db.Status.BackupsEnabled = backupEnabled
+	if backupEnabled && db.Status.BackupServerName == "" {
+		db.Status.BackupServerName = currentBackupServerName
+	}
 	if storeConfigured {
 		db.Status.BackupEndpointURL = r.Backup.EndpointURL
 		db.Status.BackupS3SecretName = r.Backup.S3Secret
@@ -558,20 +592,85 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		desiredInstances = 2
 	}
 
-	// Read CNPG cluster status: readyInstances, currentPrimary, instanceNames
-	// (needed for HA reporting and the failover trigger).
-	ready := r.readClusterStatus(ctx, &db, cluster)
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backupEnabled, targetBackupServerName, exportRequeue)
+}
 
-	if ready >= desiredInstances {
+// reconcileDatabaseReadiness maps CNPG's status-only lifecycle onto the public
+// Database phase and performs the one-time post-upgrade backup transition.
+func (r *DatabaseReconciler) reconcileDatabaseReadiness(
+	ctx context.Context,
+	db *appv1alpha1.Database,
+	cluster *unstructured.Unstructured,
+	desiredInstances int64,
+	backupEnabled bool,
+	targetBackupServerName string,
+	exportRequeue time.Duration,
+) (ctrl.Result, error) {
+	previousVersion := db.Status.CurrentVersion
+	clusterState := r.readClusterStatus(ctx, db, cluster)
+	if clusterState.currentVersion != "" {
+		db.Status.CurrentVersion = clusterState.currentVersion
+	}
+
+	// CNPG's offline pg_upgrade deliberately takes every instance down. Surface
+	// its own phase before consulting readyInstances so an upgrade is never
+	// mislabeled as ordinary provisioning (or, worse, left Ready from the prior
+	// generation). A failed upgrade is likewise an honest terminal status with
+	// CNPG's phase/condition message retained for operators and API clients.
+	if clusterState.majorUpgradeFailed() {
+		// CNPG leaves the failed target image in desired state and requires an
+		// explicit revert. Return Database.spec.version to the observed source so
+		// the next reconcile deletes the failed job and restarts the original
+		// server instead of retrying forever.
+		if db.Status.CurrentVersion != "" && db.Spec.Version != db.Status.CurrentVersion {
+			before := db.DeepCopy()
+			db.Spec.Version = db.Status.CurrentVersion
+			if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		db.Status.Phase = appv1alpha1.DBPhaseFailed
+		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "MajorVersionUpgradeFailed",
+			Message: clusterState.message, ObservedGeneration: db.Generation,
+		})
+		if err := r.Status().Update(ctx, db); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+	if clusterState.majorUpgradeRunning() {
+		db.Status.Phase = appv1alpha1.DBPhaseUpgrading
+		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+			Type: "Ready", Status: metav1.ConditionFalse, Reason: "MajorVersionUpgrade",
+			Message: clusterState.message, ObservedGeneration: db.Generation,
+		})
+		if err := r.Status().Update(ctx, db); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	if clusterState.ready >= desiredInstances {
+		// A major upgrade creates a new PostgreSQL system ID/timeline; pre-upgrade
+		// backups cannot provide PITR into the new major. Start a fresh base backup
+		// as soon as CNPG reports the upgraded cluster healthy.
+		if backupEnabled && previousVersion != "" && clusterState.currentVersion != "" && previousVersion != clusterState.currentVersion {
+			name := fmt.Sprintf("%s-post-upgrade-pg%s", db.Name, clusterState.currentVersion)
+			if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgBackupGVK, name, onDemandBackupSpec(db.Name)); err != nil {
+				return r.dbFail(ctx, db, "PostUpgradeBackupFailed", err)
+			}
+			db.Status.BackupServerName = targetBackupServerName
+		}
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Provisioned",
 			Message: "postgres ready", ObservedGeneration: db.Generation,
 		})
-		if err := r.Status().Update(ctx, &db); err != nil {
+		if err := r.Status().Update(ctx, db); err != nil {
 			return ctrl.Result{}, err
 		}
-		log.Info("database ready", "name", db.Name, "host", db.Status.Host)
+		logf.FromContext(ctx).Info("database ready", "name", db.Name, "host", db.Status.Host)
 		if exportRequeue > 0 {
 			return ctrl.Result{RequeueAfter: exportRequeue}, nil
 		}
@@ -583,7 +682,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Type: "Ready", Status: metav1.ConditionFalse, Reason: "Provisioning",
 		Message: "waiting for CloudNativePG", ObservedGeneration: db.Generation,
 	})
-	if err := r.Status().Update(ctx, &db); err != nil {
+	if err := r.Status().Update(ctx, db); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: soonerRequeue(10*time.Second, exportRequeue)}, nil
@@ -618,16 +717,58 @@ func setLifecycleAnnotations(cluster *unstructured.Unstructured, suspended bool,
 // readClusterStatus reads the CNPG cluster's status, updates HA-related Database
 // status fields (CurrentPrimary, HighAvailabilityEnabled, LastFailoverAt) and
 // triggers a switchover if spec.failoverAt has advanced. Returns readyInstances.
+type cnpgClusterState struct {
+	ready          int64
+	phase          string
+	message        string
+	currentVersion string
+}
+
+func (s cnpgClusterState) majorUpgradeRunning() bool {
+	phase := strings.ToLower(s.phase)
+	return strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && !strings.Contains(phase, "fail")
+}
+
+func (s cnpgClusterState) majorUpgradeFailed() bool {
+	phase := strings.ToLower(s.phase)
+	return strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && strings.Contains(phase, "fail")
+}
+
+// cnpgConditionMessage returns the most useful condition message CNPG exposes,
+// falling back to its phase. This keeps a failed pg_upgrade's reason visible on
+// Database.status without coupling the operator to CNPG's Go API.
+func cnpgConditionMessage(cluster *unstructured.Unstructured, fallback string) string {
+	conditions, found, _ := unstructured.NestedSlice(cluster.Object, "status", "conditions")
+	if found {
+		for _, raw := range conditions {
+			condition, ok := raw.(map[string]any)
+			if !ok || condition["status"] != "False" {
+				continue
+			}
+			if message, ok := condition["message"].(string); ok && message != "" {
+				return message
+			}
+		}
+	}
+	return fallback
+}
+
 func (r *DatabaseReconciler) readClusterStatus(
 	ctx context.Context,
 	db *appv1alpha1.Database,
 	cluster *unstructured.Unstructured,
-) int64 {
+) cnpgClusterState {
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil {
 		db.Status.HighAvailabilityEnabled = false
-		return 0
+		return cnpgClusterState{}
 	}
 	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
+	phase, _, _ := unstructured.NestedString(cluster.Object, "status", "phase")
+	major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion")
+	state := cnpgClusterState{ready: ready, phase: phase, message: cnpgConditionMessage(cluster, phase)}
+	if major > 0 {
+		state.currentVersion = fmt.Sprintf("%d", major)
+	}
 	if cp, found, _ := unstructured.NestedString(cluster.Object, "status", "currentPrimary"); found {
 		db.Status.CurrentPrimary = cp
 	}
@@ -640,7 +781,7 @@ func (r *DatabaseReconciler) readClusterStatus(
 	}
 	// HighAvailabilityEnabled: HA is on in spec AND the cluster has ≥2 ready instances.
 	db.Status.HighAvailabilityEnabled = db.Spec.HighAvailability && ready >= 2
-	return ready
+	return state
 }
 
 // triggerCNPGSwitchover patches cluster.status.targetPrimary to a non-primary
@@ -784,7 +925,10 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	owned.SetGroupVersionKind(cnpgClusterGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.Database{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Owns(owned, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// CNPG reports readiness and major-upgrade progress through Cluster status
+		// updates, which do not advance metadata.generation. Watch resourceVersion
+		// so Database.status promptly reflects Upgrading, Failed, and Ready.
+		Owns(owned, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		// Job status updates do not change metadata.generation, so use resource
 		// version here; otherwise completed/failed exports would never settle.
 		Owns(&batchv1.Job{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
@@ -832,14 +976,11 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 }
 
 // purgeDBBackups dispatches a fire-and-forget in-cluster Job to recursively
-// delete the database's barman object-store prefix (DestinationPath/<dbName>/).
-// CNPG defaults the serverName to the cluster name (= db.Name), so that is the
-// exact path barman writes to. The Job TTLs out after 1 hour.
+// delete the database's legacy and per-major barman object-store prefixes. The
+// Job TTLs out after 1 hour.
 func (r *DatabaseReconciler) purgeDBBackups(ctx context.Context, db *appv1alpha1.Database) error {
 	ttl := int32(3600)
-	// barman stores WAL and base backups under <DestinationPath>/<serverName>/;
-	// the serverName defaults to the cluster name (= db.Name) when not set explicitly.
-	prefix := strings.TrimRight(r.Backup.DestinationPath, "/") + "/" + db.Name + "/"
+	base := strings.TrimRight(r.Backup.DestinationPath, "/")
 	jobName := "purge-db-" + db.Name
 	if len(jobName) > 63 {
 		jobName = jobName[:63]
@@ -862,12 +1003,18 @@ func (r *DatabaseReconciler) purgeDBBackups(ctx context.Context, db *appv1alpha1
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					Containers: []corev1.Container{{
-						Name:  "purge",
-						Image: publish.DefaultAWSCLIImage,
-						Command: []string{
-							"aws", "s3", "rm", prefix,
-							"--recursive",
-							"--endpoint-url", r.Backup.EndpointURL,
+						Name:    "purge",
+						Image:   publish.DefaultAWSCLIImage,
+						Command: []string{"/bin/sh", "-ec"},
+						Args: []string{
+							`for suffix in '' -pg13 -pg14 -pg15 -pg16 -pg17 -pg18; do
+  aws s3 rm "${DESTINATION}/${DATABASE}${suffix}/" --recursive --endpoint-url "${ENDPOINT}"
+done`,
+						},
+						Env: []corev1.EnvVar{
+							{Name: "DESTINATION", Value: base},
+							{Name: "DATABASE", Value: db.Name},
+							{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 						},
 						EnvFrom: []corev1.EnvFromSource{{
 							SecretRef: &corev1.SecretEnvSource{

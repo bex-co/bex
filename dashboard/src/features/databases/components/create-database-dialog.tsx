@@ -34,6 +34,7 @@ import {
   formatInstanceCPU,
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
+import { POSTGRES_VERSIONS } from "@/features/databases/lib/versions";
 
 // PostgreSQL major versions bex offers. Keep in sync with the Database CRD's
 // authoritative enum (lego/types/v1alpha1/database_types.go, spec.version
@@ -42,7 +43,6 @@ import {
 // mapped back to "" so the operator/CNPG picks its own default image rather than
 // pinning a tag that may not be pulled.
 const VERSION_DEFAULT = "default";
-const VERSIONS = ["18", "17", "16", "15", "14", "13"] as const;
 
 export interface CreateDatabaseDialogProps {
   /** Called with the new database id once creation is accepted. */
@@ -192,7 +192,7 @@ export function CreateDatabaseDialog({
                   <SelectItem value={VERSION_DEFAULT}>
                     {t("databases.fieldVersionDefault")}
                   </SelectItem>
-                  {VERSIONS.map((v) => (
+                  {POSTGRES_VERSIONS.map((v) => (
                     <SelectItem key={v} value={v}>
                       PostgreSQL {v}
                     </SelectItem>

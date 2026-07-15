@@ -236,6 +236,14 @@ mutation UpdateDatabasePlan($id: String!, $plan: String!) {
   }
 }
 
+mutation UpdateDatabaseVersion($id: String!, $version: String!) {
+  updateDatabaseVersion(id: $id, version: $version) {
+    id
+    version
+    status
+  }
+}
+
 mutation DeleteDatabase($id: String!) {
   deleteDatabase(id: $id)
 }

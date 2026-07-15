@@ -16,6 +16,7 @@ import { AccessControlPanel } from "@/features/databases/components/access-contr
 import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
+import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -71,7 +72,10 @@ export function DatabaseDetailPage() {
             </div>
           ) : database ? (
             <>
-              <MetadataCard database={database} />
+              <MetadataCard
+                database={database}
+                onChanged={() => void refetch()}
+              />
               <ConnectionInfoPanel id={database.id} />
               <SQLConsole key={database.id} id={database.id} />
               <HAPanel database={database} refetch={refetch} />
@@ -97,7 +101,13 @@ export function DatabaseDetailPage() {
   );
 }
 
-function MetadataCard({ database }: { database: DatabaseDetailView }) {
+function MetadataCard({
+  database,
+  onChanged,
+}: {
+  database: DatabaseDetailView;
+  onChanged: () => void;
+}) {
   const { t } = useTranslations();
   return (
     <MetadataList
@@ -107,7 +117,9 @@ function MetadataCard({ database }: { database: DatabaseDetailView }) {
         { label: t("databases.metaPlan"), value: database.plan ?? "—" },
         {
           label: t("databases.metaVersion"),
-          value: database.version ? `PostgreSQL ${database.version}` : "—",
+          value: (
+            <DatabaseVersionControl database={database} onChanged={onChanged} />
+          ),
         },
         {
           label: t("databases.metaDatabaseName"),

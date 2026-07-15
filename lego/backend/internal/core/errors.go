@@ -165,3 +165,17 @@ func NewPlanLimitError(msg, plan string, limit int) *CodedError {
 		msg:      msg,
 	}
 }
+
+// NewBadRequestError returns a machine-readable 400 error for feature-specific
+// validation failures. Params are included in REST's `params` object and
+// GraphQL's `extensions`, while ErrBadRequest keeps the shared transport
+// mapping intact.
+func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
+}
+
+// NewConflictError returns a machine-readable 409 error for a valid operation
+// that the resource's current state makes unsafe.
+func NewConflictError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrConflict, msg: msg}
+}
