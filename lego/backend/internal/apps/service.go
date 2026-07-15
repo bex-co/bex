@@ -24,9 +24,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -188,6 +190,15 @@ type CronRunView struct {
 	StartedAt  string `json:"startedAt,omitempty"`
 	FinishedAt string `json:"finishedAt,omitempty"`
 	Status     string `json:"status"` // Running | Succeeded | Failed
+}
+
+// ServiceInstanceView is Render's complete public service-instance shape. It
+// deliberately carries no Pod name, namespace, node, IP, phase, labels, or
+// container state: Kubernetes is the mechanism behind the two-field contract,
+// not part of it.
+type ServiceInstanceView struct {
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // AppView is the neutral, bex-native projection of an App — spec intent +
@@ -429,10 +440,7 @@ func cleanGlobs(field string, globs []string) ([]string, error) {
 
 func view(a *appv1alpha1.App) AppView {
 	name := publicName(a)
-	appID := a.Labels[core.LabelAppID]
-	if appID == "" {
-		appID = name
-	}
+	appID := publicID(a)
 	created := ""
 	if !a.CreationTimestamp.IsZero() {
 		created = a.CreationTimestamp.UTC().Format(time.RFC3339)
@@ -497,6 +505,13 @@ func view(a *appv1alpha1.App) AppView {
 		Routes:           staticRouteViews(a.Spec.Routes),
 		Headers:          staticHeaderViews(a.Spec.Headers),
 	}
+}
+
+func publicID(a *appv1alpha1.App) string {
+	if appID := a.Labels[core.LabelAppID]; appID != "" {
+		return appID
+	}
+	return publicName(a)
 }
 
 // cronRunViews projects the CR's status run history onto the neutral view shape.
@@ -606,25 +621,67 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	return view(a), nil
 }
 
-// ListInstances returns the running and pending Kubernetes pods that implement
-// one service. Render models an instance with only an id and creation time;
-// pod names are stable opaque instance ids for this adapter.
-func (s *Service) ListInstances(ctx context.Context, name string) ([]renderServiceInstance, error) {
+// ListInstances projects a long-running App's live replica Pods into Render's
+// service-instance contract. Authorization and App resolution happen before
+// the Pod list, against the App's own workspace through AuthorizeApp.
+//
+// Inclusion policy is explicit:
+//   - Pending, Running, and Unknown Pods are included, so both active sides of
+//     a Deployment rollout remain observable while Kubernetes converges.
+//   - terminating Pods and terminal Succeeded/Failed Pods are excluded.
+//   - cron_job and static_site Apps return no service instances; their Job Pods
+//     or shared static server are not replicas of the service.
+//   - suspended and observed-Hibernated Apps return [] immediately, even during
+//     the short interval before Kubernetes finishes deleting old Pods. The
+//     latter includes auto-sleep's scale-to-zero state.
+func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInstanceView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
+
+	out := make([]ServiceInstanceView, 0)
+	serviceType := a.Spec.Type
+	if serviceType == "" {
+		serviceType = appv1alpha1.TypeWebService
+	}
+	if a.Spec.Suspended || a.Status.Phase == appv1alpha1.PhaseHibernated {
+		return out, nil
+	}
+	switch serviceType {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+		// These are the Deployment-backed service types.
+	default:
+		return out, nil
+	}
+
 	pods, err := s.AppPods(ctx, a.Name)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]renderServiceInstance, 0, len(pods))
+	serviceID := publicID(a)
 	for i := range pods {
-		out = append(out, renderServiceInstance{
-			ID:        pods[i].Name,
-			CreatedAt: pods[i].CreationTimestamp.UTC().Format(time.RFC3339),
+		pod := &pods[i]
+		if pod.DeletionTimestamp != nil || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		podIdentity := string(pod.UID)
+		if podIdentity == "" {
+			// The apiserver always assigns a UID. This fallback keeps fake clients
+			// and pre-persisted test objects deterministic without exposing Name.
+			podIdentity = pod.Name
+		}
+		out = append(out, ServiceInstanceView{
+			ID:        ids.DeriveServiceInstance(serviceID, podIdentity),
+			CreatedAt: pod.CreationTimestamp.Time,
 		})
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].CreatedAt.After(out[j].CreatedAt)
+	})
 	return out, nil
 }
 

@@ -136,11 +136,30 @@ func Derive(k Kind, parts ...string) string {
 	if !slices.Contains(kinds, k) {
 		panic("id.Derive: unregistered kind " + k.prefix + " — use a package-declared Kind (id.Event, …)")
 	}
+	return k.prefix + "-" + deriveComponent(parts...)
+}
+
+// DeriveServiceInstance returns Render's compound service-instance id:
+// "<service-id>-<stable-suffix>". A service instance is a projection of a
+// Kubernetes Pod rather than an independently stored resource, so it extends
+// the parent Service id instead of adding another top-level Kind. Callers pass
+// the Pod UID as a derivation part; the opaque suffix keeps Kubernetes names
+// and UIDs out of the public wire contract while remaining stable across reads.
+//
+// Legacy hand-applied Apps can still have a name-shaped service id. Preserve
+// that parent verbatim for backwards compatibility; store-managed services use
+// the canonical srv-<xid> parent and therefore match Render's
+// ^srv-[a-z0-9]{20}-[a-z0-9]+$ instance-id shape.
+func DeriveServiceInstance(serviceID string, parts ...string) string {
+	return serviceID + "-" + deriveComponent(parts...)
+}
+
+func deriveComponent(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	// Encode only the 13 bytes the 20 output chars need (13×8 = 104 bits ≥ 20×5 =
 	// 100), over a lowercase base32-hex alphabet — so this is one allocation, not
 	// three (a 52-char encode of the full digest, a ToLower copy, then the concat).
-	return k.prefix + "-" + derivedEncoding.EncodeToString(sum[:13])[:xidLen]
+	return derivedEncoding.EncodeToString(sum[:13])[:xidLen]
 }
 
 // derivedEncoding is base32-hex with the lowercase alphabet WellFormed pins

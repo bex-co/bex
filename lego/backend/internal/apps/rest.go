@@ -963,6 +963,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("GET "+base, list)
 		mux.HandleFunc("POST "+base, create) // Render: create => 201
 		mux.HandleFunc("GET "+base+"/{id}", get)
+		// Render's official CLI uses /services. The /apps alias follows this
+		// package's established rule that every service subresource is also
+		// reachable under bex's native noun.
 		mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
 		mux.HandleFunc("PATCH "+base+"/{id}", patch)
 		mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204

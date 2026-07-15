@@ -2,13 +2,15 @@
 # One-shot: mint a real tenant-bound bex API key for the CLI-compat harness
 # (t001) via Kratos native registration -> first authenticated call
 # (EnsureTenant) -> POST /v1/api-keys, then save id+secret + the tenant id to
-# .pm/w9/dev-9/.cli-key.env. Idempotent-ish: registers a fresh throwaway user
+# <dev-env>/.cli-key.env. Defaults to .pm/w9/dev-9; set BEX_DEV_ENV_DIR to
+# another sibling such as .pm/w6/dev-6. Idempotent-ish: registers a throwaway user
 # each run (Kratos requires unique emails), so re-running mints a new tenant +
 # key rather than reusing one.
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../../.." # repo root
+ENVDIR="${BEX_DEV_ENV_DIR:-.pm/w9/dev-9}"
 # shellcheck disable=SC1091
-source ports.env
+source "$ENVDIR/ports.env"
 KRATOS="http://localhost:$KRATOS_PUBLIC_PORT"
 BEXAPI="http://localhost:$BEX_API_PORT"
 
@@ -31,10 +33,10 @@ read -r KEY_ID KEY_SECRET <<<"$(echo "$KEY" | python3 -c 'import json,sys; d=jso
 OWNER=$(curl -s -H "X-Session-Token: $TOK" "$BEXAPI/v1/owners")
 TENANT_ID=$(echo "$OWNER" | jget '[0]["owner"]["id"]')
 
-cat > .cli-key.env <<EOF
+cat > "$ENVDIR/.cli-key.env" <<EOF
 CLI_COMPAT_KEY_ID=$KEY_ID
 CLI_COMPAT_KEY_SECRET=$KEY_SECRET
 CLI_COMPAT_TENANT_ID=$TENANT_ID
 CLI_COMPAT_EMAIL=$EMAIL
 EOF
-echo "minted key $KEY_ID bound to tenant $TENANT_ID (see .cli-key.env)"
+echo "minted key $KEY_ID bound to tenant $TENANT_ID (see $ENVDIR/.cli-key.env)"
