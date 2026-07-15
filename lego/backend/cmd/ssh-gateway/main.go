@@ -1,0 +1,227 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/crypto/ssh"
+	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/bex-co/bex/lego/backend/internal/api"
+	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	dbURI := requiredEnv("BEX_CP_DB_URI")
+	fgaURL := requiredEnv("BEX_OPENFGA_URL")
+	hostKeyPath := requiredEnv("BEX_SSH_HOST_KEY_PATH")
+
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		log.Fatalf("ssh gateway: database config: %v", err)
+	}
+	defer pool.Close()
+	if err := waitForDB(ctx, pool); err != nil {
+		log.Fatalf("ssh gateway: database unreachable: %v", err)
+	}
+	if err := store.Migrate(dbURI); err != nil {
+		log.Fatalf("ssh gateway: %v", err)
+	}
+	if err := store.CheckOwnership(ctx, pool); err != nil {
+		log.Fatalf("ssh gateway: %v", err)
+	}
+	st := store.NewPGStore(pool)
+
+	keyPEM, err := os.ReadFile(hostKeyPath)
+	if err != nil {
+		log.Fatalf("ssh gateway: read host key: %v", err)
+	}
+	signer, err := parseHostSigner(keyPEM)
+	if err != nil {
+		log.Fatalf("ssh gateway: parse host key: %v", err)
+	}
+	keyPEM = nil
+
+	scheme := clientgoscheme.Scheme
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		log.Fatalf("ssh gateway: register App scheme: %v", err)
+	}
+	restConfig := ctrl.GetConfigOrDie()
+	kubeClient, err := client.New(restConfig, client.Options{Scheme: scheme})
+	if err != nil {
+		log.Fatalf("ssh gateway: Kubernetes client: %v", err)
+	}
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		log.Fatalf("ssh gateway: Kubernetes exec client: %v", err)
+	}
+
+	base := &core.Base{
+		Client: kubeClient, Namespace: envOr("BEX_API_NAMESPACE", "default"),
+		Authz: authz.NewOpenFGAChecker(fgaURL, os.Getenv("BEX_OPENFGA_TOKEN")),
+		Audit: st,
+	}
+	tenantSvc := api.NewTenantService(st, nil)
+	base.Workspace = tenantSvc
+	appService := &apps.Service{Base: base}
+
+	registry := prometheus.NewRegistry()
+	gateway := &sshgateway.Server{
+		Store: st, Apps: appService,
+		Executor:         &sshgateway.KubeExecutor{Config: restConfig, Client: clientset},
+		Signer:           signer,
+		Metrics:          sshgateway.NewMetrics(registry),
+		HandshakeTimeout: durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second),
+		SessionTimeout:   durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour),
+		MaxSessions:      intEnv("BEX_SSH_MAX_SESSIONS", 100),
+		MaxPerIdentity:   intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
+	}
+	addr := envOr("BEX_SSH_ADDR", ":2222")
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("ssh gateway: listen %s: %v", addr, err)
+	}
+	metricsServer := &http.Server{Handler: metricsHandler(registry), ReadHeaderTimeout: 5 * time.Second}
+	metricsAddr := envOr("BEX_SSH_METRICS_ADDR", ":9090")
+	metricsListener, err := net.Listen("tcp", metricsAddr)
+	if err != nil {
+		log.Fatalf("ssh gateway: metrics listen %s: %v", metricsAddr, err)
+	}
+	metricsErr := make(chan error, 1)
+	go func() {
+		err := metricsServer.Serve(metricsListener)
+		metricsErr <- err
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			stop()
+		}
+	}()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = metricsServer.Shutdown(shutdownCtx)
+	}()
+	log.Printf("ssh gateway listening on %s", addr)
+	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
+		log.Fatalf("ssh gateway: %v", err)
+	}
+	select {
+	case err := <-metricsErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("ssh gateway: metrics: %v", err)
+		}
+	default:
+	}
+}
+
+func metricsHandler(gatherer prometheus.Gatherer) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{}))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	return mux
+}
+
+func parseHostSigner(keyPEM []byte) (ssh.Signer, error) {
+	signer, err := ssh.ParsePrivateKey(keyPEM)
+	if err != nil {
+		return nil, err
+	}
+	if signer.PublicKey().Type() != ssh.KeyAlgoED25519 {
+		return nil, fmt.Errorf("host key must be Ed25519")
+	}
+	return signer, nil
+}
+
+func requiredEnv(name string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		log.Fatalf("ssh gateway: %s must be set", name)
+	}
+	return value
+}
+
+func envOr(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func durationEnv(name string, fallback time.Duration) time.Duration {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil || duration <= 0 {
+		log.Fatalf("ssh gateway: %s must be a positive duration", name)
+	}
+	return duration
+}
+
+func intEnv(name string, fallback int) int {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil || n <= 0 {
+		log.Fatalf("ssh gateway: %s must be a positive integer", name)
+	}
+	return n
+}
+
+func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
+	var last error
+	for attempt := 0; attempt < 30; attempt++ {
+		if err := pool.Ping(ctx); err == nil {
+			return nil
+		} else {
+			last = err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+	return fmt.Errorf("after 30 attempts: %w", last)
+}

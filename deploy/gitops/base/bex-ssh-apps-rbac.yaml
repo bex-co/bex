@@ -1,0 +1,33 @@
+# The SSH gateway alone may read App targets and attach to their containers in
+# the configured tenant namespace. This Role is deliberately separate from
+# bex-api's read-only pod Role: a regression adding pods/exec to the HTTP API
+# becomes visible in review and structural tests. Nothing here is cluster-wide.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-ssh-gateway-apps
+  namespace: default
+rules:
+  - apiGroups: ["app.bex.co"]
+    resources: ["apps"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-ssh-gateway-apps
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-ssh-gateway-apps
+subjects:
+  - kind: ServiceAccount
+    name: bex-ssh-gateway
+    namespace: bex-system

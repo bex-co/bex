@@ -8,18 +8,77 @@
 #   3. promtool check + unit-test of the platform alerting rules embedded in
 #      prometheus.yaml (w3/m6), against deploy/gitops/base/rules/alerts_test.yml.
 # Run locally before pushing gitops changes; CI runs it via .github/workflows/gitops.yml.
-# Requires: kubectl (built-in kustomize), helm, yq v4. Optional: fga, promtool
+# Requires: kubectl (built-in kustomize), helm, yq v4, ssh-keygen. Optional: fga, promtool
 # (steps skipped with a WARN when absent; CI installs both).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 fail=0
 
+echo "==> SSH activation safety gates"
+bash scripts/ssh-activate.test.sh || { echo "FAIL: SSH activation safety gates" >&2; fail=1; }
+
 for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
   echo "==> kustomize build $dir"
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
+
+# App SSH gateway trust-boundary guard (w2/m39, docs/ADR035-ssh.md): only the
+# namespace Role may grant pods/exec, and it grants create only. The bex-api
+# Role must stay read-only for pods and must never acquire exec.
+echo "==> SSH gateway pods/exec isolation"
+SSH_RBAC="deploy/gitops/base/bex-ssh-apps-rbac.yaml"
+exec_verbs="$(yq -N '. | select(.kind == "Role") | .rules[] | select(.resources[] == "pods/exec") | .verbs | join(",")' "$SSH_RBAC")"
+if [ "$exec_verbs" != "create" ]; then
+  echo "FAIL: SSH gateway pods/exec verbs are '$exec_verbs', want exactly create" >&2
+  fail=1
+fi
+if yq -N '. | select(.kind == "Role" or .kind == "ClusterRole") | .rules[]? | .resources[]?' \
+    deploy/gitops/base/bex-api-apps-rbac.yaml lego/operator/config/api/rbac.yaml \
+    | grep -qx 'pods/exec'; then
+  echo "FAIL: bex-api RBAC gained pods/exec — keep exec isolated to the SSH gateway" >&2
+  fail=1
+fi
+ssh_metrics_port="$(yq -N '.spec.ports[] | select(.name == "metrics") | .port' lego/operator/config/ssh/service.yaml)"
+if [ "$ssh_metrics_port" != "9090" ] || ! grep -q 'bex-ssh-gateway.bex-system.svc:9090' deploy/gitops/base/prometheus.yaml; then
+  echo "FAIL: SSH gateway metrics must remain internal on :9090 and Prometheus-scraped" >&2
+  fail=1
+fi
+if yq -N '. | select(.kind == "Role" or .kind == "ClusterRole") | .rules[]? | .resources[]?' \
+    "$SSH_RBAC" | grep -qx 'secrets'; then
+  echo "FAIL: SSH gateway RBAC must never grant Secret access" >&2
+  fail=1
+fi
+ssh_cluster_binding="$(kubectl kustomize lego/operator/config/default | yq -N '. | select(.kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-ssh-gateway") | .name')"
+if [ -n "$ssh_cluster_binding" ]; then
+  echo "FAIL: SSH gateway must not have cluster-wide RBAC" >&2
+  fail=1
+fi
+ssh_namespace="$(yq -N '. | select(.kind == "Role") | .metadata.namespace' "$SSH_RBAC")"
+ssh_namespaced_rules="$(yq -N '. | select(.kind == "Role") | .rules[] | [.apiGroups | join(","), .resources | join(","), .verbs | sort | join(",")] | join("|")' "$SSH_RBAC")"
+if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.co|apps|get,list\n|pods|get,list\n|pods/exec|create' ]; then
+  echo "FAIL: SSH gateway tenant Role must remain default-only App/pod get/list + pods/exec create" >&2
+  fail=1
+fi
+ssh_ingress="$(yq -N '.spec.ingress[] | [.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name", .ports[0].port] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
+if [ "$ssh_ingress" != $'traefik:2222\nmonitoring:9090' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH + monitoring metrics only" >&2
+  fail=1
+fi
+ssh_rendered="$(kubectl kustomize lego/operator/config/default)"
+ssh_service_name="$(yq -N 'select(.kind == "Service" and .metadata.name == "bex-ssh-gateway") | .metadata.name' <<<"$ssh_rendered")"
+ssh_route_service="$(yq -N 'select(.kind == "IngressRouteTCP" and .metadata.name == "bex-ssh-gateway") | .spec.routes[0].services[0].name' <<<"$ssh_rendered")"
+if [ -z "$ssh_service_name" ] || [ "$ssh_route_service" != "$ssh_service_name" ]; then
+  echo "FAIL: rendered SSH TCP route targets '$ssh_route_service', want rendered Service '$ssh_service_name'" >&2
+  fail=1
+fi
+ssh_prod_values="deploy/gitops/overlays/prod/values/traefik.values.yaml"
+ssh_prod_port="$(yq -N '[.ports.ssh.port, .ports.ssh.exposedPort, .ports.ssh.expose.default, .ports.ssh.protocol] | join(":")' "$ssh_prod_values")"
+if [ "$ssh_prod_port" != '2222:22:true:TCP' ]; then
+  echo "FAIL: production Traefik SSH port must expose TCP/22 to container entrypoint 2222; got '$ssh_prod_port'" >&2
+  fail=1
+fi
 
 # Platform-side tenant-isolation lockdown shape (w6/m6 t004, docs/ADR022-tenant-isolation.md
 # §platform-side). Each platform namespace must carry a default-deny-ingress

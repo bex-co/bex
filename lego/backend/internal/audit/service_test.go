@@ -49,6 +49,11 @@ type fakeStore struct {
 	purgeN         int64
 	purgeErr       error
 	purgeCalls     int
+
+	gotSessionPurgeBefore time.Time
+	sessionPurgeN         int64
+	sessionPurgeErr       error
+	sessionPurgeCalls     int
 }
 
 func (f *fakeStore) ListAuditEvents(_ context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error) {
@@ -64,6 +69,14 @@ func (f *fakeStore) PurgeAuditEvents(_ context.Context, before time.Time) (int64
 	f.gotPurgeBefore = before
 	f.purgeCalls++
 	return f.purgeN, f.purgeErr
+}
+
+func (f *fakeStore) PurgeSSHSessions(_ context.Context, before time.Time) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.gotSessionPurgeBefore = before
+	f.sessionPurgeCalls++
+	return f.sessionPurgeN, f.sessionPurgeErr
 }
 
 func (f *fakeStore) calls() (int, time.Time) {
@@ -138,6 +151,9 @@ func TestPurgeUsesDefaultRetention(t *testing.T) {
 	if !fs.gotPurgeBefore.Equal(want) {
 		t.Errorf("purge before = %s, want %s (now - %d default days)", fs.gotPurgeBefore, want, DefaultRetentionDays)
 	}
+	if !fs.gotSessionPurgeBefore.Equal(want) {
+		t.Errorf("SSH-session purge before = %s, want %s", fs.gotSessionPurgeBefore, want)
+	}
 }
 
 // TestPurgeUsesConfiguredRetention proves a caller-set RetentionDays actually
@@ -153,6 +169,9 @@ func TestPurgeUsesConfiguredRetention(t *testing.T) {
 	if !fs.gotPurgeBefore.Equal(want) {
 		t.Errorf("purge before = %s, want %s (now - 7 configured days)", fs.gotPurgeBefore, want)
 	}
+	if !fs.gotSessionPurgeBefore.Equal(want) {
+		t.Errorf("SSH-session purge before = %s, want %s", fs.gotSessionPurgeBefore, want)
+	}
 }
 
 // TestPurgeErrorDoesNotPanicOrRetryImmediately proves a store error during
@@ -164,6 +183,18 @@ func TestPurgeErrorDoesNotPanicOrRetryImmediately(t *testing.T) {
 	svc.purge(context.Background()) // must not panic
 	if fs.purgeCalls != 1 {
 		t.Errorf("purge called the store %d times, want exactly 1", fs.purgeCalls)
+	}
+	if fs.sessionPurgeCalls != 0 {
+		t.Errorf("SSH-session purge called %d times after event purge failed, want 0", fs.sessionPurgeCalls)
+	}
+}
+
+func TestSSHSessionPurgeErrorDoesNotPanicOrRetryImmediately(t *testing.T) {
+	fs := &fakeStore{sessionPurgeErr: errors.New("db unreachable")}
+	svc := &Service{Base: &core.Base{}, Store: fs}
+	svc.purge(context.Background())
+	if fs.purgeCalls != 1 || fs.sessionPurgeCalls != 1 {
+		t.Errorf("event/session purge calls = %d/%d, want 1/1", fs.purgeCalls, fs.sessionPurgeCalls)
 	}
 }
 

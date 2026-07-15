@@ -1,6 +1,35 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enServices: Record<string, TranslationEntry> = {
+  "services.connect": {
+    message: "Connect",
+    description: "Open the service connection menu",
+  },
+  "services.connectSSH": {
+    message: "SSH",
+    description: "SSH section label in the service connection menu",
+  },
+  "services.sshCopy": {
+    message: "Copy SSH command",
+    description: "Copy service SSH command button",
+  },
+  "services.sshCopied": {
+    message: "SSH command copied",
+    description: "Successful SSH command copy",
+  },
+  "services.sshCopyError": {
+    message: "Couldn't copy SSH command",
+    description: "Failed SSH command copy",
+  },
+  "services.sshUnavailable": {
+    message: "SSH isn't available",
+    description: "Service header state when no SSH address is advertised",
+  },
+  "services.sshUnavailableHint": {
+    message:
+      "SSH requires a running paid web, private, or background service and an active gateway.",
+    description: "Explanation for a service without an SSH address",
+  },
   "services.actions": {
     message: "Actions",
     description: "Accessible heading for service configuration row actions",

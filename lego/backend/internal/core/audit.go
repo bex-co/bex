@@ -97,10 +97,11 @@ var NoopAuditSink AuditSink = noopAuditSink{}
 // writeRelations are the Rel… constants that gate a mutation. These emit an
 // audit event on every call, allowed or denied.
 var writeRelations = map[string]bool{
-	RelCanOperate:    true,
-	RelCanCreate:     true,
-	RelCanManageKeys: true,
-	RelCanManage:     true,
+	RelCanOperate:       true,
+	RelCanCreate:        true,
+	RelCanManageKeys:    true,
+	RelCanManageSSHKeys: true,
+	RelCanManage:        true,
 }
 
 // readRelations are the Rel… constants that gate a read. A successful read

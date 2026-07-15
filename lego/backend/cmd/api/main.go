@@ -228,8 +228,9 @@ func main() {
 		}
 		// rec.Run is started after NewServer below, so CloneSecrets is set before
 		// the first reconcile pass (w2/m11).
-		deps.Store = st       // single writer of intent: suspend/resume write the row first
-		deps.DeployStore = st // deploy history (w2/m5): list/get/trigger read+write the same rows
+		deps.Store = st        // single writer of intent: suspend/resume write the row first
+		deps.SSHKeysStore = st // identity-scoped SSH public-key registry
+		deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
 		// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
@@ -327,10 +328,10 @@ func main() {
 		deps.Usage = usageSvc
 		go usageSvc.Run(ctx)
 
-		// Audit log retention (w4/m10): purges audit_events rows older than
-		// BEX_AUDIT_RETENTION_DAYS daily, same cadence/shape as usage's
-		// compaction loop above. The write side is base.Audit (wired above);
-		// this Service is the read verb + the sweep only.
+		// Audit log retention (w4/m10 + w2/m39): purges audit_events and SSH
+		// session metadata older than BEX_AUDIT_RETENTION_DAYS daily, same
+		// cadence/shape as usage's compaction loop above. The write side is
+		// base.Audit (wired above); this Service is the read verb + sweep only.
 		auditSvc := &audit.Service{Base: base, Store: st}
 		if v := os.Getenv("BEX_AUDIT_RETENTION_DAYS"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
@@ -378,6 +379,7 @@ func main() {
 	// on state/install failures.
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
+	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
 
 	// Per-workspace resource caps (w7/m9): 0 (unset) = unlimited, byte-identical.
 	// Render-Hobby defaults: BEX_MAX_SERVICES=25, BEX_MAX_POSTGRES=1, BEX_MAX_KEYVALUES=1.

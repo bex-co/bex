@@ -1,0 +1,13 @@
+resources:
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingressroutetcp.yaml
+  - networkpolicy.yaml
+  - pdb.yaml
+
+# Teach Kustomize that Traefik's custom TCP route contains a Service name.
+# Without this, the default overlay prefixes the Service to bex-ssh-gateway but
+# silently leaves the route pointing at the nonexistent ssh-gateway name.
+configurations:
+  - kustomizeconfig.yaml

@@ -33,8 +33,9 @@ import (
 // sync by hand: the api layer must not import the operator. The logs and metrics
 // features both select on these, so they live in the shared kernel.
 const (
-	PodLabelApp  = "app.bex.co/app"
-	AppContainer = "app"
+	PodLabelApp      = "app.bex.co/app"
+	PodLabelRevision = "app.bex.co/revision"
+	AppContainer     = "app"
 	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
 	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
 	// migration's output. Kept in sync by hand, like PodLabelApp above.
@@ -56,13 +57,14 @@ type Checker interface {
 // tenant (w1/m9), workspace:default otherwise (the platform bootstrap tenant,
 // and the legacy single-tenant mode when the store is off).
 const (
-	RelCanView          = "can_view"           // viewer and up: lists, details, metrics
-	RelCanViewLogs      = "can_view_logs"      // contributor and up (Render: viewers can't see logs)
-	RelCanOperate       = "can_operate"        // contributor and up: restart/suspend/resume
-	RelCanCreate        = "can_create"         // developer and up: create/delete resources
-	RelCanViewSensitive = "can_view_sensitive" // developer and up: connection strings
-	RelCanManageKeys    = "can_manage_keys"    // developer and up: workspace API keys
-	RelCanManage        = "can_manage"         // admin only: manage the workspace itself (rename/delete)
+	RelCanView          = "can_view"            // viewer and up: lists, details, metrics
+	RelCanViewLogs      = "can_view_logs"       // contributor and up (Render: viewers can't see logs)
+	RelCanOperate       = "can_operate"         // contributor and up: restart/suspend/resume
+	RelCanCreate        = "can_create"          // developer and up: create/delete resources
+	RelCanViewSensitive = "can_view_sensitive"  // developer and up: connection strings
+	RelCanManageKeys    = "can_manage_keys"     // developer and up: workspace API keys
+	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys
+	RelCanManage        = "can_manage"          // admin only: manage the workspace itself (rename/delete)
 
 	DefaultWorkspace = "workspace:default"
 	// DefaultTenant is the tenant/workspace id used when no control-plane tenant

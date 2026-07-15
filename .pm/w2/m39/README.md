@@ -1,18 +1,18 @@
 # w2 · m39 — SSH into running service instances
 
-**Worker:** worker2 **Goal:** A workspace member can register an SSH public key and use standard `ssh` or the official Render CLI to open an authorized terminal in an eligible running bex service instance. **Status:** todo
+**Worker:** worker2 **Goal:** A workspace member can register an SSH public key and use standard `ssh` or the official Render CLI to open an authorized terminal in an eligible running bex service instance. **Status:** in progress — implementation and static validation complete 2026-07-14; production activation/live acceptance remain open
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Freeze the SSH contract and threat model | 45m | — |
-| t002 | Store identity-scoped SSH public keys | 45m | t001 |
-| t003 | SSH-key management on REST · GraphQL · MCP | 45m | t002 |
-| t004 | Render `sshAddress` + running-instance discovery | 45m | t001 |
-| t005 | Dashboard SSH keys + copy-ready Connect surface | 45m | t003, t004 |
-| t006 | Isolated SSH gateway: public-key auth + service authorization | 60m | t002, t004 |
-| t007 | Bridge SSH shell/exec channels to Kubernetes exec | 60m | t006 |
+| t001 | Freeze the SSH contract and threat model — **DONE** | 45m | — |
+| t002 | Store identity-scoped SSH public keys — **DONE** | 45m | t001 |
+| t003 | SSH-key management on REST · GraphQL · MCP — **DONE** | 45m | t002 |
+| t004 | Render `sshAddress` + running-instance discovery — **DONE** | 45m | t001 |
+| t005 | Dashboard SSH keys + copy-ready Connect surface — **DONE** | 45m | t003, t004 |
+| t006 | Isolated SSH gateway: public-key auth + service authorization — **DONE** | 60m | t002, t004 |
+| t007 | Bridge SSH shell/exec channels to Kubernetes exec — **DONE** | 60m | t006 |
 | t008 | Production wiring: host key · port 22 · DNS · least-privilege RBAC | 60m | t007 |
 | t009 | Live acceptance with OpenSSH and the official Render CLI | 45m | t005, t008 |
 | t010 | Render parity | 30m | t009 |
@@ -23,6 +23,28 @@
 ## Definition of done
 
 For a running, non-free web, private, or background-worker service with a live deploy, an authorized workspace member can add an Ed25519/ECDSA/RSA public key, run `render ssh <service-name>` unmodified against bex-api, accept bex's stable SSH host key, and receive an interactive TTY inside the selected app container with the app's runtime environment. A specific Ready instance can be selected through Render's `GET /v1/services/{id}/instances` shape; a missing/disabled key, foreign-workspace service, suspended service, unsupported service type, free plan, non-Ready instance, or image without a shell fails closed with a useful error and no exec. Redeploy/restart closes attached sessions. The gateway is separately deployed, public-key-only, auditable without recording commands or terminal contents, and its ServiceAccount can only read eligible tenant pods and create `pods/exec` sessions. REST, GraphQL, MCP, dashboard, raw OpenSSH, and the official Render CLI are covered by meaningful tests or live acceptance evidence.
+
+## Implementation handoff (2026-07-14)
+
+t001–t007 and the code/manifests for t008 are implemented. Backend `go test ./...`, operator `make test`, dashboard `yarn test` (1108 tests) and `yarn lint`, backend race/lint checks, SSH RBAC/kustomize guards, shell syntax, Markdown formatting, and a full production Docker image build are green. `scripts/ssh-verify.sh` is the redacting t009 harness: it creates and cleans a paid two-replica fixture by default; pins the public host fingerprint; verifies raw any/specific-instance SSH, runtime environment, PTY resize, exit status, separate restart- and redeploy-driven session closure, stale/suspended/free/shell-less/unknown/deleted denial, and—when enabled in a TTY—the current unmodified Render CLI by service name and full instance id. Current upstream `c23438e` drops the chosen id in its service-id instance-picker callback, so the harness uses the CLI's supported direct instance-id argument for exact-target evidence rather than falsely crediting the broken menu. Full-matrix mode requires out-of-band viewer, foreign-workspace, static, and cron fixtures so the acceptance identity cannot manufacture its own weaker role or foreign workspace.
+
+The final rendered-manifest audit corrected two edge-path defects before activation: Kustomize now rewrites the prefixed Traefik TCP route to the prefixed gateway Service, and the production Traefik values explicitly expose the custom SSH entrypoint on LoadBalancer TCP/22 instead of only creating the container entrypoint. `scripts/gitops-validate.sh` guards both contracts. The same pass updated the pre-existing Traefik access-log values to the pinned chart 41 schema, so the complete GitOps kustomize/Helm/OpenFGA validation now passes (Prometheus rule validation remains an optional local skip when `promtool` is absent).
+
+On 2026-07-15 the opt-in gateway integration tests ran against the real local CAPD app cluster: protocol → client-go SPDY → the disposable pod's exact `app` container returned its runtime environment value and exit 37; deleting the pod closed the stream after Kubernetes' 30-second termination grace; a real shell-less `traefik/whoami` container returned the bounded exit-126 error. Additional deterministic coverage now rejects concurrent extra session channels, environment/SFTP/SCP requests, timeout/disconnect leaks, unknown plans, terminating or non-current-revision pods, legacy RSA/SHA-1 authentication, and audit-schema or metrics-label content fields. The gateway now exposes internal health and bounded Prometheus authentication/session metrics, with structural guards restricting SSH ingress to Traefik, metrics to monitoring, and all App/pod/exec RBAC to the configured tenant namespace with no gateway ClusterRole. The deployed gateway also stayed Pending with its stable host-key Secret absent, proving fail-closed startup. These are local mechanism tests, not t009's public-edge acceptance.
+
+The final coverage pass also reproduced backend CI with ephemeral PostgreSQL 17 and OpenFGA using the committed authorization model. A real-store integration test now covers SSH-key fingerprint lookup/dedup/ownership/deletion and session start/end/retention against PostgreSQL; dashboard hook tests cover query, create, duplicate/error, delete, refetch, toast, and busy-state behavior. RSA keys below 2048 bits are rejected, RSA SHA-2 succeeds on the wire, and forced legacy RSA/SHA-1 fails. This is an intentional security floor above Render's documented algorithm-only contract and is recorded in ADR035 and the parity ledger.
+
+Immediately before shipping, the work was rebased onto `5f3f383c`, which had added one-off jobs, deploy-start notifications, workflows/build-pipeline ADRs, and a broader Render-compatible instances surface. SSH migrations moved to `0029/0030`, the design record moved to ADR035, and SSH exact targeting now reuses the upstream opaque Pod-UID-derived instance ids while independently requiring Ready/current-revision/current-image pods. A fresh PostgreSQL 17 run applied the complete migration chain through `0030`; all product suites, lint/race checks, generated GraphQL types, GitOps rendering, and the final multi-binary image were rerun after reconciliation.
+
+After that smoke test, an OrbStack restart temporarily left the existing CAPD app-cluster API unavailable. It later recovered without recreation: both nodes returned Ready and the controller-manager returned 1/1 while cluster networking and workloads were still reconverging. The cluster was not recreated because doing so would delete shared local development namespaces. Deterministic suites, Ed25519-only host-key validation, manifest guards, and the final production-image build were rerun successfully.
+
+A subsequent disposable deployment exercised the exact final rendered gateway resources on that recovered cluster. The locally loaded production image reached Ready with both `/healthz` probes, served the internal Prometheus metrics endpoint, presented the installed Ed25519 fingerprint to real OpenSSH, rejected an unknown key with exit 255 and the bounded `rejected_key` metric, and presented the same fingerprint after a Deployment rollout. Kubernetes authorization checks granted the gateway App/pod read plus `pods/exec create` only in `default`, while Secret access and `pods/exec` in `bex-system` remained denied. The temporary OpenFGA service, host-key Secret, and Role/Binding were removed afterward; the gateway was restored to two fail-closed Pending pods with the production credential absent. This validates final probe/metrics/Secret/RBAC wiring locally, not t008's public edge or t009's authorized-session matrix.
+
+A read-only production preflight on 2026-07-15 found the `bex-operator` Argo Application Synced/Degraded at revision `32d6719bcbaa311fbe44327939b2d76cde28b1e8`. The desired bex-api pod is Ready, while an old ReplicaSet pod remains CrashLoopBackOff under a `ProgressDeadlineExceeded` condition; this was observed without mutation and is not attributed to the undeployed SSH worktree. Production has no `bex-ssh-gateway` Deployment, `bex-ssh-host-key` Secret, or `bex-ssh` activation ConfigMap, and Traefik exposes only ports 80 and 443. Its stable LoadBalancer IPv4 address is `49.12.20.236`; `ssh.bex.co` currently has Cloudflare-proxied A records `104.21.29.76` and `172.67.148.151` plus Cloudflare AAAA records, rather than resolving directly to that load balancer, and public TCP/22 is unreachable. The SSH A/AAAA records must be DNS-only because an ordinary Cloudflare proxy does not carry raw SSH.
+
+Activation is now guarded by a CI-covered, read-only `scripts/ssh-activate.sh --check`: the complete public A/AAAA set must exactly equal Traefik's LoadBalancer ingress-address set and TCP/22 must present the local stable Ed25519 host-key fingerprint before the script can publish `BEX_SSH_HOST` or restart bex-api. The regression proves a stale dual-stack record fails before host-key scanning or Kubernetes mutation, and that the non-check path mutates only after both gates pass.
+
+Therefore t008's public DNS/TCP/22 acceptance, t009's live matrix, parity promotion (t010), and closeout (t013) are deliberately not marked done. Do not set `BEX_SSH_HOST` or move this milestone to `done/` until the stable host-key Secret is installed, the image/manifests are deployed to the production app cluster, direct DNS is published, `scripts/ssh-activate.sh` succeeds, and the sanitized t009 evidence is recorded.
 
 ## Source + Goal linkage
 

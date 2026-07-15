@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package audit is the audit-log feature (w4/m10): a read verb over the
 // audit_events control-plane table (internal/store) plus the retention sweep
-// that bounds its growth. The WRITE side is core.Base.Audit
+// that bounds both ordinary events and SSH-session audit metadata. The WRITE side is core.Base.Audit
 // (core.AuditSink, satisfied directly by *store.PGStore) wired in the
 // composition root — this Service never writes an event, it only reads and
 // prunes what core.Base.Authorize/AuthorizeOn already recorded. Requires the
@@ -40,6 +40,7 @@ import (
 type AuditStore interface {
 	ListAuditEvents(ctx context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error)
 	PurgeAuditEvents(ctx context.Context, before time.Time) (int64, error)
+	PurgeSSHSessions(ctx context.Context, before time.Time) (int64, error)
 }
 
 // Service is the audit-log feature. Base carries the authz gate every verb
@@ -152,12 +153,17 @@ func (s *Service) purge(ctx context.Context) {
 		days = DefaultRetentionDays
 	}
 	before := s.Now().UTC().AddDate(0, 0, -days)
-	n, err := s.Store.PurgeAuditEvents(ctx, before)
+	events, err := s.Store.PurgeAuditEvents(ctx, before)
 	if err != nil {
-		log.Printf("audit: purge before %s: %v", before.Format(time.RFC3339), err)
+		log.Printf("audit: purge events before %s: %v", before.Format(time.RFC3339), err)
 		return
 	}
-	if n > 0 {
-		log.Printf("audit: purged %d events older than %s", n, before.Format(time.RFC3339))
+	sessions, err := s.Store.PurgeSSHSessions(ctx, before)
+	if err != nil {
+		log.Printf("audit: purge SSH sessions before %s: %v", before.Format(time.RFC3339), err)
+		return
+	}
+	if events+sessions > 0 {
+		log.Printf("audit: purged %d events and %d SSH sessions older than %s", events, sessions, before.Format(time.RFC3339))
 	}
 }

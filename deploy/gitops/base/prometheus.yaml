@@ -198,6 +198,12 @@ spec:
                 scrape_interval: 60s # every consuming alert is for: 5m+ — 60s is plenty
                 static_configs:
                   - targets: [prometheus-kube-state-metrics.monitoring.svc:8080]
+              # SSH gateway operational metrics carry bounded result/scope
+              # labels only—never subjects, targets, commands, or stream data.
+              - job_name: bex-ssh-gateway
+                scrape_interval: 15s
+                static_configs:
+                  - targets: [bex-ssh-gateway.bex-system.svc:9090]
               # kubelet /metrics (NOT cadvisor): only kubelet_volume_stats_* — the
               # PVC used/capacity bytes behind the PersistentVolumeFillingUp alert.
               # Same apiserver-proxy pattern as cadvisor; metric_relabel keeps just

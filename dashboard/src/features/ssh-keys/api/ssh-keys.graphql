@@ -1,0 +1,23 @@
+query SSHKeys {
+  sshKeys {
+    id
+    name
+    publicKey
+    fingerprint
+    createdAt
+  }
+}
+
+mutation CreateSSHKey($name: String!, $publicKey: String!) {
+  createSSHKey(name: $name, publicKey: $publicKey) {
+    id
+    name
+    publicKey
+    fingerprint
+    createdAt
+  }
+}
+
+mutation DeleteSSHKey($id: String!) {
+  deleteSSHKey(id: $id)
+}

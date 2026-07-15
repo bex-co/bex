@@ -65,6 +65,7 @@
           "can_manage": {},
           "can_manage_billing": {},
           "can_manage_keys": {},
+          "can_manage_ssh_keys": {},
           "can_operate": {},
           "can_view": {},
           "can_view_logs": {},
@@ -170,6 +171,37 @@
               {
                 "computedUserset": {
                   "relation": "admin"
+                }
+              }
+            ]
+          }
+        },
+        "can_manage_ssh_keys": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "viewer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "contributor"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "developer"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "billing"
                 }
               }
             ]

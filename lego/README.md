@@ -23,12 +23,13 @@ A Go workspace (`go.work`) of three modules. The dependency arrows point **one w
 
 > The Postgres **source of truth** (the "control plane" — tenants/apps/domains projected into App CRs) is **built into `backend/`** as `internal/store/`, opt-in: the api binary runs it when `BEX_CP_DB_URI` is set ([`../docs/ADR003-control-plane.md`](../docs/ADR003-control-plane.md)). Unset (today's prod default), `backend/` serves bex-api alone.
 
-## One image, two binaries
+## One image, multiple entrypoints
 
-The `Dockerfile` (build context is `lego/`) builds two binaries into one image:
+The `Dockerfile` (build context is `lego/`) builds the platform entrypoints into one image, including:
 
 - `/manager` — the operator (default entrypoint).
 - `/api` — bex-api; the Deployment overrides `command: ["/api"]`. `api mcp-stdio` serves the MCP adapter over stdio for a local agent.
+- `/ssh-gateway` — the isolated public-key SSH server; its separate Deployment and ServiceAccount alone receive namespaced `pods/exec` permission ([ADR035](../docs/ADR035-ssh.md)).
 
 Deploy manifests live in [`operator/config/`](operator/config); Argo reconciles `lego/operator/config/default` ([`../deploy/gitops/base/bex.yaml`](../deploy/gitops/base/bex.yaml)).
 

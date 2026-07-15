@@ -51,7 +51,7 @@ func WriteErr(w http.ResponseWriter, err error) {
 		code = http.StatusNotFound
 		id = "not_found"
 	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrLogStoreUnavailable),
-		errors.Is(err, ErrAPIKeysUnavailable),
+		errors.Is(err, ErrAPIKeysUnavailable), errors.Is(err, ErrSSHKeysUnavailable),
 		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
 		errors.Is(err, ErrSecretsUnavailable), errors.Is(err, ErrWorkspacesUnavailable),
 		errors.Is(err, ErrUsageUnavailable), errors.Is(err, ErrDeploysUnavailable),

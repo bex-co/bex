@@ -17,6 +17,7 @@ import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/s
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
 import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
 import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
+import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -67,6 +68,7 @@ export default function SettingsPage() {
           <RegistryCredentialsPanel />
           <WebhooksPanel />
           <ApiKeysPanel />
+          <SSHKeysPanel />
           <NotificationSettingsPanel />
           <SecurityComplianceSection />
         </div>

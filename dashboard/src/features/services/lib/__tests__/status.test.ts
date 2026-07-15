@@ -83,6 +83,7 @@ describe("toServiceView", () => {
       phase: "Hibernated",
       url: "https://app.onbex.co",
       createdAt: "2026-01-01T00:00:00Z",
+      sshAddress: null,
       replicas: 1,
       revision: "abc123",
       plan: null,
@@ -114,6 +115,12 @@ describe("toServiceView", () => {
 
   it("carries the plan through when the wire Service has one", () => {
     expect(toServiceView(node({ plan: "pro_plus" })).plan).toBe("pro_plus");
+  });
+
+  it("carries a copy-ready SSH address only when the detail query selected it", () => {
+    expect(toServiceView(node({ sshAddress: "srv-example@ssh.bex.co" })).sshAddress).toBe(
+      "srv-example@ssh.bex.co",
+    );
   });
 
   it("falls back to id for a missing name and null for a missing url", () => {

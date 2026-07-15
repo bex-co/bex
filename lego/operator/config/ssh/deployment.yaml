@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssh-gateway
+  namespace: system
+  labels:
+    app.kubernetes.io/name: bex-ssh-gateway
+    app.kubernetes.io/component: ssh-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bex-ssh-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bex-ssh-gateway
+        app.kubernetes.io/component: ssh-gateway
+    spec:
+      serviceAccountName: ssh-gateway
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - key: bex.co/platform
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ssh-gateway
+          image: controller:latest
+          imagePullPolicy: Always
+          command: ["/ssh-gateway"]
+          env:
+            - name: BEX_SSH_ADDR
+              value: ":2222"
+            - name: BEX_SSH_METRICS_ADDR
+              value: ":9090"
+            - name: BEX_SSH_HOST_KEY_PATH
+              value: /var/run/bex-ssh-host-key/ssh_host_ed25519_key
+            - name: BEX_API_NAMESPACE
+              value: default
+            - name: BEX_CP_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: bex-db-app
+                  key: uri
+            - name: BEX_OPENFGA_URL
+              value: http://openfga.auth.svc:8080
+            - name: BEX_OPENFGA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bex-openfga
+                  key: token
+                  optional: true
+            - name: BEX_SSH_HANDSHAKE_TIMEOUT
+              value: 10s
+            - name: BEX_SSH_SESSION_TIMEOUT
+              value: 4h
+            - name: BEX_SSH_MAX_SESSIONS
+              value: "100"
+            - name: BEX_SSH_MAX_SESSIONS_PER_IDENTITY
+              value: "5"
+          ports:
+            - name: ssh
+              containerPort: 2222
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: host-key
+              mountPath: /var/run/bex-ssh-host-key
+              readOnly: true
+      volumes:
+        - name: host-key
+          secret:
+            secretName: bex-ssh-host-key
+            defaultMode: 0440

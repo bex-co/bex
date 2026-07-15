@@ -54,6 +54,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -74,6 +75,7 @@ type Server struct {
 	Logs          *logs.Service
 	Metrics       *metrics.Service
 	APIKeys       *apikeys.Service
+	SSHKeys       *sshkeys.Service
 	Postgres      *postgres.Service
 	KeyValue      *keyvalue.Service
 	Secrets       *secrets.Service
@@ -160,7 +162,14 @@ type Deps struct {
 	ReplicationLag metrics.ReplicationLagSource
 	KeyValueStats  metrics.KeyValueStatsSource
 	APIKeys        apikeys.APIKeyStore
-	Store          apps.IntentStore
+	// SSHKeysStore persists identity-scoped public keys and resolves their
+	// fingerprints for the separately deployed SSH gateway. nil => management
+	// verbs report ErrSSHKeysUnavailable.
+	SSHKeysStore sshkeys.Store
+	// SSHHost is the public gateway hostname advertised through Render's
+	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
+	SSHHost string
+	Store   apps.IntentStore
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -409,8 +418,15 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Mailer:     d.Mailer,
 		Identities: identityEmailLookup{d.Identities},
 	}
+	sshHost := ""
+	if d.SSHKeysStore != nil {
+		// Advertising an SSH address without the identity-key store would send
+		// every client to a gateway they cannot enroll a key for. The activation
+		// ConfigMap is necessary, but the backing key feature must be live too.
+		sshHost = d.SSHHost
+	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -425,6 +441,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			KeyValueStats:              d.KeyValueStats,
 		},
 		APIKeys:   &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, Selections: selections},
+		SSHKeys:   &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
 		Postgres:  pg,
 		KeyValue:  kv,
 		Secrets:   secretsSvc,
@@ -515,6 +532,9 @@ func (s *Server) features() []any {
 	}
 	if s.APIKeys != nil {
 		out = append(out, s.APIKeys)
+	}
+	if s.SSHKeys != nil {
+		out = append(out, s.SSHKeys)
 	}
 	if s.Postgres != nil {
 		out = append(out, s.Postgres)
