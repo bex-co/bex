@@ -100,31 +100,24 @@ spec:
             resolv-conf: /etc/kubernetes/resolv.conf
             rotate-server-certificates: "true"
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
+      # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
+      # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
+      # imageName: bex-worker — recipe infra/packer/bex-worker.pkr.hcl, w1/m36 t001).
+      # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
+      # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
+      # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
+      # wires the runtime up from the baked binaries + the cloud-init files: above;
+      # none of it touches the network. apt list trimmed to nothing here (socat/
+      # logrotate are baked; at/jq/unzip/mtr/apt-transport-https were unused — t003).
+      # ⚠️ These commands assume the baked image — a change that points imageName
+      # back at ubuntu-24.04 boots a node with no container runtime (guarded by
+      # scripts/clusterapi-validate.sh).
       preKubeadmCommands:
         - set -x
         - grep VERSION= /etc/os-release; uname -a
-        - export CONTAINERD=1.7.26
-        - export RUNC=1.2.5
-        - export KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//')
-        - export TRIMMED_KUBERNETES_VERSION=$(echo v1.31.0 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
-        - ARCH="$(dpkg --print-architecture)"
-        - localectl set-locale LANG=en_US.UTF-8
-        - localectl set-locale LANGUAGE=en_US.UTF-8
-        - apt-get update -y
-        - apt-get -y install at jq unzip wget socat mtr logrotate apt-transport-https
         - sed -i '/swap/d' /etc/fstab
         - swapoff -a
         - modprobe overlay && modprobe br_netfilter && sysctl --system
-        - wget https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.$ARCH
-        - wget https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.sha256sum
-        - sha256sum --check --ignore-missing runc.sha256sum
-        - install runc.$ARCH /usr/local/sbin/runc
-        - rm -f runc.$ARCH runc.sha256sum
-        - wget https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz
-        - wget https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
-        - sha256sum --check containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
-        - tar -zxf containerd-$CONTAINERD-linux-$ARCH.tar.gz -C /usr/local
-        - rm -f containerd-$CONTAINERD-linux-$ARCH.tar.gz containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
         - mkdir -p /etc/containerd
         - containerd config default > /etc/containerd/config.toml
         - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
@@ -139,15 +132,9 @@ spec:
         # Enable per-registry config so the hosts.toml above takes effect.
         - sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
         - systemctl daemon-reload && systemctl enable containerd && systemctl start containerd
-        - mkdir -p /etc/apt/keyrings/
-        - curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        - echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-        - apt-get update
-        - apt-get install -y kubelet="$KUBERNETES_VERSION-*" kubeadm="$KUBERNETES_VERSION-*" kubectl="$KUBERNETES_VERSION-*" bash-completion && apt-mark hold kubelet kubectl kubeadm && systemctl enable kubelet
-        - kubeadm config images pull --kubernetes-version $KUBERNETES_VERSION
+        - systemctl enable kubelet
         - echo 'source <(kubectl completion bash)' >>/root/.bashrc
         - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
-        - apt-get -y autoremove && apt-get -y clean all
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
@@ -209,7 +196,9 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-tenant-0
+        # Repointed to the rotated template (w1/m36 t001) — this change is what
+        # rolls the pool onto the baked snapshot.
+        name: bex-tenant-0-baked
       version: v1.31.0
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
@@ -564,12 +553,25 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
-  name: bex-tenant-0
+  # Rotated name (w1/m36 t001): HCloudMachineTemplate.Spec is immutable (CAPH
+  # v1.1.7 rejects any Spec update), so moving imageName off ubuntu-24.04 needs a
+  # NEW template the MachineDeployment repoints to — that repoint is what rolls
+  # the pool onto the baked snapshot. The old `bex-tenant-0` template lingers
+  # unreferenced after the roll; delete it by hand (see the roll runbook in
+  # .pm/w1/m36/README.md — `kubectl delete hcloudmachinetemplate bex-tenant-0`).
+  # Next image bump = rotate the name again (…-baked → …-baked2).
+  name: bex-tenant-0-baked
   namespace: default
 spec:
   template:
     spec:
-      imageName: ubuntu-24.04
+      # Baked worker snapshot carrying runc/containerd/kubelet (recipe:
+      # infra/packer/bex-worker.pkr.hcl). CAPH matches imageName against the
+      # snapshot's `caph-image-name` label (docs/caph node-image convention).
+      # ⚠️ Do NOT apply this overlay until the `bex-worker` snapshot exists in
+      # the project (run .github/workflows/snapshot.yml) — otherwise CAPH cannot
+      # resolve the image and new machines never provision.
+      imageName: bex-worker
       placementGroupName: tenant-0
       type: cx33
 ---
@@ -752,6 +754,11 @@ spec:
             - key: bex.co/platform
               value: "true"
               effect: NoSchedule
+      # STAGED ROLL (w1/m36): platform pool still boots ubuntu-24.04 and provisions
+      # the old way (downloads at boot) until Push 2b rolls it onto the baked
+      # snapshot in a maintenance window. Keep this in lockstep with the tenant
+      # KubeadmConfigTemplate when flipping — mirror the trim exactly (minus the
+      # zot certs.d, which is tenant-only).
       preKubeadmCommands:
         - set -x
         - grep VERSION= /etc/os-release; uname -a
@@ -831,12 +838,20 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
+        # STAGED ROLL (w1/m36): still points at the ubuntu-24.04 template; Push 2b
+        # repoints this to bex-platform-baked to roll the platform pool.
         name: bex-platform
       version: v1.31.0
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
+  # STAGED ROLL (w1/m36): the tenant pool moved to the baked snapshot first
+  # (bex-tenant-0-baked, above); the platform pool stays on ubuntu-24.04 until a
+  # monitored maintenance window — rolling it evicts the stateful platform stack
+  # (CNPG, OpenBao's 2-member raft needs a manual unseal on reschedule, Traefik).
+  # Push 2b flips this to bex-platform-baked / imageName: bex-worker + trims the
+  # preKubeadmCommands below, exactly mirroring the tenant pool.
   name: bex-platform
   namespace: default
 spec:

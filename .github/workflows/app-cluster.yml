@@ -50,10 +50,19 @@ jobs:
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
 
       # --- tools ---
+      # Cache the ~65MB clusterctl binary keyed on its version (w1/m36 t004): a
+      # warm cache skips the download; bumping CLUSTERCTL_VERSION busts the key.
+      - name: cache clusterctl
+        uses: actions/cache@v4
+        with:
+          path: /tmp/clusterctl
+          key: clusterctl-${{ env.CLUSTERCTL_VERSION }}-linux-amd64
       - name: install clusterctl
         run: |
-          curl -fsSL -o /tmp/clusterctl \
-            "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
+          if [ ! -x /tmp/clusterctl ]; then
+            curl -fsSL -o /tmp/clusterctl \
+              "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
+          fi
           sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
           clusterctl version
 
