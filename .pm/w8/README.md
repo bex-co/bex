@@ -25,4 +25,4 @@
 - `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gate audited 2026-07-14: not ready; `m11` first makes collector coverage provable, then the note needs 28 days of real rows and an explicit decision on incomplete outbound-egress coverage
 - `003.md` — Key Value (Valkey) version upgrade assessment: does Render support KV version changes at all? If yes, mirror the m12 pattern; if no, record and close ← from `/pm-brainstorm` round 3, 2026-07-14
 
-> `002.md` promoted to **m9** 2026-07-13; note moved to `done/`.
+> `002.md` promoted to **m9** 2026-07-13; note moved to `done/`. `004.md` (KeyValue `maxmemoryPolicy` underscore-vs-hyphen, filed by `w9/m2`'s Render CLI compatibility walk) fixed 2026-07-15 (`dfff3034`), re-verified live end to end (create/list/get/update/suspend/resume/delete) — note moved to `done/`.

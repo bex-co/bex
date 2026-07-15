@@ -36,6 +36,8 @@
 ## Inbox
 
 - `007.md` — cron `lastSuccessfulRunAt` — fold into **m36** as an add-task when picked up ← from `/pm-brainstorm` round 7, 2026-07-14
+- `008.md` — `Service.autoDeploy` bool-vs-string-enum + `Deploy.image` string-vs-object wire mismatches — **partially fixed 2026-07-15** (`dfff3034`: `autoDeploy` fixed and re-verified live for `services` list); `services create`/`delete`/`instances` and `deploys list`'s `Deploy.image` mismatch still need a retest before this closes ← from `w9/m2` (Render CLI compatibility), 2026-07-15
+- `009.md` — `POST /v1/blueprints/validate` 400s on a plain App CR manifest — needs a real `render.yaml` retest to confirm it's a genuine gap vs. expected input-shape rejection ← from `w9/m2` (Render CLI compatibility), 2026-07-15
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
 

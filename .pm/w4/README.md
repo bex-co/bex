@@ -36,6 +36,7 @@
 - `013.md` — honor the audit-log `direction` param (or 400 it) — the "nothing accepted is ignored" principle; sub-hour ← from `/pm-brainstorm` round 3, 2026-07-14
 - `014.md` — `suspenders` array on the service object (emit `["user"]` on user-suspends; sub-hour) ← from `/pm-brainstorm` round 7, 2026-07-14
 - `015.md` — `AuthorizeApp`'s cross-tenant name-collision fallback loop can now serialize multiple synchronous denied-read audit writes on one request (up to `auditRecordTimeout` each); a design decision (detach from the response path, or cap per-candidate audits), not a drive-by fix ← from `/simplify` over m20's diff, 2026-07-14
+- `016.md` — `GET /v1/users` (Render's `whoami`) — **route shipped 2026-07-15** (`dfff3034`), but re-verified live: a machine (API-key) caller's email/name resolution still returns empty instead of the tenant's admin identity; resolution bug stays open ← from `w9/m2` (Render CLI compatibility), 2026-07-15
 
 > `001.md` (renumbered `012.md` in `done/` — its number collided with the long-done original `001`) and `011.md` grouped into **m20** 2026-07-14; notes moved to `done/`.
 
