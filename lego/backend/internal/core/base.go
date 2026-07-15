@@ -85,6 +85,12 @@ func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
 // inherits the same cross-tenant gate from the one shared fetch.
 const LabelTenant = "bex.co/tenant"
 
+// LabelAppID carries a service's Render-shaped typed id (srv-<xid>). The
+// control-plane store mints it and stamps it on projected App CRs; API-created
+// Apps in store-less mode receive one too. Keeping the label key in core lets
+// every feature resolve a public service id without importing the store.
+const LabelAppID = "bex.co/app-id"
+
 // LabelServiceName carries an App CR's PUBLIC name (w4/m19) — the workspace-
 // scoped name a caller creates and reaches it by, as opposed to metadata.Name,
 // which for a store-managed App is now CRName(tenant, name) and so no longer
@@ -406,14 +412,15 @@ func (b *Base) Tenant(ctx context.Context) (string, bool) {
 // authorized against its OWN workspace instead (resourceWorkspace), which is
 // what fixes the caller-default/resource-workspace intersection bug above.
 //
-// name is resolved the same three-tier way GetApp resolves it (w4/m19, see
-// appCandidateNames + GetApp's own doc): the acting workspace's own object
-// name first, then the bare name (hand-applied or pre-w4/m19 CRs), then —
-// only if neither direct candidate exists — every App carrying `name` as
-// LabelServiceName, authorized in turn via resourceWorkspace/authorizeAndAudit
-// so a denied candidate still leaves its own audit trail (consistent with the
-// resolveErr-before-the-check case above) until one the caller may access is
-// found or the search is exhausted.
+// name first resolves as an exact LabelAppID (the Render-compatible srv- id),
+// then follows the same three-tier name lookup as GetApp (w4/m19, see
+// appCandidateNames + GetApp's own doc): the acting workspace's own object name,
+// the bare name (hand-applied or pre-w4/m19 CRs), then — only if neither direct
+// candidate exists — every App carrying `name` as LabelServiceName, authorized
+// in turn via resourceWorkspace/authorizeAndAudit so a denied candidate still
+// leaves its own audit trail (consistent with the resolveErr-before-the-check
+// case above) until one the caller may access is found or the search is
+// exhausted.
 func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
 	verb := callerVerb(verbFrameSkip)
 	acting, actingErr := b.resolveWorkspace(ctx)
@@ -422,6 +429,21 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		if err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(named), ServiceTarget(name), verb, actingErr); err != nil {
 			return nil, err
 		}
+	}
+	// Render clients address services by their typed srv- id. The App CR keeps
+	// that public id in LabelAppID while metadata.Name may be tenant-prefixed,
+	// so resolve the unique id before trying the name-compatible fallbacks.
+	var byID appv1alpha1.AppList
+	if err := b.Client.List(ctx, &byID,
+		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
+		return nil, err
+	}
+	for i := range byID.Items {
+		object, resolveErr := b.resourceWorkspace(ctx, byID.Items[i].Labels)
+		if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err != nil {
+			return nil, err
+		}
+		return &byID.Items[i], nil
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
@@ -583,16 +605,18 @@ func appCandidateNames(acting, name string) []string {
 	return []string{CRName(acting, name), name}
 }
 
-// GetApp fetches one App by name, mapping absence to ErrNotFound, and gates it
-// on `relation` — the SAME relation the calling verb just authorized. Shared by
-// the apps/logs/metrics/secrets/deploys/events/envgroups services — each needs
-// "does this App exist / read its status" without reimplementing the not-found
-// mapping, and each inherits the cross-workspace gate from this one fetch (a
-// caller who knows an App name must not read its logs, metrics, or secrets just
-// because apps.Service alone learned to check).
+// GetApp fetches one App by typed service id or name, mapping absence to
+// ErrNotFound, and gates it on `relation` — the SAME relation the calling verb
+// just authorized. Shared by the apps/logs/metrics/secrets/deploys/events/
+// envgroups services — each needs "does this App exist / read its status"
+// without reimplementing the not-found mapping, and each inherits the
+// cross-workspace gate from this one fetch (a caller who knows an App name must
+// not read its logs, metrics, or secrets just because apps.Service alone learned
+// to check).
 //
-// name is resolved against TWO candidate object names (w4/m19): CRName(acting
-// workspace, name) first, then the bare name. A store-managed App created
+// An exact LabelAppID match is tried first. Otherwise name is resolved against
+// TWO candidate object names (w4/m19): CRName(acting workspace, name) first,
+// then the bare name. A store-managed App created
 // after this scheme shipped is object-named the first way, so its own
 // workspace's caller finds it on the first try — including at create time,
 // which is what lets two workspaces both claim "web" without one shadowing
@@ -639,6 +663,19 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	acting, err := b.resolveWorkspace(ctx)
 	if err != nil {
 		return nil, err
+	}
+	// Prefer an exact public id match. Name lookup remains below for backwards
+	// compatibility with bex-native callers and hand-applied legacy CRs.
+	var byID appv1alpha1.AppList
+	if err := b.Client.List(ctx, &byID,
+		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
+		return nil, err
+	}
+	for i := range byID.Items {
+		if err := b.AuthorizeLabeled(ctx, relation, byID.Items[i].Labels); err != nil {
+			return nil, err
+		}
+		return &byID.Items[i], nil
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {

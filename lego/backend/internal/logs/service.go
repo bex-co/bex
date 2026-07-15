@@ -366,9 +366,11 @@ func (q LogQuery) keep(e LogEntry) bool {
 // when no source is wired. It's the unfiltered convenience read; the REST and
 // MCP adapters go through QueryLogs (Render's type/text/time filters).
 func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, name); err != nil {
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, name)
+	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
+	resource := appLogResource(app.Labels, name)
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
@@ -377,9 +379,11 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
-		return s.History(ctx, s.Namespace, LogQuery{App: name, Limit: tail}.normalized())
+		entries, err := s.History(ctx, s.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
+		return setLogResource(entries, resource), err
 	}
-	return s.collectPodLogs(ctx, LogQuery{App: name}, tail)
+	entries, err := s.collectPodLogs(ctx, LogQuery{App: app.Name}, tail)
+	return setLogResource(entries, resource), err
 }
 
 // QueryLogs returns an App's log lines matching the filter set, oldest-first and
@@ -389,9 +393,16 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 // rather than returning unfiltered lines. `type=build` without the store is a
 // 503, not a silent empty — the same honesty rule as request logs.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App); err != nil {
+	requested := q.App
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
+	if err != nil {
 		return nil, err
 	}
+	resource := appLogResource(app.Labels, requested)
+	// Logs are indexed and pod-selected by the App CR's actual metadata.name,
+	// which may be tenant-prefixed. The public name/srv-id is only an API
+	// address and must not leak into the Kubernetes label selector.
+	q.App = app.Name
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
@@ -404,12 +415,14 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// has no predeploy stream — like the SSE tail always reads pod logs. validate()
 	// guarantees predeploy is requested alone, so it owns the whole response.
 	if slices.Contains(q.Types, LogTypePreDeploy) {
-		return s.collectPreDeployLogs(ctx, q)
+		entries, err := s.collectPreDeployLogs(ctx, q)
+		return setLogResource(entries, resource), err
 	}
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
-		return s.History(ctx, s.Namespace, q)
+		entries, err := s.History(ctx, s.Namespace, q)
+		return setLogResource(entries, resource), err
 	}
 	if q.needsStore() {
 		return nil, core.ErrLogStoreUnavailable
@@ -418,7 +431,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err != nil {
 		return nil, err
 	}
-	return q.filterAndCap(entries), nil
+	return setLogResource(q.filterAndCap(entries), resource), nil
 }
 
 // filterAndCap applies the line-level search/time filters (in place — skipping
@@ -452,6 +465,7 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
+	q.App = app.Name
 	if !slices.Contains(DiscoverableLabels, label) {
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
@@ -479,9 +493,13 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 // refuses the store-only ones (ErrLogStoreUnavailable), exactly as the fallback
 // query path does. Requires a PodLogStream (nil => core.ErrLogsUnavailable).
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App); err != nil {
+	requested := q.App
+	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
+	if err != nil {
 		return err
 	}
+	resource := appLogResource(app.Labels, requested)
+	q.App = app.Name
 	if err := q.validate(); err != nil {
 		return err
 	}
@@ -530,11 +548,36 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			if !q.keep(e) {
 				continue
 			}
+			setLogEntryResource(&e, resource)
 			if err := emit(e); err != nil {
 				return err
 			}
 		}
 	}
+}
+
+// appLogResource is the public resource identity each returned log line carries.
+// Store-managed and API-created Apps use their Render-shaped srv- id; legacy
+// hand-applied CRs retain the identifier the caller used.
+func appLogResource(labels map[string]string, requested string) string {
+	if id := labels[core.LabelAppID]; id != "" {
+		return id
+	}
+	return requested
+}
+
+func setLogResource(entries []LogEntry, resource string) []LogEntry {
+	for i := range entries {
+		setLogEntryResource(&entries[i], resource)
+	}
+	return entries
+}
+
+func setLogEntryResource(entry *LogEntry, resource string) {
+	if entry.Labels == nil {
+		entry.Labels = map[string]string{}
+	}
+	entry.Labels["service"] = resource
 }
 
 // collectPodLogs reads up to tail lines from every replica of an App the query's

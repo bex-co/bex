@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -176,6 +177,10 @@ type CronRunView struct {
 // observed status. Service returns this; each adapter maps it to its own wire
 // format (the REST/GraphQL adapters render it in Render's Service shape).
 type AppView struct {
+	// ID is the Render-shaped typed service id (srv-<xid>). Store-managed Apps
+	// carry it in core.LabelAppID; store-less API creates mint the same label.
+	// Legacy hand-applied CRs fall back to Name for backwards compatibility.
+	ID   string `json:"id"`
 	Name string `json:"name"`
 	// Slug is the globally-unique platform-host segment (Render's "slug"
 	// field on the service object; bex's spec.subdomain, minted w4/m19) —
@@ -397,6 +402,11 @@ func cleanGlobs(field string, globs []string) ([]string, error) {
 }
 
 func view(a *appv1alpha1.App) AppView {
+	name := publicName(a)
+	appID := a.Labels[core.LabelAppID]
+	if appID == "" {
+		appID = name
+	}
 	created := ""
 	if !a.CreationTimestamp.IsZero() {
 		created = a.CreationTimestamp.UTC().Format(time.RFC3339)
@@ -418,7 +428,8 @@ func view(a *appv1alpha1.App) AppView {
 	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
 	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
 	return AppView{
-		Name:            publicName(a),
+		ID:              appID,
+		Name:            name,
 		Slug:            a.Spec.PlatformSubdomain(a.Name),
 		DisplayName:     a.Spec.DisplayName,
 		Type:            svcType,
@@ -812,6 +823,15 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// workspace-unique and can collide across tenants.
 		a.Spec.Subdomain = row.Slug
 	}
+	// The control-plane row already supplied its canonical id above. A direct
+	// API create has no row, so persist an equally Render-shaped service id on
+	// the CR; all later reads and lifecycle verbs can resolve it by label.
+	if a.Labels == nil {
+		a.Labels = map[string]string{}
+	}
+	if a.Labels[core.LabelAppID] == "" {
+		a.Labels[core.LabelAppID] = ids.New(ids.Service)
+	}
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 	// its first build authenticates. create-owned only: never set on a spec
 	// that already hand-pointed cloneSecret elsewhere.
@@ -937,6 +957,12 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		// effectiveHosts) — never req.Name, which is only workspace-unique and
 		// can collide across tenants.
 		a.Spec.Subdomain = row.Slug
+	}
+	if a.Labels == nil {
+		a.Labels = map[string]string{}
+	}
+	if a.Labels[core.LabelAppID] == "" {
+		a.Labels[core.LabelAppID] = ids.New(ids.Service)
 	}
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 	// its first build authenticates. create-owned only: never set on a spec

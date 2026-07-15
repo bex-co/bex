@@ -237,6 +237,35 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	}
 }
 
+func TestRESTLogsResolveTypedIDToTenantPrefixedApp(t *testing.T) {
+	app := sampleApp(core.CRName("tea-a", "web"))
+	app.Labels = map[string]string{
+		core.LabelTenant:      "tea-a",
+		core.LabelServiceName: "web",
+		core.LabelAppID:       "srv-c185th5c2rvvnhbfiltg",
+	}
+	physicalName := app.Name
+	svc := newService(map[string][]string{
+		"web-1": {"2026-07-05T00:00:01Z booted"},
+	}, app, podFor(physicalName, "web-1"))
+
+	rec := serveREST(svc, "GET", "/v1/logs?resource=srv-c185th5c2rvvnhbfiltg")
+	var env renderLogList
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("typed-id logs => %d: %v %s", rec.Code, err, rec.Body.String())
+	}
+	if len(env.Logs) != 1 || env.Logs[0].Message != "booted" {
+		t.Fatalf("typed-id logs = %+v, want the tenant-prefixed App's line", env.Logs)
+	}
+	labels := map[string]string{}
+	for _, label := range env.Logs[0].Labels {
+		labels[label.Name] = label.Value
+	}
+	if labels["resource"] != "srv-c185th5c2rvvnhbfiltg" {
+		t.Fatalf("resource label = %q, want public typed id", labels["resource"])
+	}
+}
+
 func TestRESTLogsTypeAndErrors(t *testing.T) {
 	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z hi"}},
 		sampleApp("web"), podFor("web", "web-1"))

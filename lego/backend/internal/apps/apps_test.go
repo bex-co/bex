@@ -976,6 +976,33 @@ func TestRESTFragmentRenderShape(t *testing.T) {
 	}
 }
 
+func TestRESTUsesTypedServiceIDForResponseAndLifecycle(t *testing.T) {
+	app := managedApp(core.CRName("tea-a", "web"), "srv-c185th5c2rvvnhbfiltg")
+	app.Labels[core.LabelServiceName] = "web"
+	svc, cl := newService(nil, app)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services", nil))
+	var list []serviceWithCursor
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 {
+		t.Fatalf("list: %v %+v", err, list)
+	}
+	if list[0].Service.ID != "srv-c185th5c2rvvnhbfiltg" || list[0].Service.Name != "web" {
+		t.Fatalf("service identity = id %q name %q", list[0].Service.ID, list[0].Service.Name)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/srv-c185th5c2rvvnhbfiltg/restart", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restart by typed id => %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := getApp(t, cl, core.CRName("tea-a", "web")).Spec.RestartedAt; got == "" {
+		t.Fatal("restart by typed id did not stamp restartedAt")
+	}
+}
+
 func TestRESTPatchServicePlan(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web"))
 	mux := http.NewServeMux()

@@ -48,7 +48,7 @@ import (
 const (
 	LabelManagedBy = "app.kubernetes.io/managed-by"
 	ManagedByValue = "bex-controlplane"
-	LabelAppID     = "bex.co/app-id"
+	LabelAppID     = core.LabelAppID
 	// LabelTenant aliases core.LabelTenant — one label, one constant, so the
 	// stamp (here) and the gate (core.Base.GetApp) can never drift apart.
 	LabelTenant = core.LabelTenant
