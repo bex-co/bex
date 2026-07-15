@@ -28,24 +28,32 @@
 #      service's REAL levels and statuses — and never another service's (tenancy).
 #
 # Like secrets-verify.sh, bex-api runs on the host (go build) talking to the
-# cluster apiserver via $KUBECONFIG; Loki (and Hydra/OpenFGA when authz is on) are
-# reached through kubectl port-forwards. The operator itself does NOT run on the
-# host — this script never starts one — so the target cluster must already have
-# something reconciling App CRs: prod's in-cluster manager (the common case, via
-# `HCLOUD_TOKEN=… scripts/fetch-app-kubeconfig.sh <path>` — no mgmt cluster
-# post-pivot), or on the CAPD mock cluster a separately-run `make run`.
+# cluster apiserver via $KUBECONFIG; Loki and Hydra are reached through kubectl
+# port-forwards (Hydra unconditionally — bex-api now refuses to start without
+# BEX_HYDRA_ADMIN_URL regardless of authz/BEX_OPENFGA_URL, so a bearer is always
+# minted via the seeded bex-bootstrap client, same pattern as secrets-verify.sh).
+# The operator itself does NOT run on the host — this script never starts one —
+# so the target cluster must already have something reconciling App CRs: prod's
+# in-cluster manager (the common case, via `HCLOUD_TOKEN=… scripts/fetch-app-kubeconfig.sh <path>`
+# — no mgmt cluster post-pivot), or on the CAPD mock cluster a separately-run `make run`.
 #
 # Usage: scripts/logs-verify.sh      # respects $KUBECONFIG; exits 0 on pass
-# Requires: kubectl, curl, jq, go; a cluster with Loki + log-shipper synced
-# (deploy/gitops/base/loki.yaml + log-shipper.yaml) and an operator reconciling
+# Requires: kubectl, curl, jq, yq v4, go; a cluster with Loki + log-shipper synced
+# (deploy/gitops/base/loki.yaml + log-shipper.yaml), Hydra (ns auth) for the bearer
+# token bex-api now unconditionally requires to start, and an operator reconciling
 # App CRs (prod: the in-cluster manager; mock: run `make run` yourself first —
 # scripts/mock-cluster.sh alone installs no Argo CD/GitOps, so Loki never syncs
 # there and this script can't prove anything on it).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# `go run`'s own PID is a wrapper, not its compiled child — walking up from the
+# repo root (no go.mod there; the workspace is lego/go.work) also fails to
+# resolve the module. Both bit this script before; build once instead (below).
+export GOWORK="$(pwd)/lego/go.work"
 
 MON_NS=monitoring
 SYS_NS=bex-system
+AUTH_NS=auth
 TRAEFIK_NS=traefik
 APP_NS=default
 SVC=whoami-logs   # a dedicated App so a rerun never collides with examples/whoami
@@ -56,6 +64,8 @@ NONCE="m8-$(date -u +%s)" # unique per run: the exact request path / planted lin
 LOKI=127.0.0.1:23100
 EDGE=127.0.0.1:18080
 API=127.0.0.1:18090
+HYDRA_PUBLIC=127.0.0.1:23444
+HYDRA_ADMIN=127.0.0.1:23445
 API_PID=""
 OP_PID=""
 PIDS=()
@@ -123,20 +133,43 @@ done
 PRE_RESTART_END="$(date -u +%s)000000000"
 pass "boot line(s) for $OLD_POD are in Loki ($n line(s))"
 
+# --- build bex-api once; BEX_HYDRA_ADMIN_URL is now unconditionally required to
+#     even start, so mint a bearer too (authz stays off — no BEX_OPENFGA_URL — but
+#     AuthN alone still 401s an unauthenticated GET /v1/logs) ---
+BINDIR="$(mktemp -d)"
+info "building bex-api"
+(cd lego/backend && go build -o "$BINDIR/bex-api" ./cmd/api)
+
+kubectl -n "$AUTH_NS" port-forward svc/hydra-public "${HYDRA_PUBLIC#*:}:4444" >/dev/null 2>&1 &
+PIDS+=($!)
+kubectl -n "$AUTH_NS" port-forward svc/hydra-admin "${HYDRA_ADMIN#*:}:4445" >/dev/null 2>&1 &
+PIDS+=($!)
+sleep 2
+
+info "seeding the bex-bootstrap OAuth2 client + minting a bearer token"
+export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-logs-verify-$(date +%s)000000}"
+HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh >/dev/null
+BOOT_TOKEN="$(curl -sf -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
+  -d "grant_type=client_credentials&client_id=bex-bootstrap&client_secret=$BEX_BOOTSTRAP_CLIENT_SECRET" \
+  | yq -p json '.access_token // ""' -)"
+[ -n "$BOOT_TOKEN" ] && [ "$BOOT_TOKEN" != "null" ] || fail "no access_token for the bootstrap client"
+AUTH=(-H "Authorization: Bearer $BOOT_TOKEN")
+
 # --- start bex-api on the host with Loki wired ---
 start_api() { # $1 = BEX_LOKI_URL (empty => fallback)
-  [ -n "$API_PID" ] && { kill "$API_PID" 2>/dev/null || true; API_PID=""; sleep 1; }
+  # A `go run`-backgrounded process's PID is its wrapper, not the compiled child
+  # holding the port — killing it orphans the real server, so the NEXT start_api
+  # call's healthz check can pass against the STALE (wrong-BEX_LOKI_URL) orphan
+  # and silently invalidate the fallback assertion below. Run the built binary.
+  [ -n "$API_PID" ] && { kill "$API_PID" 2>/dev/null || true; wait "$API_PID" 2>/dev/null || true; API_PID=""; }
   BEX_API_ADDR="$API" BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="$1" \
-    go run ./lego/backend/cmd/api >/tmp/logs-verify-api.log 2>&1 &
+    BEX_HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" \
+    "$BINDIR/bex-api" >/tmp/logs-verify-api.log 2>&1 &
   API_PID=$!
   for i in $(seq 1 30); do curl -sf "http://$API/healthz" >/dev/null 2>&1 && return 0; sleep 1; done
   fail "bex-api did not come up (see /tmp/logs-verify-api.log)"
 }
 
-# NOTE: this harness assumes authz is off on the host run (no BEX_OPENFGA_URL), so
-# GET /v1/logs is reachable without a bearer — the same simplification auth-e2e
-# uses when it isolates a single feature. Add a port-forwarded Hydra/OpenFGA +
-# bootstrap key here to exercise the gated path.
 start_api "http://$LOKI"
 
 # --- restart: delete the pod, wait for a NEW one ---
@@ -153,7 +186,7 @@ START_RFC="$(date -u -v-10M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '10 mi
 END_RFC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # 1. DURABLE over REST: the pre-restart window still returns lines from the OLD pod.
-rest="$(curl -sf "http://$API/v1/logs?resource=$SVC&startTime=$START_RFC&endTime=$END_RFC&limit=100")"
+rest="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&startTime=$START_RFC&endTime=$END_RFC&limit=100")"
 oldlines="$(echo "$rest" | jq --arg p "$OLD_POD" '[.logs[] | select(.labels[]? | .value == $p)] | length')"
 [ "${oldlines:-0}" -gt 0 ] \
   && pass "REST: $oldlines pre-restart line(s) from the deleted pod $OLD_POD still served (durable)" \
@@ -161,7 +194,7 @@ oldlines="$(echo "$rest" | jq --arg p "$OLD_POD" '[.logs[] | select(.labels[]? |
 
 # 1b. DURABLE over MCP list_logs (same read, agent surface).
 mcp="$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_logs","arguments":{"resource":["%s"],"startTime":"%s","endTime":"%s","limit":100}}}' "$SVC" "$START_RFC" "$END_RFC" \
-  | BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="http://$LOKI" go run ./lego/backend/cmd/api mcp-stdio 2>/dev/null)"
+  | BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="http://$LOKI" BEX_HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" "$BINDIR/bex-api" mcp-stdio 2>/dev/null || true)"
 echo "$mcp" | grep -q "$OLD_POD" \
   && pass "MCP list_logs: pre-restart lines from $OLD_POD present too (three-adapter parity)" \
   || info "MCP check inconclusive (stdio framing) — REST already proved durability"
@@ -169,7 +202,7 @@ echo "$mcp" | grep -q "$OLD_POD" \
 # 2. BOUNDED: a range ending before the run excludes everything.
 past="$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)"
 past_end="$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '30 min ago' +%Y-%m-%dT%H:%M:%SZ)"
-empty="$(curl -sf "http://$API/v1/logs?resource=$SVC&startTime=$past&endTime=$past_end&limit=100" | jq '.logs | length')"
+empty="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&startTime=$past&endTime=$past_end&limit=100" | jq '.logs | length')"
 [ "${empty:-1}" -eq 0 ] \
   && pass "BOUNDED: a pre-run time range returns 0 lines (real bounds, not a live tail)" \
   || fail "a pre-run time range should be empty, got $empty lines"
@@ -177,7 +210,7 @@ empty="$(curl -sf "http://$API/v1/logs?resource=$SVC&startTime=$past&endTime=$pa
 # 3. FALLBACK: same post-restart query with Loki unwired => the deleted pod's
 #    lines are GONE (only the live pod's buffer remains) — the truthful answer.
 start_api ""
-fb="$(curl -sf "http://$API/v1/logs?resource=$SVC&startTime=$START_RFC&endTime=$END_RFC&limit=100")"
+fb="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&startTime=$START_RFC&endTime=$END_RFC&limit=100")"
 fb_old="$(echo "$fb" | jq --arg p "$OLD_POD" '[.logs[] | select(.labels[]? | .value == $p)] | length')"
 [ "${fb_old:-0}" -eq 0 ] \
   && pass "FALLBACK: with BEX_LOKI_URL unset the deleted pod's lines are gone (honest live-only answer)" \
@@ -187,7 +220,7 @@ fb_old="$(echo "$fb" | jq --arg p "$OLD_POD" '[.logs[] | select(.labels[]? | .va
 #     stdout — so a store-only filter is REFUSED (503), never silently ignored and
 #     answered with unfiltered lines.
 for filter in "type=request" "level=error" "statusCode=500" "method=GET" "path=/x"; do
-  code="$(curl -s -o /dev/null -w '%{http_code}' "http://$API/v1/logs?resource=$SVC&$filter")"
+  code="$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&$filter")"
   [ "$code" = "503" ] || fail "fallback: $filter should be 503 (store-only), got $code"
 done
 pass "FALLBACK HONESTY: type=request + every store-only filter => 503, not a fake empty page"
@@ -206,7 +239,7 @@ info "requested http://$HOST/$NONCE through the edge; waiting for the access lin
 
 req=""
 for i in $(seq 1 30); do
-  req="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&limit=100")"
+  req="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&limit=100")"
   echo "$req" | jq -e --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length > 0' >/dev/null 2>&1 && break
   sleep 2
 done
@@ -221,18 +254,18 @@ lbl() { echo "$line" | jq -r --arg k "$1" 'first(.labels[] | select(.name == $k)
 pass "REQUEST: type=request returns the access line for /$NONCE (method=GET, statusCode=200 — truthful)"
 
 # path is line-searchable (never a label — the cardinality budget), statusCode narrows.
-n_path="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&path=/$NONCE&limit=100" | jq '.logs | length')"
+n_path="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&path=/$NONCE&limit=100" | jq '.logs | length')"
 [ "${n_path:-0}" -gt 0 ] || fail "the path filter should find /$NONCE, got $n_path lines"
-n_5xx="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&statusCode=5xx&limit=100" \
+n_5xx="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&statusCode=5xx&limit=100" \
   | jq --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length')"
 [ "${n_5xx:-1}" -eq 0 ] || fail "statusCode=5xx must exclude the 200 access line, got $n_5xx"
 pass "REQUEST FILTERS: path=/$NONCE finds it; statusCode=5xx excludes it (filters really narrow)"
 
 # 5. SPLIT: the two types don't bleed into each other, in either direction.
-app_reqs="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=app&limit=100" \
+app_reqs="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=app&limit=100" \
   | jq '[.logs[] | select(.labels[]? | select(.name == "type") | .value == "request")] | length')"
 [ "${app_reqs:-1}" -eq 0 ] || fail "type=app returned $app_reqs request line(s) — the split leaks"
-req_apps="$(curl -sf "http://$API/v1/logs?resource=$SVC&type=request&limit=100" \
+req_apps="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&limit=100" \
   | jq '[.logs[] | select(.labels[]? | select(.name == "type") | .value == "app")] | length')"
 [ "${req_apps:-1}" -eq 0 ] || fail "type=request returned $req_apps app line(s) — the split leaks"
 pass "SPLIT: type=app excludes access lines and type=request excludes app lines (clean both ways)"
@@ -262,7 +295,7 @@ kubectl -n "$APP_NS" wait --for=condition=complete "job/$JSVC-$NONCE" --timeout=
 
 errs=""
 for i in $(seq 1 30); do
-  errs="$(curl -sf "http://$API/v1/logs?resource=$JSVC&type=app&level=error&limit=100")"
+  errs="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$JSVC&type=app&level=error&limit=100")"
   [ "$(echo "$errs" | jq '.logs | length')" -gt 0 ] && break
   sleep 2
 done
@@ -272,34 +305,34 @@ echo "$errs" | jq -e --arg n "$NONCE" '.logs[0].message | contains("planted fail
   || fail "level=error returned the wrong line: $(echo "$errs" | jq -c '.logs[0].message')"
 pass "LEVEL: level=error isolates exactly the planted error line (parsed from JSON, not guessed)"
 
-n_unknown="$(curl -sf "http://$API/v1/logs?resource=$JSVC&type=app&level=unknown&limit=100" \
+n_unknown="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$JSVC&type=app&level=unknown&limit=100" \
   | jq '[.logs[] | select(.message | contains("plain text, not json"))] | length')"
 [ "${n_unknown:-0}" -gt 0 ] \
   && pass "LEVEL: the plaintext line lands in the honest 'unknown' bucket (never substring-guessed)" \
   || fail "the plaintext line should be level=unknown, got $n_unknown lines"
 
 # 7. DISCOVERY: real values, and scoped to the service that asked (tenancy).
-levels="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=level")"
+levels="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=level")"
 echo "$levels" | jq -e 'index("error") != null and index("info") != null and index("unknown") != null' >/dev/null \
   || fail "level discovery should list the fixture's real levels (error/info/unknown), got $levels"
-statuses="$(curl -sf "http://$API/v1/logs/values?resource=$SVC&label=statusCode")"
+statuses="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$SVC&label=statusCode")"
 echo "$statuses" | jq -e 'index("200") != null' >/dev/null \
   || fail "statusCode discovery should list 200 for $SVC, got $statuses"
 pass "DISCOVERY: label values are the service's REAL levels ($(echo "$levels" | jq -c .)) and statuses"
 
 # TENANCY: the JSON fixture never served a request, so it must expose NO methods —
 # proving discovery is scoped to the asking service, not the whole store.
-jmethods="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=method")"
+jmethods="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=method")"
 [ "$(echo "$jmethods" | jq 'length')" -eq 0 ] \
   || fail "TENANCY LEAK: $JSVC has no request logs but method discovery returned $jmethods"
-jinst="$(curl -sf "http://$API/v1/logs/values?resource=$JSVC&label=instance")"
+jinst="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs/values?resource=$JSVC&label=instance")"
 echo "$jinst" | jq -e --arg p "$NEW_POD" 'index($p) == null' >/dev/null \
   || fail "TENANCY LEAK: $JSVC's instance discovery lists $SVC's pod $NEW_POD"
 pass "TENANCY: $JSVC's discovery never returns $SVC's methods or pods (scoped to the caller's service)"
 
 # 7b. The same discovery over MCP, under the official tool's name/args.
 mcpv="$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_log_label_values","arguments":{"label":"level","resource":["%s"]}}}' "$JSVC" \
-  | BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="http://$LOKI" go run ./lego/backend/cmd/api mcp-stdio 2>/dev/null)"
+  | BEX_API_NAMESPACE="$APP_NS" BEX_LOKI_URL="http://$LOKI" BEX_HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" "$BINDIR/bex-api" mcp-stdio 2>/dev/null || true)"
 # grep for `unknown`, not `error` — "error" is both a level VALUE and what a failed
 # call would say, so it can't tell success from failure.
 echo "$mcpv" | grep -q "unknown" \

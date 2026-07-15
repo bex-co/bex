@@ -119,7 +119,7 @@ spec:
                 targets = discovery.kubernetes.pods.targets
 
                 // Ship only tenant App pods (they carry app.bex.co/app); drop the
-                // rest so single-node Loki holds just what bex-api can serve.
+                // rest so single-replica Loki holds just what bex-api can serve.
                 rule {
                   source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
                   regex         = ""
