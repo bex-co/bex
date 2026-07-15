@@ -19,6 +19,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -109,6 +110,52 @@ func TestListPassesFilterThroughAndScopesToOwner(t *testing.T) {
 	}
 	if len(events) != 1 || events[0].ID != "aud-1" {
 		t.Errorf("events = %+v, want the store's single row projected", events)
+	}
+}
+
+// TestListDirectionMapsToStoreOrdering proves the Render direction enum
+// (w4/013) reaches the store as its ordering flag: forward => oldest-first,
+// backward/empty => newest-first. Before this, direction was accepted and
+// silently ignored — the exact drift ADR018's audit row documented.
+func TestListDirectionMapsToStoreOrdering(t *testing.T) {
+	for _, tc := range []struct {
+		direction   string
+		oldestFirst bool
+	}{
+		{direction: "", oldestFirst: false},
+		{direction: DirectionBackward, oldestFirst: false},
+		{direction: DirectionForward, oldestFirst: true},
+	} {
+		fs := &fakeStore{}
+		svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+		if _, err := svc.List(ctx, "tea-owner", Filter{Direction: tc.direction}); err != nil {
+			t.Fatalf("List(direction=%q): %v", tc.direction, err)
+		}
+		if fs.gotFilter.OldestFirst != tc.oldestFirst {
+			t.Errorf("direction %q: store OldestFirst = %v, want %v", tc.direction, fs.gotFilter.OldestFirst, tc.oldestFirst)
+		}
+	}
+}
+
+// TestListRejectsUnknownDirection is the "nothing accepted is ignored" check
+// (w3/m8's principle, w4/013): an unrecognized direction is a named
+// core.ErrBadRequest — before the store is ever consulted — never a silent
+// newest-first fallback.
+func TestListRejectsUnknownDirection(t *testing.T) {
+	fs := &fakeStore{}
+	svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+
+	_, err := svc.List(ctx, "tea-owner", Filter{Direction: "sideways"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("List(direction=sideways): err = %v, want ErrBadRequest", err)
+	}
+	if !strings.Contains(err.Error(), "sideways") {
+		t.Errorf("error %q should name the offending value", err)
+	}
+	if fs.gotWorkspace != "" {
+		t.Errorf("store consulted despite invalid direction")
 	}
 }
 

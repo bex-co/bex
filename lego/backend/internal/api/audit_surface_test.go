@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,10 +32,12 @@ import (
 // t007's parity check: REST and GraphQL must render the same store data
 // identically, so the fixture is shared between both requests in one test.
 type fakeAuditStore struct {
-	rows []store.AuditRow
+	rows      []store.AuditRow
+	gotFilter store.AuditFilter
 }
 
-func (f *fakeAuditStore) ListAuditEvents(_ context.Context, workspaceID string, _ store.AuditFilter) ([]store.AuditRow, error) {
+func (f *fakeAuditStore) ListAuditEvents(_ context.Context, workspaceID string, filter store.AuditFilter) ([]store.AuditRow, error) {
+	f.gotFilter = filter
 	var out []store.AuditRow
 	for _, r := range f.rows {
 		if r.WorkspaceID == workspaceID {
@@ -132,6 +135,61 @@ func TestAuditSurfaceParity(t *testing.T) {
 	}
 	if len(otherList) != 0 {
 		t.Errorf("tea-other's list = %d events, want 0 (tea-a's rows must not leak)", len(otherList))
+	}
+}
+
+// TestAuditDirectionSurface is w4/013: Render's direction param is honored,
+// not silently ignored — forward reaches the store as oldest-first on both
+// surfaces, and an unknown value is a named 400 on REST / a named GraphQL
+// error, per w3/m8's "nothing accepted is ignored" principle.
+func TestAuditDirectionSurface(t *testing.T) {
+	fakeStore := &fakeAuditStore{}
+	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, _ := serverWith(t, base, Deps{Audit: &audit.Service{Base: base, Store: fakeStore}})
+
+	// REST: forward => the store's oldest-first flag.
+	if code := do(t, h, "GET", "/v1/owners/tea-a/audit-logs?direction=forward", testToken, "").Code; code != 200 {
+		t.Fatalf("REST direction=forward: %d", code)
+	}
+	if !fakeStore.gotFilter.OldestFirst {
+		t.Errorf("REST direction=forward did not reach the store as OldestFirst")
+	}
+
+	// REST: backward (and unset — covered by every other test here) stays newest-first.
+	if code := do(t, h, "GET", "/v1/owners/tea-a/audit-logs?direction=backward", testToken, "").Code; code != 200 {
+		t.Fatalf("REST direction=backward: %d", code)
+	}
+	if fakeStore.gotFilter.OldestFirst {
+		t.Errorf("REST direction=backward must stay newest-first")
+	}
+
+	// REST: unknown value is a named 400.
+	bad := do(t, h, "GET", "/v1/owners/tea-a/audit-logs?direction=sideways", testToken, "")
+	if bad.Code != 400 {
+		t.Fatalf("REST direction=sideways: %d, want 400 — an accepted param must never be ignored", bad.Code)
+	}
+	if !strings.Contains(bad.Body.String(), "sideways") {
+		t.Errorf("400 body %q should name the offending value", bad.Body.String())
+	}
+
+	// GraphQL: same verb, same behavior on both sides of the enum.
+	fakeStore.gotFilter = store.AuditFilter{}
+	gql(t, h, `{ auditLogs(ownerId: "tea-a", direction: "forward") { id } }`)
+	if !fakeStore.gotFilter.OldestFirst {
+		t.Errorf("GraphQL direction=forward did not reach the store as OldestFirst")
+	}
+	body, _ := json.Marshal(map[string]string{"query": `{ auditLogs(ownerId: "tea-a", direction: "sideways") { id } }`})
+	w := do(t, h, "POST", "/graphql", testToken, string(body))
+	var out struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out.Errors) == 0 || !strings.Contains(out.Errors[0].Message, "sideways") {
+		t.Errorf("GraphQL direction=sideways: errors = %+v, want a named error", out.Errors)
 	}
 }
 

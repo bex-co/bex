@@ -47,7 +47,7 @@ type renderService struct {
 	Owner          *renderOwner   `json:"owner,omitempty"` // safe Render superset; official Service clients still use ownerId
 	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
 	ImagePath      string         `json:"imagePath,omitempty"`
-	Suspenders     []string       `json:"suspenders"`
+	Suspenders     []string       `json:"suspenders"` // who suspended it: ["user"] while suspended (bex's only suspend path), [] otherwise (w4/014)
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
 	// Apps the control-plane projector never labeled (see AppView.OwnerID).
@@ -281,7 +281,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		UpdatedAt:             a.UpdatedAt,
 		ServiceDetails:        details,
 		ImagePath:             a.SourceImage,
-		Suspenders:            []string{},
+		Suspenders:            suspenders(a.Suspended),
 		OwnerID:               a.OwnerID,
 		ProjectID:             a.ProjectID,
 		EnvironmentID:         a.EnvironmentID,

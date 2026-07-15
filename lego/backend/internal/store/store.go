@@ -1036,11 +1036,27 @@ func clampPageLimit(n int) int {
 // (never true) — an invalid cursor yields an empty page, not a crash or a
 // leak of the unfiltered list.
 func pageNewestFirst(query string, args []any, table, sortCol, cursor string, limit int) (string, []any) {
+	return pageKeyset(query, args, table, sortCol, cursor, limit, false)
+}
+
+// pageOldestFirst is pageNewestFirst mirrored (ASC order, cursor resumes
+// strictly NEWER) — Render's direction=forward on audit logs (w4/013). A
+// cursor row's meaning depends on the direction it is paged under: the same
+// id resumes older rows backward and newer rows forward.
+func pageOldestFirst(query string, args []any, table, sortCol, cursor string, limit int) (string, []any) {
+	return pageKeyset(query, args, table, sortCol, cursor, limit, true)
+}
+
+func pageKeyset(query string, args []any, table, sortCol, cursor string, limit int, oldestFirst bool) (string, []any) {
+	cmp, ord := "<", "DESC"
+	if oldestFirst {
+		cmp, ord = ">", "ASC"
+	}
 	if cursor != "" {
 		args = append(args, cursor)
-		query += fmt.Sprintf(" AND (%s, id) < (SELECT %s, id FROM %s WHERE id = $%d)", sortCol, sortCol, table, len(args))
+		query += fmt.Sprintf(" AND (%s, id) %s (SELECT %s, id FROM %s WHERE id = $%d)", sortCol, cmp, sortCol, table, len(args))
 	}
-	query += fmt.Sprintf(" ORDER BY %s DESC, id DESC", sortCol)
+	query += fmt.Sprintf(" ORDER BY %s %s, id %s", sortCol, ord, ord)
 	if limit > 0 {
 		args = append(args, limit)
 		query += fmt.Sprintf(" LIMIT $%d", len(args))

@@ -149,6 +149,20 @@ type AuditSink interface {
 // is still synchronous on the verb's own path, so it stays tight.
 const auditRecordTimeout = 2 * time.Second
 
+// maxFallbackCandidateAudits caps how many rejected name-collision candidates
+// AuthorizeApp's LabelServiceName fallback loop individually audits on one
+// request (w4/015). Legitimate collisions (a handful of tenants naming a
+// service "web") keep one row per candidate — each genuinely a distinct
+// authorization decision — while a probe against a pathologically common name
+// can no longer serialize an unbounded run of synchronous audit writes
+// (auditRecordTimeout each) nor amplify one denied request into hundreds of
+// audit_events inserts; denials past the cap are still fully checked, and one
+// aggregate row against the CALLER's workspace records that the probe
+// continued past the individually-audited candidates. Worst-case added
+// latency on the denial path: (maxFallbackCandidateAudits+1) *
+// auditRecordTimeout.
+const maxFallbackCandidateAudits = 3
+
 // noopAuditSink is the store-less default: recording is a no-op, the same
 // degrade-by-omission every other store-backed feature uses.
 type noopAuditSink struct{}

@@ -27,6 +27,7 @@ package audit
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -83,16 +84,31 @@ func view(r store.AuditRow) Event {
 	}
 }
 
+// Render's direction vocabulary (api-docs.render.com list-owner-audit-logs,
+// the same enum the logs feature honors): backward is newest-first (the
+// default), forward starts with the oldest event in the window.
+const (
+	DirectionBackward = "backward"
+	DirectionForward  = "forward"
+)
+
 // Filter narrows List — the neutral shape the REST/GraphQL adapters translate
-// Render's startTime/endTime/cursor/limit query params into.
+// Render's startTime/endTime/direction/cursor/limit query params into.
 type Filter struct {
 	Since  time.Time
 	Until  time.Time
-	Cursor string
-	Limit  int
+	// Direction is Render's ordering enum: "" or DirectionBackward is
+	// newest-first, DirectionForward oldest-first; anything else is a named
+	// 400 (w3/m8's "nothing accepted is ignored" — w4/013 closed the drift
+	// where this param was accepted and ignored). Validated here in the verb
+	// so REST and GraphQL cannot diverge.
+	Direction string
+	Cursor    string
+	Limit     int
 }
 
-// List returns ownerID's audit trail newest-first (Render's GET
+// List returns ownerID's audit trail — newest-first unless
+// filter.Direction is DirectionForward (Render's GET
 // /owners/{id}/audit-logs) — admin-scoped (RelCanManage), the same bar
 // workspace rename/delete uses: only a workspace's own admins may see who did
 // what to it. ownerID must be the caller's own workspace — AuthorizeOn checks
@@ -102,11 +118,16 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(ownerID)); err != nil {
 		return nil, err
 	}
+	if filter.Direction != "" && filter.Direction != DirectionBackward && filter.Direction != DirectionForward {
+		return nil, fmt.Errorf("%w: unknown direction %q (want %s|%s)",
+			core.ErrBadRequest, filter.Direction, DirectionBackward, DirectionForward)
+	}
 	if s.Store == nil {
 		return nil, core.ErrAuditUnavailable
 	}
 	rows, err := s.Store.ListAuditEvents(ctx, ownerID, store.AuditFilter{
 		Since: filter.Since, Until: filter.Until, Cursor: filter.Cursor, Limit: filter.Limit,
+		OldestFirst: filter.Direction == DirectionForward,
 	})
 	if err != nil {
 		return nil, err

@@ -57,14 +57,18 @@ type AuditRow struct {
 
 // AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
 // (Render's startTime/endTime); Cursor resumes strictly after a previously
-// returned row's id (newest-first keyset paging, stable under concurrent
-// inserts — unlike an OFFSET); Limit caps the page (<1 or >MaxAuditPageSize
-// clamps to DefaultAuditPageSize).
+// returned row's id (keyset paging, stable under concurrent inserts — unlike
+// an OFFSET); Limit caps the page (<1 or >MaxAuditPageSize clamps to
+// DefaultAuditPageSize). OldestFirst flips the order (Render's
+// direction=forward, w4/013) — note a cursor's meaning follows the direction
+// it is paged under: the same row id resumes strictly older rows backward and
+// strictly newer rows forward.
 type AuditFilter struct {
-	Since  time.Time
-	Until  time.Time
-	Cursor string
-	Limit  int
+	Since       time.Time
+	Until       time.Time
+	Cursor      string
+	Limit       int
+	OldestFirst bool
 }
 
 // workspaceOf extracts the tenant component of an OpenFGA workspace object
@@ -99,9 +103,10 @@ func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	return r, err
 }
 
-// ListAuditEvents returns workspaceID's audit trail newest-first, honoring
-// filter's time bounds/cursor/limit — the one query the REST and GraphQL read
-// fragments (internal/audit) both delegate to, so they can't diverge.
+// ListAuditEvents returns workspaceID's audit trail — newest-first by
+// default, oldest-first with filter.OldestFirst — honoring filter's time
+// bounds/cursor/limit — the one query the REST and GraphQL read fragments
+// (internal/audit) both delegate to, so they can't diverge.
 func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filter AuditFilter) ([]AuditRow, error) {
 	limit := filter.Limit
 	if limit < 1 || limit > MaxAuditPageSize {
@@ -117,7 +122,11 @@ func (s *PGStore) ListAuditEvents(ctx context.Context, workspaceID string, filte
 		args = append(args, filter.Until)
 		query += fmt.Sprintf(" AND at <= $%d", len(args))
 	}
-	query, args = pageNewestFirst(query, args, "audit_events", "at", filter.Cursor, limit)
+	page := pageNewestFirst
+	if filter.OldestFirst {
+		page = pageOldestFirst
+	}
+	query, args = page(query, args, "audit_events", "at", filter.Cursor, limit)
 
 	rows, err := s.Pool.Query(ctx, query, args...)
 	if err != nil {

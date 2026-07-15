@@ -110,10 +110,10 @@ func toAuditLogList(events []Event) []auditLogWithCursor {
 	return out
 }
 
-// filterFromQuery translates Render's startTime/endTime/cursor/limit query
-// params into Filter. direction is accepted and ignored (bex always returns
-// newest-first — the safe-superset rule every Render-shaped list here
-// follows, same as deploys' clearCache).
+// filterFromQuery translates Render's startTime/endTime/direction/cursor/
+// limit query params into Filter. direction is honored (w4/013): backward
+// (default) is newest-first, forward oldest-first, anything else a named 400
+// — validated in Service.List so REST and GraphQL share one check.
 func filterFromQuery(q url.Values) Filter {
 	var f Filter
 	if v := q.Get("startTime"); v != "" {
@@ -126,6 +126,7 @@ func filterFromQuery(q url.Values) Filter {
 			f.Until = t
 		}
 	}
+	f.Direction = q.Get("direction")
 	f.Cursor = q.Get("cursor")
 	if v := q.Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
