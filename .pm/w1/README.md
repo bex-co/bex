@@ -55,6 +55,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 - [x] **m37** — Maintenance mode: Render-compatible public traffic interstitial (10 tasks) ← from `/pm-brainstorm` round 6, 2026-07-14; corrected against Render's live docs/OpenAPI/dashboard/event contract 2026-07-15 (paid web services; default/custom page; REST + Blueprint + UI + audit/webhook parity; NOT the ADR018 `/maintenance` managed-infra non-goal) — **done 2026-07-15**, executed and closed under w9's directory for capacity (`.pm/w9/done/m37/`; see `w9/README.md`)
 - [ ] **m38** — Platform-pool drainability: CNPG HA + staged baked-image roll (7 tasks) ← promotes `022` (renumbered `done/023.md` — number collision with the done error-body note) 2026-07-15; the m36 Push 2b blocker, also closes the m19.1 `bex-db` single-copy risk
 - [ ] **m39** — Dependency security: clear the 18-alert spike (7 tasks) ← from `/pm-brainstorm` round 10, 2026-07-15 (Dependabot 4 → 18 alerts — 7 critical, 3 high — during the round-9 push wave, likely the SSH-gateway dep surface and/or the vendored CLI checkout; the m23/m30 triage pattern at milestone size)
+- [ ] **m40** — Wake interstitial: the "sleeping, click to wake" page (7 tasks) ← from `/pm-brainstorm` round 11, 2026-07-15 (ADR007:36 records the wake page as future work; the activator returns raw `503` JSON today — `activator/main.go:152`; `w1/m37` just shipped the custom-page-serving mechanism to reuse; polishes m4/m4.5 free-tier sleep)
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
