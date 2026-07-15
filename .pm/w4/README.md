@@ -34,6 +34,7 @@
 ## Inbox
 
 - `013.md` — honor the audit-log `direction` param (or 400 it) — the "nothing accepted is ignored" principle; sub-hour ← from `/pm-brainstorm` round 3, 2026-07-14
+- `014.md` — `suspenders` array on the service object (emit `["user"]` on user-suspends; sub-hour) ← from `/pm-brainstorm` round 7, 2026-07-14
 
 > `001.md` (renumbered `012.md` in `done/` — its number collided with the long-done original `001`) and `011.md` grouped into **m20** 2026-07-14; notes moved to `done/`.
 

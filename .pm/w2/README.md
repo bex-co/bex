@@ -30,10 +30,13 @@
 - [ ] **m34** — Fix GitHub Connect: browser install-callback can't record the connection (10 tasks) ← from `/pm-brainstorm more` 2026-07-13 (fifth pass; `docs/ADR026-github-integration.md` line 88 "Known limitation," discovered live during `m8`'s DoD run 2026-07-12, never given a follow-up milestone); numbered m34 not m31 — a concurrent session claimed m30-m32 first
 - [ ] **m35** — Postgres logical exports: `pg_dump` download parity (11 tasks) ← from `/pm-brainstorm more milestones for each worker` round 2, 2026-07-14 (ADR018 Backups·PITR row's documented "physical, not logical" divergence — `recovery.go:219`; tenants currently cannot take their data out of bex)
 - [ ] **m36** — Cron-job runs API: list · get · cancel (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (only the run trigger exists — `apps/rest.go:504`; Render additionally ships list/get/cancel run endpoints; extends the deploys-as-objects pattern m5/m10/m31 established)
+- [ ] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `servicePOST.secretFiles` + `environmentId` on the three create inputs are silently dropped today; thin threading over w1/m16 + w1/m32 verbs)
 
 ## Inbox
 
-_(empty — 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`)_
+- `007.md` — cron `lastSuccessfulRunAt` — fold into **m36** as an add-task when picked up ← from `/pm-brainstorm` round 7, 2026-07-14
+
+> 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
 
 - (moved) agent OAuth 2.1 provider → promoted as `w4/m9` (auth workstream owns it; w2's MCP milestones consume it)
 

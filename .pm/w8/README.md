@@ -17,6 +17,7 @@
 - [x] **m11** — Reliable usage windows: durable zeroes + gap-free per-meter cursors (7 tasks) ← prerequisite split from `001` 2026-07-14; cap enforcement stays gated — done 2026-07-14
 - [ ] **m12** — Managed Postgres major-version upgrade (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 2, 2026-07-14 (`database_types.go:35` — `Version` exists at create, no upgrade verb anywhere; Render ships version upgrades as a first-class flow; rides CNPG's declarative major-upgrade path, verified first by t002). Placed under w8 for capacity per the m8 precedent; numbered m12 not m11 — a concurrent session claimed m11 mid-rebase
 - [ ] **m13** — Datastore list pagination: Postgres + Key Value (7 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (`core.PageParams` in `apps/rest.go:309` but nowhere in `postgres/rest.go`/`keyvalue/rest.go`; Render's `GET /postgres` + `GET /key-value` both page); datastore-family placement per the m12 precedent
+- [ ] **m14** — Postgres disk autoscaling (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `enableDiskAutoscaling`/`diskAutoscalingEnabled`, zero hits; the control loop between grow-only `storageGB` and w3/m10's already-scraped kubelet volume stats)
 
 ## Inbox
 

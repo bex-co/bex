@@ -12,7 +12,8 @@
 | t004 | Scope link/unlink (foreign-group-into-your-service hole)    | 45m | t002                         |
 | t005 | `ownerId` + timestamps on the group object (Render shape)   | 40m | t002                         |
 | t006 | Dashboard `/env-groups` follows the workspace switcher       | 40m | t003, t005                   |
-| t007 | Render parity                                               | 30m | t003, t004, t005, t006       |
+| t011 | Environments linkage: `envGroupIds` + `set_environment_env_groups` (added round 7) | 45m | t002 |
+| t007 | Render parity                                               | 30m | t003, t004, t005, t006, t011 |
 | t008 | Simplify                                                    | 30m | t007                         |
 | t009 | Test coverage                                               | 45m | t007                         |
 | t010 | Closeout                                                    | 15m | t009                         |
