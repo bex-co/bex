@@ -469,3 +469,65 @@ Error: failed to cancel job: received response code 404: 404 page not found
 (exit 1)
 ```
 
+
+## Re-verification: KeyValue fix (2026-07-15, commit dfff3034)
+
+Re-ran against a freshly rebuilt dev-9 bex-api (`6993b3dd`) after the
+already-merged `dfff3034` shipped. Full `keyvalues` lifecycle, real data:
+
+### keyvalues create (post-fix)
+```
+$ render keyvalues create --name kv-fixed-verify --confirm -o json
+{"data":{"id":"kv-fixed-verify","name":"kv-fixed-verify","plan":"free","region":"","status":"creating","createdAt":"2026-07-15T05:17:04Z","updatedAt":"0001-01-01T00:00:00Z","ownerId":"","projectId":null,"environmentId":null,"ipAllowList":[]}}
+```
+
+### keyvalues list (post-fix)
+```
+$ render keyvalues list -o json
+{"data":[{"id":"kv-fixed-verify","name":"kv-fixed-verify","plan":"free","region":"","status":"creating","createdAt":"2026-07-15T05:17:04Z","updatedAt":"0001-01-01T00:00:00Z","ownerId":"","projectId":null,"environmentId":null,"ipAllowList":[]}]}
+```
+
+### keyvalues get (by name, post-fix)
+```
+$ render keyvalues get kv-fixed-verify -o json
+{"data":{"id":"kv-fixed-verify","name":"kv-fixed-verify","plan":"free","region":"","status":"creating", ...}}
+```
+
+### keyvalues update / suspend / resume / delete (post-fix)
+```
+$ render keyvalues update kv-fixed-verify --plan free --confirm -o json
+{"data":{...},"diff":{}}
+$ render keyvalues suspend kv-fixed-verify --confirm -o json
+{"data":{...},"meta":{"suspended":true}}
+$ render keyvalues resume kv-fixed-verify --confirm -o json
+{"data":{...,"status":"available"}}
+$ render keyvalues delete kv-fixed-verify --confirm -o json
+{"data":{...},"meta":{"deleted":true}}
+$ render keyvalues list -o json
+{"data":[]}
+```
+
+Every `keyvalues` subcommand now works end to end. Spot-checked the other
+root causes the same commit touches (out of this pass's KeyValue-focused
+scope, but recorded for accuracy):
+
+```
+$ render whoami -o json
+Name:
+Email:
+(exit 0 — route exists, no more 404; but a machine caller's email/name
+resolve empty — GET /v1/users returns {"email":"","name":""})
+
+$ render services -o json
+null   (was: json: cannot unmarshal bool ... AutoDeploy — now clean)
+
+$ render postgres list -o json
+{"data":[]}   (was: zero-valued garbage — now a clean, correctly-shaped empty list)
+
+$ render postgres get pg-cli-test -o json
+Error: No Postgres database named 'pg-cli-test' in workspace tea-d9bhfihjg4r47t9b5ujg. To search another workspace, run `render workspace set <name|ID>`, or pass the Postgres database ID instead.
+(was: an opaque RC3 failure — now a real, specific Render-shaped error,
+confirming RC1's error-envelope fix too)
+```
+
+`go build ./...` and `go test ./internal/{core,apps,deploys,postgres,keyvalue,workspaces,logs,api}/...` all pass on `6993b3dd`.
