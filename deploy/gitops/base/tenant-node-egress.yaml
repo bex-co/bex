@@ -36,6 +36,15 @@ spec:
     matchExpressions:
       - key: app.bex.co/workspace
         operator: Exists
+      # Exclude CNPG-managed pods (cnpg.io/cluster label) from this deny so
+      # CNPG init/instance pods can reach the Kubernetes API (10.96.0.1:443).
+      # The workspace label is still propagated to CNPG pods for same-workspace
+      # NetworkPolicy selectors — removing the label would break that; instead
+      # we carve CNPG pods out of the deny using their own identity label.
+      # Deny-overrides-allow means a separate allow rule cannot fix this —
+      # the selector itself must exclude the CNPG identity (w7/m33).
+      - key: cnpg.io/cluster
+        operator: DoesNotExist
   egressDeny:
     # The nodes themselves: local node (host) + every other node (remote-node).
     # Covers kubelet :10250 and nodePorts reached via any node IP.

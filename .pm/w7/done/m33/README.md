@@ -1,17 +1,17 @@
 # w7 · m33 — Fix CNPG bootstrap vs. the tenant egress deny
 
-**Worker:** worker7 **Goal:** Managed Postgres works on tenant nodes again: CNPG init/instance pods can reach the Kubernetes API while tenant application workloads keep the full node/metadata egress deny. **Status:** todo
+**Worker:** worker7 **Goal:** Managed Postgres works on tenant nodes again: CNPG init/instance pods can reach the Kubernetes API while tenant application workloads keep the full node/metadata egress deny. **Status:** done — **DONE**
 
 ## Tasks (in order)
 
 | id   | title                                                                                                   | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Reproduce: managed Database on a tenant node + direct API-service probe from the CNPG init/instance identity | 30m | —          |
-| t002 | Split/narrow the Cilium selectors: tenant apps keep the node/metadata deny; platform-managed CNPG pods get exactly the k8s-API reachability they need | 60m | t001       |
-| t003 | Policy-render/unit regression + live bootstrap test: fresh-tenant-node Database reaches Ready and serves `SELECT 1` | 45m | t002       |
-| t004 | Simplify — `/simplify` over the code this milestone changed                                              | 20m | t003       |
-| t005 | Test coverage — meaningful tests for the policy split + failure modes                                    | 30m | t003       |
-| t006 | Closeout — DoD met → move milestone to `done/`                                                           | 10m | t005       |
+| t001 | Reproduce: managed Database on a tenant node + direct API-service probe from the CNPG init/instance identity | 30m | —          | — **DONE** |
+| t002 | Split/narrow the Cilium selectors: tenant apps keep the node/metadata deny; platform-managed CNPG pods get exactly the k8s-API reachability they need | 60m | t001       | — **DONE** |
+| t003 | Policy-render/unit regression + live bootstrap test: fresh-tenant-node Database reaches Ready and serves `SELECT 1` | 45m | t002       | — **DONE** |
+| t004 | Simplify — `/simplify` over the code this milestone changed                                              | 20m | t003       | — **DONE** |
+| t005 | Test coverage — meaningful tests for the policy split + failure modes                                    | 30m | t003       | — **DONE** |
+| t006 | Closeout — DoD met → move milestone to `done/`                                                           | 10m | t005       | — **DONE** |
 
 ## Definition of done
 
