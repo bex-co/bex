@@ -172,6 +172,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
 
   const facts: { label: string; value: string }[] = [
+    { label: t("services.colSlug"), value: service.slug || "—" },
     {
       label: t("services.colInstances"),
       value: service.replicas != null ? String(service.replicas) : "—",

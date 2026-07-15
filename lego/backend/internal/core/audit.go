@@ -94,15 +94,31 @@ func (noopAuditSink) Record(context.Context, AuditEvent) error { return nil }
 // NoopAuditSink is Base's effective sink when Audit is nil.
 var NoopAuditSink AuditSink = noopAuditSink{}
 
-// writeRelations are the Rel… constants that gate a mutation. Only these emit
-// audit events — read relations (RelCanView/RelCanViewLogs/RelCanViewSensitive)
-// are out of scope by default (volume); AuditOutcome already distinguishes
-// allowed/denied, so recording read denials later needs no schema change.
+// writeRelations are the Rel… constants that gate a mutation. These emit an
+// audit event on every call, allowed or denied.
 var writeRelations = map[string]bool{
 	RelCanOperate:    true,
 	RelCanCreate:     true,
 	RelCanManageKeys: true,
 	RelCanManage:     true,
+}
+
+// readRelations are the Rel… constants that gate a read. A successful read
+// stays unrecorded (volume-prohibitive — every list/get/metrics call would
+// double audit_events' write rate); a DENIED read is a security-relevant
+// event (someone probed a resource they can't see) and is recorded exactly
+// like a denied write (w4/m20/t001, closing the deliberate w4/m10 cut noted
+// in docs/ADR006-bex-api.md § Audit log). No entry-point split: Authorize,
+// AuthorizeTarget/AuthorizeApp-family and AuthorizeOn all funnel through
+// authorizeAndAudit, so a denied AuthorizeOn-style workspace-wide read check
+// records exactly like a denied resource-scoped one — Target is simply
+// whatever the entry point already passes (empty for workspace-wide, the
+// resource name for AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue), the
+// same split write-verb recording already uses.
+var readRelations = map[string]bool{
+	RelCanView:          true,
+	RelCanViewLogs:      true,
+	RelCanViewSensitive: true,
 }
 
 // receiverRE strips a method's pointer-receiver type (e.g. "(*Service).") out
@@ -199,10 +215,11 @@ func unexportedHelperMethod(name, short string) bool {
 	return r >= 'a' && r <= 'z'
 }
 
-// emit records one audit event for a write-relation authorize call — success
-// and denial alike; read relations never reach here (authorizeAndAudit filters
-// before calling). A sink error is logged and swallowed, never returned: audit
-// recording must never fail the verb it's recording.
+// emit records one audit event for an authorize call: a write relation's
+// success and denial alike, a read relation's denial only —
+// authorizeAndAudit filters before calling. A sink error is logged and
+// swallowed, never returned: audit recording must never fail the verb it's
+// recording.
 func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr error) {
 	sink := b.Audit
 	if sink == nil {

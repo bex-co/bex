@@ -60,6 +60,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     createdAt: "2026-01-01T00:00:00Z",
     replicas: 1,
     revision: "r1",
+    slug: "app-x1y2",
     plan: "starter",
     repo: "https://github.com/bex-co/hello-go.git",
     branch: "main",
@@ -128,7 +129,9 @@ describe("ServiceDetailHeader", () => {
       "/services/app/plan",
     );
 
-    // the bex-native facts line
+    // the bex-native facts line, incl. the platform-host slug (w4/m20/t002)
+    expect(screen.getByText("Slug")).toBeInTheDocument();
+    expect(screen.getByText("app-x1y2")).toBeInTheDocument();
     expect(screen.getByText("Instances")).toBeInTheDocument();
     expect(screen.getByText("Revision")).toBeInTheDocument();
     expect(screen.getByText("r1")).toBeInTheDocument();

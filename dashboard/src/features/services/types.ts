@@ -9,6 +9,13 @@ export interface ServiceView {
   id: string;
   /** Human-facing label: displayName when set, otherwise the immutable App name. */
   name: string;
+  /**
+   * The globally-unique platform-host segment (Render's "slug" field;
+   * `spec.subdomain`, minted w4/m19) — distinct from `name`, which is only
+   * workspace-unique. Null when not selected (only the detail `server` query
+   * fetches it).
+   */
+  slug: string | null;
   /** Raw mutable label from spec.displayName; null/empty means fall back to id. */
   displayName?: string | null;
   /**

@@ -65,10 +65,18 @@ func deleteWorkspaceLikeVerb(ctx context.Context, b *Base, object string) error 
 	return b.AuthorizeOn(ctx, RelCanManage, object)
 }
 
-// listLikeVerb stands in for a read verb (apps.Service.List's shape): a read
-// relation must never reach the sink at all.
+// listLikeVerb stands in for a workspace-wide read verb (apps.Service.List's
+// shape): an ALLOWED read relation must never reach the sink; a DENIED one
+// must (w4/m20/t001).
 func listLikeVerb(ctx context.Context, b *Base) error {
 	return b.Authorize(ctx, RelCanView)
+}
+
+// getAppLikeVerb stands in for a resource-scoped read verb
+// (apps.Service.Get's AuthorizeApp-family shape): same allowed/denied split
+// as listLikeVerb, but with a Target recorded on denial.
+func getAppLikeVerb(ctx context.Context, b *Base, service string) error {
+	return b.AuthorizeTarget(ctx, RelCanView, ServiceTarget(service))
 }
 
 // scaleLikeVerb stands in for a SERVICE-SCOPED write verb (apps.Service.Scale's
@@ -189,16 +197,74 @@ func TestAuditRecordsDenialOnCrossTenantAuthorizeOn(t *testing.T) {
 	}
 }
 
-func TestAuditSkipsReadRelations(t *testing.T) {
+// TestAuditSkipsAllowedReadRelations pins the volume-driven half of
+// w4/m20/t001: a successful read (list, get, metrics, …) never reaches the
+// sink, regardless of entry point (plain Authorize or the AuthorizeApp-family
+// AuthorizeTarget) — the read traffic that made recording every read
+// prohibitive in the first place.
+func TestAuditSkipsAllowedReadRelations(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
+
+	if err := listLikeVerb(ctx, b); err != nil {
+		t.Fatalf("listLikeVerb: %v", err)
+	}
+	if err := getAppLikeVerb(ctx, b, "web"); err != nil {
+		t.Fatalf("getAppLikeVerb: %v", err)
+	}
+	if sink.len() != 0 {
+		t.Fatalf("got %d events for allowed reads, want 0", sink.len())
+	}
+}
+
+// TestAuditRecordsDeniedReadRelations closes the w4/m10 cut (w4/m20/t001): a
+// DENIED read is security-relevant (someone probed a resource they can't
+// see) and now reaches the sink exactly like a denied write — for BOTH
+// entry-point shapes, workspace-wide (Authorize/AuthorizeOn) and
+// resource-scoped (the AuthorizeApp family via AuthorizeTarget, which also
+// records a Target — the same split write-verb recording already uses).
+func TestAuditRecordsDeniedReadRelations(t *testing.T) {
 	sink := &fakeAuditSink{}
 	b := &Base{Authz: &fakeDenyChecker{}, Audit: sink}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
 
 	if err := listLikeVerb(ctx, b); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("listLikeVerb err = %v, want ErrForbidden", err)
+	}
+	if err := getAppLikeVerb(ctx, b, "web"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("getAppLikeVerb err = %v, want ErrForbidden", err)
+	}
+	if sink.len() != 2 {
+		t.Fatalf("got %d events for denied reads, want 2", sink.len())
+	}
+	workspaceWide, scoped := sink.events[0], sink.events[1]
+	if workspaceWide.Outcome != AuditDenied || workspaceWide.Target != "" {
+		t.Errorf("workspace-wide denied read = %+v, want outcome=denied target=\"\"", workspaceWide)
+	}
+	if scoped.Outcome != AuditDenied || scoped.Target != "service:web" {
+		t.Errorf("scoped denied read = %+v, want outcome=denied target=service:web", scoped)
+	}
+}
+
+// TestAuditRecordsDeniedReadOnCrossTenantAuthorizeOn: the AuthorizeOn entry
+// point (workspace-scoped read verbs like environments.List) records a denied
+// read exactly like Authorize/AuthorizeTarget do — no entry-point split
+// (t001's second open question).
+func TestAuditRecordsDeniedReadOnCrossTenantAuthorizeOn(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeDenyChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
+
+	err := b.AuthorizeOn(ctx, RelCanView, WorkspaceObject("tea-other"))
+	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden", err)
 	}
-	if sink.len() != 0 {
-		t.Fatalf("got %d events for a read relation, want 0", sink.len())
+	if sink.len() != 1 {
+		t.Fatalf("got %d events, want exactly 1", sink.len())
+	}
+	if ev := sink.events[0]; ev.Outcome != AuditDenied || ev.Resource != "workspace:tea-other" {
+		t.Errorf("event = %+v, want outcome=denied resource=workspace:tea-other", ev)
 	}
 }
 

@@ -166,6 +166,15 @@ type CronRunView struct {
 // format (the REST/GraphQL adapters render it in Render's Service shape).
 type AppView struct {
 	Name string `json:"name"`
+	// Slug is the globally-unique platform-host segment (Render's "slug"
+	// field on the service object; bex's spec.subdomain, minted w4/m19) —
+	// the bare service name when free platform-wide, or "<name>-<4-char
+	// suffix>" when a cross-tenant collision required one. Distinct from
+	// Name: Name is workspace-unique (what the tenant called it), Slug is
+	// platform-unique (what the public host is built from,
+	// AppSpec.PlatformSubdomain) — previously only observable by parsing it
+	// out of URL/URLs (w4/m20/t002).
+	Slug string `json:"slug"`
 	// DisplayName is the App's mutable, human-facing label (spec.displayName).
 	// Empty means clients should display Name, preserving existing Apps while
 	// keeping Name available as the immutable resource id.
@@ -386,6 +395,7 @@ func view(a *appv1alpha1.App) AppView {
 	}
 	return AppView{
 		Name:             publicName(a),
+		Slug:             a.Spec.PlatformSubdomain(a.Name),
 		DisplayName:      a.Spec.DisplayName,
 		Type:             svcType,
 		Phase:            string(a.Status.Phase),

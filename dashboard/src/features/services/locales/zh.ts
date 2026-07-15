@@ -34,6 +34,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "URL",
     description: "Services table column header",
   },
+  "services.colSlug": {
+    message: "Slug",
+    description:
+      "Service detail header fact (globally-unique platform-host segment, Render's slug field)",
+  },
   "services.colInstances": {
     message: "实例数",
     description: "Services table column header (replica count — bex-native)",

@@ -114,6 +114,73 @@ func TestServiceListGetVerbs(t *testing.T) {
 	}
 }
 
+// TestSlugPresentOnAllThreeSurfaces is w4/m20/t002's adapter-parity check:
+// the globally-unique platform-host slug (spec.subdomain, minted w4/m19,
+// falling back to the CR name when unset) reads back identically over
+// REST, GraphQL and MCP — including the suffixed case a cross-tenant name
+// collision produces. REST's GET and MCP's get_service both delegate to the
+// same toRenderService(AppView) the assertions below share, so this also
+// proves MCP without standing up a full mcp.Server transport.
+func TestSlugPresentOnAllThreeSurfaces(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		subdomain string
+		want      string
+	}{
+		{name: "bare-name-free-platform-wide", subdomain: "", want: "web"},
+		{name: "suffixed-on-cross-tenant-collision", subdomain: "web-a1b2", want: "web-a1b2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := sampleApp("web")
+			app.Spec.Subdomain = tc.subdomain
+			svc, _ := newService(nil, app)
+			ctx := context.Background()
+
+			// REST
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
+			}
+			var restBody map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
+				t.Fatalf("decode REST body: %v", err)
+			}
+			if got := restBody["slug"]; got != tc.want {
+				t.Errorf("REST slug = %v, want %q", got, tc.want)
+			}
+
+			// GraphQL
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			})
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+				RequestString: `{ service(id: "web") { slug } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			if got := res.Data.(map[string]any)["service"].(map[string]any)["slug"]; got != tc.want {
+				t.Errorf("GraphQL slug = %v, want %q", got, tc.want)
+			}
+
+			// MCP (get_service's handler, the same toRenderService REST's GET uses)
+			handler := svc.serviceTool(svc.Get)
+			_, mcpService, err := handler(ctx, nil, serviceArgs{ServiceID: "web"})
+			if err != nil {
+				t.Fatalf("MCP get_service: %v", err)
+			}
+			if mcpService.Slug != tc.want {
+				t.Errorf("MCP slug = %q, want %q", mcpService.Slug, tc.want)
+			}
+		})
+	}
+}
+
 // --- Workspace-scoped List/Get/Create (w1/m9) ---
 
 // fakeWorkspace is a map-backed core.WorkspaceResolver: identities not in the

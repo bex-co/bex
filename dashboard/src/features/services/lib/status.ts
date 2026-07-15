@@ -35,6 +35,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
   return {
     id: s.id ?? "",
     name: displayName ?? immutableName,
+    slug: "slug" in s ? (s.slug ?? null) : null,
     displayName,
     type: s.type ?? "web_service",
     suspended: isSuspended(s.suspended),

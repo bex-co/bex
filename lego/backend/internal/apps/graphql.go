@@ -181,6 +181,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Render-shaped fields (id is the App name; type is the serviceType enum).
 		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
+		// distinct from name, which is only workspace-unique.
+		"slug":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Slug })},
 		"displayName":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DisplayName })},
 		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
 		"suspended":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},

@@ -72,6 +72,7 @@ describe("toServiceView", () => {
     ).toEqual({
       id: "app",
       name: "app",
+      slug: null,
       displayName: null,
       type: "web_service",
       suspended: true,
@@ -158,6 +159,36 @@ describe("toServiceView", () => {
     expect(v.repo).toBeNull();
     expect(v.branch).toBeNull();
     expect(v.rootDir).toBeNull();
+  });
+
+  it("reads slug from a detail server node, incl. the random-suffix case", () => {
+    const serverNode: ServerNode = {
+      __typename: "Service",
+      id: "web",
+      name: "web",
+      slug: "web-a1b2",
+      type: "web_service",
+      suspended: "not_suspended",
+      dashboardUrl: null,
+      url: null,
+      createdAt: null,
+      phase: "Running",
+      replicas: 1,
+      revision: null,
+      plan: null,
+      idleTTLSeconds: 0,
+      repo: null,
+      branch: null,
+      rootDir: null,
+      schedule: null,
+      command: null,
+      runs: [],
+    };
+    expect(toServiceView(serverNode).slug).toBe("web-a1b2");
+  });
+
+  it("leaves slug null for a list node (not selected by the services query)", () => {
+    expect(toServiceView(node()).slug).toBeNull();
   });
 
   it("maps a cron server node's schedule and run history", () => {

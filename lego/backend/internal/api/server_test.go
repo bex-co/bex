@@ -775,11 +775,15 @@ func (f *fakeAuditSink) Record(_ context.Context, ev core.AuditEvent) error {
 // joins the authz sweep automatically joins this one, per t001/t004's design
 // goal) once with an allow-all checker and once with a deny-all checker, each
 // wired to its own fake sink, and compares event counts per verb. No
-// hand-maintained "these are the write verbs" list: a write-relation verb
-// necessarily records on BOTH outcomes (one event each, matching), a
-// read-relation verb records on NEITHER (zero events on both) — any other
-// pattern (recorded on only one outcome, or more than one event per call) is
-// the bug this test exists to catch.
+// hand-maintained "these are the write verbs" list: every relation now
+// records on denial (w4/m20/t001 — writeRelations ∪ readRelations covers
+// every Rel… constant, so TestAuthzGuardsEveryVerb's own ErrForbidden proof
+// means the deny run must record exactly once, whichever map the verb's
+// relation falls in); a write-relation verb ADDITIONALLY records on success
+// (one event each outcome), a read-relation verb does not (zero on success —
+// volume) — any other pattern (no denial event, more than one event per
+// call, or a success event for a read verb) is the bug this test exists to
+// catch.
 func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 	allowSink := &fakeAuditSink{}
 	allowBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: true}, Audit: allowSink}
@@ -787,24 +791,32 @@ func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 	denyBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}, Audit: denySink}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
 
-	var allowSeen, denySeen, writeVerbs int
+	var allowSeen, denySeen, writeVerbs, readVerbs int
 	swept := sweepVerbPairs(t, ctx, sweepableServices(allowBase), sweepableServices(denyBase),
 		func(serviceName, method string, allowErr, denyErr error) {
 			allowDelta := len(allowSink.events) - allowSeen
 			denyDelta := len(denySink.events) - denySeen
 			allowSeen, denySeen = len(allowSink.events), len(denySink.events)
 
-			if allowDelta != denyDelta {
-				t.Errorf("%s.%s: allow run recorded %d event(s), deny run recorded %d — a write verb must record on both outcomes, a read verb on neither",
-					serviceName, method, allowDelta, denyDelta)
+			if denyDelta != 1 {
+				t.Errorf("%s.%s: deny run recorded %d event(s), want exactly 1 — every relation records its denial now, write or read",
+					serviceName, method, denyDelta)
 				return
 			}
 			if allowDelta > 1 {
-				t.Errorf("%s.%s: recorded %d events for one call, want at most 1", serviceName, method, allowDelta)
+				t.Errorf("%s.%s: recorded %d success events for one call, want at most 1", serviceName, method, allowDelta)
 				return
 			}
+			denyEv := denySink.events[len(denySink.events)-1]
+			if denyEv.Outcome != core.AuditDenied {
+				t.Errorf("%s.%s: deny-run event outcome = %q, want %q", serviceName, method, denyEv.Outcome, core.AuditDenied)
+			}
+			if !errors.Is(denyErr, core.ErrForbidden) {
+				t.Errorf("%s.%s: deny run returned %v, want ErrForbidden alongside the denial event", serviceName, method, denyErr)
+			}
 			if allowDelta == 0 {
-				return // a read-relation verb — correctly unaudited
+				readVerbs++
+				return // a read-relation verb — correctly unaudited on success
 			}
 			writeVerbs++
 			allowEv := allowSink.events[len(allowSink.events)-1]
@@ -817,13 +829,6 @@ func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 			if allowEv.Caller != "client-1" {
 				t.Errorf("%s.%s: event Caller = %q, want the calling identity", serviceName, method, allowEv.Caller)
 			}
-			denyEv := denySink.events[len(denySink.events)-1]
-			if denyEv.Outcome != core.AuditDenied {
-				t.Errorf("%s.%s: deny-run event outcome = %q, want %q", serviceName, method, denyEv.Outcome, core.AuditDenied)
-			}
-			if !errors.Is(denyErr, core.ErrForbidden) {
-				t.Errorf("%s.%s: deny run returned %v, want ErrForbidden alongside the denial event", serviceName, method, denyErr)
-			}
 		})
 	if swept < wantMinSweptVerbs {
 		t.Fatalf("sweep found only %d verbs — reflection filter broke?", swept)
@@ -831,7 +836,10 @@ func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 	if writeVerbs == 0 {
 		t.Fatal("no write verbs recorded an audit event — the hook or the sweep is broken")
 	}
-	t.Logf("%d/%d swept verbs are audited write verbs", writeVerbs, swept)
+	if readVerbs == 0 {
+		t.Fatal("no read verbs skipped the success event — the hook or the sweep is broken")
+	}
+	t.Logf("%d/%d swept verbs are audited write verbs, %d are audited-on-denial-only read verbs", writeVerbs, swept, readVerbs)
 }
 
 // fakeAuditKV is a minimal in-memory core.SecretKV for TestAuditNeverCarriesSecretValues.

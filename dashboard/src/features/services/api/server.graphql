@@ -10,6 +10,10 @@ query Server($id: String!) {
   server(id: $id) {
     id
     name
+    # slug is the globally-unique platform-host segment (Render's "slug" field;
+    # bex's spec.subdomain, minted w4/m19) — distinct from name, which is only
+    # workspace-unique. Read-only; the header shows it (w4/m20/t002).
+    slug
     displayName
     type
     suspended

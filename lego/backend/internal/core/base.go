@@ -322,19 +322,22 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), nil)
 }
 
-// authorizeAndAudit runs the OpenFGA check and, for write relations only,
-// records the outcome (audit.go) — the one place Authorize, AuthorizeTarget and
-// AuthorizeOn funnel through, so a verb is recorded exactly once regardless of
-// which entry point it calls. resolveErr is a refusal that happened BEFORE the
-// check (the caller named a workspace they are not a member of): it short-circuits
-// the check but is still audited, so a cross-workspace attempt leaves the same
-// denial trail an OpenFGA "no" does.
+// authorizeAndAudit runs the OpenFGA check and records the outcome
+// (audit.go) — the one place Authorize, AuthorizeTarget and AuthorizeOn
+// funnel through, so a verb is recorded exactly once regardless of which
+// entry point it calls. A write relation always records (allowed or
+// denied); a read relation records only when denied (audit.go's
+// readRelations — an allowed read stays unrecorded, volume-prohibitive).
+// resolveErr is a refusal that happened BEFORE the check (the caller named a
+// workspace they are not a member of): it short-circuits the check but is
+// still audited, so a cross-workspace attempt leaves the same denial trail
+// an OpenFGA "no" does.
 func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string, resolveErr error) error {
 	err := resolveErr
 	if err == nil {
 		err = b.checkAuthz(ctx, relation, object)
 	}
-	if writeRelations[relation] {
+	if writeRelations[relation] || (readRelations[relation] && err != nil) {
 		b.emit(ctx, verb, object, target, err)
 	}
 	return err

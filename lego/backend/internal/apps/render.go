@@ -32,6 +32,7 @@ const renderWebService = "web_service"
 type renderService struct {
 	ID             string         `json:"id"` // Render ids are opaque; bex uses the App name
 	Name           string         `json:"name"`
+	Slug           string         `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
 	DisplayName    string         `json:"displayName"`
 	Type           string         `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
 	Suspended      string         `json:"suspended"`
@@ -152,6 +153,7 @@ func toRenderService(a AppView) renderService {
 	return renderService{
 		ID:              a.Name,
 		Name:            a.Name,
+		Slug:            a.Slug,
 		DisplayName:     a.DisplayName,
 		Type:            svcType,
 		Suspended:       core.SuspendedEnum(a.Suspended),
