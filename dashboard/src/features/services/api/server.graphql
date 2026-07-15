@@ -82,5 +82,9 @@ query Server($id: String!) {
       name
       value
     }
+    # ipAllowList is Render's inbound CIDR allowlist for web_service and
+    # static_site (w7/m32): each element is a CIDR string; empty/null means
+    # open to all source IPs (Render's default).
+    ipAllowList
   }
 }

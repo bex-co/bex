@@ -135,6 +135,13 @@ export interface ServiceView {
    * /headers); empty for other types / when not selected.
    */
   headers: StaticHeaderView[];
+  /**
+   * Render's inbound CIDR allowlist for `web_service` and `static_site`
+   * (`spec.ipAllowList`, w7/m32). Empty/null means open to all source IPs.
+   * null when not selected (list query omits it); only the detail `server`
+   * query fetches it for the Networking section.
+   */
+  ipAllowList: Array<string | null> | null;
 }
 
 /**

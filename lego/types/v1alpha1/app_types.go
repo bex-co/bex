@@ -414,6 +414,14 @@ type AppSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=enabled;disabled
 	SubdomainPolicy string `json:"subdomainPolicy,omitempty"`
+
+	// IPAllowList restricts the HTTP(S) Ingress to these CIDRs via a Traefik
+	// Middleware on the App's Ingress. Empty means the Ingress is open to all
+	// source IPs (Render's default). Only meaningful for web_service and
+	// static_site (the types that have a public Ingress); ignored for
+	// private_service, background_worker, and cron_job.
+	// +optional
+	IPAllowList []string `json:"ipAllowList,omitempty"`
 }
 
 // PlatformSubdomain returns the slug the platform hostname is built from:

@@ -327,6 +327,14 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(staticHeaderGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Headers }),
 		},
+		// ipAllowList is Render's inbound CIDR allowlist for web_service and
+		// static_site. Empty/nil means open to all source IPs (Render's default).
+		// The dashboard's Networking section reads it and writes it via
+		// setServiceIpAllowList.
+		"ipAllowList": &graphql.Field{
+			Type:    graphql.NewList(graphql.String),
+			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
+		},
 	},
 })
 
@@ -1073,6 +1081,27 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetSubdomainPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
+			},
+		},
+		// setServiceIpAllowList replaces the inbound CIDR allowlist for a
+		// web_service or static_site. An empty or null cidrs arg clears the
+		// allowlist (open to all source IPs, Render's default). Each element
+		// must be a valid IPv4 or IPv6 CIDR — an invalid CIDR is 400.
+		"setServiceIpAllowList": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				rawCIDRs, _ := p.Args["cidrs"].([]any)
+				cidrs := make([]string, 0, len(rawCIDRs))
+				for _, c := range rawCIDRs {
+					if s, ok := c.(string); ok {
+						cidrs = append(cidrs, s)
+					}
+				}
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), cidrs)
 			},
 		},
 		// Static-site edge-rule mutations: replace the whole routes/headers list

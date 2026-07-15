@@ -1,21 +1,21 @@
 # w7 · m32 — Service inbound `ipAllowList`: web services + static sites
 
-**Worker:** worker7 **Goal:** Render's service-level `ipAllowList` (`[{cidrBlock, description}]` on webServiceDetails + staticSiteDetails, POST+PATCH) exists for bex: inbound HTTP to a web service or static site is restricted to the listed CIDRs via a Traefik middleware, settable on every surface. **Status:** todo
+**Worker:** worker7 **Goal:** Render's service-level `ipAllowList` (`[{cidrBlock, description}]` on webServiceDetails + staticSiteDetails, POST+PATCH) exists for bex: inbound HTTP to a web service or static site is restricted to the listed CIDRs via a Traefik middleware, settable on every surface. **Status:** done — **DONE** 2026-07-15
 
 ## Tasks (in order)
 
 | id   | title                                                        | est | depends_on |
 | ---- | ------------------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's semantics (empty list, deny behavior, scope)  | 30m | —          |
-| t002 | CRD field + Traefik `ipAllowList` middleware on the app Ingress | 60m | t001       |
-| t003 | Static-site coverage (shared static-server host routes)        | 45m | t002       |
-| t004 | REST/GraphQL/MCP with the structured `{cidrBlock, description}` shape | 45m | t002       |
-| t005 | Reconcile the PG/KV flat `[]string` divergence (decide + flag) | 30m | t004       |
-| t006 | Dashboard: Networking section on the service page              | 40m | t004       |
-| t007 | Render parity                                                  | 30m | t003, t005, t006 |
-| t008 | Simplify                                                       | 30m | t007       |
-| t009 | Test coverage                                                  | 45m | t007       |
-| t010 | Closeout                                                       | 15m | t009       |
+| t001 | Capture Render's semantics (empty list, deny behavior, scope)  | 30m | —          | — **DONE** |
+| t002 | CRD field + Traefik `ipAllowList` middleware on the app Ingress | 60m | t001       | — **DONE** |
+| t003 | Static-site coverage (shared static-server host routes)        | 45m | t002       | — **DONE** |
+| t004 | REST/GraphQL/MCP with the structured `{cidrBlock, description}` shape | 45m | t002       | — **DONE** |
+| t005 | Reconcile the PG/KV flat `[]string` divergence (decide + flag) | 30m | t004       | — **DONE** |
+| t006 | Dashboard: Networking section on the service page              | 40m | t004       | — **DONE** |
+| t007 | Render parity                                                  | 30m | t003, t005, t006 | — **DONE** |
+| t008 | Simplify                                                       | 30m | t007       | — **DONE** |
+| t009 | Test coverage                                                  | 45m | t007       | — **DONE** |
+| t010 | Closeout                                                       | 15m | t009       | — **DONE** |
 
 ## Definition of done
 

@@ -1,0 +1,10 @@
+# setServiceIpAllowList replaces the inbound IP allowlist for a web service or
+# static site (w7/m32, Render's ipAllowList on webServiceDetails /
+# staticSiteDetails). An empty cidrs array clears the allowlist (open to all
+# source IPs). Only applies to web_service and static_site types.
+mutation SetServiceIpAllowList($id: String!, $cidrs: [String]) {
+  setServiceIpAllowList(id: $id, cidrs: $cidrs) {
+    id
+    ipAllowList
+  }
+}
