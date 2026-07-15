@@ -79,9 +79,9 @@ The following commands were exercised against live bex environments with real Se
 | `projects`, `environments <project-id>` | ✅ | Lists projects and returns Render-compatible environment records. |
 | `services`, `services create`, `services update`, `services delete` | ✅ | List and lifecycle operations return the expected Render wire shapes. The upstream CLI does not support `--num-instances` on update; supported fields such as `--health-check-path` work. |
 | `services instances` | ✅ | Returns live, non-terminal Deployment pods; suspended services return an empty list. |
-| `postgres create`, list, get, update, suspend, resume, delete | ✅ | Includes plan, disk, high-availability, and IP allow-list changes. |
+| `postgres create`, list, get, update, suspend, resume, delete | ✅ | Includes plan, disk, high-availability, and IP allow-list changes. Allow-list entries round-trip as `{cidrBlock, description}` objects — per-entry descriptions persist and come back on every read (w4/m24; previously accepted but dropped). |
 | `postgres update --name` | ✅ | Rename preserves the immutable `dpg-…` ID and Kubernetes identity. Production passed on 2026-07-15 using digest `ba32bf76ab6e` (deploy run `29406643202`): the legacy backfill preserved all 11 recorded UIDs, and a fresh resource passed the official-CLI identity smoke test. |
-| `keyvalues create`, list, get, update, suspend, resume, delete | ✅ | Owner, options, persistence policy, and structured IP allow-list fields round-trip correctly. |
+| `keyvalues create`, list, get, update, suspend, resume, delete | ✅ | Owner, options, persistence policy, and structured IP allow-list fields round-trip correctly — including per-entry allow-list descriptions (w4/m24; previously accepted but dropped). |
 | `deploys list`, `deploys create`, `deploys cancel` | ✅ | Deploy creation accepts the CLI's cache enum and returns Render-compatible deploy records. |
 | `restart`, `logs` | ✅ | Accept typed service IDs and public names. Logs return stable cursors even when the result is empty. |
 | `jobs list`, `jobs create`, `jobs cancel` | ✅ | One-off jobs use the service image and return the expected job shape. |

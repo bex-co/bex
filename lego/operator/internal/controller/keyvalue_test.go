@@ -81,7 +81,10 @@ func TestKeyValueIPAllowListProjection(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "acl-kv", Namespace: "default"},
 		Spec: appv1alpha1.KeyValueSpec{
 			Plan: "free", Public: true,
-			IPAllowList: []string{"203.0.113.0/24", "10.0.0.0/8"},
+			IPAllowList: []appv1alpha1.IPAllowEntry{
+				{CIDR: "203.0.113.0/24", Description: "office"},
+				{CIDR: "10.0.0.0/8"},
+			},
 		},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
@@ -156,7 +159,7 @@ func TestKeyValueIPAllowListProjection(t *testing.T) {
 		t.Fatalf("get kv: %v", err)
 	}
 	kv.Spec.Public = false
-	kv.Spec.IPAllowList = []string{"203.0.113.0/24"}
+	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
 	if err := cl.Update(ctx, kv); err != nil {
 		t.Fatalf("make private: %v", err)
 	}
@@ -373,5 +376,64 @@ var _ = Describe("KeyValue Controller", func() {
 		// ignored — no error, no re-creation attempt.
 		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
+// The backward-compatibility contract through a REAL apiserver (envtest):
+// a pre-m24 KeyValue serialized spec.ipAllowList as bare CIDR strings. The
+// Schemaless CRD must keep accepting that shape, the typed client must decode
+// it (empty descriptions), and enforcement must render byte-identically to a
+// structured cidr-only list — with descriptions never influencing the
+// rendered middleware.
+var _ = Describe("KeyValue legacy ipAllowList shape", func() {
+	const name = "legacy-acl-kv"
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: name, Namespace: "default"}
+
+	AfterEach(func() {
+		if kv := (&appv1alpha1.KeyValue{}); k8sClient.Get(ctx, nn, kv) == nil {
+			Expect(k8sClient.Delete(ctx, kv)).To(Succeed())
+		}
+	})
+
+	It("accepts a legacy string-list CR, reads it back with empty descriptions, and enforces identically", func() {
+		By("applying the pre-m24 serialization (bare CIDR strings) through the apiserver")
+		legacy := &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "app.bex.co/v1alpha1",
+			"kind":       "KeyValue",
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
+			"spec": map[string]any{
+				"plan":        "free",
+				"public":      true,
+				"ipAllowList": []any{"203.0.113.0/24", "10.0.0.0/8"},
+			},
+		}}
+		Expect(k8sClient.Create(ctx, legacy)).To(Succeed())
+
+		By("decoding it through the typed client with empty descriptions")
+		kv := &appv1alpha1.KeyValue{}
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		Expect(kv.Spec.IPAllowList).To(Equal([]appv1alpha1.IPAllowEntry{
+			{CIDR: "203.0.113.0/24"},
+			{CIDR: "10.0.0.0/8"},
+		}))
+
+		By("rendering the exact middleware a cidr-only structured spec renders")
+		fromLegacy := ipAllowListMiddlewareSpec(kv.Spec.IPAllowList)
+		structured := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
+			{CIDR: "203.0.113.0/24"},
+			{CIDR: "10.0.0.0/8"},
+		})
+		Expect(fromLegacy).To(Equal(structured))
+
+		By("keeping the rendered middleware byte-identical when only descriptions change")
+		kv.Spec.IPAllowList[0].Description = "office"
+		kv.Spec.IPAllowList[1].Description = "vpn"
+		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+		relabeled := &appv1alpha1.KeyValue{}
+		Expect(k8sClient.Get(ctx, nn, relabeled)).To(Succeed())
+		Expect(relabeled.Spec.IPAllowList[0].Description).To(Equal("office"), "descriptions persist on the CR")
+		Expect(ipAllowListMiddlewareSpec(relabeled.Spec.IPAllowList)).To(Equal(fromLegacy),
+			"a description-only change must not re-render enforcement")
 	})
 })

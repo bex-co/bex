@@ -181,7 +181,7 @@ func TestSetACL_RejectsBadCIDR(t *testing.T) {
 	svc, _ := newServiceWithClient(st)
 	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
 
-	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, []string{"not-a-cidr"}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, []core.IPAllowListEntry{{CIDRBlock: "not-a-cidr"}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("SetACL with a bad CIDR: got %v, want ErrBadRequest", err)
 	}
 }
@@ -208,18 +208,18 @@ func TestSetACL_PropagatesIPAllowListToEnvironmentMembers(t *testing.T) {
 	kvs.add(keyvalue.KeyValueView{ID: "outkv", OwnerID: "tea-a", EnvironmentID: "env-other"})
 	svc.Databases, svc.KeyValues = dbs, kvs
 
-	cidrs := []string{"10.0.0.0/24"}
-	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, cidrs); err != nil {
+	entries := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/24", Description: "office"}}
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, entries); err != nil {
 		t.Fatalf("SetACL: %v", err)
 	}
-	if got := dbs.dbs["indb"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" {
-		t.Errorf("indb (member of this environment) should get the environment's ipAllowList, got %v", got)
+	if got := dbs.dbs["indb"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" || got[0].Description != "office" {
+		t.Errorf("indb (member of this environment) should get the environment's ipAllowList (with its description), got %v", got)
 	}
 	if got := dbs.dbs["outdb"].IPAllowList; got != nil {
 		t.Errorf("outdb (member of a different environment) must not be touched, got %v", got)
 	}
-	if got := kvs.kvs["inkv"].IPAllowList; len(got) != 1 || got[0] != "10.0.0.0/24" {
-		t.Errorf("inkv (member of this environment) should get the environment's ipAllowList, got %v", got)
+	if got := kvs.kvs["inkv"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" || got[0].Description != "office" {
+		t.Errorf("inkv (member of this environment) should get the environment's ipAllowList (with its description), got %v", got)
 	}
 	if got := kvs.kvs["outkv"].IPAllowList; got != nil {
 		t.Errorf("outkv (member of a different environment) must not be touched, got %v", got)

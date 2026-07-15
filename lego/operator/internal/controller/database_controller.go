@@ -350,10 +350,12 @@ func poolerSpec(clusterName string) map[string]any {
 // ipAllowListMiddlewareSpec builds a Traefik MiddlewareTCP .spec restricting the
 // source IP range — attached to the external SNI route so only listed CIDRs
 // reach the public Postgres endpoint (the internal -rw path is never gated).
-func ipAllowListMiddlewareSpec(cidrs []string) map[string]any {
-	ranges := make([]any, len(cidrs))
-	for i, c := range cidrs {
-		ranges[i] = c
+// Only the CIDRs reach the rendered object: an entry's description is
+// operator-facing metadata and never influences enforcement.
+func ipAllowListMiddlewareSpec(entries []appv1alpha1.IPAllowEntry) map[string]any {
+	ranges := make([]any, len(entries))
+	for i, e := range entries {
+		ranges[i] = e.CIDR
 	}
 	return map[string]any{"ipAllowList": map[string]any{"sourceRange": ranges}}
 }

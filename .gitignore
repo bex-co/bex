@@ -16,6 +16,8 @@ infra/local/*.kubeconfig
 projects-to-deploy
 .tmp
 .env
+# minted dev-harness API-key credentials (bootstrap-key.sh)
+.cli-key.env
 .playwright-mcp
 
 cli

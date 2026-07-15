@@ -301,10 +301,22 @@ func TestPoolerSpec(t *testing.T) {
 }
 
 func TestIPAllowListMiddlewareSpec(t *testing.T) {
-	mw := ipAllowListMiddlewareSpec([]string{"203.0.113.0/24", "10.0.0.0/8"})
+	mw := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
+		{CIDR: "203.0.113.0/24", Description: "office"},
+		{CIDR: "10.0.0.0/8"},
+	})
 	ranges := mw["ipAllowList"].(map[string]any)["sourceRange"].([]any)
 	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" {
 		t.Errorf("sourceRange = %v", ranges)
+	}
+	// Descriptions are operator-facing metadata: the rendered middleware must be
+	// byte-identical to a description-free list (enforcement reads CIDRs only).
+	bare := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
+		{CIDR: "203.0.113.0/24"},
+		{CIDR: "10.0.0.0/8"},
+	})
+	if !reflect.DeepEqual(mw, bare) {
+		t.Errorf("description changed the rendered middleware: %v != %v", mw, bare)
 	}
 }
 

@@ -69,7 +69,7 @@ func (s *blueprintGroupingTestStore) CreateEnvironment(_ context.Context, projec
 	return environment, nil
 }
 
-func (s *blueprintGroupingTestStore) SetEnvironmentACL(_ context.Context, environmentID, protectedStatus string, isolated bool, ipAllowList []string) error {
+func (s *blueprintGroupingTestStore) SetEnvironmentACL(_ context.Context, environmentID, protectedStatus string, isolated bool, ipAllowList []core.IPAllowListEntry) error {
 	for i := range s.environments {
 		if s.environments[i].ID == environmentID {
 			s.environments[i].ProtectedStatus = protectedStatus

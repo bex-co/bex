@@ -24,6 +24,10 @@ KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
 
 echo "==> refreshing kubeconfig for kind cluster 'bex'"
 kind get kubeconfig --name bex > "$KUBECONFIG_FILE"
+# CAPD's LB endpoint can come back as https://0.0.0.0:<port>, which the
+# apiserver cert doesn't cover (valid for 127.0.0.1, not 0.0.0.0) — normalize
+# to loopback so kubectl's TLS verification passes.
+sed -i '' 's|https://0\.0\.0\.0:|https://127.0.0.1:|' "$KUBECONFIG_FILE"
 export KUBECONFIG="$PWD/$KUBECONFIG_FILE"
 
 echo "==> namespaces"
@@ -139,6 +143,8 @@ for attempt in $(seq 1 5); do
     BEX_CP_ADDR=":$BEX_CP_PORT" \
     BEX_API_NAMESPACE="$DEV_NS" \
     BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
+    BEX_DASHBOARD_URL="http://localhost:$DASHBOARD_PORT" \
+    BEX_REGION="local-capd" \
     BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
     BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
     BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \

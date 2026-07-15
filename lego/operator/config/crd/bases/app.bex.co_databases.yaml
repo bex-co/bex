@@ -101,10 +101,11 @@ spec:
                   IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
                   Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
                   route is open to all source IPs. The internal "-rw" path is never affected.
-                  Render's ipAllowList; only meaningful when Public.
-                items:
-                  type: string
-                type: array
+                  Render's ipAllowList; only meaningful when Public. Each entry carries the
+                  CIDR enforcement reads plus an optional description that rides along
+                  untouched; Schemaless because a pre-m24 CR serialized entries as bare
+                  CIDR strings and both shapes must keep validating (see IPAllowEntry).
+                x-kubernetes-preserve-unknown-fields: true
               name:
                 description: |-
                   Name is the mutable, user-facing database name. metadata.name is the

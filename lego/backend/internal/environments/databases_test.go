@@ -22,6 +22,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -82,16 +83,12 @@ func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, projectID stri
 	return nil
 }
 
-// SetIPAllowList (w6/m19) records the CIDRs onto the fake row so a test can
+// SetIPAllowList (w6/m19) records the entries onto the fake row so a test can
 // assert on the resulting allowlist, mirroring SetEnvironmentID/SetProjectID.
-func (f *fakeDatabaseIndex) SetIPAllowList(_ context.Context, name string, cidrs []string) (postgres.PostgresView, error) {
+func (f *fakeDatabaseIndex) SetIPAllowList(_ context.Context, name string, entries []core.IPAllowListEntry) (postgres.PostgresView, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	d := f.dbs[name]
-	entries := make([]postgres.IPAllowListEntry, len(cidrs))
-	for i, c := range cidrs {
-		entries[i] = postgres.IPAllowListEntry{CIDRBlock: c}
-	}
 	d.IPAllowList = entries
 	f.dbs[name] = d
 	return d, nil
@@ -147,11 +144,11 @@ func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, projectID stri
 
 // SetIPAllowList (w6/m19) is fakeDatabaseIndex.SetIPAllowList's KeyValue-CR
 // counterpart.
-func (f *fakeKeyValueIndex) SetIPAllowList(_ context.Context, name string, cidrs []string) (keyvalue.KeyValueView, error) {
+func (f *fakeKeyValueIndex) SetIPAllowList(_ context.Context, name string, entries []core.IPAllowListEntry) (keyvalue.KeyValueView, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	kv := f.kvs[name]
-	kv.IPAllowList = cidrs
+	kv.IPAllowList = entries
 	f.kvs[name] = kv
 	return kv, nil
 }

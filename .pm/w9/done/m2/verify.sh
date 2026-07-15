@@ -373,16 +373,18 @@ if [ $? != 0 ]; then
   failx "postgres create --ip-allow-list (RC12)" "got: $pg_create"
 else
   PG_ID=$(json_field '["id"]' <<<"$pg_create" 2>/dev/null || true)
-  # create round-trips the id, the dpg-… opaque id (RC5), and the RC12 wire shape.
-  WANT_FIELDS="\"name\":[[:space:]]*\"$PG_NAME\" \"id\":[[:space:]]*\"dpg-[a-z0-9]+\" \"cidrBlock\":[[:space:]]*\"10\\.0\\.0\\.0/8\""
-  checkFields "postgres create: id/name/ipAllowList wire shape all correct (RC12)" \
+  # create round-trips the id, the dpg-… opaque id (RC5), and the RC12 wire
+  # shape — including the entry's description, which persists since w4/m24
+  # (asserting only the cidrBlock is the single-field-check trap RC14 taught).
+  WANT_FIELDS="\"name\":[[:space:]]*\"$PG_NAME\" \"id\":[[:space:]]*\"dpg-[a-z0-9]+\" \"cidrBlock\":[[:space:]]*\"10\\.0\\.0\\.0/8\" \"description\":[[:space:]]*\"verify\""
+  checkFields "postgres create: id/name/ipAllowList wire shape all correct (RC12, w4/m24 description)" \
     echo "$pg_create"
 
   raw_meta_check postgres "$PG_ID" databases \
     "postgres raw REST metadata has real owner/region/dashboard/timestamps"
 
   # list + get-by-name (RC3 envelope + RC7 ?name= filter) with whole-shape asserts.
-  WANT_FIELDS="\"id\":[[:space:]]*\"$PG_ID\" \"name\":[[:space:]]*\"$PG_NAME\" \"plan\": \"cidrBlock\":[[:space:]]*\"10\\.0\\.0\\.0/8\""
+  WANT_FIELDS="\"id\":[[:space:]]*\"$PG_ID\" \"name\":[[:space:]]*\"$PG_NAME\" \"plan\": \"cidrBlock\":[[:space:]]*\"10\\.0\\.0\\.0/8\" \"description\":[[:space:]]*\"verify\""
   checkFields "postgres list: record resolves through the cursor envelope (RC3)" \
     "$RENDER_BIN" postgres list -o json
   checkFields "postgres get: resolves by name (RC3/RC7) with every field intact" \
@@ -420,9 +422,10 @@ else
     "\"id\":[[:space:]]*\"$PG_ID\"" \
     "$RENDER_BIN" postgres update "$PG_NAME" --high-availability=true -o json
 
-  # update --ip-allow-list (RC12) replaces the list; the new CIDR round-trips.
-  check "postgres update --ip-allow-list replaces the list (RC12)" \
-    "\"cidrBlock\":[[:space:]]*\"203\\.0\\.113\\.0/24\"" \
+  # update --ip-allow-list (RC12) replaces the list; the new CIDR AND its
+  # description round-trip (descriptions persist since w4/m24).
+  WANT_FIELDS="\"cidrBlock\":[[:space:]]*\"203\\.0\\.113\\.0/24\" \"description\":[[:space:]]*\"office\""
+  checkFields "postgres update --ip-allow-list replaces the list, description returns (RC12, w4/m24)" \
     "$RENDER_BIN" postgres update "$PG_NAME" --ip-allow-list "cidr=203.0.113.0/24,description=office" -o json
 
   # update --clear-ip-allow-list (RC11/RC12): the list empties. Assert the
@@ -475,8 +478,10 @@ KV_NAME="verify-kv-$$"
 # Every field Render's real KeyValueDetail carries that bex-api has
 # historically dropped or zero-valued silently (RC3/RC4/owner-options-nesting/
 # ipAllowList-shape) — checked together so a partial regression can't hide
-# behind one passing field, per checkFields' doc comment above.
-WANT_FIELDS='"id":[[:space:]]*"'"$KV_NAME"'" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8"'
+# behind one passing field, per checkFields' doc comment above. The trailing
+# description assertion is w4/m24: an --ip-allow-list description must come
+# BACK, not merely be accepted.
+WANT_FIELDS='"id":[[:space:]]*"'"$KV_NAME"'" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8" "description":[[:space:]]*"verify"'
 
 checkFields "keyvalues create: owner/options nested + underscore maxmemoryPolicy (RC4) + ipAllowList shape all correct" \
   "$RENDER_BIN" keyvalues create --name "$KV_NAME" \

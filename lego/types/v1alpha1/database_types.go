@@ -84,9 +84,14 @@ type DatabaseSpec struct {
 	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
 	// Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
 	// route is open to all source IPs. The internal "-rw" path is never affected.
-	// Render's ipAllowList; only meaningful when Public.
+	// Render's ipAllowList; only meaningful when Public. Each entry carries the
+	// CIDR enforcement reads plus an optional description that rides along
+	// untouched; Schemaless because a pre-m24 CR serialized entries as bare
+	// CIDR strings and both shapes must keep validating (see IPAllowEntry).
 	// +optional
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	IPAllowList []IPAllowEntry `json:"ipAllowList,omitempty"`
 
 	// Pooler, when true, provisions a PgBouncer connection pooler (a CNPG Pooler
 	// in transaction mode) for this database; the connection info then surfaces

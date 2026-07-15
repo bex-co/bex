@@ -42,9 +42,9 @@ func TestSetIPAllowListRejectsInvalidCIDR(t *testing.T) {
 
 	badCIDRs := [][]string{
 		{"not-a-cidr"},
-		{"1.2.3.4"},     // host address, not CIDR
-		{"1.2.3.4/33"},  // prefix too long for IPv4
-		{"::1/129"},     // prefix too long for IPv6
+		{"1.2.3.4"},    // host address, not CIDR
+		{"1.2.3.4/33"}, // prefix too long for IPv4
+		{"::1/129"},    // prefix too long for IPv6
 		{""},
 		{"203.0.113.0/24", "bad"},
 	}
@@ -310,7 +310,9 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
 			var restBody struct {
-				IPAllowList []struct{ CidrBlock string `json:"cidrBlock"` } `json:"ipAllowList"`
+				IPAllowList []struct {
+					CidrBlock string `json:"cidrBlock"`
+				} `json:"ipAllowList"`
 			}
 			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
 				t.Fatalf("decode REST body: %v", err)

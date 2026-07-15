@@ -18,11 +18,13 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -36,26 +38,35 @@ import (
 // NetworkIsolationEnabled, when true, is what makes environments/service.go
 // stamp core.LabelEnvironment onto member App CRs for the operator's
 // environment-scoped NetworkPolicy; IPAllowList is fanned out onto member
-// Database/KeyValue CRs' own Spec.IPAllowList (environments/acl.go).
+// Database/KeyValue CRs' own Spec.IPAllowList (environments/acl.go). Since
+// w4/m24 (0034) ip_allow_list is a jsonb array of {cidrBlock, description}
+// entries; rows written before the migration hold bare CIDR strings, which
+// core.IPAllowListEntry's UnmarshalJSON still decodes (empty description).
 type Environment struct {
-	ID                      string    `json:"id"`
-	ProjectID               string    `json:"projectId"`
-	TenantID                string    `json:"tenantId"`
-	Name                    string    `json:"name"`
-	CreatedAt               time.Time `json:"createdAt"`
-	ProtectedStatus         string    `json:"protectedStatus"`
-	NetworkIsolationEnabled bool      `json:"networkIsolationEnabled"`
-	IPAllowList             []string  `json:"ipAllowList"`
+	ID                      string                  `json:"id"`
+	ProjectID               string                  `json:"projectId"`
+	TenantID                string                  `json:"tenantId"`
+	Name                    string                  `json:"name"`
+	CreatedAt               time.Time               `json:"createdAt"`
+	ProtectedStatus         string                  `json:"protectedStatus"`
+	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
+	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
 }
 
 const environmentColumns = `id, project_id, tenant_id, name, created_at, protected_status, network_isolation_enabled, ip_allow_list`
 
 func scanEnvironment(row pgx.Row) (Environment, error) {
 	var e Environment
+	var allowList []byte
 	err := row.Scan(&e.ID, &e.ProjectID, &e.TenantID, &e.Name, &e.CreatedAt,
-		&e.ProtectedStatus, &e.NetworkIsolationEnabled, &e.IPAllowList)
+		&e.ProtectedStatus, &e.NetworkIsolationEnabled, &allowList)
 	if err != nil {
 		return Environment{}, classify("environment", err)
+	}
+	if len(allowList) > 0 {
+		if err := json.Unmarshal(allowList, &e.IPAllowList); err != nil {
+			return Environment{}, fmt.Errorf("environment: decoding ip_allow_list: %w", err)
+		}
 	}
 	return e, nil
 }
@@ -108,13 +119,17 @@ func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error 
 // full-replace, not a merge, matching every other "Set" verb in this store
 // (SetEnvironmentServices, postgres.SetIPAllowList): the caller always
 // supplies all three fields, never a partial patch.
-func (s *PGStore) SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error {
+func (s *PGStore) SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error {
 	if ipAllowList == nil {
-		ipAllowList = []string{}
+		ipAllowList = []core.IPAllowListEntry{}
+	}
+	allowList, err := json.Marshal(ipAllowList)
+	if err != nil {
+		return fmt.Errorf("environment: encoding ip_allow_list: %w", err)
 	}
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE environments SET protected_status = $2, network_isolation_enabled = $3, ip_allow_list = $4, updated_at = now() WHERE id = $1`,
-		id, protectedStatus, networkIsolationEnabled, ipAllowList)
+		id, protectedStatus, networkIsolationEnabled, allowList)
 	if err != nil {
 		return classify("environment", err)
 	}

@@ -31,21 +31,22 @@ import (
 var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValue",
 	Fields: graphql.Fields{
-		"id":              &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ID })},
-		"name":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Name })},
-		"plan":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Plan })},
-		"version":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Version })},
-		"status":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Status })},
-		"suspended":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Suspended })},
-		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.CreatedAt })},
-		"externalHost":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ExternalHost })},
-		"public":          &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Public })},
-		"ipAllowList":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v KeyValueView) any { return v.IPAllowList })},
-		"maxmemoryPolicy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.MaxmemoryPolicy })},
-		"persistenceMode": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.PersistenceMode })},
-		"ownerId":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
-		"projectId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ProjectID })},
-		"environmentId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.EnvironmentID })},
+		"id":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ID })},
+		"name":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Name })},
+		"plan":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Plan })},
+		"version":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Version })},
+		"status":             &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Status })},
+		"suspended":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Suspended })},
+		"createdAt":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.CreatedAt })},
+		"externalHost":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ExternalHost })},
+		"public":             &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Public })},
+		"ipAllowList":        &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) })},
+		"ipAllowListEntries": &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(v KeyValueView) any { return v.IPAllowList })},
+		"maxmemoryPolicy":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.MaxmemoryPolicy })},
+		"persistenceMode":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.PersistenceMode })},
+		"ownerId":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
+		"projectId":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ProjectID })},
+		"environmentId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.EnvironmentID })},
 	},
 })
 
@@ -120,11 +121,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewList(keyValueInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
-		"keyValueIpAllowList": &graphql.Field{
+		"keyValueIpAllowList": &graphql.Field{ // strings; the KeyValue type's ipAllowListEntries carries descriptions
 			Type: graphql.NewList(graphql.String),
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetIPAllowList(p.Context, p.Args["id"].(string))
+				list, err := s.GetIPAllowList(p.Context, p.Args["id"].(string))
+				if err != nil {
+					return nil, err
+				}
+				return core.AllowListCIDRs(list), nil
 			},
 		},
 	}
@@ -140,15 +145,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the key-value list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
-				"ownerId":         &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId":   &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":            &graphql.ArgumentConfig{Type: graphql.String},
-				"version":         &graphql.ArgumentConfig{Type: graphql.String},
-				"storageGB":       &graphql.ArgumentConfig{Type: graphql.Int},
-				"public":          &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"ipAllowList":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"maxmemoryPolicy": &graphql.ArgumentConfig{Type: graphql.String},
-				"persistenceMode": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
+				"plan":          &graphql.ArgumentConfig{Type: graphql.String},
+				"version":       &graphql.ArgumentConfig{Type: graphql.String},
+				"storageGB":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"public":        &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowList":   &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				// ipAllowListEntries is the description-carrying form (w4/m24);
+				// when present it wins over ipAllowList.
+				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"maxmemoryPolicy":    &graphql.ArgumentConfig{Type: graphql.String},
+				"persistenceMode":    &graphql.ArgumentConfig{Type: graphql.String},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
@@ -176,7 +184,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["persistenceMode"].(string); ok {
 					req.PersistenceMode = v
 				}
-				req.IPAllowList = gqlutil.StringList(p.Args["ipAllowList"])
+				req.IPAllowList = core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
 				req.DryRun, _ = p.Args["dryRun"].(bool)
 				return s.CreateKeyValue(p.Context, req)
 			},
@@ -224,9 +232,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				// entries is the description-carrying form; precedence over cidrs
+				// lives in core.AllowListOrCIDRs.
+				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetIPAllowList(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["cidrs"]))
+				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["entries"]), gqlutil.StringList(p.Args["cidrs"]))
+				return s.SetIPAllowList(p.Context, p.Args["id"].(string), entries)
 			},
 		},
 	}

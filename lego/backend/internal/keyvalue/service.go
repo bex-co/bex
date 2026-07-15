@@ -82,9 +82,10 @@ type KeyValueView struct {
 	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
 	PersistenceMode string `json:"persistenceMode,omitempty"`
 
-	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
-	// ipAllowList). Empty => the external route is open to all source IPs.
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// IPAllowList is the allowlist gating the EXTERNAL endpoint (Render's
+	// ipAllowList, {cidrBlock, description} entries — descriptions persist on
+	// the CR since w4/m24). Empty => the external route is open to all source IPs.
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
@@ -135,8 +136,10 @@ type CreateKeyValueRequest struct {
 	Version       string `json:"version,omitempty"`
 	StorageGB     int32  `json:"storageGB,omitempty"`
 	Public        bool   `json:"public,omitempty"`
-	// IPAllowList optionally seeds the external-endpoint CIDR allowlist at create.
-	IPAllowList []string `json:"ipAllowList,omitempty"`
+	// IPAllowList optionally seeds the external-endpoint allowlist at create —
+	// Render's {cidrBlock, description} entries (bare CIDR strings also decode,
+	// the pre-m24 lenient shape).
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 	// MaxmemoryPolicy / PersistenceMode are Render's eviction + persistence
 	// settings. Empty => the CRD default (allkeys-lru / journal-snapshot).
 	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
@@ -195,7 +198,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
 		UpdatedAt:       resourcemeta.UpdatedAt(kv),
-		IPAllowList:     kv.Spec.IPAllowList,
+		IPAllowList:     core.AllowListFromSpec(kv.Spec.IPAllowList),
 		MaxmemoryPolicy: crdToRender(kv.Spec.MaxmemoryPolicy),
 		PersistenceMode: crdToRender(kv.Spec.PersistenceMode),
 		ExternalHost:    kv.Status.ExternalHost,
@@ -290,7 +293,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			return KeyValueView{}, fmt.Errorf("%w: unknown plan %q (valid: %v)", core.ErrBadRequest, req.Plan, tiers.Valkey.IDs())
 		}
 	}
-	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return KeyValueView{}, err
 	}
 	maxmemoryPolicy := renderToCRD(req.MaxmemoryPolicy)
@@ -332,7 +335,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			Version:         req.Version,
 			StorageGB:       req.StorageGB,
 			Public:          req.Public,
-			IPAllowList:     req.IPAllowList,
+			IPAllowList:     core.AllowListToSpec(req.IPAllowList),
 			MaxmemoryPolicy: maxmemoryPolicy,
 			PersistenceMode: persistenceMode,
 		},
@@ -442,33 +445,31 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID stri
 	return s.Client.Update(ctx, kv)
 }
 
-// GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty
+// GetIPAllowList returns the allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal path is never gated.
-func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, error) {
+func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
-	return kv.Spec.IPAllowList, nil
+	return core.AllowListFromSpec(kv.Spec.IPAllowList), nil
 }
 
-// SetIPAllowList replaces the external-endpoint CIDR allowlist. Every entry must
-// be a valid CIDR (a bad one is a 400 before any write); an empty list opens the
-// endpoint to all source IPs. The operator maps it to a Traefik ipAllowList
-// middleware on the SNI route — the same gate managed Postgres uses.
-func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (KeyValueView, error) {
+// SetIPAllowList replaces the external-endpoint allowlist — full replace, so
+// entries written without descriptions clear any stored ones. Every entry's
+// CIDR must be valid (a bad one is a 400 before any write); an empty list opens
+// the endpoint to all source IPs. The operator maps the CIDRs (never the
+// descriptions) to a Traefik ipAllowList middleware on the SNI route — the
+// same gate managed Postgres uses.
+func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (KeyValueView, error) {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return KeyValueView{}, err
 	}
-	if err := core.ValidateCIDRs(cidrs); err != nil {
+	if err := core.ValidateAllowList(entries); err != nil {
 		return KeyValueView{}, err
 	}
-	if len(cidrs) == 0 {
-		kv.Spec.IPAllowList = nil
-	} else {
-		kv.Spec.IPAllowList = cidrs
-	}
+	kv.Spec.IPAllowList = core.AllowListToSpec(entries)
 	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Update(ctx, kv); err != nil {
 		return KeyValueView{}, err

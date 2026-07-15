@@ -23,13 +23,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 func TestToRenderEnvironmentUsesOfficialCLIFields(t *testing.T) {
 	got := toRenderEnvironment(EnvironmentView{
 		ID: "env-1", ProjectID: "prj-1", Name: "staging", ServiceIDs: []string{"web"},
-		DatabaseIDs: []string{"db"}, KeyValueIDs: []string{"kv"}, IPAllowList: []string{"10.0.0.0/8"},
+		DatabaseIDs: []string{"db"}, KeyValueIDs: []string{"kv"}, IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}},
 	})
 	if got.ID != "env-1" || len(got.ServiceIDs) != 1 || len(got.DatabasesIDs) != 1 || len(got.RedisIDs) != 1 {
 		t.Fatalf("Render environment = %+v", got)
@@ -124,7 +125,7 @@ func TestREST_PatchMergesRenderACLFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusProtected, true, []string{"10.0.0.0/8"}); err != nil {
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusProtected, true, []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}); err != nil {
 		t.Fatalf("SetACL: %v", err)
 	}
 

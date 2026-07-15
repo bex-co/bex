@@ -261,17 +261,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 
 		// --- access: IP allowlist + users ---
+		// The bex-native GET/PUT pair keeps its plain {"cidrs": [...]} response
+		// shape (nothing Render-side depends on this endpoint); descriptions
+		// travel through the Render-shaped create/PATCH/get/list. The PUT body's
+		// array elements decode as either bare CIDR strings or {cidrBlock,
+		// description} objects (core.IPAllowListEntry's union), so a client that
+		// writes back entries keeps their descriptions; a string-only full
+		// replace clears them.
 		mux.HandleFunc("GET "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 			list, err := s.GetIPAllowList(r.Context(), r.PathValue("id"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": list})
+			core.WriteJSON(w, http.StatusOK, map[string][]string{"cidrs": core.AllowListCIDRs(list)})
 		})
 		mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", func(w http.ResponseWriter, r *http.Request) {
 			var req struct {
-				CIDRs []string `json:"cidrs"`
+				CIDRs []core.IPAllowListEntry `json:"cidrs"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
@@ -387,24 +394,20 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // against a live bex-api: every one of those failed end to end.
 func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name                   *string             `json:"name,omitempty"`
-		Plan                   *string             `json:"plan,omitempty"`
-		Version                *string             `json:"version,omitempty"`
-		DiskSizeGB             *int32              `json:"diskSizeGB,omitempty"`
-		EnableHighAvailability *bool               `json:"enableHighAvailability,omitempty"`
-		IPAllowList            *[]IPAllowListEntry `json:"ipAllowList,omitempty"`
-		DryRun                 bool                `json:"dryRun,omitempty"`
+		Name                   *string                  `json:"name,omitempty"`
+		Plan                   *string                  `json:"plan,omitempty"`
+		Version                *string                  `json:"version,omitempty"`
+		DiskSizeGB             *int32                   `json:"diskSizeGB,omitempty"`
+		EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty"`
+		IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+		DryRun                 bool                     `json:"dryRun,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
 		return
 	}
 	id := r.PathValue("id")
-	patch := PostgresPatch{Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
-	if req.IPAllowList != nil {
-		cidrs := ipAllowListFromWire(*req.IPAllowList)
-		patch.IPAllowList = &cidrs
-	}
+	patch := PostgresPatch{Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability, IPAllowList: req.IPAllowList}
 	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 	if dryRun {
 		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)

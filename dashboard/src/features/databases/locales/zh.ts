@@ -589,6 +589,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "添加",
     description: "Access panel button to add a CIDR to the draft allowlist",
   },
+  "databases.accessAllowListDescription": {
+    message: "描述（可选）",
+    description:
+      "Placeholder for the optional per-entry allowlist description input",
+  },
   "databases.accessAllowListRemove": {
     message: "移除 {cidr}",
     description: "Accessible label to remove a CIDR chip",

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   KeyValueIpAllowListDocument,
   SetKeyValueIpAllowListDocument,
+  type IpAllowListEntry,
 } from "@/features/keyvalue/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -25,14 +26,18 @@ export function useKeyValueNetworking(id: string) {
     SetKeyValueIpAllowListDocument,
   );
 
-  const allowList: string[] = (
-    allowListQuery.data?.keyValueIpAllowList ?? []
-  ).filter((c): c is string => typeof c === "string");
+  // Entries, not bare CIDRs: each carries the operator-facing description a
+  // human gave it, which persists end to end (w4/m24).
+  const allowList: IpAllowListEntry[] = (
+    allowListQuery.data?.keyValue?.ipAllowListEntries ?? []
+  )
+    .filter((e): e is NonNullable<typeof e> => e != null)
+    .map((e) => ({ cidrBlock: e.cidrBlock, description: e.description ?? "" }));
 
   const saveAllowList = useCallback(
-    async (cidrs: string[]): Promise<boolean> => {
+    async (entries: IpAllowListEntry[]): Promise<boolean> => {
       try {
-        await setAllowListMut({ variables: { id, cidrs } });
+        await setAllowListMut({ variables: { id, entries } });
         toast.success(t("keyvalue.networkingSaved"));
         void allowListQuery.refetch();
         return true;

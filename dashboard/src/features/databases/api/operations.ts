@@ -89,12 +89,30 @@ export const DatabaseUsersDocument = gql`
   }
 ` as unknown as TypedDocumentNode<DatabaseUsersQuery, IdVars>;
 
+// One allowlist entry: the CIDR plus the operator-facing label a human gave
+// it — both persist end to end (w4/m24).
+export interface IpAllowListEntry {
+  cidrBlock: string;
+  description: string;
+}
 export interface DatabaseIpAllowListQuery {
-  databaseIpAllowList: Array<string | null> | null;
+  database: {
+    id: string | null;
+    ipAllowListEntries: Array<{
+      cidrBlock: string;
+      description: string | null;
+    } | null> | null;
+  } | null;
 }
 export const DatabaseIpAllowListDocument = gql`
   query DatabaseIpAllowList($id: String!) {
-    databaseIpAllowList(id: $id)
+    database(id: $id) {
+      id
+      ipAllowListEntries {
+        cidrBlock
+        description
+      }
+    }
   }
 ` as unknown as TypedDocumentNode<DatabaseIpAllowListQuery, IdVars>;
 
@@ -232,19 +250,28 @@ export const CreateDatabaseExportDocument = gql`
 
 export interface SetDatabaseIpAllowListVars {
   id: string;
-  cidrs: Array<string | null> | null;
+  entries: IpAllowListEntry[];
 }
 export interface SetDatabaseIpAllowListMutation {
   setDatabaseIpAllowList: {
     id: string | null;
-    ipAllowList: Array<string | null> | null;
+    ipAllowListEntries: Array<{
+      cidrBlock: string;
+      description: string | null;
+    } | null> | null;
   } | null;
 }
 export const SetDatabaseIpAllowListDocument = gql`
-  mutation SetDatabaseIpAllowList($id: String!, $cidrs: [String]) {
-    setDatabaseIpAllowList(id: $id, cidrs: $cidrs) {
+  mutation SetDatabaseIpAllowList(
+    $id: String!
+    $entries: [IPAllowListEntryInput!]
+  ) {
+    setDatabaseIpAllowList(id: $id, entries: $entries) {
       id
-      ipAllowList
+      ipAllowListEntries {
+        cidrBlock
+        description
+      }
     }
   }
 ` as unknown as TypedDocumentNode<

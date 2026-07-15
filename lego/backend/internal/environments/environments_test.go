@@ -141,7 +141,7 @@ func (f *fakeStore) ListEnvironmentServices(_ context.Context, environmentID, _ 
 	return out, nil
 }
 
-func (f *fakeStore) SetEnvironmentACL(_ context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error {
+func (f *fakeStore) SetEnvironmentACL(_ context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	e, ok := f.envs[id]
@@ -228,7 +228,7 @@ func TestCreateResolverPinsUnknownForeignAndPolicy(t *testing.T) {
 		ProjectID:               "prj-platform",
 		TenantID:                "tea-a",
 		NetworkIsolationEnabled: true,
-		IPAllowList:             []string{"10.0.0.0/8"},
+		IPAllowList:             []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}},
 	}
 	resolver := NewCreateResolver(&Service{Store: st})
 

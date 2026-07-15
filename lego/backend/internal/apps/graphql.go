@@ -255,10 +255,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
 		// distinct from name, which is only workspace-unique.
-		"slug":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Slug })},
-		"displayName":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DisplayName })},
-		"type":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
-		"suspended": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},
+		"slug":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Slug })},
+		"displayName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DisplayName })},
+		"type":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
+		"suspended":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},
 		// suspenders lists WHO suspended the service (Render's array; w4/014):
 		// ["user"] while suspended — the suspend verb is bex's only suspend
 		// path — and [] otherwise.

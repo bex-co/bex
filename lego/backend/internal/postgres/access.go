@@ -46,34 +46,31 @@ var pgRoleName = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
 // --- IP allowlist ---
 
-// GetIPAllowList returns the CIDR allowlist gating the external endpoint (empty
+// GetIPAllowList returns the allowlist gating the external endpoint (empty
 // => open to all source IPs). The internal -rw path is never gated.
-func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]string, error) {
+func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	d, err := s.fetchDatabase(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
-	return d.Spec.IPAllowList, nil
+	return core.AllowListFromSpec(d.Spec.IPAllowList), nil
 }
 
-// SetIPAllowList replaces the external-endpoint CIDR allowlist. Every entry must
-// be a valid CIDR (a bad one is a 400 before any write); an empty list opens the
-// endpoint to all source IPs. The operator maps it to a Traefik ipAllowList
-// middleware on the SNI route.
-func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (PostgresView, error) {
+// SetIPAllowList replaces the external-endpoint allowlist — full replace, so
+// entries written without descriptions clear any stored ones. Every entry's
+// CIDR must be valid (a bad one is a 400 before any write); an empty list opens
+// the endpoint to all source IPs. The operator maps the CIDRs (never the
+// descriptions) to a Traefik ipAllowList middleware on the SNI route.
+func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (PostgresView, error) {
 	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if err := core.ValidateCIDRs(cidrs); err != nil {
+	if err := core.ValidateAllowList(entries); err != nil {
 		return PostgresView{}, err
 	}
 	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
-		if len(cidrs) == 0 {
-			d.Spec.IPAllowList = nil
-		} else {
-			d.Spec.IPAllowList = cidrs
-		}
+		d.Spec.IPAllowList = core.AllowListToSpec(entries)
 	})
 }
 
