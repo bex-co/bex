@@ -43,11 +43,13 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks; DONE 2026-07-15 — three adapters, canonical Blueprint grouping, service wizard, full suites, live first-pod secret read + service/Postgres/Key Value Environment assignment) ← from `/pm-brainstorm` round 7, 2026-07-14
 - [x] **m38** — Full deploy status lifecycle + transition timestamps (9 tasks; DONE 2026-07-15 — eleven-state evidence-backed persistence, transition timestamps, filter/adapter parity, and dashboard timeline/polling) ← from `w5/m29`'s 2026-07-14 Render-parity audit; narrowed after w9/001 independently shipped commit id/message provenance
 - [ ] **m39** — SSH into running service instances (13 tasks) ← user explicitly reopened the narrow SSH surface from `.pm/DO_NOT_DO.md`, 2026-07-14; hosted sandboxes, ephemeral shells, jobs, and browser shell remain excluded
+- [ ] **m40** — Blueprint environment-scoped env groups (7 tasks) ← promotes `010` 2026-07-15; `projects[].environments[].envVarGroups` (Render's official nesting) currently returns a named unsupported error — the membership mechanism it needed shipped in `w6/m24`
 
 ## Inbox
 
-- `010.md` — support environment-scoped `projects[].environments[].envVarGroups` in Blueprint apply (root/ungrouped groups already work; named rejection today).
 - `011.md` — capture and surface Render's optional deploy `commit.createdAt` author timestamp without inferring it from deploy time.
+
+_(`010.md` promoted to **m40** 2026-07-15; note moved to `done/`)_
 
 
 > 006.md promoted to done 2026-07-12: `triggerDeploy` GraphQL mutation shipped in `internal/deploys/graphql.go`.
