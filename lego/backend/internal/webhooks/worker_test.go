@@ -19,9 +19,11 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -325,7 +327,7 @@ func TestSendDeliversWithAVerifiableSignature(t *testing.T) {
 		Payload: body, NextAttemptAt: now.Add(-time.Second),
 	}
 	st.queueOrder = []string{"whd-1"}
-	w := &Worker{Store: st, Clock: func() time.Time { return now }}
+	w := &Worker{Store: st, Clock: func() time.Time { return now }, Client: &http.Client{}}
 
 	if err := w.send(context.Background()); err != nil {
 		t.Fatalf("send: %v", err)
@@ -366,7 +368,7 @@ func TestFailingEndpointRetriesOnScheduleThenDisablesAndEmails(t *testing.T) {
 	st.queueOrder = []string{"whd-1"}
 	w := &Worker{
 		Store: st, Mailer: mailer, Emails: fakeEmails{"user-1": "user-1@example.com"},
-		Backoff: backoff, Clock: func() time.Time { return *clock },
+		Backoff: backoff, Clock: func() time.Time { return *clock }, Client: &http.Client{},
 	}
 	ctx := context.Background()
 
@@ -458,7 +460,7 @@ func TestEmailSuppressionCoalescesABurstOfFailingDeliveries(t *testing.T) {
 		st.queueOrder = append(st.queueOrder, id)
 	}
 	mailer := &fakeMailer{}
-	w := &Worker{Store: st, Mailer: mailer, Emails: fakeEmails{"user-1": "u@example.com"}, Clock: func() time.Time { return now }}
+	w := &Worker{Store: st, Mailer: mailer, Emails: fakeEmails{"user-1": "u@example.com"}, Clock: func() time.Time { return now }, Client: &http.Client{}}
 
 	if err := w.send(context.Background()); err != nil {
 		t.Fatalf("send: %v", err)
@@ -518,5 +520,37 @@ func TestNoEndpointsCostsOneQueryAndLateEndpointsGetNoReplay(t *testing.T) {
 	}
 	if len(st.queue) != 1 {
 		t.Errorf("post-registration event should deliver, got %d deliveries", len(st.queue))
+	}
+}
+
+// TestDefaultClientSSRFGuard verifies that the production webhook client
+// blocks loopback/private/link-local destinations at dial time and never
+// follows redirects (so a redirect-to-private chain cannot bypass the guard).
+func TestDefaultClientSSRFGuard(t *testing.T) {
+	// Redirects must not be followed — a 3xx is a delivery failure, not a hop.
+	if err := defaultClient.CheckRedirect(nil, nil); !errors.Is(err, http.ErrUseLastResponse) {
+		t.Fatalf("defaultClient.CheckRedirect = %v; want http.ErrUseLastResponse", err)
+	}
+
+	tr, ok := defaultClient.Transport.(*http.Transport)
+	if !ok || tr.DialContext == nil {
+		t.Fatal("defaultClient.Transport must be *http.Transport with a DialContext SSRF guard")
+	}
+
+	// Literal IP addresses are resolved locally (no external DNS needed).
+	for _, addr := range []string{
+		"127.0.0.1:80",       // loopback
+		"10.0.0.1:80",        // RFC 1918 private
+		"169.254.169.254:80", // cloud metadata (AWS, GCP)
+		"192.168.1.1:80",     // RFC 1918 private
+	} {
+		_, err := tr.DialContext(context.Background(), "tcp", addr)
+		if err == nil {
+			t.Errorf("dial %s: expected SSRF block, got nil error", addr)
+			continue
+		}
+		if !strings.Contains(err.Error(), "private address") {
+			t.Errorf("dial %s: error %q; want to contain \"private address\"", addr, err.Error())
+		}
 	}
 }

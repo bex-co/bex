@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -183,12 +184,13 @@ func TestMaintenanceURLSafety(t *testing.T) {
 		}
 	}
 	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "169.254.1.1", "::1"} {
-		if !unsafeOriginIP(net.ParseIP(raw)) {
-			t.Errorf("unsafeOriginIP(%s) = false", raw)
+		if !netutil.UnsafeOriginIP(net.ParseIP(raw)) {
+			t.Errorf("netutil.UnsafeOriginIP(%s) = false", raw)
 		}
 	}
-	if _, err := safeDialContext(context.Background(), "tcp", "127.0.0.1:80"); err == nil || !strings.Contains(err.Error(), "private address") {
-		t.Fatalf("safeDialContext(loopback) error = %v", err)
+	dial := netutil.SafeDialContext(customPageTimeout)
+	if _, err := dial(context.Background(), "tcp", "127.0.0.1:80"); err == nil || !strings.Contains(err.Error(), "private address") {
+		t.Fatalf("netutil.SafeDialContext(loopback) error = %v", err)
 	}
 }
 

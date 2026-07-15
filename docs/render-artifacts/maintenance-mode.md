@@ -1,7 +1,6 @@
 # Render maintenance mode contract
 
-**Captured:** 2026-07-15
-**Counterpart:** tenant-facing Maintenance Mode for a web service, not Render's platform-scheduled `/maintenance` runs.
+**Captured:** 2026-07-15 **Counterpart:** tenant-facing Maintenance Mode for a web service, not Render's platform-scheduled `/maintenance` runs.
 
 This record pins the public Render contract used by bex's implementation. The primary sources are Render's current [Maintenance Mode documentation](https://render.com/docs/maintenance-mode), [Blueprint reference](https://render.com/docs/blueprint-spec), [public OpenAPI](https://api-docs.render.com/openapi/render-public-api-1.json), [webhook catalog](https://render.com/docs/webhooks), and [audit-log catalog](https://render.com/docs/audit-logs). Claims not stated by one of those sources are labeled as observations, inferences, or bex policy; they are not presented as captured Render behavior.
 
