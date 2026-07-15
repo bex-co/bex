@@ -1,0 +1,342 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Render Public API — pinned response schemas for bex conformance",
+    "version": "2025-08-01",
+    "description": "Response schemas extracted from render-public-api-1.json. Only the endpoint families under conformance test are included; $ref links are kept so the validator resolves them from components/schemas. To update the pin: replace this file with a fresh render-public-api-1.json (or its response-schema subset for these operationIds), then run `cd lego/backend && go test ./internal/api/... -run TestRenderConformance -v` and triage any new allowlist entries in conformance_allowlist_test.go — each new entry must cite its ADR018 row."
+  },
+  "paths": {
+    "/services": {
+      "get": {
+        "operationId": "list-services",
+        "responses": {
+          "200": {
+            "description": "A list of services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/serviceWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}": {
+      "get": {
+        "operationId": "retrieve-service",
+        "responses": {
+          "200": {
+            "description": "A service",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/service" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}/deploys": {
+      "get": {
+        "operationId": "list-deploys",
+        "responses": {
+          "200": {
+            "description": "A list of deploys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/deployWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}/deploys/{deployId}": {
+      "get": {
+        "operationId": "retrieve-deploy",
+        "responses": {
+          "200": {
+            "description": "A deploy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/deploy" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/postgres": {
+      "get": {
+        "operationId": "list-postgres-databases",
+        "responses": {
+          "200": {
+            "description": "A cursor-paginated list of Postgres instances",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/postgresWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/postgres/{postgresId}": {
+      "get": {
+        "operationId": "retrieve-postgres",
+        "responses": {
+          "200": {
+            "description": "A Postgres instance",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/postgres" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/redis": {
+      "get": {
+        "operationId": "list-redis",
+        "responses": {
+          "200": {
+            "description": "A cursor-paginated list of Redis (key-value) instances",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/redisWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/redis/{redisId}": {
+      "get": {
+        "operationId": "retrieve-redis",
+        "responses": {
+          "200": {
+            "description": "A Redis instance",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/redis" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}/env-vars": {
+      "get": {
+        "operationId": "retrieve-env-vars-for-service",
+        "responses": {
+          "200": {
+            "description": "A list of env vars",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/envVarWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}/custom-domains": {
+      "get": {
+        "operationId": "list-custom-domains",
+        "responses": {
+          "200": {
+            "description": "A list of custom domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/customDomainWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{serviceId}/events": {
+      "get": {
+        "operationId": "list-events",
+        "responses": {
+          "200": {
+            "description": "A list of events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/eventWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "service": {
+        "type": "object",
+        "required": ["id", "name", "type", "suspended"],
+        "properties": {
+          "id":             { "type": "string" },
+          "name":           { "type": "string" },
+          "displayName":    { "type": "string" },
+          "type":           { "type": "string" },
+          "suspended":      { "type": "string" },
+          "createdAt":      { "type": "string" },
+          "dashboardUrl":   { "type": "string" },
+          "serviceDetails": { "type": "object" },
+          "ownerId":        { "type": "string" }
+        }
+      },
+      "serviceWithCursor": {
+        "type": "object",
+        "required": ["service", "cursor"],
+        "properties": {
+          "service": { "$ref": "#/components/schemas/service" },
+          "cursor":  { "type": "string" }
+        }
+      },
+      "deploy": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id":         { "type": "string" },
+          "serviceId":  { "type": "string" },
+          "status":     { "type": "string" },
+          "trigger":    { "type": "string" },
+          "createdAt":  { "type": "string" },
+          "updatedAt":  { "type": "string" },
+          "finishedAt": { "type": "string", "nullable": true }
+        }
+      },
+      "deployWithCursor": {
+        "type": "object",
+        "required": ["deploy", "cursor"],
+        "properties": {
+          "deploy": { "$ref": "#/components/schemas/deploy" },
+          "cursor": { "type": "string" }
+        }
+      },
+      "postgres": {
+        "type": "object",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id":                      { "type": "string" },
+          "name":                    { "type": "string" },
+          "status":                  { "type": "string" },
+          "plan":                    { "type": "string" },
+          "databaseName":            { "type": "string" },
+          "databaseUser":            { "type": "string" },
+          "createdAt":               { "type": "string" },
+          "ownerId":                 { "type": "string" },
+          "highAvailabilityEnabled": { "type": "boolean" },
+          "suspended":               { "type": "string" }
+        }
+      },
+      "postgresWithCursor": {
+        "type": "object",
+        "required": ["postgres", "cursor"],
+        "properties": {
+          "postgres": { "$ref": "#/components/schemas/postgres" },
+          "cursor":   { "type": "string" }
+        }
+      },
+      "redis": {
+        "type": "object",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id":        { "type": "string" },
+          "name":      { "type": "string" },
+          "status":    { "type": "string" },
+          "plan":      { "type": "string" },
+          "createdAt": { "type": "string" },
+          "ownerId":   { "type": "string" }
+        }
+      },
+      "redisWithCursor": {
+        "type": "object",
+        "required": ["redis", "cursor"],
+        "properties": {
+          "redis":  { "$ref": "#/components/schemas/redis" },
+          "cursor": { "type": "string" }
+        }
+      },
+      "envVar": {
+        "type": "object",
+        "required": ["key", "value"],
+        "properties": {
+          "key":   { "type": "string" },
+          "value": { "type": "string" }
+        }
+      },
+      "envVarWithCursor": {
+        "type": "object",
+        "required": ["envVar", "cursor"],
+        "properties": {
+          "envVar": { "$ref": "#/components/schemas/envVar" },
+          "cursor": { "type": "string" }
+        }
+      },
+      "customDomain": {
+        "type": "object",
+        "required": ["id", "name", "domainType", "verificationStatus"],
+        "properties": {
+          "id":                 { "type": "string" },
+          "name":               { "type": "string" },
+          "domainType":         { "type": "string" },
+          "verificationStatus": { "type": "string" },
+          "serverStatus":       { "type": "string" }
+        }
+      },
+      "customDomainWithCursor": {
+        "type": "object",
+        "required": ["customDomain", "cursor"],
+        "properties": {
+          "customDomain": { "$ref": "#/components/schemas/customDomain" },
+          "cursor":       { "type": "string" }
+        }
+      },
+      "event": {
+        "type": "object",
+        "required": ["id", "timestamp", "serviceId", "type", "details"],
+        "properties": {
+          "id":        { "type": "string" },
+          "timestamp": { "type": "string" },
+          "serviceId": { "type": "string" },
+          "type":      { "type": "string" },
+          "details":   { "type": "object" }
+        }
+      },
+      "eventWithCursor": {
+        "type": "object",
+        "required": ["event", "cursor"],
+        "properties": {
+          "event":  { "$ref": "#/components/schemas/event" },
+          "cursor": { "type": "string" }
+        }
+      }
+    }
+  }
+}

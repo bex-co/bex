@@ -30,10 +30,8 @@ jobs:
         env:
           POSTGRES_PASSWORD: pw
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
         ports:
           - 5432:5432
     steps:
@@ -62,6 +60,21 @@ jobs:
           curl -sf -X POST "http://localhost:8080/stores/$store_id/authorization-models" \
             -H 'Content-Type: application/json' \
             -d @deploy/gitops/authz/model.json
+      # TestRenderConformance (internal/api/conformance_test.go) validates bex's
+      # REST responses against the pinned Render OpenAPI schemas in
+      # internal/api/testdata/render-openapi.json. It runs as part of go test
+      # ./... below (no extra step needed).
+      #
+      # Pin-update workflow (when Render ships a spec change):
+      #  1. Replace lego/backend/internal/api/testdata/render-openapi.json with
+      #     the new spec (or its response-schema subset for the covered operationIds).
+      #  2. Run: cd lego/backend && go test ./internal/api/... -run TestRenderConformance -v
+      #  3. For each new failure, decide keep-or-fix:
+      #     - Keep (bex intentionally diverges): add an entry to conformanceAllowlist
+      #       in conformance_allowlist_test.go, citing the ADR018 row.
+      #     - Fix: update bex's response to match Render's schema, remove the entry.
+      #  4. TestConformanceAllowlistEntries will flag any allowlist entry that no
+      #     longer matches a real divergence (bex now conforms on that point).
       - name: go test ./... (backend)
         working-directory: lego/backend
         env:
