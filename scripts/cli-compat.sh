@@ -51,6 +51,7 @@ TOKEN=$(curl -sf -X POST "$HYDRA_PUBLIC_URL/oauth2/token" \
 export RENDER_HOST="$BEX_API_URL/v1/"
 export RENDER_API_KEY="$TOKEN"
 export RENDER_WORKSPACE="${CLI_COMPAT_TENANT_ID:-}"
+export CLI_COMPAT_EMAIL="${CLI_COMPAT_EMAIL:-}" # the key-minting user's email (verify.sh's whoami row)
 export RENDER_CLI_CONFIG_PATH="${RENDER_CLI_CONFIG_PATH:-$(mktemp -d)/cli.yaml}"
 
 if [ "${1:-}" = "verify" ]; then

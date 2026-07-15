@@ -603,3 +603,40 @@ re-run clean twice in a row with no leftover test resources.
 Not fixed this pass: Postgres has the identical bug (unverified but highly
 likely — same generated-type pattern, `PostgresDetail.Owner Owner`) — filed
 as `.pm/w8/005.md`.
+
+## whoami populated-email case — verified (2026-07-15, harness wiring, no code change)
+
+RC6's one remaining caveat was that the populated-email path (`ownerEmail`'s
+Kratos-admin lookup) had never been observed live — the dev harnesses never
+set `BEX_KRATOS_ADMIN_URL`, so a machine (API-key) caller always saw
+`{"email":"","name":""}`. Wired it into dev-9's `up.sh` (a self-healing
+`kratos-admin` port-forward on `:$KRATOS_ADMIN_PORT` = 57090, `57000 + N*10`,
+plus `BEX_KRATOS_ADMIN_URL=http://localhost:57090` in bex-api's env; dev-4
+got the identical change at `:57040`), re-ran `up.sh`, and re-verified:
+
+### Pre-wiring baseline (same key, same session)
+
+```
+$ scripts/cli-compat.sh whoami -o json
+Name:
+Email:
+```
+
+### Post-wiring
+
+```
+$ scripts/cli-compat.sh whoami -o json
+Name:
+Email: cli-compat-1784094481-56006@example.com
+
+$ scripts/cli-compat.sh workspaces -o json
+[{"email":"cli-compat-1784094481-56006@example.com","id":"tea-d9bhu49jg4rdiv01qi90","name":"tea-d9bhu49jg4rdiv01qi90","type":"team"}]
+```
+
+The email is exactly the `CLI_COMPAT_EMAIL` `bootstrap-key.sh` registered —
+the API-key caller correctly reports the human who minted the key, resolved
+through `workspaces.ownerEmail`'s earliest-admin Kratos-admin lookup, and
+`GET /v1/owners` (`render workspaces`) populates via the same lookup,
+confirming the two routes share one code path. `Name:` stays empty by design
+(Kratos' default identity schema carries only email — an honest subset).
+Checklist row `whoami` flipped ◐ → ✅.

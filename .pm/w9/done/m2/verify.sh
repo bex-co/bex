@@ -69,6 +69,14 @@ check "login recognizes RENDER_API_KEY" \
   "Success: CLI is already authenticated." \
   "$RENDER_BIN" login --confirm -o json
 
+# whoami (RC6 route + the BEX_KRATOS_ADMIN_URL harness wiring): an API-key
+# caller reports the key-minting user's email via ownerEmail's Kratos-admin
+# lookup. Exact match when cli-compat.sh exported CLI_COMPAT_EMAIL; any
+# populated email otherwise (an empty `Email:` line must fail either way).
+check "whoami reports the key-minting user's email (RC6)" \
+  "Email:[[:space:]]*${CLI_COMPAT_EMAIL:-[^[:space:]]+@[^[:space:]]+}" \
+  "$RENDER_BIN" whoami -o json
+
 check "workspace current returns the active tenant" \
   "$RENDER_WORKSPACE" \
   "$RENDER_BIN" workspace current -o json
