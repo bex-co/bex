@@ -167,7 +167,7 @@ func TestNotifyDeployStartedRespectsStartedPreference(t *testing.T) {
 		"bob":   "bob@example.com",
 	})
 
-	svc.NotifyDeployStarted(context.Background(), "tea-a", "web")
+	svc.NotifyDeployStarted(context.Background(), "tea-a", "web", "default")
 
 	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
 		t.Fatalf("sent = %+v, want exactly one deploy-start mail to opted-in alice", mailer.sent)

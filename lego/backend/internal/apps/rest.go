@@ -1112,6 +1112,54 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, res)
 	})
 
+	type notificationOverrideResponse struct {
+		NotificationsToSend         string `json:"notificationsToSend"`
+		PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
+	}
+	writeNotificationOverride := func(w http.ResponseWriter, app AppView) {
+		core.WriteJSON(w, http.StatusOK, notificationOverrideResponse{
+			NotificationsToSend:         app.NotificationsToSend,
+			PreviewNotificationsEnabled: "default",
+		})
+	}
+	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", func(w http.ResponseWriter, r *http.Request) {
+		app, err := s.Get(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		writeNotificationOverride(w, app)
+	})
+	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			NotificationsToSend         *string `json:"notificationsToSend"`
+			PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			core.WriteErr(w, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest))
+			return
+		}
+		if body.PreviewNotificationsEnabled != nil && *body.PreviewNotificationsEnabled != "default" {
+			core.WriteErr(w, fmt.Errorf("%w: previewNotificationsEnabled is not supported; use default", core.ErrBadRequest))
+			return
+		}
+		if body.NotificationsToSend == nil {
+			app, err := s.Get(r.Context(), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			writeNotificationOverride(w, app)
+			return
+		}
+		app, err := s.SetNotificationsToSend(r.Context(), r.PathValue("id"), *body.NotificationsToSend)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		writeNotificationOverride(w, app)
+	})
+
 	// Register the same handlers under Render's /v1/services and bex's /v1/apps.
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base, list)

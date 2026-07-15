@@ -851,8 +851,40 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab: Notifications section card title",
   },
   "services.settingsNotificationsDescription": {
-    message: "选择在此服务部署失败时通知谁。",
+    message: "选择要接收的此服务部署通知。",
     description: "Settings tab: Notifications section card description",
+  },
+  "services.notificationsLabel": {
+    message: "服务通知",
+    description: "Settings tab: service notification policy label",
+  },
+  "services.notificationsHint": {
+    message: "覆盖此服务的工作区默认设置。工作区默认仅发送失败通知。",
+    description: "Settings tab: service notification policy explanation",
+  },
+  "services.notificationsOptionDefault": {
+    message: "使用工作区默认设置（仅失败通知）",
+    description: "Service notification option: inherit workspace default",
+  },
+  "services.notificationsOptionAll": {
+    message: "所有通知",
+    description: "Service notification option: all lifecycle mail",
+  },
+  "services.notificationsOptionFailure": {
+    message: "仅失败通知",
+    description: "Service notification option: failures only",
+  },
+  "services.notificationsOptionNone": {
+    message: "无",
+    description: "Service notification option: no mail",
+  },
+  "services.notificationsSuccess": {
+    message: "服务通知设置已更新。",
+    description: "Toast after notification policy update succeeds",
+  },
+  "services.notificationsError": {
+    message: "无法更新服务通知设置。",
+    description: "Toast after notification policy update fails",
   },
   "services.notifyOnFailLabel": {
     message: "部署失败通知",

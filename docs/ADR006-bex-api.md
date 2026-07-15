@@ -317,6 +317,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
 | `set_display_name` (bex extension) | `{serviceId, displayName}` | `SetDisplayName` | updated `service` |
 | `set_notify_on_fail` (w4/m21, [docs/render-artifacts/notify-on-fail.md](render-artifacts/notify-on-fail.md)) | `{serviceId, value}` | `SetNotifyOnFail` | updated `service` |
+| `set_notifications_to_send` (w3/m15, [docs/render-artifacts/notify-on-fail.md](render-artifacts/notify-on-fail.md)) | `{serviceId, value}` | `SetNotificationsToSend` | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
 | `set_start_command` (bex extension) | `{serviceId, startCommand}` | `SetCommands` | updated `service` |

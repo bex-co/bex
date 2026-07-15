@@ -257,7 +257,7 @@ type blockingWebhookStartedNotifier struct {
 	release chan struct{}
 }
 
-func (n *blockingWebhookStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName string) {
+func (n *blockingWebhookStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName, _ string) {
 	n.calls <- webhookStartedCall{tenantID: tenantID, appName: appName}
 	<-n.release
 }

@@ -161,6 +161,11 @@ type notifyOnFailArgs struct {
 	Value     string `json:"value" jsonschema:"default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service)"`
 }
 
+type notificationsToSendArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Value     string `json:"value" jsonschema:"default (inherit failure-only workspace/member settings), failure, all, or none"`
+}
+
 // displayNameArgs is set_display_name's input. The service id remains the
 // immutable App name; displayName is only the mutable human-facing label.
 type displayNameArgs struct {
@@ -855,6 +860,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change a service's deploy-failure notification override (Render's exact notifyOnFail field/enum): default defers to each workspace member's own notification preference, notify always emails every member on a failed deploy, ignore never emails anyone for this service. Governs failure notifications only — success emails always follow each member's own preference.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notifyOnFailArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetNotifyOnFail(ctx, in.ServiceID, in.Value)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_notifications_to_send",
+		Description: "Set a service notification policy: default inherits workspace/member preferences (failure-only by default), failure sends only failed-deploy mail, all sends every deploy lifecycle mail, and none suppresses deploy mail.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notificationsToSendArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetNotificationsToSend(ctx, in.ServiceID, in.Value)
 		if err != nil {
 			return nil, renderService{}, err
 		}

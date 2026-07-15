@@ -866,8 +866,41 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Settings tab: Notifications section card title",
   },
   "services.settingsNotificationsDescription": {
-    message: "Choose who gets emailed when a deploy of this service fails.",
+    message: "Choose which deploy notifications to receive for this service.",
     description: "Settings tab: Notifications section card description",
+  },
+  "services.notificationsLabel": {
+    message: "Service Notifications",
+    description: "Settings tab: service notification policy label",
+  },
+  "services.notificationsHint": {
+    message:
+      "Override the workspace default for this service. The workspace default sends only failure notifications.",
+    description: "Settings tab: service notification policy explanation",
+  },
+  "services.notificationsOptionDefault": {
+    message: "Use workspace default (Only failure notifications)",
+    description: "Service notification option: inherit workspace default",
+  },
+  "services.notificationsOptionAll": {
+    message: "All notifications",
+    description: "Service notification option: all lifecycle mail",
+  },
+  "services.notificationsOptionFailure": {
+    message: "Only failure notifications",
+    description: "Service notification option: failures only",
+  },
+  "services.notificationsOptionNone": {
+    message: "None",
+    description: "Service notification option: no mail",
+  },
+  "services.notificationsSuccess": {
+    message: "Service notification setting updated.",
+    description: "Toast after notification policy update succeeds",
+  },
+  "services.notificationsError": {
+    message: "Couldn't update the service notification setting.",
+    description: "Toast after notification policy update fails",
   },
   "services.notifyOnFailLabel": {
     message: "Deploy Failure Notifications",

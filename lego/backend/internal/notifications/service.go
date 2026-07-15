@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // NotificationsStore is the slice of the control-plane store this feature
@@ -82,9 +83,9 @@ type SettingsView struct {
 }
 
 // defaultSettings is what a member who never customized their preferences
-// gets: notified across the deploy lifecycle — the useful default for a deploy
-// platform and the same values the store resolves for members with no row.
-var defaultSettings = SettingsView{DeployStarted: true, DeploySucceeded: true, DeployFailed: true}
+// gets: failures are actionable; routine start and success messages are quiet.
+// The store resolves the same values for members with no explicit row.
+var defaultSettings = SettingsView{DeployStarted: false, DeploySucceeded: false, DeployFailed: true}
 
 func toView(n store.NotificationSettings) SettingsView {
 	return SettingsView{DeployStarted: n.DeployStarted, DeploySucceeded: n.DeploySucceeded, DeployFailed: n.DeployFailed}
@@ -159,8 +160,8 @@ const (
 // deploy-hook, or git-push trigger successfully starts a deploy. It is not the
 // reconciler's close-time DeployNotifier: callers invoke it off their hot path,
 // and this method applies each member's deployStarted preference.
-func (s *Service) NotifyDeployStarted(ctx context.Context, tenantID, appName string) {
-	s.notifyDeploy(ctx, tenantID, appName, deployMailStarted, "")
+func (s *Service) NotifyDeployStarted(ctx context.Context, tenantID, appName, notificationsToSend string) {
+	s.notifyDeploy(ctx, tenantID, appName, deployMailStarted, notificationsToSend)
 }
 
 // NotifyDeploy is store.DeployNotifier: called by the reconciler the instant
@@ -182,12 +183,26 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 	default:
 		return
 	}
-	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, n.NotifyOnFail)
+	policy := n.NotificationsToSend
+	if policy == "" {
+		// Preserve the old notifyOnFail contract for CRs and clients that have
+		// not written the richer policy: it only affects failed deploys.
+		policy = appv1alpha1.NotificationsToSendDefault
+		if kind == deployMailFailed {
+			switch n.NotifyOnFail {
+			case "notify":
+				policy = appv1alpha1.NotificationsToSendAll
+			case "ignore":
+				policy = appv1alpha1.NotificationsToSendNone
+			}
+		}
+	}
+	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy)
 }
 
 // notifyDeploy performs the common preference lookup and bounded email fan-out
 // for both the request-time and reconcile-time notifier seams.
-func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, kind deployMailKind, notifyOnFail string) {
+func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, kind deployMailKind, notificationsToSend string) {
 	if s.Store == nil || s.Mailer == nil {
 		return
 	}
@@ -207,18 +222,20 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	sem := make(chan struct{}, notifyConcurrency)
 	for _, r := range recipients {
 		var wants bool
-		switch kind {
-		case deployMailStarted:
-			wants = r.DeployStarted
-		case deployMailSucceeded:
-			wants = r.DeploySucceeded
-		case deployMailFailed:
-			switch notifyOnFail {
-			case "ignore":
-				wants = false // muted for everyone, regardless of their own preference
-			case "notify":
-				wants = true // forced on for everyone, regardless of their own preference
-			default: // "default", "", or an unrecognized value — defer to member preference
+		switch notificationsToSend {
+		case appv1alpha1.NotificationsToSendNone:
+			wants = false
+		case appv1alpha1.NotificationsToSendFailure:
+			wants = kind == deployMailFailed
+		case appv1alpha1.NotificationsToSendAll:
+			wants = true
+		default:
+			switch kind {
+			case deployMailStarted:
+				wants = r.DeployStarted
+			case deployMailSucceeded:
+				wants = r.DeploySucceeded
+			case deployMailFailed:
 				wants = r.DeployFailed
 			}
 		}

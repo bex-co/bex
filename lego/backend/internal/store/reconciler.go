@@ -89,9 +89,10 @@ type DeployNotification struct {
 	TenantID string
 	AppName  string
 	Status   string
-	// NotifyOnFail governs FAILED-deploy notifications only; a succeeded
-	// deploy always follows each member's own preference, unmodified.
-	NotifyOnFail string
+	// NotifyOnFail is the legacy failure-only override. NotificationsToSend is
+	// the authoritative Render policy when non-empty.
+	NotifyOnFail        string
+	NotificationsToSend string
 }
 
 // DeployNotifier is called by the Reconciler when recordDeploy closes a
@@ -306,10 +307,11 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// slow relay would otherwise get to send.
 	if ok && r.DeployNotifier != nil {
 		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), DeployNotification{
-			TenantID:     d.TenantID,
-			AppName:      d.Name,
-			Status:       status,
-			NotifyOnFail: cur.Spec.NotifyOnFail,
+			TenantID:            d.TenantID,
+			AppName:             d.Name,
+			Status:              status,
+			NotifyOnFail:        cur.Spec.NotifyOnFail,
+			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
 }

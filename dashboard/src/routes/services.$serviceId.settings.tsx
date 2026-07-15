@@ -19,7 +19,7 @@ import { DeleteServiceCard } from "@/features/services/components/delete-service
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
-import { NotifyOnFailRow } from "@/features/services/components/notify-on-fail-row";
+import { ServiceNotificationsRow } from "@/features/services/components/service-notifications-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
@@ -223,9 +223,9 @@ export function ServiceSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NotifyOnFailRow
+          <ServiceNotificationsRow
             serviceId={serviceId}
-            notifyOnFail={service?.notifyOnFail}
+            notificationsToSend={service?.notificationsToSend}
           />
         </CardContent>
       </Card>

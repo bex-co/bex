@@ -62,7 +62,7 @@ limitations under the License.
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
 //	custom_domain_added/removed apps.Add/DeleteDomain
-//	notify_on_fail_changed      apps.SetNotifyOnFail            (w4/m21, a bex-only name — Render's field has no dedicated event type)
+//	notify_on_fail_changed      apps.SetNotifyOnFail/SetNotificationsToSend (w4/m21 + w3/m15, a bex-only name — Render has no dedicated event type)
 //	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
 //	maintenance_mode_enabled    apps.SetMaintenanceMode         (w1/m37, matching Render's webhook/audit vocabulary; audit metadata.to distinguishes enable from disable)
 //	maintenance_mode_uri_updated
@@ -200,6 +200,7 @@ var eventTypes = map[string]string{
 	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
 	"apps.SetAutoDeploy":                    TypeAutoDeployChanged,
 	"apps.SetNotifyOnFail":                  TypeNotifyOnFailChanged,
+	"apps.SetNotificationsToSend":           TypeNotifyOnFailChanged,
 	"apps.SetSubdomainPolicy":               TypeSubdomainPolicyChanged,
 	"apps.SetIPAllowList":                   TypeIPAllowListChanged,
 	"apps.SetIdleTTL":                       TypeIdleTimeoutChanged,

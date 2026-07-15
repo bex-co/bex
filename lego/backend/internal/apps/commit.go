@@ -40,7 +40,7 @@ type CommitResolver interface {
 // HMAC-authenticated git-push redeploy path. The notifications service
 // satisfies it structurally without apps importing that feature package.
 type DeployStartedNotifier interface {
-	NotifyDeployStarted(ctx context.Context, tenantID, appName string)
+	NotifyDeployStarted(ctx context.Context, tenantID, appName, notificationsToSend string)
 }
 
 // resolveDeployCommit resolves repo@ref for a deploy row this package is

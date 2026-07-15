@@ -349,7 +349,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and
 		// writes it via setNotifyOnFail.
-		"notifyOnFail": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
+		"notifyOnFail":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
+		"notificationsToSend": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotificationsToSend })},
 		// renderSubdomainPolicy is Render's field controlling whether the platform
 		// subdomain <slug>.onbex.co is active (enabled|disabled, w7/m31). The
 		// Settings → Custom Domains section reads it and writes it via
@@ -1159,6 +1160,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetNotifyOnFail(p.Context, p.Args["id"].(string), p.Args["value"].(string))
+			},
+		},
+		"setNotificationsToSend": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"value": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetNotificationsToSend(p.Context, p.Args["id"].(string), p.Args["value"].(string))
 			},
 		},
 		// setSubdomainPolicy: the Settings → Custom Domains platform-subdomain

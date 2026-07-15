@@ -1559,8 +1559,8 @@ func TestNotificationSettings(t *testing.T) {
 		t.Fatalf("recipients = %d (%v), want 2", len(recipients), err)
 	}
 	for _, r := range recipients {
-		if !r.DeployStarted || !r.DeploySucceeded || !r.DeployFailed {
-			t.Errorf("recipient %s defaults = (%v,%v,%v), want (true,true,true)", r.Subject, r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
+		if r.DeployStarted || r.DeploySucceeded || !r.DeployFailed {
+			t.Errorf("recipient %s defaults = (%v,%v,%v), want (false,false,true)", r.Subject, r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 		}
 	}
 
@@ -1587,8 +1587,8 @@ func TestNotificationSettings(t *testing.T) {
 				t.Errorf("bob recipient = (%v,%v,%v), want (false,false,true)", r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 			}
 		case "admin-1":
-			if !r.DeployStarted || !r.DeploySucceeded || !r.DeployFailed {
-				t.Errorf("admin-1 recipient = (%v,%v,%v), want (true,true,true) (default, unmodified)", r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
+			if r.DeployStarted || r.DeploySucceeded || !r.DeployFailed {
+				t.Errorf("admin-1 recipient = (%v,%v,%v), want (false,false,true) (default, unmodified)", r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 			}
 		}
 	}
