@@ -205,8 +205,8 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 }
 
 // promQueryFor builds the PromQL range query for a request metric over Traefik's
-// counters. host/path have no Traefik service-level label, so they are accepted
-// (Render vocabulary) but not applied here — a documented deviation.
+// counters, which carry no host/path labels — those filters are rejected
+// upstream (see MetricQuery.Host) and absent from RequestMetricsRequest.
 func promQueryFor(req RequestMetricsRequest) string {
 	sel := []string{fmt.Sprintf(`service=~".*%s.*"`, promEscape(req.App))}
 	if c := codeMatcher(req.StatusCode); c != "" {

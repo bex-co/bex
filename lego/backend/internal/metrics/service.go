@@ -98,9 +98,13 @@ type MetricQuery struct {
 	Quantile   float64       // http_latency percentile 0..1 (<=0 => .95)
 	Percentage bool          // cpu/memory as a fraction of the pod limit instead of absolute
 	StatusCode string        // request filter: "2xx" | "5xx" | "500" | ""
-	Host       string        // request filter
-	Path       string        // request filter
-	GroupBy    string        // request group-by: "status" | "method" | "instance" | ""
+	// Host/Path carry Render's host/path request filters only so Metrics can
+	// refuse them with ErrBadRequest: Traefik's service-level counters have no
+	// host/path labels to filter on, and answering with whole-service series
+	// would silently misrepresent the numbers as host/path-scoped (w3/m12).
+	Host    string // rejected request filter
+	Path    string // rejected request filter
+	GroupBy string // request group-by: "status" | "method" | "instance" | ""
 	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
 	// to one series holding the max value across instances — Render's dashboard
 	// GraphQL requests this via aggregateAllMethod:"MAX" (captured live).
@@ -166,8 +170,6 @@ type RequestMetricsRequest struct {
 	Resolution time.Duration
 	Quantile   float64
 	StatusCode string
-	Host       string
-	Path       string
 	GroupBy    string
 }
 
@@ -233,6 +235,9 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
+	}
+	if q.Host != "" || q.Path != "" {
+		return nil, fmt.Errorf("%w: host/path metrics filters are not supported (Traefik service-level metrics carry no host/path labels)", core.ErrBadRequest)
 	}
 	q = q.normalized(s.Now())
 	var series []MetricSeries
@@ -495,8 +500,6 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery) ([]MetricSer
 		Resolution: q.Resolution,
 		Quantile:   q.Quantile,
 		StatusCode: q.StatusCode,
-		Host:       q.Host,
-		Path:       q.Path,
 		GroupBy:    q.GroupBy,
 	})
 	if err != nil {
@@ -607,11 +610,12 @@ type MetricsFilterValues struct {
 }
 
 // MetricsFilters resolves available values for each requested output filter.
-// RESOURCE/INSTANCE/HOST are answered from data the service already has;
-// STATUS_CODE needs MetricsFilterValuesSource; BUILD/PATH always report empty.
+// RESOURCE/INSTANCE are answered from data the service already has;
+// STATUS_CODE needs MetricsFilterValuesSource; BUILD/HOST/PATH always report
+// empty — discovery never offers a filter value the Metrics verb refuses
+// (host/path are rejected, w3/m12).
 func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
-	if err != nil {
+	if _, err := s.AuthorizeApp(ctx, core.RelCanView, q.App); err != nil {
 		return nil, err
 	}
 
@@ -630,15 +634,13 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 				instances = append(instances, p.Name)
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
-		case "HOST":
-			out = append(out, MetricsFilterValues{Field: field, Values: core.HostsFromURLs(a.Status.URLs)})
 		case "STATUS_CODE":
 			values, err := s.filterValuesOrEmpty(ctx, q.App, "code")
 			if err != nil {
 				return nil, err
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: values})
-		default: // BUILD, PATH — no bex equivalent
+		default: // BUILD, HOST, PATH — filters Metrics can't honor stay unoffered
 			out = append(out, MetricsFilterValues{Field: field, Values: []string{}})
 		}
 	}

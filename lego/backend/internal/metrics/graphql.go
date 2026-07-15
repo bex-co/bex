@@ -385,6 +385,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 				if len(values) > 0 {
 					q.StatusCode = values[0]
 				}
+			// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Host).
 			case "HOST":
 				if len(values) > 0 {
 					q.Host = values[0]

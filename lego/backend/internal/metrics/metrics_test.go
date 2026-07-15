@@ -19,6 +19,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -194,6 +195,64 @@ func TestRequestMetricResolvesQueryAndUnits(t *testing.T) {
 	}
 }
 
+// TestHostPathFiltersRejected: a host/path filter is refused with ErrBadRequest
+// before any source is queried — Traefik's service-level counters carry no
+// host/path labels, so honoring the query shape while ignoring the filter would
+// return whole-service numbers dressed up as host/path-scoped ones (w3/m12).
+func TestHostPathFiltersRejected(t *testing.T) {
+	sourceCalled := false
+	req := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		sourceCalled = true
+		return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
+	}
+	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
+		webInst: {CPUCores: 0.5},
+	}), req, sampleApp("web"), podWithLimits(webInst))
+
+	for _, q := range []MetricQuery{
+		{App: "web", Metric: MetricHTTPRequests, Host: "web.example.com"},
+		{App: "web", Metric: MetricHTTPLatency, Path: "/api"},
+		{App: "web", Metric: MetricBandwidth, Host: "web.example.com", Path: "/api"},
+		{App: "web", Metric: MetricCPU, Path: "/api"}, // every metric refuses, not just the request family
+	} {
+		_, err := svc.Metrics(context.Background(), q)
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s with host=%q path=%q: want ErrBadRequest, got %v", q.Metric, q.Host, q.Path, err)
+		}
+	}
+	if sourceCalled {
+		t.Error("a rejected query must not reach the request-metrics source")
+	}
+	// The same queries without host/path still answer.
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
+		t.Errorf("unfiltered http_requests should succeed, got %v", err)
+	}
+}
+
+// TestMetricsFiltersOfferNoHostPathValues: the filter-discovery verb reports
+// empty HOST/PATH values even when the App has live hosts — a client is never
+// handed a filter value the Metrics verb would refuse (w3/m12).
+func TestMetricsFiltersOfferNoHostPathValues(t *testing.T) {
+	app := sampleApp("web")
+	app.Status.URLs = []string{"https://web.example.com"}
+	svc := newService(nil, nil, app)
+
+	vals, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{
+		App: "web", OutputFilters: []string{"HOST", "PATH", "RESOURCE"},
+	})
+	if err != nil {
+		t.Fatalf("filters: %v", err)
+	}
+	for _, v := range vals {
+		if v.Field == filterFieldResource {
+			continue // RESOURCE stays answerable
+		}
+		if len(v.Values) != 0 {
+			t.Errorf("%s should offer no values, got %v", v.Field, v.Values)
+		}
+	}
+}
+
 // --- REST fragment ---
 
 func serveREST(svc *Service, path string) *httptest.ResponseRecorder {
@@ -232,6 +291,31 @@ func TestRESTMetricsShapeAndErrors(t *testing.T) {
 	}
 	if serveREST(newService(nil, nil, sampleApp("web"), podFor("web", webInst)), "/v1/metrics/http-requests?resource=web").Code != 503 {
 		t.Error("no request source => 503")
+	}
+}
+
+// TestRESTHostPathFiltersReturn400: REST maps the host/path rejection to a 400
+// naming the filter, on every request-metric endpoint — never a silently
+// unfiltered 200 (w3/m12).
+func TestRESTHostPathFiltersReturn400(t *testing.T) {
+	req := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
+	}
+	svc := newService(nil, req, sampleApp("web"), podFor("web", webInst))
+
+	for _, seg := range []string{"http-requests", "http-latency", "bandwidth"} {
+		for _, filter := range []string{"host=web.example.com", "path=%2Fapi"} {
+			rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&"+filter)
+			if rec.Code != 400 {
+				t.Errorf("%s?%s: want 400, got %d (%s)", seg, filter, rec.Code, rec.Body.String())
+			} else if !strings.Contains(rec.Body.String(), "host/path") {
+				t.Errorf("%s?%s: 400 body should name the filter, got %s", seg, filter, rec.Body.String())
+			}
+		}
+		// The same endpoint without host/path still answers.
+		if rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&statusCode=5xx"); rec.Code != 200 {
+			t.Errorf("%s unfiltered: want 200, got %d (%s)", seg, rec.Code, rec.Body.String())
+		}
 	}
 }
 
@@ -274,6 +358,17 @@ func TestGraphQLMetrics(t *testing.T) {
 		RequestString: `{ metrics(query: {filters: [], name: "CPU"}) { unit } }`})
 	if len(res.Errors) == 0 {
 		t.Error("filters without RESOURCE should error")
+	}
+
+	// A HOST/PATH filter is refused, mirroring REST's 400 (w3/m12).
+	for _, field := range []string{"HOST", "PATH"} {
+		res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+			RequestString: `{ metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}, {field: "` + field + `", values: ["x"]}], name: "HTTP_REQUESTS"}) { unit } }`})
+		if len(res.Errors) == 0 {
+			t.Errorf("%s filter should error", field)
+		} else if !strings.Contains(res.Errors[0].Message, "host/path") {
+			t.Errorf("%s filter error should name the filter, got %q", field, res.Errors[0].Message)
+		}
 	}
 }
 

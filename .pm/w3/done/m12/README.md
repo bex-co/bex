@@ -1,19 +1,19 @@
 # w3 · m12 — Metrics `host`/`path` filter honesty fix
 
-**Worker:** worker3 **Goal:** stop returning silently-unfiltered metrics data for `host`/`path` query filters that look accepted but do nothing **Status:** todo
+**Worker:** worker3 **Goal:** stop returning silently-unfiltered metrics data for `host`/`path` query filters that look accepted but do nothing **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                    | est  | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Add explicit rejection (400) when `host`/`path` filters are passed to `http-requests`/`http-latency`/`bandwidth` metrics queries, across REST/GraphQL/MCP | 1.5h | —          |
-| t002 | Remove the now-dead silent parsing of `host`/`path` into the metrics query path                            | 45m  | t001       |
-| t003 | Update `docs/ADR006-bex-api.md:322` to drop the "accepted but not yet applied" language                     | 30m  | t001       |
-| t004 | Dashboard: audit any metrics filter UI for host/path controls that would now error, adjust or remove        | 45m  | t001       |
-| t005 | Render parity: verify the 400 behavior is consistent across REST/GraphQL/MCP + dashboard                    | 30m  | t004       |
-| t006 | Simplify                                                                                                     | 30m  | t005       |
-| t007 | Test coverage                                                                                                | 1h   | t005       |
-| t008 | Closeout                                                                                                     | 15m  | t007       |
+| t001 | Add explicit rejection (400) when `host`/`path` filters are passed to `http-requests`/`http-latency`/`bandwidth` metrics queries, across REST/GraphQL/MCP — **DONE** | 1.5h | —          |
+| t002 | Remove the now-dead silent parsing of `host`/`path` into the metrics query path                            — **DONE** | 45m  | t001       |
+| t003 | Update `docs/ADR006-bex-api.md:322` to drop the "accepted but not yet applied" language                     — **DONE** | 30m  | t001       |
+| t004 | Dashboard: audit any metrics filter UI for host/path controls that would now error, adjust or remove        — **DONE** | 45m  | t001       |
+| t005 | Render parity: verify the 400 behavior is consistent across REST/GraphQL/MCP + dashboard                    — **DONE** | 30m  | t004       |
+| t006 | Simplify                                                                                                     — **DONE** | 30m  | t005       |
+| t007 | Test coverage                                                                                                — **DONE** | 1h   | t005       |
+| t008 | Closeout                                                                                                     — **DONE** | 15m  | t007       |
 
 ## Definition of done
 

@@ -33,8 +33,10 @@ query MonthToDateBandwidth($resourceId: String!) {
   }
 }
 
-# Populates the Status Code / Host / Path filter dropdowns from real observed
-# label values (Prometheus label-value discovery) rather than a fixed list.
+# Populates the Status Code filter dropdown from real observed label values
+# (Prometheus label-value discovery) rather than a fixed list. Host/Path report
+# no values — the metrics API rejects those filters (w3/m12), so discovery
+# never offers a value the query would refuse.
 query MetricsFilters($query: MetricsFiltersQueryInput!) {
   metricsFilters(query: $query) {
     values {

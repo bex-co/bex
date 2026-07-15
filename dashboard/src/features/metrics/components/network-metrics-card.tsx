@@ -50,7 +50,8 @@ const GROUP_BY_ALL = "all";
  * The toolbar's Status Code filter applies to requests + latency; bandwidth
  * is deliberately left unfiltered — Traefik's responses-bytes counter carries
  * no `code` label, so filtering it would empty the chart rather than filter
- * it (same honesty rule as the backend's omitted host/path filters).
+ * it (same honesty rule as the backend's rejected host/path filters, which
+ * return a 400 rather than silently-unfiltered series — w3/m12).
  */
 export function NetworkMetricsCard({
   resource,
