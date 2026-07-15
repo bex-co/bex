@@ -32,6 +32,7 @@ import {
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
+import { Textarea } from "@/common/components/ui/textarea";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import {
@@ -59,16 +60,26 @@ import {
 } from "@/features/services/lib/instance-type";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
 import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
-import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
+import type {
+  EnvVarEntry,
+  SecretFileEntry,
+} from "@/features/services/hooks/use-create-service";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
+import { useProjects } from "@/features/projects/hooks/use-projects";
+import { useEnvironments } from "@/features/environments/hooks/use-environments";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const VALID_SECRET_FILE = /^[-._A-Za-z0-9]+$/;
+
+function isValidSecretFileName(name: string): boolean {
+  return name !== "." && name !== ".." && VALID_SECRET_FILE.test(name);
+}
 
 type SourceTab = "github" | "git" | "image";
 type NativeRuntime = "elixir" | "go" | "node" | "python" | "ruby" | "rust";
@@ -333,6 +344,99 @@ function EnvVarEditor({
   );
 }
 
+/** Create-time files mounted read-only at /etc/secrets from first boot. */
+function SecretFileEditor({
+  rows,
+  onChange,
+}: {
+  rows: SecretFileEntry[];
+  onChange: (rows: SecretFileEntry[]) => void;
+}) {
+  const { t } = useTranslations();
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>{t("services.createFieldSecretFilesTitle")}</Label>
+          <p className="text-sm text-muted-foreground">
+            {t("services.createFieldSecretFilesHint")}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...rows, { name: "", content: "" }])}
+        >
+          <Plus className="size-3.5" />
+          {t("services.createFieldSecretFilesAdd")}
+        </Button>
+      </div>
+      {rows.map((row, i) => {
+        const invalid = row.name !== "" && !isValidSecretFileName(row.name);
+        return (
+          <div key={i} className="space-y-1 rounded-md border p-3">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={row.name}
+                  onChange={(event) =>
+                    onChange(
+                      rows.map((item, index) =>
+                        index === i
+                          ? { ...item, name: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                  placeholder={t(
+                    "services.createFieldSecretFilesNamePlaceholder",
+                  )}
+                  aria-label={t("services.createFieldSecretFilesName")}
+                  aria-invalid={invalid}
+                  className="font-mono text-sm"
+                />
+                <Textarea
+                  value={row.content}
+                  onChange={(event) =>
+                    onChange(
+                      rows.map((item, index) =>
+                        index === i
+                          ? { ...item, content: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                  placeholder={t(
+                    "services.createFieldSecretFilesContentPlaceholder",
+                  )}
+                  aria-label={t("services.createFieldSecretFilesContent")}
+                  className="min-h-20 font-mono text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onChange(rows.filter((_, index) => index !== i))}
+                aria-label={t("services.createFieldSecretFilesRemove")}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+            {invalid ? (
+              <p className="text-xs text-destructive">
+                {t("services.createFieldSecretFilesNameError")}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -341,6 +445,7 @@ export function NewServicePage() {
     useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
+  const { projects } = useProjects();
 
   const [serviceType, setServiceType] = useState<ServiceType>("web_service");
   const [tab, setTab] = useState<SourceTab>("github");
@@ -362,6 +467,10 @@ export function NewServicePage() {
   const [command, setCommand] = useState("");
   const [publishPath, setPublishPath] = useState("");
   const [envVars, setEnvVars] = useState<EnvVarEntry[]>([]);
+  const [secretFiles, setSecretFiles] = useState<SecretFileEntry[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [environmentId, setEnvironmentId] = useState<string | null>(null);
+  const { environments } = useEnvironments(projectId);
 
   const isCronType = serviceType === "cron_job";
   const isStaticType = serviceType === "static_site";
@@ -437,6 +546,9 @@ export function NewServicePage() {
   const envVarsValid = envVars.every(
     (r) => r.key === "" || VALID_KEY.test(r.key),
   );
+  const secretFilesValid = secretFiles.every(
+    (file) => file.name === "" || isValidSecretFileName(file.name),
+  );
   const nativeCommandsValid =
     !isGitSource ||
     isStaticType ||
@@ -449,6 +561,7 @@ export function NewServicePage() {
     sourceValid &&
     !busy &&
     envVarsValid &&
+    secretFilesValid &&
     nativeCommandsValid &&
     (isStaticType || plan !== "") &&
     (!isCronType || (schedule.trim() !== "" && !scheduleError));
@@ -482,9 +595,13 @@ export function NewServicePage() {
     const validEnvVars = envVars.filter(
       (r) => r.key.trim() !== "" && VALID_KEY.test(r.key.trim()),
     );
+    const validSecretFiles = secretFiles.filter((file) =>
+      isValidSecretFileName(file.name.trim()),
+    );
     const id = await create({
       name,
       type: serviceType,
+      environmentId: environmentId || undefined,
       repo,
       image,
       branch: branchVal,
@@ -515,6 +632,7 @@ export function NewServicePage() {
       command: isCronType ? command.trim() || undefined : undefined,
       publishPath: isStaticType ? publishPath.trim() || undefined : undefined,
       envVars: validEnvVars.length ? validEnvVars : undefined,
+      secretFiles: validSecretFiles.length ? validSecretFiles : undefined,
     });
     if (id) {
       void navigate({ to: "/services/$serviceId", params: { serviceId: id } });
@@ -994,6 +1112,64 @@ export function NewServicePage() {
                   </div>
                 ) : null}
 
+                <div className="space-y-2">
+                  <Label>{t("services.createFieldEnvironmentTitle")}</Label>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Select
+                      value={projectId ?? "unassigned"}
+                      onValueChange={(value) => {
+                        setProjectId(value === "unassigned" ? null : value);
+                        setEnvironmentId(null);
+                      }}
+                    >
+                      <SelectTrigger
+                        aria-label={t("services.createFieldProject")}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">
+                          {t("services.createFieldProjectNone")}
+                        </SelectItem>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      disabled={projectId == null}
+                      value={environmentId ?? "unassigned"}
+                      onValueChange={(value) =>
+                        setEnvironmentId(value === "unassigned" ? null : value)
+                      }
+                    >
+                      <SelectTrigger
+                        aria-label={t("services.createFieldEnvironment")}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">
+                          {t("services.createFieldEnvironmentNone")}
+                        </SelectItem>
+                        {environments.map((environment) => (
+                          <SelectItem
+                            key={environment.id}
+                            value={environment.id}
+                          >
+                            {environment.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("services.createFieldEnvironmentHint")}
+                  </p>
+                </div>
+
                 {isGitSource ? (
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="space-y-0.5 pr-4">
@@ -1013,6 +1189,10 @@ export function NewServicePage() {
                 ) : null}
 
                 <EnvVarEditor rows={envVars} onChange={setEnvVars} />
+                <SecretFileEditor
+                  rows={secretFiles}
+                  onChange={setSecretFiles}
+                />
               </div>
 
               {capLimit ? (

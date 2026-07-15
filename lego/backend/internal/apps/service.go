@@ -107,6 +107,9 @@ type Service struct {
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
 	// is always available (stateless).
 	Blueprints BlueprintStore
+	// BlueprintGroups resolves/creates Render Blueprint projects and
+	// environments by name for projects[].environments[] manifests.
+	BlueprintGroups BlueprintGroupingStore
 	// SecretsEraser, when set, purges the app's OpenBao env-var and secret-file
 	// paths on delete. nil => OpenBao paths are not purged on service delete
 	// (they are purged on workspace delete via WorkspacePurger). Satisfied
@@ -127,6 +130,10 @@ type Service struct {
 	// the official CLI's create-time secretFiles payload. nil makes such a
 	// create fail before the App is written rather than silently discarding it.
 	SecretFileSeeder SecretFileSeeder
+	// Environments is the shared create-time assignment resolver. It owns the
+	// unknown-versus-foreign classification and project lookup for all resource
+	// kinds, so service/Postgres/Key Value creates cannot drift.
+	Environments core.EnvironmentResolver
 }
 
 // AppSecretsEraser clears per-app secrets from the external store on service
@@ -139,7 +146,9 @@ type AppSecretsEraser interface {
 // *secrets.Service satisfies it structurally, avoiding an apps -> secrets
 // dependency cycle.
 type SecretFileSeeder interface {
-	SeedSecretFiles(ctx context.Context, service string, files []core.SecretFile) error
+	PrepareSecretFiles(ctx context.Context, service string, app *appv1alpha1.App, files []core.SecretFile) error
+	CommitSecretFiles(ctx context.Context, service string, app *appv1alpha1.App) error
+	AbortSecretFiles(ctx context.Context, service string, app *appv1alpha1.App) error
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -175,9 +184,6 @@ type IntentStore interface {
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
 	SetAppSource(ctx context.Context, id, repo, image, branch string) error
-	// GetEnvironment resolves a Render create request's environment assignment
-	// and its owning project before the App row is written.
-	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
 	// AddDomain appends a custom domain row. Idempotent — conflict silently
 	// ignored. The projector carries it into spec.hosts[] on the next resync.
 	AddDomain(ctx context.Context, appID, host string) error
@@ -782,7 +788,11 @@ type CreateRequest struct {
 	// EnvironmentID optionally assigns the new service to an existing
 	// environment (and therefore that environment's project).
 	EnvironmentID string
-	Name          string
+	// EnvironmentSpecified distinguishes a Blueprint resource explicitly nested
+	// under ungrouped: (clear membership) from a create that simply omitted the
+	// field (preserve current behavior on idempotent stack re-apply).
+	EnvironmentSpecified bool
+	Name                 string
 	// Type is the Render serviceType: web_service (default), private_service,
 	// background_worker, cron_job. Empty defaults to web_service.
 	Type string
@@ -899,14 +909,21 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 			return AppView{}, core.ErrSecretsUnavailable
 		}
 	}
-	app, err := s.create(ctx, req)
-	if err != nil || req.DryRun || len(req.SecretFiles) == 0 {
-		return app, err
+	return s.create(ctx, req)
+}
+
+func (s *Service) resolveEnvironmentForCreate(ctx context.Context, environmentID, tenantID string) (core.EnvironmentAssignment, error) {
+	if environmentID == "" {
+		return core.EnvironmentAssignment{}, nil
 	}
-	if err := s.SecretFileSeeder.SeedSecretFiles(ctx, app.Name, req.SecretFiles); err != nil {
-		return AppView{}, fmt.Errorf("seed secret files: %w", err)
+	if s.Environments == nil || tenantID == "" {
+		return core.EnvironmentAssignment{}, core.ErrWorkspacesUnavailable
 	}
-	return app, nil
+	environment, err := s.Environments.ResolveForCreate(ctx, environmentID, tenantID)
+	if err != nil {
+		return core.EnvironmentAssignment{}, fmt.Errorf("resolving environment: %w", err)
+	}
+	return environment, nil
 }
 
 // create is the unauthorized core of Create — a same-workspace duplicate name
@@ -923,21 +940,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
-	var environment store.Environment
-	if req.EnvironmentID != "" {
-		if s.Store == nil || tenantID == "" {
-			return AppView{}, fmt.Errorf("%w: environment assignment requires the control-plane store", core.ErrBadRequest)
-		}
-		environment, err = s.Store.GetEnvironment(ctx, req.EnvironmentID)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
-				return AppView{}, fmt.Errorf("%w: environment %q not found", core.ErrBadRequest, req.EnvironmentID)
-			}
-			return AppView{}, fmt.Errorf("resolving environment: %w", err)
-		}
-		if environment.TenantID != tenantID {
-			return AppView{}, fmt.Errorf("%w: environment %q does not belong to the target workspace", core.ErrBadRequest, req.EnvironmentID)
-		}
+	environment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	if err != nil {
+		return AppView{}, err
 	}
 
 	// Dry-run: return the resolved spec preview without any k8s or store writes.
@@ -952,6 +957,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if environment.ID != "" {
 			a.Labels[core.LabelProject] = environment.ProjectID
 			a.Labels[core.LabelEnvironment] = environment.ID
+			if environment.NetworkIsolationEnabled {
+				a.Labels[core.LabelNetworkIsolation] = environment.ID
+			}
 		}
 		return s.view(a), nil
 	}
@@ -1024,6 +1032,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if environment.ID != "" {
 		a.Labels[core.LabelProject] = environment.ProjectID
 		a.Labels[core.LabelEnvironment] = environment.ID
+		if environment.NetworkIsolationEnabled {
+			a.Labels[core.LabelNetworkIsolation] = environment.ID
+		}
 	}
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
@@ -1093,7 +1104,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
 	resourcemeta.Touch(a, s.Now())
-	if err := s.Client.Create(ctx, a); err != nil {
+	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
 		return AppView{}, rollbackStoreRow(err)
 	}
 	if s.Kick != nil {
@@ -1161,19 +1172,32 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		a.Name = core.CRName(tenantID, req.Name)
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
+	environment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	if err != nil {
+		return AppView{}, err
+	}
+	if environment.ID != "" {
+		a.Labels[core.LabelProject] = environment.ProjectID
+		a.Labels[core.LabelEnvironment] = environment.ID
+		if environment.NetworkIsolationEnabled {
+			a.Labels[core.LabelNetworkIsolation] = environment.ID
+		}
+	}
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11).
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID: tenantID,
-			Name:     req.Name,
-			Repo:     req.Repo,
-			Image:    req.Image,
-			Branch:   desired.Branch,
-			Port:     desired.Port,
-			Replicas: desired.Replicas,
-			Tier:     desired.Tier,
+			TenantID:      tenantID,
+			Name:          req.Name,
+			Repo:          req.Repo,
+			Image:         req.Image,
+			Branch:        desired.Branch,
+			Port:          desired.Port,
+			Replicas:      desired.Replicas,
+			Tier:          desired.Tier,
+			ProjectID:     environment.ProjectID,
+			EnvironmentID: environment.ID,
 			// Provenance for the first deploy row CreateApp opens (w9/001) —
 			// same best-effort resolution as create()'s.
 			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
@@ -1226,13 +1250,46 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
 	resourcemeta.Touch(a, s.Now())
-	if err := s.Client.Create(ctx, a); err != nil {
+	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
 		return AppView{}, err
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
 	return s.view(a), nil
+}
+
+// writeNewApp makes create-time secret files visible to the very first pod.
+// The projection Secret and App reference are prepared before the App exists;
+// after Kubernetes assigns the App UID, Commit adopts the Secret. Every failure
+// removes both the pre-created projection and its OpenBao path.
+func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, files []core.SecretFile) error {
+	if len(files) == 0 {
+		return s.Client.Create(ctx, a)
+	}
+	if s.SecretFileSeeder == nil {
+		return core.ErrSecretsUnavailable
+	}
+	if err := s.SecretFileSeeder.PrepareSecretFiles(ctx, publicName, a, files); err != nil {
+		return fmt.Errorf("prepare secret files: %w", err)
+	}
+	abort := func(cause error) error {
+		if err := s.SecretFileSeeder.AbortSecretFiles(ctx, publicName, a); err != nil {
+			return errors.Join(cause, fmt.Errorf("abort secret files: %w", err))
+		}
+		return cause
+	}
+	if err := s.Client.Create(ctx, a); err != nil {
+		return abort(err)
+	}
+	if err := s.SecretFileSeeder.CommitSecretFiles(ctx, publicName, a); err != nil {
+		cause := fmt.Errorf("commit secret files: %w", err)
+		if deleteErr := s.Client.Delete(ctx, a); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
+			cause = errors.Join(cause, fmt.Errorf("roll back App: %w", deleteErr))
+		}
+		return abort(cause)
+	}
+	return nil
 }
 
 // Delete removes a service — the single implementation the three adapters

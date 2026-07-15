@@ -87,6 +87,43 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 
+const projectsState = {
+  projects: [
+    {
+      id: "prj-platform",
+      name: "Platform",
+      ownerId: "tea-1",
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+    },
+  ],
+};
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({ ...projectsState, loading: false }),
+}));
+
+const environmentsState = {
+  environments: [
+    {
+      id: "env-production",
+      projectId: "prj-platform",
+      name: "Production",
+      ownerId: "tea-1",
+      createdAt: null,
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowList: [],
+    },
+  ],
+};
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: () => ({ ...environmentsState, loading: false }),
+}));
+
 // ── fixtures ─────────────────────────────────────────────────────────────────
 
 const FREE: InstanceTypeView = {
@@ -401,6 +438,37 @@ describe("NewServicePage", () => {
       );
     });
 
+    it("submits create-time secret files and environment assignment", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("combobox", { name: "Project" }));
+      await user.click(screen.getByRole("option", { name: "Platform" }));
+      await user.click(screen.getByRole("combobox", { name: "Environment" }));
+      await user.click(screen.getByRole("option", { name: "Production" }));
+      await user.click(screen.getByRole("button", { name: "Add Secret File" }));
+      await user.type(
+        screen.getByRole("textbox", { name: "Secret file name" }),
+        "credentials.json",
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Secret file contents" }),
+        "secret-content",
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          environmentId: "env-production",
+          secretFiles: [
+            { name: "credentials.json", content: "secret-content" },
+          ],
+        }),
+      );
+    });
+
     it("clears a stale Dockerfile Path when switching back to a native runtime", async () => {
       const user = userEvent.setup();
       renderPage();
@@ -426,7 +494,6 @@ describe("NewServicePage", () => {
         expect.objectContaining({ runtime: "node", dockerfilePath: undefined }),
       );
     });
-
     it("shows the image field but no branch/autoDeploy when on Existing Image tab", async () => {
       const user = userEvent.setup();
       renderPage();

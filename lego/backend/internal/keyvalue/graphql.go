@@ -43,6 +43,8 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"maxmemoryPolicy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.MaxmemoryPolicy })},
 		"persistenceMode": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.PersistenceMode })},
 		"ownerId":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
+		"projectId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ProjectID })},
+		"environmentId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.EnvironmentID })},
 	},
 })
 
@@ -123,6 +125,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// twin of the key-value list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
 				"ownerId":         &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId":   &graphql.ArgumentConfig{Type: graphql.String},
 				"plan":            &graphql.ArgumentConfig{Type: graphql.String},
 				"version":         &graphql.ArgumentConfig{Type: graphql.String},
 				"storageGB":       &graphql.ArgumentConfig{Type: graphql.Int},
@@ -136,6 +139,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
 				req := CreateKeyValueRequest{Name: p.Args["name"].(string), OwnerID: ownerID}
+				if v, ok := p.Args["environmentId"].(string); ok {
+					req.EnvironmentID = v
+				}
 				if v, ok := p.Args["plan"].(string); ok {
 					req.Plan = v
 				}

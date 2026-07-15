@@ -11,9 +11,15 @@ export interface EnvVarEntry {
   value: string;
 }
 
+export interface SecretFileEntry {
+  name: string;
+  content: string;
+}
+
 export interface CreateServiceInput {
   name: string;
   type?: string;
+  environmentId?: string;
   repo?: string;
   image?: string;
   branch?: string;
@@ -36,6 +42,7 @@ export interface CreateServiceInput {
   command?: string;
   publishPath?: string;
   envVars?: EnvVarEntry[];
+  secretFiles?: SecretFileEntry[];
 }
 
 export interface UseCreateServiceResult {
@@ -88,6 +95,7 @@ export function useCreateService(): UseCreateServiceResult {
             name: input.name,
             ownerId: currentWorkspaceId,
             type: input.type,
+            environmentId: input.environmentId,
             repo: input.repo,
             image: input.image,
             branch: input.branch,
@@ -102,6 +110,9 @@ export function useCreateService(): UseCreateServiceResult {
             command: input.command,
             publishPath: input.publishPath,
             envVars: input.envVars?.length ? input.envVars : undefined,
+            secretFiles: input.secretFiles?.length
+              ? input.secretFiles
+              : undefined,
           },
         });
         const id = res.data?.createService?.id ?? input.name;

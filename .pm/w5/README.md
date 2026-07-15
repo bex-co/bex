@@ -47,6 +47,8 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- `014.md` — add Project/Environment selectors to managed Postgres and Key Value create pages (API create support shipped in w2/m37).
+
 - `013.md` — ADR018 stale-marker sweep (cron Build Command, header-rules UI ◐, email-recovery ◐) — sub-hour doc sweep; coordinate with `w4/m20/t003` on the email-recovery row ← from `/pm-brainstorm` round 4, 2026-07-14
 
 _(`012.md` applied 2026-07-13 — flipped the 5 stale UI cells in `docs/ADR018-render-parity.md` [Service events, Trigger a deploy, List/get deploy objects, Cancel deploy, Rollback] from `✖` to `✅` pointing at `w5/m21`, plus the two gap-backlog rows [`Deploy cancel + rollback`, `Service events feed`]; also closed two additionally-stale gap-backlog rows found in the same pass [`Health-check path → readiness probe`, `Env groups + secret files`, both already shipped], moved to `done/012.md`)_

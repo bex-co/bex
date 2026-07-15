@@ -26,6 +26,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -103,6 +104,36 @@ func TestSeedSecretFilesWritesAllFilesTogether(t *testing.T) {
 	app := getApp(t, svc.Client, "web")
 	if len(app.Spec.FilesFromSecrets) != 1 || app.Spec.FilesFromSecrets[0] != "web-files" {
 		t.Fatalf("files projection = %#v", app.Spec.FilesFromSecrets)
+	}
+}
+
+func TestPrepareSecretFilesMakesProjectionPartOfFirstAppRevision(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store)
+	ctx := context.Background()
+	app := sampleApp("web")
+	app.UID = types.UID("app-uid")
+	files := []core.SecretFile{{Name: "token", Content: "first-boot-secret"}}
+
+	if err := svc.prepareSecretFiles(ctx, "web", app, files); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(app.Spec.FilesFromSecrets, "web-files") {
+		t.Fatalf("App spec did not reference prepared projection: %#v", app.Spec.FilesFromSecrets)
+	}
+	secret := getSecret(t, svc.Client, "web-files")
+	if string(secret.Data["token"]) != "first-boot-secret" || len(secret.OwnerReferences) != 0 {
+		t.Fatalf("prepared Secret = data %#v owners %#v", secret.Data, secret.OwnerReferences)
+	}
+	if err := svc.Client.Create(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.commitSecretFiles(ctx, "web", app); err != nil {
+		t.Fatal(err)
+	}
+	secret = getSecret(t, svc.Client, "web-files")
+	if len(secret.OwnerReferences) != 1 || secret.OwnerReferences[0].UID != app.UID {
+		t.Fatalf("committed Secret owner = %#v", secret.OwnerReferences)
 	}
 }
 

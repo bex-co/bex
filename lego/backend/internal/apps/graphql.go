@@ -103,6 +103,14 @@ var buildFilterInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	},
 })
 
+var secretFileInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "SecretFileInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":    &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"content": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
 // gqlBuildFilterInput parses a BuildFilterInput argument into the neutral view
 // (graphql-go delivers the input object as map[string]any and each [String] list
 // as []any of strings). Returns nil when the argument is absent, so create leaves
@@ -156,6 +164,22 @@ func gqlHeaderInputs(args map[string]any, key string) []StaticHeaderView {
 			Name:  gqlStr(m, "name"),
 			Value: gqlStr(m, "value"),
 		})
+	}
+	return out
+}
+
+func gqlSecretFileInputs(args map[string]any, key string) []core.SecretFile {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]core.SecretFile, 0, len(raw))
+	for _, e := range raw {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		out = append(out, core.SecretFile{Name: gqlStr(m, "name"), Content: gqlStr(m, "content")})
 	}
 	return out
 }
@@ -258,7 +282,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		"lastSuccessfulRunAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.LastSuccessfulRunAt })},
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
-		"ownerId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
+		"ownerId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
+		"projectId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.ProjectID })},
+		"environmentId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.EnvironmentID })},
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
@@ -760,18 +786,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// twin of the services list filter above, and the same optional
 				// contract REST's create body has: omitted => the caller's default
 				// workspace; a workspace they don't belong to => forbidden.
-				"ownerId":      &graphql.ArgumentConfig{Type: graphql.String},
-				"type":         &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
-				"schedule":     &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
-				"command":      &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
-				"repo":         &graphql.ArgumentConfig{Type: graphql.String},
-				"image":        &graphql.ArgumentConfig{Type: graphql.String},
-				"branch":       &graphql.ArgumentConfig{Type: graphql.String},
-				"rootDir":      &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
-				"buildFilter":  &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
-				"runtime":      &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
-				"buildCommand": &graphql.ArgumentConfig{Type: graphql.String},
-				"startCommand": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
+				"type":          &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
+				"schedule":      &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
+				"command":       &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
+				"repo":          &graphql.ArgumentConfig{Type: graphql.String},
+				"image":         &graphql.ArgumentConfig{Type: graphql.String},
+				"branch":        &graphql.ArgumentConfig{Type: graphql.String},
+				"rootDir":       &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
+				"buildFilter":   &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
+				"runtime":       &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
+				"buildCommand":  &graphql.ArgumentConfig{Type: graphql.String},
+				"startCommand":  &graphql.ArgumentConfig{Type: graphql.String},
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
 				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.String},
 				"builder":        &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
@@ -787,7 +814,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// envVars at create since w2/m2; GraphQL now reaches the same shape.
 				// envVars: reuses gqlutil.EnvVarInputType (shared with secrets.setEnvVars
 				// to avoid duplicate type names in the composed schema).
-				"envVars": &graphql.ArgumentConfig{Type: graphql.NewList(gqlutil.EnvVarInputType)},
+				"envVars":     &graphql.ArgumentConfig{Type: graphql.NewList(gqlutil.EnvVarInputType)},
+				"secretFiles": &graphql.ArgumentConfig{Type: graphql.NewList(secretFileInputType)},
 				// static_site create fields.
 				"publishPath":             &graphql.ArgumentConfig{Type: graphql.String},
 				"routes":                  &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
@@ -807,6 +835,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID:                 gqlStr(p.Args, "ownerId"),
+					EnvironmentID:           gqlStr(p.Args, "environmentId"),
 					Name:                    p.Args["name"].(string),
 					Type:                    gqlStr(p.Args, "type"),
 					Schedule:                gqlStr(p.Args, "schedule"),
@@ -827,6 +856,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Port:                    int32(gqlInt(p.Args, "port")),
 					Replicas:                int32(gqlInt(p.Args, "replicas")),
 					Env:                     env,
+					SecretFiles:             gqlSecretFileInputs(p.Args, "secretFiles"),
 					PublishPath:             gqlStr(p.Args, "publishPath"),
 					Routes:                  gqlRouteInputs(p.Args, "routes"),
 					Headers:                 gqlHeaderInputs(p.Args, "headers"),

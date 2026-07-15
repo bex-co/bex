@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -153,9 +154,31 @@ type recordingSecretFileSeeder struct {
 	files   []core.SecretFile
 }
 
-func (s *recordingSecretFileSeeder) SeedSecretFiles(_ context.Context, service string, files []core.SecretFile) error {
+type fixedEnvironmentResolver map[string]store.Environment
+
+func (r fixedEnvironmentResolver) ResolveForCreate(_ context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {
+	e, ok := r[environmentID]
+	if !ok {
+		return core.EnvironmentAssignment{}, core.ErrNotFound
+	}
+	if e.TenantID != workspaceID {
+		return core.EnvironmentAssignment{}, core.ErrForbidden
+	}
+	return core.EnvironmentAssignment{ID: e.ID, ProjectID: e.ProjectID, WorkspaceID: e.TenantID}, nil
+}
+
+func (s *recordingSecretFileSeeder) PrepareSecretFiles(_ context.Context, service string, app *appv1alpha1.App, files []core.SecretFile) error {
 	s.service = service
 	s.files = append([]core.SecretFile(nil), files...)
+	app.Spec.FilesFromSecrets = []string{app.Name + "-files"}
+	return nil
+}
+
+func (*recordingSecretFileSeeder) CommitSecretFiles(context.Context, string, *appv1alpha1.App) error {
+	return nil
+}
+
+func (*recordingSecretFileSeeder) AbortSecretFiles(context.Context, string, *appv1alpha1.App) error {
 	return nil
 }
 
@@ -310,6 +333,7 @@ func TestCreateAssignsOfficialCLIEnvironmentID(t *testing.T) {
 		"env-staging": {ID: "env-staging", ProjectID: "prj-platform", TenantID: "tea-a"},
 	}}
 	svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, rec)
+	svc.Environments = fixedEnvironmentResolver(rec.environments)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
 
 	got, err := svc.create(ctx, CreateRequest{Name: "web", Image: "nginx:alpine", EnvironmentID: "env-staging"})
@@ -322,9 +346,41 @@ func TestCreateAssignsOfficialCLIEnvironmentID(t *testing.T) {
 	if got.ProjectID != "prj-platform" || got.EnvironmentID != "env-staging" {
 		t.Fatalf("create response association = %+v", got)
 	}
+	rendered := toRenderService(got)
+	if rendered.ProjectID != "prj-platform" || rendered.EnvironmentID != "env-staging" {
+		t.Fatalf("REST response association = %+v", rendered)
+	}
 	app := getTenantApp(t, cl, "tea-a", "web")
 	if app.Labels[core.LabelProject] != "prj-platform" || app.Labels[core.LabelEnvironment] != "env-staging" {
 		t.Fatalf("projected association labels = %v", app.Labels)
+	}
+}
+
+func TestCreateEnvironmentRejectsUnknownAndForeignBeforeWrite(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		environments fixedEnvironmentResolver
+		want         error
+	}{
+		{name: "unknown", environments: fixedEnvironmentResolver{}, want: core.ErrNotFound},
+		{name: "foreign", environments: fixedEnvironmentResolver{
+			"env-staging": {ID: "env-staging", ProjectID: "prj-platform", TenantID: "tea-b"},
+		}, want: core.ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := &recordingStore{}
+			svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, rec)
+			svc.Environments = tc.environments
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "oauth2"})
+			_, err := svc.create(ctx, CreateRequest{Name: "web", Image: "nginx:alpine", EnvironmentID: "env-staging"})
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("create error = %v, want %v", err, tc.want)
+			}
+			var apps appv1alpha1.AppList
+			if listErr := cl.List(context.Background(), &apps); listErr != nil || len(apps.Items) != 0 || len(rec.appCreates) != 0 {
+				t.Fatalf("failed resolution wrote apps=%d store rows=%d, err=%v", len(apps.Items), len(rec.appCreates), listErr)
+			}
+		})
 	}
 }
 

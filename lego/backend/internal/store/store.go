@@ -860,6 +860,21 @@ func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch stri
 	return nil
 }
 
+// SetAppEnvironment atomically assigns an App row to an Environment and its
+// owning Project. Empty ids clear both memberships (Blueprint ungrouped:).
+func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environmentID string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET project_id = NULLIF($2, ''), environment_id = NULLIF($3, ''), updated_at = now() WHERE id = $1`,
+		id, projectID, environmentID)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
 // SetAppImage updates the row's image (the deploys feature's Rollback verb,
 // w2/m10). The projector carries it onto spec.image the same way it carries
 // replicas/tier — the write-through-store discipline every intent field with

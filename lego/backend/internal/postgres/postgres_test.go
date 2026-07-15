@@ -92,15 +92,21 @@ func seedDatabase(t *testing.T, cl client.Client, name string) {
 
 func TestRESTPostgresCRUD(t *testing.T) {
 	svc, cl := newService()
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
 
 	// create — Render: 201; hyphenated name normalizes.
-	w := serveREST(svc, "POST", "/v1/postgres", `{"name":"pg-test","plan":"free","public":true}`)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/postgres", strings.NewReader(`{"name":"pg-test","plan":"free","public":true,"environmentId":"env-staging"}`))
+	mux.ServeHTTP(w, req.WithContext(ctxAs("user-a")))
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if !strings.HasPrefix(pg.ID, "dpg-") || pg.Name != "pg-test" || pg.DatabaseName != pgIdent(pg.ID) || pg.DatabaseUser != pgIdent(pg.ID)+"_user" || pg.Plan != "free" || !pg.Public {
+	if !strings.HasPrefix(pg.ID, "dpg-") || pg.Name != "pg-test" || pg.DatabaseName != pgIdent(pg.ID) || pg.DatabaseUser != pgIdent(pg.ID)+"_user" || pg.Plan != "free" || !pg.Public || pg.ProjectID != "prj-platform" || pg.EnvironmentID != "env-staging" {
 		t.Fatalf("normalized names/spec wrong: %+v", pg)
 	}
 	var got appv1alpha1.Database
@@ -109,6 +115,9 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	}
 	if got.Spec.Name != "pg-test" {
 		t.Fatalf("spec.name = %q, want pg-test", got.Spec.Name)
+	}
+	if got.Labels[core.LabelProject] != "prj-platform" || got.Labels[core.LabelEnvironment] != "env-staging" {
+		t.Fatalf("db environment labels = %v", got.Labels)
 	}
 
 	// list — Render's cursor envelope ({postgres, cursor} per item, RC3):
@@ -195,7 +204,7 @@ func TestGraphQLPostgres(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	run := func(q string) map[string]any {
-		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
+		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: ctxAs("user-a")})
 		if len(res.Errors) > 0 {
 			t.Fatalf("gql %q: %v", q, res.Errors)
 		}
@@ -213,7 +222,12 @@ func TestGraphQLPostgres(t *testing.T) {
 	if renamed["id"] != "gql-db" || renamed["name"] != "gql-renamed" || renamed["databaseName"] != "gql_db" {
 		t.Fatalf("renameDatabase changed identity/physical name: %+v", renamed)
 	}
-	created := run(`mutation { createDatabase(name:"gql-new", plan:"basic-1gb") { id name databaseName } }`)["createDatabase"].(map[string]any)
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
+	created := run(`mutation { createDatabase(name:"gql-new", plan:"basic-1gb", environmentId:"env-staging") { id name databaseName projectId environmentId } }`)["createDatabase"].(map[string]any)
+	if !strings.HasPrefix(created["id"].(string), "dpg-") || created["name"] != "gql-new" || created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
+		t.Fatalf("createDatabase association = %+v", created)
+	}
 	var made appv1alpha1.Database
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "gql-new" {
 		t.Fatalf("createDatabase did not create the CR with plan: %v %+v", err, made.Spec)
@@ -238,7 +252,7 @@ func TestMCPPostgres(t *testing.T) {
 	// Register the postgres tools into an MCP server, connect an in-memory client.
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
-	ctx := context.Background()
+	ctx := ctxAs("user-a")
 	serverT, clientT := mcp.NewInMemoryTransports()
 	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
 		t.Fatalf("server connect: %v", err)
@@ -273,9 +287,11 @@ func TestMCPPostgres(t *testing.T) {
 		t.Fatalf("rename_postgres changed identity/physical name: %+v", got)
 	}
 	// create_postgres delegates to CreatePostgres — verify the CR lands.
-	created := call("create_postgres", map[string]any{"name": "mcp-new", "plan": "basic-1gb"})
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	svc.Environments = &fixedCreateEnvironment{assignment: core.EnvironmentAssignment{ID: "env-staging", ProjectID: "prj-platform", WorkspaceID: "tea-a"}}
+	created := call("create_postgres", map[string]any{"name": "mcp-new", "plan": "basic-1gb", "environmentId": "env-staging"})
 	createdID, _ := created["id"].(string)
-	if !strings.HasPrefix(createdID, "dpg-") || created["name"] != "mcp-new" {
+	if !strings.HasPrefix(createdID, "dpg-") || created["name"] != "mcp-new" || created["projectId"] != "prj-platform" || created["environmentId"] != "env-staging" {
 		t.Fatalf("create_postgres = %+v", created)
 	}
 	var made appv1alpha1.Database

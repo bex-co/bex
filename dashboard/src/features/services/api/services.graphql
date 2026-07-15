@@ -74,6 +74,7 @@ mutation UpdateCronJob($id: String!, $schedule: String!, $command: String) {
 mutation CreateService(
   $name: String!
   $ownerId: String
+  $environmentId: String
   $type: String
   $repo: String
   $image: String
@@ -89,10 +90,12 @@ mutation CreateService(
   $command: String
   $publishPath: String
   $envVars: [EnvVarInput]
+  $secretFiles: [SecretFileInput]
 ) {
   createService(
     name: $name
     ownerId: $ownerId
+    environmentId: $environmentId
     type: $type
     repo: $repo
     image: $image
@@ -108,11 +111,14 @@ mutation CreateService(
     command: $command
     publishPath: $publishPath
     envVars: $envVars
+    secretFiles: $secretFiles
   ) {
     id
     name
     type
     phase
+    projectId
+    environmentId
   }
 }
 

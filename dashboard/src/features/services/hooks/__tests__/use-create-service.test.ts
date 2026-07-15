@@ -44,10 +44,12 @@ describe("useCreateService", () => {
       id = await result.current.create({
         name: "web",
         type: "web_service",
+        environmentId: "env-production",
         image: "nginx",
         runtime: "node",
         buildCommand: "npm ci",
         startCommand: "npm start",
+        secretFiles: [{ name: "credentials.json", content: "secret" }],
       });
     });
 
@@ -58,10 +60,12 @@ describe("useCreateService", () => {
           name: "web",
           ownerId: "tea-1",
           type: "web_service",
+          environmentId: "env-production",
           image: "nginx",
           runtime: "node",
           buildCommand: "npm ci",
           startCommand: "npm start",
+          secretFiles: [{ name: "credentials.json", content: "secret" }],
         }),
       }),
     );

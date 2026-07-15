@@ -2196,6 +2196,66 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Error shown when an env var key is invalid in the create wizard",
   },
+  "services.createFieldSecretFilesTitle": {
+    message: "机密文件",
+    description: "Section heading for secret files in the create wizard",
+  },
+  "services.createFieldSecretFilesHint": {
+    message: "从首次部署起以只读方式挂载到 /etc/secrets。",
+    description: "Hint for create-time secret files",
+  },
+  "services.createFieldSecretFilesAdd": {
+    message: "添加机密文件",
+    description: "Button to add a create-time secret file",
+  },
+  "services.createFieldSecretFilesRemove": {
+    message: "删除机密文件",
+    description: "Accessible label for removing a secret file row",
+  },
+  "services.createFieldSecretFilesName": {
+    message: "机密文件名",
+    description: "Accessible label for a secret file name",
+  },
+  "services.createFieldSecretFilesContent": {
+    message: "机密文件内容",
+    description: "Accessible label for secret file contents",
+  },
+  "services.createFieldSecretFilesNamePlaceholder": {
+    message: "credentials.json",
+    description: "Placeholder for a secret file name",
+  },
+  "services.createFieldSecretFilesContentPlaceholder": {
+    message: "粘贴机密内容",
+    description: "Placeholder for secret file contents",
+  },
+  "services.createFieldSecretFilesNameError": {
+    message: "只能使用字母、数字、点、短横线和下划线；不能使用 . 或 ..。",
+    description: "Invalid secret file name error",
+  },
+  "services.createFieldEnvironmentTitle": {
+    message: "项目和环境",
+    description: "Create wizard grouping section title",
+  },
+  "services.createFieldProject": {
+    message: "项目",
+    description: "Accessible label for the create project picker",
+  },
+  "services.createFieldProjectNone": {
+    message: "无项目",
+    description: "Unassigned option in the project picker",
+  },
+  "services.createFieldEnvironment": {
+    message: "环境",
+    description: "Accessible label for the create environment picker",
+  },
+  "services.createFieldEnvironmentNone": {
+    message: "无环境",
+    description: "Unassigned option in the environment picker",
+  },
+  "services.createFieldEnvironmentHint": {
+    message: "选择环境也会将服务加入其所属项目。",
+    description: "Hint for create-time environment assignment",
+  },
   "services.navEvents": {
     message: "事件",
     description: "Service-detail nav item (events tab)",

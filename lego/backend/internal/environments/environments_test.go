@@ -221,6 +221,32 @@ func TestCreateEnvironment_DuplicateNameConflict(t *testing.T) {
 	}
 }
 
+func TestCreateResolverPinsUnknownForeignAndPolicy(t *testing.T) {
+	st := newFakeStore()
+	st.envs["env-staging"] = store.Environment{
+		ID:                      "env-staging",
+		ProjectID:               "prj-platform",
+		TenantID:                "tea-a",
+		NetworkIsolationEnabled: true,
+		IPAllowList:             []string{"10.0.0.0/8"},
+	}
+	resolver := NewCreateResolver(&Service{Store: st})
+
+	assignment, err := resolver.ResolveForCreate(context.Background(), "env-staging", "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if assignment.ID != "env-staging" || assignment.ProjectID != "prj-platform" || !assignment.NetworkIsolationEnabled || len(assignment.IPAllowList) != 1 {
+		t.Fatalf("assignment = %+v", assignment)
+	}
+	if _, err := resolver.ResolveForCreate(context.Background(), "missing", "tea-a"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unknown error = %v, want ErrNotFound", err)
+	}
+	if _, err := resolver.ResolveForCreate(context.Background(), "env-staging", "tea-b"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("foreign error = %v, want ErrForbidden", err)
+	}
+}
+
 func TestListEnvironments_ScopedToProject(t *testing.T) {
 	st := newFakeStore()
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})

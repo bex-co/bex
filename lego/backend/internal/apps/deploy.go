@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -109,12 +110,25 @@ type EnvSeeder interface {
 	SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error
 }
 
+// BlueprintGroupingStore is the narrow store seam used by Render's canonical
+// projects[].environments[] Blueprint vocabulary. The apply path resolves or
+// creates groups by name, then threads the resulting environment id through the
+// same resource-create paths as REST/GraphQL/MCP.
+type BlueprintGroupingStore interface {
+	ListProjects(ctx context.Context, tenantID string) ([]store.Project, error)
+	CreateProject(ctx context.Context, tenantID, name string) (store.Project, error)
+	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
+	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []string) error
+}
+
 // StackResult is the set of resources one stack deploy created (or converged):
 // databases are applied first (dependents reference them via fromDatabase),
 // then services. Both are individually pollable to Ready via their status.
 type StackResult struct {
 	Services  []AppView           `json:"services"`
 	Databases []StackDatabaseView `json:"databases"`
+	KeyValues []StackKeyValueView `json:"keyValues"`
 }
 
 // StackDatabaseView is the minimal managed-Postgres projection a stack deploy
@@ -125,6 +139,11 @@ type StackDatabaseView struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status"` // Database phase (Pending|Provisioning|Ready|Failed)
+}
+
+type StackKeyValueView struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 // --- manifest shape (render.yaml Blueprint vocabulary) ---
@@ -138,6 +157,34 @@ type bexManifest struct {
 	Services     []bexService  `json:"services"`     // Blueprint services list
 	Databases    []bexDatabase `json:"databases"`    // Blueprint databases list
 	EnvVarGroups []bexEnvGroup `json:"envVarGroups"` // Blueprint env-groups list
+	Projects     []bexProject  `json:"projects"`
+	Ungrouped    *bexResources `json:"ungrouped"`
+}
+
+type bexResources struct {
+	Services     []bexService  `json:"services"`
+	Databases    []bexDatabase `json:"databases"`
+	EnvVarGroups []bexEnvGroup `json:"envVarGroups"`
+}
+
+type bexProject struct {
+	Name         string           `json:"name"`
+	Environments []bexEnvironment `json:"environments"`
+}
+
+type bexEnvironment struct {
+	bexResources
+	Name        string                    `json:"name"`
+	Networking  bexEnvironmentNetworking  `json:"networking"`
+	Permissions bexEnvironmentPermissions `json:"permissions"`
+}
+
+type bexEnvironmentNetworking struct {
+	Isolation string `json:"isolation"`
+}
+
+type bexEnvironmentPermissions struct {
+	Protection string `json:"protection"`
 }
 
 // bexEnvGroup is one entry in envVarGroups: a named, reusable set of env vars a
@@ -186,6 +233,14 @@ type bexService struct {
 	StaticPublishPath string           `json:"staticPublishPath"` // render.yaml static-site publish dir
 	PublishPath       string           `json:"publishPath"`       // bex alias
 	EnvVars           []bexEnvVar      `json:"envVars"`
+	IPAllowList       []bexIPEntry     `json:"ipAllowList"`
+	MaxmemoryPolicy   string           `json:"maxmemoryPolicy"`
+	PersistenceMode   string           `json:"persistenceMode"`
+	// Neither field exists in Render's Blueprint service schema. Keeping them
+	// explicit lets bex reject the common create-body/Blueprint mix-up by name
+	// instead of silently dropping it.
+	EnvironmentID string            `json:"environmentId"`
+	SecretFiles   []secretFileInput `json:"secretFiles"`
 }
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
@@ -226,6 +281,7 @@ type bexDatabase struct {
 	IPAllowList          []bexIPEntry                      `json:"ipAllowList"`
 	ReadReplicas         []appv1alpha1.DatabaseReadReplica `json:"readReplicas"`
 	HighAvailability     *bexHA                            `json:"highAvailability"`
+	EnvironmentID        string                            `json:"environmentId"`
 }
 
 // bexIPEntry is one CIDR in render.yaml's ipAllowList: [{source, description}].
@@ -278,6 +334,15 @@ type parsedStack struct {
 	envGroups []parsedEnvGroup
 	services  []parsedService
 	databases []parsedDatabase
+	keyValues []parsedKeyValue
+	groupings []parsedGrouping
+}
+
+type parsedGrouping struct {
+	projectName             string
+	environmentName         string
+	networkIsolationEnabled bool
+	protectedStatus         string
 }
 
 // parsedEnvGroup is a validated envVarGroups[] entry: literal vars keyed to their
@@ -297,11 +362,26 @@ type parsedService struct {
 	groupLinks    []string          // fromGroup names to link after create
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
+	grouping      string
+	ungrouped     bool
 }
 
 type parsedDatabase struct {
-	name string
-	spec appv1alpha1.DatabaseSpec
+	name      string
+	spec      appv1alpha1.DatabaseSpec
+	grouping  string
+	ungrouped bool
+}
+
+type parsedKeyValue struct {
+	name      string
+	spec      appv1alpha1.KeyValueSpec
+	grouping  string
+	ungrouped bool
+}
+
+func blueprintGroupingKey(projectName, environmentName string) string {
+	return projectName + "\x00" + environmentName
 }
 
 // dbPropertyKey maps a render.yaml fromDatabase property to the key in the CNPG
@@ -351,6 +431,7 @@ func (s *Service) Deploy(ctx context.Context, req DeployRequest) (AppView, error
 // All validation runs in parseStack before any write — one invalid entry rejects
 // the whole apply with a per-entry error, nothing partially created.
 func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResult, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return StackResult{}, err
 	}
@@ -371,6 +452,10 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err := s.preflightBlueprintEnv(ctx, st); err != nil {
 		return StackResult{}, err
 	}
+	assignments, err := s.applyBlueprintGroupings(ctx, st.groupings)
+	if err != nil {
+		return StackResult{}, err
+	}
 	// req.Confirm rides the context from here on — applyCreate's protection
 	// guard (requireUnprotected) reads it via confirmFrom, the same
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
@@ -389,12 +474,19 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	// applying the dependent first would leave it Pending on a missing Secret
 	// anyway, but applying the DB first starts its provisioning immediately.
 	for _, db := range st.databases {
-		v, err := s.applyDatabase(ctx, db)
+		v, err := s.applyDatabase(ctx, db, assignments[db.grouping])
 		if err != nil {
 			return res, err
 		}
 		res.Databases = append(res.Databases, v)
 		databaseIDs[db.name] = v.ID
+	}
+	for _, kv := range st.keyValues {
+		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping])
+		if err != nil {
+			return res, err
+		}
+		res.KeyValues = append(res.KeyValues, v)
 	}
 	for _, svc := range st.services {
 		for _, ref := range svc.databaseRefs {
@@ -403,6 +495,12 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
 			}
 			svc.req.Env = append(svc.req.Env, ev)
+		}
+		if assignment := assignments[svc.grouping]; assignment.ID != "" {
+			svc.req.EnvironmentID = assignment.ID
+			svc.req.EnvironmentSpecified = true
+		} else if svc.ungrouped {
+			svc.req.EnvironmentSpecified = true
 		}
 		v, err := s.applyCreate(ctx, svc.req)
 		if err != nil {
@@ -429,6 +527,69 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 		s.upsertBlueprint(ctx, req)
 	}
 	return res, nil
+}
+
+// applyBlueprintGroupings resolves or creates the Project/Environment rows
+// named by the canonical Render Blueprint nesting. It runs after the stateless
+// parse/preflight gate and before resource writes, so every newborn resource
+// receives the real environment id through its normal create path.
+func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parsedGrouping) (map[string]core.EnvironmentAssignment, error) {
+	out := make(map[string]core.EnvironmentAssignment, len(groupings))
+	if len(groupings) == 0 {
+		return out, nil
+	}
+	if s.BlueprintGroups == nil {
+		return nil, core.ErrWorkspacesUnavailable
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if !ok {
+		return nil, core.ErrWorkspacesUnavailable
+	}
+	projects, err := s.BlueprintGroups.ListProjects(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("listing Blueprint projects: %w", err)
+	}
+	byName := make(map[string]store.Project, len(projects))
+	for _, project := range projects {
+		byName[project.Name] = project
+	}
+	for _, grouping := range groupings {
+		project, exists := byName[grouping.projectName]
+		if !exists {
+			project, err = s.BlueprintGroups.CreateProject(ctx, tenantID, grouping.projectName)
+			if err != nil {
+				return nil, fmt.Errorf("creating Blueprint project %q: %w", grouping.projectName, err)
+			}
+			byName[grouping.projectName] = project
+		}
+		environments, err := s.BlueprintGroups.ListEnvironments(ctx, project.ID)
+		if err != nil {
+			return nil, fmt.Errorf("listing Blueprint environments for project %q: %w", grouping.projectName, err)
+		}
+		var environment store.Environment
+		for _, candidate := range environments {
+			if candidate.Name == grouping.environmentName {
+				environment = candidate
+				break
+			}
+		}
+		if environment.ID == "" {
+			environment, err = s.BlueprintGroups.CreateEnvironment(ctx, project.ID, tenantID, grouping.environmentName)
+			if err != nil {
+				return nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
+			}
+		}
+		if err := s.BlueprintGroups.SetEnvironmentACL(ctx, environment.ID, grouping.protectedStatus, grouping.networkIsolationEnabled, nil); err != nil {
+			return nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
+		}
+		out[blueprintGroupingKey(grouping.projectName, grouping.environmentName)] = core.EnvironmentAssignment{
+			ID:                      environment.ID,
+			ProjectID:               project.ID,
+			WorkspaceID:             tenantID,
+			NetworkIsolationEnabled: grouping.networkIsolationEnabled,
+		}
+	}
+	return out, nil
 }
 
 // preflightBlueprintEnv validates the blueprint's env-groups + env-vars needs
@@ -493,21 +654,97 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	if err := yaml.Unmarshal([]byte(req.Manifest), &m); err != nil {
 		return parsedStack{}, fmt.Errorf("%w: bex.yml is not valid YAML: %v", core.ErrBadRequest, err)
 	}
-	services := m.Services
+	type serviceDecl struct {
+		value     bexService
+		grouping  string
+		ungrouped bool
+	}
+	type databaseDecl struct {
+		value     bexDatabase
+		grouping  string
+		ungrouped bool
+	}
+	services := make([]serviceDecl, 0, len(m.Services)+len(m.Apps))
+	rootServices := m.Services
 	if len(m.Apps) > 0 {
 		if len(m.Services) > 0 {
 			return parsedStack{}, fmt.Errorf("%w: use either services: or apps:, not both", core.ErrBadRequest)
 		}
-		services = m.Apps
+		rootServices = m.Apps
 	}
-	if len(services) == 0 && len(m.Databases) == 0 && len(m.EnvVarGroups) == 0 {
-		return parsedStack{}, fmt.Errorf("%w: bex.yml must define at least one service under services: (or apps:), one database under databases:, or one env group under envVarGroups:", core.ErrBadRequest)
+	for _, service := range rootServices {
+		services = append(services, serviceDecl{value: service})
+	}
+	databases := make([]databaseDecl, 0, len(m.Databases))
+	for _, database := range m.Databases {
+		databases = append(databases, databaseDecl{value: database})
+	}
+	envGroups := append([]bexEnvGroup(nil), m.EnvVarGroups...)
+	if m.Ungrouped != nil {
+		for _, service := range m.Ungrouped.Services {
+			services = append(services, serviceDecl{value: service, ungrouped: true})
+		}
+		for _, database := range m.Ungrouped.Databases {
+			databases = append(databases, databaseDecl{value: database, ungrouped: true})
+		}
+		envGroups = append(envGroups, m.Ungrouped.EnvVarGroups...)
 	}
 	st := parsedStack{}
+	projectNames := map[string]bool{}
+	for _, project := range m.Projects {
+		projectName := strings.TrimSpace(project.Name)
+		if projectName == "" {
+			return parsedStack{}, fmt.Errorf("%w: a projects entry is missing its name", core.ErrBadRequest)
+		}
+		if projectNames[projectName] {
+			return parsedStack{}, fmt.Errorf("%w: duplicate project name %q", core.ErrBadRequest, projectName)
+		}
+		projectNames[projectName] = true
+		environmentNames := map[string]bool{}
+		for _, environment := range project.Environments {
+			environmentName := strings.TrimSpace(environment.Name)
+			if environmentName == "" {
+				return parsedStack{}, fmt.Errorf("%w: project %q has an environment without a name", core.ErrBadRequest, projectName)
+			}
+			if environmentNames[environmentName] {
+				return parsedStack{}, fmt.Errorf("%w: project %q has duplicate environment name %q", core.ErrBadRequest, projectName, environmentName)
+			}
+			environmentNames[environmentName] = true
+			if environment.Networking.Isolation != "" && environment.Networking.Isolation != "enabled" && environment.Networking.Isolation != "disabled" {
+				return parsedStack{}, fmt.Errorf("%w: project %q environment %q networking.isolation must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
+			}
+			if environment.Permissions.Protection != "" && environment.Permissions.Protection != "enabled" && environment.Permissions.Protection != "disabled" {
+				return parsedStack{}, fmt.Errorf("%w: project %q environment %q permissions.protection must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
+			}
+			if len(environment.EnvVarGroups) > 0 {
+				return parsedStack{}, fmt.Errorf("%w: project %q environment %q contains envVarGroups; environment-scoped env groups are not supported yet", core.ErrBadRequest, projectName, environmentName)
+			}
+			grouping := blueprintGroupingKey(projectName, environmentName)
+			protectedStatus := "unprotected"
+			if environment.Permissions.Protection == "enabled" {
+				protectedStatus = "protected"
+			}
+			st.groupings = append(st.groupings, parsedGrouping{
+				projectName:             projectName,
+				environmentName:         environmentName,
+				networkIsolationEnabled: environment.Networking.Isolation == "enabled",
+				protectedStatus:         protectedStatus,
+			})
+			for _, service := range environment.Services {
+				services = append(services, serviceDecl{value: service, grouping: grouping})
+			}
+			for _, database := range environment.Databases {
+				databases = append(databases, databaseDecl{value: database, grouping: grouping})
+			}
+		}
+	}
+	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 {
+		return parsedStack{}, fmt.Errorf("%w: bex.yml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
+	}
 
 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
-	groupNames := make(map[string]bool, len(m.EnvVarGroups))
-	for _, g := range m.EnvVarGroups {
+	groupNames := make(map[string]bool, len(envGroups))
+	for _, g := range envGroups {
 		pg, err := parseEnvGroup(g)
 		if err != nil {
 			return parsedStack{}, err
@@ -520,10 +757,10 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	}
 
 	// Databases next into the stack (and into the name index services reference).
-	names := make(map[string]bool, len(services)+len(m.Databases))
-	databaseNames := make(map[string]bool, len(m.Databases))
-	for _, d := range m.Databases {
-		ds, err := parseDatabase(d)
+	names := make(map[string]bool, len(services)+len(databases))
+	databaseNames := make(map[string]bool, len(databases))
+	for _, d := range databases {
+		ds, err := parseDatabase(d.value)
 		if err != nil {
 			return parsedStack{}, err
 		}
@@ -532,6 +769,8 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		}
 		names[ds.name] = true
 		databaseNames[ds.name] = true
+		ds.grouping = d.grouping
+		ds.ungrouped = d.ungrouped
 		st.databases = append(st.databases, ds)
 	}
 
@@ -553,7 +792,21 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
 	serviceKnownEnv := make(map[string]map[string]string, len(services))
 	for _, a := range services {
-		req, se, err := parseService(req, a)
+		if a.value.Type == "keyvalue" || a.value.Type == "redis" {
+			kv, err := parseKeyValue(a.value)
+			if err != nil {
+				return parsedStack{}, err
+			}
+			if names[kv.name] {
+				return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a bex.yml must be unique", core.ErrBadRequest, kv.name)
+			}
+			names[kv.name] = true
+			kv.grouping = a.grouping
+			kv.ungrouped = a.ungrouped
+			st.keyValues = append(st.keyValues, kv)
+			continue
+		}
+		req, se, err := parseService(req, a.value)
 		if err != nil {
 			return parsedStack{}, err
 		}
@@ -562,7 +815,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 		}
 		names[req.Name] = true
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates},
+			svc:     parsedService{req: req, groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		serviceKnownEnv[req.Name] = se.known
@@ -647,6 +900,12 @@ type serviceEnv struct {
 func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, error) {
 	if a.Name == "" {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: a service entry is missing its name", core.ErrBadRequest)
+	}
+	if a.EnvironmentID != "" {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the service under projects[].environments[].services instead", core.ErrBadRequest, a.Name)
+	}
+	if len(a.SecretFiles) > 0 {
+		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses secretFiles, which Render's Blueprint schema does not support; use createService secretFiles or the secret-files API", core.ErrBadRequest, a.Name)
 	}
 	repo := a.Repo
 	if dep.Repo != "" {
@@ -776,6 +1035,9 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if !appv1alpha1.ValidDatabaseName(d.Name) {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest, d.Name)
 	}
+	if d.EnvironmentID != "" {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
+	}
 	plan := d.Plan
 	if plan != "" {
 		if _, ok := tiers.Postgres.ByID(plan); !ok {
@@ -808,6 +1070,50 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		HighAvailability: ha,
 	}
 	return parsedDatabase{name: d.Name, spec: spec}, nil
+}
+
+func parseKeyValue(k bexService) (parsedKeyValue, error) {
+	if k.Name == "" {
+		return parsedKeyValue{}, fmt.Errorf("%w: a key-value service entry is missing its name", core.ErrBadRequest)
+	}
+	if k.EnvironmentID != "" {
+		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest it under projects[].environments[].services instead", core.ErrBadRequest, k.Name)
+	}
+	if len(k.SecretFiles) > 0 {
+		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q uses secretFiles, which Render's Blueprint schema does not support", core.ErrBadRequest, k.Name)
+	}
+	if k.Plan != "" {
+		if _, ok := tiers.Valkey.ByID(k.Plan); !ok {
+			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.IDs(), "|"))
+		}
+	}
+	allow := make([]string, 0, len(k.IPAllowList))
+	for _, entry := range k.IPAllowList {
+		if entry.Source == "" {
+			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q has an ipAllowList entry without a source", core.ErrBadRequest, k.Name)
+		}
+		if err := core.ValidateCIDRs([]string{entry.Source}); err != nil {
+			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q ipAllowList: %v", core.ErrBadRequest, k.Name, err)
+		}
+		allow = append(allow, entry.Source)
+	}
+	validMaxmemory := map[string]bool{
+		"noeviction": true, "allkeys-lru": true, "allkeys-lfu": true,
+		"volatile-lru": true, "volatile-lfu": true, "allkeys-random": true,
+		"volatile-random": true, "volatile-ttl": true,
+	}
+	if k.MaxmemoryPolicy != "" && !validMaxmemory[k.MaxmemoryPolicy] {
+		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q maxmemoryPolicy %q is invalid", core.ErrBadRequest, k.Name, k.MaxmemoryPolicy)
+	}
+	if k.PersistenceMode != "" && k.PersistenceMode != "journal-snapshot" && k.PersistenceMode != "snapshot" && k.PersistenceMode != "off" {
+		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q persistenceMode %q is invalid", core.ErrBadRequest, k.Name, k.PersistenceMode)
+	}
+	return parsedKeyValue{name: k.Name, spec: appv1alpha1.KeyValueSpec{
+		Plan:            k.Plan,
+		IPAllowList:     allow,
+		MaxmemoryPolicy: k.MaxmemoryPolicy,
+		PersistenceMode: k.PersistenceMode,
+	}}, nil
 }
 
 // validateGroupLink checks a keyless {fromGroup: <name>} entry: it links a whole
@@ -983,8 +1289,26 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	if errors.Is(err, core.ErrNotFound) {
 		return s.createNewApp(ctx, req, desired)
 	}
-	// Idempotent update: short-circuit when the create-owned fields already match.
-	if !createOwnedSpecChanged(existing.Spec, desired) {
+	specChanged := createOwnedSpecChanged(existing.Spec, desired)
+	var assignment core.EnvironmentAssignment
+	environmentChanged := false
+	if req.EnvironmentSpecified {
+		tenantID := existing.Labels[core.LabelTenant]
+		assignment, err = s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+		if err != nil {
+			return AppView{}, err
+		}
+		desiredIsolation := ""
+		if assignment.NetworkIsolationEnabled {
+			desiredIsolation = assignment.ID
+		}
+		environmentChanged = existing.Labels[core.LabelEnvironment] != assignment.ID ||
+			existing.Labels[core.LabelProject] != assignment.ProjectID ||
+			existing.Labels[core.LabelNetworkIsolation] != desiredIsolation
+	}
+	// Idempotent update: short-circuit when both create-owned spec and explicit
+	// Blueprint grouping already match.
+	if !specChanged && !environmentChanged {
 		return s.view(existing), nil
 	}
 	// A real change to an EXISTING service via the stack-apply path is the
@@ -997,8 +1321,39 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 		return AppView{}, err
 	}
 	base := client.MergeFrom(existing.DeepCopy())
-	applyCreateToSpec(&existing.Spec, desired)
-	if s.Store != nil {
+	if specChanged {
+		applyCreateToSpec(&existing.Spec, desired)
+	}
+	if environmentChanged {
+		if existing.Labels == nil {
+			existing.Labels = map[string]string{}
+		}
+		if assignment.ID == "" {
+			delete(existing.Labels, core.LabelProject)
+			delete(existing.Labels, core.LabelEnvironment)
+			delete(existing.Labels, core.LabelNetworkIsolation)
+		} else {
+			existing.Labels[core.LabelProject] = assignment.ProjectID
+			existing.Labels[core.LabelEnvironment] = assignment.ID
+			if assignment.NetworkIsolationEnabled {
+				existing.Labels[core.LabelNetworkIsolation] = assignment.ID
+			} else {
+				delete(existing.Labels, core.LabelNetworkIsolation)
+			}
+		}
+		if appID := existing.Labels[store.LabelAppID]; appID != "" {
+			environmentStore, ok := s.Store.(interface {
+				SetAppEnvironment(context.Context, string, string, string) error
+			})
+			if !ok {
+				return AppView{}, core.ErrWorkspacesUnavailable
+			}
+			if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID); err != nil {
+				return AppView{}, fmt.Errorf("assigning Blueprint environment: %w", err)
+			}
+		}
+	}
+	if specChanged && s.Store != nil {
 		if id := existing.Labels[store.LabelAppID]; id != "" {
 			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
 			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation, commit); err != nil {
@@ -1006,14 +1361,16 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			}
 		}
 	}
-	secretName, err := s.ensureCloneSecret(ctx, existing)
-	if err != nil {
-		return AppView{}, err
+	if specChanged {
+		secretName, err := s.ensureCloneSecret(ctx, existing)
+		if err != nil {
+			return AppView{}, err
+		}
+		if secretName != "" {
+			existing.Spec.CloneSecret = secretName
+		}
+		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	}
-	if secretName != "" {
-		existing.Spec.CloneSecret = secretName
-	}
-	existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	resourcemeta.Touch(existing, s.Now())
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
 		return AppView{}, err
@@ -1045,11 +1402,20 @@ func databaseOwnedSpecChanged(cur, want appv1alpha1.DatabaseSpec) bool {
 	return !reflect.DeepEqual(probe, cur)
 }
 
+// keyValueOwnedSpecChanged is the KeyValue analogue. Blueprint re-apply owns
+// only the fields its schema can declare and must not clear lifecycle state
+// such as Suspended or fields managed by another API.
+func keyValueOwnedSpecChanged(cur, want appv1alpha1.KeyValueSpec) bool {
+	probe := cur
+	applyKeyValueSpec(&probe, want)
+	return !reflect.DeepEqual(probe, cur)
+}
+
 // applyDatabase is the stack path's idempotent Database upsert: create when
 // absent (stamped with the caller's tenant labels, mirroring CreatePostgres),
 // else merge-patch the owned spec fields only when they changed. An unchanged
 // re-apply is a no-op.
-func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDatabaseView, error) {
+func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment) (StackDatabaseView, error) {
 	var databases appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &databases, client.InNamespace(s.Namespace)); err != nil {
 		return StackDatabaseView{}, err
@@ -1070,11 +1436,22 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDa
 		existing = candidate
 	}
 	if existing != nil {
-		if !databaseOwnedSpecChanged(existing.Spec, db.spec) {
+		specChanged := databaseOwnedSpecChanged(existing.Spec, db.spec)
+		groupingSpecified := db.grouping != "" || db.ungrouped
+		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
+		if !specChanged && !groupingChanged {
 			return stackDatabaseView(existing), nil
 		}
 		base := client.MergeFrom(existing.DeepCopy())
-		applyDatabaseSpec(&existing.Spec, db.spec)
+		if specChanged {
+			applyDatabaseSpec(&existing.Spec, db.spec)
+		}
+		if groupingChanged {
+			if existing.Labels == nil {
+				existing.Labels = map[string]string{}
+			}
+			applyGroupingLabels(existing.Labels, assignment)
+		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
 			return StackDatabaseView{}, err
@@ -1088,11 +1465,80 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase) (StackDa
 	if tenantID, ok := s.Tenant(ctx); ok {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
+	if assignment.ID != "" {
+		if d.Labels == nil {
+			d.Labels = map[string]string{}
+		}
+		applyGroupingLabels(d.Labels, assignment)
+	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		return StackDatabaseView{}, err
 	}
 	return stackDatabaseView(d), nil
+}
+
+func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAssignment) {
+	if assignment.ID == "" {
+		delete(labels, core.LabelProject)
+		delete(labels, core.LabelEnvironment)
+		return
+	}
+	labels[core.LabelProject] = assignment.ProjectID
+	labels[core.LabelEnvironment] = assignment.ID
+}
+
+func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) (StackKeyValueView, error) {
+	var existing appv1alpha1.KeyValue
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: kv.name}, &existing)
+	if err == nil {
+		specChanged := keyValueOwnedSpecChanged(existing.Spec, kv.spec)
+		groupingSpecified := kv.grouping != "" || kv.ungrouped
+		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
+		if !specChanged && !groupingChanged {
+			return stackKeyValueView(&existing), nil
+		}
+		base := client.MergeFrom(existing.DeepCopy())
+		if specChanged {
+			applyKeyValueSpec(&existing.Spec, kv.spec)
+		}
+		if groupingChanged {
+			if existing.Labels == nil {
+				existing.Labels = map[string]string{}
+			}
+			applyGroupingLabels(existing.Labels, assignment)
+		}
+		resourcemeta.Touch(&existing, s.Now())
+		if err := s.Client.Patch(ctx, &existing, base); err != nil {
+			return StackKeyValueView{}, err
+		}
+		return stackKeyValueView(&existing), nil
+	}
+	if !apierrors.IsNotFound(err) {
+		return StackKeyValueView{}, err
+	}
+	resource := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: kv.name, Namespace: s.Namespace},
+		Spec:       kv.spec,
+	}
+	if tenantID, ok := s.Tenant(ctx); ok {
+		resource.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+	}
+	if assignment.ID != "" {
+		if resource.Labels == nil {
+			resource.Labels = map[string]string{}
+		}
+		applyGroupingLabels(resource.Labels, assignment)
+	}
+	resourcemeta.Touch(resource, s.Now())
+	if err := s.Client.Create(ctx, resource); err != nil {
+		return StackKeyValueView{}, err
+	}
+	return stackKeyValueView(resource), nil
+}
+
+func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
+	return StackKeyValueView{Name: kv.Name, Status: string(kv.Status.Phase)}
 }
 
 // applyDatabaseSpec copies the Blueprint-owned Database fields onto dst (the set
@@ -1107,6 +1553,13 @@ func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseS
 	dst.IPAllowList = want.IPAllowList
 	dst.ReadReplicas = want.ReadReplicas
 	dst.HighAvailability = want.HighAvailability
+}
+
+func applyKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.KeyValueSpec) {
+	dst.Plan = want.Plan
+	dst.IPAllowList = want.IPAllowList
+	dst.MaxmemoryPolicy = want.MaxmemoryPolicy
+	dst.PersistenceMode = want.PersistenceMode
 }
 
 func stackDatabaseView(d *appv1alpha1.Database) StackDatabaseView {
