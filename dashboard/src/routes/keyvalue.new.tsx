@@ -135,7 +135,9 @@ export function NewKeyValuePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1>{t("keyvalue.createTitle")}</h1>
+                <h1 className="text-xl font-semibold">
+                  {t("keyvalue.createTitle")}
+                </h1>
               </CardTitle>
               <CardDescription>
                 {t("keyvalue.createDescription")}

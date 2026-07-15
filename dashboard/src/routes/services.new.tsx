@@ -649,7 +649,9 @@ export function NewServicePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1>{t("services.createTitle")}</h1>
+                <h1 className="text-xl font-semibold">
+                  {t("services.createTitle")}
+                </h1>
               </CardTitle>
               <CardDescription>
                 {t("services.createDescription")}

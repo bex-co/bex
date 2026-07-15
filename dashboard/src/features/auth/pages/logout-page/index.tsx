@@ -60,9 +60,9 @@ export default function LogoutPage() {
             <>
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <h2 className="text-2xl font-semibold">
+                <h1 className="text-2xl font-semibold">
                   {t("auth.loggingOutTitle")}
-                </h2>
+                </h1>
               </div>
               <p className="text-muted-foreground">
                 {t("auth.loggingOutSubtitle")}
@@ -73,9 +73,9 @@ export default function LogoutPage() {
             <>
               <div className="flex items-center justify-center gap-3">
                 <CheckCircle className="h-6 w-6 text-green-500 animate-in zoom-in duration-200" />
-                <h2 className="text-2xl font-semibold text-green-500">
+                <h1 className="text-2xl font-semibold text-green-500">
                   {t("auth.loggedOutTitle")}
-                </h2>
+                </h1>
               </div>
               <p className="text-muted-foreground">
                 {t("auth.loggedOutSubtitle")}

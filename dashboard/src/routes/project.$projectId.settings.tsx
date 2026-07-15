@@ -98,7 +98,7 @@ export function ProjectSettingsPage() {
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="w-full max-w-2xl space-y-6">
-        <h1 className="text-2xl font-semibold">{t("projects.settingsTitle")}</h1>
+        <h1 className="text-xl font-semibold">{t("projects.settingsTitle")}</h1>
 
         <Card>
           <CardHeader>

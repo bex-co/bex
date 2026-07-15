@@ -30,7 +30,7 @@ export const Route = createFileRoute("/blueprints")({
   component: BlueprintsPage,
   beforeLoad: requireAuth("/blueprints"),
   head: () => ({
-    meta: [{ title: "Blueprints — bex" }],
+    meta: [{ title: "Blueprints · bex dashboard" }],
   }),
 });
 

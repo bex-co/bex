@@ -74,7 +74,9 @@ export function NewWorkspacePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1>{t("workspaces.createTitle")}</h1>
+                <h1 className="text-xl font-semibold">
+                  {t("workspaces.createTitle")}
+                </h1>
               </CardTitle>
               <CardDescription>
                 {t("workspaces.createDescription")}

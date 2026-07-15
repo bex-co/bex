@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
   component: HomePage,
   beforeLoad: requireAuth("/"),
   head: () => ({
-    meta: [{ title: "bex dashboard" }],
+    meta: [{ title: "Overview · bex dashboard" }],
   }),
 });
 
@@ -107,9 +107,9 @@ export function HomePage() {
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="w-full space-y-8">
+        <div className="w-full space-y-6">
           <div className="flex flex-row items-center justify-between gap-2">
-            <h1 className="text-xl leading-none font-semibold">
+            <h1 className="text-xl font-semibold">
               {t("projects.overviewTitle")}
             </h1>
             <DropdownMenu>

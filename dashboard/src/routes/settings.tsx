@@ -19,6 +19,6 @@ export const Route = createFileRoute("/settings")({
     return validated;
   },
   head: () => ({
-    meta: [{ title: "Settings — bex" }],
+    meta: [{ title: "Settings · bex dashboard" }],
   }),
 });

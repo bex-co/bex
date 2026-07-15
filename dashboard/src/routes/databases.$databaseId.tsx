@@ -78,12 +78,12 @@ export function DatabaseDetailPage() {
                 onChanged={() => void refetch()}
               />
               <DatabaseNameSection
-                key={database.name}
+                key={`name-${database.name}`}
                 database={database}
                 onChanged={() => void refetch()}
               />
               <ConnectionInfoPanel id={database.id} />
-              <SQLConsole key={database.id} id={database.id} />
+              <SQLConsole key={`sql-${database.id}`} id={database.id} />
               <HAPanel database={database} refetch={refetch} />
               <DatastoreMetricsPanel
                 kind="database"
