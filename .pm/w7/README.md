@@ -40,7 +40,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `001.md` — Fresh tenant nodes cannot pull authenticated Zot images because App workloads carry no `imagePullSecret` — **promoted to `w6/m29`** 2026-07-15 (materialized under w6 for capacity); the note stays here until w6/m29 closes out, which retires it to `done/` (the `w6/015` cross-workstream precedent)
+_(`001.md` — fresh tenant nodes could not pull authenticated Zot images — promoted to `w6/m29` and closed 2026-07-15; the source incident had already been archived as `done/005.md` by the earlier cross-workstream note-retirement pass.)_
 
 > `004.md` promoted to **m33** 2026-07-15; note moved to `done/`.
 
