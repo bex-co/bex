@@ -1,0 +1,37 @@
+name: clusterapi (validate)
+
+# Structural guard for the CAPH overlay + packer bake (w1/m36 t007): keeps the
+# baked-worker-image win from silently regressing. Fails if a worker template
+# drifts back to ubuntu-24.04, or a worker preKubeadmCommands block re-adds the
+# runc/containerd/kubelet download, the `kubeadm config images pull`, a
+# pkgs.k8s.io apt install, or a trimmed apt package. Pure client-side (yq only),
+# no cluster. Fix locally with: bash scripts/clusterapi-validate.sh
+on:
+  pull_request:
+    paths:
+      - "infra/clusterapi/overlays/hetzner-caph/**"
+      - "infra/packer/**"
+      - "scripts/clusterapi-validate.sh"
+      - ".github/workflows/clusterapi-validate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/clusterapi/overlays/hetzner-caph/**"
+      - "infra/packer/**"
+      - "scripts/clusterapi-validate.sh"
+      - ".github/workflows/clusterapi-validate.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clusterapi-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest # ships yq v4 preinstalled
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate CAPH overlay shape
+        run: bash scripts/clusterapi-validate.sh
