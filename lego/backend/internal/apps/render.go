@@ -30,7 +30,7 @@ const renderWebService = "web_service"
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
-	ID             string         `json:"id"` // Render ids are opaque; bex uses the App name
+	ID             string         `json:"id"` // Render-shaped srv- id; AppView falls back for legacy hand-applied CRs
 	Name           string         `json:"name"`
 	Slug           string         `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
 	DisplayName    string         `json:"displayName"`
@@ -183,7 +183,7 @@ func toRenderService(a AppView) renderService {
 		}
 	}
 	return renderService{
-		ID:              a.Name,
+		ID:              a.ID,
 		Name:            a.Name,
 		Slug:            a.Slug,
 		DisplayName:     a.DisplayName,

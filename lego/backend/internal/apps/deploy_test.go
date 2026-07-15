@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -46,6 +47,9 @@ func TestCreateWritesAppCR(t *testing.T) {
 	if v.Name != "web" {
 		t.Errorf("view name = %q, want web", v.Name)
 	}
+	if kind, ok := ids.KindOf(v.ID); !ok || kind != ids.Service {
+		t.Fatalf("Create service id = %q, want srv-<xid>", v.ID)
+	}
 	a := getApp(t, cl, "web")
 	if a.Spec.Image != "nginx:1" || a.Spec.Port != 8080 {
 		t.Errorf("spec = %+v, want image nginx:1 port 8080", a.Spec)
@@ -55,6 +59,9 @@ func TestCreateWritesAppCR(t *testing.T) {
 	}
 	if a.Spec.Replicas != 1 || a.Spec.Tier != "free" {
 		t.Errorf("defaults not applied: replicas=%d tier=%q", a.Spec.Replicas, a.Spec.Tier)
+	}
+	if a.Labels[core.LabelAppID] != v.ID {
+		t.Errorf("App id label = %q, response id = %q", a.Labels[core.LabelAppID], v.ID)
 	}
 }
 

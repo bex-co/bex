@@ -67,6 +67,25 @@ func TestAuthorizeAppSameWorkspaceSucceeds(t *testing.T) {
 	}
 }
 
+func TestAuthorizeAppResolvesTypedServiceID(t *testing.T) {
+	app := sampleApp(CRName("tea-a", "web"), "tea-a")
+	app.Labels[LabelAppID] = "srv-c185th5c2rvvnhbfiltg"
+	app.Labels[LabelServiceName] = "web"
+	b := &Base{
+		Client: fakeAppClient(app), Namespace: "default",
+		Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{},
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	got, err := b.AuthorizeApp(ctx, RelCanOperate, "srv-c185th5c2rvvnhbfiltg")
+	if err != nil {
+		t.Fatalf("AuthorizeApp by typed id: %v", err)
+	}
+	if got.Name != CRName("tea-a", "web") {
+		t.Fatalf("typed id resolved App %q, want tenant-prefixed CR", got.Name)
+	}
+}
+
 func TestAuthorizeAppCrossWorkspaceStillChecksTheRelationThere(t *testing.T) {
 	cl := fakeAppClient(sampleApp("web", "tea-b"))
 	b := &Base{
