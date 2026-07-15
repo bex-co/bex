@@ -39,6 +39,7 @@ concurrently.
 | bex-api (local process) | `54020` |
 | bex-db (port-forward) | `55020` |
 | bex-api control-plane API (BEX_CP_ADDR, host-only) | `56020` |
+| kratos-admin (port-forward, BEX_KRATOS_ADMIN_URL) | `57020` |
 
 ## Start / status / stop
 

@@ -110,6 +110,7 @@ forward() {
 
 echo "==> port-forwards (self-healing)"
 forward kratos kratos-public "$KRATOS_PUBLIC_PORT:80"
+forward kratos-admin kratos-admin "$KRATOS_ADMIN_PORT:80"
 forward hydra hydra-admin "$HYDRA_ADMIN_PORT:4445"
 forward mailpit mailpit "$MAILPIT_HTTP_PORT:8025"
 forward bex-db bex-db-rw "$BEX_DB_PORT:5432"
@@ -137,6 +138,7 @@ nohup env \
   BEX_API_NAMESPACE="$DEV_NS" \
   BEX_API_CORS_ORIGIN="http://localhost:$DASHBOARD_PORT" \
   BEX_KRATOS_URL="http://localhost:$KRATOS_PUBLIC_PORT" \
+  BEX_KRATOS_ADMIN_URL="http://localhost:$KRATOS_ADMIN_PORT" \
   BEX_HYDRA_ADMIN_URL="http://localhost:$HYDRA_ADMIN_PORT" \
   BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
   BEX_CP_APPS_NAMESPACE="$DEV_NS" \
@@ -152,7 +154,7 @@ fi
 echo
 echo "dev-1 (workstream w1) is up:"
 echo "  kubeconfig:  $KUBECONFIG_FILE (KUBECONFIG=\$PWD/$KUBECONFIG_FILE kubectl -n $DEV_NS get keyvalues.app.bex.co)"
-echo "  kratos:      http://localhost:$KRATOS_PUBLIC_PORT"
+echo "  kratos:      http://localhost:$KRATOS_PUBLIC_PORT (admin: http://localhost:$KRATOS_ADMIN_PORT)"
 echo "  hydra admin: http://localhost:$HYDRA_ADMIN_PORT"
 echo "  mailpit UI:  http://localhost:$MAILPIT_HTTP_PORT"
 echo "  bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log)"
