@@ -6,6 +6,8 @@ import { useDeploy } from "../hooks/use-deploy";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
+import { DeployTimeline } from "./deploy-timeline";
+import { DeployActions } from "./deploy-actions";
 
 export interface DeployDetailPageProps {
   serviceId: string;
@@ -31,7 +33,7 @@ export function DeployDetailPage({
   onRangeChange,
 }: DeployDetailPageProps) {
   const { t } = useTranslations();
-  const { deploy, loading, notFound } = useDeploy(serviceId, deployId);
+  const { deploy, loading, error, notFound } = useDeploy(serviceId, deployId);
 
   // The log window: `?r=` overrides with [now - range, now) — open-ended so
   // the viewer keeps polling live, exactly like a still-running deploy.
@@ -52,6 +54,16 @@ export function DeployDetailPage({
     );
   }
 
+  if (error) {
+    return (
+      <EmptyState
+        iconName="AlertCircle"
+        title={t("logs.errorTitle")}
+        description={error.message}
+      />
+    );
+  }
+
   if (loading || !deploy) {
     return (
       <div className="space-y-6">
@@ -63,7 +75,17 @@ export function DeployDetailPage({
 
   return (
     <div className="space-y-6">
-      <DeployHeader deploy={deploy} />
+      <DeployHeader
+        deploy={deploy}
+        actions={
+          <DeployActions
+            serviceId={serviceId}
+            deployId={deploy.id}
+            status={deploy.status}
+          />
+        }
+      />
+      <DeployTimeline serviceId={serviceId} deploy={deploy} />
       <DeployLogPanel
         resource={serviceId}
         startTime={window ? window.start : (deploy.createdAt ?? undefined)}

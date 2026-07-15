@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
+import type { ReactNode } from "react";
 type Translate = ReturnType<typeof useTranslations>["t"];
 import {
   deployStatusVariant,
@@ -30,6 +31,7 @@ function formatTimestamp(iso: string | null): string {
 
 export interface DeployHeaderProps {
   deploy: DeployView;
+  actions?: ReactNode;
 }
 
 /**
@@ -39,23 +41,29 @@ export interface DeployHeaderProps {
  * status→badge mapping as the Events tab (deploy-status.ts) so the two
  * surfaces can't drift on what a given status looks like.
  */
-export function DeployHeader({ deploy }: DeployHeaderProps) {
+export function DeployHeader({
+  deploy,
+  actions,
+}: DeployHeaderProps) {
   const { t } = useTranslations();
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={deployStatusVariant(deploy.status)}>
-            {t(deployStatusKey(deploy.status) as Parameters<typeof t>[0])}
-          </Badge>
-          <span className="text-xs capitalize text-muted-foreground">
-            {triggerLabel(deploy.trigger, deploy.rollbackOf, t)}
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {deploy.id}
-          </span>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={deployStatusVariant(deploy.status)}>
+              {t(deployStatusKey(deploy.status) as Parameters<typeof t>[0])}
+            </Badge>
+            <span className="text-xs capitalize text-muted-foreground">
+              {triggerLabel(deploy.trigger, deploy.rollbackOf, t)}
+            </span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {deploy.id}
+            </span>
+          </div>
+          {actions}
         </div>
 
         {preDeploy && (
@@ -85,11 +93,11 @@ export function DeployHeader({ deploy }: DeployHeaderProps) {
           </p>
         )}
 
-        {deploy.image && (
+        {deploy.image ? (
           <p className="truncate font-mono text-xs text-muted-foreground">
             {deploy.image}
           </p>
-        )}
+        ) : null}
 
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-3">
           <div>

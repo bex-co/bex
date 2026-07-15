@@ -257,12 +257,13 @@ const EVENTS_BY_SERVICE = {
   "eden-cms-v2": [
     {
       __typename: "ServiceEvent",
-      id: "dep-live-001",
+      id: "evt-live-001",
       type: "deploy",
       timestamp: "2026-07-11T14:30:00Z",
       cursor: "dep-live-001",
       details: {
         __typename: "ServiceEventDetails",
+        deployId: "dep-live-001",
         deployStatus: "live",
         preDeployStatus: "succeeded",
         actor: "dev@localhost",
@@ -280,12 +281,13 @@ const EVENTS_BY_SERVICE = {
     },
     {
       __typename: "ServiceEvent",
-      id: "dep-failed-000",
+      id: "evt-failed-000",
       type: "deploy",
       timestamp: "2026-07-11T13:00:00Z",
       cursor: "dep-failed-000",
       details: {
         __typename: "ServiceEventDetails",
+        deployId: "dep-failed-000",
         deployStatus: "update_failed",
         preDeployStatus: "failed",
         actor: "github",
@@ -456,13 +458,14 @@ function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStat
 function deployServiceEvent(deploy, trigger) {
   return {
     __typename: "ServiceEvent",
-    id: deploy.id,
+    id: `evt-${deploy.id.slice(4)}`,
     type: "deploy",
     timestamp: deploy.createdAt,
     cursor: deploy.id,
     get details() {
       return {
         __typename: "ServiceEventDetails",
+        deployId: deploy.id,
         deployStatus: deploy.status,
         preDeployStatus: deploy.preDeployStatus,
         actor: "dev@localhost",
@@ -1677,11 +1680,14 @@ function resolveGraphQL({ operationName, variables = {} }) {
       d.serverStatus = "active";
       return { verifyCustomDomain: d };
     }
-    // Service events (w5/m7): deploy-event feed per service — a flat
-    // ServiceEvent[], no {cursor,events} envelope (each event carries its own
-    // cursor instead; see events.graphql's header comment). Cursor pagination
-    // is ignored by the stub — always returns the full list newest-first.
+    // Events tab and deploy timeline share the composed service-events feed.
+    // Deploy navigation uses details.deployId, never the evt-… event id.
     case "ServiceEvents": {
+      return { serviceEvents: EVENTS_BY_SERVICE[variables.serviceId] ?? [] };
+    }
+    // Deploy-window service events. Window filtering is unnecessary for the
+    // tiny stub dataset; the hook still enforces details.deployId exactly.
+    case "DeployTimelineEvents": {
       return { serviceEvents: EVENTS_BY_SERVICE[variables.serviceId] ?? [] };
     }
     // TriggerDeploy: prepend a new in-progress event AND a matching Deploy row

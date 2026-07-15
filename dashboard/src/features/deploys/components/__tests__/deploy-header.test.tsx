@@ -26,6 +26,9 @@ describe("DeployHeader", () => {
     ["update_in_progress", "In Progress"],
     ["update_failed", "Failed"],
     ["canceled", "Canceled"],
+    ["build_failed", "Build Failed"],
+    ["pre_deploy_failed", "Pre-Deploy Failed"],
+    ["deactivated", "Deactivated"],
   ])("renders the %s status as %j", (status, label) => {
     render(<DeployHeader deploy={deploy({ status })} />);
     expect(screen.getByText(label)).toBeInTheDocument();
@@ -46,7 +49,9 @@ describe("DeployHeader", () => {
   });
 
   it("labels a manual (api-triggered) deploy", () => {
-    render(<DeployHeader deploy={deploy({ trigger: "api", rollbackOf: "" })} />);
+    render(
+      <DeployHeader deploy={deploy({ trigger: "api", rollbackOf: "" })} />,
+    );
     expect(screen.getByText("manual deploy")).toBeInTheDocument();
   });
 
@@ -79,8 +84,14 @@ describe("DeployHeader", () => {
   });
 
   it("renders the deploy's image", () => {
-    render(<DeployHeader deploy={deploy({ image: "registry.example.com/web:abc123" })} />);
-    expect(screen.getByText("registry.example.com/web:abc123")).toBeInTheDocument();
+    render(
+      <DeployHeader
+        deploy={deploy({ image: "registry.example.com/web:abc123" })}
+      />,
+    );
+    expect(
+      screen.getByText("registry.example.com/web:abc123"),
+    ).toBeInTheDocument();
   });
 
   it("shows a placeholder for a started/finished timestamp that hasn't happened yet", () => {

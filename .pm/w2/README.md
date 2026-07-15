@@ -31,6 +31,7 @@
 - [x] **m35** — Postgres logical exports: `pg_dump` download parity (11 tasks) — **DONE 2026-07-14** (portable directory-format dump, private object-store upload, short-lived `can_view_sensitive` download, honest lifecycle + seven-day expiry, REST/GraphQL/MCP/UI parity, live restore evidence)
 - [ ] **m36** — Cron-job runs API: list · get · cancel (9 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (only the run trigger exists — `apps/rest.go:504`; Render additionally ships list/get/cancel run endpoints; extends the deploys-as-objects pattern m5/m10/m31 established)
 - [ ] **m37** — Create-payload completeness: `secretFiles` + `environmentId` at create (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `servicePOST.secretFiles` + `environmentId` on the three create inputs are silently dropped today; thin threading over w1/m16 + w1/m32 verbs)
+- [ ] **m38** — Full deploy status lifecycle + transition timestamps (9 tasks) ← from `w5/m29`'s 2026-07-14 Render-parity audit; narrowed after w9/001 independently shipped commit id/message provenance
 
 ## Inbox
 

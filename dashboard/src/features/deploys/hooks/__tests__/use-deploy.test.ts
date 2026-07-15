@@ -52,7 +52,9 @@ describe("useDeploy", () => {
 
   it("stops polling once the deploy reaches a terminal status", () => {
     mockUseQuery.mockReturnValue({
-      data: { deploy: deploy({ status: "live", finishedAt: "2026-07-14T00:01:00Z" }) },
+      data: {
+        deploy: deploy({ status: "live", finishedAt: "2026-07-14T00:01:00Z" }),
+      },
       loading: false,
       error: undefined,
       previousData: undefined,
@@ -64,22 +66,25 @@ describe("useDeploy", () => {
     expect(stopPolling).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["update_failed", "canceled"])(
-    "also stops polling for the %s terminal status",
-    (status) => {
-      mockUseQuery.mockReturnValue({
-        data: { deploy: deploy({ status }) },
-        loading: false,
-        error: undefined,
-        previousData: undefined,
-        stopPolling,
-      });
+  it.each([
+    "update_failed",
+    "build_failed",
+    "pre_deploy_failed",
+    "canceled",
+    "deactivated",
+  ])("also stops polling for the %s terminal status", (status) => {
+    mockUseQuery.mockReturnValue({
+      data: { deploy: deploy({ status }) },
+      loading: false,
+      error: undefined,
+      previousData: undefined,
+      stopPolling,
+    });
 
-      renderHook(() => useDeploy("web", "dep-1"));
+    renderHook(() => useDeploy("web", "dep-1"));
 
-      expect(stopPolling).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(stopPolling).toHaveBeenCalledTimes(1);
+  });
 
   it("reports notFound once resolved with no deploy — never a phantom deploy", () => {
     mockUseQuery.mockReturnValue({
@@ -95,6 +100,21 @@ describe("useDeploy", () => {
     expect(result.current.notFound).toBe(true);
     expect(result.current.deploy).toBeNull();
     expect(stopPolling).not.toHaveBeenCalled();
+  });
+
+  it("maps bex-api's GraphQL not-found error to the not-found state", () => {
+    mockUseQuery.mockReturnValue({
+      data: { deploy: null },
+      loading: false,
+      error: new Error('deploy "dep-nope" not found'),
+      previousData: undefined,
+      stopPolling,
+    });
+
+    const { result } = renderHook(() => useDeploy("web", "dep-nope"));
+
+    expect(result.current.notFound).toBe(true);
+    expect(result.current.error).toBeUndefined();
   });
 
   it("is loading (not notFound) on the very first render before any data arrives", () => {

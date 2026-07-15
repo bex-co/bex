@@ -36,7 +36,10 @@ export interface UseDeployResult {
  * (update_in_progress) so the header/log window follow the deploy live, and
  * stops the moment it reaches a terminal status (live/update_failed/canceled).
  */
-export function useDeploy(serviceId: string, deployId: string): UseDeployResult {
+export function useDeploy(
+  serviceId: string,
+  deployId: string,
+): UseDeployResult {
   const { data, loading, error, previousData, stopPolling } = useQuery(
     DeployDocument,
     {
@@ -48,6 +51,10 @@ export function useDeploy(serviceId: string, deployId: string): UseDeployResult 
   );
 
   const deploy = toDeployView(data?.deploy ?? previousData?.deploy ?? null);
+  const notFound =
+    !loading &&
+    !deploy &&
+    (!error || error.message.toLowerCase().includes("not found"));
 
   useEffect(() => {
     if (deploy && isTerminalDeployStatus(deploy.status)) stopPolling();
@@ -56,8 +63,8 @@ export function useDeploy(serviceId: string, deployId: string): UseDeployResult 
   return {
     deploy,
     loading: loading && !deploy,
-    error,
-    notFound: !loading && !error && !deploy,
+    error: notFound ? undefined : error,
+    notFound,
   };
 }
 

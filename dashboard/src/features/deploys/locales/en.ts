@@ -1,6 +1,54 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enDeploys: Record<string, TranslationEntry> = {
+  "deploys.statusCreated": {
+    message: "Created",
+    description: "Deploy status: created",
+  },
+  "deploys.statusQueued": {
+    message: "Queued",
+    description: "Deploy status: queued",
+  },
+  "deploys.statusBuildInProgress": {
+    message: "Building",
+    description: "Deploy status: build_in_progress",
+  },
+  "deploys.statusBuildFailed": {
+    message: "Build Failed",
+    description: "Deploy status: build_failed",
+  },
+  "deploys.statusPreDeployInProgress": {
+    message: "Pre-Deploy In Progress",
+    description: "Deploy status: pre_deploy_in_progress",
+  },
+  "deploys.statusPreDeployFailed": {
+    message: "Pre-Deploy Failed",
+    description: "Deploy status: pre_deploy_failed",
+  },
+  "deploys.statusUpdateInProgress": {
+    message: "In Progress",
+    description: "Deploy status: update_in_progress",
+  },
+  "deploys.statusUpdateFailed": {
+    message: "Failed",
+    description: "Deploy status: update_failed",
+  },
+  "deploys.statusLive": {
+    message: "Live",
+    description: "Deploy status: live",
+  },
+  "deploys.statusCanceled": {
+    message: "Canceled",
+    description: "Deploy status: canceled",
+  },
+  "deploys.statusDeactivated": {
+    message: "Deactivated",
+    description: "Deploy status: deactivated",
+  },
+  "deploys.statusUnknown": {
+    message: "Unknown",
+    description: "Deploy status: unrecognized backend value",
+  },
   "deploys.created": {
     message: "Created",
     description: "Deploy header: created-at label",
@@ -44,6 +92,43 @@ const enDeploys: Record<string, TranslationEntry> = {
   "deploys.buildLogsStoreUnavailable": {
     message: "Build logs need the log store.",
     description: "Deploy detail page: shown when the durable log store isn't wired, so build-log lines can't be fetched",
+  },
+  "deploys.timelineTitle": {
+    message: "Status timeline",
+    description: "Deploy detail page: status-timeline card title",
+  },
+  "deploys.timelineCreated": {
+    message: "Deploy created",
+    description: "Deploy timeline: deploy row was created",
+  },
+  "deploys.timelineStarted": {
+    message: "Deploy started",
+    description: "Deploy timeline: backend-provided startedAt timestamp",
+  },
+  "deploys.timelineInProgress": {
+    message: "Deploy in progress",
+    description: "Deploy timeline: current non-terminal deploy status",
+  },
+  "deploys.timelineLive": {
+    message: "Deploy live",
+    description: "Deploy timeline: successful terminal state",
+  },
+  "deploys.timelineFailed": {
+    message: "Deploy failed",
+    description: "Deploy timeline: failed terminal state",
+  },
+  "deploys.timelineCanceled": {
+    message: "Deploy canceled",
+    description: "Deploy timeline: canceled terminal state",
+  },
+  "deploys.timelineDeactivated": {
+    message: "Deploy deactivated",
+    description: "Deploy timeline: deactivated terminal state",
+  },
+  "deploys.timelineEventsUnavailable": {
+    message: "Service events are unavailable; showing deploy timestamps only.",
+    description:
+      "Deploy timeline: graceful fallback when service-events query fails",
   },
   "deploys.listTitle": {
     message: "Deploys",

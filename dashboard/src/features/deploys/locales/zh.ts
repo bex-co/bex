@@ -1,6 +1,54 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhDeploys: Record<string, TranslationEntry> = {
+  "deploys.statusCreated": {
+    message: "已创建",
+    description: "Deploy status: created",
+  },
+  "deploys.statusQueued": {
+    message: "排队中",
+    description: "Deploy status: queued",
+  },
+  "deploys.statusBuildInProgress": {
+    message: "构建中",
+    description: "Deploy status: build_in_progress",
+  },
+  "deploys.statusBuildFailed": {
+    message: "构建失败",
+    description: "Deploy status: build_failed",
+  },
+  "deploys.statusPreDeployInProgress": {
+    message: "预部署进行中",
+    description: "Deploy status: pre_deploy_in_progress",
+  },
+  "deploys.statusPreDeployFailed": {
+    message: "预部署失败",
+    description: "Deploy status: pre_deploy_failed",
+  },
+  "deploys.statusUpdateInProgress": {
+    message: "进行中",
+    description: "Deploy status: update_in_progress",
+  },
+  "deploys.statusUpdateFailed": {
+    message: "失败",
+    description: "Deploy status: update_failed",
+  },
+  "deploys.statusLive": {
+    message: "已上线",
+    description: "Deploy status: live",
+  },
+  "deploys.statusCanceled": {
+    message: "已取消",
+    description: "Deploy status: canceled",
+  },
+  "deploys.statusDeactivated": {
+    message: "已停用",
+    description: "Deploy status: deactivated",
+  },
+  "deploys.statusUnknown": {
+    message: "未知",
+    description: "Deploy status: unrecognized backend value",
+  },
   "deploys.created": {
     message: "创建于",
     description: "Deploy header: created-at label",
@@ -44,6 +92,43 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.buildLogsStoreUnavailable": {
     message: "构建日志需要日志存储。",
     description: "Deploy detail page: shown when the durable log store isn't wired, so build-log lines can't be fetched",
+  },
+  "deploys.timelineTitle": {
+    message: "状态时间线",
+    description: "Deploy detail page: status-timeline card title",
+  },
+  "deploys.timelineCreated": {
+    message: "已创建部署",
+    description: "Deploy timeline: deploy row was created",
+  },
+  "deploys.timelineStarted": {
+    message: "部署已开始",
+    description: "Deploy timeline: backend-provided startedAt timestamp",
+  },
+  "deploys.timelineInProgress": {
+    message: "部署进行中",
+    description: "Deploy timeline: current non-terminal deploy status",
+  },
+  "deploys.timelineLive": {
+    message: "部署已上线",
+    description: "Deploy timeline: successful terminal state",
+  },
+  "deploys.timelineFailed": {
+    message: "部署失败",
+    description: "Deploy timeline: failed terminal state",
+  },
+  "deploys.timelineCanceled": {
+    message: "部署已取消",
+    description: "Deploy timeline: canceled terminal state",
+  },
+  "deploys.timelineDeactivated": {
+    message: "部署已停用",
+    description: "Deploy timeline: deactivated terminal state",
+  },
+  "deploys.timelineEventsUnavailable": {
+    message: "服务事件不可用；仅显示部署时间戳。",
+    description:
+      "Deploy timeline: graceful fallback when service-events query fails",
   },
   "deploys.listTitle": {
     message: "部署",

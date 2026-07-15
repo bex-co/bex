@@ -17,3 +17,28 @@ query Deploy($serviceId: String!, $deployId: String!) {
     preDeployStatus
   }
 }
+
+# Service events inside one deploy's time window. The hook filters the result by
+# details.deployId because unrelated audit activity may occur in the same window;
+# ServiceEvent.id itself is an evt-… id and is never a deploy id.
+query DeployTimelineEvents(
+  $serviceId: String!
+  $startTime: String
+  $endTime: String
+  $limit: Int
+) {
+  serviceEvents(
+    serviceId: $serviceId
+    startTime: $startTime
+    endTime: $endTime
+    limit: $limit
+  ) {
+    id
+    type
+    timestamp
+    details {
+      deployId
+      deployStatus
+    }
+  }
+}

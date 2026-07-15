@@ -1,9 +1,7 @@
 # serviceEvents returns a flat [ServiceEvent] (no cursor/events envelope) —
 # each event carries its OWN cursor (backend/internal/events/graphql.go).
-# ServiceEventDetails has no image/rollbackTarget/message fields and its
-# `trigger` is the Trigger object (boolean flags), not a plain string — a
-# different shape from Deploy.trigger (a plain string) the mutations below
-# return.
+# Deploy links/actions use details.deployId: ServiceEvent.id is an evt-… id and
+# must never be treated as a deploy id.
 query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
   serviceEvents(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
     id
@@ -11,6 +9,7 @@ query ServiceEvents($serviceId: String!, $cursor: String, $limit: Int) {
     timestamp
     cursor
     details {
+      deployId
       deployStatus
       # preDeployStatus is the deploy's pre-deploy step outcome (w1/m33):
       # running | succeeded | failed; empty when no pre-deploy step ran.

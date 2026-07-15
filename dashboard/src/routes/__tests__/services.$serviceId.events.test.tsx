@@ -34,11 +34,12 @@ vi.mock("@apollo/client/react", () => ({
 
 function deployEvent(over: Record<string, unknown> = {}) {
   return {
-    id: "dep-live-001",
-    type: "deploy",
+    id: "evt-live-001",
+    type: "deploy_ended",
     timestamp: "2026-07-14T14:30:00Z",
-    cursor: "dep-live-001",
+    cursor: "cursor-live-001",
     details: {
+      deployId: "dep-live-001",
       deployStatus: "live",
       preDeployStatus: "",
       actor: "dev@localhost",
@@ -95,7 +96,7 @@ beforeEach(async () => {
 });
 
 describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)", () => {
-  it("links each deploy row to its own deploy page", async () => {
+  it("links each stored deploy row to its exact deploy page", async () => {
     mockUseQuery.mockReturnValue({
       data: { serviceEvents: [deployEvent()] },
       loading: false,
@@ -125,9 +126,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
       await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Proceed" }),
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
     expect(rollbackService).toHaveBeenCalledWith({
       variables: { serviceId: "app", deployId: "dep-live-001" },
@@ -154,9 +153,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
       await screen.findByRole("button", { name: "Roll Back to This Deploy" }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Proceed" }),
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
     expect(rollbackService).toHaveBeenCalled();
     expect(router.state.location.pathname).toBe("/services/app/events");

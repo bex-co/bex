@@ -8,12 +8,32 @@ export type DeployBadgeVariant =
   | "destructive"
   | "outline";
 
-/** Terminal statuses (store.DeployLive/DeployUpdateFailed/DeployCanceled) — a
- *  deploy in one of these will never change status again, so pollers stop. */
-const TERMINAL_STATUSES = new Set(["live", "update_failed", "canceled"]);
+/** Render's terminal deploy statuses. bex emits four today; accepting the full
+ *  eleven-value vocabulary keeps polling correct as the backend deepens its
+ *  deploy object without another UI migration. */
+const TERMINAL_STATUSES = new Set([
+  "build_failed",
+  "canceled",
+  "deactivated",
+  "live",
+  "pre_deploy_failed",
+  "update_failed",
+]);
 
 export function isTerminalDeployStatus(status: string): boolean {
   return TERMINAL_STATUSES.has(status);
+}
+
+const CANCELABLE_STATUSES = new Set([
+  "created",
+  "queued",
+  "build_in_progress",
+  "pre_deploy_in_progress",
+  "update_in_progress",
+]);
+
+export function isCancelableDeployStatus(status: string): boolean {
+  return CANCELABLE_STATUSES.has(status);
 }
 
 export function deployStatusVariant(status: string): DeployBadgeVariant {
@@ -23,8 +43,11 @@ export function deployStatusVariant(status: string): DeployBadgeVariant {
     case "update_in_progress":
       return "secondary";
     case "update_failed":
+    case "build_failed":
+    case "pre_deploy_failed":
       return "destructive";
     case "canceled":
+    case "deactivated":
       return "outline";
     default:
       return "secondary";
@@ -33,16 +56,30 @@ export function deployStatusVariant(status: string): DeployBadgeVariant {
 
 export function deployStatusKey(status: string): string {
   switch (status) {
+    case "created":
+      return "deploys.statusCreated";
+    case "queued":
+      return "deploys.statusQueued";
+    case "build_in_progress":
+      return "deploys.statusBuildInProgress";
+    case "build_failed":
+      return "deploys.statusBuildFailed";
+    case "pre_deploy_in_progress":
+      return "deploys.statusPreDeployInProgress";
+    case "pre_deploy_failed":
+      return "deploys.statusPreDeployFailed";
     case "live":
-      return "services.eventsStatusLive";
+      return "deploys.statusLive";
     case "update_in_progress":
-      return "services.eventsStatusInProgress";
+      return "deploys.statusUpdateInProgress";
     case "update_failed":
-      return "services.eventsStatusFailed";
+      return "deploys.statusUpdateFailed";
     case "canceled":
-      return "services.eventsStatusCanceled";
+      return "deploys.statusCanceled";
+    case "deactivated":
+      return "deploys.statusDeactivated";
     default:
-      return status;
+      return "deploys.statusUnknown";
   }
 }
 

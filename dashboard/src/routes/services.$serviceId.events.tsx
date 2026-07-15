@@ -1,12 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
-import {
-  ServiceEventsDocument,
-  CancelDeployDocument,
-  RollbackServiceDocument,
-} from "@/graphql/definitions";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@apollo/client/react";
+import { ServiceEventsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -14,18 +8,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/common/components/ui/card";
-import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/common/components/ui/alert-dialog";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
@@ -34,7 +17,9 @@ import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
   preDeployStatusKey as preDeployKey,
+  isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
+import { DeployActions } from "@/features/deploys/components/deploy-actions";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
@@ -66,19 +51,9 @@ function triggerLabel(trigger: TriggerFlags): string | null {
   return null;
 }
 
-// Manual Deploy is not here: it's a header verb on Render, so it lives in
-// ServiceDetailHeader (via ManualDeployButton) and refetches this page's
-// `ServiceEvents` query by name when it fires.
-type ConfirmAction =
-  | { kind: "cancel"; deployId: string }
-  | { kind: "rollback"; deployId: string };
-
 export function ServiceEventsPage() {
   const { serviceId } = Route.useParams();
   const { t } = useTranslations();
-  const navigate = useNavigate();
-  const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
-
   const { data, loading, refetch } = useQuery(ServiceEventsDocument, {
     variables: { serviceId, limit: 20 },
     fetchPolicy: "cache-and-network",
@@ -89,60 +64,10 @@ export function ServiceEventsPage() {
   // from the detail shell's own read, so this doesn't cost a second request.
   const { service } = useServer(serviceId);
 
-  const [cancelDeploy, { loading: canceling }] =
-    useMutation(CancelDeployDocument);
-  const [rollbackService, { loading: rollingBack }] = useMutation(
-    RollbackServiceDocument,
-  );
-
-  const busy = canceling || rollingBack;
-
   const events = (data?.serviceEvents ?? []).filter(
-    (e): e is NonNullable<typeof e> & { id: string } => e != null && !!e.id,
+    (event): event is NonNullable<typeof event> & { id: string } =>
+      event != null && !!event.id,
   );
-
-  async function handleConfirm() {
-    if (!confirm) return;
-    try {
-      if (confirm.kind === "cancel") {
-        await cancelDeploy({
-          variables: { serviceId, deployId: confirm.deployId },
-        });
-        toast.success(t("services.cancelDeploySuccess"));
-      } else {
-        const { data } = await rollbackService({
-          variables: { serviceId, deployId: confirm.deployId },
-        });
-        toast.success(t("services.rollbackSuccess"));
-        // Render lands the user on the rollback deploy's own page (w9/m1/t004),
-        // not the deploy it restored.
-        const rollbackId = data?.rollbackService?.id;
-        if (rollbackId) {
-          void navigate({
-            to: "/services/$serviceId/deploys/$deployId",
-            params: { serviceId, deployId: rollbackId },
-          });
-        }
-      }
-      void refetch();
-    } catch {
-      if (confirm.kind === "cancel")
-        toast.error(t("services.cancelDeployError"));
-      else toast.error(t("services.rollbackError"));
-    } finally {
-      setConfirm(null);
-    }
-  }
-
-  const confirmTitle =
-    confirm?.kind === "cancel"
-      ? t("services.eventsCancelConfirmTitle")
-      : t("services.eventsRollbackConfirmTitle");
-
-  const confirmBody =
-    confirm?.kind === "cancel"
-      ? t("services.eventsCancelConfirmBody")
-      : t("services.eventsRollbackConfirmBody");
 
   return (
     <div className="space-y-6">
@@ -163,82 +88,49 @@ export function ServiceEventsPage() {
             </p>
           ) : (
             <div className="divide-y">
-              {events.map((evt) => {
-                const details = evt.details;
-                const isInProgress =
-                  details?.deployStatus === "update_in_progress";
-                const canRollback = details?.deployStatus === "live";
+              {events.map((event) => {
+                const details = event.details;
+                const deployId = details?.deployId ?? "";
+                const status = details?.deployStatus ?? "";
                 const label = triggerLabel(details?.trigger ?? null);
                 const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
+                const summary = (
+                  <EventSummary
+                    status={status}
+                    label={label}
+                    preDeployStatus={details?.preDeployStatus ?? ""}
+                    preDeploy={preDeploy}
+                    timestamp={event.timestamp}
+                  />
+                );
+                const hasAction =
+                  !!deployId &&
+                  (isCancelableDeployStatus(status) || status === "live");
+
                 return (
                   <div
-                    key={evt.id}
+                    key={event.id}
                     className="flex items-start justify-between gap-4 py-3"
                   >
-                    <Link
-                      to="/services/$serviceId/deploys/$deployId"
-                      params={{ serviceId, deployId: evt.id }}
-                      className="min-w-0 flex-1"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={statusVariant(details?.deployStatus ?? "")}
-                        >
-                          {t(
-                            statusKey(
-                              details?.deployStatus ?? "",
-                            ) as Parameters<typeof t>[0],
-                          )}
-                        </Badge>
-                        {label && (
-                          <span className="text-xs capitalize text-muted-foreground">
-                            {label}
-                          </span>
-                        )}
-                      </div>
-                      {preDeploy && (
-                        <p
-                          className={`mt-1 text-xs ${
-                            details?.preDeployStatus === "failed"
-                              ? "text-destructive"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {t(preDeploy as Parameters<typeof t>[0])}
-                        </p>
-                      )}
-                      {evt.timestamp && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {new Date(evt.timestamp).toLocaleString()}
-                        </p>
-                      )}
-                    </Link>
-                    <div className="flex shrink-0 gap-2">
-                      {isInProgress && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() =>
-                            setConfirm({ kind: "cancel", deployId: evt.id })
-                          }
-                        >
-                          {t("services.eventsCancelDeploy")}
-                        </Button>
-                      )}
-                      {canRollback && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() =>
-                            setConfirm({ kind: "rollback", deployId: evt.id })
-                          }
-                        >
-                          {t("services.eventsRollback")}
-                        </Button>
-                      )}
-                    </div>
+                    {deployId ? (
+                      <Link
+                        to="/services/$serviceId/deploys/$deployId"
+                        params={{ serviceId, deployId }}
+                        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {summary}
+                      </Link>
+                    ) : (
+                      <div className="min-w-0 flex-1">{summary}</div>
+                    )}
+                    {hasAction ? (
+                      <DeployActions
+                        serviceId={serviceId}
+                        deployId={deployId}
+                        status={status}
+                        onChanged={() => void refetch()}
+                      />
+                    ) : null}
                   </div>
                 );
               })}
@@ -250,29 +142,52 @@ export function ServiceEventsPage() {
       {service && isCron(service) ? (
         <CronRunsSection service={service} />
       ) : null}
-
-      <AlertDialog
-        open={confirm !== null}
-        onOpenChange={(o) => !o && setConfirm(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{confirmBody}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.eventsConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void handleConfirm()}
-              disabled={busy}
-            >
-              {t("services.eventsConfirmProceed")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
+  );
+}
+
+function EventSummary({
+  status,
+  label,
+  preDeployStatus,
+  preDeploy,
+  timestamp,
+}: {
+  status: string;
+  label: string | null;
+  preDeployStatus: string;
+  preDeploy: string | null;
+  timestamp: string | null;
+}) {
+  const { t } = useTranslations();
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <Badge variant={statusVariant(status)}>
+          {t(statusKey(status) as Parameters<typeof t>[0])}
+        </Badge>
+        {label ? (
+          <span className="text-xs capitalize text-muted-foreground">
+            {label}
+          </span>
+        ) : null}
+      </div>
+      {preDeploy ? (
+        <p
+          className={`mt-1 text-xs ${
+            preDeployStatus === "failed"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          }`}
+        >
+          {t(preDeploy as Parameters<typeof t>[0])}
+        </p>
+      ) : null}
+      {timestamp ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {new Date(timestamp).toLocaleString()}
+        </p>
+      ) : null}
+    </>
   );
 }
