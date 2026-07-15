@@ -24,12 +24,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"sort"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -60,6 +62,11 @@ type Service struct {
 	// dashboard host as a custom domain (w7/m6). Empty => not reserved (the
 	// base-domain guard still covers the `*.<BaseDomain>` platform namespace).
 	DashboardHost string
+	// SSHHost is the public SSH gateway hostname (BEX_SSH_HOST). When set,
+	// eligible paid, long-running services advertise Render-compatible
+	// serviceDetails.sshAddress values. Authorization and runtime readiness are
+	// still checked by the gateway for every connection.
+	SSHHost string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
 	// the bex.co/app-id label). Suspend/Resume write the row first — the row owns
 	// spec.suspended, and the projection loop reverts CR patches it didn't
@@ -277,10 +284,13 @@ type AppView struct {
 	// spec.tier "pro-plus"), sourced from lego/types/tiers. Omitted — not
 	// faked as "" — when spec.tier is empty or not a recognized tier, so a
 	// Render-shaped client sees a real superset rather than a bogus plan.
-	Plan      string `json:"plan,omitempty"`
-	Revision  string `json:"revision"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	Plan     string `json:"plan,omitempty"`
+	Revision string `json:"revision"`
+	// SSHAddress is Render's raw OpenSSH target (`srv-…@host`). It is populated
+	// only by Service projections because it depends on the configured gateway.
+	SSHAddress string `json:"sshAddress,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route. URL above remains the
 	// hosted data-plane endpoint; the two are never interchangeable.
 	DashboardURL string `json:"dashboardUrl,omitempty"`
@@ -612,6 +622,12 @@ func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
 	v.DashboardURL = s.Metadata.DashboardURL("services", v.ID)
 	v.Region = s.Metadata.PlatformRegion()
+	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
+	if strings.Contains(host, ".") && len(validation.IsDNS1123Subdomain(host)) == 0 && sshEligible(v) {
+		if kind, ok := ids.KindOf(v.ID); ok && kind == ids.Service {
+			v.SSHAddress = v.ID + "@" + host
+		}
+	}
 	return v
 }
 
@@ -620,6 +636,22 @@ func publicID(a *appv1alpha1.App) string {
 		return appID
 	}
 	return publicName(a)
+}
+
+func sshEligible(v AppView) bool {
+	// Render only offers SSH on paid services. Treat a missing/unknown plan as
+	// ineligible instead of accidentally turning an unclassified service into a
+	// paid one.
+	plan, knownPlan := tiers.Compute.ByRenderPlan(v.Plan)
+	if v.Suspended || !knownPlan || plan.ID == "free" {
+		return false
+	}
+	switch v.Type {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+		return true
+	default:
+		return false
+	}
 }
 
 // cronRunViews projects the CR's status run history onto the neutral view shape.
@@ -805,14 +837,8 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		if pod.DeletionTimestamp != nil || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
-		podIdentity := string(pod.UID)
-		if podIdentity == "" {
-			// The apiserver always assigns a UID. This fallback keeps fake clients
-			// and pre-persisted test objects deterministic without exposing Name.
-			podIdentity = pod.Name
-		}
 		out = append(out, ServiceInstanceView{
-			ID:        ids.DeriveServiceInstance(serviceID, podIdentity),
+			ID:        ids.DeriveServiceInstance(serviceID, podInstanceIdentity(pod)),
 			CreatedAt: pod.CreationTimestamp.Time,
 		})
 	}
@@ -823,6 +849,146 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		return out[i].CreatedAt.After(out[j].CreatedAt)
 	})
 	return out, nil
+}
+
+// SSHInstanceTarget is one Ready pod selected for an interactive session.
+// PodName remains internal; ID is the Render-compatible public instance id.
+type SSHInstanceTarget struct {
+	ID        string
+	CreatedAt string
+	ServiceID string
+	OwnerID   string
+	Namespace string
+	PodName   string
+	Container string
+}
+
+// ResolveSSHSession performs resource-scoped authorization and resolves a raw
+// SSH username to a Ready instance. A bare service id picks a random Ready
+// replica; a compound id returned by ListInstances targets that exact replica.
+func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHInstanceTarget, error) {
+	serviceID, instanceID, parseErr := parseSSHUsername(username)
+	lookup := serviceID
+	if parseErr != nil {
+		// AuthorizeApp remains the first policy boundary even for a malformed
+		// username, preserving the repository-wide 403-before-400/404 rule.
+		lookup = strings.TrimSpace(username)
+	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, lookup)
+	if err != nil {
+		return SSHInstanceTarget{}, err
+	}
+	if parseErr != nil {
+		return SSHInstanceTarget{}, parseErr
+	}
+	v := s.view(a)
+	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
+		return SSHInstanceTarget{}, fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	}
+	targets, err := s.readySSHInstances(ctx, a, v)
+	if err != nil {
+		return SSHInstanceTarget{}, err
+	}
+	if instanceID == "" {
+		if len(targets) == 0 {
+			return SSHInstanceTarget{}, fmt.Errorf("%w: service has no Ready instance", core.ErrConflict)
+		}
+		return targets[rand.IntN(len(targets))], nil
+	}
+	for _, target := range targets {
+		if target.ID == instanceID {
+			return target, nil
+		}
+	}
+	return SSHInstanceTarget{}, core.ErrNotFound
+}
+
+func parseSSHUsername(username string) (serviceID, instanceID string, err error) {
+	parts := strings.Split(strings.TrimSpace(username), "-")
+	if len(parts) < 2 {
+		return "", "", core.ErrBadRequest
+	}
+	serviceID = strings.Join(parts[:2], "-")
+	if kind, ok := ids.KindOf(serviceID); !ok || kind != ids.Service {
+		return "", "", core.ErrBadRequest
+	}
+	if len(parts) > 2 {
+		instanceID = strings.Join(parts, "-")
+	}
+	return serviceID, instanceID, nil
+}
+
+func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v AppView) ([]SSHInstanceTarget, error) {
+	pods, err := s.AppPods(ctx, a.Name)
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]SSHInstanceTarget, 0, len(pods))
+	instanceCounts := make(map[string]int, len(pods))
+	for i := range pods {
+		pod := &pods[i]
+		if !readyCurrentAppPod(pod, v.Image, v.Revision) {
+			continue
+		}
+		target := SSHInstanceTarget{
+			ID:        ids.DeriveServiceInstance(v.ID, podInstanceIdentity(pod)),
+			CreatedAt: pod.CreationTimestamp.UTC().Format(time.RFC3339),
+			ServiceID: v.ID,
+			OwnerID:   v.OwnerID,
+			Namespace: pod.Namespace,
+			PodName:   pod.Name,
+			Container: core.AppContainer,
+		}
+		candidates = append(candidates, target)
+		instanceCounts[target.ID]++
+	}
+	targets := make([]SSHInstanceTarget, 0, len(candidates))
+	for _, target := range candidates {
+		if instanceCounts[target.ID] == 1 {
+			targets = append(targets, target)
+		}
+	}
+	sort.Slice(targets, func(i, j int) bool {
+		if targets[i].CreatedAt == targets[j].CreatedAt {
+			return targets[i].ID < targets[j].ID
+		}
+		return targets[i].CreatedAt < targets[j].CreatedAt
+	})
+	return targets, nil
+}
+
+func podInstanceIdentity(pod *corev1.Pod) string {
+	if pod.UID != "" {
+		return string(pod.UID)
+	}
+	// The apiserver always assigns a UID. This fallback keeps fake clients and
+	// pre-persisted test objects deterministic without exposing the Pod name.
+	return pod.Name
+}
+
+func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) bool {
+	if activeImage == "" || activeRevision == "" || pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning {
+		return false
+	}
+	if pod.Labels[core.PodLabelRevision] != activeRevision {
+		return false
+	}
+	ready := false
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			ready = true
+			break
+		}
+	}
+	if !ready {
+		return false
+	}
+	for _, container := range pod.Spec.Containers {
+		if container.Name == core.AppContainer {
+			return container.Image == activeImage
+		}
+	}
+	return false
 }
 
 // CreateRequest is the neutral create-or-update input the three surfaces (and

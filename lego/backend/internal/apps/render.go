@@ -179,6 +179,9 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if a.Plan != "" {
 		set("plan", a.Plan) // webServiceDetails.plan (render-public-api-1.json)
 	}
+	if a.SSHAddress != "" {
+		set("sshAddress", a.SSHAddress)
+	}
 	if a.Runtime != "" {
 		set("runtime", a.Runtime)
 		set("env", a.Runtime) // deprecated Render response field, still required by its schema

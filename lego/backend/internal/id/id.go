@@ -88,13 +88,15 @@ var (
 	WebhookDelivery = Kind{prefix: "whd", desc: "outbound webhook delivery"}
 	// Job is a one-off job run in a service's container (Render's /services/{id}/jobs).
 	// Prefix "job" matches Render's observed id prefix from the live API.
-	Job = Kind{prefix: "job", desc: "one-off job"}
+	Job        = Kind{prefix: "job", desc: "one-off job"}
+	SSHKey     = Kind{prefix: "ssk", desc: "user SSH public key"}
+	SSHSession = Kind{prefix: "ssn", desc: "audited SSH session"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job}
+var kinds = []Kind{Workspace, Service, Postgres, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, Job, SSHKey, SSHSession}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

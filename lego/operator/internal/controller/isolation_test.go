@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -91,8 +92,11 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 
 			dep := &appsv1.Deployment{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed())
 			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelApp, name))
 			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelWorkspace, workspace))
+			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelRevision, fmt.Sprintf("rev-%d", app.Generation)))
 		})
 
 		It("reconciles a NetworkPolicy with the correct selectors", func() {

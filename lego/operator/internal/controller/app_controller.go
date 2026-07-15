@@ -74,6 +74,12 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// labelRevision ties a pod to the App revision it was created for. The backend
+// keeps the same string as core.PodLabelRevision without importing backend;
+// SSH target discovery uses it to exclude a still-Ready old ReplicaSet during
+// a rollout, including same-image restarts where image equality is insufficient.
+const labelRevision = "app.bex.co/revision"
+
 // labelWorkspace carries the owning workspace (tenant) id on pod templates so
 // NetworkPolicy selectors can express "same-workspace" allow rules. Kept in
 // sync by hand with core.LabelWorkspace in the backend — the operator never
@@ -582,7 +588,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// can express "allow same-workspace" rules. The selector stays stable
 	// (labelApp only) — adding labelWorkspace here would make it immutable and
 	// break existing Deployments when the label is added later.
-	podLabels := map[string]string{labelApp: app.Name}
+	podLabels := map[string]string{
+		labelApp:      app.Name,
+		labelRevision: fmt.Sprintf("rev-%d", app.Generation),
+	}
 	if ws := app.Labels[labelWorkspace]; ws != "" {
 		podLabels[labelWorkspace] = ws
 	}

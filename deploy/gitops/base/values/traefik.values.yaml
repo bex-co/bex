@@ -32,6 +32,11 @@ ports:
     port: 80 # host :80 (HTTP + ACME HTTP-01 challenge)
   websecure:
     port: 443 # host :443 (HTTPS)
+  ssh:
+    # The hostNetwork/dev edge uses :2222 so it never collides with node-admin
+    # sshd on :22. The prod LB overlay exposes this entrypoint publicly as :22.
+    port: 2222
+    protocol: TCP
   # postgres entrypoint removed (w1/m29): the bex-pg-sni-proxy DaemonSet now
   # owns host :5432 and routes directly to CNPG backends after handling the
   # PostgreSQL SSLRequest preamble. Traefik's IngressRouteTCP resources for

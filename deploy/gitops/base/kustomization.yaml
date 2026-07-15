@@ -33,4 +33,5 @@ resources:
   - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
   - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
   - bex-api-apps-rbac.yaml       # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)
+  - bex-ssh-apps-rbac.yaml       # SSH gateway's namespace-scoped pod read + exec grant
   - operator-apps-rbac.yaml     # operator's apps-namespace-scoped secrets grants (w7/m7)

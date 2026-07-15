@@ -43,6 +43,14 @@ spec:
               value: ":8090"
             - name: BEX_API_PUBLIC_URL # public origin used in copy-ready deploy-hook URLs
               value: https://api.bex.co
+            - name: BEX_SSH_HOST # Render-compatible serviceDetails.sshAddress host
+              valueFrom:
+                configMapKeyRef:
+                  # Created only after DNS/TCP/22/host-fingerprint verification;
+                  # absent means the API honestly omits sshAddress.
+                  name: bex-ssh
+                  key: host
+                  optional: true
             - name: BEX_DASHBOARD_URL # trusted browser origin for callbacks, invites, and resource links
               value: https://dashboard.bex.co
             - name: BEX_REGION # explicit platform placement for Render resource metadata

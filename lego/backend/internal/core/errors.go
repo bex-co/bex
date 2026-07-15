@@ -46,6 +46,10 @@ var (
 	ErrMetricsUnavailable = errors.New("metrics source not configured")
 	// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is wired.
 	ErrAPIKeysUnavailable = errors.New("api-key store not configured")
+	// ErrSSHKeysUnavailable is returned by the SSH-key verbs when the control-plane
+	// store is not wired. SSH authentication cannot safely degrade to an in-memory
+	// key registry because a restart would revoke access unpredictably.
+	ErrSSHKeysUnavailable = errors.New("ssh-key store not configured")
 	// ErrSecretsUnavailable is returned by the env-vars verbs when no secret store
 	// is wired (BEX_OPENBAO_URL unset); adapters surface it as 503.
 	ErrSecretsUnavailable = errors.New("secret store not configured")

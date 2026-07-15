@@ -1,11 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Github } from "lucide-react";
+import { AlertTriangle, ChevronDown, Github, Terminal } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert.tsx";
+import { Button } from "@/common/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -80,6 +87,7 @@ export function ServiceDetailHeader({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <ServiceConnectButton service={service} />
           <ManualDeployButton service={service} pending={pending !== null} />
           <ServiceRowActions
             service={service}
@@ -174,6 +182,48 @@ export function ServiceDetailHeader({
         </Alert>
       ) : null}
     </div>
+  );
+}
+
+function ServiceConnectButton({ service }: { service: ServiceView }) {
+  const { t } = useTranslations();
+  const command = service.sshAddress ? `ssh ${service.sshAddress}` : "";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          {t("services.connect")}
+          <ChevronDown className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 p-3">
+        <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+          <Terminal className="size-4" />
+          {t("services.connectSSH")}
+        </DropdownMenuLabel>
+        {command ? (
+          <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
+            <code className="min-w-0 flex-1 truncate text-xs" title={command}>
+              {command}
+            </code>
+            <CopyButton
+              value={command}
+              label={t("services.sshCopy")}
+              successText={t("services.sshCopied")}
+              errorText={t("services.sshCopyError")}
+            />
+          </div>
+        ) : (
+          <p
+            className="text-muted-foreground text-xs"
+            title={t("services.sshUnavailableHint")}
+          >
+            {t("services.sshUnavailable")}
+          </p>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

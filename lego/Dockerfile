@@ -1,9 +1,11 @@
 # Build the bex binaries from the multi-module workspace (build context is
 # lego/). One image, several entrypoints — the manager (operator module,
 # mechanism), the wake activator, the static-site origin server, the Postgres
-# SNI proxy (operator module too), and bex-api (backend module, business logic),
+# SNI proxy (operator module too), bex-api, and the isolated SSH gateway
+# (backend module, business logic),
 # all sharing the types module (the CRD contract). Each non-default Deployment
-# overrides command (/api, /activator, /staticserver, /pg-sni-proxy).
+# overrides command (/api, /activator, /staticserver, /pg-sni-proxy,
+# /ssh-gateway).
 FROM golang:1.25 AS builder
 ARG TARGETOS
 ARG TARGETARCH
@@ -31,6 +33,7 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
 RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
+RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/ssh-gateway ./cmd/ssh-gateway
 
 # Use distroless as minimal base image to package the binaries
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -41,6 +44,7 @@ COPY --from=builder /workspace/bexapi /api
 COPY --from=builder /workspace/activator /activator
 COPY --from=builder /workspace/staticserver /staticserver
 COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
+COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 USER 65532:65532
 
 # Default entrypoint is the operator; the api Deployment sets command: ["/api"].

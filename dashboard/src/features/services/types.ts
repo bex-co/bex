@@ -30,6 +30,8 @@ export interface ServiceView {
   /** Live URL, or null when the App has none yet. */
   url: string | null;
   createdAt: string | null;
+  /** Copy-ready Render-compatible raw OpenSSH target, or null when unavailable. */
+  sshAddress: string | null;
   replicas: number | null;
   revision: string | null;
   /** Render's plan spelling (e.g. "pro_plus"), or null for an untiered App. */

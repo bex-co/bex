@@ -108,6 +108,31 @@ describe("ServiceDetailHeader", () => {
     ).toHaveAttribute("href", "https://app.onbex.co");
   });
 
+  it("shows a copy-ready SSH command in the Connect menu", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: "srv-example@ssh.bex.co" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(screen.getByText("SSH")).toBeInTheDocument();
+    expect(screen.getByText("ssh srv-example@ssh.bex.co")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy SSH command" }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains unavailable SSH in the Connect menu without inventing a command", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: null }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(screen.getByText("SSH isn't available")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy SSH command" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("carries the facts the retired Overview tab showed: id, source, instance type, revision", async () => {
     renderHeader(svc());
 

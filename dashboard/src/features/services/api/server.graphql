@@ -20,6 +20,8 @@ query Server($id: String!) {
     dashboardUrl
     url
     createdAt
+    # Copy-ready raw OpenSSH target, null for unsupported/free/unconfigured services.
+    sshAddress
     phase
     replicas
     revision

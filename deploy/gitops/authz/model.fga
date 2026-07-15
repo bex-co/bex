@@ -32,6 +32,7 @@
 #   can_create          create/delete resources           developer and up
 #   can_view_sensitive  connection strings, env vars      developer and up
 #   can_manage_keys     workspace API keys                developer and up
+#   can_manage_ssh_keys own SSH public keys               every member role
 #   can_manage          workspace settings/members        admin
 #   can_manage_billing  billing settings                  billing or admin
 #
@@ -69,6 +70,7 @@ type workspace
     define can_create: developer or admin
     define can_view_sensitive: developer or admin
     define can_manage_keys: developer or admin
+    define can_manage_ssh_keys: viewer or contributor or developer or admin or billing
     define can_manage: admin
     define can_manage_billing: billing or admin
 

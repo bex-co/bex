@@ -9,12 +9,16 @@ on:
     paths:
       - "deploy/gitops/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/ssh-activate.sh"
+      - "scripts/ssh-activate.test.sh"
       - ".github/workflows/gitops.yml"
   push:
     branches: [main]
     paths:
       - "deploy/gitops/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/ssh-activate.sh"
+      - "scripts/ssh-activate.test.sh"
       - ".github/workflows/gitops.yml"
 
 permissions:

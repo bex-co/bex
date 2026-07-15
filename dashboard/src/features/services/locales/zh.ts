@@ -1,6 +1,34 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhServices: Record<string, TranslationEntry> = {
+  "services.connect": {
+    message: "连接",
+    description: "Open the service connection menu",
+  },
+  "services.connectSSH": {
+    message: "SSH",
+    description: "SSH section label in the service connection menu",
+  },
+  "services.sshCopy": {
+    message: "复制 SSH 命令",
+    description: "Copy service SSH command button",
+  },
+  "services.sshCopied": {
+    message: "已复制 SSH 命令",
+    description: "Successful SSH command copy",
+  },
+  "services.sshCopyError": {
+    message: "无法复制 SSH 命令",
+    description: "Failed SSH command copy",
+  },
+  "services.sshUnavailable": {
+    message: "SSH 不可用",
+    description: "服务未公布 SSH 地址时的标题状态",
+  },
+  "services.sshUnavailableHint": {
+    message: "SSH 需要正在运行的付费 Web、私有或后台服务，以及已启用的网关。",
+    description: "服务没有 SSH 地址时的说明",
+  },
   "services.actions": {
     message: "操作",
     description: "Accessible heading for service configuration row actions",

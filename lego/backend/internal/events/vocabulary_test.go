@@ -48,12 +48,13 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// eventTypes doc comment; the reason lives here so the guard fails loudly if
 	// someone deletes the entry rather than the rationale.
 	excusedVerbs := map[string]string{
-		"apps.Create":        "its first deploy already appears as deploy_started with trigger.firstBuild",
-		"apps.Delete":        "the service and its feed are gone; the row stays in the workspace audit log",
-		"apps.Deploy":        "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
-		"apps.DeployStack":   "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
-		"apps.SyncBlueprint": "Blueprint sync delegates to stack apply, whose changed-service deploy rows already produce the events",
-		"deploys.Trigger":    "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		"apps.Create":            "its first deploy already appears as deploy_started with trigger.firstBuild",
+		"apps.Delete":            "the service and its feed are gone; the row stays in the workspace audit log",
+		"apps.Deploy":            "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
+		"apps.DeployStack":       "stack apply opens a deploy row for each changed service; mapping the wrapper would double-count",
+		"apps.SyncBlueprint":     "Blueprint sync delegates to stack apply, whose changed-service deploy rows already produce the events",
+		"deploys.Trigger":        "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		"apps.ResolveSSHSession": "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
 		// w6/m20: new verbs from scratch (not a w6/m17 seam-collapse side
 		// effect — see below), deliberately deferred the same way their
 		// SetProjectID siblings were: postgres/keyvalue have no events feed

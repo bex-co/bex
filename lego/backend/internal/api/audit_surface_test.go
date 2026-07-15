@@ -45,6 +45,9 @@ func (f *fakeAuditStore) ListAuditEvents(_ context.Context, workspaceID string, 
 }
 
 func (f *fakeAuditStore) PurgeAuditEvents(context.Context, time.Time) (int64, error) { return 0, nil }
+func (f *fakeAuditStore) PurgeSSHSessions(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
 
 // TestAuditSurfaceParity is w4/m10's t007: REST's GET
 // /v1/owners/{ownerId}/audit-logs and GraphQL's auditLogs(ownerId: …) both
