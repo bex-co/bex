@@ -41,6 +41,8 @@ Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- `016.md` — Postgres/Service/KeyValue REST objects never populate Render's nested `owner`/`region`/`dashboardUrl`/`updatedAt` fields — cross-cutting (3 backend packages + a wiring reorder + a region/dashboardUrl design call), not a quick fix. KeyValue's `owner` slice fixed 2026-07-15 (`w9/m2`'s Render CLI compatibility work); Postgres/Service `owner` and all three resources' `region`/`dashboardUrl`/`updatedAt` remain open ← from checking `postgres`/`services`/`keyvalues` CLI compatibility, 2026-07-15
+
 _(`012.md` promoted to **m18** 2026-07-13)_
 
 _(`009.md`, `010.md`, `011.md` grouped into **m15** 2026-07-13; `013.md` promoted to **m17** 2026-07-13; `014.md` promoted to **w2/m28** 2026-07-13 — materialized under `w2`, not `w6`, per user direction)_
