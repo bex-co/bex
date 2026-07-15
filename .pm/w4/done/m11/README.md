@@ -1,20 +1,20 @@
 # w4 · m11 — MFA: TOTP + passkeys via Kratos
 
-**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** TOTP + recovery codes shipped, deployed, and prod-verified (`auth-mfa-e2e.sh` exit 0 against `auth.bex.co`). WebAuthn/passkey was live-attempted 2026-07-14 (Playwright + a CDP virtual authenticator against prod) and found **actively broken by two real bugs** — a dashboard CSP blocking Kratos's WebAuthn script, and Kratos's identity schema missing the `webauthn` identifier trait. Both root-caused and fixed in source (see the 2026-07-14 note below) but **unshipped** — t008 stays open until deployed and re-verified live
+**Worker:** worker4 **Goal:** A dashboard user enrolls TOTP and/or a security key from Settings and gets a second-factor challenge on login — Kratos `totp` + `webauthn` **as second factor** (`passwordless: false` — passkey/first-factor mode cannot satisfy the aal2 challenge) enabled in values, Ory Elements rendering the flows, lookup-secret recovery codes so MFA + lost device ≠ lockout. All Kratos-native; no custom auth code. **Status:** done — TOTP, recovery codes, and WebAuthn/passkey all shipped, deployed, and live-verified against prod (`dashboard.bex.co`/`auth.bex.co`), including the full enroll → logout → aal2-challenge ceremony in a real browser (2026-07-14)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                | est | depends_on | status |
 | ---- | ------------------------------------------------------------------------------------------------------------------------ | --- | ---------- | ------ |
 | t001 | Kratos values: enable `totp`, `webauthn` (second factor, `passwordless: false`), `lookup_secret` + `highest_available` AAL — incl. prod RP ID `bex.co`/origins (base values ARE prod) | 40m | —          | — **DONE** |
-| t002 | Dashboard: settings-flow enroll/unenroll rendering (Ory Elements) + the `aal2` login challenge step                        | 35m | t001       | code + tests **DONE**; TOTP/aal2 proven on prod; browser passkey the one manual check |
+| t002 | Dashboard: settings-flow enroll/unenroll rendering (Ory Elements) + the `aal2` login challenge step                        | 35m | t001       | — **DONE** (browser passkey ceremony live-verified 2026-07-14, post-t009) |
 | t003 | E2E on mock: enroll TOTP (otplib codes) → logout → login challenges; recovery codes work; scripted exit-0 check            | 35m | t002       | — **DONE** (ran green against prod `auth.bex.co`, exit 0) |
 | t004 | Docs + verification: rendered-config check (RP ID landed in t001), `docs/ADR012-auth.md` MFA section, scripted prod smoke         | 20m | t003       | — **DONE** (rendered-config + docs + prod smoke green) |
 | t007 | Render parity — MFA surface check vs Render's 2FA; update the parity matrix row (retrofit 2026-07-09)                      | 15m | t004       | — **DONE** |
 | t005 | Simplify — `/simplify` over the code this milestone changed                                                                | 20m | t007       | — **DONE** |
 | t006 | Test coverage — meaningful tests for the behavior this milestone shipped                                                   | 30m | t007       | — **DONE** |
-| t009 | Fix WebAuthn — dashboard CSP + Kratos identity-schema bugs found via live browser reproduction (2026-07-14)                | 1h  | t002       | fixes in source, unshipped — awaits `/ship` + live re-verification |
-| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                       | 10m | t006, t009 | open — awaits live DoD |
+| t009 | Fix WebAuthn — dashboard CSP + Kratos identity-schema bugs found via live browser reproduction (2026-07-14)                | 1h  | t002       | — **DONE** (shipped `2c2562a`, deployed, live-verified) |
+| t008 | Closeout — DoD met → move milestone to `done/` (retrofit 2026-07-09)                                                       | 10m | t006, t009 | — **DONE** |
 
 ## Definition of done
 
@@ -58,6 +58,17 @@ Attempted the outstanding manual check with Playwright driving a real Chrome ses
 **Why WebAuthn was never caught broken until now:** every prior verification pass (t002's original work, the 2026-07-11 prod smoke) exercised TOTP/recovery-codes end-to-end but explicitly deferred WebAuthn as "can't be scripted over curl" — nobody had driven an actual browser through the ceremony against the real deployed stack until this session.
 
 **Status:** both fixes are source-only, **not deployed**. Per this repo's rules only `/ship` commits/pushes, so getting them live (and re-verifying the full enroll → logout → aal2-challenge ceremony in a real browser) is the one thing left. See `t009` for the full writeup.
+
+## Closeout (2026-07-14)
+
+Shipped `2c2562a`, CI green, Argo synced both the dashboard and Kratos. Re-ran the full ceremony live against prod post-deploy:
+
+1. **Settings enrollment** — `window.__oryWebAuthnRegistration` now loads via the normal `<script src="https://auth.bex.co/.well-known/ory/webauthn.js">` tag (no CSP violation in console, no manual injection needed this time). Clicking "Add security key" hit a privileged-session reauth prompt first (the test session had gone stale over the investigation — an orthogonal Kratos recency check, not a bug), then persisted a real credential: Settings lists "playwright-post-deploy-key" with a Remove control and a "Settings updated" toast.
+2. **Login challenge** — logged out, logged back in: password-only login presented "Second factor authentication / Continue with hardware key." Completing the WebAuthn assertion (CDP virtual authenticator standing in for hardware) landed on the authenticated dashboard; `GET https://auth.bex.co/sessions/whoami` confirmed `authenticator_assurance_level: "aal2"` for the enrolled identity.
+
+Every DoD clause now holds, live, in a real browser against prod. `t002` and `t009`'s acceptance criteria are fully checked off above. One pre-existing, unrelated `gitops (render)` CI failure (traefik chart schema drift + a stale prometheus alert-rule test fixture) was found during this work, confirmed to predate it, and filed as `w1/020` rather than fixed here (out of scope).
+
+Test artifacts left on prod (consistent with `auth-mfa-e2e.sh`'s own precedent — no self-service account deletion exists): identity `mfa-webauthn-verify-1752522000@bex.co`, one enrolled WebAuthn credential, one enrolled TOTP secret (never confirmed/activated).
 
 ## Source + Goal linkage
 
