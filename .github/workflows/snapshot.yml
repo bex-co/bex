@@ -1,0 +1,58 @@
+name: snapshot (bake worker image)
+
+# Bake the bex worker node image (w1/m36 t001): a Hetzner Cloud snapshot carrying
+# runc/containerd/kubelet so autoscaled workers stop downloading ~350MB in the
+# scale-up hot path. Recipe: infra/packer/bex-worker.pkr.hcl.
+#
+# Manual only (workflow_dispatch) — baking spins up a throwaway server and creates
+# a billed snapshot, so it runs on demand (image bumps, k8s upgrades), not on push.
+# After a successful bake the `bex-worker`-labelled snapshot exists in the project;
+# ONLY THEN is it safe to apply the cluster.yaml overlay that points the worker
+# HCloudMachineTemplates at `imageName: bex-worker` (app-cluster.yml). See
+# infra/packer/README.md for the full bake -> verify -> roll -> measure runbook.
+#
+# Secret: HCLOUD_TOKEN (same token app-cluster.yml / infra.yml use).
+
+on:
+  workflow_dispatch:
+    inputs:
+      kubernetes_version:
+        description: "Kubernetes version to bake (must match cluster.yaml `version:`)"
+        required: false
+        default: "1.31.0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot-bake
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    env:
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install packer
+        uses: hashicorp/setup-packer@v3
+        with:
+          version: "1.11.2"
+
+      - name: packer init + validate
+        working-directory: infra/packer
+        run: |
+          packer init .
+          packer validate -var "kubernetes_version=${{ inputs.kubernetes_version }}" .
+
+      - name: packer build (creates the bex-worker snapshot)
+        working-directory: infra/packer
+        run: packer build -var "kubernetes_version=${{ inputs.kubernetes_version }}" .
+
+      - name: summary
+        run: |
+          echo "Baked the bex-worker snapshot (k8s ${{ inputs.kubernetes_version }})."
+          echo "Next: verify it provisions ONE worker (infra/packer/README.md runbook),"
+          echo "then apply the CAPH overlay to roll the pools onto imageName: bex-worker."
