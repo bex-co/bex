@@ -72,3 +72,12 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+          # Mailpit backs its "in-memory" store with a temp sqlite file in /tmp
+          # even without MP_DATABASE; readOnlyRootFilesystem makes that open()
+          # fatal, so give it a writable emptyDir there.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

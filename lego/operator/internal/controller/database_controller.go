@@ -261,9 +261,11 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	}
 	// Always load pg_stat_statements so the insights endpoints have it available.
 	// Merge user-supplied parameters on top; shared_preload_libraries is forced
-	// to include pg_stat_statements regardless of any user value.
+	// to include pg_stat_statements regardless of any user value. It rides CNPG's
+	// dedicated spec.postgresql.shared_preload_libraries field — inside
+	// `parameters` it is a "fixed configuration parameter" the admission webhook
+	// rejects outright.
 	pgParams := map[string]any{
-		"shared_preload_libraries": "pg_stat_statements",
 		"pg_stat_statements.track": "all",
 	}
 	for k, v := range p.parameters {
@@ -271,7 +273,10 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			pgParams[k] = v
 		}
 	}
-	spec["postgresql"] = map[string]any{"parameters": pgParams}
+	spec["postgresql"] = map[string]any{
+		"parameters":               pgParams,
+		"shared_preload_libraries": []any{"pg_stat_statements"},
+	}
 	// Durability: continuous WAL archiving + base backups to object storage —
 	// when the plan opts in and a store is configured.
 	if p.plan.Backup && p.store != nil {
@@ -798,7 +803,16 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 		cluster := &unstructured.Unstructured{}
 		cluster.SetGroupVersionKind(cnpgClusterGVK)
 		if err := r.Get(ctx, req.NamespacedName, cluster); err == nil {
-			// Cluster still present — requeue until the cascade completes.
+			// Owner-ref garbage collection only removes the Cluster AFTER the
+			// Database object is gone from storage, while this finalizer keeps
+			// the Database around until the Cluster is gone — waiting here
+			// without acting deadlocks the deletion. Delete the Cluster
+			// explicitly (idempotent) and requeue until it is fully gone.
+			if cluster.GetDeletionTimestamp() == nil {
+				if err := r.Delete(ctx, cluster); err != nil && !apierrors.IsNotFound(err) {
+					return ctrl.Result{}, err
+				}
+			}
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		} else if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
