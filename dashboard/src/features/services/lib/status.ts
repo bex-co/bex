@@ -54,6 +54,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
     buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
+    notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
     preDeployCommand:

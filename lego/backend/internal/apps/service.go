@@ -253,6 +253,11 @@ type AppView struct {
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
 	AutoDeploy bool `json:"autoDeploy"`
+	// NotifyOnFail is Render's per-service deploy-failure notification override
+	// (spec.notifyOnFail): default | notify | ignore (docs/render-artifacts/
+	// notify-on-fail.md). Empty is reported as "default". The Settings →
+	// Notifications section reads it and writes it via SetNotifyOnFail.
+	NotifyOnFail string `json:"notifyOnFail"`
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (spec.healthCheckPath,
 	// Render's healthCheckPath). Empty means the default "/". The Settings →
 	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
@@ -404,6 +409,9 @@ func view(a *appv1alpha1.App) AppView {
 		v := autoscalingView(a)
 		asView = &v
 	}
+	// normalizeNotifyOnFail's error is unreachable here: the CRD enum already
+	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
+	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
 	return AppView{
 		Name:             publicName(a),
 		Slug:             a.Spec.PlatformSubdomain(a.Name),
@@ -434,6 +442,7 @@ func view(a *appv1alpha1.App) AppView {
 		BuildFilter:      buildFilterView(a.Spec.BuildFilter),
 		Autoscaling:      asView,
 		AutoDeploy:       a.Spec.AutoDeploy,
+		NotifyOnFail:     notifyOnFail,
 		HealthCheckPath:  a.Spec.HealthCheckPath,
 		PreDeployCommand: a.Spec.PreDeployCommand,
 		PublishPath:      a.Spec.PublishPath,
@@ -602,6 +611,11 @@ type CreateRequest struct {
 	// repo-backed service (Render's default too), off for an image-backed one
 	// (nothing to rebuild on push).
 	AutoDeploy *bool
+	// NotifyOnFail is Render's per-service deploy-failure notification override
+	// (spec.notifyOnFail): default | notify | ignore, docs/render-artifacts/
+	// notify-on-fail.md. Empty means "default" (defer to each member's own
+	// w3/m9 preference). An unrecognized value is core.ErrBadRequest.
+	NotifyOnFail string
 	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
 	// command run to completion against the new revision's image before it serves
 	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
@@ -1083,6 +1097,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	notifyOnFail, err := normalizeNotifyOnFail(req.NotifyOnFail)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	spec := appv1alpha1.AppSpec{
 		Type:             svcType,
 		Repo:             req.Repo,
@@ -1101,6 +1119,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		HealthCheckPath:  req.HealthCheckPath,
 		Env:              req.Env,
 		AutoDeploy:       autoDeploy,
+		NotifyOnFail:     notifyOnFail,
 		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
@@ -1122,6 +1141,28 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		spec.Hosts = append([]string(nil), req.Hosts[1:]...)
 	}
 	return spec, nil
+}
+
+// notifyOnFailDefault is Render's own default enum value for spec.notifyOnFail
+// — "defer to the workspace/member notification preference" (docs/render-
+// artifacts/notify-on-fail.md). Empty is normalized to this both at create
+// time and by view(), so an App created before this field existed reports the
+// same "default" behavior it always had.
+const notifyOnFailDefault = "default"
+
+// normalizeNotifyOnFail validates Render's exact notifyOnFail enum
+// (default|notify|ignore, docs/render-artifacts/notify-on-fail.md); empty
+// means "default". An unrecognized value is a named 400, matching
+// normalizeType/SetPlan's enum-validation convention.
+func normalizeNotifyOnFail(v string) (string, error) {
+	switch v {
+	case "":
+		return notifyOnFailDefault, nil
+	case notifyOnFailDefault, "notify", "ignore":
+		return v, nil
+	default:
+		return "", fmt.Errorf("%w: notifyOnFail must be one of default|notify|ignore", core.ErrBadRequest)
+	}
 }
 
 // normalizeType resolves the requested service type, tracking Render's
@@ -1163,6 +1204,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.HealthCheckPath = want.HealthCheckPath
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
+	dst.NotifyOnFail = want.NotifyOnFail
 	dst.PreDeployCommand = want.PreDeployCommand
 	dst.Expose = want.Expose
 	dst.Host = want.Host
@@ -1487,6 +1529,20 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.AutoDeploy = enabled
+	})
+}
+
+// SetNotifyOnFail changes an App's deploy-failure notification override
+// (spec.notifyOnFail, Render's exact name/enum — docs/render-artifacts/
+// notify-on-fail.md). A direct CR patch, not projection-owned (mirrors
+// AutoDeploy/DisplayName). Unrecognized value ⇒ core.ErrBadRequest.
+func (s *Service) SetNotifyOnFail(ctx context.Context, name, value string) (AppView, error) {
+	normalized, err := normalizeNotifyOnFail(value)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+		a.Spec.NotifyOnFail = normalized
 	})
 }
 

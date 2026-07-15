@@ -56,6 +56,11 @@ type patchServiceRequest struct {
 	// (spec.autoDeploy). "" => absent (leave unchanged); parseYesNo maps the rest
 	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
 	AutoDeploy string `json:"autoDeploy"`
+	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
+	// notify | ignore, docs/render-artifacts/notify-on-fail.md). A pointer so
+	// "absent" (leave unchanged) is distinct from an explicit value; an
+	// unrecognized value is core.ErrBadRequest.
+	NotifyOnFail *string `json:"notifyOnFail"`
 	// Schedule + Command are a cron_job's schedule expression and entrypoint
 	// override (w5/m18). Only honored when the target App is a cron_job
 	// (core.ErrBadRequest otherwise). Pointers so "absent" (leave unchanged) is
@@ -95,14 +100,17 @@ type createServiceRequest struct {
 	// the caller is not a member of is 403, never a silent create somewhere else.
 	OwnerID string `json:"ownerId"`
 	// Render fields.
-	Type           string             `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
-	Schedule       string             `json:"schedule"` // cron expression, required when type is cron_job
-	Command        string             `json:"command"`  // overrides the image's entrypoint for a cron_job; empty runs its own command
-	Name           string             `json:"name"`
-	Repo           string             `json:"repo"`
-	Image          *imageRef          `json:"image"` // prebuilt image: Render nests the path in an object
-	Branch         string             `json:"branch"`
-	AutoDeploy     string             `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
+	Type       string    `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
+	Schedule   string    `json:"schedule"` // cron expression, required when type is cron_job
+	Command    string    `json:"command"`  // overrides the image's entrypoint for a cron_job; empty runs its own command
+	Name       string    `json:"name"`
+	Repo       string    `json:"repo"`
+	Image      *imageRef `json:"image"` // prebuilt image: Render nests the path in an object
+	Branch     string    `json:"branch"`
+	AutoDeploy string    `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
+	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
+	// notify | ignore); "" => default (docs/render-artifacts/notify-on-fail.md).
+	NotifyOnFail   string             `json:"notifyOnFail"`
 	EnvVars        []keyValue         `json:"envVars"`
 	ServiceDetails *serviceDetailsReq `json:"serviceDetails"`
 	// bex extensions (no Render create-body equivalent): the build strategy, the
@@ -253,6 +261,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		Env:              env,
 		Hosts:            r.Domains,
 		AutoDeploy:       parseYesNo(r.AutoDeploy),
+		NotifyOnFail:     r.NotifyOnFail,
 		PreDeployCommand: preDeploy,
 		PublishPath:      publishPath,
 		Routes:           routeViewsFromRender(r.Routes),
@@ -379,7 +388,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil {
+		if plan == "" && idleTTL == nil && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -437,6 +446,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.PreDeployCommand != nil {
 			if app, err = s.SetPreDeployCommand(r.Context(), id, *req.PreDeployCommand); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if req.NotifyOnFail != nil {
+			if app, err = s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

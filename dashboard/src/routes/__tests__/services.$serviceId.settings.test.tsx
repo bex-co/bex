@@ -80,6 +80,15 @@ vi.mock("@/features/services/hooks/use-health-check-path", () => ({
   }),
 }));
 
+// Notifications row (w4/m21) calls setNotifyOnFail via Apollo; mock it so
+// section-presence assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-notify-on-fail", () => ({
+  useNotifyOnFail: () => ({
+    setNotifyOnFail: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 vi.mock("@/features/services/hooks/use-display-name", () => ({
   useDisplayName: () => ({
     setDisplayName: vi.fn(async () => true),

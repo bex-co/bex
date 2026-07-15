@@ -375,6 +375,21 @@ spec:
                 description: Image is a prebuilt OCI image to run directly, skipping
                   the build plane.
                 type: string
+              notifyOnFail:
+                description: |-
+                  NotifyOnFail is Render's per-service deploy-failure notification override
+                  (spec.notifyOnFail, byte-identical name/enum to Render's service object —
+                  docs/render-artifacts/notify-on-fail.md): "default" defers to each
+                  workspace member's own w3/m9 preference, "ignore" suppresses the
+                  failure email for every member regardless of their preference, "notify"
+                  forces it to every member regardless of their preference. Governs
+                  deploy-FAILURE notifications only; a success email always follows each
+                  member's own preference. Empty is treated as "default".
+                enum:
+                - default
+                - notify
+                - ignore
+                type: string
               port:
                 default: 3000
                 description: Port the application listens on (PORT is injected).

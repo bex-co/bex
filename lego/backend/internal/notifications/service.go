@@ -150,13 +150,15 @@ func (s *Service) UpdateSettings(ctx context.Context, deploySucceeded, deployFai
 // the reconciler is a trusted internal caller, same as CloneSecreter. A
 // status other than DeployLive/DeployUpdateFailed (e.g. a future addition)
 // is silently ignored rather than erroring, so this stays forward-compatible
-// without a matching change here.
-func (s *Service) NotifyDeploy(ctx context.Context, tenantID, appName, status string) {
+// without a matching change here. n.NotifyOnFail (w4/m21, docs/render-
+// artifacts/notify-on-fail.md) governs FAILURE notifications only — a
+// succeeded deploy always follows each member's own preference, unmodified.
+func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) {
 	if s.Store == nil || s.Mailer == nil {
 		return
 	}
 	var succeeded bool
-	switch status {
+	switch n.Status {
 	case store.DeployLive:
 		succeeded = true
 	case store.DeployUpdateFailed:
@@ -164,9 +166,9 @@ func (s *Service) NotifyDeploy(ctx context.Context, tenantID, appName, status st
 	default:
 		return
 	}
-	recipients, err := s.Store.ListNotifyRecipients(ctx, tenantID)
+	recipients, err := s.Store.ListNotifyRecipients(ctx, n.TenantID)
 	if err != nil {
-		log.Printf("notifications: list recipients for %s: %v", tenantID, err)
+		log.Printf("notifications: list recipients for %s: %v", n.TenantID, err)
 		return
 	}
 	if s.Identities == nil {
@@ -181,7 +183,14 @@ func (s *Service) NotifyDeploy(ctx context.Context, tenantID, appName, status st
 	for _, r := range recipients {
 		wants := r.DeploySucceeded
 		if !succeeded {
-			wants = r.DeployFailed
+			switch n.NotifyOnFail {
+			case "ignore":
+				wants = false // muted for everyone, regardless of their own preference
+			case "notify":
+				wants = true // forced on for everyone, regardless of their own preference
+			default: // "default", "", or an unrecognized value — defer to member preference
+				wants = r.DeployFailed
+			}
 		}
 		if !wants {
 			continue
@@ -191,7 +200,7 @@ func (s *Service) NotifyDeploy(ctx context.Context, tenantID, appName, status st
 		go func(subject string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			s.notifyOne(ctx, subject, appName, status, succeeded)
+			s.notifyOne(ctx, subject, n.AppName, n.Status, succeeded)
 		}(r.Subject)
 	}
 	wg.Wait()

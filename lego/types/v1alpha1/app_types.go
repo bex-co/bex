@@ -281,6 +281,18 @@ type AppSpec struct {
 	// +optional
 	AutoDeploy bool `json:"autoDeploy,omitempty"`
 
+	// NotifyOnFail is Render's per-service deploy-failure notification override
+	// (spec.notifyOnFail, byte-identical name/enum to Render's service object —
+	// docs/render-artifacts/notify-on-fail.md): "default" defers to each
+	// workspace member's own w3/m9 preference, "ignore" suppresses the
+	// failure email for every member regardless of their preference, "notify"
+	// forces it to every member regardless of their preference. Governs
+	// deploy-FAILURE notifications only; a success email always follows each
+	// member's own preference. Empty is treated as "default".
+	// +optional
+	// +kubebuilder:validation:Enum=default;notify;ignore
+	NotifyOnFail string `json:"notifyOnFail,omitempty"`
+
 	// PreDeployCommand is a command run to completion against the new revision's
 	// image before that revision serves traffic (Render's Pre-Deploy Command —
 	// typically a database migration or other one-off setup step). The operator

@@ -446,7 +446,7 @@ func TestRecordDeployClosesFailedOnGateTimeout(t *testing.T) {
 // after ReconcileOnce returns.
 type fakeDeployNotifier struct {
 	mu        sync.Mutex
-	calls     []struct{ tenantID, appName, status string }
+	calls     []DeployNotification
 	notifiedC chan struct{}
 }
 
@@ -454,17 +454,17 @@ func newFakeDeployNotifier() *fakeDeployNotifier {
 	return &fakeDeployNotifier{notifiedC: make(chan struct{}, 16)}
 }
 
-func (f *fakeDeployNotifier) NotifyDeploy(_ context.Context, tenantID, appName, status string) {
+func (f *fakeDeployNotifier) NotifyDeploy(_ context.Context, n DeployNotification) {
 	f.mu.Lock()
-	f.calls = append(f.calls, struct{ tenantID, appName, status string }{tenantID, appName, status})
+	f.calls = append(f.calls, n)
 	f.mu.Unlock()
 	f.notifiedC <- struct{}{}
 }
 
-func (f *fakeDeployNotifier) snapshot() []struct{ tenantID, appName, status string } {
+func (f *fakeDeployNotifier) snapshot() []DeployNotification {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]struct{ tenantID, appName, status string }(nil), f.calls...)
+	return append([]DeployNotification(nil), f.calls...)
 }
 
 // awaitCall blocks until NotifyDeploy has been called at least once more since
@@ -508,7 +508,7 @@ func TestRecordDeployNotifiesExactlyOnceOnClose(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 	notifier.awaitCall(t)
-	if calls := notifier.snapshot(); len(calls) != 1 || calls[0].tenantID != ten.ID || calls[0].appName != "web" || calls[0].status != DeployLive {
+	if calls := notifier.snapshot(); len(calls) != 1 || calls[0].TenantID != ten.ID || calls[0].AppName != "web" || calls[0].Status != DeployLive {
 		t.Fatalf("calls after close = %+v, want exactly one (tenant=%s app=web status=%s)", calls, ten.ID, DeployLive)
 	}
 

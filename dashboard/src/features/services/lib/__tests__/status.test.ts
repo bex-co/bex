@@ -91,6 +91,7 @@ describe("toServiceView", () => {
       rootDir: null,
       buildFilter: null,
       autoDeploy: null,
+      notifyOnFail: null,
       healthCheckPath: null,
       preDeployCommand: null,
       publishPath: null,

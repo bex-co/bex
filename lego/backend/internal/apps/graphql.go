@@ -179,8 +179,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Service",
 	Fields: graphql.Fields{
 		// Render-shaped fields (id is the App name; type is the serviceType enum).
-		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
-		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
 		// distinct from name, which is only workspace-unique.
 		"slug":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Slug })},
@@ -268,7 +268,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return *a.BuildFilter
 			}),
 		},
-		"autoDeploy":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		"autoDeploy": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		// notifyOnFail is Render's per-service deploy-failure notification
+		// override (default | notify | ignore, docs/render-artifacts/
+		// notify-on-fail.md); the Settings → Notifications section reads it and
+		// writes it via setNotifyOnFail.
+		"notifyOnFail":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
 		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
 		// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand);
 		// the Settings → Build & Deploy section reads it and writes via
@@ -668,8 +673,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"builder":        &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
 				"plan":           &graphql.ArgumentConfig{Type: graphql.String},
 				"autoDeploy":     &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"port":           &graphql.ArgumentConfig{Type: graphql.Int},
-				"replicas":       &graphql.ArgumentConfig{Type: graphql.Int},
+				// notifyOnFail is Render's per-service deploy-failure notification
+				// override (default | notify | ignore); omitted => "default".
+				"notifyOnFail": &graphql.ArgumentConfig{Type: graphql.String},
+				"port":         &graphql.ArgumentConfig{Type: graphql.Int},
+				"replicas":     &graphql.ArgumentConfig{Type: graphql.Int},
 				// envVars sets literal (non-secret) environment variables at create time
 				// (Render parity, w5/m19): REST/MCP parity — those surfaces accepted
 				// envVars at create since w2/m2; GraphQL now reaches the same shape.
@@ -706,6 +714,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Builder:          gqlStr(p.Args, "builder"),
 					Plan:             gqlStr(p.Args, "plan"),
 					AutoDeploy:       gqlBoolPtr(p.Args, "autoDeploy"),
+					NotifyOnFail:     gqlStr(p.Args, "notifyOnFail"),
 					Port:             int32(gqlInt(p.Args, "port")),
 					Replicas:         int32(gqlInt(p.Args, "replicas")),
 					Env:              gqlEnvVarInputs(p.Args, "envVars"),
@@ -881,6 +890,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetAutoDeploy(p.Context, p.Args["id"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// setNotifyOnFail: the Settings → Notifications per-service override
+		// (w4/m21, docs/render-artifacts/notify-on-fail.md). Changes
+		// spec.notifyOnFail — default | notify | ignore, Render's exact
+		// name/enum. Unrecognized value ⇒ core.ErrBadRequest.
+		"setNotifyOnFail": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"value": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetNotifyOnFail(p.Context, p.Args["id"].(string), p.Args["value"].(string))
 			},
 		},
 		// Static-site edge-rule mutations: replace the whole routes/headers list

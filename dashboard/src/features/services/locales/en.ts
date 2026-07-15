@@ -782,6 +782,43 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the health check path.",
     description: "Toast after setHealthCheckPath fails",
   },
+  "services.settingsNotificationsTitle": {
+    message: "Notifications",
+    description: "Settings tab: Notifications section card title",
+  },
+  "services.settingsNotificationsDescription": {
+    message: "Choose who gets emailed when a deploy of this service fails.",
+    description: "Settings tab: Notifications section card description",
+  },
+  "services.notifyOnFailLabel": {
+    message: "Deploy Failure Notifications",
+    description: "Settings tab: notifyOnFail row label",
+  },
+  "services.notifyOnFailHint": {
+    message:
+      "Default defers to each member's own notification preference; you can force it on or off for just this service.",
+    description: "Settings tab: notifyOnFail row hint text",
+  },
+  "services.notifyOnFailOptionDefault": {
+    message: "Use member preference",
+    description: "notifyOnFail select option: default",
+  },
+  "services.notifyOnFailOptionNotify": {
+    message: "Always notify",
+    description: "notifyOnFail select option: notify",
+  },
+  "services.notifyOnFailOptionIgnore": {
+    message: "Never notify",
+    description: "notifyOnFail select option: ignore",
+  },
+  "services.notifyOnFailSuccess": {
+    message: "Notification setting updated.",
+    description: "Toast after setNotifyOnFail succeeds",
+  },
+  "services.notifyOnFailError": {
+    message: "Couldn't update the notification setting.",
+    description: "Toast after setNotifyOnFail fails",
+  },
   "services.planPickerTitle": {
     message: "Pick an Instance Type",
     description: "Plan-picker page heading",

@@ -57,6 +57,7 @@ limitations under the License.
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
 //	custom_domain_added/removed apps.Add/DeleteDomain
+//	notify_on_fail_changed      apps.SetNotifyOnFail            (w4/m21, a bex-only name — Render's field has no dedicated event type)
 //
 // # Redaction (structural, not filtered)
 //
@@ -146,6 +147,7 @@ const (
 	TypeCustomDomainAdded     = "custom_domain_added"
 	TypeCustomDomainRemoved   = "custom_domain_removed"
 	TypeDeployHookRegenerated = "deploy_hook_regenerated"
+	TypeNotifyOnFailChanged   = "notify_on_fail_changed"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -170,6 +172,7 @@ var eventTypes = map[string]string{
 	"apps.DeleteAutoscaling":       TypeAutoscalingConfigChanged,
 	"apps.TriggerCronRun":          TypeCronJobRunStarted,
 	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
+	"apps.SetNotifyOnFail":         TypeNotifyOnFailChanged,
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
 	"apps.SetRootDir":              TypeRootDirectoryChanged,
 	"apps.SetBuildFilter":          TypeBuildFilterChanged,

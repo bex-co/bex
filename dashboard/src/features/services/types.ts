@@ -81,6 +81,13 @@ export interface ServiceView {
    */
   autoDeploy: boolean | null;
   /**
+   * Deploy-failure notification override (`spec.notifyOnFail`, w4/m21, Render's
+   * exact field name/enum — docs/render-artifacts/notify-on-fail.md):
+   * "default" | "notify" | "ignore". null when not selected (list query);
+   * bex-api reports empty as "default", never a bare empty string.
+   */
+  notifyOnFail: string | null;
+  /**
    * HTTP path the ReadinessProbe polls before routing traffic (`spec.healthCheckPath`,
    * w1/m23/t001); null/empty means the platform default "/". Only applies to
    * web_service and private_service; null when not selected (list query).

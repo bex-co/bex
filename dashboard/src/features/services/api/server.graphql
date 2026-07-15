@@ -39,6 +39,9 @@ query Server($id: String!) {
     }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # notifyOnFail is Render's per-service deploy-failure notification override
+    # (w4/m21, docs/render-artifacts/notify-on-fail.md): default | notify | ignore.
+    notifyOnFail
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath

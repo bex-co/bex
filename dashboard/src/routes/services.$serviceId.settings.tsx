@@ -19,6 +19,7 @@ import { DeleteServiceCard } from "@/features/services/components/delete-service
 import { StaticSiteSection } from "@/features/services/components/static-site-section";
 import { ScalingRow } from "@/features/services/components/scaling-row";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
+import { NotifyOnFailRow } from "@/features/services/components/notify-on-fail-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import {
@@ -165,6 +166,24 @@ export function ServiceSettingsPage() {
           <PlatformSubdomainSection url={service?.url ?? null} />
         </>
       )}
+
+      {/* Notifications (w4/m21): the per-service deploy-failure override applies
+          to every service type (Render places it at the service level, not
+          gated by type), so it renders outside the cron/else branches above. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("services.settingsNotificationsTitle")}</CardTitle>
+          <CardDescription>
+            {t("services.settingsNotificationsDescription")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotifyOnFailRow
+            serviceId={serviceId}
+            notifyOnFail={service?.notifyOnFail}
+          />
+        </CardContent>
+      </Card>
 
       <DeployHookSection serviceId={serviceId} />
 

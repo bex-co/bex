@@ -72,6 +72,10 @@ type renderService struct {
 	// AutoDeploy is Render's Auto-Deploy toggle: whether a signed git push
 	// redeploys this service (spec.autoDeploy).
 	AutoDeploy bool `json:"autoDeploy"`
+	// NotifyOnFail is Render's per-service deploy-failure notification override
+	// (spec.notifyOnFail): default | notify | ignore. Required on Render's
+	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
+	NotifyOnFail string `json:"notifyOnFail"`
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
 	// empty means the default "/". Render's healthCheckPath field.
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
@@ -175,6 +179,7 @@ func toRenderService(a AppView) renderService {
 		Branch:          a.Branch,
 		Autoscaling:     ras,
 		AutoDeploy:      a.AutoDeploy,
+		NotifyOnFail:    a.NotifyOnFail,
 		HealthCheckPath: a.HealthCheckPath,
 	}
 }

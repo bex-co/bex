@@ -118,6 +118,13 @@ type autoDeployArgs struct {
 	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
 }
 
+// notifyOnFailArgs is set_notify_on_fail's input — Render's per-service
+// deploy-failure notification override (docs/render-artifacts/notify-on-fail.md).
+type notifyOnFailArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Value     string `json:"value" jsonschema:"default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service)"`
+}
+
 // displayNameArgs is set_display_name's input. The service id remains the
 // immutable App name; displayName is only the mutable human-facing label.
 type displayNameArgs struct {
@@ -160,6 +167,7 @@ type createWebServiceArgs struct {
 	Plan             string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
 	EnvVars          []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	AutoDeploy       string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail     string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
 	HealthCheckPath  string          `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
 	PreDeployCommand string          `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
 	Port             int32           `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
@@ -191,6 +199,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Plan:             a.Plan,
 		Env:              toEnvVars(a.EnvVars),
 		AutoDeploy:       parseYesNo(a.AutoDeploy),
+		NotifyOnFail:     a.NotifyOnFail,
 		HealthCheckPath:  a.HealthCheckPath,
 		PreDeployCommand: a.PreDeployCommand,
 		Port:             a.Port,
@@ -219,6 +228,7 @@ type createCronJobArgs struct {
 	Plan           string      `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
 	EnvVars        []envVarArg `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
 	AutoDeploy     string      `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail   string      `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
 	DryRun         bool        `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
@@ -241,6 +251,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Plan:           a.Plan,
 		Env:            toEnvVars(a.EnvVars),
 		AutoDeploy:     parseYesNo(a.AutoDeploy),
+		NotifyOnFail:   a.NotifyOnFail,
 		DryRun:         a.DryRun,
 	}
 }
@@ -653,6 +664,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_notify_on_fail",
+		Description: "Change a service's deploy-failure notification override (Render's exact notifyOnFail field/enum): default defers to each workspace member's own notification preference, notify always emails every member on a failed deploy, ignore never emails anyone for this service. Governs failure notifications only — success emails always follow each member's own preference.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notifyOnFailArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetNotifyOnFail(ctx, in.ServiceID, in.Value)
 		if err != nil {
 			return nil, renderService{}, err
 		}

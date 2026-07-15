@@ -62,7 +62,7 @@ Shapes verified against Render's OpenAPI spec (`render-public-api-1.json`): the 
 | `POST /v1/services` | create a service; a same-workspace duplicate `name` is rejected, never upserted (w4/m19) | 201 |
 | `GET /v1/services` | list `[{service, cursor}]` | 200 |
 | `GET /v1/services/{id}` | one service object | 200 |
-| `PATCH /v1/services/{id}` | update `displayName`, `serviceDetails.plan`, and/or the bex extra `serviceDetails.idleTTLSeconds` | 200 |
+| `PATCH /v1/services/{id}` | update `displayName`, `serviceDetails.plan`, `serviceDetails.idleTTLSeconds` (bex extra), `rootDir`, `buildFilter`, `autoDeploy`, `notifyOnFail` (w4/m21 — default\|notify\|ignore, [docs/render-artifacts/notify-on-fail.md](render-artifacts/notify-on-fail.md)), `schedule`/`command` (cron_job only), `healthCheckPath`, and/or `preDeployCommand` — each a pointer/tri-state field, omitted ⇒ unchanged (row backfilled; several fields wired by earlier milestones were missing here) | 200 |
 | `DELETE /v1/services/{id}` | delete the service; the operator's ownerRefs cascade its Deployment/Service/Ingress | 204 |
 | `POST /v1/services/{id}/restart` | `spec.restartedAt = now` | 200 |
 | `POST /v1/services/{id}/suspend` | `spec.suspended = true` | 202 |
@@ -282,6 +282,7 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `delete_service` | `{serviceId}` | `Delete` | `{deleted: true}` |
 | `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
 | `set_display_name` (bex extension) | `{serviceId, displayName}` | `SetDisplayName` | updated `service` |
+| `set_notify_on_fail` (w4/m21, [docs/render-artifacts/notify-on-fail.md](render-artifacts/notify-on-fail.md)) | `{serviceId, value}` | `SetNotifyOnFail` | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
 | `list_deploys` | `{serviceId}` | `List` | `{deploys: [deploy, ...]}` |
@@ -302,6 +303,8 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `list_key_value_instances` | — | `ListKeyValues` | `{keyValues: [keyValue, ...]}` |
 | `get_key_value` | `{keyValueId}` | `GetKeyValue` | `keyValue` |
 | `create_key_value` | `{name, plan?, version?, storageGB?, public?}` | `CreateKeyValue` | created `keyValue` |
+
+**Follow-up filed, not fixed here:** this table is also missing `set_auto_deploy`, `set_health_check_path`, `set_root_dir`, `set_build_filter`, and `set_pre_deploy_command` — all real, working tools in `apps/mcp.go` that earlier milestones never backfilled into this reference table. Out of this milestone's scope; `set_notify_on_fail` is added above since this milestone touches the table anyway.
 
 `list_logs` takes Render's required `resource` array of service ids and reads each App's logs — application (`type=app`) and request (`type=request`, Traefik's access log) — aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`type`/`resource`/`instance`/`container`/`level`/`method`/`statusCode`, each present only where the line really has it). It honors **Render's full filter set** — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text`, `startTime`/`endTime`, `direction` — routed through the same `QueryLogs` the REST adapter uses (w3/m8; mapping and cardinality budget in [ADR010-observability.md](ADR010-observability.md#log-filters)). Its companion `list_log_label_values` mirrors Render's discovery tool exactly (same name, same `label` enum — `host`|`instance`|`level`|`method`|`statusCode`|`type` — same filter args), so an agent asks "which statuses does this service return?" instead of guessing; values are always scoped to the requested service's streams, never the whole store. Without the durable store (`BEX_LOKI_URL` unset) the store-only filters and `type=request` return 503 rather than being ignored — an agent is told, not misled. `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). The `serviceId` / `resource` ids are App names, opaque and round-tripped from `list_services`, exactly as in REST/GraphQL.
 

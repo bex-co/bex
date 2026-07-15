@@ -136,6 +136,7 @@ const SERVICE = {
   command: null,
   runs: [],
   healthCheckPath: "/healthz",
+  notifyOnFail: "default",
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: "https://github.com/acme-corp/eden-cms-v2",
@@ -169,6 +170,7 @@ const WORKER = {
   command: null,
   runs: [],
   healthCheckPath: null,
+  notifyOnFail: "default",
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
@@ -221,6 +223,7 @@ const CRON = {
     },
   ],
   healthCheckPath: null,
+  notifyOnFail: "default",
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
@@ -1775,6 +1778,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
           __typename: "Service",
           id: variables.id,
           healthCheckPath: svc?.healthCheckPath ?? variables.path,
+        },
+      };
+    }
+    // SetNotifyOnFail (w4/m21): persist the deploy-failure notification override.
+    case "SetNotifyOnFail": {
+      const svc = serviceById(variables.id);
+      if (svc) svc.notifyOnFail = variables.value || "default";
+      return {
+        setNotifyOnFail: {
+          __typename: "Service",
+          id: variables.id,
+          notifyOnFail: svc?.notifyOnFail ?? variables.value,
         },
       };
     }

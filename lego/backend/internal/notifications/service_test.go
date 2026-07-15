@@ -162,7 +162,7 @@ func TestNotifyDeploySendsOnlyToRecipientsWhoWantIt(t *testing.T) {
 	identities := fakeIdentities{"alice": "alice@example.com", "bob": "bob@example.com"} // carol has no known email
 	svc := newTestService(st, nil, mailer, identities)
 
-	svc.NotifyDeploy(context.Background(), "tea-a", "web", store.DeployLive)
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployLive, NotifyOnFail: "default"})
 
 	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
 		t.Fatalf("sent = %+v, want exactly one mail to alice (bob opted out, carol has no email)", mailer.sent)
@@ -179,11 +179,124 @@ func TestNotifyDeployFailedRespectsDeployFailedPreference(t *testing.T) {
 	identities := fakeIdentities{"alice": "alice@example.com", "bob": "bob@example.com"}
 	svc := newTestService(st, nil, mailer, identities)
 
-	svc.NotifyDeploy(context.Background(), "tea-a", "web", store.DeployUpdateFailed)
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployUpdateFailed, NotifyOnFail: "default"})
 
 	if len(mailer.sent) != 1 || mailer.sent[0].to != "bob@example.com" {
 		t.Fatalf("sent = %+v, want exactly one mail to bob (alice opted out of failure mail)", mailer.sent)
 	}
+}
+
+// TestNotifyDeployFailedHonorsNotifyOnFailOverride (w4/m21) is the decision
+// table the DoD calls for: notifyOnFail (ignore/default/notify) crossed with
+// each recipient's own deployFailed opt-in/opt-out. "default" is covered by
+// TestNotifyDeployFailedRespectsDeployFailedPreference above; this covers the
+// two override values, each against both an opted-in and an opted-out member,
+// so the override is proven to win over — not merely coexist with — the
+// member's own preference.
+func TestNotifyDeployFailedHonorsNotifyOnFailOverride(t *testing.T) {
+	cases := []struct {
+		name         string
+		notifyOnFail string
+		wantSent     []string // emails expected to receive the failure mail
+	}{
+		{
+			name:         "ignore mutes everyone regardless of their own opt-in",
+			notifyOnFail: "ignore",
+			wantSent:     nil, // alice opted in, bob opted out — neither gets mail
+		},
+		{
+			name:         "notify forces everyone regardless of their own opt-out",
+			notifyOnFail: "notify",
+			wantSent:     []string{"alice@example.com", "bob@example.com"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			st := newFakeStore()
+			st.recipients["tea-a"] = []store.NotifyRecipient{
+				{Subject: "alice", DeploySucceeded: true, DeployFailed: true}, // opted IN to failure mail
+				{Subject: "bob", DeploySucceeded: true, DeployFailed: false},  // opted OUT of failure mail
+			}
+			mailer := &fakeMailer{}
+			identities := fakeIdentities{"alice": "alice@example.com", "bob": "bob@example.com"}
+			svc := newTestService(st, nil, mailer, identities)
+
+			svc.NotifyDeploy(context.Background(), store.DeployNotification{
+				TenantID: "tea-a", AppName: "web", Status: store.DeployUpdateFailed, NotifyOnFail: c.notifyOnFail,
+			})
+
+			var got []string
+			for _, m := range mailer.sent {
+				got = append(got, m.to)
+			}
+			if !equalUnordered(got, c.wantSent) {
+				t.Fatalf("notifyOnFail=%q sent = %v, want %v", c.notifyOnFail, got, c.wantSent)
+			}
+		})
+	}
+}
+
+// TestNotifyDeploySucceededIgnoresNotifyOnFail (w4/m21) pins the DoD's scope
+// claim: notifyOnFail governs FAILURE notifications only. Even the strongest
+// override value ("ignore") must not suppress a success email — it keeps
+// following each member's own deploySucceeded preference, unmodified.
+func TestNotifyDeploySucceededIgnoresNotifyOnFail(t *testing.T) {
+	st := newFakeStore()
+	st.recipients["tea-a"] = []store.NotifyRecipient{
+		{Subject: "alice", DeploySucceeded: true, DeployFailed: true},
+	}
+	mailer := &fakeMailer{}
+	svc := newTestService(st, nil, mailer, fakeIdentities{"alice": "alice@example.com"})
+
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{
+		TenantID: "tea-a", AppName: "web", Status: store.DeployLive, NotifyOnFail: "ignore",
+	})
+
+	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
+		t.Fatalf("sent = %+v, want alice still notified on success despite notifyOnFail=ignore", mailer.sent)
+	}
+}
+
+// TestNotifyDeployFailedUnrecognizedNotifyOnFailDefersToPreference guards the
+// fallback branch: a value that isn't ignore/notify/default (e.g. legacy ""
+// from an App created before this field existed) behaves exactly like
+// "default" rather than silently muting or forcing everyone.
+func TestNotifyDeployFailedUnrecognizedNotifyOnFailDefersToPreference(t *testing.T) {
+	st := newFakeStore()
+	st.recipients["tea-a"] = []store.NotifyRecipient{
+		{Subject: "alice", DeploySucceeded: true, DeployFailed: false},
+		{Subject: "bob", DeploySucceeded: true, DeployFailed: true},
+	}
+	mailer := &fakeMailer{}
+	identities := fakeIdentities{"alice": "alice@example.com", "bob": "bob@example.com"}
+	svc := newTestService(st, nil, mailer, identities)
+
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployUpdateFailed, NotifyOnFail: ""})
+
+	if len(mailer.sent) != 1 || mailer.sent[0].to != "bob@example.com" {
+		t.Fatalf("sent = %+v, want exactly one mail to bob (legacy empty notifyOnFail behaves as default)", mailer.sent)
+	}
+}
+
+// equalUnordered compares two string slices ignoring order — mailer.sent's
+// order depends on the notify goroutines' scheduling, not on input order.
+func equalUnordered(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	count := map[string]int{}
+	for _, s := range a {
+		count[s]++
+	}
+	for _, s := range b {
+		count[s]--
+	}
+	for _, n := range count {
+		if n != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func TestNotifyDeployIgnoresNonTerminalStatus(t *testing.T) {
@@ -192,7 +305,7 @@ func TestNotifyDeployIgnoresNonTerminalStatus(t *testing.T) {
 	mailer := &fakeMailer{}
 	svc := newTestService(st, nil, mailer, fakeIdentities{"alice": "alice@example.com"})
 
-	svc.NotifyDeploy(context.Background(), "tea-a", "web", store.DeployCanceled)
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployCanceled, NotifyOnFail: "default"})
 
 	if len(mailer.sent) != 0 {
 		t.Errorf("sent = %+v, want none (canceled is not a success/failure this feature notifies on)", mailer.sent)
@@ -205,9 +318,9 @@ func TestNotifyDeployNoopWithoutMailerOrStore(t *testing.T) {
 
 	// No mailer: nothing to send to, must not panic.
 	svc := newTestService(st, nil, nil, fakeIdentities{"alice": "alice@example.com"})
-	svc.NotifyDeploy(context.Background(), "tea-a", "web", store.DeployLive)
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployLive, NotifyOnFail: "default"})
 
 	// No store: nothing to look recipients up from, must not panic.
 	svc2 := newTestService(nil, nil, &fakeMailer{}, fakeIdentities{"alice": "alice@example.com"})
-	svc2.NotifyDeploy(context.Background(), "tea-a", "web", store.DeployLive)
+	svc2.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployLive, NotifyOnFail: "default"})
 }

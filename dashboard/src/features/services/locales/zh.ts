@@ -769,6 +769,42 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新健康检查路径。",
     description: "Toast after setHealthCheckPath fails",
   },
+  "services.settingsNotificationsTitle": {
+    message: "通知",
+    description: "Settings tab: Notifications section card title",
+  },
+  "services.settingsNotificationsDescription": {
+    message: "选择在此服务部署失败时通知谁。",
+    description: "Settings tab: Notifications section card description",
+  },
+  "services.notifyOnFailLabel": {
+    message: "部署失败通知",
+    description: "Settings tab: notifyOnFail row label",
+  },
+  "services.notifyOnFailHint": {
+    message: "默认遵循每位成员自己的通知偏好；你可以为此服务单独强制开启或关闭。",
+    description: "Settings tab: notifyOnFail row hint text",
+  },
+  "services.notifyOnFailOptionDefault": {
+    message: "使用成员偏好",
+    description: "notifyOnFail select option: default",
+  },
+  "services.notifyOnFailOptionNotify": {
+    message: "始终通知",
+    description: "notifyOnFail select option: notify",
+  },
+  "services.notifyOnFailOptionIgnore": {
+    message: "从不通知",
+    description: "notifyOnFail select option: ignore",
+  },
+  "services.notifyOnFailSuccess": {
+    message: "通知设置已更新。",
+    description: "Toast after setNotifyOnFail succeeds",
+  },
+  "services.notifyOnFailError": {
+    message: "无法更新通知设置。",
+    description: "Toast after setNotifyOnFail fails",
+  },
   "services.planPickerTitle": {
     message: "选择实例类型",
     description: "Plan-picker page heading",

@@ -77,6 +77,23 @@ type CloneSecreter interface {
 	EnsureCloneSecret(ctx context.Context, namespace, appName, workspaceID, repo string) (string, error)
 }
 
+// DeployNotification is what DeployNotifier fans out — the closed deploy's
+// identity and outcome, plus the App's per-service notification override
+// (NotifyOnFail: w4/m21, docs/render-artifacts/notify-on-fail.md —
+// "default"/"notify"/"ignore", or "" for an App created before the field
+// existed, equivalent to "default"). A struct, not positional args, matching
+// this codebase's convention for a cross-package "fan out an event" boundary
+// (core.AuditEvent, webhooks' payload/DueWebhookDelivery) — so the next
+// Render field lands as one more struct field, not a sixth positional arg.
+type DeployNotification struct {
+	TenantID string
+	AppName  string
+	Status   string
+	// NotifyOnFail governs FAILED-deploy notifications only; a succeeded
+	// deploy always follows each member's own preference, unmodified.
+	NotifyOnFail string
+}
+
 // DeployNotifier is called by the Reconciler when recordDeploy closes a
 // deploy as succeeded or failed (w3/m9) — it fans the outcome out to the
 // workspace's members by email, per each member's notification preferences.
@@ -87,7 +104,7 @@ type CloneSecreter interface {
 // before this milestone). Best-effort: implementations must not return an
 // error — a flaky relay must never block reconciliation.
 type DeployNotifier interface {
-	NotifyDeploy(ctx context.Context, tenantID, appName, status string)
+	NotifyDeploy(ctx context.Context, n DeployNotification)
 }
 
 // Reconciler projects the source of truth into the cluster: each apps row
@@ -288,7 +305,12 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// ReconcileOnce's per-pass context and may already be gone by the time a
 	// slow relay would otherwise get to send.
 	if ok && r.DeployNotifier != nil {
-		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), d.TenantID, d.Name, status)
+		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), DeployNotification{
+			TenantID:     d.TenantID,
+			AppName:      d.Name,
+			Status:       status,
+			NotifyOnFail: cur.Spec.NotifyOnFail,
+		})
 	}
 }
 
