@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -191,16 +192,19 @@ var _ = Describe("App Controller", func() {
 			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
 			return dep
 		}
-		// create + reconcile a service-shaped App, return its container.
-		appContainer := func(name string, spec appv1alpha1.AppSpec) corev1.Container {
+		// create + reconcile a service-shaped App, return its pod template.
+		appPodSpec := func(name string, spec appv1alpha1.AppSpec) corev1.PodSpec {
 			nn := types.NamespacedName{Name: name, Namespace: "default"}
 			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}, Spec: spec}
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
 			reconcileN(nn)
-			c := getDep(nn).Spec.Template.Spec.Containers[0]
+			podSpec := getDep(nn).Spec.Template.Spec
 			Expect(k8sClient.Delete(ctx, app)).To(Succeed()) // finalizer needs a reconcile to release
 			reconcileN(nn)
-			return c
+			return podSpec
+		}
+		appContainer := func(name string, spec appv1alpha1.AppSpec) corev1.Container {
+			return appPodSpec(name, spec).Containers[0]
 		}
 
 		It("sets an HTTP ReadinessProbe from an explicit healthCheckPath on the container port", func() {
@@ -227,6 +231,49 @@ var _ = Describe("App Controller", func() {
 				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker,
 			})
 			Expect(c.ReadinessProbe).To(BeNil(), "a worker exposes no HTTP port, so no readiness probe")
+		})
+
+		It("maps maxShutdownDelaySeconds onto the pod grace period for every long-running type", func() {
+			seconds := int32(90)
+			for _, tc := range []struct {
+				name        string
+				serviceType string
+			}{
+				{name: "shutdown-web", serviceType: appv1alpha1.TypeWebService},
+				{name: "shutdown-private", serviceType: appv1alpha1.TypePrivateService},
+				{name: "shutdown-worker", serviceType: appv1alpha1.TypeBackgroundWorker},
+			} {
+				podSpec := appPodSpec(tc.name, appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000, Type: tc.serviceType,
+					MaxShutdownDelaySeconds: &seconds,
+				})
+				Expect(podSpec.TerminationGracePeriodSeconds).NotTo(BeNil(), tc.name)
+				Expect(*podSpec.TerminationGracePeriodSeconds).To(Equal(int64(seconds)), tc.name)
+			}
+		})
+
+		It("leaves the desired grace period absent when unset and receives Kubernetes' 30-second default", func() {
+			Expect(terminationGracePeriodSeconds(nil)).To(BeNil(), "the reconciler must not author a default")
+			podSpec := appPodSpec("shutdown-default", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000,
+			})
+			// The API server defaults PodSpec.terminationGracePeriodSeconds on
+			// storage, so the retrieved Deployment contains 30 even though the
+			// reconciler submitted nil (asserted directly above).
+			Expect(podSpec.TerminationGracePeriodSeconds).NotTo(BeNil())
+			Expect(*podSpec.TerminationGracePeriodSeconds).To(Equal(int64(30)))
+		})
+
+		It("rejects maxShutdownDelaySeconds outside 1-300 at the CRD boundary", func() {
+			for i, seconds := range []int32{0, 301} {
+				app := &appv1alpha1.App{
+					ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("shutdown-invalid-%d", i), Namespace: "default"},
+					Spec: appv1alpha1.AppSpec{
+						Image: "traefik/whoami", MaxShutdownDelaySeconds: &seconds,
+					},
+				}
+				Expect(k8sClient.Create(ctx, app)).NotTo(Succeed())
+			}
 		})
 	})
 

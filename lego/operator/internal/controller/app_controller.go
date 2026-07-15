@@ -623,6 +623,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			dep.Spec.Template.Spec.Volumes = []corev1.Volume{*vol}
 		}
 		dep.Spec.Template.Spec.Containers = []corev1.Container{container}
+		// Render's maxShutdownDelaySeconds is Kubernetes' native pod termination
+		// grace period. Keep nil when unset so existing Apps retain Kubernetes'
+		// identical 30-second default without adding a field to their pod template.
+		dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
 		// Authenticate kubelet pulls against the auth-enabled registry (w7/m8). nil
 		// when no pull secret is configured or the image isn't registry-hosted, so a
 		// prebuilt public image is left untouched.
@@ -775,6 +779,14 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return ctrl.Result{RequeueAfter: autoscaleInterval}, nil
 	}
 	return ctrl.Result{}, nil
+}
+
+func terminationGracePeriodSeconds(seconds *int32) *int64 {
+	if seconds == nil {
+		return nil
+	}
+	value := int64(*seconds)
+	return &value
 }
 
 // reconcileWorkerStatus finishes the background_worker reconcile: a worker's

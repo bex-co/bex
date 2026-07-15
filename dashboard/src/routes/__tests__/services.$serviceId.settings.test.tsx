@@ -89,6 +89,13 @@ vi.mock("@/features/services/hooks/use-notify-on-fail", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-max-shutdown-delay", () => ({
+  useMaxShutdownDelay: () => ({
+    setMaxShutdownDelay: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
 vi.mock("@/features/services/hooks/use-display-name", () => ({
   useDisplayName: () => ({
     setDisplayName: vi.fn(async () => true),
@@ -159,6 +166,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     command: null,
     runs: [],
     healthCheckPath: null,
+    maxShutdownDelaySeconds: 30,
     ...overrides,
   };
 }
@@ -214,6 +222,7 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Custom Domains")).toBeInTheDocument();
     expect(screen.getByText("Idle timeout")).toBeInTheDocument();
     expect(screen.getByText("Instance count")).toBeInTheDocument();
+    expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
     expect(screen.getByText("Deploy Hook")).toBeInTheDocument();
     expect(screen.queryByText("Deploy")).not.toBeInTheDocument();
   });
@@ -223,6 +232,7 @@ describe("ServiceSettingsPage", () => {
     renderSettings();
 
     expect(await screen.findByText("Instance count")).toBeInTheDocument();
+    expect(screen.getByText("Max shutdown delay")).toBeInTheDocument();
   });
 
   it("shows a Deploy section (schedule + command), hides Custom Domains, Idle timeout, and instance count for a cron job", async () => {
@@ -240,6 +250,7 @@ describe("ServiceSettingsPage", () => {
     expect(screen.queryByText("Custom Domains")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     expect(screen.queryByText("Instance count")).not.toBeInTheDocument();
+    expect(screen.queryByText("Max shutdown delay")).not.toBeInTheDocument();
   });
 
   it("shows Build & Deploy (Auto-Deploy toggle) alongside the Deploy section for a git-sourced cron job", async () => {

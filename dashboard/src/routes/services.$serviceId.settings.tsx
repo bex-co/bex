@@ -22,10 +22,12 @@ import { HealthCheckPathRow } from "@/features/services/components/health-check-
 import { NotifyOnFailRow } from "@/features/services/components/notify-on-fail-row";
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
+import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import {
   isCron,
   isStaticSite,
   isWorker,
+  supportsMaxShutdownDelay,
 } from "@/features/services/lib/service-type";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
@@ -85,6 +87,13 @@ export function ServiceSettingsPage() {
                     serviceId={serviceId}
                     replicas={service?.replicas ?? null}
                   />
+                  {service && supportsMaxShutdownDelay(service) && (
+                    <MaxShutdownDelayRow
+                      serviceId={serviceId}
+                      maxShutdownDelaySeconds={service.maxShutdownDelaySeconds}
+                      onChanged={() => void refetch()}
+                    />
+                  )}
                 </>
               )}
             </div>

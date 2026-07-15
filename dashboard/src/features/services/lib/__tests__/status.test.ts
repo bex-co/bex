@@ -93,6 +93,7 @@ describe("toServiceView", () => {
       autoDeploy: null,
       notifyOnFail: null,
       healthCheckPath: null,
+      maxShutdownDelaySeconds: null,
       preDeployCommand: null,
       publishPath: null,
       routes: [],

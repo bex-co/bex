@@ -375,6 +375,18 @@ spec:
                 description: Image is a prebuilt OCI image to run directly, skipping
                   the build plane.
                 type: string
+              maxShutdownDelaySeconds:
+                description: |-
+                  MaxShutdownDelaySeconds is the maximum graceful-shutdown window after
+                  Kubernetes sends SIGTERM before it sends SIGKILL. It maps directly to the
+                  pod template's terminationGracePeriodSeconds. Render allows 1-300 seconds
+                  and defaults to 30; nil deliberately leaves Kubernetes' identical 30-second
+                  default untouched so existing Apps reconcile byte-identically. Applies to
+                  web_service, private_service, and background_worker only.
+                format: int32
+                maximum: 300
+                minimum: 1
+                type: integer
               notifyOnFail:
                 description: |-
                   NotifyOnFail is Render's per-service deploy-failure notification override

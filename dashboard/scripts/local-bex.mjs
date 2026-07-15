@@ -137,6 +137,7 @@ const SERVICE = {
   runs: [],
   healthCheckPath: "/healthz",
   notifyOnFail: "default",
+  maxShutdownDelaySeconds: 30,
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: "https://github.com/acme-corp/eden-cms-v2",
@@ -171,6 +172,7 @@ const WORKER = {
   runs: [],
   healthCheckPath: null,
   notifyOnFail: "default",
+  maxShutdownDelaySeconds: 45,
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
@@ -224,6 +226,7 @@ const CRON = {
   ],
   healthCheckPath: null,
   notifyOnFail: "default",
+  maxShutdownDelaySeconds: null,
   preDeployCommand: null,
   idleTTLSeconds: 0,
   repo: null,
@@ -1790,6 +1793,19 @@ function resolveGraphQL({ operationName, variables = {} }) {
           __typename: "Service",
           id: variables.id,
           notifyOnFail: svc?.notifyOnFail ?? variables.value,
+        },
+      };
+    }
+    // SetMaxShutdownDelay: persist the long-running service's SIGTERM window.
+    case "SetMaxShutdownDelay": {
+      const svc = serviceById(variables.id);
+      if (svc) svc.maxShutdownDelaySeconds = variables.seconds;
+      return {
+        setMaxShutdownDelay: {
+          __typename: "Service",
+          id: variables.id,
+          maxShutdownDelaySeconds:
+            svc?.maxShutdownDelaySeconds ?? variables.seconds,
         },
       };
     }

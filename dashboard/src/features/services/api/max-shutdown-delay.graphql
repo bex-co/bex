@@ -1,0 +1,8 @@
+# Render's maxShutdownDelaySeconds setting: the maximum graceful window after
+# SIGTERM before Kubernetes sends SIGKILL. Only web/private/worker services.
+mutation SetMaxShutdownDelay($id: String!, $seconds: Int!) {
+  setMaxShutdownDelay(id: $id, seconds: $seconds) {
+    id
+    maxShutdownDelaySeconds
+  }
+}

@@ -138,6 +138,14 @@ type healthCheckPathArgs struct {
 	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with / or be empty to restore the platform default /"`
 }
 
+// maxShutdownDelayArgs is set_max_shutdown_delay's input. Render's official
+// MCP currently has no setter for this REST/Blueprint field, so the tool is a
+// bex extension following the existing scalar setter grammar.
+type maxShutdownDelayArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	Seconds   int32  `json:"seconds" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL; must be 1-300"`
+}
+
 // preDeployCommandArgs is set_pre_deploy_command's input.
 type preDeployCommandArgs struct {
 	ServiceID        string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
@@ -151,28 +159,29 @@ type preDeployCommandArgs struct {
 // contract; builder and image are bex extensions. Region remains a one-region
 // platform concern and is intentionally absent.
 type createWebServiceArgs struct {
-	OwnerID          string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	Name             string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
-	Type             string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo             string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image            string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	Branch           string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir          string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	BuildFilter      *buildFilterArg `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
-	Runtime          string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand     string          `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
-	StartCommand     string          `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
-	DockerfilePath   string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder          string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan             string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars          []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	AutoDeploy       string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	NotifyOnFail     string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
-	HealthCheckPath  string          `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
-	PreDeployCommand string          `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
-	Port             int32           `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
-	Replicas         int32           `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
-	DryRun           bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID                 string          `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	Name                    string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
+	Type                    string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
+	Repo                    string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image                   string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Branch                  string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir                 string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	BuildFilter             *buildFilterArg `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
+	Runtime                 string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand            string          `json:"buildCommand" jsonschema:"command used to build a native-runtime service; ignored for docker"`
+	StartCommand            string          `json:"startCommand" jsonschema:"command used to start a native-runtime service; ignored for docker"`
+	DockerfilePath          string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder                 string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan                    string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
+	EnvVars                 []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	AutoDeploy              string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail            string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
+	HealthCheckPath         string          `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
+	MaxShutdownDelaySeconds *int32          `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL (1-300; default 30)"`
+	PreDeployCommand        string          `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
+	Port                    int32           `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Replicas                int32           `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
+	DryRun                  bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -183,28 +192,29 @@ type envVarArg struct {
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
-		OwnerID:          a.OwnerID,
-		Name:             a.Name,
-		Type:             a.Type,
-		Repo:             a.Repo,
-		Image:            a.Image,
-		Branch:           a.Branch,
-		RootDir:          a.RootDir,
-		BuildFilter:      a.BuildFilter.toView(),
-		Runtime:          a.Runtime,
-		BuildCommand:     a.BuildCommand,
-		StartCommand:     a.StartCommand,
-		DockerfilePath:   a.DockerfilePath,
-		Builder:          a.Builder,
-		Plan:             a.Plan,
-		Env:              toEnvVars(a.EnvVars),
-		AutoDeploy:       parseYesNo(a.AutoDeploy),
-		NotifyOnFail:     a.NotifyOnFail,
-		HealthCheckPath:  a.HealthCheckPath,
-		PreDeployCommand: a.PreDeployCommand,
-		Port:             a.Port,
-		Replicas:         a.Replicas,
-		DryRun:           a.DryRun,
+		OwnerID:                 a.OwnerID,
+		Name:                    a.Name,
+		Type:                    a.Type,
+		Repo:                    a.Repo,
+		Image:                   a.Image,
+		Branch:                  a.Branch,
+		RootDir:                 a.RootDir,
+		BuildFilter:             a.BuildFilter.toView(),
+		Runtime:                 a.Runtime,
+		BuildCommand:            a.BuildCommand,
+		StartCommand:            a.StartCommand,
+		DockerfilePath:          a.DockerfilePath,
+		Builder:                 a.Builder,
+		Plan:                    a.Plan,
+		Env:                     toEnvVars(a.EnvVars),
+		AutoDeploy:              parseYesNo(a.AutoDeploy),
+		NotifyOnFail:            a.NotifyOnFail,
+		HealthCheckPath:         a.HealthCheckPath,
+		MaxShutdownDelaySeconds: cloneInt32(a.MaxShutdownDelaySeconds),
+		PreDeployCommand:        a.PreDeployCommand,
+		Port:                    a.Port,
+		Replicas:                a.Replicas,
+		DryRun:                  a.DryRun,
 	}
 }
 
@@ -697,6 +707,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath → ReadinessProbe). A 2xx/3xx response marks the pod ready. Pass an empty string to restore the platform default /. Has no effect on cron_job or background_worker services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_max_shutdown_delay",
+		Description: "Set the graceful-shutdown window for a web, private, or background-worker service: seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in maxShutdownDelayArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetMaxShutdownDelay(ctx, in.ServiceID, in.Seconds)
 		if err != nil {
 			return nil, renderService{}, err
 		}

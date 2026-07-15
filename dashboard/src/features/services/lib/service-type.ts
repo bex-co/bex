@@ -55,3 +55,12 @@ export function isStaticSite(s: ServiceView): boolean {
 export function isWorker(s: ServiceView): boolean {
   return s.type === "background_worker";
 }
+
+/** True when the service owns a long-running pod with a SIGTERM grace window. */
+export function supportsMaxShutdownDelay(s: ServiceView): boolean {
+  return (
+    s.type === "web_service" ||
+    s.type === "private_service" ||
+    s.type === "background_worker"
+  );
+}

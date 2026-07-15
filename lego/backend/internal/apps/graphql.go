@@ -275,6 +275,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// writes it via setNotifyOnFail.
 		"notifyOnFail":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
 		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
+		"maxShutdownDelaySeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any {
+			if a.MaxShutdownDelaySeconds == 0 {
+				return nil
+			}
+			return a.MaxShutdownDelaySeconds
+		})},
 		// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand);
 		// the Settings → Build & Deploy section reads it and writes via
 		// setPreDeployCommand (w1/m33).
@@ -376,6 +382,15 @@ func gqlInt(args map[string]any, key string) int {
 		return v
 	}
 	return 0
+}
+
+func gqlInt32Ptr(args map[string]any, key string) *int32 {
+	v, ok := args[key].(int)
+	if !ok {
+		return nil
+	}
+	value := int32(v)
+	return &value
 }
 
 // gqlBoolPtr reads an optional Boolean arg as a tri-state *bool (absent => nil,
@@ -685,10 +700,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// to avoid duplicate type names in the composed schema).
 				"envVars": &graphql.ArgumentConfig{Type: graphql.NewList(gqlutil.EnvVarInputType)},
 				// static_site create fields.
-				"publishPath":     &graphql.ArgumentConfig{Type: graphql.String},
-				"routes":          &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
-				"headers":         &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
-				"healthCheckPath": &graphql.ArgumentConfig{Type: graphql.String},
+				"publishPath":             &graphql.ArgumentConfig{Type: graphql.String},
+				"routes":                  &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
+				"headers":                 &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
+				"healthCheckPath":         &graphql.ArgumentConfig{Type: graphql.String},
+				"maxShutdownDelaySeconds": &graphql.ArgumentConfig{Type: graphql.Int},
 				// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand, w1/m33).
 				"preDeployCommand": &graphql.ArgumentConfig{Type: graphql.String},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
@@ -697,33 +713,34 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				dryRun, _ := p.Args["dryRun"].(bool)
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:          gqlStr(p.Args, "ownerId"),
-					Name:             p.Args["name"].(string),
-					Type:             gqlStr(p.Args, "type"),
-					Schedule:         gqlStr(p.Args, "schedule"),
-					Command:          gqlStr(p.Args, "command"),
-					Repo:             gqlStr(p.Args, "repo"),
-					Image:            gqlStr(p.Args, "image"),
-					Branch:           gqlStr(p.Args, "branch"),
-					RootDir:          gqlStr(p.Args, "rootDir"),
-					BuildFilter:      gqlBuildFilterInput(p.Args, "buildFilter"),
-					Runtime:          gqlStr(p.Args, "runtime"),
-					BuildCommand:     gqlStr(p.Args, "buildCommand"),
-					StartCommand:     gqlStr(p.Args, "startCommand"),
-					DockerfilePath:   gqlStr(p.Args, "dockerfilePath"),
-					Builder:          gqlStr(p.Args, "builder"),
-					Plan:             gqlStr(p.Args, "plan"),
-					AutoDeploy:       gqlBoolPtr(p.Args, "autoDeploy"),
-					NotifyOnFail:     gqlStr(p.Args, "notifyOnFail"),
-					Port:             int32(gqlInt(p.Args, "port")),
-					Replicas:         int32(gqlInt(p.Args, "replicas")),
-					Env:              gqlEnvVarInputs(p.Args, "envVars"),
-					PublishPath:      gqlStr(p.Args, "publishPath"),
-					Routes:           gqlRouteInputs(p.Args, "routes"),
-					Headers:          gqlHeaderInputs(p.Args, "headers"),
-					HealthCheckPath:  gqlStr(p.Args, "healthCheckPath"),
-					PreDeployCommand: gqlStr(p.Args, "preDeployCommand"),
-					DryRun:           dryRun,
+					OwnerID:                 gqlStr(p.Args, "ownerId"),
+					Name:                    p.Args["name"].(string),
+					Type:                    gqlStr(p.Args, "type"),
+					Schedule:                gqlStr(p.Args, "schedule"),
+					Command:                 gqlStr(p.Args, "command"),
+					Repo:                    gqlStr(p.Args, "repo"),
+					Image:                   gqlStr(p.Args, "image"),
+					Branch:                  gqlStr(p.Args, "branch"),
+					RootDir:                 gqlStr(p.Args, "rootDir"),
+					BuildFilter:             gqlBuildFilterInput(p.Args, "buildFilter"),
+					Runtime:                 gqlStr(p.Args, "runtime"),
+					BuildCommand:            gqlStr(p.Args, "buildCommand"),
+					StartCommand:            gqlStr(p.Args, "startCommand"),
+					DockerfilePath:          gqlStr(p.Args, "dockerfilePath"),
+					Builder:                 gqlStr(p.Args, "builder"),
+					Plan:                    gqlStr(p.Args, "plan"),
+					AutoDeploy:              gqlBoolPtr(p.Args, "autoDeploy"),
+					NotifyOnFail:            gqlStr(p.Args, "notifyOnFail"),
+					Port:                    int32(gqlInt(p.Args, "port")),
+					Replicas:                int32(gqlInt(p.Args, "replicas")),
+					Env:                     gqlEnvVarInputs(p.Args, "envVars"),
+					PublishPath:             gqlStr(p.Args, "publishPath"),
+					Routes:                  gqlRouteInputs(p.Args, "routes"),
+					Headers:                 gqlHeaderInputs(p.Args, "headers"),
+					HealthCheckPath:         gqlStr(p.Args, "healthCheckPath"),
+					MaxShutdownDelaySeconds: gqlInt32Ptr(p.Args, "maxShutdownDelaySeconds"),
+					PreDeployCommand:        gqlStr(p.Args, "preDeployCommand"),
+					DryRun:                  dryRun,
 				})
 			},
 		},
@@ -862,6 +879,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetHealthCheckPath(p.Context, p.Args["id"].(string), p.Args["path"].(string))
+			},
+		},
+		// setMaxShutdownDelay changes Render's per-service SIGTERM grace window.
+		// The shared service verb enforces 1-300 and rejects cron/static services.
+		"setMaxShutdownDelay": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"seconds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetMaxShutdownDelay(p.Context, p.Args["id"].(string), int32(p.Args["seconds"].(int)))
 			},
 		},
 		// setPreDeployCommand: the Settings → Build & Deploy Pre-Deploy Command

@@ -1,19 +1,19 @@
 # w6 · m25 — `maxShutdownDelaySeconds`: graceful-shutdown window per service
 
-**Worker:** worker6 **Goal:** Render's `maxShutdownDelaySeconds` (SIGTERM grace window, 1–300s, default 30) exists end-to-end: CRD field → pod `terminationGracePeriodSeconds`, settable/readable on REST/GraphQL/MCP + dashboard for web, private, and background-worker services. **Status:** todo
+**Worker:** worker6 **Goal:** Render's `maxShutdownDelaySeconds` (SIGTERM grace window, 1–300s, default 30) exists end-to-end: CRD field → pod `terminationGracePeriodSeconds`, settable/readable on REST/GraphQL/MCP + dashboard for web, private, and background-worker services. **Status:** done — CRD/operator, REST/GraphQL/MCP, dashboard, parity docs, and regression coverage shipped; browser save/reload persisted 121 seconds and a mock-cluster worker pod was observed Running with `terminationGracePeriodSeconds=137` on 2026-07-14.
 
 ## Tasks (in order)
 
-| id   | title                                                     | est | depends_on |
-| ---- | ---------------------------------------------------------- | --- | ---------- |
-| t001 | CRD field + operator → `terminationGracePeriodSeconds`     | 45m | —          |
-| t002 | REST: create + `PATCH` + read in `serviceDetails`          | 40m | t001       |
-| t003 | GraphQL + MCP mirrors                                      | 30m | t002       |
-| t004 | Settings inline-edit row                                   | 30m | t003       |
-| t005 | Render parity                                              | 30m | t004       |
-| t006 | Simplify                                                   | 30m | t005       |
-| t007 | Test coverage                                              | 40m | t005       |
-| t008 | Closeout                                                   | 15m | t007       |
+| id | title | est | depends_on | status |
+| --- | --- | --- | --- | --- |
+| t001 | CRD field + operator → `terminationGracePeriodSeconds` | 45m | — | — **DONE** |
+| t002 | REST: create + `PATCH` + read in `serviceDetails` | 40m | t001 | — **DONE** |
+| t003 | GraphQL + MCP mirrors | 30m | t002 | — **DONE** |
+| t004 | Settings inline-edit row | 30m | t003 | — **DONE** |
+| t005 | Render parity | 30m | t004 | — **DONE** |
+| t006 | Simplify | 30m | t005 | — **DONE** |
+| t007 | Test coverage | 40m | t005 | — **DONE** |
+| t008 | Closeout | 15m | t007 | — **DONE** |
 
 ## Definition of done
 

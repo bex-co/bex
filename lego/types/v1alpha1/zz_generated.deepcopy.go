@@ -119,6 +119,11 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.MaxShutdownDelaySeconds != nil {
+		in, out := &in.MaxShutdownDelaySeconds, &out.MaxShutdownDelaySeconds
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Autoscaling != nil {
 		in, out := &in.Autoscaling, &out.Autoscaling
 		*out = new(AutoscalingSpec)

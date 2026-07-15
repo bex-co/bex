@@ -747,6 +747,39 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the idle timeout.",
     description: "Toast after setIdleTimeout fails",
   },
+  "services.settingsMaxShutdownDelay": {
+    message: "Max shutdown delay",
+    description: "Settings row label for the graceful SIGTERM window",
+  },
+  "services.settingsMaxShutdownDelayHint": {
+    message:
+      "Wait 1–300 seconds after SIGTERM before force-stopping the process (default 30).",
+    description: "Settings row help for the shutdown-delay range",
+  },
+  "services.maxShutdownDelaySeconds": {
+    message: "{seconds} sec",
+    description: "Current graceful-shutdown delay in seconds",
+  },
+  "services.maxShutdownDelayEdit": {
+    message: "Edit max shutdown delay",
+    description: "Accessible label for the shutdown-delay edit button",
+  },
+  "services.maxShutdownDelaySave": {
+    message: "Save max shutdown delay",
+    description: "Accessible label for the shutdown-delay save button",
+  },
+  "services.maxShutdownDelayCancel": {
+    message: "Cancel max shutdown delay edit",
+    description: "Accessible label for the shutdown-delay cancel button",
+  },
+  "services.maxShutdownDelaySuccess": {
+    message: "Max shutdown delay updated.",
+    description: "Toast after setMaxShutdownDelay succeeds",
+  },
+  "services.maxShutdownDelayError": {
+    message: "Couldn't update the max shutdown delay.",
+    description: "Toast after setMaxShutdownDelay fails",
+  },
   "services.settingsHealthChecksTitle": {
     message: "Health Checks",
     description: "Settings tab: Health Checks section card title",

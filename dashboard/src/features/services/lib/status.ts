@@ -57,6 +57,10 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
+    maxShutdownDelaySeconds:
+      "maxShutdownDelaySeconds" in s
+        ? (s.maxShutdownDelaySeconds ?? null)
+        : null,
     preDeployCommand:
       "preDeployCommand" in s ? (s.preDeployCommand ?? null) : null,
     publishPath: "publishPath" in s ? (s.publishPath ?? null) : null,

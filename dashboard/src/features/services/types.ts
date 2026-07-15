@@ -94,6 +94,11 @@ export interface ServiceView {
    */
   healthCheckPath: string | null;
   /**
+   * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
+   * Only web/private/background-worker services expose this setting.
+   */
+  maxShutdownDelaySeconds: number | null;
+  /**
    * Render's Pre-Deploy Command (`spec.preDeployCommand`, w1/m33): a command run
    * to completion against the new image before it serves traffic (typically a DB
    * migration). null/empty means no pre-deploy step; null when not selected (list
