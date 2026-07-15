@@ -18,6 +18,7 @@ package core
 
 import (
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -75,5 +76,28 @@ func TestPage(t *testing.T) {
 	// nil input is safe and yields an empty page, never a panic.
 	if got := Page(nil, "", 10, id); len(got) != 0 {
 		t.Errorf("Page(nil) = %v, want empty", got)
+	}
+}
+
+func TestStablePage(t *testing.T) {
+	items := []string{"d", "b", "c", "a"}
+	id := func(s string) string { return s }
+
+	// No paging args means compatibility mode: the full slice and its original
+	// ordering are preserved exactly.
+	if got := StablePage(items, "", DefaultPageLimit, false, id); !slices.Equal(got, items) {
+		t.Fatalf("omitted paging args = %v, want original %v", got, items)
+	}
+
+	// Once paging is requested, the cursor order is deterministic without
+	// mutating the backing-store order supplied by the caller.
+	if got := StablePage(items, "", 2, true, id); !slices.Equal(got, []string{"a", "b"}) {
+		t.Fatalf("first stable page = %v, want [a b]", got)
+	}
+	if got := StablePage(items, "b", 2, true, id); !slices.Equal(got, []string{"c", "d"}) {
+		t.Fatalf("second stable page = %v, want [c d]", got)
+	}
+	if !slices.Equal(items, []string{"d", "b", "c", "a"}) {
+		t.Fatalf("StablePage mutated input: %v", items)
 	}
 }

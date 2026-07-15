@@ -24,6 +24,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -338,10 +339,25 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP databases list filter (w6/m2/t004).
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				// cursor/limit are bex's paged twin of this top-level dashboard list.
+				// The result remains [Database], so existing dashboard selections stay valid.
+				"cursor": &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":  &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
-				return s.ListPostgres(p.Context, ownerID)
+				out, err := s.ListPostgres(p.Context, ownerID)
+				if err != nil {
+					return nil, err
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				if !limitSet {
+					limit = core.DefaultPageLimit
+				} else {
+					limit = core.PageLimit(limit)
+				}
+				return core.StablePage(out, cursor, limit, cursorSet || limitSet, func(pg PostgresView) string { return pg.ID }), nil
 			},
 		},
 		"database": &graphql.Field{ // Render's dashboard query name

@@ -53,7 +53,7 @@ type Service struct {
 	// three resource kinds.
 	Environments core.EnvironmentResolver
 	// Selections is the shared MCP per-session workspace selection
-	// (w6/m2/t005): list_key_value_instances falls back to the caller's
+	// (w6/m2/t005): list_key_value falls back to the caller's
 	// selected workspace when its ownerId argument is omitted. Read-only
 	// (key-value never selects a workspace). Nil => no fallback.
 	Selections core.WorkspaceSelectionReader

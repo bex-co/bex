@@ -19,6 +19,7 @@ package keyvalue
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -80,10 +81,25 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP key-value list filter (w6/m4/t002).
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				// Keep the dashboard's existing [KeyValue] result shape; these optional
+				// args only select a stable page when a caller opts in.
+				"cursor": &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":  &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				ownerID, _ := p.Args["ownerId"].(string)
-				return s.ListKeyValues(p.Context, ownerID)
+				out, err := s.ListKeyValues(p.Context, ownerID)
+				if err != nil {
+					return nil, err
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				if !limitSet {
+					limit = core.DefaultPageLimit
+				} else {
+					limit = core.PageLimit(limit)
+				}
+				return core.StablePage(out, cursor, limit, cursorSet || limitSet, func(kv KeyValueView) string { return kv.ID }), nil
 			},
 		},
 		"keyValue": &graphql.Field{

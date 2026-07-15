@@ -17,9 +17,11 @@ limitations under the License.
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -144,6 +146,102 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	}
 }
 
+func TestPostgresListPaginationAcrossRESTAndGraphQL(t *testing.T) {
+	svc, cl := newService()
+	for i := 22; i >= 0; i-- { // deliberately seed opposite cursor order
+		seedDatabase(t, cl, fmt.Sprintf("pg-%02d", i))
+	}
+
+	ctx := context.Background()
+	all, err := svc.ListPostgres(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantBody, _ := json.Marshal(svc.toPostgresList(ctx, all))
+	wantBody = append(wantBody, '\n')
+	omitted := serveREST(svc, http.MethodGet, "/v1/postgres", "")
+	if !bytes.Equal(omitted.Body.Bytes(), wantBody) {
+		t.Fatalf("omitted params changed full-list body\ngot:  %s\nwant: %s", omitted.Body.Bytes(), wantBody)
+	}
+	if alias := serveREST(svc, http.MethodGet, "/v1/databases", ""); !bytes.Equal(alias.Body.Bytes(), omitted.Body.Bytes()) {
+		t.Fatalf("/v1/databases alias drifted from /v1/postgres\npostgres: %s\nalias:    %s", omitted.Body.Bytes(), alias.Body.Bytes())
+	}
+
+	var walked []string
+	cursor := ""
+	var firstREST []string
+	for {
+		path := "/v1/postgres?limit=7"
+		if cursor != "" {
+			path += "&cursor=" + cursor
+		}
+		var page []postgresWithCursor
+		if err := json.Unmarshal(serveREST(svc, http.MethodGet, path, "").Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode %s: %v", path, err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		ids := make([]string, 0, len(page))
+		for _, item := range page {
+			if item.Cursor != item.Postgres.ID {
+				t.Fatalf("cursor %q != postgres id %q", item.Cursor, item.Postgres.ID)
+			}
+			ids = append(ids, item.Postgres.ID)
+		}
+		if firstREST == nil {
+			firstREST = slices.Clone(ids)
+		}
+		walked = append(walked, ids...)
+		cursor = page[len(page)-1].Cursor
+	}
+	wantIDs := make([]string, 23)
+	for i := range wantIDs {
+		wantIDs[i] = fmt.Sprintf("pg-%02d", i)
+	}
+	if !slices.Equal(walked, wantIDs) {
+		t.Fatalf("REST page walk = %v, want every id once in %v", walked, wantIDs)
+	}
+	var pastEnd []postgresWithCursor
+	_ = json.Unmarshal(serveREST(svc, http.MethodGet, "/v1/postgres?limit=7&cursor=does-not-exist", "").Body.Bytes(), &pastEnd)
+	if len(pastEnd) != 0 {
+		t.Fatalf("unknown REST cursor = %v, want empty page", pastEnd)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gqlIDs := func(query string) []string {
+		t.Helper()
+		res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: query})
+		if len(res.Errors) > 0 {
+			t.Fatalf("GraphQL %s: %v", query, res.Errors)
+		}
+		raw := res.Data.(map[string]any)["databases"].([]any)
+		ids := make([]string, 0, len(raw))
+		for _, item := range raw {
+			ids = append(ids, item.(map[string]any)["id"].(string))
+		}
+		return ids
+	}
+	if got := gqlIDs(`{ databases { id } }`); len(got) != len(wantIDs) {
+		t.Fatalf("omitted GraphQL args returned %d items, want full %d", len(got), len(wantIDs))
+	}
+	firstGQL := gqlIDs(`{ databases(limit: 7) { id } }`)
+	if !slices.Equal(firstGQL, firstREST) {
+		t.Fatalf("first REST/GQL pages drift: REST=%v GQL=%v", firstREST, firstGQL)
+	}
+	if got := gqlIDs(`{ databases(cursor: "pg-06", limit: 7) { id } }`); !slices.Equal(got, wantIDs[7:14]) {
+		t.Fatalf("second GraphQL page = %v, want %v", got, wantIDs[7:14])
+	}
+	if got := gqlIDs(`{ databases(cursor: "does-not-exist", limit: 7) { id } }`); len(got) != 0 {
+		t.Fatalf("unknown GraphQL cursor = %v, want empty page", got)
+	}
+}
+
 // TestRESTCreatePostgresIPAllowListWireShape covers the other bug found live
 // against the real render-oss/cli: `postgres create --ip-allow-list ...`
 // sends Render's {cidrBlock,description} object array
@@ -262,6 +360,23 @@ func TestMCPPostgres(t *testing.T) {
 		t.Fatalf("client connect: %v", err)
 	}
 	defer cs.Close()
+	tools, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name != "list_postgres_instances" {
+			continue
+		}
+		b, _ := json.Marshal(tool.InputSchema)
+		var schema struct {
+			Properties map[string]any `json:"properties"`
+		}
+		_ = json.Unmarshal(b, &schema)
+		if len(schema.Properties) != 0 {
+			t.Fatalf("list_postgres_instances args = %v, Render accepts none", schema.Properties)
+		}
+	}
 
 	call := func(name string, args map[string]any) map[string]any {
 		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
