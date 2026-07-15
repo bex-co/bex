@@ -198,7 +198,6 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 	createBodies := map[string]string{
 		"previews":            `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"previews":{"generation":"manual"}}}`,
 		"maintenance mode":    `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":"/maintenance"}}}`,
-		"IP allow list":       `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"ipAllowList":[{"cidrBlock":"10.0.0.0/8"}]}}`,
 		"registry credential": `{"name":"new","type":"web_service","image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
 	}
 	for name, body := range createBodies {
@@ -217,7 +216,6 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 	patchBodies := map[string]string{
 		"previews":            `{"serviceDetails":{"previews":{"generation":"manual"}}}`,
 		"maintenance mode":    `{"serviceDetails":{"maintenanceMode":{"enabled":true}}}`,
-		"IP allow list":       `{"serviceDetails":{"ipAllowList":[{"cidrBlock":"10.0.0.0/8"}]}}`,
 		"registry credential": `{"image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
 	}
 	for name, body := range patchBodies {

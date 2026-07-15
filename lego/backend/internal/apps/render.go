@@ -98,6 +98,10 @@ type renderService struct {
 	// (enabled|disabled), controlling whether the platform .onbex.co subdomain
 	// is active for this service (w7/m31). Always present and non-empty.
 	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
+	// IPAllowList is Render's inbound IP allowlist for a web_service or
+	// static_site: each entry is {cidrBlock, description}. Nil/omitted when
+	// the allowlist is empty (open to all source IPs, Render's default).
+	IPAllowList []ipAllowEntry `json:"ipAllowList,omitempty"`
 }
 
 type renderOwner struct {
@@ -285,6 +289,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		NotifyOnFail:          a.NotifyOnFail,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
+		IPAllowList:           toIPAllowListEntries(a.IPAllowList),
 	}
 }
 

@@ -351,6 +351,11 @@ type AppView struct {
 	// Headers are a static_site's custom response-header rules (spec.headers,
 	// Render's /headers). Empty for every other type.
 	Headers []StaticHeaderView `json:"headers,omitempty"`
+	// IPAllowList is Render's inbound IP allowlist (spec.ipAllowList): the flat
+	// list of CIDR strings stored in the CR. Empty means open to all source IPs.
+	// Only meaningful for web_service and static_site. The REST wire format
+	// expands each entry to {cidrBlock, description}; here it is the raw list.
+	IPAllowList []string `json:"ipAllowList,omitempty"`
 }
 
 // StaticRouteView is the neutral projection of one static_site redirect/rewrite
@@ -536,6 +541,7 @@ func view(a *appv1alpha1.App) AppView {
 		PublishPath:      a.Spec.PublishPath,
 		Routes:           staticRouteViews(a.Spec.Routes),
 		Headers:          staticHeaderViews(a.Spec.Headers),
+		IPAllowList:      a.Spec.IPAllowList,
 	}
 }
 
@@ -844,6 +850,10 @@ type CreateRequest struct {
 	// SetRoutes/SetHeaders.
 	Routes  []StaticRouteView
 	Headers []StaticHeaderView
+	// IPAllowList is Render's inbound IP allowlist (spec.ipAllowList): the flat
+	// list of CIDR strings to set on the App CR. Empty means open to all source
+	// IPs (Render's default). Only meaningful for web_service and static_site.
+	IPAllowList []string
 	// DryRun, when true, resolves the spec and returns a preview without any
 	// Kubernetes or control-plane-store writes — zero side effects (w2/m29).
 	// The response shape is identical to a live create; the caller knows it is a
@@ -1406,6 +1416,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
 	}
+	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	spec := appv1alpha1.AppSpec{
 		Type:            svcType,
 		Repo:            req.Repo,
@@ -1430,6 +1443,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		NotifyOnFail:     notifyOnFail,
 		SubdomainPolicy:  subdomainPolicy,
 		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
+		IPAllowList:      req.IPAllowList,
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
@@ -1580,6 +1594,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.NotifyOnFail = want.NotifyOnFail
 	dst.SubdomainPolicy = want.SubdomainPolicy
 	dst.PreDeployCommand = want.PreDeployCommand
+	dst.IPAllowList = want.IPAllowList
 	dst.Expose = want.Expose
 	dst.Host = want.Host
 	dst.Hosts = want.Hosts
@@ -2198,6 +2213,21 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.SubdomainPolicy = normalized
+	})
+}
+
+// SetIPAllowList replaces the App's inbound CIDR allowlist (spec.ipAllowList):
+// each CIDR must be a valid IPv4 or IPv6 network in CIDR notation. An empty
+// slice clears the allowlist (Render's default — open to all source IPs). Only
+// meaningful for web_service and static_site (types with a public Ingress);
+// calling it on any other type is accepted without error (the operator ignores
+// the field for those types). Each CIDR is validated via core.ValidateCIDRs.
+func (s *Service) SetIPAllowList(ctx context.Context, name string, cidrs []string) (AppView, error) {
+	if err := core.ValidateCIDRs(cidrs); err != nil {
+		return AppView{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+		a.Spec.IPAllowList = cidrs
 	})
 }
 

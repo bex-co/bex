@@ -2355,6 +2355,45 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "升级方案",
     description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
   },
+  "services.networkingTitle": {
+    message: "网络",
+    description: "Settings Networking card title (w7/m32)",
+  },
+  "services.networkingDescription": {
+    message: "将入站 HTTP 流量限制为这些源 CIDR。",
+    description: "Settings Networking card description (w7/m32)",
+  },
+  "services.networkingHint": {
+    message:
+      "输入 CIDR（例如 203.0.113.0/24）并点击添加。列表为空时向所有源 IP 开放。",
+    description: "Hint below the CIDR list in the Networking card (w7/m32)",
+  },
+  "services.networkingOpen": {
+    message: "向所有源 IP 开放",
+    description:
+      "Placeholder shown when the allow list is empty (Render default, w7/m32)",
+  },
+  "services.networkingAdd": {
+    message: "添加",
+    description: "Button to add a CIDR to the draft list (w7/m32)",
+  },
+  "services.networkingSave": {
+    message: "保存",
+    description: "Button to persist the CIDR list (w7/m32)",
+  },
+  "services.networkingRemove": {
+    message: "移除 {cidr}",
+    description:
+      "Accessible label on the trash icon next to a CIDR tag (w7/m32)",
+  },
+  "services.networkingSaved": {
+    message: "IP 允许列表已更新",
+    description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.networkingError": {
+    message: "更新 IP 允许列表失败：{error}",
+    description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
 };
 
 export default zhServices;

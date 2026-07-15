@@ -23,6 +23,7 @@ import { NotifyOnFailRow } from "@/features/services/components/notify-on-fail-r
 import { DisplayNameRow } from "@/features/services/components/display-name-row";
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
+import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 import {
   isCron,
   isStaticSite,
@@ -188,6 +189,13 @@ export function ServiceSettingsPage() {
             serviceId={serviceId}
             url={service?.url ?? null}
             renderSubdomainPolicy={service?.renderSubdomainPolicy}
+          />
+          {/* Networking (w7/m32): inbound IP allowlist — web_service and
+              static_site only (both have a public Ingress). */}
+          <ServiceNetworkingPanel
+            serviceId={serviceId}
+            currentAllowList={service?.ipAllowList}
+            onSaved={refetch}
           />
         </>
       )}

@@ -393,6 +393,16 @@ spec:
                 description: Image is a prebuilt OCI image to run directly, skipping
                   the build plane.
                 type: string
+              ipAllowList:
+                description: |-
+                  IPAllowList restricts the HTTP(S) Ingress to these CIDRs via a Traefik
+                  Middleware on the App's Ingress. Empty means the Ingress is open to all
+                  source IPs (Render's default). Only meaningful for web_service and
+                  static_site (the types that have a public Ingress); ignored for
+                  private_service, background_worker, and cron_job.
+                items:
+                  type: string
+                type: array
               maxShutdownDelaySeconds:
                 description: |-
                   MaxShutdownDelaySeconds is the maximum graceful-shutdown window after

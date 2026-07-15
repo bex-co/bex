@@ -2393,6 +2393,45 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Upgrade plan",
     description: "Upgrade CTA button inside the cap-limit Alert (w7/m9)",
   },
+  "services.networkingTitle": {
+    message: "Networking",
+    description: "Settings Networking card title (w7/m32)",
+  },
+  "services.networkingDescription": {
+    message: "Restrict inbound HTTP traffic to these source CIDRs.",
+    description: "Settings Networking card description (w7/m32)",
+  },
+  "services.networkingHint": {
+    message:
+      "Enter a CIDR block (e.g. 203.0.113.0/24) and press Add. Empty list opens the service to all source IPs.",
+    description: "Hint below the CIDR list in the Networking card (w7/m32)",
+  },
+  "services.networkingOpen": {
+    message: "Open to all source IPs",
+    description:
+      "Placeholder shown when the allow list is empty (Render default, w7/m32)",
+  },
+  "services.networkingAdd": {
+    message: "Add",
+    description: "Button to add a CIDR to the draft list (w7/m32)",
+  },
+  "services.networkingSave": {
+    message: "Save",
+    description: "Button to persist the CIDR list (w7/m32)",
+  },
+  "services.networkingRemove": {
+    message: "Remove {cidr}",
+    description:
+      "Accessible label on the trash icon next to a CIDR tag (w7/m32)",
+  },
+  "services.networkingSaved": {
+    message: "IP allowlist updated",
+    description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
+  },
+  "services.networkingError": {
+    message: "Failed to update IP allowlist: {error}",
+    description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
+  },
 };
 
 export default enServices;

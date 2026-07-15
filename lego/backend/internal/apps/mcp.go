@@ -172,6 +172,12 @@ type subdomainPolicyArgs struct {
 	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.onbex.co is active) or disabled (platform host dropped; only custom domains serve the App)"`
 }
 
+// serviceIPAllowListArgs is set_service_ip_allow_list's input.
+type serviceIPAllowListArgs struct {
+	ServiceID string   `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	CIDRs     []string `json:"cidrs,omitempty" jsonschema:"CIDR blocks to allow (e.g. '1.2.3.4/32'); empty or null clears the allowlist (open to all source IPs)"`
+}
+
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
@@ -202,6 +208,7 @@ type createWebServiceArgs struct {
 	Port                    int32           `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
 	Replicas                int32           `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 	DryRun                  bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	IPAllowList             []string        `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`
 }
 
 // envVarArg is Render's {key, value} env-var shape, shared by the create tool.
@@ -251,6 +258,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Port:                    a.Port,
 		Replicas:                a.Replicas,
 		DryRun:                  a.DryRun,
+		IPAllowList:             a.IPAllowList,
 	}
 }
 
@@ -840,6 +848,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Control whether the platform subdomain (<slug>.onbex.co) is active for a web or static-site service (Render's renderSubdomainPolicy field). 'enabled' (default) keeps the platform host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain to be already configured before disabling — otherwise the service becomes unreachable.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subdomainPolicyArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_service_ip_allow_list",
+		Description: "Set the inbound IP allowlist for a web service or static site. Each entry is a CIDR in IPv4 or IPv6 notation (e.g. '1.2.3.4/32', '::/0'). An empty or null cidrs list clears the allowlist — opens the service to all source IPs (Render's default). Tracks Render's ipAllowList on webServiceDetails / staticSiteDetails.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceIPAllowListArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetIPAllowList(ctx, in.ServiceID, in.CIDRs)
 		if err != nil {
 			return nil, renderService{}, err
 		}

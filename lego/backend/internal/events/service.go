@@ -160,6 +160,7 @@ const (
 	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
 	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
 	TypeSubdomainPolicyChanged  = "subdomain_policy_changed"
+	TypeIPAllowListChanged      = "ip_allow_list_changed"
 	TypeJobStarted              = "job_started"
 	TypeJobCanceled             = "job_canceled"
 )
@@ -190,6 +191,7 @@ var eventTypes = map[string]string{
 	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
 	"apps.SetNotifyOnFail":         TypeNotifyOnFailChanged,
 	"apps.SetSubdomainPolicy":      TypeSubdomainPolicyChanged,
+	"apps.SetIPAllowList":          TypeIPAllowListChanged,
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
 	"apps.SetRootDir":              TypeRootDirectoryChanged,
 	"apps.SetDockerfilePath":       TypeDockerfilePathChanged,

@@ -270,9 +270,6 @@ func (r createServiceRequest) unsupportedField() string {
 	if len(r.ServiceDetails.MaintenanceMode) > 0 {
 		return "maintenanceMode"
 	}
-	if len(r.ServiceDetails.IPAllowList) > 0 {
-		return "ipAllowList"
-	}
 	if r.ServiceDetails.EnvSpecificDetails != nil && len(r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID) > 0 {
 		return "registryCredentialId"
 	}
@@ -292,9 +289,6 @@ func (r patchServiceRequest) unsupportedField() string {
 	if len(r.ServiceDetails.MaintenanceMode) > 0 {
 		return "maintenanceMode"
 	}
-	if len(r.ServiceDetails.IPAllowList) > 0 {
-		return "ipAllowList"
-	}
 	if len(r.ServiceDetails.EnvSpecific) > 0 {
 		var fields map[string]json.RawMessage
 		if json.Unmarshal(r.ServiceDetails.EnvSpecific, &fields) == nil && len(fields["registryCredentialId"]) > 0 {
@@ -302,6 +296,38 @@ func (r patchServiceRequest) unsupportedField() string {
 		}
 	}
 	return ""
+}
+
+// ipAllowEntry is components.schemas.cidrBlockAndDescription — Render's wire
+// shape for an ipAllowList entry. bex stores only the CIDR (no description) in
+// the CRD; description is accepted on input and discarded (like PG/KV).
+type ipAllowEntry struct {
+	CidrBlock   string `json:"cidrBlock"`
+	Description string `json:"description"`
+}
+
+// toIPAllowListEntries converts flat CIDRs to the Render wire shape.
+func toIPAllowListEntries(cidrs []string) []ipAllowEntry {
+	if len(cidrs) == 0 {
+		return nil
+	}
+	out := make([]ipAllowEntry, len(cidrs))
+	for i, c := range cidrs {
+		out[i] = ipAllowEntry{CidrBlock: c}
+	}
+	return out
+}
+
+// fromIPAllowListEntries extracts the CIDR strings from the Render wire shape.
+func fromIPAllowListEntries(entries []ipAllowEntry) []string {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = e.CidrBlock
+	}
+	return out
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -371,6 +397,13 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	for _, f := range r.SecretFiles {
 		secretFiles = append(secretFiles, core.SecretFile{Name: f.Name, Content: f.Content})
 	}
+	var ipAllowList []string
+	if r.ServiceDetails != nil && len(r.ServiceDetails.IPAllowList) > 0 && string(r.ServiceDetails.IPAllowList) != "null" {
+		var entries []ipAllowEntry
+		if json.Unmarshal(r.ServiceDetails.IPAllowList, &entries) == nil {
+			ipAllowList = fromIPAllowListEntries(entries)
+		}
+	}
 	return CreateRequest{
 		OwnerID:                 r.OwnerID,
 		EnvironmentID:           r.EnvironmentID,
@@ -403,6 +436,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		PublishPath:             publishPath,
 		Routes:                  routeViewsFromRender(r.Routes),
 		Headers:                 headerViewsFromRender(r.Headers),
+		IPAllowList:             ipAllowList,
 		DryRun:                  r.DryRun,
 	}
 }
@@ -556,6 +590,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var idleTTL *int32
 		var maxShutdownDelay optionalInt32
 		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand, dockerfilePath *string
+		var patchIPAllowList *[]string // nil = not provided (leave unchanged); non-nil = replace
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
@@ -564,6 +599,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			schedule = req.ServiceDetails.Schedule
 			publishPath = req.ServiceDetails.PublishPath
 			buildCommand = req.ServiceDetails.BuildCommand
+			if len(req.ServiceDetails.IPAllowList) > 0 && string(req.ServiceDetails.IPAllowList) != "null" {
+				var entries []ipAllowEntry
+				if err := json.Unmarshal(req.ServiceDetails.IPAllowList, &entries); err != nil {
+					core.WriteErr(w, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err))
+					return
+				}
+				cidrs := fromIPAllowListEntries(entries)
+				patchIPAllowList = &cidrs
+			}
 			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
 				var envSpecific struct {
 					BuildCommand   *string `json:"buildCommand"`
@@ -606,7 +650,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Name != nil {
 			displayName = req.Name
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil {
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -728,6 +772,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.RenderSubdomainPolicy != nil {
 			if app, err = s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if patchIPAllowList != nil {
+			if app, err = s.SetIPAllowList(r.Context(), id, *patchIPAllowList); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
