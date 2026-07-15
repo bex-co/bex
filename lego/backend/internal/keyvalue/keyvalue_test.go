@@ -161,12 +161,13 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
-	var view KeyValueView
+	var view renderKeyValue
 	_ = json.Unmarshal(w.Body.Bytes(), &view)
 	// The view echoes Render's underscore-separated wire format regardless of
-	// which separator the create request used (renderToCRD/crdToRender).
-	if view.MaxmemoryPolicy != "volatile_ttl" || view.PersistenceMode != "off" {
-		t.Fatalf("view settings = %q/%q", view.MaxmemoryPolicy, view.PersistenceMode)
+	// which separator the create request used (renderToCRD/crdToRender), nested
+	// under "options" (Render's real KeyValueDetail shape, not top-level).
+	if view.Options.MaxmemoryPolicy != "volatile_ttl" || view.Options.PersistenceMode != "off" {
+		t.Fatalf("view settings = %q/%q", view.Options.MaxmemoryPolicy, view.Options.PersistenceMode)
 	}
 	var made appv1alpha1.KeyValue
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-mm"}, &made); err != nil {
@@ -433,8 +434,9 @@ func TestIPAllowList(t *testing.T) {
 func TestRESTIPAllowList(t *testing.T) {
 	svc, cl := newService()
 
-	// create with an allowlist seed
-	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-rest","public":true,"ipAllowList":["203.0.113.0/24"]}`)
+	// create with an allowlist seed — Render's real wire shape is
+	// {cidrBlock,description} objects, not bare CIDR strings.
+	w := serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-rest","public":true,"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`)
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
@@ -443,15 +445,16 @@ func TestRESTIPAllowList(t *testing.T) {
 		t.Fatalf("create must seed spec.ipAllowList: %v %+v", err, made.Spec)
 	}
 
-	// PUT replaces; the response is the updated view carrying ipAllowList
+	// PUT replaces; the response is the updated view carrying ipAllowList,
+	// wrapped as Render's {cidrBlock,description} entries (not bare strings).
 	w = serveREST(svc, "PUT", "/v1/key-value/acl-rest/ip-allow-list", `{"cidrs":["10.0.0.0/8","192.0.2.0/24"]}`)
 	if w.Code != 200 {
 		t.Fatalf("put => 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var view KeyValueView
+	var view renderKeyValue
 	_ = json.Unmarshal(w.Body.Bytes(), &view)
-	if len(view.IPAllowList) != 2 || view.IPAllowList[0] != "10.0.0.0/8" {
-		t.Fatalf("put view ipAllowList = %v", view.IPAllowList)
+	if len(view.IPAllowList) != 2 || view.IPAllowList[0].CidrBlock != "10.0.0.0/8" {
+		t.Fatalf("put view ipAllowList = %+v", view.IPAllowList)
 	}
 
 	// GET returns the {"cidrs": ...} envelope
@@ -474,7 +477,7 @@ func TestRESTIPAllowList(t *testing.T) {
 	}
 
 	// create validates the seed too — same gate, no CR written
-	w = serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-bad","ipAllowList":["not-a-cidr"]}`)
+	w = serveREST(svc, "POST", "/v1/key-value", `{"name":"acl-bad","ipAllowList":[{"cidrBlock":"not-a-cidr"}]}`)
 	if w.Code != 400 {
 		t.Fatalf("create with bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
 	}

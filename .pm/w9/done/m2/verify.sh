@@ -35,6 +35,36 @@ check() {
   fi
 }
 
+# checkFields DESC CMD... — runs CMD once, then asserts every pattern in
+# WANT_FIELDS (space-separated, set by the caller before calling this) is
+# present in the single output. Exists because `check`'s single-pattern form
+# missed a real regression once: every keyvalues subcommand exited 0 and
+# echoed the record's id/name back fine while bex-api silently sent `ownerId`
+# empty and dropped `maxmemoryPolicy`/`persistenceMode` entirely (Render's
+# real KeyValueDetail nests them under `owner`/`options`, bex-api sent them
+# flat) — 2026-07-15. A single-field spot check never would have caught it.
+checkFields() {
+  local desc="$1"; shift
+  local got status field missing=""
+  got="$("$@" 2>&1)"; status=$?
+  if [ "$status" != 0 ]; then
+    echo "FAIL: $desc (exit $status)"
+    echo "  got: $got"
+    fail=1
+    return
+  fi
+  for field in $WANT_FIELDS; do
+    grep -qE "$field" <<<"$got" || missing="$missing $field"
+  done
+  if [ -n "$missing" ]; then
+    echo "FAIL: $desc — missing:$missing"
+    echo "  got: $got"
+    fail=1
+  else
+    echo "PASS: $desc"
+  fi
+}
+
 check "login recognizes RENDER_API_KEY" \
   "Success: CLI is already authenticated." \
   "$RENDER_BIN" login --confirm -o json
@@ -51,22 +81,28 @@ check "projects responds without error" \
   "" \
   "$RENDER_BIN" projects -o json
 
-# KeyValue lifecycle (RC3 envelope + RC4 maxmemoryPolicy fix). Cleanup runs
-# even on failure so a broken run never leaves the test instance behind.
+# KeyValue lifecycle (RC3 envelope + RC4 maxmemoryPolicy fix, plus the
+# 2026-07-15 owner/options-nesting + ipAllowList wire-shape fix below).
+# Cleanup runs even on failure so a broken run never leaves the test instance
+# behind.
 KV_NAME="verify-kv-$$"
 cleanup_kv() { "$RENDER_BIN" keyvalues delete "$KV_NAME" --confirm -o json >/dev/null 2>&1 || true; }
 trap cleanup_kv EXIT
 
-check "keyvalues create accepts Render's underscore maxmemoryPolicy (RC4)" \
-  "\"name\":[[:space:]]*\"$KV_NAME\"" \
-  "$RENDER_BIN" keyvalues create --name "$KV_NAME" --confirm -o json
+# Every field Render's real KeyValueDetail carries that bex-api has
+# historically dropped or zero-valued silently (RC3/RC4/owner-options-nesting/
+# ipAllowList-shape) — checked together so a partial regression can't hide
+# behind one passing field, per checkFields' doc comment above.
+WANT_FIELDS='"id":[[:space:]]*"'"$KV_NAME"'" "name":[[:space:]]*"'"$KV_NAME"'" "ownerId":[[:space:]]*"tea-[a-z0-9]+" "maxmemoryPolicy":[[:space:]]*"allkeys_lru" "persistenceMode":[[:space:]]*"journal_snapshot" "cidrBlock":[[:space:]]*"10\.0\.0\.0/8"'
 
-check "keyvalues list returns the real record, not zero values (RC3)" \
-  "\"name\":[[:space:]]*\"$KV_NAME\"" \
+checkFields "keyvalues create: owner/options nested + underscore maxmemoryPolicy (RC4) + ipAllowList shape all correct" \
+  "$RENDER_BIN" keyvalues create --name "$KV_NAME" \
+    --ip-allow-list "cidr=10.0.0.0/8,description=verify" --confirm -o json
+
+checkFields "keyvalues list: same fields survive the cursor envelope (RC3)" \
   "$RENDER_BIN" keyvalues list -o json
 
-check "keyvalues get resolves by name without 'multiple instances found' (RC3)" \
-  "\"id\":[[:space:]]*\"$KV_NAME\"" \
+checkFields "keyvalues get: resolves by name (RC3) with every field intact" \
   "$RENDER_BIN" keyvalues get "$KV_NAME" -o json
 
 check "keyvalues suspend resolves and applies" \

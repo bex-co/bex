@@ -531,3 +531,75 @@ confirming RC1's error-envelope fix too)
 ```
 
 `go build ./...` and `go test ./internal/{core,apps,deploys,postgres,keyvalue,workspaces,logs,api}/...` all pass on `6993b3dd`.
+
+## RC11: KeyValue owner/options wire-shape bug — found + fixed (2026-07-15, this session)
+
+User directive: "are those features really working well? try run them again
+and fix problems" — re-verified the "✅ Fixed" `keyvalues` rows field-by-field
+instead of trusting exit-code/id-presence checks, and found a real,
+previously-missed bug.
+
+### Pre-fix: silently empty/missing fields
+```
+$ render keyvalues create --name kv-real-test --confirm -o json
+{
+  "data": {
+    "id": "kv-real-test", "name": "kv-real-test", "plan": "free",
+    "region": "", "status": "creating", ...
+    "ownerId": "",             <- WRONG: raw REST had a real tenant id here
+    ...(no maxmemoryPolicy or persistenceMode keys at all)
+  }
+}
+$ curl .../v1/key-value/kv-real-test   # raw REST, same instance
+{"id":"kv-real-test",...,"maxmemoryPolicy":"allkeys_lru","persistenceMode":"journal_snapshot",...,"ownerId":"tea-d9bhnchjg4r9asmbuq4g"}
+```
+The CLI's own KeyValueDetail decode target expects `owner: {id,name,type}`
+(nested) and `options: {maxmemoryPolicy,persistenceMode}` (nested) — bex-api
+sent flat `ownerId`/`maxmemoryPolicy`/`persistenceMode`, so those fields
+silently zero-valued/vanished client-side even though the raw wire data was
+correct. `keyvalues create --ip-allow-list` also 400'd outright:
+```
+$ render keyvalues create --name kv-iptest --ip-allow-list "cidr=10.0.0.0/8,description=internal" --confirm -o json
+Error: unknown error
+# via logging proxy: RESP 400: {"error":"bad request body"}
+# (ipAllowList as []{cidrBlock,description} objects failed to decode into bex's []string)
+```
+
+### Fix
+`lego/backend/internal/keyvalue/rest.go`: new REST-boundary-only wire types
+(`renderKeyValue`, `keyValueOwner`, `keyValueOptionsView`, `ipAllowEntry`) +
+`toRenderKeyValue` mapper, used by every single-item handler (create/get/
+patch/suspend/resume/ip-allow-list PUT); POST body decode now accepts
+Render's `ipAllowList` shape via an embedded-struct wire decode
+(`createKeyValueWire`-equivalent inline struct); all three hand-written
+`{"error":"bad request body"}` literals replaced with a `writeBadRequestBody`
+helper routed through `core.WriteErr` (they were bypassing RC1's fix
+entirely). `KeyValueView`/`CreateKeyValueRequest` (the GraphQL/MCP-shared
+core types) are unchanged — this is a REST-adapter-only translation, same
+altitude as the existing `keyValueWithCursor` list envelope.
+
+### Post-fix: full lifecycle, every field verified live
+```
+$ render keyvalues create --name kv-real-verify --ip-allow-list "cidr=10.0.0.0/8,description=verify" --confirm -o json
+{
+  "data": {
+    "id": "kv-real-verify", "name": "kv-real-verify", "plan": "free",
+    "ownerId": "tea-d9bhu49jg4rdiv01qi90", "ownerType": "team",
+    "ipAllowList": [{"cidrBlock": "10.0.0.0/8", "description": ""}],
+    "maxmemoryPolicy": "allkeys_lru", "persistenceMode": "journal_snapshot",
+    ...
+  }
+}
+```
+(`description` is honestly empty, not fabricated — the KeyValue CRD,
+`lego/types/v1alpha1/keyvalue_types.go`, has no per-CIDR description field to
+store it in.) Same full field set confirmed present across list/get/update/
+suspend/resume/delete. `go build ./...` and `go test ./...` (whole backend,
+fresh, not cached) both green. `scripts/cli-compat.sh verify` strengthened
+with a `checkFields` helper (asserts a whole field set together, not one at a
+time — the exact gap that let RC11 slip past the original "fixed" claim) and
+re-run clean twice in a row with no leftover test resources.
+
+Not fixed this pass: Postgres has the identical bug (unverified but highly
+likely — same generated-type pattern, `PostgresDetail.Owner Owner`) — filed
+as `.pm/w8/005.md`.
