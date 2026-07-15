@@ -2244,9 +2244,157 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Activity",
     description: "Events tab card title",
   },
+  "services.eventsDescription": {
+    message: "Recent deploys and service changes.",
+    description: "Events tab card description",
+  },
+  "services.eventsCount": {
+    message: "{count} recent events",
+    description: "Accessible label for the number of visible service events",
+  },
+  "services.eventsEmptyTitle": {
+    message: "No activity yet",
+    description: "Events tab empty-state title",
+  },
   "services.eventsEmpty": {
-    message: "No events yet.",
-    description: "Events tab empty state",
+    message: "Deploys and service changes will appear here.",
+    description: "Events tab empty-state description",
+  },
+  "services.eventsErrorTitle": {
+    message: "Activity is unavailable",
+    description: "Events tab query-error title",
+  },
+  "services.eventsErrorDescription": {
+    message: "We couldn't load recent activity. Try again in a moment.",
+    description: "Events tab query-error description",
+  },
+  "services.eventsRetry": {
+    message: "Try again",
+    description: "Events tab query-error retry button",
+  },
+  "services.eventsActor": {
+    message: "by {actor}",
+    description: "Actor attribution shown on a service event",
+  },
+  "services.eventsDeployReference": {
+    message: "Deploy {id}",
+    description: "Deploy identifier shown on a deploy activity row",
+  },
+  "services.eventsTriggerRollback": {
+    message: "Rollback",
+    description: "Deploy event trigger: rollback",
+  },
+  "services.eventsTriggerFirstBuild": {
+    message: "First build",
+    description: "Deploy event trigger: initial build",
+  },
+  "services.eventsTriggerManual": {
+    message: "Manual deploy",
+    description: "Deploy event trigger: manual",
+  },
+  "services.eventsTriggerEnvUpdated": {
+    message: "Environment updated",
+    description: "Deploy event trigger: environment update",
+  },
+  "services.eventsTriggerClearCache": {
+    message: "Cache cleared",
+    description: "Deploy event trigger: build-cache clear",
+  },
+  "services.eventsTriggerDeployedByRender": {
+    message: "Platform deploy",
+    description: "Deploy event trigger: platform initiated",
+  },
+  "services.eventsTypeDeployStarted": {
+    message: "Deploy started",
+    description: "Service activity type: deploy started",
+  },
+  "services.eventsTypeDeployFinished": {
+    message: "Deploy finished",
+    description: "Service activity type: deploy finished",
+  },
+  "services.eventsTypeSuspended": {
+    message: "Service suspended",
+    description: "Service activity type: service suspended",
+  },
+  "services.eventsTypeResumed": {
+    message: "Service resumed",
+    description: "Service activity type: service resumed",
+  },
+  "services.eventsTypeRestarted": {
+    message: "Service restarted",
+    description: "Service activity type: service restarted",
+  },
+  "services.eventsTypePlanChanged": {
+    message: "Instance type changed",
+    description: "Service activity type: plan changed",
+  },
+  "services.eventsTypeInstanceCountChanged": {
+    message: "Instance count changed",
+    description: "Service activity type: manual scale",
+  },
+  "services.eventsTypeAutoscalingChanged": {
+    message: "Autoscaling updated",
+    description: "Service activity type: autoscaling configuration changed",
+  },
+  "services.eventsTypeCronRunStarted": {
+    message: "Cron run started",
+    description: "Service activity type: cron run started",
+  },
+  "services.eventsTypeCronRunFinished": {
+    message: "Cron run finished",
+    description: "Service activity type: cron run finished",
+  },
+  "services.eventsTypeEnvVarsChanged": {
+    message: "Environment variables changed",
+    description: "Service activity type: environment variables changed",
+  },
+  "services.eventsTypeEnvGroupLinked": {
+    message: "Environment group linked",
+    description: "Service activity type: environment group linked",
+  },
+  "services.eventsTypeEnvGroupUnlinked": {
+    message: "Environment group unlinked",
+    description: "Service activity type: environment group unlinked",
+  },
+  "services.eventsTypeAutoDeployChanged": {
+    message: "Auto-deploy updated",
+    description: "Service activity type: auto-deploy setting changed",
+  },
+  "services.eventsTypeIdleTimeoutChanged": {
+    message: "Idle timeout updated",
+    description: "Service activity type: idle timeout changed",
+  },
+  "services.eventsTypeDisplayNameChanged": {
+    message: "Display name changed",
+    description: "Service activity type: display name changed",
+  },
+  "services.eventsTypeCustomDomainAdded": {
+    message: "Custom domain added",
+    description: "Service activity type: custom domain added",
+  },
+  "services.eventsTypeCustomDomainRemoved": {
+    message: "Custom domain removed",
+    description: "Service activity type: custom domain removed",
+  },
+  "services.eventsTypeNotificationsChanged": {
+    message: "Failure notifications updated",
+    description: "Service activity type: failure notification setting changed",
+  },
+  "services.eventsTypeSubdomainPolicyChanged": {
+    message: "Platform subdomain updated",
+    description: "Service activity type: platform subdomain policy changed",
+  },
+  "services.eventsTypeStaticSiteChanged": {
+    message: "Static site settings changed",
+    description: "Service activity type: static-site configuration changed",
+  },
+  "services.eventsTypeBuildSettingsChanged": {
+    message: "Build and deploy settings changed",
+    description: "Service activity type: build or deploy configuration changed",
+  },
+  "services.eventsTypeServiceChanged": {
+    message: "Service settings changed",
+    description: "Fallback service activity type",
   },
   "services.eventsManualDeploy": {
     message: "Manual Deploy",

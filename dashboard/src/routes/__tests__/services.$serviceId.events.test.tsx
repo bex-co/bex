@@ -134,6 +134,64 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
+  it("does not offer cancel on a started event whose deploy already finished", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent(),
+          deployEvent({
+            id: "evt-started-001",
+            type: "deploy_started",
+            details: {
+              deployId: "dep-live-001",
+              deployStatus: "",
+              preDeployStatus: "",
+              trigger: { firstBuild: true },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Deploy started")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names non-deploy activity instead of presenting it as an unknown deploy", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            id: "evt-scale-001",
+            type: "instance_count_changed",
+            details: {
+              deployId: "",
+              deployStatus: "",
+              preDeployStatus: "",
+              trigger: null,
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Instance count changed"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("navigates to the rollback deploy's own page once the mutation resolves its id", async () => {
     mockUseQuery.mockReturnValue({
       data: { serviceEvents: [deployEvent()] },
