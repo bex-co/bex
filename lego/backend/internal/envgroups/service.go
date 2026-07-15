@@ -50,6 +50,12 @@ import (
 type Service struct {
 	*core.Base
 	Store core.SecretKV
+	// EnvironmentWorkspace resolves an Environment id to its owning workspace.
+	// The composition root wires this to environments.Service.Get. It is only
+	// required when a caller supplies environmentId; nil keeps standalone env
+	// groups available while honestly refusing an association the process cannot
+	// validate.
+	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
 	// Selections is the shared MCP per-session workspace selection (w6/m24,
 	// mirroring apps/postgres/keyvalue/apikeys, core.WorkspaceSelectionReader):
 	// list_env_groups'/create_env_group's ownerId precedence (explicit arg > the
@@ -77,18 +83,18 @@ type SecretFileView struct {
 // per-var / per-file reveal verbs return them under the sensitive scope.
 // OwnerID/CreatedAt/UpdatedAt (w6/m24, Render's `ownerId`/timestamps) are sourced
 // from the group's own stored meta, never faked when unknown (omitempty) —
-// AppView.OwnerID's own convention. Render's env-group object also carries an
-// `environmentId`; bex env groups have no Environment association today (unlike
-// Database/KeyValue's LabelEnvironment) so it stays unmodeled (docs/ADR018).
+// AppView.OwnerID's own convention. EnvironmentID is the optional Render-shaped
+// Environment membership added by w6/m24/t011.
 type EnvGroupView struct {
-	ID           string           `json:"id"`
-	Name         string           `json:"name"`
-	OwnerID      string           `json:"ownerId,omitempty"`
-	ServiceLinks []string         `json:"serviceLinks"`
-	EnvVars      []EnvVarView     `json:"envVars"`
-	SecretFiles  []SecretFileView `json:"secretFiles"`
-	CreatedAt    string           `json:"createdAt,omitempty"`
-	UpdatedAt    string           `json:"updatedAt,omitempty"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	OwnerID       string           `json:"ownerId,omitempty"`
+	EnvironmentID string           `json:"environmentId,omitempty"`
+	ServiceLinks  []string         `json:"serviceLinks"`
+	EnvVars       []EnvVarView     `json:"envVars"`
+	SecretFiles   []SecretFileView `json:"secretFiles"`
+	CreatedAt     string           `json:"createdAt,omitempty"`
+	UpdatedAt     string           `json:"updatedAt,omitempty"`
 }
 
 // --- store paths + materialized Secret names ----------------------------------
@@ -107,11 +113,12 @@ func filesSecretName(gid string) string { return gid + "-files" }
 // group created (or never re-read) while the control-plane store is off; see
 // readMeta's migration for how a pre-attribution group gets one.
 type meta struct {
-	name      string
-	links     []string
-	workspace string
-	createdAt string
-	updatedAt string
+	name        string
+	links       []string
+	workspace   string
+	environment string
+	createdAt   string
+	updatedAt   string
 }
 
 // --- group lifecycle ----------------------------------------------------------
@@ -122,6 +129,53 @@ type meta struct {
 // nil), groups aren't attributed and the list stays unfiltered, byte-identical
 // to before. View scope.
 func (s *Service) ListEnvGroups(ctx context.Context, ownerID string) ([]EnvGroupView, error) {
+	groups, err := s.listScopedMeta(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EnvGroupView, 0, len(groups))
+	for _, group := range groups {
+		v, err := s.viewFromMeta(ctx, group.id, group.meta)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+// EnvironmentMembership is the non-secret, narrow projection the Environments
+// feature needs to assemble Environment.envGroupIds without reading every
+// group's env-var and secret-file maps.
+type EnvironmentMembership struct {
+	ID            string
+	EnvironmentID string
+}
+
+// ListEnvironmentMemberships returns one workspace's group-to-Environment
+// assignments without loading secret contents. It shares ListEnvGroups' exact
+// workspace binding and authorization path.
+func (s *Service) ListEnvironmentMemberships(ctx context.Context, ownerID string) ([]EnvironmentMembership, error) {
+	groups, err := s.listScopedMeta(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EnvironmentMembership, 0, len(groups))
+	for _, group := range groups {
+		out = append(out, EnvironmentMembership{ID: group.id, EnvironmentID: group.meta.environment})
+	}
+	return out, nil
+}
+
+type scopedMeta struct {
+	id string
+	meta
+}
+
+// listScopedMeta is the shared metadata-only list core. Keeping it below both
+// public reads prevents Environment membership lookups from fetching secret
+// maps while preserving one scoping implementation.
+func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedMeta, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
@@ -131,27 +185,23 @@ func (s *Service) ListEnvGroups(ctx context.Context, ownerID string) ([]EnvGroup
 	}
 	scopeTo, scoped := s.boundWorkspace(ctx)
 	if scoped && scopeTo == "" {
-		return []EnvGroupView{}, nil
+		return []scopedMeta{}, nil
 	}
 	ids, err := s.Store.List(ctx, "env-groups")
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(ids)
-	out := make([]EnvGroupView, 0, len(ids))
+	out := make([]scopedMeta, 0, len(ids))
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
 		if err != nil {
 			return nil, err
 		}
 		if scoped && m.workspace != scopeTo {
-			continue // another workspace's group — not this caller's to see
+			continue
 		}
-		v, err := s.viewFromMeta(ctx, gid, m)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
+		out = append(out, scopedMeta{id: gid, meta: m})
 	}
 	return out, nil
 }
@@ -167,9 +217,10 @@ func (s *Service) GetEnvGroup(ctx context.Context, gid string) (EnvGroupView, er
 }
 
 // CreateEnvGroup mints a group with a name in ownerID's workspace ("" => the
-// caller's default, Render's `ownerId`, w6/m24) and materializes its (empty)
-// projection Secrets so a link can reference them immediately. Manage scope.
-func (s *Service) CreateEnvGroup(ctx context.Context, ownerID, name string) (EnvGroupView, error) {
+// caller's default, Render's `ownerId`, w6/m24), optionally assigns it to an
+// Environment in that same workspace, and materializes its (empty) projection
+// Secrets so a link can reference them immediately. Manage scope.
+func (s *Service) CreateEnvGroup(ctx context.Context, ownerID, name, environmentID string) (EnvGroupView, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
@@ -183,8 +234,11 @@ func (s *Service) CreateEnvGroup(ctx context.Context, ownerID, name string) (Env
 	}
 	gid := id.New(id.EnvGroup)
 	workspace, _ := s.Tenant(ctx) // "" with the store off, matching AppView.OwnerID
+	if err := s.validateEnvironment(ctx, environmentID, workspace); err != nil {
+		return EnvGroupView{}, err
+	}
 	now := s.now()
-	m := meta{name: name, workspace: workspace, createdAt: now, updatedAt: now}
+	m := meta{name: name, workspace: workspace, environment: environmentID, createdAt: now, updatedAt: now}
 	if err := s.writeMeta(ctx, gid, m); err != nil {
 		return EnvGroupView{}, err
 	}
@@ -195,10 +249,29 @@ func (s *Service) CreateEnvGroup(ctx context.Context, ownerID, name string) (Env
 		return EnvGroupView{}, err
 	}
 	return EnvGroupView{
-		ID: gid, Name: name, OwnerID: workspace,
+		ID: gid, Name: name, OwnerID: workspace, EnvironmentID: environmentID,
 		ServiceLinks: []string{}, EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
+}
+
+// SetEnvironmentID assigns or unassigns one group from an Environment. A
+// non-empty Environment must exist in the group's own workspace; moving a group
+// between Environments is a single metadata update. Manage scope.
+func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID string) error {
+	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+	if err != nil {
+		return err
+	}
+	if err := s.validateEnvironment(ctx, environmentID, m.workspace); err != nil {
+		return err
+	}
+	if m.environment == environmentID {
+		return nil
+	}
+	m.environment = environmentID
+	_, err = s.touch(ctx, gid, m)
+	return err
 }
 
 // RenameEnvGroup updates a group's display name without changing its id,
@@ -804,14 +877,15 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 		links = []string{}
 	}
 	return EnvGroupView{
-		ID:           gid,
-		Name:         m.name,
-		OwnerID:      m.workspace,
-		ServiceLinks: links,
-		EnvVars:      envKeyViews(env),
-		SecretFiles:  fileNameViews(files),
-		CreatedAt:    m.createdAt,
-		UpdatedAt:    m.updatedAt,
+		ID:            gid,
+		Name:          m.name,
+		OwnerID:       m.workspace,
+		EnvironmentID: m.environment,
+		ServiceLinks:  links,
+		EnvVars:       envKeyViews(env),
+		SecretFiles:   fileNameViews(files),
+		CreatedAt:     m.createdAt,
+		UpdatedAt:     m.updatedAt,
 	}, nil
 }
 
@@ -843,10 +917,11 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 		return meta{}, core.ErrNotFound
 	}
 	m := meta{
-		name:      raw["name"],
-		workspace: raw["workspace"],
-		createdAt: raw["createdAt"],
-		updatedAt: raw["updatedAt"],
+		name:        raw["name"],
+		workspace:   raw["workspace"],
+		environment: raw["environment"],
+		createdAt:   raw["createdAt"],
+		updatedAt:   raw["updatedAt"],
 	}
 	if l := strings.TrimSpace(raw["links"]); l != "" {
 		m.links = strings.Split(l, ",")
@@ -862,12 +937,33 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 
 func (s *Service) writeMeta(ctx context.Context, gid string, m meta) error {
 	return s.Store.Put(ctx, metaPath(gid), map[string]string{
-		"name":      m.name,
-		"links":     strings.Join(m.links, ","),
-		"workspace": m.workspace,
-		"createdAt": m.createdAt,
-		"updatedAt": m.updatedAt,
+		"name":        m.name,
+		"links":       strings.Join(m.links, ","),
+		"workspace":   m.workspace,
+		"environment": m.environment,
+		"createdAt":   m.createdAt,
+		"updatedAt":   m.updatedAt,
 	})
+}
+
+// validateEnvironment proves that an optional Environment belongs to the same
+// workspace as the group. Cross-workspace association is always forbidden; an
+// unwired Environments service reports the control-plane dependency honestly.
+func (s *Service) validateEnvironment(ctx context.Context, environmentID, workspace string) error {
+	if environmentID == "" {
+		return nil
+	}
+	if s.EnvironmentWorkspace == nil {
+		return core.ErrWorkspacesUnavailable
+	}
+	owner, err := s.EnvironmentWorkspace(ctx, environmentID)
+	if err != nil {
+		return err
+	}
+	if owner != workspace {
+		return core.ErrForbidden
+	}
+	return nil
 }
 
 // storeMap writes a map to the source of truth, deleting the path when empty.

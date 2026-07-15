@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -84,6 +85,16 @@ type KeyValueIndex interface {
 	SetIPAllowList(ctx context.Context, name string, cidrs []string) (keyvalue.KeyValueView, error)
 }
 
+// EnvGroupIndex is the narrow cross-feature contract environments needs to
+// expose Render's Environment.envGroupIds membership. Environment membership
+// lives in each env group's KV metadata, so reads list the owning workspace's
+// groups and writes update only groups proven to belong to that workspace.
+// *envgroups.Service satisfies it structurally.
+type EnvGroupIndex interface {
+	ListEnvironmentMemberships(ctx context.Context, ownerID string) ([]envgroups.EnvironmentMembership, error)
+	SetEnvironmentID(ctx context.Context, id, environmentID string) error
+}
+
 // Service is the environments feature service. Store nil =>
 // ErrEnvironmentsUnavailable. Databases/KeyValues nil => the corresponding
 // *Ids field resolves empty, SetDatabases/SetKeyValues report
@@ -95,6 +106,7 @@ type Service struct {
 	Store     EnvironmentStore
 	Databases DatabaseIndex
 	KeyValues KeyValueIndex
+	EnvGroups EnvGroupIndex
 }
 
 // ErrEnvironmentsUnavailable is returned when the control-plane store is not
@@ -124,6 +136,7 @@ type EnvironmentView struct {
 	ServiceIDs              []string  `json:"serviceIds"`
 	DatabaseIDs             []string  `json:"databaseIds"`
 	KeyValueIDs             []string  `json:"keyValueIds"`
+	EnvGroupIDs             []string  `json:"envGroupIds"`
 	ProtectedStatus         string    `json:"protectedStatus"`
 	NetworkIsolationEnabled bool      `json:"networkIsolationEnabled"`
 	IPAllowList             []string  `json:"ipAllowList"`
@@ -167,6 +180,26 @@ func (s *Service) keyValueIDsByEnvironment(ctx context.Context, workspaceID stri
 	for _, kv := range kvs {
 		if kv.EnvironmentID != "" {
 			byEnv[kv.EnvironmentID] = append(byEnv[kv.EnvironmentID], kv.ID)
+		}
+	}
+	return byEnv, nil
+}
+
+// envGroupIDsByEnvironment is the env-group counterpart to the Database and
+// KeyValue membership indexes above. A nil EnvGroups seam degrades to empty
+// membership on reads, matching the other optional cross-feature indexes.
+func (s *Service) envGroupIDsByEnvironment(ctx context.Context, workspaceID string) (map[string][]string, error) {
+	if s.EnvGroups == nil {
+		return nil, nil
+	}
+	groups, err := s.EnvGroups.ListEnvironmentMemberships(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	byEnv := map[string][]string{}
+	for _, g := range groups {
+		if g.EnvironmentID != "" {
+			byEnv[g.EnvironmentID] = append(byEnv[g.EnvironmentID], g.ID)
 		}
 	}
 	return byEnv, nil
@@ -221,13 +254,17 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 	if err != nil {
 		return nil, err
 	}
+	groupsByEnv, err := s.envGroupIDsByEnvironment(ctx, p.TenantID)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]EnvironmentView, 0, len(rows))
 	for _, e := range rows {
 		sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, toView(e, sids, dbsByEnv[e.ID], kvsByEnv[e.ID]))
+		out = append(out, toView(e, sids, dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID]))
 	}
 	return out, nil
 }
@@ -260,7 +297,7 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 	// A brand-new environment id cannot yet be referenced by any
 	// service/database/key-value, so skip toFullView's membership fetches
 	// (matching projects.Service.Create's own toView(p, nil, nil, nil)).
-	return toView(e, nil, nil, nil), nil
+	return toView(e, nil, nil, nil, nil), nil
 }
 
 // Rename renames an environment.
@@ -306,6 +343,20 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.applyAppEnvironmentLabels(ctx, names, "", false); err != nil {
 		return err
 	}
+	if s.EnvGroups != nil {
+		workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
+		groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
+		if err != nil {
+			return err
+		}
+		for _, g := range groups {
+			if g.EnvironmentID == e.ID {
+				if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return mapStoreErr(s.Store.DeleteEnvironment(ctx, e.ID))
 }
 
@@ -350,7 +401,11 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return toView(e, sids, dids, kids), nil
+	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in an
@@ -440,6 +495,53 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 	return s.toFullView(ctx, e)
 }
 
+// SetEnvGroups replaces the full list of environment groups assigned to an
+// Environment. Every requested group must belong to the Environment's own
+// workspace; an unknown or foreign id is refused instead of silently ignored.
+// Groups already assigned to another Environment in the same workspace move in
+// one update, while groups omitted from this Environment are unassigned.
+func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []string) (EnvironmentView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvironmentView{}, err
+	}
+	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if s.EnvGroups == nil {
+		return EnvironmentView{}, ErrEnvironmentsUnavailable
+	}
+	workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
+	groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	byID := make(map[string]envgroups.EnvironmentMembership, len(groups))
+	for _, g := range groups {
+		byID[g.ID] = g
+	}
+	want := make(map[string]bool, len(envGroupIDs))
+	for _, gid := range envGroupIDs {
+		if _, ok := byID[gid]; !ok {
+			return EnvironmentView{}, fmt.Errorf("%w: environment group %q does not belong to workspace %q", core.ErrForbidden, gid, e.TenantID)
+		}
+		want[gid] = true
+	}
+	for _, g := range groups {
+		switch {
+		case g.EnvironmentID == e.ID && !want[g.ID]:
+			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, ""); err != nil {
+				return EnvironmentView{}, err
+			}
+		case g.EnvironmentID != e.ID && want[g.ID]:
+			if err := s.EnvGroups.SetEnvironmentID(workspaceCtx, g.ID, e.ID); err != nil {
+				return EnvironmentView{}, err
+			}
+		}
+	}
+	return s.toFullView(workspaceCtx, e)
+}
+
 // SetACL replaces an environment's full protected-environment ACL triple
 // (w6/m19) — full-replace, not a merge, matching every other Set verb in this
 // codebase (SetServices, postgres/keyvalue's SetIPAllowList): a caller
@@ -499,7 +601,11 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return toView(e, sids, dids, kids), nil
+	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
 }
 
 // requireProject fetches a project and authorizes it against the workspace it
@@ -554,10 +660,14 @@ func (s *Service) toFullView(ctx context.Context, e store.Environment) (Environm
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return toView(e, sids, dids, kids), nil
+	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
 }
 
-func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs []string) EnvironmentView {
+func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs, envGroupIDs []string) EnvironmentView {
 	if serviceIDs == nil {
 		serviceIDs = []string{}
 	}
@@ -566,6 +676,9 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs []string) 
 	}
 	if keyValueIDs == nil {
 		keyValueIDs = []string{}
+	}
+	if envGroupIDs == nil {
+		envGroupIDs = []string{}
 	}
 	ipAllowList := e.IPAllowList
 	if ipAllowList == nil {
@@ -580,6 +693,7 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs []string) 
 		ServiceIDs:              serviceIDs,
 		DatabaseIDs:             databaseIDs,
 		KeyValueIDs:             keyValueIDs,
+		EnvGroupIDs:             envGroupIDs,
 		ProtectedStatus:         e.ProtectedStatus,
 		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
 		IPAllowList:             ipAllowList,

@@ -17,12 +17,15 @@ limitations under the License.
 package envgroups
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
@@ -117,5 +120,26 @@ func TestREST_EnvGroupsUnconfigured503(t *testing.T) {
 	svc := newService(nil)
 	if c := serveREST(svc, "GET", "/v1/env-groups", "").Code; c != 503 {
 		t.Errorf("GET without a store => 503, got %d", c)
+	}
+}
+
+func TestREST_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
+	svc := newService(newFakeStore())
+	svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
+		if environmentID != "env-alpha" {
+			return "", core.ErrNotFound
+		}
+		return "", nil // store-off group owner is also empty
+	}
+	w := serveREST(svc, "POST", "/v1/env-groups", `{"name":"shared","environmentId":"env-alpha"}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST with environmentId: got %d: %s", w.Code, w.Body.String())
+	}
+	var g EnvGroupView
+	if err := json.Unmarshal(w.Body.Bytes(), &g); err != nil {
+		t.Fatal(err)
+	}
+	if g.EnvironmentID != "env-alpha" {
+		t.Fatalf("environmentId = %q, want env-alpha", g.EnvironmentID)
 	}
 }

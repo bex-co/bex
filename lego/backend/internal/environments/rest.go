@@ -178,6 +178,28 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, e)
 	})
 
+	// PUT /v1/environments/{id}/env-group-links replaces the full list of
+	// environment groups assigned to the Environment. Body:
+	// {"envGroupIds": ["evg-...", ...]}.
+	mux.HandleFunc("PUT /v1/environments/{id}/env-group-links", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			EnvGroupIDs []string `json:"envGroupIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		if req.EnvGroupIDs == nil {
+			req.EnvGroupIDs = []string{}
+		}
+		e, err := s.SetEnvGroups(r.Context(), r.PathValue("id"), req.EnvGroupIDs)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, e)
+	})
+
 	// PATCH /v1/environments/{id}/acl replaces the full protected-environment
 	// ACL triple (w6/m19: protectedStatus/networkIsolationEnabled/ipAllowList
 	// — Render parity, see SetACL's doc comment for why it's full-replace).

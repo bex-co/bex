@@ -59,6 +59,11 @@ type setEnvironmentKeyValuesArgs struct {
 	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the environment — replaces the full list; also joins these key-value instances to the environment's project"`
 }
 
+type setEnvironmentEnvGroupsArgs struct {
+	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
+	EnvGroupIDs []string `json:"envGroupIds" jsonschema:"environment group ids (evg-...) to assign to the environment — replaces the full list"`
+}
+
 type setEnvironmentACLArgs struct {
 	ID                      string   `json:"id" jsonschema:"the environment id (env-…)"`
 	ProtectedStatus         string   `json:"protectedStatus" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services"`
@@ -146,6 +151,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			in.KeyValueIDs = []string{}
 		}
 		e, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
+		return nil, e, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_environment_env_groups",
+		Description: "Assign environment groups to an environment (replaces the full list). Every group must belong to the environment's workspace.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentEnvGroupsArgs) (*mcp.CallToolResult, EnvironmentView, error) {
+		if in.EnvGroupIDs == nil {
+			in.EnvGroupIDs = []string{}
+		}
+		e, err := s.SetEnvGroups(ctx, in.ID, in.EnvGroupIDs)
 		return nil, e, err
 	})
 

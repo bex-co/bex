@@ -47,14 +47,15 @@ var envGroupFileGQLType = graphql.NewObject(graphql.ObjectConfig{
 var envGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvGroup",
 	Fields: graphql.Fields{
-		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ID })},
-		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.Name })},
-		"ownerId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.OwnerID })},
-		"serviceLinks": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ServiceLinks })},
-		"envVars":      &graphql.Field{Type: graphql.NewList(envGroupVarGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.EnvVars })},
-		"secretFiles":  &graphql.Field{Type: graphql.NewList(envGroupFileGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.SecretFiles })},
-		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.CreatedAt })},
-		"updatedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.UpdatedAt })},
+		"id":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ID })},
+		"name":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.Name })},
+		"ownerId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.OwnerID })},
+		"environmentId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.EnvironmentID })},
+		"serviceLinks":  &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ServiceLinks })},
+		"envVars":       &graphql.Field{Type: graphql.NewList(envGroupVarGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.EnvVars })},
+		"secretFiles":   &graphql.Field{Type: graphql.NewList(envGroupFileGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.SecretFiles })},
+		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.CreatedAt })},
+		"updatedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.UpdatedAt })},
 	},
 })
 
@@ -139,11 +140,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createEnvGroup": &graphql.Field{
 			Type: envGroupGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"name":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateEnvGroup(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string))
+				return s.CreateEnvGroup(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string), gqlStr(p.Args, "environmentId"))
 			},
 		},
 		"renameEnvGroup": &graphql.Field{

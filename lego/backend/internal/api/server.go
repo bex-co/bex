@@ -345,6 +345,28 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if d.Usage != nil {
 		d.Usage.Selections = selections
 	}
+	var environmentEnvGroups environments.EnvGroupIndex
+	if d.Secrets != nil {
+		environmentEnvGroups = envGroupsSvc
+	}
+	environmentsSvc := &environments.Service{
+		Base:      base,
+		Store:     d.EnvironmentsStore,
+		Databases: pg,
+		KeyValues: kv,
+		EnvGroups: environmentEnvGroups,
+	}
+	// Environment membership is stored with the env group, while validation
+	// belongs to environments.Service. Wire the two narrow seams once here so
+	// create_env_group(environmentId) and set_environment_env_groups share the
+	// same workspace authorization and lookup behavior without a package cycle.
+	envGroupsSvc.EnvironmentWorkspace = func(ctx context.Context, environmentID string) (string, error) {
+		e, err := environmentsSvc.Get(ctx, environmentID)
+		if err != nil {
+			return "", err
+		}
+		return e.OwnerID, nil
+	}
 	return &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
@@ -409,12 +431,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			KeyValues:  kv,
 			Selections: selections,
 		},
-		Environments: &environments.Service{
-			Base:      base,
-			Store:     d.EnvironmentsStore,
-			Databases: pg,
-			KeyValues: kv,
-		},
+		Environments:  environmentsSvc,
 		GitHub:        gh,
 		RegistryCreds: rc,
 		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Selections: selections},

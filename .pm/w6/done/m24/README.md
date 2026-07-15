@@ -1,6 +1,6 @@
 # w6 · m24 — Env groups: workspace attribution — fix the cross-tenant read (+ Render object shape)
 
-**Worker:** worker6 **Goal:** Env groups become workspace-owned resources: a caller sees and reveals only their own workspace's groups (closing a cross-tenant read hole), and the group object carries Render's `ownerId`/timestamps. **Status:** in progress — t001–t010 done 2026-07-15, t011 (added round 7, environments linkage) outstanding
+**Worker:** worker6 **Goal:** Env groups become workspace-owned resources: a caller sees and reveals only their own workspace's groups (closing a cross-tenant read hole), and the group object carries Render's `ownerId`/timestamps. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Scope link/unlink (foreign-group-into-your-service hole)                          | 45m | t002                          | — **DONE** |
 | t005 | `ownerId` + timestamps on the group object (Render shape)                         | 40m | t002                          | — **DONE** |
 | t006 | Dashboard `/env-groups` follows the workspace switcher                            | 40m | t003, t005                    | — **DONE** |
-| t011 | Environments linkage: `envGroupIds` + `set_environment_env_groups` (added round 7) | 45m | t002                          | todo       |
-| t007 | Render parity                                                                      | 30m | t003, t004, t005, t006, t011  | — **DONE** (predates t011's addition — see below) |
+| t011 | Environments linkage: `envGroupIds` + `set_environment_env_groups` (added round 7) | 45m | t002                          | — **DONE** |
+| t007 | Render parity                                                                      | 30m | t003, t004, t005, t006, t011 | — **DONE** |
 | t008 | Simplify                                                                           | 30m | t007                          | — **DONE** |
 | t009 | Test coverage                                                                      | 45m | t007                          | — **DONE** |
 | t010 | Closeout                                                                           | 15m | t009                          | — **DONE** |
@@ -22,7 +22,7 @@
 
 On the mock cluster, a caller in workspace A cannot list, get, or reveal the values of workspace B's env groups (or link B's group into A's service) — each returns 403/absent, proven by a test mirroring `TestReadSideOwnerIDTargetingE2E`. Existing global (unattributed) groups are migrated to a workspace deterministically. The group object exposes `ownerId` and timestamps per Render's OpenAPI, and the dashboard `/env-groups` page shows the switcher-selected workspace's groups.
 
-**Met by t001–t010, verified live 2026-07-15** against a real Postgres + OpenFGA (`TestEnvGroupReadSideOwnerIDTargetingE2E`, `lego/backend/internal/api/envgroups_ownerid_e2e_test.go`) plus a real-browser click-through of the dashboard switcher wiring (local dev stub). t011 was added to this milestone (round 7) after t001–t010's implementation session was already underway with the original 10-task scope; it's genuinely new work (an Environments↔env-groups membership surface), not a residual of the cross-tenant fix, so the milestone stays open for it rather than being closed prematurely.
+**Met by t001–t011.** The original cross-tenant isolation and switcher scope were verified live against a real Postgres + OpenFGA (`TestEnvGroupReadSideOwnerIDTargetingE2E`, `lego/backend/internal/api/envgroups_ownerid_e2e_test.go`) plus a real-browser click-through of the dashboard switcher wiring. The added Environment-membership scope is covered by package-level REST/GraphQL/MCP round trips, same-workspace join/leave/read-back tests, cross-workspace refusal without partial mutation, create-time `environmentId`, and delete cleanup. Full backend `go test ./...`, `go build ./...`, and `make lint-backend` pass.
 
 ## Source + Goal linkage
 
@@ -44,4 +44,4 @@ t001–t010 implemented, tested, and closed out in this pass:
 - ADR018's env-groups row REST cell flips ◐→✅; `w7/m12/t001`'s stale "no tenant attribution" exclusion reasoning flagged in place (moved to `.pm/w7/done/m12/t001.md` by a concurrent session closing that milestone).
 - **Found + fixed a second real cross-tenant bug at `/ship` merge time**, in code neither this session nor its reviewer had seen: a concurrently-landed `w1/m35` blueprint-apply seam (`envgroups.Service.GroupNames`/`ApplyEnvGroup`/`LinkEnvGroup`/`findGroupByName`, wired as `apps.EnvGroupApplier`) matched a bex.yml's `envVarGroups:` entries by NAME with zero workspace scoping — a workspace A deploy naming a group `shared` would find, reuse, and silently overwrite workspace B's same-named group's secret values, and `GroupNames`' pre-flight leaked other workspaces' group names into A's validation. Rebasing this milestone's own fix onto that landed code surfaced the conflict; all four functions now scope through `boundWorkspace` (the same helper `ListEnvGroups` uses), and a dedicated regression test (`TestEnvGroup_BlueprintSeamScopesToActingWorkspace`) locks it in. Not part of the original t001–t010 scope — found only because the two features' merge forced a side-by-side read of both.
 
-**t011 remains open** — a distinct, substantial feature (Environments↔env-groups membership: `envGroupIds` on the environment object + a `set_environment_env_groups` verb across REST/GraphQL/MCP + `environmentId` on env-group create) added to this milestone after the above was already underway. Left for a follow-up session; not implemented here to avoid scope creep into unreviewed new work.
+**t011 completed in the final pass** — env groups persist an optional `environmentId`; Environment reads return `envGroupIds`; full-replace membership ships as REST `env-group-links`, GraphQL `setEnvironmentEnvGroups`, and MCP `set_environment_env_groups`; create accepts `environmentId` on all three adapters; same-workspace validation refuses foreign groups. Environment deletion clears associations. A metadata-only membership projection avoids loading env-var or secret-file maps during Environment reads.

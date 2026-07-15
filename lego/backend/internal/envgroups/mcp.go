@@ -40,8 +40,9 @@ type listEnvGroupsArgs struct {
 }
 
 type createEnvGroupArgs struct {
-	Name    string `json:"name" jsonschema:"the env group name"`
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
+	Name          string `json:"name" jsonschema:"the env group name"`
+	OwnerID       string `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"optional environment id (env-...) in the same workspace to assign this group to"`
 }
 
 type renameEnvGroupArgs struct {
@@ -111,7 +112,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_env_group",
 		Description: "Create an environment group with a name; add vars/files and link services afterward.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.CreateEnvGroup(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name)
+		g, err := s.CreateEnvGroup(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name, in.EnvironmentID)
 		return nil, g, err
 	})
 

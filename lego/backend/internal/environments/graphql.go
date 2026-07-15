@@ -38,6 +38,7 @@ var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"serviceIds":              &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
 		"databaseIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.DatabaseIDs })},
 		"keyValueIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.KeyValueIDs })},
+		"envGroupIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.EnvGroupIDs })},
 		"protectedStatus":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProtectedStatus })},
 		"networkIsolationEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.NetworkIsolationEnabled })},
 		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.IPAllowList })},
@@ -147,6 +148,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					names[i], _ = v.(string)
 				}
 				return s.SetKeyValues(p.Context, p.Args["id"].(string), names)
+			},
+		},
+		"setEnvironmentEnvGroups": &graphql.Field{
+			Type: environmentGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"envGroupIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				raw, _ := p.Args["envGroupIds"].([]any)
+				ids := make([]string, len(raw))
+				for i, v := range raw {
+					ids[i], _ = v.(string)
+				}
+				return s.SetEnvGroups(p.Context, p.Args["id"].(string), ids)
 			},
 		},
 		// setEnvironmentACL replaces the full protected-environment ACL triple
