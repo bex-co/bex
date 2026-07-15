@@ -63,11 +63,15 @@ variable "base_image" {
   default = "ubuntu-24.04"
 }
 
-# Cheap amd64 server just for baking (prod workers are cx33, also amd64, so the
-# snapshot is arch-compatible). fsn1 keeps the snapshot in the prod region.
+# Cheap x86 server just for baking. The snapshot is tagged by ARCHITECTURE (x86),
+# not CPU vendor, so an AMD `cpx` bake runs fine on prod's Intel `cx33` workers.
+# `cpx22` (2 vCPU / 4 GB) is used because the older `cx` line (cx23/cx33, Intel)
+# is create-blocked in fsn1 — existing prod cx33 nodes keep running, but you can
+# no longer spin up a NEW one there (verified via the Hetzner API, 2026-07-15).
+# fsn1 keeps the snapshot in the prod region.
 variable "server_type" {
   type    = string
-  default = "cx22"
+  default = "cpx22"
 }
 
 variable "location" {

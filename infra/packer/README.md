@@ -14,7 +14,7 @@ CAPH resolves `HCloudMachineTemplate.spec.template.spec.imageName` against a sna
 
 ## Baking (CI, not a laptop)
 
-Run the **`snapshot (bake worker image)`** workflow ([`.github/workflows/snapshot.yml`](../../.github/workflows/snapshot.yml)) via _Run workflow_ (workflow_dispatch). It installs Packer and runs `packer build` with the `HCLOUD_TOKEN` secret. Baking spins up a throwaway `cx22` and creates a billed snapshot, so it is manual-only.
+Run the **`snapshot (bake worker image)`** workflow ([`.github/workflows/snapshot.yml`](../../.github/workflows/snapshot.yml)) via _Run workflow_ (workflow_dispatch). It installs Packer and runs `packer build` with the `HCLOUD_TOKEN` secret. Baking spins up a throwaway `cpx22` (the older Intel `cx` line is create-blocked in fsn1; the x86 snapshot still runs on prod's `cx33`) and creates a billed snapshot, so it is manual-only.
 
 Local dry check (no build, no token needed for `validate` beyond the plugin):
 
