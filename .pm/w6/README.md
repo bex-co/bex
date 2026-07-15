@@ -2,6 +2,16 @@
 
 **Worker:** worker6 Created 2026-07-08 from user request + deep-research report ([RESEARCH-workspaces.md](RESEARCH-workspaces.md)). w1/m9 mints the tenant substrate (one auto-created workspace per identity, OpenFGA enforced); w6 makes workspaces a real product surface: user-initiated lifecycle (create/rename/delete, multi-workspace per user, plan limits), the Render `owners` read API + MCP workspace tools, and the dashboard flows (`/new/workspace`, switcher, settings). Composes with existing authn (Kratos/Hydra), authz (OpenFGA `workspace:tea-<id>`), and the control-plane Postgres — no parallel workspace store. Ordered by dependency: model + verbs → API surface → dashboard UX.
 
+## Local dev environment
+
+Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared local kind/CAPD cluster — never the shared cluster's default `auth`/`bex-system` namespaces or standard ports (5173/4433/4445/8090/8091/5432), which any other worker's session may also be using. `dev-6` gets its own Kratos + Hydra + Mailpit (namespace `dev-6-auth`) and app namespace (`dev-6`), reusing the shared cluster's CNPG operator and bex operator, plus a locally-built `bex-api` on dedicated ports derived from N=6 (`dev-6/ports.env`) so it never collides with any other workstream's `dev-N`.
+
+- `bash .pm/w6/dev-6/up.sh` — bring it up (idempotent — safe to re-run)
+- `bash .pm/w6/dev-6/status.sh` — health check (processes, pods, HTTP)
+- `bash .pm/w6/dev-6/down.sh` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+
+`up.sh` prints the dashboard command to point at it once bex-api is running.
+
 ## Milestones
 
 - [x] **m1** — Workspace model & lifecycle verbs: create · rename · delete · plan limits (10 tasks) ← from RESEARCH-workspaces.md — done 2026-07-09 (backend shipped `b06e301`, verified vs real Postgres + OpenFGA), moved to `done/m1/`
