@@ -53,9 +53,13 @@ type Service struct {
 	*core.Base
 	GitHub APIClient       // nil => GitHub App unconfigured
 	Store  ConnectionStore // nil => control-plane store off
+	// StateSecret signs the short-lived workspace credential carried through the
+	// browser install redirect. Production reuses BEX_GITHUB_APP_PRIVATE_KEY's
+	// PEM bytes, so no second platform secret or replica-local state is needed.
+	StateSecret []byte
 	// DashboardURL is BEX_DASHBOARD_URL — where the install callback redirects
-	// the browser after recording the connection. Empty => the callback returns
-	// JSON instead of redirecting.
+	// the browser after success or with a bounded failure code. Empty => the
+	// callback returns JSON instead of redirecting.
 	DashboardURL string
 	// Selections is the shared MCP per-session workspace selection
 	// (w6/m2/t005, core.WorkspaceSelections): the git-connect tools' ownerId
@@ -100,9 +104,9 @@ func (s *Service) installURL() string {
 // workspace's GitHub is an admin action even though the record lands at the
 // callback. ownerID ("" => the caller's default workspace, w6/m18) names the
 // workspace to check/connect, membership-checked via core.WithWorkspace like
-// every other explicit-target verb. Note: the callback GitHub itself redirects
-// to (Connect, below) carries no ownerId — it always records against the
-// admin's default workspace, unchanged from before this milestone.
+// every other explicit-target verb. The returned install URL carries that
+// resolved workspace in a short-lived signed state credential, so GitHub's
+// identity-less callback can safely record against the same workspace.
 func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
@@ -111,14 +115,21 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	workspaceID := s.workspaceID(ctx)
+	installURL, err := s.statefulInstallURL(workspaceID)
+	if err != nil {
+		return Connection{}, err
+	}
+	row, err := s.Store.GetGitConnection(ctx, workspaceID)
 	if errors.Is(err, store.ErrNotFound) {
-		return Connection{Connected: false, InstallURL: s.installURL()}, nil
+		return Connection{Connected: false, InstallURL: installURL}, nil
 	}
 	if err != nil {
 		return Connection{}, err
 	}
-	return s.connectedView(row), nil
+	conn := s.connectedView(row)
+	conn.InstallURL = installURL
+	return conn, nil
 }
 
 // Connect records (or replaces) the workspace's GitHub App installation. It
@@ -129,10 +140,18 @@ func (s *Service) Connect(ctx context.Context, installationID int64) (Connection
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return Connection{}, err
 	}
+	return s.connectWithWorkspace(ctx, s.workspaceID(ctx), installationID)
+}
+
+// connectWithWorkspace records a connection for the workspace authenticated by
+// a verified state credential. It deliberately is not an exported service verb:
+// unlike Connect it has no caller Identity to authorize, and must only be called
+// by the callback after verifyConnectState succeeds.
+func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, installationID int64) (Connection, error) {
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	if installationID <= 0 {
+	if workspaceID == "" || installationID <= 0 {
 		return Connection{}, core.ErrBadRequest
 	}
 	inst, err := s.GitHub.GetInstallation(ctx, installationID)
@@ -140,7 +159,7 @@ func (s *Service) Connect(ctx context.Context, installationID int64) (Connection
 		return Connection{}, mapGitHubErr(err)
 	}
 	row, err := s.Store.UpsertGitConnection(ctx, store.GitConnection{
-		WorkspaceID:    s.workspaceID(ctx),
+		WorkspaceID:    workspaceID,
 		InstallationID: installationID,
 		AccountLogin:   inst.AccountLogin,
 	})

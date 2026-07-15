@@ -23,6 +23,11 @@ import {
 } from "@/common/components/ui/alert-dialog";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
@@ -44,7 +49,11 @@ function isUnavailable(error: Error | undefined): boolean {
  * on /settings, so the card refetches on mount and on window focus to show the
  * fresh connection without a manual reload.
  */
-export function ConnectGithubCard() {
+export function ConnectGithubCard({
+  callbackError,
+}: {
+  callbackError?: string;
+}) {
   const { t } = useTranslations();
   const { connection, loading, error, refetch } = useGitConnection();
   const { connect, busy: connecting } = useConnectGit();
@@ -79,7 +88,21 @@ export function ConnectGithubCard() {
           </CardAction>
         )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {callbackError && (
+          <Alert variant="destructive">
+            <AlertTriangle />
+            <AlertTitle>{t("git.callbackErrorTitle")}</AlertTitle>
+            <AlertDescription>
+              {callbackError === "expired_state"
+                ? t("git.callbackErrorExpired")
+                : callbackError === "missing_state" ||
+                    callbackError === "invalid_state"
+                  ? t("git.callbackErrorInvalid")
+                  : t("git.callbackErrorGeneric")}
+            </AlertDescription>
+          </Alert>
+        )}
         {unavailable ? (
           <PanelCenteredState
             icon={<ShieldAlert />}

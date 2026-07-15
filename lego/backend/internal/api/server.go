@@ -222,11 +222,13 @@ type Deps struct {
 	// GitHub App integration (docs/ADR026-github-integration.md). GitHubClient is the
 	// GitHub REST client (nil when BEX_GITHUB_APP_* unset); GitHubStore is the
 	// git_connections store (nil when BEX_CP_DB_URI unset). Either nil => the
-	// git-connect verbs report core.ErrGitHubUnavailable. DashboardURL is where
-	// the install callback redirects.
-	GitHubClient github.APIClient
-	GitHubStore  github.ConnectionStore
-	DashboardURL string
+	// git-connect verbs report core.ErrGitHubUnavailable. GitHubStateSecret is
+	// the app private key's PEM bytes, reused to HMAC-sign the short-lived browser
+	// callback state. DashboardURL is where the install callback redirects.
+	GitHubClient      github.APIClient
+	GitHubStore       github.ConnectionStore
+	GitHubStateSecret []byte
+	DashboardURL      string
 
 	// RegistryCredsStore, when set (the control-plane store is wired), backs
 	// the registry-credentials feature (w2/m14) — CRUD for a workspace's
@@ -297,6 +299,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base:         base,
 		GitHub:       d.GitHubClient,
 		Store:        d.GitHubStore,
+		StateSecret:  d.GitHubStateSecret,
 		DashboardURL: d.DashboardURL,
 		Selections:   selections,
 	}
@@ -531,7 +534,9 @@ func (s *Server) Handler() (http.Handler, error) {
 		mux.Handle("/v1/deploy-hooks/", hook)
 	}
 	// All three adapters sit behind the same auth gate, with rate limiting inside
-	// the auth wrapper so the limiter keys on the resolved caller Identity.
+	// the auth wrapper so the limiter keys on the resolved caller Identity. The
+	// gate itself recognizes github's one exact signed-state callback exception;
+	// keeping the mount here ensures every other /v1 route stays covered.
 	rl := s.rateLimitMiddleware()
 	mux.Handle("/v1/", auth(rl(s.restHandler())))
 	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))

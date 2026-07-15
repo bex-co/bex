@@ -69,6 +69,22 @@ const zhGit: Record<string, TranslationEntry> = {
     message: "无法开始 GitHub 连接。",
     description: "Toast when starting the connect flow fails",
   },
+  "git.callbackErrorTitle": {
+    message: "GitHub 连接未完成",
+    description: "Title shown after the GitHub install callback fails",
+  },
+  "git.callbackErrorExpired": {
+    message: "此连接请求已过期。请选择“连接 GitHub”重试。",
+    description: "Callback error shown when the signed state has expired",
+  },
+  "git.callbackErrorInvalid": {
+    message: "无法验证此连接请求。请选择“连接 GitHub”重试。",
+    description: "Callback error shown when signed state is missing or invalid",
+  },
+  "git.callbackErrorGeneric": {
+    message: "GitHub 无法完成连接。请选择“连接 GitHub”重试。",
+    description: "Generic GitHub callback failure message",
+  },
   "git.disconnectSuccess": {
     message: "已断开 GitHub 连接。",
     description: "Toast after a successful disconnect",

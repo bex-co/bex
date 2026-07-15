@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -39,9 +41,19 @@ func do(t *testing.T, m *http.ServeMux, method, path string) *httptest.ResponseR
 	return rec
 }
 
+func callbackPath(t *testing.T, s *Service, installationID, workspaceID string) string {
+	t.Helper()
+	state, err := s.mintConnectState(workspaceID)
+	if err != nil {
+		t.Fatalf("mint callback state: %v", err)
+	}
+	return "/v1/git/callback?installation_id=" + url.QueryEscape(installationID) + "&state=" + url.QueryEscape(state)
+}
+
 func TestRESTUnconfigured503(t *testing.T) {
 	// No client, no store => every git-connect route 503.
-	m := mux(&Service{Base: &core.Base{Namespace: "default"}})
+	// DashboardURL must not turn the optional-feature contract into a redirect.
+	m := mux(&Service{Base: &core.Base{Namespace: "default"}, DashboardURL: "https://dash.bex.co"})
 	for _, tc := range []struct{ method, path string }{
 		{"POST", "/v1/git/connect"},
 		{"GET", "/v1/git/callback?installation_id=1"},
@@ -61,6 +73,7 @@ func TestRESTHappyPath(t *testing.T) {
 		Base:         &core.Base{Namespace: "default"},
 		GitHub:       &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/pub"}, {ID: 2, FullName: "octo/priv", Private: true}}},
 		Store:        newFakeStore(),
+		StateSecret:  []byte("test-only-high-entropy-state-secret"),
 		DashboardURL: "https://dash.bex.co/",
 	}
 	m := mux(svc)
@@ -77,12 +90,23 @@ func TestRESTHappyPath(t *testing.T) {
 	}
 
 	// callback records + redirects to the dashboard settings page.
-	rec = do(t, m, "GET", "/v1/git/callback?installation_id=42")
+	installURL, err := url.Parse(conn.InstallURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := installURL.Query().Get("state")
+	if state == "" {
+		t.Fatal("connect install URL has no state")
+	}
+	rec = do(t, m, "GET", "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state))
 	if rec.Code != http.StatusFound {
 		t.Fatalf("callback => %d, want 302", rec.Code)
 	}
 	if loc := rec.Header().Get("Location"); loc != "https://dash.bex.co/settings" {
 		t.Errorf("callback redirect = %q", loc)
+	}
+	if got := rec.Header().Get("Referrer-Policy"); got != "no-referrer" {
+		t.Errorf("callback Referrer-Policy = %q, want no-referrer", got)
 	}
 
 	// connection now shows connected with the account login.
@@ -113,9 +137,18 @@ func TestRESTHappyPath(t *testing.T) {
 }
 
 func TestRESTCallbackBadInstallationID(t *testing.T) {
-	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore()}
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore(), StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	for _, path := range []string{"/v1/git/callback", "/v1/git/callback?installation_id=abc", "/v1/git/callback?installation_id=0", "/v1/git/callback?installation_id=-5"} {
+	state, err := svc.mintConnectState(core.DefaultTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"/v1/git/callback?state=" + url.QueryEscape(state),
+		"/v1/git/callback?installation_id=abc&state=" + url.QueryEscape(state),
+		"/v1/git/callback?installation_id=0&state=" + url.QueryEscape(state),
+		"/v1/git/callback?installation_id=-5&state=" + url.QueryEscape(state),
+	} {
 		if rec := do(t, m, "GET", path); rec.Code != http.StatusBadRequest {
 			t.Errorf("callback %s => %d, want 400", path, rec.Code)
 		}
@@ -125,9 +158,9 @@ func TestRESTCallbackBadInstallationID(t *testing.T) {
 func TestRESTCallbackForgedInstallationRejected(t *testing.T) {
 	// A forged installation_id GitHub can't authenticate => 400, nothing recorded.
 	st := newFakeStore()
-	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{installErr: &APIError{Status: 404, Body: "Not Found"}}, Store: st}
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{installErr: &APIError{Status: 404, Body: "Not Found"}}, Store: st, StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	if rec := do(t, m, "GET", "/v1/git/callback?installation_id=777"); rec.Code != http.StatusBadRequest {
+	if rec := do(t, m, "GET", callbackPath(t, svc, "777", core.DefaultTenant)); rec.Code != http.StatusBadRequest {
 		t.Fatalf("forged callback => %d, want 400", rec.Code)
 	}
 	if len(st.conns) != 0 {
@@ -136,9 +169,9 @@ func TestRESTCallbackForgedInstallationRejected(t *testing.T) {
 }
 
 func TestRESTCallbackNoDashboardReturnsJSON(t *testing.T) {
-	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore()}
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore(), StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	rec := do(t, m, "GET", "/v1/git/callback?installation_id=42")
+	rec := do(t, m, "GET", callbackPath(t, svc, "42", core.DefaultTenant))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("callback without dashboard => %d, want 200", rec.Code)
 	}
@@ -146,5 +179,120 @@ func TestRESTCallbackNoDashboardReturnsJSON(t *testing.T) {
 	json.Unmarshal(rec.Body.Bytes(), &body)
 	if body["status"] != "connected" {
 		t.Errorf("body = %v", body)
+	}
+}
+
+func TestRESTCallbackStateFailuresRedirectToDashboard(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	st := newFakeStore()
+	svc := &Service{
+		Base:         &core.Base{Namespace: "default", Clock: func() time.Time { return now }},
+		GitHub:       &fakeClient{login: "octo"},
+		Store:        st,
+		StateSecret:  []byte("test-only-high-entropy-state-secret"),
+		DashboardURL: "https://dash.bex.co",
+	}
+	expired, err := svc.mintConnectState(core.DefaultTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(connectStateTTL)
+
+	for _, tc := range []struct {
+		name, path, code string
+	}{
+		{name: "missing", path: "/v1/git/callback?installation_id=42", code: "missing_state"},
+		{name: "invalid", path: "/v1/git/callback?installation_id=42&state=not-a-token", code: "invalid_state"},
+		{name: "expired", path: "/v1/git/callback?installation_id=42&state=" + url.QueryEscape(expired), code: "expired_state"},
+		{name: "github", path: "/v1/git/callback?error=access_denied", code: "github_error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, mux(svc), "GET", tc.path)
+			if rec.Code != http.StatusFound {
+				t.Fatalf("status = %d, want 302; body=%s", rec.Code, rec.Body.String())
+			}
+			want := "https://dash.bex.co/settings?git_error=" + tc.code
+			if got := rec.Header().Get("Location"); got != want {
+				t.Fatalf("Location = %q, want %q", got, want)
+			}
+			if got := rec.Header().Get("Referrer-Policy"); got != "no-referrer" {
+				t.Fatalf("Referrer-Policy = %q, want no-referrer", got)
+			}
+		})
+	}
+	if len(st.conns) != 0 {
+		t.Fatalf("failed callbacks recorded connections: %+v", st.conns)
+	}
+}
+
+func TestRESTCallbackStateFailuresReturnClearJSONWithoutDashboard(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	svc := &Service{
+		Base:        &core.Base{Namespace: "default", Clock: func() time.Time { return now }},
+		GitHub:      &fakeClient{login: "octo"},
+		Store:       newFakeStore(),
+		StateSecret: []byte("test-only-high-entropy-state-secret"),
+	}
+	expired, err := svc.mintConnectState(core.DefaultTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(connectStateTTL)
+
+	for _, tc := range []struct {
+		name, path, code string
+	}{
+		{name: "missing", path: "/v1/git/callback?installation_id=42", code: "missing_state"},
+		{name: "invalid", path: "/v1/git/callback?installation_id=42&state=not-a-token", code: "invalid_state"},
+		{name: "expired", path: "/v1/git/callback?installation_id=42&state=" + url.QueryEscape(expired), code: "expired_state"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := do(t, mux(svc), "GET", tc.path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400; body=%s", rec.Code, rec.Body.String())
+			}
+			var body map[string]string
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body["code"] != tc.code || body["error"] == "" {
+				t.Fatalf("body = %v, want code %q and a clear error", body, tc.code)
+			}
+		})
+	}
+}
+
+func TestRESTCallbackRecordsStateWorkspace(t *testing.T) {
+	st := newFakeStore()
+	svc := &Service{
+		Base:        &core.Base{Namespace: "default"},
+		GitHub:      &fakeClient{login: "octo"},
+		Store:       st,
+		StateSecret: []byte("test-only-high-entropy-state-secret"),
+	}
+	rec := do(t, mux(svc), "GET", callbackPath(t, svc, "42", "tea-target"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("callback status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if got := st.conns["tea-target"]; got.InstallationID != 42 || got.AccountLogin != "octo" {
+		t.Fatalf("target workspace connection = %+v", got)
+	}
+	if _, ok := st.conns[core.DefaultTenant]; ok {
+		t.Fatal("state callback recorded against the default workspace")
+	}
+}
+
+func TestRESTCallbackKeepsAuthenticatedPath(t *testing.T) {
+	st := newFakeStore()
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: st}
+	req := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42", nil)
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "agent", Method: "oauth2"}))
+	rec := httptest.NewRecorder()
+	mux(svc).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("authenticated callback status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if got := st.conns[core.DefaultTenant]; got.InstallationID != 42 {
+		t.Fatalf("authenticated callback connection = %+v", got)
 	}
 }

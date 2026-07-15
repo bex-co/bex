@@ -34,7 +34,11 @@ import (
 // a bearer token is introspected at Hydra's admin endpoint; otherwise an Ory
 // session (cookie or X-Session-Token) is checked via Kratos' whoami. It attaches
 // the resolved core.Identity to the request context, which the feature services'
-// authorize gate reads. Upstream failures fail closed (401 / 503).
+// authorize gate reads. Upstream failures fail closed (401 / 503). The one
+// deliberate exception is an otherwise-uncredentialed GET /v1/git/callback:
+// GitHub's redirect authenticates with its short-lived HMAC-signed state query
+// parameter inside the github feature handler. Exact method + path matching keeps
+// that alternate credential from becoming a general auth bypass.
 
 // bearerToken extracts the RFC 6750 credential from the Authorization header; ok
 // is false when the header is absent or not "Bearer "-prefixed.
@@ -114,10 +118,18 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		var id core.Identity
 		var err error
 		bearer, hasBearer := bearerToken(r)
+		hasSession := a.kratosURL != "" && hasSessionCredential(r)
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/git/callback" && !hasBearer && !hasSession {
+			// The github handler must verify its state credential before acting.
+			// A supplied OAuth/session credential still takes the ordinary path so
+			// existing API/agent callback calls retain their Identity and authz.
+			next.ServeHTTP(w, r)
+			return
+		}
 		switch {
 		case hasBearer:
 			id, err = a.introspect(r.Context(), bearer)
-		case a.kratosURL != "" && hasSessionCredential(r):
+		case hasSession:
 			id, err = a.whoami(r)
 		default:
 			a.unauthorized(w)

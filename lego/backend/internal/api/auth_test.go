@@ -17,16 +17,20 @@ limitations under the License.
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // fakeHydra serves POST /admin/oauth2/introspect: testToken is active (sub
@@ -110,6 +114,50 @@ var echoIdentity = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	_, _ = fmt.Fprint(w, "anonymous")
 })
 
+type callbackGitHubClient struct{}
+
+func (callbackGitHubClient) InstallURL() string {
+	return "https://github.com/apps/bex/installations/new"
+}
+
+func (callbackGitHubClient) GetInstallation(_ context.Context, id int64) (github.Installation, error) {
+	return github.Installation{ID: id, AccountLogin: "octo"}, nil
+}
+
+func (callbackGitHubClient) ListRepos(context.Context, int64) ([]github.Repo, error) {
+	return nil, nil
+}
+
+func (callbackGitHubClient) MintInstallationToken(context.Context, int64) (github.InstallationToken, error) {
+	return github.InstallationToken{}, nil
+}
+
+func (callbackGitHubClient) RepoAccessible(context.Context, string, string, string) (bool, error) {
+	return false, nil
+}
+
+type callbackGitHubStore struct {
+	connections map[string]store.GitConnection
+}
+
+func (s *callbackGitHubStore) UpsertGitConnection(_ context.Context, conn store.GitConnection) (store.GitConnection, error) {
+	s.connections[conn.WorkspaceID] = conn
+	return conn, nil
+}
+
+func (s *callbackGitHubStore) GetGitConnection(_ context.Context, workspaceID string) (store.GitConnection, error) {
+	conn, ok := s.connections[workspaceID]
+	if !ok {
+		return store.GitConnection{}, store.ErrNotFound
+	}
+	return conn, nil
+}
+
+func (s *callbackGitHubStore) DeleteGitConnection(_ context.Context, workspaceID string) error {
+	delete(s.connections, workspaceID)
+	return nil
+}
+
 func TestAuthGate(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
@@ -187,6 +235,89 @@ func TestAuthGate(t *testing.T) {
 				t.Fatalf("body = %q, want %q", w.Body.String(), tc.wantBody)
 			}
 		})
+	}
+}
+
+func TestAuthGateGitHubCallbackExceptionIsExact(t *testing.T) {
+	var hits atomic.Int32
+	hydra := fakeHydra(t, &hits, "")
+	mw := newOryAuth(hydra.URL, "", "", "", "", nil, nil).middleware(echoIdentity)
+
+	for _, tc := range []struct {
+		name, method, path, bearer string
+		wantStatus                 int
+		wantBody                   string
+	}{
+		{name: "anonymous exact callback", method: http.MethodGet, path: "/v1/git/callback?state=signed", wantStatus: http.StatusOK, wantBody: "anonymous"},
+		{name: "post callback remains gated", method: http.MethodPost, path: "/v1/git/callback", wantStatus: http.StatusUnauthorized},
+		{name: "callback child remains gated", method: http.MethodGet, path: "/v1/git/callback/extra", wantStatus: http.StatusUnauthorized},
+		{name: "other git route remains gated", method: http.MethodGet, path: "/v1/git/connection", wantStatus: http.StatusUnauthorized},
+		{name: "active bearer keeps identity", method: http.MethodGet, path: "/v1/git/callback", bearer: testToken, wantStatus: http.StatusOK, wantBody: "oauth2/client-1"},
+		{name: "inactive bearer is not bypassed", method: http.MethodGet, path: "/v1/git/callback", bearer: "revoked", wantStatus: http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(tc.method, tc.path, nil)
+			if tc.bearer != "" {
+				r.Header.Set("Authorization", "Bearer "+tc.bearer)
+			}
+			w := httptest.NewRecorder()
+			mw.ServeHTTP(w, r)
+			if w.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d; body=%q", w.Code, tc.wantStatus, w.Body.String())
+			}
+			if tc.wantBody != "" && w.Body.String() != tc.wantBody {
+				t.Fatalf("body = %q, want %q", w.Body.String(), tc.wantBody)
+			}
+		})
+	}
+}
+
+func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
+	st := &callbackGitHubStore{connections: map[string]store.GitConnection{}}
+	srv := NewServer(&core.Base{Namespace: "default"}, Deps{
+		GitHubClient:      callbackGitHubClient{},
+		GitHubStore:       st,
+		GitHubStateSecret: []byte("test-only-high-entropy-state-secret"),
+	})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	h, err := srv.Handler()
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
+
+	// The authenticated start call authorizes the workspace and returns the
+	// stateful GitHub install URL.
+	start := httptest.NewRequest(http.MethodPost, "/v1/git/connect", nil)
+	start.Header.Set("Authorization", "Bearer "+testToken)
+	startRec := httptest.NewRecorder()
+	h.ServeHTTP(startRec, start)
+	if startRec.Code != http.StatusOK {
+		t.Fatalf("start status = %d, want 200; body=%s", startRec.Code, startRec.Body.String())
+	}
+	var conn github.Connection
+	if err := json.Unmarshal(startRec.Body.Bytes(), &conn); err != nil {
+		t.Fatal(err)
+	}
+	installURL, err := url.Parse(conn.InstallURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := installURL.Query().Get("state")
+	if state == "" {
+		t.Fatal("start response installUrl has no state")
+	}
+
+	// GitHub's redirect carries no Ory credential. It passes the exact auth-gate
+	// exception, verifies state in the feature, and records the connection.
+	callback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state), nil)
+	callbackRec := httptest.NewRecorder()
+	h.ServeHTTP(callbackRec, callback)
+	if callbackRec.Code != http.StatusOK {
+		t.Fatalf("callback status = %d, want 200; body=%s", callbackRec.Code, callbackRec.Body.String())
+	}
+	got := st.connections[core.DefaultTenant]
+	if got.InstallationID != 42 || got.AccountLogin != "octo" {
+		t.Fatalf("recorded connection = %+v", got)
 	}
 }
 

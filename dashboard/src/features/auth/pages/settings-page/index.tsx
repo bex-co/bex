@@ -25,7 +25,10 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
  * `settings_ui_url` to let the user set a new password.
  */
 export default function SettingsPage() {
-  const search = useSearch({ strict: false }) as { flow?: string };
+  const search = useSearch({ strict: false }) as {
+    flow?: string;
+    git_error?: string;
+  };
   const flow = useOryFlow("settings", search.flow);
   const { t } = useTranslations();
   const oryConfig = useOryConfig();
@@ -60,7 +63,7 @@ export default function SettingsPage() {
             </div>
           )}
           <TeamPanel />
-          <ConnectGithubCard />
+          <ConnectGithubCard callbackError={search.git_error} />
           <RegistryCredentialsPanel />
           <WebhooksPanel />
           <ApiKeysPanel />

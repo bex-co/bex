@@ -69,6 +69,25 @@ const enGit: Record<string, TranslationEntry> = {
     message: "Couldn't start the GitHub connection.",
     description: "Toast when starting the connect flow fails",
   },
+  "git.callbackErrorTitle": {
+    message: "GitHub connection wasn't completed",
+    description: "Title shown after the GitHub install callback fails",
+  },
+  "git.callbackErrorExpired": {
+    message:
+      "This connection request expired. Select Connect GitHub to try again.",
+    description: "Callback error shown when the signed state has expired",
+  },
+  "git.callbackErrorInvalid": {
+    message:
+      "This connection request couldn't be verified. Select Connect GitHub to try again.",
+    description: "Callback error shown when signed state is missing or invalid",
+  },
+  "git.callbackErrorGeneric": {
+    message:
+      "GitHub couldn't complete the connection. Select Connect GitHub to try again.",
+    description: "Generic GitHub callback failure message",
+  },
   "git.disconnectSuccess": {
     message: "GitHub disconnected.",
     description: "Toast after a successful disconnect",

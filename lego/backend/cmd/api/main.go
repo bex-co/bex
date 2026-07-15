@@ -161,6 +161,9 @@ func main() {
 			log.Fatalf("bex-api: github app config: %v", err)
 		}
 		deps.GitHubClient = ghClient
+		// The same out-of-band private key also HMAC-signs the short-lived
+		// workspace state carried through GitHub's browser install redirect.
+		deps.GitHubStateSecret = []byte(key)
 	}
 	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
 	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
@@ -367,7 +370,8 @@ func main() {
 	}
 	deps.InviteBaseURL = os.Getenv("BEX_DASHBOARD_URL")
 	// The GitHub install callback (docs/ADR026-github-integration.md) redirects the
-	// browser back to the dashboard settings page on success.
+	// browser back to dashboard settings on success and with a bounded error code
+	// on state/install failures.
 	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 
