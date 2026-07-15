@@ -110,6 +110,13 @@ vi.mock("@/features/services/hooks/use-subdomain-policy", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-service-networking", () => ({
+  useServiceNetworking: () => ({
+    saveAllowList: vi.fn(async () => true),
+    saving: false,
+  }),
+}));
+
 vi.mock("@/features/services/hooks/use-static-site", () => ({
   useStaticSiteMutations: () => ({
     setRoutes: vi.fn(async () => true),

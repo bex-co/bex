@@ -58,15 +58,13 @@ providers:
 # RequestHost stay in the line (unbounded — never labels; see the ADR's cardinality
 # budget). Headers are dropped: they carry Authorization/Cookie, and a request log
 # is not a place to leak a credential.
-logs:
-  access:
-    enabled: true
-    format: json
-    fields:
-      general:
-        defaultmode: keep
-      headers:
-        defaultmode: drop
+accessLog:
+  enabled: true
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop
 # Prometheus request metrics — the backend for bex-api's request metrics
 # (GET /v1/metrics/{http-requests,http-latency,bandwidth}). addServicesLabels
 # exposes the per-service counters (traefik_service_requests_total,
