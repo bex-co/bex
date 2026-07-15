@@ -19,6 +19,7 @@ package secrets
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -46,9 +47,60 @@ func envVarsFromArgs(raw []any) []EnvVarView {
 		if v, ok := m["value"].(string); ok {
 			ev.Value = v
 		}
+		if generate, ok := m["generateValue"].(bool); ok {
+			ev.Generate = generate
+		}
 		vars = append(vars, ev)
 	}
 	return vars
+}
+
+var envVarListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EnvVarListValue",
+	Fields: graphql.Fields{
+		"id":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Key })},
+		"key":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Key })},
+		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Value })},
+	},
+})
+
+var envVarWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EnvVarWithCursor",
+	Fields: graphql.Fields{
+		"envVar": &graphql.Field{Type: envVarListValueGQLType, Resolve: gqlutil.Field(func(v envVarWithCursor) any { return v.EnvVar })},
+		"cursor": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v envVarWithCursor) any { return v.Cursor })},
+	},
+})
+
+// GraphQLQuery exposes the paged env-var list as the GraphQL twin of Render's
+// REST envelope. The existing service.envVarKeys field remains intact for old
+// dashboard clients; new clients use envVars(serviceId,cursor,limit).
+func (s *Service) GraphQLQuery() graphql.Fields {
+	return graphql.Fields{
+		"envVars": &graphql.Field{
+			Type: graphql.NewList(envVarWithCursorGQLType),
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				cursor, _ := p.Args["cursor"].(string)
+				limit := 0
+				if value, ok := p.Args["limit"].(int); ok {
+					if value < 1 {
+						return nil, core.ErrBadRequest
+					}
+					limit = value
+				}
+				vars, err := s.ListEnvVarsPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
+				if err != nil {
+					return nil, err
+				}
+				return toEnvVarList(vars), nil
+			},
+		},
+	}
 }
 
 // GraphQLMutation returns the env-var write mutations for the root to merge.
@@ -73,13 +125,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvVar": &graphql.Field{ // Render's add-or-update one
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"key":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"value":     &graphql.ArgumentConfig{Type: graphql.String},
+				"serviceId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"value":         &graphql.ArgumentConfig{Type: graphql.String},
+				"generateValue": &graphql.ArgumentConfig{Type: graphql.Boolean},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				value, _ := p.Args["value"].(string)
-				_, err := s.SetEnvVar(p.Context, p.Args["serviceId"].(string), p.Args["key"].(string), value)
+				generate, _ := p.Args["generateValue"].(bool)
+				_, err := s.SetEnvVar(p.Context, p.Args["serviceId"].(string), p.Args["key"].(string), EnvVarWrite{Value: value, GenerateValue: generate})
 				return err == nil, err
 			},
 		},

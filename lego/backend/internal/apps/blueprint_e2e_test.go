@@ -151,7 +151,7 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	}
 
 	// --- sync:false honors a live edit ---
-	if _, err := sec.SetEnvVar(ctx, "web", "SEEDED", "edited-in-dashboard"); err != nil {
+	if _, err := sec.SetEnvVar(ctx, "web", "SEEDED", secrets.EnvVarWrite{Value: "edited-in-dashboard"}); err != nil {
 		t.Fatalf("SetEnvVar: %v", err)
 	}
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: fiveFieldManifest}); err != nil {

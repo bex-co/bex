@@ -124,6 +124,32 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 	if store.m[envKey("web")]["NEW"] != "z" || store.m[envKey("web")]["FOO"] != "bar" {
 		t.Fatalf("setEnvVar should merge: %+v", store.m[envKey("web")])
 	}
+
+	// The new GraphQL list is the paged twin of REST's per-item envelope. The
+	// old nested envVarKeys field above remains available for compatibility.
+	page := gql(t, h, `{ envVars(serviceId:"web", limit:2) { envVar { id key } cursor } }`)["envVars"].([]any)
+	if len(page) != 2 {
+		t.Fatalf("envVars first page: %+v", page)
+	}
+	cursor := page[1].(map[string]any)["cursor"].(string)
+	next := gql(t, h, `{ envVars(serviceId:"web", limit:2, cursor:"`+cursor+`") { envVar { key } cursor } }`)["envVars"].([]any)
+	if len(next) != 1 || next[0].(map[string]any)["envVar"].(map[string]any)["key"] == page[1].(map[string]any)["envVar"].(map[string]any)["key"] {
+		t.Fatalf("envVars second page: first=%+v next=%+v", page, next)
+	}
+
+	// Both GraphQL write shapes carry generateValue through the same core verb.
+	if gql(t, h, `mutation { setEnvVar(serviceId:"web", key:"GENERATED_ONE", generateValue:true) }`)["setEnvVar"] != true {
+		t.Fatal("generated setEnvVar mutation should be true")
+	}
+	if len(store.m[envKey("web")]["GENERATED_ONE"]) != 44 {
+		t.Fatalf("single generated value = %q", store.m[envKey("web")]["GENERATED_ONE"])
+	}
+	if gql(t, h, `mutation { setEnvVars(serviceId:"web", envVars:[{key:"GENERATED_ALL", generateValue:true}]) }`)["setEnvVars"] != true {
+		t.Fatal("generated setEnvVars mutation should be true")
+	}
+	if len(store.m[envKey("web")]["GENERATED_ALL"]) != 44 {
+		t.Fatalf("bulk generated value = %q", store.m[envKey("web")]["GENERATED_ALL"])
+	}
 }
 
 // TestEnvVars_UnconfiguredIs503 confirms that with no secret store wired the

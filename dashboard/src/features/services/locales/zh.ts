@@ -395,6 +395,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "值",
     description: "Environment value input placeholder",
   },
+  "services.envGenerate": {
+    message: "生成",
+    description: "Generate a cryptographically random environment value",
+  },
+  "services.envGeneratePlaceholder": {
+    message: "保存时安全生成",
+    description:
+      "Environment value placeholder while server generation is selected",
+  },
   "services.envInvalidKey": {
     message: "只能使用字母、数字和下划线，且不能以数字开头。",
     description:
@@ -814,7 +823,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab: notifyOnFail row label",
   },
   "services.notifyOnFailHint": {
-    message: "默认遵循每位成员自己的通知偏好；你可以为此服务单独强制开启或关闭。",
+    message:
+      "默认遵循每位成员自己的通知偏好；你可以为此服务单独强制开启或关闭。",
     description: "Settings tab: notifyOnFail row hint text",
   },
   "services.notifyOnFailOptionDefault": {
@@ -2006,7 +2016,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.navDeploys": {
     message: "部署",
-    description: "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+    description:
+      "Service-detail nav item (dedicated deploy-history tab, w9/002)",
   },
   "services.eventsTitle": {
     message: "活动",

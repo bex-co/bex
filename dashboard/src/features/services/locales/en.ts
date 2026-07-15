@@ -400,6 +400,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "value",
     description: "Environment value input placeholder",
   },
+  "services.envGenerate": {
+    message: "Generate",
+    description: "Generate a cryptographically random environment value",
+  },
+  "services.envGeneratePlaceholder": {
+    message: "Generated securely when saved",
+    description:
+      "Environment value placeholder while server generation is selected",
+  },
   "services.envInvalidKey": {
     message: "Use letters, digits and underscores; can't start with a digit.",
     description:
@@ -2037,7 +2046,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.navDeploys": {
     message: "Deploys",
-    description: "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+    description:
+      "Service-detail nav item (dedicated deploy-history tab, w9/002)",
   },
   "services.eventsTitle": {
     message: "Activity",

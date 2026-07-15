@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -64,6 +65,7 @@ import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
+import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -266,7 +268,7 @@ function EnvVarEditor({
       </div>
       {rows.length > 0 && (
         <div className="space-y-1.5">
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-0.5">
+          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-0.5">
             <span className="text-xs text-muted-foreground">
               {t("services.createFieldEnvVarsKey")}
             </span>
@@ -274,12 +276,13 @@ function EnvVarEditor({
               {t("services.createFieldEnvVarsValue")}
             </span>
             <span />
+            <span />
           </div>
           {rows.map((row, i) => {
             const keyInvalid = row.key !== "" && !VALID_KEY.test(row.key);
             return (
               <div key={i} className="space-y-1">
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
                   <Input
                     value={row.key}
                     onChange={(e) => updateRow(i, "key", e.target.value)}
@@ -297,6 +300,15 @@ function EnvVarEditor({
                     aria-label={t("services.createFieldEnvVarsValue")}
                     className="font-mono text-sm"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateRow(i, "value", generateEnvValue())}
+                  >
+                    <Sparkles className="size-3.5" />
+                    {t("services.envGenerate")}
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"

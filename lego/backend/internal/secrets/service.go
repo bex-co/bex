@@ -58,6 +58,13 @@ type EnvVarView struct {
 	Generate bool   `json:"generateValue,omitempty"`
 }
 
+// EnvVarWrite is the mutually exclusive value-or-generate input accepted by a
+// single-key env-var write on every adapter.
+type EnvVarWrite struct {
+	Value         string
+	GenerateValue bool
+}
+
 // Service reads/writes tenant env vars + secret files over the injected
 // core.SecretKV store and materializes them into the App's runtime. Embeds
 // *core.Base for the client, clock, and authorization gate.
@@ -85,6 +92,31 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 		return nil, err
 	}
 	return envVarViews(env), nil
+}
+
+// ListEnvVarsPage returns a stable keyset page of a service's environment
+// variables. limit == 0 with no cursor preserves the original unbounded-list
+// behavior; cursor with no limit uses Render's default. A positive limit is
+// clamped to Render's public API maximum. after is the prior page's item cursor
+// (the env-var key).
+func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, error) {
+	vars, err := s.ListEnvVars(ctx, service)
+	if err != nil {
+		return nil, err
+	}
+	if limit == 0 && after == "" {
+		return vars, nil
+	}
+	if limit == 0 {
+		limit = core.DefaultPageLimit
+	}
+	if limit < 0 {
+		return nil, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+	}
+	if limit > core.MaxPageLimit {
+		limit = core.MaxPageLimit
+	}
+	return core.Page(vars, after, limit, func(v EnvVarView) string { return v.Key }), nil
 }
 
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
@@ -156,9 +188,9 @@ func resolveValue(key, value string, generate bool) (string, error) {
 }
 
 // SetEnvVar adds or updates one variable (Render's PUT .../env-vars/{key}, body
-// {value}), merging it into the existing set rather than replacing it. Returns
-// the bare {key,value}. Manage-scope verb.
-func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (EnvVarView, error) {
+// {value} or {generateValue:true}), merging it into the existing set rather than
+// replacing it. Returns the bare {key,value}. Manage-scope verb.
+func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvVarWrite) (EnvVarView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvVarView{}, err
@@ -169,6 +201,10 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key, value string) (En
 	key = strings.TrimSpace(key)
 	if !core.ValidEnvKey(key) {
 		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+	}
+	value, err := resolveValue(key, write.Value, write.GenerateValue)
+	if err != nil {
+		return EnvVarView{}, err
 	}
 	env, err := s.Store.Get(ctx, envPath(service))
 	if err != nil {
