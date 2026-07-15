@@ -1,0 +1,16 @@
+# dev-10 overlay for Ory Hydra (workstream w10) — sibling of
+# kratos.values.yaml in this directory; see its header for why each
+# workstream needs its own Ory stack instead of reusing the shared cluster's
+# "auth" namespace.
+#
+# Ports here MUST match .pm/w10/dev-10/ports.env:
+#   dashboard        -> http://localhost:50100
+#   hydra-admin port-forward -> http://localhost:52100
+hydra:
+  dev: true # plain-HTTP issuer, dev-only
+  config:
+    urls:
+      self:
+        issuer: http://localhost:57100
+      login: http://localhost:50100/auth/login
+      consent: http://localhost:50100/auth/consent
