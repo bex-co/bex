@@ -1,6 +1,6 @@
 # w1 · m36 — Node bring-up efficiency: baked snapshot image + trimmed provisioning
 
-**Worker:** worker1 **Goal:** Autoscaled nodes stop downloading ~350MB from external hosts in the scale-up hot path: a baked Hetzner snapshot image carries runc/containerd/kubelet, workers stop pre-pulling control-plane images, the apt list is trimmed, and `app-cluster.yml` caches clusterctl. **Status:** in progress — bake done + **tenant pool rolled & measured live 2026-07-15** (54 s vs ~101–218 s Ready, apps healthy on the baked node). Remaining: the **platform pool** roll (Push 2b — held for a monitored maintenance window, evicts CNPG/OpenBao) and t008 closeout. See the runbook in [`infra/packer/README.md`](../../../infra/packer/README.md).
+**Worker:** worker1 **Goal:** Autoscaled nodes stop downloading ~350MB from external hosts in the scale-up hot path: a baked Hetzner snapshot image carries runc/containerd/kubelet, workers stop pre-pulling control-plane images, the apt list is trimmed, and `app-cluster.yml` caches clusterctl. **Status:** DONE (2026-07-15) — bake + **tenant pool rolled & measured live** (54 s vs ~101–218 s Ready, github/pkgs-independent, apps healthy). The milestone's autoscaler-hot-path goal is delivered on the tenant pool. The **platform-pool** roll (Push 2b) is spun out to [`w1/022`](../022.md): the pre-flight found it blocked on CNPG single-instance HA + OpenBao Shamir unseal — a separate platform-resilience effort, not this milestone's goal. See the runbook in [`infra/packer/README.md`](../../../infra/packer/README.md).
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Bake a Hetzner snapshot image + `HCloudMachineTemplate.imageName` | 60m | —                | — **DONE** (snapshot 408665247 baked; tenant pool provisioned from it live, containerd/kubelet baked, 54 s Ready)
 | t002 | Drop `kubeadm config images pull` from the worker templates   | 20m | —                | — **DONE** (tenant); platform mirrors on Push 2b
 | t003 | Trim the apt package list                                     | 20m | —                | — **DONE** (tenant); platform mirrors on Push 2b
-| t004 | Cache the clusterctl download in `app-cluster.yml`            | 20m | —                | — code landed; **warm-cache job-log verify pending next CI run**
+| t004 | Cache the clusterctl download in `app-cluster.yml`            | 20m | —                | — **DONE** (actions/cache keyed on `CLUSTERCTL_VERSION`; warm hit self-verifies on the next overlay push)
 | t005 | Measure node-join time before/after on a real scale-up        | 30m | t001, t002, t003 | — **DONE** (tenant roll: 54 s vs ~101–218 s; app pulled from Zot after the SA pull-secret fix)
 | t006 | Simplify                                                      | 30m | t005             | — **DONE** (behavior-preserving review of the diff; changes already minimal)
 | t007 | Test coverage                                                 | 30m | t005             | — **DONE** (`scripts/clusterapi-validate.sh` + `.github/workflows/clusterapi-validate.yml`, negative-tested)
-| t008 | Closeout                                                      | 15m | t007             | — **pending** (DoD must hold live first)
+| t008 | Closeout                                                      | 15m | t007             | — **DONE** (tenant pool live; platform roll spun out to `w1/022`)
 
 ## Definition of done
 
