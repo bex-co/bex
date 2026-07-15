@@ -210,7 +210,7 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 ## Consequences
 
 - Deferred: storage autoscaling, the Accelerated tier, metering/billing. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**.
-- **`bex-db` (the control plane's own DB) should go `instances:3` + backups before you depend on it** — today it's `instances:1`, 5Gi, no backup config; losing it loses every tenant mapping. Higher priority than any single tenant DB.
+- **`bex-db` (the control plane's own DB) runs two cross-node instances plus continuous WAL archiving and nightly backups** — required pod anti-affinity and CNPG switchover cover one platform-node drain (w1/m38); the off-cluster backup/PITR path covers correlated loss (w2/m27, [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md)).
 - The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds an `<id>-pool.<domain>` SNI hostname.
 
 ## Verification

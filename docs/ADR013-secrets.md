@@ -20,7 +20,7 @@ OpenBao (like Vault before it) supports several storage backends. Bex already op
 
 - **Postgres backend** is community-supported, not the recommended path, and HashiCorp deprecated recommending external-DB backends in favor of integrated storage back in Vault 1.4 (2020) for good reason: OpenBao would need its own DSN Secret bootstrapped out-of-band exactly like Kratos/Hydra — except the thing being bootstrapped is itself the credential store, a chicken-and-egg dependency this design doesn't need to take on.
 - **Consul** is another moving part bex doesn't otherwise run, for the same benefit Raft gives for free.
-- **Integrated Raft storage** is self-contained (one PVC per pod, no external dependency), gives built-in snapshotting, and is the chart's own recommended default. Locally: `replicas: 1` (single-node raft — same storage engine, no quorum). **Prod: bump to `replicas: 3`** for quorum (tolerates one node down) — not built this milestone, tracked the same way `kratos-db`/`hydra-db` at `instances: 1` are (see Consequences).
+- **Integrated Raft storage** is self-contained (one PVC per pod, no external dependency), gives built-in snapshotting, and is the chart's own recommended default. Locally: `replicas: 1` (single-node raft — same storage engine, no quorum). Production runs `replicas: 3` for quorum and tolerates one member or node being unavailable; the one-member-at-a-time drain/unseal runbook is in [ADR015-openbao-backup-restore.md](ADR015-openbao-backup-restore.md#node-drain-and-rolling-maintenance-unseal).
 
 ### 3. Unseal strategy: Shamir secret sharing via `.env`, not auto-unseal
 

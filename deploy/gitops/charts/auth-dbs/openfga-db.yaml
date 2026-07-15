@@ -9,9 +9,12 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
 spec:
-  instances: 1
-  # w1/m19 t003: platform pool (CNPG's affinity block carries both knobs)
+  instances: 2
+  primaryUpdateMethod: switchover
+  # w1/m19 t003 + w1/m38: platform-only, with the standby required to land on
+  # another node so CNPG can switch over before a drain evicts the primary.
   affinity:
+    podAntiAffinityType: required
     nodeSelector:
       bex.co/pool: platform
     tolerations:

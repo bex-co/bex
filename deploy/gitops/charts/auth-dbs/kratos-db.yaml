@@ -1,7 +1,8 @@
 # The Kratos identity database — a dedicated CloudNativePG Cluster (Ory requires
 # Kratos and Hydra to have separate databases; separate *clusters* keep failover,
 # upgrades, and backups independent — same reasoning as bex-db, see
-# charts/bex-postgres/cluster.yaml). 1 instance for now; bump `instances` to 3 for HA.
+# charts/bex-postgres/cluster.yaml). Two instances on distinct platform nodes let
+# CNPG switch over before a node drain (w1/m38).
 # CNPG creates:
 #   - service  kratos-db-rw    (read-write endpoint Kratos connects to)
 #   - secret   kratos-db-app   (user/password for database `kratos`; the DSN is
@@ -14,9 +15,15 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true # CRD may be mid-install
 spec:
-  instances: 1
-  # w1/m19 t003: platform pool (CNPG's affinity block carries both knobs)
+  instances: 2
+  # Pod-template changes must promote the ready standby before replacing the
+  # primary; the default `restart` method creates an avoidable write outage.
+  primaryUpdateMethod: switchover
+  # w1/m19 t003: platform pool (CNPG's affinity block carries both knobs).
+  # Required pod anti-affinity keeps the primary and standby on different nodes,
+  # which is the drain-safety invariant guarded by scripts/gitops-validate.sh.
   affinity:
+    podAntiAffinityType: required
     nodeSelector:
       bex.co/pool: platform
     tolerations:
