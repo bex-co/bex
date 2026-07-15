@@ -181,7 +181,8 @@ var _ = Describe("Namespace-scoped Secret cache", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect((&AppReconciler{
-			Client: mgr.GetClient(), Scheme: mgr.GetScheme(), Mode: ModeKubernetes,
+			Client: mgr.GetClient(), BuildClient: restrictedClient,
+			Scheme: mgr.GetScheme(), Mode: ModeKubernetes,
 		}).SetupWithManager(mgr)).To(Succeed())
 
 		var kvReconciles atomic.Int32
