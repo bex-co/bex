@@ -48,7 +48,9 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
               <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
                 <SearchX className="text-muted-foreground/50 h-8 w-8" />
                 <div>
-                  <p className="mb-1 font-medium">{t("services.notFoundTitle")}</p>
+                  <p className="mb-1 font-medium">
+                    {t("services.notFoundTitle")}
+                  </p>
                   <p className="text-muted-foreground text-sm">
                     {t("services.notFoundBody", { name: serviceId })}
                   </p>
@@ -66,19 +68,21 @@ export function ServiceDetailLayout({ serviceId }: { serviceId: string }) {
 
   return (
     <DashboardLayout>
-      {service ? (
-        <ServiceDetailHeader
-          service={service}
-          pending={pending?.id === service.id ? pending.action : null}
-          onRun={run}
-        />
-      ) : (
-        <ServiceDetailHeaderSkeleton name={serviceId} />
-      )}
-      <ServiceNav serviceId={serviceId} />
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          <Outlet />
+      <div className="min-h-0 flex-1 overflow-auto">
+        {service ? (
+          <ServiceDetailHeader
+            service={service}
+            pending={pending?.id === service.id ? pending.action : null}
+            onRun={run}
+          />
+        ) : (
+          <ServiceDetailHeaderSkeleton name={serviceId} />
+        )}
+        <ServiceNav serviceId={serviceId} />
+        <div className="p-4 sm:p-6">
+          <div className="mx-auto w-full max-w-4xl space-y-6">
+            <Outlet />
+          </div>
         </div>
       </div>
     </DashboardLayout>

@@ -131,15 +131,24 @@ describe("service-detail layout routing", () => {
     renderAt("/services/app/logs");
 
     // the viewer's filter bar (search box) marks the logs tab as rendered
-    expect(
-      await screen.findByPlaceholderText("Search logs"),
-    ).toBeInTheDocument();
+    const search = await screen.findByPlaceholderText("Search logs");
+    expect(search).toBeInTheDocument();
     // …under the shared chrome: the header shows the name, type, and live URL
-    expect(screen.getByRole("heading", { name: "app" })).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "app" });
+    expect(heading).toBeInTheDocument();
     expect(screen.getByText("Web Service")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "https://app.onbex.co" }),
     ).toHaveAttribute("href", "https://app.onbex.co");
+
+    // The service header, tab bar, and tab content share one scroll container,
+    // so the header and tabs scroll away instead of staying frozen above it.
+    const scrollContainer = heading.closest(".overflow-auto");
+    expect(scrollContainer).toContainElement(heading);
+    expect(scrollContainer).toContainElement(
+      screen.getByRole("navigation", { name: "Service navigation" }),
+    );
+    expect(scrollContainer).toContainElement(search);
   });
 
   it("navigates the Render tab set, with Events first and no Overview tab", async () => {
