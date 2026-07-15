@@ -232,6 +232,76 @@ func TestRevokeAPIKeyUnbindsFromTenant(t *testing.T) {
 	}
 }
 
+// --- POST /v1/oauth/revoke (the official Render CLI's `render logout`) ---
+
+// TestOAuthRevokeSelfDeletesCallersKey covers the self-revoke shape a
+// caller's own OAuth2 (API-key) bearer token exercises: the key's own
+// client_id, calling back as itself, deletes itself.
+func TestOAuthRevokeSelfDeletesCallersKey(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	mintCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	created, err := svc.CreateAPIKey(mintCtx, "", "agent")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// The minted key now calls back as ITSELF — an oauth2-method identity whose
+	// subject is its own client_id, exactly what Hydra introspection resolves a
+	// client_credentials bearer to (internal/api/auth.go's introspectUpstream).
+	svc.Base.Workspace = fakeWorkspace{"identity-a": "tea-a", created.ID: "tea-a"}
+	selfCtx := core.WithIdentity(context.Background(), core.Identity{Subject: created.ID, Method: "oauth2"})
+
+	req := httptest.NewRequest("POST", "/v1/oauth/revoke", nil).WithContext(selfCtx)
+	rec := httptest.NewRecorder()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("oauth/revoke => 204, got %d: %s", rec.Code, rec.Body)
+	}
+	if _, ok := store.keys[created.ID]; ok {
+		t.Error("oauth/revoke must delete the caller's own Hydra client")
+	}
+}
+
+// TestOAuthRevokeRefusesNonOAuth2Caller: a session (Kratos) caller has no
+// Hydra client of its own to delete — the official CLI never sends a session
+// credential to this endpoint (it revokes a device-flow OAuth access token,
+// always oauth2-method in bex's model), so this is a defensive 400, not a
+// silent no-op that would look like a successful logout.
+func TestOAuthRevokeRefusesNonOAuth2Caller(t *testing.T) {
+	svc := newService(newFakeKeyStore())
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	req := httptest.NewRequest("POST", "/v1/oauth/revoke", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("session caller oauth/revoke => 400, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
+// TestOAuthRevokeRefusesNoCredential: no identity in context at all (the
+// request never reached the auth gate in this unit test's direct-mux setup)
+// must not panic and must not succeed.
+func TestOAuthRevokeRefusesNoCredential(t *testing.T) {
+	svc := newService(newFakeKeyStore())
+	req := httptest.NewRequest("POST", "/v1/oauth/revoke", nil)
+	rec := httptest.NewRecorder()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("no-identity oauth/revoke => 400, got %d: %s", rec.Code, rec.Body)
+	}
+}
+
 // --- w6/m18: ListAPIKeys/RevokeAPIKey workspace scoping ---
 
 func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {

@@ -195,24 +195,28 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, http.StatusOK, toRenderDeploy(d))
 		})
 		// Trigger (Render's POST .../deploys): decode the optional body fields
-		// bex can honestly honor (commitId, deployMode). clearCache is rejected
-		// when true — bex builds are always cache-free (ephemeral BuildKit Jobs,
-		// no --cache-to/--cache-from), so accepting clearCache silently would be
-		// a lie; callers must omit it or set it to false.
+		// bex can honestly honor (commitId, deployMode). clearCache is Render's
+		// string enum "clear" | "do_not_clear" (cli/pkg/client/types_gen.go's
+		// CreateDeployJSONBodyClearCache) — NOT a bool; the official CLI always
+		// sends it explicitly (defaulting to "do_not_clear" absent --clear-cache),
+		// so a bool-typed field here 400s every deploys-create call the CLI
+		// makes. bex builds are always cache-free (ephemeral BuildKit Jobs, no
+		// --cache-to/--cache-from) — "clear" and "do_not_clear" are both
+		// already-true no-ops, so any recognized value (or an omitted one) is
+		// accepted rather than rejected; only a value outside the enum 400s.
 		mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
 				CommitID   string `json:"commitId"`
-				ClearCache bool   `json:"clearCache"`
+				ClearCache string `json:"clearCache"`
 				DeployMode string `json:"deployMode"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
 				core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 				return
 			}
-			if body.ClearCache {
-				core.WriteErr(w, fmt.Errorf("%w: clearCache: bex builds are always cache-free "+
-					"(ephemeral BuildKit Jobs with no persistent layer cache); "+
-					"this field must be false or omitted", core.ErrBadRequest))
+			if body.ClearCache != "" && body.ClearCache != "clear" && body.ClearCache != "do_not_clear" {
+				core.WriteErr(w, fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)",
+					core.ErrBadRequest, body.ClearCache))
 				return
 			}
 			d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
