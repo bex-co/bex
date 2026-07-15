@@ -17,11 +17,18 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -344,5 +351,60 @@ func TestSetLifecycleAnnotations(t *testing.T) {
 	anns = c.GetAnnotations()
 	if _, has := anns[hibernationAnnotation]; has {
 		t.Error("resume must remove the hibernation annotation")
+	}
+}
+
+// TestCNPGWorkspaceLabelPropagated verifies that the workspace label is carried
+// into CNPG pod templates via inheritedMetadata so same-workspace NetworkPolicy
+// selectors reach the database. This is the invariant the w7/m33 policy split
+// depends on: CNPG pods must keep the workspace label (for intra-workspace
+// allow) but be excluded from the node/metadata egress deny by cnpg.io/cluster
+// (which is set by CNPG itself on every managed pod, not by the operator).
+func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	for _, gvk := range []schema.GroupVersionKind{
+		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
+		traefikIngressRouteTCPGVK, traefikMiddlewareTCPGVK,
+	} {
+		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+	}
+
+	const ws = "tea-testworkspace0001"
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dpg-wstest", Namespace: "default",
+			Labels: map[string]string{labelWorkspace: ws},
+		},
+		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(db).WithStatusSubresource(&appv1alpha1.Database{}).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+
+	ctx := context.Background()
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+	// First reconcile stamps the finalizer and requeues.
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	// Second reconcile reaches the CNPG Cluster CreateOrUpdate.
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(ctx, req.NamespacedName, cluster); err != nil {
+		t.Fatalf("CNPG Cluster not found: %v", err)
+	}
+	meta, _, _ := unstructured.NestedMap(cluster.Object, "spec", "inheritedMetadata", "labels")
+	if got := meta[labelWorkspace]; got != ws {
+		t.Errorf("inheritedMetadata.labels[%q] = %q, want %q — workspace label must be propagated to CNPG pods so same-workspace NetworkPolicy selectors work", labelWorkspace, got, ws)
 	}
 }

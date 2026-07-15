@@ -260,4 +260,19 @@ if [ -f "$LOGSHIP" ]; then
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 fi
 
+# CNPG bootstrap vs tenant egress deny guard (w7/m33): the deny policy must
+# carve out CNPG-managed pods (cnpg.io/cluster label) so CNPG init/instance
+# pods can reach the Kubernetes API (10.96.0.1:443). The workspace label stays
+# on CNPG pods (same-workspace isolation needs it), so the fix is a
+# DoesNotExist clause in the deny's matchExpressions, not a label removal.
+# Deny-overrides-allow means silently removing this exclusion breaks managed
+# Postgres on any fresh tenant node — this guard catches that regression in CI.
+EGRESS="deploy/gitops/base/tenant-node-egress.yaml"
+if [ -f "$EGRESS" ]; then
+  echo "==> $EGRESS CNPG exclusion from node/metadata deny"
+  cnpg_excl="$(yq '.spec.endpointSelector.matchExpressions[] | select(.key == "cnpg.io/cluster") | .operator' "$EGRESS")"
+  [ "$cnpg_excl" = "DoesNotExist" ] \
+    || { echo "FAIL: deny-tenant-node-and-metadata-egress must exclude cnpg.io/cluster pods (DoesNotExist matchExpression) — CNPG init pods need k8s API reachability (w7/m33)" >&2; fail=1; }
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }
