@@ -1310,6 +1310,110 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.startCommandLabel": {
+    message: "Start Command",
+    description: "Build & Deploy: native-runtime start-command label",
+  },
+  "services.dockerCommandLabel": {
+    message: "Docker Command",
+    description: "Build & Deploy: Docker CMD override label (Render wording)",
+  },
+  "services.startCommandHint": {
+    message: "The command that starts this service after a successful build.",
+    description: "Build & Deploy: native start-command help text",
+  },
+  "services.dockerCommandHint": {
+    message:
+      "Overrides the CMD in the Dockerfile. Leave blank to use the image's default command.",
+    description: "Build & Deploy: Docker Command help text",
+  },
+  "services.startCommandEmpty": {
+    message: "Uses the runtime or image default command",
+    description: "Build & Deploy: empty start/Docker Command state",
+  },
+  "services.startCommandConfirmEmpty": {
+    message: "the default command",
+    description: "Build & Deploy: empty command phrase in confirmation title",
+  },
+  "services.startCommandPlaceholder": {
+    message: "e.g. npm start",
+    description: "Build & Deploy: start-command input placeholder",
+  },
+  "services.startCommandEdit": {
+    message: "Edit Start Command",
+    description: "Build & Deploy: accessible command edit button label",
+  },
+  "services.dockerCommandEdit": {
+    message: "Edit Docker Command",
+    description: "Build & Deploy: accessible Docker Command edit button label",
+  },
+  "services.dockerCommandPlaceholder": {
+    message: "e.g. bin/server",
+    description: "Build & Deploy: Docker Command input placeholder",
+  },
+  "services.startCommandConfirmTitle": {
+    message: "Change the start command to {value}?",
+    description: "Build & Deploy: command-change confirmation title",
+  },
+  "services.dockerCommandConfirmTitle": {
+    message: "Change the Docker Command to {value}?",
+    description: "Build & Deploy: Docker Command confirmation title",
+  },
+  "services.startCommandConfirmBody": {
+    message:
+      "The service redeploys with the new command. In-flight requests finish before old instances are replaced.",
+    description: "Build & Deploy: command-change confirmation body",
+  },
+  "services.startCommandSuccess": {
+    message: "Start Command updated.",
+    description: "Toast after setStartCommand succeeds",
+  },
+  "services.startCommandError": {
+    message: "Couldn't update the Start Command. Please try again.",
+    description: "Toast after setStartCommand fails",
+  },
+  "services.dockerfilePathLabel": {
+    message: "Dockerfile Path",
+    description: "Build & Deploy: Dockerfile-path field label",
+  },
+  "services.dockerfilePathHint": {
+    message:
+      "Path to the Dockerfile, relative to the Root Directory. Leave blank to use Dockerfile.",
+    description: "Build & Deploy: Dockerfile-path help text",
+  },
+  "services.dockerfilePathEmpty": {
+    message: "Dockerfile",
+    description: "Build & Deploy: default Dockerfile-path state",
+  },
+  "services.dockerfilePathConfirmEmpty": {
+    message: "the default Dockerfile",
+    description: "Build & Deploy: empty Dockerfile-path confirmation phrase",
+  },
+  "services.dockerfilePathPlaceholder": {
+    message: "e.g. docker/Dockerfile.prod",
+    description: "Build & Deploy: Dockerfile-path input placeholder",
+  },
+  "services.dockerfilePathEdit": {
+    message: "Edit Dockerfile Path",
+    description: "Build & Deploy: accessible Dockerfile-path edit label",
+  },
+  "services.dockerfilePathConfirmTitle": {
+    message: "Change Dockerfile Path to {value}?",
+    description: "Build & Deploy: Dockerfile-path confirmation title",
+  },
+  "services.dockerfilePathConfirmBody": {
+    message:
+      "The service rebuilds from the selected Dockerfile and deploys the resulting image.",
+    description: "Build & Deploy: Dockerfile-path confirmation body",
+  },
+  "services.dockerfilePathSuccess": {
+    message: "Dockerfile Path updated.",
+    description: "Toast after setDockerfilePath succeeds",
+  },
+  "services.dockerfilePathError": {
+    message: "Couldn't update the Dockerfile Path. Please try again.",
+    description: "Toast after setDockerfilePath fails",
+  },
   "services.buildFilterLabel": {
     message: "Build Filters",
     description: "Build & Deploy: label for the build-filters editor",
@@ -1916,6 +2020,26 @@ const enServices: Record<string, TranslationEntry> = {
   "services.createFieldStartCommand": {
     message: "Start Command",
     description: "Create-wizard Render-compatible start command label",
+  },
+  "services.createFieldDockerfilePath": {
+    message: "Dockerfile Path",
+    description: "Create-wizard Dockerfile-path label for the Docker runtime",
+  },
+  "services.createFieldDockerfilePathPlaceholder": {
+    message: "Dockerfile",
+    description: "Create-wizard Dockerfile-path placeholder",
+  },
+  "services.createFieldDockerfilePathHint": {
+    message: "Path relative to the Root Directory. Leave blank for Dockerfile.",
+    description: "Create-wizard Dockerfile-path help text",
+  },
+  "services.createFieldDockerCommand": {
+    message: "Docker Command",
+    description: "Create-wizard Docker CMD override label (Render wording)",
+  },
+  "services.createFieldDockerCommandPlaceholder": {
+    message: "Use the Dockerfile CMD",
+    description: "Create-wizard optional Docker Command placeholder",
   },
   "services.createRuntimeNode": {
     message: "Node",

@@ -69,6 +69,14 @@ export interface ServiceView {
    * Only the detail `server` query selects it.
    */
   rootDir: string | null;
+  /** Render runtime selected for this service (docker or a native language). */
+  runtime: string | null;
+  /** Internal build strategy, used to recognize legacy Dockerfile-built Apps. */
+  builder: string | null;
+  /** Native Start Command or Docker Command override. */
+  startCommand: string | null;
+  /** Dockerfile path relative to rootDir; empty means Dockerfile. */
+  dockerfilePath: string | null;
   /**
    * Render's Build Filters (`spec.buildFilter`, w1/m34): repository-root-relative
    * glob patterns gating git-push auto-deploys. null when unset (every matching

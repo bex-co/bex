@@ -140,6 +140,10 @@ func TestViewMapsEverySource(t *testing.T) {
 		row:      store.ServiceEventRow{Key: "aud-commands:", Source: store.EventSourceAudit, Verb: "apps.SetCommands", Caller: "user-x"},
 		wantType: TypeCommandsChanged,
 	}, {
+		name:     "Dockerfile-path change is recorded without leaking the path",
+		row:      store.ServiceEventRow{Key: "aud-dockerfile:", Source: store.EventSourceAudit, Verb: "apps.SetDockerfilePath", Caller: "user-x"},
+		wantType: TypeDockerfilePathChanged,
+	}, {
 		name:     "source change is recorded without leaking the source",
 		row:      store.ServiceEventRow{Key: "aud-source:", Source: store.EventSourceAudit, Verb: "apps.SetSource", Caller: "user-x"},
 		wantType: TypeSourceChanged,
@@ -311,6 +315,7 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		{TypeDeployEnded, nil, []string{store.EventPhaseEnded}},
 		{TypeSuspenderAdded, []string{"apps.Suspend"}, nil},
 		{TypeCommandsChanged, []string{"apps.SetCommands"}, nil},
+		{TypeDockerfilePathChanged, []string{"apps.SetDockerfilePath"}, nil},
 		{TypeSourceChanged, []string{"apps.SetSource"}, nil},
 		// One type, four verbs — all must reach the query, or an env-var delete (or
 		// a blueprint seed) would silently vanish from an env_vars_changed filter.

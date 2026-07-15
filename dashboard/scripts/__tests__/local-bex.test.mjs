@@ -162,3 +162,57 @@ describe("local-bex.mjs deploy hooks", () => {
     expect((await fetch(rotatedURL)).status).toBe(200);
   });
 });
+
+describe("local-bex.mjs Build & Deploy settings", () => {
+  it("persists Start Command and Dockerfile Path across a fresh server read", async () => {
+    const start = await graphql(
+      "SetStartCommand",
+      `
+        mutation SetStartCommand($id: String!, $command: String!) {
+          setStartCommand(id: $id, command: $command) {
+            startCommand
+          }
+        }
+      `,
+      { id: "eden-cms-v2", command: "bin/server" },
+    );
+    expect(start.errors).toBeUndefined();
+    expect(start.data.setStartCommand.startCommand).toBe("bin/server");
+
+    const pathResult = await graphql(
+      "SetDockerfilePath",
+      `
+        mutation SetDockerfilePath($id: String!, $dockerfilePath: String!) {
+          setDockerfilePath(id: $id, dockerfilePath: $dockerfilePath) {
+            dockerfilePath
+          }
+        }
+      `,
+      {
+        id: "eden-cms-v2",
+        dockerfilePath: "docker/Dockerfile.prod",
+      },
+    );
+    expect(pathResult.errors).toBeUndefined();
+    expect(pathResult.data.setDockerfilePath.dockerfilePath).toBe(
+      "docker/Dockerfile.prod",
+    );
+
+    const read = await graphql(
+      "Server",
+      `
+        query Server($id: String!) {
+          server(id: $id) {
+            startCommand
+            dockerfilePath
+          }
+        }
+      `,
+      { id: "eden-cms-v2" },
+    );
+    expect(read.data.server).toMatchObject({
+      startCommand: "bin/server",
+      dockerfilePath: "docker/Dockerfile.prod",
+    });
+  });
+});

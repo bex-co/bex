@@ -7,6 +7,8 @@ const setRootDir = vi.fn(async () => true);
 const setAutoDeploy = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
 const setBuildFilter = vi.fn(async () => true);
+const setStartCommand = vi.fn(async () => true);
+const setDockerfilePath = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
@@ -14,6 +16,14 @@ vi.mock("@/features/services/hooks/use-root-dir", () => ({
 
 vi.mock("@/features/services/hooks/use-build-filter", () => ({
   useBuildFilter: () => ({ setBuildFilter, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-start-command", () => ({
+  useStartCommand: () => ({ setStartCommand, busy: false }),
+}));
+
+vi.mock("@/features/services/hooks/use-dockerfile-path", () => ({
+  useDockerfilePath: () => ({ setDockerfilePath, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
@@ -43,6 +53,10 @@ beforeEach(() => {
   setPreDeployCommand.mockResolvedValue(true);
   setBuildFilter.mockClear();
   setBuildFilter.mockResolvedValue(true);
+  setStartCommand.mockClear();
+  setStartCommand.mockResolvedValue(true);
+  setDockerfilePath.mockClear();
+  setDockerfilePath.mockResolvedValue(true);
   connectionState.connection = undefined;
 });
 
@@ -192,6 +206,164 @@ describe("BuildDeploySection", () => {
 
     expect(setRootDir).not.toHaveBeenCalled();
     expect(screen.getByText("Repository root")).toBeInTheDocument();
+  });
+
+  it("edits and confirms the native Start Command", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="node"
+        startCommand="npm start"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showStartCommand
+      />,
+    );
+
+    expect(screen.getByText("Start Command")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Edit Start Command" }),
+    );
+    const input = screen.getByDisplayValue("npm start");
+    await user.clear(input);
+    await user.type(input, "node server.js");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(setStartCommand).toHaveBeenCalledWith("app", "node server.js");
+  });
+
+  it("clears the persisted Start Command", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="node"
+        startCommand="npm start"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showStartCommand
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Start Command" }),
+    );
+    await user.clear(screen.getByDisplayValue("npm start"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(setStartCommand).toHaveBeenCalledWith("app", "");
+  });
+
+  it("shows Dockerfile Path only for Dockerfile builds and persists an edit", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="node"
+        dockerfilePath="stale/Dockerfile"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
+
+    rerender(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime={null}
+        builder="dockerfile"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(screen.getByText("Dockerfile Path")).toBeInTheDocument();
+
+    rerender(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="docker"
+        startCommand={null}
+        dockerfilePath="Dockerfile"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+        showStartCommand
+      />,
+    );
+    expect(screen.getByText("Docker Command")).toBeInTheDocument();
+    expect(screen.getByText("Dockerfile Path")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Dockerfile Path" }),
+    );
+    const input = screen.getByDisplayValue("Dockerfile");
+    await user.clear(input);
+    await user.type(input, "docker/Dockerfile.prod");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(setDockerfilePath).toHaveBeenCalledWith(
+      "app",
+      "docker/Dockerfile.prod",
+    );
+  });
+
+  it("keeps the Dockerfile Path draft after a failed mutation", async () => {
+    setDockerfilePath.mockResolvedValue(false);
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        runtime="docker"
+        dockerfilePath="Dockerfile"
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Dockerfile Path" }),
+    );
+    const input = screen.getByDisplayValue("Dockerfile");
+    await user.clear(input);
+    await user.type(input, "docker/Dockerfile.prod");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Save",
+      }),
+    );
+
+    expect(screen.getByDisplayValue("docker/Dockerfile.prod")).toBeVisible();
   });
 
   it("flipping Auto-Deploy on calls setAutoDeploy(id, true)", async () => {

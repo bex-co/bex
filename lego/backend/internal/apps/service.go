@@ -1881,6 +1881,36 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	})
 }
 
+// SetDockerfilePath changes the Dockerfile used by a repo-backed Docker build.
+// The path is relative to spec.rootDir (or the repository root when rootDir is
+// empty), matching Render's Dockerfile Path setting. Empty restores the default
+// "Dockerfile" lookup. Like SetRootDir, changing it starts a fresh build by
+// bumping restartedAt. Explicit native/buildpack runtimes are rejected; legacy
+// auto/dockerfile Apps remain supported because they can still be Dockerfile
+// builds without carrying spec.runtime="docker".
+func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath string) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Repo == "" {
+		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (dockerfile path only applies to Dockerfile builds)", core.ErrBadRequest, name)
+	}
+	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
+	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
+	if (runtime != "" && runtime != "docker") || builder == "native" || builder == "buildpack" {
+		return AppView{}, fmt.Errorf("%w: dockerfile path only applies to a Dockerfile-built service", core.ErrBadRequest)
+	}
+	dockerfilePath = strings.TrimSpace(dockerfilePath)
+	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
+		return AppView{}, fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.DockerfilePath = dockerfilePath
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
 // SetBuildFilter replaces the git-push auto-deploy filter (spec.buildFilter,
 // Render's Build Filters): the repository-root-relative glob patterns deciding
 // whether a push redeploys this App. Passing all-empty (or all-whitespace)

@@ -79,6 +79,19 @@ type rootDirArgs struct {
 	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
 }
 
+// startCommandArgs and dockerfilePathArgs expose the two remaining Build &
+// Deploy command/path settings through the same scalar-setter grammar as
+// set_root_directory. Render's official MCP has no update tools for either.
+type startCommandArgs struct {
+	ServiceID    string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	StartCommand string `json:"startCommand" jsonschema:"the command used to start the service; empty restores the image default where supported"`
+}
+
+type dockerfilePathArgs struct {
+	ServiceID      string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	DockerfilePath string `json:"dockerfilePath" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile"`
+}
+
 // buildFilterArg is Render's Build Filters object, shared by set_build_filter and
 // create_web_service: repository-root-relative globs deciding whether a git push
 // triggers an auto-deploy. Patterns support *, **, ?, and [class] wildcards.
@@ -681,6 +694,28 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_start_command",
+		Description: "Change the command used to start an existing service. For a Docker service this overrides the image CMD (Render's Docker Command); for a native runtime it is Render's Start Command. Empty restores the image default where supported. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in startCommandArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetCommands(ctx, in.ServiceID, nil, &in.StartCommand)
+		if err != nil {
+			return nil, renderService{}, err
+		}
+		return nil, toRenderService(app), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "set_dockerfile_path",
+		Description: "Change a repo-backed Docker service's Dockerfile Path, relative to its Root Directory. Empty restores the default Dockerfile. Triggers a fresh build. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in dockerfilePathArgs) (*mcp.CallToolResult, renderService, error) {
+		app, err := s.SetDockerfilePath(ctx, in.ServiceID, in.DockerfilePath)
 		if err != nil {
 			return nil, renderService{}, err
 		}

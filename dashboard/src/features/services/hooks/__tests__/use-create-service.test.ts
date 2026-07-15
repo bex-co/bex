@@ -68,6 +68,35 @@ describe("useCreateService", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Deploying web…");
   });
 
+  it("threads Dockerfile Path through the createService mutation", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createService: { id: "srv-docker" } } });
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({
+        name: "docker-web",
+        type: "web_service",
+        repo: "https://github.com/x/mono",
+        runtime: "docker",
+        dockerfilePath: "docker/Dockerfile.prod",
+        startCommand: "bin/server",
+      });
+    });
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          runtime: "docker",
+          dockerfilePath: "docker/Dockerfile.prod",
+          startCommand: "bin/server",
+        }),
+      }),
+    );
+  });
+
   it("follows a workspace switch — the next create carries the new ownerId", async () => {
     const mutate = vi
       .fn()

@@ -29,6 +29,7 @@ export interface CreateServiceInput {
     | "rust";
   buildCommand?: string;
   startCommand?: string;
+  dockerfilePath?: string;
   plan?: string;
   autoDeploy?: boolean;
   schedule?: string;
@@ -94,6 +95,7 @@ export function useCreateService(): UseCreateServiceResult {
             runtime: input.runtime,
             buildCommand: input.buildCommand,
             startCommand: input.startCommand,
+            dockerfilePath: input.dockerfilePath,
             plan: input.plan,
             autoDeploy: input.autoDeploy,
             schedule: input.schedule,

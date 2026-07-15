@@ -1290,6 +1290,106 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
+  "services.startCommandLabel": {
+    message: "启动命令",
+    description: "Build & Deploy: native-runtime start-command label",
+  },
+  "services.dockerCommandLabel": {
+    message: "Docker 命令",
+    description: "Build & Deploy: Docker CMD override label (Render wording)",
+  },
+  "services.startCommandHint": {
+    message: "成功构建后用于启动此服务的命令。",
+    description: "Build & Deploy: native start-command help text",
+  },
+  "services.dockerCommandHint": {
+    message: "覆盖 Dockerfile 中的 CMD。留空则使用镜像的默认命令。",
+    description: "Build & Deploy: Docker Command help text",
+  },
+  "services.startCommandEmpty": {
+    message: "使用运行时或镜像的默认命令",
+    description: "Build & Deploy: empty start/Docker Command state",
+  },
+  "services.startCommandConfirmEmpty": {
+    message: "默认命令",
+    description: "Build & Deploy: empty command phrase in confirmation title",
+  },
+  "services.startCommandPlaceholder": {
+    message: "例如 npm start",
+    description: "Build & Deploy: start-command input placeholder",
+  },
+  "services.startCommandEdit": {
+    message: "编辑启动命令",
+    description: "Build & Deploy: accessible command edit button label",
+  },
+  "services.dockerCommandEdit": {
+    message: "编辑 Docker 命令",
+    description: "Build & Deploy: accessible Docker Command edit button label",
+  },
+  "services.dockerCommandPlaceholder": {
+    message: "例如 bin/server",
+    description: "Build & Deploy: Docker Command input placeholder",
+  },
+  "services.startCommandConfirmTitle": {
+    message: "将启动命令更改为 {value}？",
+    description: "Build & Deploy: command-change confirmation title",
+  },
+  "services.dockerCommandConfirmTitle": {
+    message: "将 Docker 命令更改为 {value}？",
+    description: "Build & Deploy: Docker Command confirmation title",
+  },
+  "services.startCommandConfirmBody": {
+    message: "服务将使用新命令重新部署。现有请求完成后才会替换旧实例。",
+    description: "Build & Deploy: command-change confirmation body",
+  },
+  "services.startCommandSuccess": {
+    message: "启动命令已更新。",
+    description: "Toast after setStartCommand succeeds",
+  },
+  "services.startCommandError": {
+    message: "无法更新启动命令，请重试。",
+    description: "Toast after setStartCommand fails",
+  },
+  "services.dockerfilePathLabel": {
+    message: "Dockerfile 路径",
+    description: "Build & Deploy: Dockerfile-path field label",
+  },
+  "services.dockerfilePathHint": {
+    message: "相对于根目录的 Dockerfile 路径。留空则使用 Dockerfile。",
+    description: "Build & Deploy: Dockerfile-path help text",
+  },
+  "services.dockerfilePathEmpty": {
+    message: "Dockerfile",
+    description: "Build & Deploy: default Dockerfile-path state",
+  },
+  "services.dockerfilePathConfirmEmpty": {
+    message: "默认 Dockerfile",
+    description: "Build & Deploy: empty Dockerfile-path confirmation phrase",
+  },
+  "services.dockerfilePathPlaceholder": {
+    message: "例如 docker/Dockerfile.prod",
+    description: "Build & Deploy: Dockerfile-path input placeholder",
+  },
+  "services.dockerfilePathEdit": {
+    message: "编辑 Dockerfile 路径",
+    description: "Build & Deploy: accessible Dockerfile-path edit label",
+  },
+  "services.dockerfilePathConfirmTitle": {
+    message: "将 Dockerfile 路径更改为 {value}？",
+    description: "Build & Deploy: Dockerfile-path confirmation title",
+  },
+  "services.dockerfilePathConfirmBody": {
+    message: "服务将使用所选 Dockerfile 重新构建并部署生成的镜像。",
+    description: "Build & Deploy: Dockerfile-path confirmation body",
+  },
+  "services.dockerfilePathSuccess": {
+    message: "Dockerfile 路径已更新。",
+    description: "Toast after setDockerfilePath succeeds",
+  },
+  "services.dockerfilePathError": {
+    message: "无法更新 Dockerfile 路径，请重试。",
+    description: "Toast after setDockerfilePath fails",
+  },
   "services.buildFilterLabel": {
     message: "构建过滤器",
     description: "Build & Deploy: label for the build-filters editor",
@@ -1888,6 +1988,26 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createFieldStartCommand": {
     message: "启动命令",
     description: "Create-wizard Render-compatible start command label",
+  },
+  "services.createFieldDockerfilePath": {
+    message: "Dockerfile 路径",
+    description: "Create-wizard Dockerfile-path label for the Docker runtime",
+  },
+  "services.createFieldDockerfilePathPlaceholder": {
+    message: "Dockerfile",
+    description: "Create-wizard Dockerfile-path placeholder",
+  },
+  "services.createFieldDockerfilePathHint": {
+    message: "相对于根目录的路径。留空则使用 Dockerfile。",
+    description: "Create-wizard Dockerfile-path help text",
+  },
+  "services.createFieldDockerCommand": {
+    message: "Docker 命令",
+    description: "Create-wizard Docker CMD override label (Render wording)",
+  },
+  "services.createFieldDockerCommandPlaceholder": {
+    message: "使用 Dockerfile CMD",
+    description: "Create-wizard optional Docker Command placeholder",
   },
   "services.createRuntimeNode": {
     message: "Node",

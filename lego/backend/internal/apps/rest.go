@@ -555,7 +555,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var plan string
 		var idleTTL *int32
 		var maxShutdownDelay optionalInt32
-		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand *string
+		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand, dockerfilePath *string
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
@@ -566,9 +566,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			buildCommand = req.ServiceDetails.BuildCommand
 			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
 				var envSpecific struct {
-					BuildCommand  *string `json:"buildCommand"`
-					StartCommand  *string `json:"startCommand"`
-					DockerCommand *string `json:"dockerCommand"`
+					BuildCommand   *string `json:"buildCommand"`
+					StartCommand   *string `json:"startCommand"`
+					DockerCommand  *string `json:"dockerCommand"`
+					DockerfilePath *string `json:"dockerfilePath"`
 				}
 				if err := json.Unmarshal(req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
 					core.WriteErr(w, core.ErrBadRequest)
@@ -581,6 +582,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				if envSpecific.DockerCommand != nil {
 					startCommand = envSpecific.DockerCommand
 				}
+				dockerfilePath = envSpecific.DockerfilePath
 			}
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
@@ -604,7 +606,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Name != nil {
 			displayName = req.Name
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil {
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -708,6 +710,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if buildCommand != nil || startCommand != nil {
 			if app, err = s.SetCommands(r.Context(), id, buildCommand, startCommand); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if dockerfilePath != nil {
+			if app, err = s.SetDockerfilePath(r.Context(), id, *dockerfilePath); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

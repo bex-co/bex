@@ -1,0 +1,20 @@
+# Existing-service Build & Deploy setters (w5/m30). Both delegate to the same
+# bex-api Service verbs as REST/MCP. dockerfilePath is relative to rootDir and
+# only applies to a repo-backed Dockerfile build; an empty value restores the
+# default Dockerfile. startCommand maps to Render's Start Command for native
+# runtimes and Docker Command for Docker services.
+mutation SetStartCommand($id: String!, $command: String!) {
+  setStartCommand(id: $id, command: $command) {
+    id
+    startCommand
+    phase
+  }
+}
+
+mutation SetDockerfilePath($id: String!, $dockerfilePath: String!) {
+  setDockerfilePath(id: $id, dockerfilePath: $dockerfilePath) {
+    id
+    dockerfilePath
+    phase
+  }
+}
