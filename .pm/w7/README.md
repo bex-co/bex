@@ -37,6 +37,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m35** — Outbound webhook SSRF guard (shared dial-time IP block with the activator) (5 tasks) ← from `/pm-brainstorm` round 11, 2026-07-15 (the one **open** ADR028 follow-up-register finding: `webhooks/worker.go`'s `defaultClient` POSTs to tenant-supplied URLs with no SSRF protection — a tenant can target `169.254.169.254`/internal IPs; `w1/m37` built the exact dial-time guard next door and left this pre-existing gap to stay scoped, recommending a shared helper)
 - [ ] **m36** — Per-App registry pull credentials (8 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (ADR022:204's recorded shared-pull-credential blast radius, "before real tenants" sequencing); after `w6/m29` — composes with its imagePullSecret attach
 - [ ] **m37** — Credential lifecycle hardening chores (7 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15, groups ADR019:80-82's three `_Follow-up:_` markers (scoped non-`system:masters` operator kubeconfig, admin-cert expiry alert, CA-rotation runbook) + ADR013:111's OpenBao rekey runbook (each ~1h, the m10 chores pattern)
+- [ ] **m38** — Custom-domains list: honor cursor/limit + verificationStatus/domainType filters (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (mechanical-consistency mining: `listDomains` never reads the query string while emitting per-item cursors — the projects-style loop hazard plus two silently-ignored documented Render filters; w7 per the m34 API-parity-chore precedent)
 
 ## Inbox
 
