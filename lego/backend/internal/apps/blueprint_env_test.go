@@ -139,12 +139,15 @@ func TestValidateBlueprintAcceptsAllFiveForms(t *testing.T) {
 	// validate is stateless (no store, no seams) — a five-field blueprint must
 	// validate clean (t006 DoD: the named-error rejection list is empty).
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), fiveFieldManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", fiveFieldManifest)
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
 	if !v.Valid || len(v.Errors) != 0 {
 		t.Errorf("five-field blueprint: want valid with no errors, got %+v", v)
+	}
+	if v.Plan == nil || len(v.Plan.EnvGroups) != 1 || v.Plan.EnvGroups[0] != "shared" || v.Plan.TotalActions != 3 {
+		t.Errorf("five-field blueprint: unexpected validation plan %+v", v.Plan)
 	}
 }
 

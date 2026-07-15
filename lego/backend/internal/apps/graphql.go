@@ -504,12 +504,47 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// blueprintValidationGQLType is the GraphQL shape for BlueprintValidation.
+var blueprintValidationErrorGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintValidationError",
+	Fields: graphql.Fields{
+		"error":  &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Error })},
+		"line":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Line })},
+		"column": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Column })},
+		"path":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Path })},
+	},
+})
+
+var blueprintValidationPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintValidationPlan",
+	Fields: graphql.Fields{
+		"services":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Services })},
+		"databases":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Databases })},
+		"keyValue":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.KeyValue })},
+		"envGroups":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.EnvGroups })},
+		"totalActions": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.TotalActions })},
+	},
+})
+
+// blueprintValidationGQLType preserves the dashboard's original errors:
+// [String] field while also exposing Render's structured error details and plan.
 var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidation",
 	Fields: graphql.Fields{
-		"valid":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Valid })},
-		"errors": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Errors })},
+		"valid": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Valid })},
+		"errors": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v BlueprintValidation) any {
+			messages := make([]string, len(v.Errors))
+			for i, validationErr := range v.Errors {
+				messages[i] = validationErr.Error
+			}
+			return messages
+		})},
+		"errorDetails": &graphql.Field{Type: graphql.NewList(blueprintValidationErrorGQLType), Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Errors })},
+		"plan": &graphql.Field{Type: blueprintValidationPlanGQLType, Resolve: gqlutil.Field(func(v BlueprintValidation) any {
+			if v.Plan == nil {
+				return nil
+			}
+			return *v.Plan
+		})},
 	},
 })
 
@@ -629,9 +664,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: blueprintValidationGQLType,
 			Args: graphql.FieldConfigArgument{
 				"bexYaml": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ValidateBlueprint(p.Context, p.Args["bexYaml"].(string))
+				return s.ValidateBlueprint(p.Context, gqlStr(p.Args, "ownerId"), p.Args["bexYaml"].(string))
 			},
 		},
 	}
