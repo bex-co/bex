@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -79,6 +80,14 @@ const (
 	// backupSchedule is the daily base-backup cron (CNPG's 6-field form:
 	// sec min hour dom mon dow) — 03:00 UTC.
 	backupSchedule = "0 0 3 * * *"
+	// logicalExportRetention matches Render's documented logical-backup window.
+	logicalExportRetention = 7 * 24 * time.Hour
+	// logicalExportClientVersion is used when Database.spec.version is empty.
+	// A newer pg_dump supports every server version bex currently accepts.
+	logicalExportClientVersion = "18"
+	logicalExportLabel         = "app.bex.co/export"
+	logicalExportDBLabel       = "app.bex.co/database"
+	logicalExportPollInterval  = 5 * time.Second
 	// dbFinalizer is the finalizer stamped on every Database so the controller can
 	// purge barman object-store backups after the CNPG Cluster is gone (w7/m12).
 	// Decision: delete S3 backups on Database deletion (30d retention via CNPG's own
@@ -361,6 +370,11 @@ type DatabaseReconciler struct {
 	// Backup is the object-store target for backups + PITR. Unset (any field
 	// empty) => backups are disabled for every plan (recovery unavailable).
 	Backup BackupStore
+	// ExportRetention overrides the seven-day logical-export retention in tests.
+	// Zero uses logicalExportRetention.
+	ExportRetention time.Duration
+	// Now is a test clock. Nil uses time.Now.
+	Now func() time.Time
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
@@ -474,6 +488,13 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	db.Status.SecretName = db.Name + "-app"
 	db.Status.ObservedGeneration = db.Generation
 	db.Status.BackupsEnabled = backupEnabled
+	if storeConfigured {
+		db.Status.BackupEndpointURL = r.Backup.EndpointURL
+		db.Status.BackupS3SecretName = r.Backup.S3Secret
+	} else {
+		db.Status.BackupEndpointURL = ""
+		db.Status.BackupS3SecretName = ""
+	}
 
 	// --- daily base backup (ScheduledBackup) when backups are enabled ---
 	if backupEnabled {
@@ -482,6 +503,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 	} else if err := deleteOwned(ctx, r.Client, &db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
 		return r.dbFail(ctx, &db, "ScheduledBackupCleanupFailed", err)
+	}
+
+	// --- logical exports: pg_dump directory archive -> object store ---
+	exportRequeue, err := r.reconcileExports(ctx, &db, storeConfigured)
+	if err != nil {
+		return r.dbFail(ctx, &db, "ExportFailed", err)
 	}
 
 	// --- PgBouncer Pooler when requested ---
@@ -513,6 +540,9 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := r.Status().Update(ctx, &db); err != nil {
 			return ctrl.Result{}, err
 		}
+		if exportRequeue > 0 {
+			return ctrl.Result{RequeueAfter: exportRequeue}, nil
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -537,6 +567,9 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 		log.Info("database ready", "name", db.Name, "host", db.Status.Host)
+		if exportRequeue > 0 {
+			return ctrl.Result{RequeueAfter: exportRequeue}, nil
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -548,7 +581,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Status().Update(ctx, &db); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	return ctrl.Result{RequeueAfter: soonerRequeue(10*time.Second, exportRequeue)}, nil
+}
+
+func soonerRequeue(current, candidate time.Duration) time.Duration {
+	if candidate <= 0 || (current > 0 && current <= candidate) {
+		return current
+	}
+	return candidate
 }
 
 // setLifecycleAnnotations maps the Database lifecycle intent onto CNPG's cluster
@@ -738,9 +778,11 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	owned := &unstructured.Unstructured{}
 	owned.SetGroupVersionKind(cnpgClusterGVK)
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.Database{}).
-		Owns(owned).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&appv1alpha1.Database{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(owned, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// Job status updates do not change metadata.generation, so use resource
+		// version here; otherwise completed/failed exports would never settle.
+		Owns(&batchv1.Job{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Named("database").
 		Complete(r)
 }

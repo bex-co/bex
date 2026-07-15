@@ -17,6 +17,14 @@ export interface DatabaseBackup {
   createdAt: string | null;
 }
 
+export interface DatabaseExport extends DatabaseBackup {
+  url: string | null;
+  urlExpiresAt: string | null;
+  expiresAt: string | null;
+  filename: string | null;
+  failureReason: string | null;
+}
+
 export interface DatabaseRecoveryInfo {
   enabled: boolean | null;
   earliestRecoveryTime: string | null;
@@ -53,7 +61,7 @@ export const DatabaseRecoveryInfoDocument = gql`
 ` as unknown as TypedDocumentNode<DatabaseRecoveryInfoQuery, IdVars>;
 
 export interface DatabaseExportsQuery {
-  databaseExports: Array<DatabaseBackup | null> | null;
+  databaseExports: Array<DatabaseExport | null> | null;
 }
 export const DatabaseExportsDocument = gql`
   query DatabaseExports($id: String!) {
@@ -61,6 +69,11 @@ export const DatabaseExportsDocument = gql`
       id
       status
       createdAt
+      url
+      urlExpiresAt
+      expiresAt
+      filename
+      failureReason
     }
   }
 ` as unknown as TypedDocumentNode<DatabaseExportsQuery, IdVars>;
@@ -198,7 +211,7 @@ export const RecoverDatabaseDocument = gql`
 ` as unknown as TypedDocumentNode<RecoverDatabaseMutation, RecoverDatabaseVars>;
 
 export interface CreateDatabaseExportMutation {
-  createDatabaseExport: DatabaseBackup | null;
+  createDatabaseExport: DatabaseExport | null;
 }
 export const CreateDatabaseExportDocument = gql`
   mutation CreateDatabaseExport($id: String!) {
@@ -206,6 +219,11 @@ export const CreateDatabaseExportDocument = gql`
       id
       status
       createdAt
+      url
+      urlExpiresAt
+      expiresAt
+      filename
+      failureReason
     }
   }
 ` as unknown as TypedDocumentNode<CreateDatabaseExportMutation, IdVars>;

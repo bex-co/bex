@@ -147,7 +147,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			w.WriteHeader(http.StatusAccepted)
 		})
 
-		// --- recovery / exports (Render: recovery-info, recover, exports) ---
+		// --- recovery / exports (Render: recovery-info, recover, export) ---
 		recoveryInfo := func(w http.ResponseWriter, r *http.Request) {
 			info, err := s.RecoveryInfo(r.Context(), r.PathValue("id"))
 			if err != nil {
@@ -171,14 +171,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			core.WriteJSON(w, http.StatusCreated, pg) // a new instance => 201
 		})
-		mux.HandleFunc("GET "+base+"/{id}/exports", func(w http.ResponseWriter, r *http.Request) {
+		listExports := func(w http.ResponseWriter, r *http.Request) {
 			out, err := s.ListExports(r.Context(), r.PathValue("id"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return
 			}
 			core.WriteJSON(w, http.StatusOK, out)
-		})
+		}
+		createExport := func(w http.ResponseWriter, r *http.Request) {
+			if _, err := s.CreateExport(r.Context(), r.PathValue("id")); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			// Render returns 202 with no response body.
+			w.WriteHeader(http.StatusAccepted)
+		}
+		mux.HandleFunc("GET "+base+"/{id}/export", listExports)
+		mux.HandleFunc("POST "+base+"/{id}/export", createExport)
+		// Keep the old plural spelling as a compatibility alias while generated
+		// clients move to Render's singular /export path.
+		mux.HandleFunc("GET "+base+"/{id}/exports", listExports)
 		mux.HandleFunc("POST "+base+"/{id}/exports", func(w http.ResponseWriter, r *http.Request) {
 			exp, err := s.CreateExport(r.Context(), r.PathValue("id"))
 			if err != nil {

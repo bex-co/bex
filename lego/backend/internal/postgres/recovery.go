@@ -51,9 +51,9 @@ const (
 	// (scheduled and on-demand) — the reliable Backup→Database link, so
 	// recovery info can list the automatic base backups too, not just exports.
 	labelCNPGCluster = "cnpg.io/cluster"
-	// labelExport narrows to the on-demand exports this API created (the
-	// ScheduledBackup-produced automatic backups don't carry it).
-	labelExport = "app.bex.co/export"
+	// ExportURLTTL is the maximum life of a freshly minted download URL. It is
+	// deliberately much shorter than the seven-day artifact-retention window.
+	ExportURLTTL = 15 * time.Minute
 )
 
 // RecoveryInfoView mirrors Render's postgres recovery info: whether recovery is
@@ -71,11 +71,31 @@ type RecoveryInfoView struct {
 	Backups []BackupView `json:"backups"`
 }
 
-// BackupView is one base backup / export in object storage.
+// BackupView is one physical base backup in object storage.
 type BackupView struct {
 	ID        string `json:"id"`
 	Status    string `json:"status"` // pending|running|completed|failed
 	CreatedAt string `json:"createdAt,omitempty"`
+}
+
+// ExportView is Render's logical-export object plus honest lifecycle fields.
+// Render requires id/createdAt and returns url when the artifact is available;
+// the additional fields are a safe superset shared by GraphQL and MCP.
+type ExportView struct {
+	ID            string `json:"id"`
+	CreatedAt     string `json:"createdAt"`
+	Status        string `json:"status"`
+	URL           string `json:"url,omitempty"`
+	URLExpiresAt  string `json:"urlExpiresAt,omitempty"`
+	ExpiresAt     string `json:"expiresAt,omitempty"`
+	Filename      string `json:"filename,omitempty"`
+	FailureReason string `json:"failureReason,omitempty"`
+}
+
+// ExportURLSigner creates a short-lived URL for one available export. The
+// service invokes it only after can_view_sensitive authorization succeeds.
+type ExportURLSigner interface {
+	Presign(context.Context, *appv1alpha1.Database, appv1alpha1.DatabaseExportStatus, time.Duration) (string, error)
 }
 
 // RecoverRequest is the recover body: the new instance's name (required) and the
@@ -108,18 +128,15 @@ func (s *Service) RecoveryInfo(ctx context.Context, name string) (RecoveryInfoVi
 		}
 	}
 	info.LatestRecoveryTime = s.Now().UTC().Format(time.RFC3339)
-	info.Backups = s.listBackups(ctx, name, false)
+	info.Backups = s.listBackups(ctx, name)
 	return info, nil
 }
 
 // listBackups lists the CNPG Backup objects for a database, mapping each to a
-// BackupView. onlyExports narrows to the on-demand export-labeled backups.
-// Best-effort: an unavailable CNPG CRD (e.g. envtest) yields an empty list.
-func (s *Service) listBackups(ctx context.Context, name string, onlyExports bool) []BackupView {
+// BackupView. Best-effort: an unavailable CNPG CRD (e.g. envtest) yields an
+// empty list.
+func (s *Service) listBackups(ctx context.Context, name string) []BackupView {
 	sel := client.MatchingLabels{labelCNPGCluster: name}
-	if onlyExports {
-		sel[labelExport] = "true"
-	}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
 	if err := s.Client.List(ctx, list, client.InNamespace(s.Namespace), sel); err != nil {
@@ -205,49 +222,95 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	return pgView(newDB), nil
 }
 
-// ListExports lists the on-demand exports (base-backup snapshots to object
-// storage) taken for a database, newest first not guaranteed by the API.
-func (s *Service) ListExports(ctx context.Context, name string) ([]BackupView, error) {
-	if _, err := s.fetchDatabase(ctx, core.RelCanView, name); err != nil {
+// ListExports lists logical pg_dump exports newest first. A dump is the entire
+// database, so even listing it (Render's list response contains the download
+// URL) is gated by can_view_sensitive rather than ordinary can_view.
+func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanViewSensitive, name)
+	if err != nil {
 		return nil, err
 	}
-	return s.listBackups(ctx, name, true), nil
+	statusByID := make(map[string]appv1alpha1.DatabaseExportStatus, len(d.Status.Exports))
+	for _, status := range d.Status.Exports {
+		statusByID[status.ID] = status
+	}
+	now := s.Now().UTC()
+	out := make([]ExportView, 0, len(d.Spec.Exports))
+	for i := len(d.Spec.Exports) - 1; i >= 0; i-- {
+		request := d.Spec.Exports[i]
+		status, ok := statusByID[request.ID]
+		if !ok {
+			status = appv1alpha1.DatabaseExportStatus{
+				ID:        request.ID,
+				Phase:     appv1alpha1.DatabaseExportCreated,
+				CreatedAt: request.RequestedAt,
+			}
+		}
+		view := ExportView{
+			ID:            request.ID,
+			CreatedAt:     status.CreatedAt,
+			Status:        string(status.Phase),
+			ExpiresAt:     status.ExpiresAt,
+			Filename:      status.Filename,
+			FailureReason: status.FailureReason,
+		}
+		if view.CreatedAt == "" {
+			view.CreatedAt = request.RequestedAt
+		}
+		if status.Phase == appv1alpha1.DatabaseExportAvailable {
+			if expiresAt, parseErr := time.Parse(time.RFC3339, status.ExpiresAt); parseErr == nil && !now.Before(expiresAt) {
+				view.Status = string(appv1alpha1.DatabaseExportExpired)
+			} else {
+				ttl := ExportURLTTL
+				if !expiresAt.IsZero() && expiresAt.Sub(now) < ttl {
+					ttl = expiresAt.Sub(now)
+				}
+				if s.ExportSigner == nil {
+					return nil, fmt.Errorf("presign export %s: download signer is not configured", status.ID)
+				}
+				view.URL, err = s.ExportSigner.Presign(ctx, d, status, ttl)
+				if err != nil {
+					return nil, fmt.Errorf("presign export %s: %w", status.ID, err)
+				}
+				view.URLExpiresAt = now.Add(ttl).Format(time.RFC3339)
+			}
+		}
+		out = append(out, view)
+	}
+	return out, nil
 }
 
-// CreateExport triggers an on-demand export: a CNPG on-demand Backup of the
-// cluster to object storage — a discrete, restorable snapshot. (bex's export is
-// a physical base-backup snapshot, not Render's logical pg_dump: a documented
-// divergence — see docs/ADR009-postgresql-management.md.) Requires backups enabled.
-func (s *Service) CreateExport(ctx context.Context, name string) (BackupView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+// CreateExport appends logical-export intent to the Database CR. The operator
+// owns the pg_dump/upload Job and writes the lifecycle back to status; bex-api
+// never handles dump bytes. Render permits only one in-progress export per DB.
+func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, error) {
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
-		return BackupView{}, err
+		return ExportView{}, err
 	}
 	if !d.Status.BackupsEnabled {
-		return BackupView{}, fmt.Errorf("%w: %q has no backup store; exports are unavailable", core.ErrBadRequest, name)
+		return ExportView{}, fmt.Errorf("%w: %q has no backup store; exports are unavailable", core.ErrBadRequest, name)
 	}
-	backupName := id.New(id.Export)
-	backup := &unstructured.Unstructured{}
-	backup.SetGroupVersionKind(cnpgBackupGVK)
-	backup.SetName(backupName)
-	backup.SetNamespace(s.Namespace)
-	// cnpg.io/cluster is what CNPG stamps on every Backup for the cluster; set it
-	// so this on-demand export is found by the same query as the scheduled ones,
-	// and labelExport so it can be told apart from them.
-	backup.SetLabels(map[string]string{labelCNPGCluster: name, labelExport: "true"})
-	// GC the export with its Database (it's not owned by the CNPG Cluster).
-	backup.SetOwnerReferences([]metav1.OwnerReference{{
-		APIVersion: appv1alpha1.GroupVersion.String(),
-		Kind:       "Database",
-		Name:       d.Name,
-		UID:        d.UID,
-	}})
-	backup.Object["spec"] = map[string]any{
-		"cluster": map[string]any{"name": name},
-		"method":  "barmanObjectStore",
+	if d.Spec.Suspended {
+		return ExportView{}, fmt.Errorf("%w: %q is suspended; resume it before creating an export", core.ErrConflict, name)
 	}
-	if err := s.Client.Create(ctx, backup); err != nil {
-		return BackupView{}, err
+	statusByID := make(map[string]appv1alpha1.DatabaseExportPhase, len(d.Status.Exports))
+	for _, status := range d.Status.Exports {
+		statusByID[status.ID] = status.Phase
 	}
-	return BackupView{ID: backupName, Status: "pending"}, nil
+	for _, request := range d.Spec.Exports {
+		phase, observed := statusByID[request.ID]
+		if !observed || phase == appv1alpha1.DatabaseExportCreated || phase == appv1alpha1.DatabaseExportRunning {
+			return ExportView{}, fmt.Errorf("%w: an export is already in progress for %q", core.ErrConflict, name)
+		}
+	}
+
+	now := s.Now().UTC()
+	exportID := id.New(id.Export)
+	requestedAt := now.Format(time.RFC3339)
+	d.Spec.Exports = append(d.Spec.Exports, appv1alpha1.DatabaseExportRequest{ID: exportID, RequestedAt: requestedAt})
+	if err := s.Client.Update(ctx, d); err != nil {
+		return ExportView{}, err
+	}
+	return ExportView{ID: exportID, CreatedAt: requestedAt, Status: string(appv1alpha1.DatabaseExportCreated)}, nil
 }

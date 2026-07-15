@@ -38,6 +38,10 @@ import (
 // Service exposes managed Postgres as Render's "postgres" shape.
 type Service struct {
 	*core.Base
+	// ExportSigner mints short-lived object-store download URLs after the
+	// ListExports verb has passed can_view_sensitive. Production wires the
+	// Kubernetes Secret-backed S3 signer; tests can replace it.
+	ExportSigner ExportURLSigner
 	// Selections is the shared MCP per-session workspace selection
 	// (w6/m2/t005): list_postgres_instances falls back to the caller's
 	// selected workspace when its ownerId argument is omitted. Read-only

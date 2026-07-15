@@ -312,7 +312,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// KeyValue grouping seam (w1/m31 extension, internal/projects.DatabaseIndex/
 	// KeyValueIndex; w6/m20 extension, internal/environments' counterparts) —
 	// built once and shared, same as gh/rc above.
-	pg := &postgres.Service{Base: base, Selections: selections, MaxPostgres: d.MaxPostgres}
+	var exportSigner postgres.ExportURLSigner
+	if base != nil {
+		exportSigner = postgres.NewS3ExportSigner(base.Client)
+	}
+	pg := &postgres.Service{
+		Base:         base,
+		ExportSigner: exportSigner,
+		Selections:   selections,
+		MaxPostgres:  d.MaxPostgres,
+	}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues}
 	// Usage is constructed and its metering loop started in cmd/api/main.go
 	// (before NewServer runs), so it can't take Selections as a constructor

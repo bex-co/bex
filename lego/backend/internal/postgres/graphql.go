@@ -88,13 +88,29 @@ var replicaConnectionStringsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// databaseBackupGQLType is one base backup / on-demand export in object storage.
+// databaseBackupGQLType is one physical base backup in object storage.
 var databaseBackupGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseBackup",
 	Fields: graphql.Fields{
 		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.ID })},
 		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.Status })},
 		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.CreatedAt })},
+	},
+})
+
+// databaseExportGQLType is one Render-shaped logical export. url is freshly
+// presigned on every list read after can_view_sensitive authorization.
+var databaseExportGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseExport",
+	Fields: graphql.Fields{
+		"id":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.ID })},
+		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.CreatedAt })},
+		"status":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.Status })},
+		"url":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.URL })},
+		"urlExpiresAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.URLExpiresAt })},
+		"expiresAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.ExpiresAt })},
+		"filename":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.Filename })},
+		"failureReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.FailureReason })},
 	},
 })
 
@@ -351,8 +367,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.RecoveryInfo(p.Context, p.Args["id"].(string))
 			},
 		},
-		"databaseExports": &graphql.Field{ // on-demand export snapshots
-			Type: graphql.NewList(databaseBackupGQLType),
+		"databaseExports": &graphql.Field{ // logical pg_dump exports
+			Type: graphql.NewList(databaseExportGQLType),
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListExports(p.Context, p.Args["id"].(string))
@@ -535,7 +551,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"createDatabaseExport": &graphql.Field{
-			Type: databaseBackupGQLType,
+			Type: databaseExportGQLType,
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.CreateExport(p.Context, p.Args["id"].(string))

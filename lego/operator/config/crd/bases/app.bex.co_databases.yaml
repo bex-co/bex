@@ -55,6 +55,33 @@ spec:
               the same namespace; the plan sets resources/storage. See
               docs/ADR009-postgresql-management.md.
             properties:
+              exports:
+                description: |-
+                  Exports is the append-only logical-export intent log. bex-api mints an
+                  export id and appends a request; the operator projects each request to a
+                  pg_dump Job and reports its lifecycle in status.exports. Keeping mechanism
+                  out of bex-api preserves the operator -> types <- backend boundary.
+                items:
+                  description: |-
+                    DatabaseExportRequest is one logical pg_dump requested through bex-api.
+                    The id is minted by lego/backend/internal/id and is safe as a Kubernetes
+                    label/name component. RequestedAt is RFC3339 and anchors artifact retention.
+                  properties:
+                    id:
+                      description: ID is the opaque exp-... export id.
+                      type: string
+                    requestedAt:
+                      description: RequestedAt is when bex-api accepted the request
+                        (RFC3339).
+                      type: string
+                  required:
+                  - id
+                  - requestedAt
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - id
+                x-kubernetes-list-type: map
               failoverAt:
                 description: |-
                   FailoverAt, when bumped to a fresh RFC3339 timestamp, requests a CNPG
@@ -221,6 +248,14 @@ spec:
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:
+              backupEndpointURL:
+                description: |-
+                  BackupEndpointURL and BackupS3SecretName are the non-secret coordinates
+                  bex-api needs to presign an available logical export. Credentials remain in
+                  the named Secret and are read only after can_view_sensitive authorization.
+                type: string
+              backupS3SecretName:
+                type: string
               backupsEnabled:
                 description: |-
                   BackupsEnabled is true when the controller projected a barmanObjectStore +
@@ -293,6 +328,65 @@ spec:
                   as an observability aid after a failover. Empty until HA is active.
                   bex extension (Render reports HA state but not the pod name).
                 type: string
+              exports:
+                description: |-
+                  Exports reports the lifecycle and artifact identity for requested logical
+                  pg_dump exports. The operator is the sole writer.
+                items:
+                  description: |-
+                    DatabaseExportStatus is the operator-observed state for one request. The
+                    artifact key and object-store coordinates are control-plane data only; API
+                    adapters expose a freshly presigned URL, never the credential Secret.
+                  properties:
+                    completedAt:
+                      description: CompletedAt is when the artifact became available
+                        or the Job failed.
+                      type: string
+                    createdAt:
+                      description: CreatedAt is the accepted request time (RFC3339).
+                      type: string
+                    expiresAt:
+                      description: ExpiresAt is the seven-day artifact-retention deadline
+                        (RFC3339).
+                      type: string
+                    failureReason:
+                      description: FailureReason is populated for failed export or
+                        expiry Jobs.
+                      type: string
+                    filename:
+                      description: Filename is the browser download name (Render-compatible
+                        .dir.tar.gz).
+                      type: string
+                    id:
+                      description: ID matches DatabaseExportRequest.ID.
+                      type: string
+                    objectKey:
+                      description: ObjectKey is the full s3:// bucket/key written
+                        by the export Job.
+                      type: string
+                    phase:
+                      description: Phase is created, running, available, failed, expiring,
+                        or expired.
+                      enum:
+                      - created
+                      - running
+                      - available
+                      - failed
+                      - expiring
+                      - expired
+                      type: string
+                    startedAt:
+                      description: StartedAt is when Kubernetes first reported the
+                        export Job active.
+                      type: string
+                  required:
+                  - id
+                  - phase
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - id
+                x-kubernetes-list-type: map
               externalHost:
                 description: |-
                   ExternalHost is the public SNI hostname when Public is set (empty otherwise).

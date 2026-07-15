@@ -91,6 +91,11 @@ query DatabaseExports($id: String!) {
     id
     status
     createdAt
+    url
+    urlExpiresAt
+    expiresAt
+    filename
+    failureReason
   }
 }
 
@@ -158,6 +163,11 @@ mutation CreateDatabaseExport($id: String!) {
     id
     status
     createdAt
+    url
+    urlExpiresAt
+    expiresAt
+    filename
+    failureReason
   }
 }
 

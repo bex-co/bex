@@ -228,7 +228,7 @@ CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (s
 | `POST /v1/postgres/{name}/restart` | rolling restart of the primary | 200 |
 | `GET`/`POST /v1/postgres/{name}/recovery-info` | PITR window (earliest/latest) + backup list | 200 |
 | `POST /v1/postgres/{name}/recover` | restore to a **new** instance at a point in time (body: name, targetTime, plan, version) | 201 |
-| `GET`/`POST /v1/postgres/{name}/exports` | list / trigger on-demand export snapshots | 200 / 201 |
+| `GET`/`POST /v1/postgres/{name}/export` | list / trigger portable logical exports (short-lived download URL) | 200 / 202 |
 | `GET`/`PUT /v1/postgres/{name}/ip-allow-list` | read / replace the external-endpoint CIDR allowlist | 200 |
 | `GET`/`POST /v1/postgres/{name}/users` · `DELETE …/users/{user}` | list / create (returns password once) / delete managed login roles | 200 / 201 / 204 |
 

@@ -117,6 +117,15 @@ type DatabaseSpec struct {
 	// +optional
 	FailoverAt string `json:"failoverAt,omitempty"`
 
+	// Exports is the append-only logical-export intent log. bex-api mints an
+	// export id and appends a request; the operator projects each request to a
+	// pg_dump Job and reports its lifecycle in status.exports. Keeping mechanism
+	// out of bex-api preserves the operator -> types <- backend boundary.
+	// +optional
+	// +listType=map
+	// +listMapKey=id
+	Exports []DatabaseExportRequest `json:"exports,omitempty"`
+
 	// Parameters are non-default PostgreSQL configuration parameters projected
 	// to the CNPG Cluster's spec.postgresql.parameters (postgresql.conf).
 	// Key is the parameter name (e.g. "log_min_duration_statement"), value is
@@ -162,6 +171,73 @@ type DatabaseRecovery struct {
 	// recover to the latest available point (the end of the WAL stream).
 	// +optional
 	TargetTime string `json:"targetTime,omitempty"`
+}
+
+// DatabaseExportRequest is one logical pg_dump requested through bex-api.
+// The id is minted by lego/backend/internal/id and is safe as a Kubernetes
+// label/name component. RequestedAt is RFC3339 and anchors artifact retention.
+type DatabaseExportRequest struct {
+	// ID is the opaque exp-... export id.
+	// +required
+	ID string `json:"id"`
+
+	// RequestedAt is when bex-api accepted the request (RFC3339).
+	// +required
+	RequestedAt string `json:"requestedAt"`
+}
+
+// DatabaseExportPhase is the honest lifecycle of a logical export.
+// +kubebuilder:validation:Enum=created;running;available;failed;expiring;expired
+type DatabaseExportPhase string
+
+const (
+	DatabaseExportCreated   DatabaseExportPhase = "created"
+	DatabaseExportRunning   DatabaseExportPhase = "running"
+	DatabaseExportAvailable DatabaseExportPhase = "available"
+	DatabaseExportFailed    DatabaseExportPhase = "failed"
+	DatabaseExportExpiring  DatabaseExportPhase = "expiring"
+	DatabaseExportExpired   DatabaseExportPhase = "expired"
+)
+
+// DatabaseExportStatus is the operator-observed state for one request. The
+// artifact key and object-store coordinates are control-plane data only; API
+// adapters expose a freshly presigned URL, never the credential Secret.
+type DatabaseExportStatus struct {
+	// ID matches DatabaseExportRequest.ID.
+	// +required
+	ID string `json:"id"`
+
+	// Phase is created, running, available, failed, expiring, or expired.
+	// +required
+	Phase DatabaseExportPhase `json:"phase"`
+
+	// CreatedAt is the accepted request time (RFC3339).
+	// +optional
+	CreatedAt string `json:"createdAt,omitempty"`
+
+	// StartedAt is when Kubernetes first reported the export Job active.
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
+
+	// CompletedAt is when the artifact became available or the Job failed.
+	// +optional
+	CompletedAt string `json:"completedAt,omitempty"`
+
+	// ExpiresAt is the seven-day artifact-retention deadline (RFC3339).
+	// +optional
+	ExpiresAt string `json:"expiresAt,omitempty"`
+
+	// ObjectKey is the full s3:// bucket/key written by the export Job.
+	// +optional
+	ObjectKey string `json:"objectKey,omitempty"`
+
+	// Filename is the browser download name (Render-compatible .dir.tar.gz).
+	// +optional
+	Filename string `json:"filename,omitempty"`
+
+	// FailureReason is populated for failed export or expiry Jobs.
+	// +optional
+	FailureReason string `json:"failureReason,omitempty"`
 }
 
 // DatabasePhase mirrors the provisioning lifecycle.
@@ -218,6 +294,22 @@ type DatabaseStatus struct {
 	// configured) — the signal that recovery/PITR is available.
 	// +optional
 	BackupsEnabled bool `json:"backupsEnabled,omitempty"`
+
+	// BackupEndpointURL and BackupS3SecretName are the non-secret coordinates
+	// bex-api needs to presign an available logical export. Credentials remain in
+	// the named Secret and are read only after can_view_sensitive authorization.
+	// +optional
+	BackupEndpointURL string `json:"backupEndpointURL,omitempty"`
+
+	// +optional
+	BackupS3SecretName string `json:"backupS3SecretName,omitempty"`
+
+	// Exports reports the lifecycle and artifact identity for requested logical
+	// pg_dump exports. The operator is the sole writer.
+	// +optional
+	// +listType=map
+	// +listMapKey=id
+	Exports []DatabaseExportStatus `json:"exports,omitempty"`
 
 	// HighAvailabilityEnabled reports whether a replicated CNPG cluster (≥2 ready
 	// instances) is active. Render's highAvailabilityEnabled read field; reflects

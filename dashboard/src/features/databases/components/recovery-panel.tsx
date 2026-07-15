@@ -24,6 +24,7 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 import {
   useRecovery,
   type BackupItem,
+  type ExportItem,
 } from "@/features/databases/hooks/use-recovery";
 
 /**
@@ -37,6 +38,7 @@ export function RecoveryPanel({ id }: { id: string }) {
   const {
     info,
     exports,
+    exportInProgress,
     loading,
     exporting,
     recovering,
@@ -102,7 +104,12 @@ export function RecoveryPanel({ id }: { id: string }) {
               <Button
                 variant="outline"
                 onClick={() => void createExport()}
-                disabled={exporting}
+                disabled={exporting || exportInProgress}
+                title={
+                  exportInProgress
+                    ? t("databases.recoveryExportInProgress")
+                    : undefined
+                }
               >
                 {exporting ? (
                   <Loader2 className="animate-spin" />
@@ -118,7 +125,7 @@ export function RecoveryPanel({ id }: { id: string }) {
               items={info.backups}
               emptyText={t("databases.recoveryNoBackups")}
             />
-            <BackupList
+            <ExportList
               title={t("databases.recoveryExports")}
               items={exports}
               emptyText={t("databases.recoveryNoExports")}
@@ -179,6 +186,125 @@ export function RecoveryPanel({ id }: { id: string }) {
       </Dialog>
     </Card>
   );
+}
+
+function ExportList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: ExportItem[];
+  emptyText: string;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium">{title}</h4>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((item) => {
+            const disabledReason = exportDisabledReason(item, t);
+            return (
+              <li
+                key={item.id}
+                className="space-y-2 rounded-md border px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <code className="block truncate font-mono text-xs">
+                      {item.filename ?? item.id}
+                    </code>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeAge(item.createdAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">
+                      {exportStatusLabel(item.status, t)}
+                    </Badge>
+                    {item.status === "available" && item.url ? (
+                      <Button asChild size="sm" variant="outline">
+                        <a
+                          href={item.url}
+                          download={item.filename ?? undefined}
+                        >
+                          <Download />
+                          {t("databases.recoveryDownloadExport")}
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        title={disabledReason}
+                      >
+                        <Download />
+                        {t("databases.recoveryDownloadExport")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {item.failureReason ? (
+                  <p className="text-xs text-destructive">
+                    {t("databases.recoveryExportFailure", {
+                      reason: item.failureReason,
+                    })}
+                  </p>
+                ) : disabledReason && item.status !== "available" ? (
+                  <p className="text-xs text-muted-foreground">
+                    {disabledReason}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+type Translate = ReturnType<typeof useTranslations>["t"];
+
+function exportStatusLabel(status: string, t: Translate): string {
+  switch (status) {
+    case "created":
+      return t("databases.recoveryExportStatusCreated");
+    case "running":
+      return t("databases.recoveryExportStatusRunning");
+    case "available":
+      return t("databases.recoveryExportStatusAvailable");
+    case "failed":
+      return t("databases.recoveryExportStatusFailed");
+    case "expiring":
+      return t("databases.recoveryExportStatusExpiring");
+    case "expired":
+      return t("databases.recoveryExportStatusExpired");
+    default:
+      return status;
+  }
+}
+
+function exportDisabledReason(item: ExportItem, t: Translate): string {
+  if (item.failureReason) {
+    return t("databases.recoveryExportFailure", {
+      reason: item.failureReason,
+    });
+  }
+  switch (item.status) {
+    case "created":
+    case "running":
+      return t("databases.recoveryExportPreparing");
+    case "expiring":
+    case "expired":
+      return t("databases.recoveryExportExpired");
+    default:
+      return t("databases.recoveryExportUnavailable");
+  }
 }
 
 function Field({ label, value }: { label: string; value: string }) {

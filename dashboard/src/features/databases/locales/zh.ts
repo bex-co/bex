@@ -418,6 +418,54 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "尚无导出。",
     description: "Recovery panel empty export list",
   },
+  "databases.recoveryDownloadExport": {
+    message: "下载",
+    description: "Download an available logical database export",
+  },
+  "databases.recoveryExportInProgress": {
+    message: "已有导出正在进行。",
+    description: "Reason the create-export button is disabled",
+  },
+  "databases.recoveryExportPreparing": {
+    message: "导出仍在准备中。",
+    description: "Reason an in-progress export cannot be downloaded",
+  },
+  "databases.recoveryExportExpired": {
+    message: "此导出已过期，文件已删除。",
+    description: "Reason an expired export cannot be downloaded",
+  },
+  "databases.recoveryExportUnavailable": {
+    message: "此导出暂不可下载。",
+    description: "Fallback reason an export cannot be downloaded",
+  },
+  "databases.recoveryExportFailure": {
+    message: "导出失败：{reason}",
+    description: "Logical export failure reason",
+  },
+  "databases.recoveryExportStatusCreated": {
+    message: "已创建",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusRunning": {
+    message: "进行中",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusAvailable": {
+    message: "可用",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusFailed": {
+    message: "失败",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusExpiring": {
+    message: "正在过期",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusExpired": {
+    message: "已过期",
+    description: "Logical export status",
+  },
   "databases.recoveryRestoreTitle": {
     message: "恢复到新数据库",
     description: "Restore dialog title",

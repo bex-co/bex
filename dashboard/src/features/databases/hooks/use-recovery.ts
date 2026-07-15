@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,7 @@ import {
   CreateDatabaseExportDocument,
   RecoverDatabaseDocument,
   type DatabaseBackup,
+  type DatabaseExport,
 } from "@/features/databases/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -14,6 +15,14 @@ export interface BackupItem {
   id: string;
   status: string;
   createdAt: string | null;
+}
+
+export interface ExportItem extends BackupItem {
+  url: string | null;
+  urlExpiresAt: string | null;
+  expiresAt: string | null;
+  filename: string | null;
+  failureReason: string | null;
 }
 
 /** Normalize a nullable list of backup nodes (base backups or exports) onto
@@ -27,6 +36,23 @@ function mapBackups(
       id: b.id ?? "",
       status: b.status ?? "",
       createdAt: b.createdAt ?? null,
+    }));
+}
+
+function mapExports(
+  nodes: Array<DatabaseExport | null> | null | undefined,
+): ExportItem[] {
+  return (nodes ?? [])
+    .filter((item): item is DatabaseExport => item != null)
+    .map((item) => ({
+      id: item.id ?? "",
+      status: item.status ?? "",
+      createdAt: item.createdAt ?? null,
+      url: item.url ?? null,
+      urlExpiresAt: item.urlExpiresAt ?? null,
+      expiresAt: item.expiresAt ?? null,
+      filename: item.filename ?? null,
+      failureReason: item.failureReason ?? null,
     }));
 }
 
@@ -66,6 +92,12 @@ export function useRecovery(id: string) {
     errorPolicy: "all",
     skip: !enabled,
   });
+  const {
+    data: exportsData,
+    refetch: refetchExports,
+    startPolling,
+    stopPolling,
+  } = exportsQuery;
   const [createExportMut, { loading: exporting }] = useMutation(
     CreateDatabaseExportDocument,
   );
@@ -80,17 +112,29 @@ export function useRecovery(id: string) {
     backups: mapBackups(raw?.backups),
   };
 
-  const exports: BackupItem[] = mapBackups(exportsQuery.data?.databaseExports);
+  const exports = mapExports(exportsData?.databaseExports);
+  const exportInProgress = exports.some(
+    (item) => item.status === "created" || item.status === "running",
+  );
+
+  useEffect(() => {
+    if (exportInProgress) {
+      startPolling(5_000);
+    } else {
+      stopPolling();
+    }
+    return stopPolling;
+  }, [exportInProgress, startPolling, stopPolling]);
 
   const createExport = useCallback(async () => {
     try {
       await createExportMut({ variables: { id } });
       toast.success(t("databases.recoveryExportStarted"));
-      void exportsQuery.refetch();
+      void refetchExports();
     } catch {
       toast.error(t("databases.recoveryExportError"));
     }
-  }, [createExportMut, exportsQuery, id, t]);
+  }, [createExportMut, id, refetchExports, t]);
 
   const recover = useCallback(
     async (input: RecoverInput): Promise<boolean> => {
@@ -121,6 +165,7 @@ export function useRecovery(id: string) {
   return {
     info,
     exports,
+    exportInProgress,
     loading: infoQuery.loading,
     exporting,
     recovering,

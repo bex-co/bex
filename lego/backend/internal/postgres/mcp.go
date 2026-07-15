@@ -206,7 +206,7 @@ type recoverPostgresArgs struct {
 
 // exportsResult wraps the export list (MCP outputs must be JSON objects).
 type exportsResult struct {
-	Exports []BackupView `json:"exports"`
+	Exports []ExportView `json:"exports"`
 }
 
 // registerRecoveryMCP adds recovery info, recover-to-new, and exports.
@@ -227,7 +227,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_exports",
-		Description: "List the on-demand export snapshots taken for a managed Postgres database.",
+		Description: "List logical pg_dump exports for a managed Postgres database. Available exports include a short-lived authenticated download URL.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, exportsResult, error) {
 		list, err := s.ListExports(ctx, in.PostgresID)
 		if err != nil {
@@ -237,8 +237,8 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres_export",
-		Description: "Trigger an on-demand export (a restorable snapshot to object storage) of a managed Postgres database. Requires a plan with backups.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, BackupView, error) {
+		Description: "Trigger a logical pg_dump directory-format export of a managed Postgres database. The artifact is retained for seven days; only one export may run at once.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, ExportView, error) {
 		v, err := s.CreateExport(ctx, in.PostgresID)
 		return nil, v, err
 	})

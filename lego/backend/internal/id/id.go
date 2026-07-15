@@ -64,7 +64,7 @@ var (
 	EnvGroup     = Kind{prefix: "evg", desc: "environment group"}       // Render: env groups are evg-
 	Deploy       = Kind{prefix: "dep", desc: "deploy"}                  // Render: deploys are dep-
 	Invite       = Kind{prefix: "inv", desc: "workspace member invite"} // w4/m12 team invites
-	Export       = Kind{prefix: "exp", desc: "managed-postgres export (on-demand snapshot)"}
+	Export       = Kind{prefix: "exp", desc: "managed-postgres logical export"}
 	Audit        = Kind{prefix: "aud", desc: "audit log event"}                            // w4/m10 audit log
 	Owner        = Kind{prefix: "own", desc: "user identity (Render own-)"}                // w6/m7: opaque per-subject user id
 	Event        = Kind{prefix: "evt", desc: "service event (derived)"}                    // Render: events are evt-; w3/m7 — minted by Derive, never New

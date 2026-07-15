@@ -423,6 +423,54 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "No exports yet.",
     description: "Recovery panel empty export list",
   },
+  "databases.recoveryDownloadExport": {
+    message: "Download",
+    description: "Download an available logical database export",
+  },
+  "databases.recoveryExportInProgress": {
+    message: "An export is already in progress.",
+    description: "Reason the create-export button is disabled",
+  },
+  "databases.recoveryExportPreparing": {
+    message: "The export is still being prepared.",
+    description: "Reason an in-progress export cannot be downloaded",
+  },
+  "databases.recoveryExportExpired": {
+    message: "This export has expired and its artifact was removed.",
+    description: "Reason an expired export cannot be downloaded",
+  },
+  "databases.recoveryExportUnavailable": {
+    message: "This export isn't available for download.",
+    description: "Fallback reason an export cannot be downloaded",
+  },
+  "databases.recoveryExportFailure": {
+    message: "Export failed: {reason}",
+    description: "Logical export failure reason",
+  },
+  "databases.recoveryExportStatusCreated": {
+    message: "Created",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusRunning": {
+    message: "Running",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusAvailable": {
+    message: "Available",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusFailed": {
+    message: "Failed",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusExpiring": {
+    message: "Expiring",
+    description: "Logical export status",
+  },
+  "databases.recoveryExportStatusExpired": {
+    message: "Expired",
+    description: "Logical export status",
+  },
   "databases.recoveryRestoreTitle": {
     message: "Restore to a new database",
     description: "Restore dialog title",
