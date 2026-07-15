@@ -43,6 +43,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/jobs"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/members"
@@ -88,6 +89,7 @@ type Server struct {
 	Environments  *environments.Service
 	RegistryCreds *registrycreds.Service
 	Webhooks      *webhooks.Service
+	Jobs          *jobs.Service
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -269,6 +271,10 @@ type Deps struct {
 	// worker itself is constructed and started in cmd/api/main.go (a
 	// background loop, the usage/audit-sweep shape), not here.
 	WebhookStore webhooks.EndpointStore
+	// JobStore, when set (the control-plane store is wired), backs the
+	// one-off jobs feature (Render's /services/{id}/jobs). nil => every job
+	// verb reports jobs.ErrJobsUnavailable (503).
+	JobStore jobs.JobStore
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -437,6 +443,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		GitHub:        gh,
 		RegistryCreds: rc,
 		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Selections: selections},
+		Jobs:          &jobs.Service{Base: base, Store: d.JobStore},
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,
 		Audit:         d.Audit,
@@ -533,6 +540,9 @@ func (s *Server) features() []any {
 	}
 	if s.Webhooks != nil {
 		out = append(out, s.Webhooks)
+	}
+	if s.Jobs != nil {
+		out = append(out, s.Jobs)
 	}
 	return out
 }

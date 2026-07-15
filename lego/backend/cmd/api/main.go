@@ -238,6 +238,7 @@ func main() {
 		deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
 		deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
 		deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
+		deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
 
 		// Audit log (w4/m10): *store.PGStore structurally satisfies
 		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
