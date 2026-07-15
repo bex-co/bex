@@ -5,3 +5,4 @@
 ## Milestones
 
 - [x] **m1** — Deploy detail page: Manual Deploy jumps to a per-deploy page with its logs (9 tasks) ← from user request 2026-07-14
+- [ ] **m2** — Render CLI compatibility: run the official CLI against bex-api → `docs/cli-compatibility-checklist.md` (7 tasks) ← user decision 2026-07-14 (`/pm-brainstorm` round 8): never build a CLI from scratch (new `.pm/DO_NOT_DO.md` entry); verify `render-oss/cli` as the fifth surface instead
