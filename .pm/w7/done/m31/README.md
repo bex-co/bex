@@ -1,20 +1,20 @@
 # w7 · m31 — `renderSubdomainPolicy`: disable the platform subdomain
 
-**Worker:** worker7 **Goal:** Render's `renderSubdomainPolicy` (`enabled`|`disabled`) exists for bex: a service with custom domains can stop serving `<slug>.onbex.co`, with the operator dropping the platform host from its Ingress/cert while custom hosts keep working. **Status:** todo
+**Worker:** worker7 **Goal:** Render's `renderSubdomainPolicy` (`enabled`|`disabled`) exists for bex: a service with custom domains can stop serving `<slug>.onbex.co`, with the operator dropping the platform host from its Ingress/cert while custom hosts keep working. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                      | est | depends_on |
 | ---- | ----------------------------------------------------------- | --- | ---------- |
-| t001 | Capture Render's guard semantics                             | 30m | —          |
-| t002 | CRD field + `effectiveHosts` drops the platform host         | 45m | t001       |
-| t003 | REST/GraphQL/MCP with Render's exact enum                    | 40m | t002       |
-| t004 | Custom Domains section toggle                                | 30m | t003       |
-| t005 | Activator + static-resolver honor the absent host            | 30m | t002       |
-| t006 | Render parity                                                | 30m | t004, t005 |
-| t007 | Simplify                                                     | 30m | t006       |
-| t008 | Test coverage                                                | 40m | t006       |
-| t009 | Closeout                                                     | 15m | t008       |
+| t001 | Capture Render's guard semantics                             | 30m | —          | — **DONE** |
+| t002 | CRD field + `effectiveHosts` drops the platform host         | 45m | t001       | — **DONE** |
+| t003 | REST/GraphQL/MCP with Render's exact enum                    | 40m | t002       | — **DONE** |
+| t004 | Custom Domains section toggle                                | 30m | t003       | — **DONE** |
+| t005 | Activator + static-resolver honor the absent host            | 30m | t002       | — **DONE** |
+| t006 | Render parity                                                | 30m | t004, t005 | — **DONE** |
+| t007 | Simplify                                                     | 30m | t006       | — **DONE** |
+| t008 | Test coverage                                                | 40m | t006       | — **DONE** |
+| t009 | Closeout                                                     | 15m | t008       | — **DONE** |
 
 ## Definition of done
 

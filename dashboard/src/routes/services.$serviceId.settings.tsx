@@ -172,7 +172,11 @@ export function ServiceSettingsPage() {
             </Card>
           )}
           <CustomDomainsSection serviceId={serviceId} />
-          <PlatformSubdomainSection url={service?.url ?? null} />
+          <PlatformSubdomainSection
+            serviceId={serviceId}
+            url={service?.url ?? null}
+            renderSubdomainPolicy={service?.renderSubdomainPolicy}
+          />
         </>
       )}
 

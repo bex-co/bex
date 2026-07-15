@@ -1130,16 +1130,39 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.platformSubdomainDescription": {
     message:
-      "Your service is always reachable at its bex platform subdomain, in addition to any custom domains.",
+      "Control whether your service answers on its bex platform subdomain in addition to any custom domains you've configured.",
     description: "Settings tab platform-subdomain section description",
   },
   "services.platformSubdomainEnabled": {
-    message: "Always enabled",
-    description: "Platform-subdomain badge: the subdomain can't be turned off",
+    message: "Enabled",
+    description: "Platform-subdomain toggle label when the subdomain is active",
+  },
+  "services.platformSubdomainDisabled": {
+    message: "Disabled",
+    description:
+      "Platform-subdomain toggle label when the subdomain is disabled",
   },
   "services.platformSubdomainPending": {
     message: "The platform URL is assigned once the service is running.",
     description: "Platform-subdomain state when the service has no URL yet",
+  },
+  "services.platformSubdomainDisabledNote": {
+    message:
+      "Platform subdomain is disabled. Your service is only reachable via custom domains.",
+    description:
+      "Platform-subdomain note shown when the policy is set to disabled",
+  },
+  "services.platformSubdomainToggleLabel": {
+    message: "Toggle platform subdomain",
+    description: "Accessible label for the platform-subdomain Switch",
+  },
+  "services.subdomainPolicySuccess": {
+    message: "Platform subdomain setting updated.",
+    description: "Toast on successful setSubdomainPolicy mutation",
+  },
+  "services.subdomainPolicyError": {
+    message: "Could not update platform subdomain setting. Try again.",
+    description: "Toast on failed setSubdomainPolicy mutation",
   },
   "services.deployTitle": {
     message: "Deploy",

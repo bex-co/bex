@@ -562,6 +562,19 @@ spec:
                   falls back to the CR's Name — a hand-applied App (e.g. examples/whoami-app.yaml)
                   with no control plane behind it keeps working unchanged.
                 type: string
+              subdomainPolicy:
+                description: |-
+                  SubdomainPolicy controls whether the platform subdomain
+                  "<subdomain>.<BEX_BASE_DOMAIN>" is active for this App (Render's
+                  renderSubdomainPolicy). "enabled" (default, or empty) keeps the platform
+                  host in the Ingress; "disabled" drops it so only custom hosts in Hosts[]
+                  serve the App. Cannot be set to "disabled" without at least one custom
+                  host — that would leave the service silently unreachable. Only meaningful
+                  for types that have a public Ingress (web_service, static_site).
+                enum:
+                - enabled
+                - disabled
+                type: string
               suspended:
                 description: |-
                   Suspended parks the App without losing anything: the kubernetes runtime

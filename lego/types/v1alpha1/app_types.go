@@ -23,6 +23,16 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// SubdomainPolicy controls whether the platform subdomain (<slug>.onbex.co) is
+// active for an App. Render's renderSubdomainPolicy enum values.
+const (
+	// SubdomainPolicyEnabled keeps the platform host in the Ingress. Default.
+	SubdomainPolicyEnabled = "enabled"
+	// SubdomainPolicyDisabled drops the platform host from the Ingress so only
+	// custom domains in spec.hosts[] serve the App.
+	SubdomainPolicyDisabled = "disabled"
+)
+
 // Service types, tracking Render's serviceType vocabulary. An empty spec.type is
 // treated as TypeWebService, so pre-existing Apps keep their behavior.
 const (
@@ -393,6 +403,17 @@ type AppSpec struct {
 	// broken DNS can never block another's issuance or renewal.
 	// +optional
 	Hosts []string `json:"hosts,omitempty"`
+
+	// SubdomainPolicy controls whether the platform subdomain
+	// "<subdomain>.<BEX_BASE_DOMAIN>" is active for this App (Render's
+	// renderSubdomainPolicy). "enabled" (default, or empty) keeps the platform
+	// host in the Ingress; "disabled" drops it so only custom hosts in Hosts[]
+	// serve the App. Cannot be set to "disabled" without at least one custom
+	// host — that would leave the service silently unreachable. Only meaningful
+	// for types that have a public Ingress (web_service, static_site).
+	// +optional
+	// +kubebuilder:validation:Enum=enabled;disabled
+	SubdomainPolicy string `json:"subdomainPolicy,omitempty"`
 }
 
 // PlatformSubdomain returns the slug the platform hostname is built from:

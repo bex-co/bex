@@ -1112,16 +1112,39 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab platform-subdomain section title",
   },
   "services.platformSubdomainDescription": {
-    message: "除自定义域名外，你的服务始终可通过其 bex 平台子域名访问。",
+    message:
+      "控制你的服务是否在平台子域名上响应，可与自定义域名同时生效。",
     description: "Settings tab platform-subdomain section description",
   },
   "services.platformSubdomainEnabled": {
-    message: "始终启用",
-    description: "Platform-subdomain badge: the subdomain can't be turned off",
+    message: "已启用",
+    description: "Platform-subdomain toggle label when the subdomain is active",
+  },
+  "services.platformSubdomainDisabled": {
+    message: "已禁用",
+    description:
+      "Platform-subdomain toggle label when the subdomain is disabled",
   },
   "services.platformSubdomainPending": {
     message: "服务运行后将分配平台 URL。",
     description: "Platform-subdomain state when the service has no URL yet",
+  },
+  "services.platformSubdomainDisabledNote": {
+    message: "平台子域名已禁用。你的服务只能通过自定义域名访问。",
+    description:
+      "Platform-subdomain note shown when the policy is set to disabled",
+  },
+  "services.platformSubdomainToggleLabel": {
+    message: "切换平台子域名",
+    description: "Accessible label for the platform-subdomain Switch",
+  },
+  "services.subdomainPolicySuccess": {
+    message: "平台子域名设置已更新。",
+    description: "Toast on successful setSubdomainPolicy mutation",
+  },
+  "services.subdomainPolicyError": {
+    message: "无法更新平台子域名设置，请重试。",
+    description: "Toast on failed setSubdomainPolicy mutation",
   },
   "services.deployTitle": {
     message: "部署",

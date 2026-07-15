@@ -1,0 +1,8 @@
+# setSubdomainPolicy controls whether the platform subdomain (<slug>.onbex.co)
+# is active for a service (w7/m31, Render's renderSubdomainPolicy field).
+mutation SetSubdomainPolicy($id: String!, $policy: String!) {
+  setSubdomainPolicy(id: $id, policy: $policy) {
+    id
+    renderSubdomainPolicy
+  }
+}

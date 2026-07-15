@@ -307,6 +307,12 @@ type AppView struct {
 	// notify-on-fail.md). Empty is reported as "default". The Settings →
 	// Notifications section reads it and writes it via SetNotifyOnFail.
 	NotifyOnFail string `json:"notifyOnFail"`
+	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
+	// (enabled|disabled): whether the platform subdomain <slug>.onbex.co is
+	// active for this service. "enabled" (default) keeps it; "disabled" drops
+	// it so only custom domains in spec.hosts[] serve the App. The Settings →
+	// Custom Domains section reads it and writes it via SetSubdomainPolicy.
+	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (spec.healthCheckPath,
 	// Render's healthCheckPath). Empty means the default "/". The Settings →
 	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
@@ -468,43 +474,47 @@ func view(a *appv1alpha1.App) AppView {
 	// normalizeNotifyOnFail's error is unreachable here: the CRD enum already
 	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
 	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
+	// normalizeSubdomainPolicy's error is unreachable: the CRD enum guarantees
+	// a.Spec.SubdomainPolicy is "", "enabled", or "disabled".
+	subdomainPolicy, _ := normalizeSubdomainPolicy(a.Spec.SubdomainPolicy)
 	return AppView{
-		ID:                  appID,
-		Name:                name,
-		Slug:                a.Spec.PlatformSubdomain(a.Name),
-		DisplayName:         a.Spec.DisplayName,
-		Type:                svcType,
-		Phase:               string(a.Status.Phase),
-		URL:                 a.Status.URL,
-		URLs:                a.Status.URLs,
-		Image:               a.Status.Image,
-		SourceImage:         a.Spec.Image,
-		Runtime:             a.Spec.Runtime,
-		BuildCommand:        a.Spec.BuildCommand,
-		StartCommand:        a.Spec.StartCommand,
-		Builder:             a.Spec.Builder,
-		Replicas:            a.Spec.Replicas,
-		Suspended:           a.Spec.Suspended,
-		Schedule:            a.Spec.Schedule,
-		Command:             a.Spec.Command,
-		Runs:                cronRunViews(a.Status.Runs),
-		LastSuccessfulRunAt: lastSuccessfulCronRunAt(a.Status.Runs),
-		Plan:                plan,
-		Revision:            a.Status.ActiveRevision,
-		CreatedAt:           created,
-		IdleTTLSeconds:      a.Spec.IdleTTLSeconds,
-		OwnerID:             a.Labels[core.LabelTenant],
-		ProjectID:           a.Labels[core.LabelProject],
-		EnvironmentID:       a.Labels[core.LabelEnvironment],
-		RootDir:             a.Spec.RootDir,
-		DockerfilePath:      a.Spec.DockerfilePath,
-		Repo:                a.Spec.Repo,
-		Branch:              a.Spec.Branch,
-		BuildFilter:         buildFilterView(a.Spec.BuildFilter),
-		Autoscaling:         asView,
-		AutoDeploy:          a.Spec.AutoDeploy,
-		NotifyOnFail:        notifyOnFail,
-		HealthCheckPath:     a.Spec.HealthCheckPath,
+		ID:                    appID,
+		Name:                  name,
+		Slug:                  a.Spec.PlatformSubdomain(a.Name),
+		DisplayName:           a.Spec.DisplayName,
+		Type:                  svcType,
+		Phase:                 string(a.Status.Phase),
+		URL:                   a.Status.URL,
+		URLs:                  a.Status.URLs,
+		Image:                 a.Status.Image,
+		SourceImage:           a.Spec.Image,
+		Runtime:               a.Spec.Runtime,
+		BuildCommand:          a.Spec.BuildCommand,
+		StartCommand:          a.Spec.StartCommand,
+		Builder:               a.Spec.Builder,
+		Replicas:              a.Spec.Replicas,
+		Suspended:             a.Spec.Suspended,
+		Schedule:              a.Spec.Schedule,
+		Command:               a.Spec.Command,
+		Runs:                  cronRunViews(a.Status.Runs),
+		LastSuccessfulRunAt:   lastSuccessfulCronRunAt(a.Status.Runs),
+		Plan:                  plan,
+		Revision:              a.Status.ActiveRevision,
+		CreatedAt:             created,
+		IdleTTLSeconds:        a.Spec.IdleTTLSeconds,
+		OwnerID:               a.Labels[core.LabelTenant],
+		ProjectID:             a.Labels[core.LabelProject],
+		EnvironmentID:         a.Labels[core.LabelEnvironment],
+		RootDir:               a.Spec.RootDir,
+		DockerfilePath:        a.Spec.DockerfilePath,
+		Repo:                  a.Spec.Repo,
+		Branch:                a.Spec.Branch,
+		BuildFilter:           buildFilterView(a.Spec.BuildFilter),
+		Autoscaling:           asView,
+		AutoDeploy:            a.Spec.AutoDeploy,
+		NotifyOnFail:          notifyOnFail,
+		RenderSubdomainPolicy: subdomainPolicy,
+		HealthCheckPath:       a.Spec.HealthCheckPath,
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
 			svcType, a.Spec.MaxShutdownDelaySeconds,
 		),
@@ -793,6 +803,12 @@ type CreateRequest struct {
 	// notify-on-fail.md. Empty means "default" (defer to each member's own
 	// w3/m9 preference). An unrecognized value is core.ErrBadRequest.
 	NotifyOnFail string
+	// SubdomainPolicy is Render's renderSubdomainPolicy: "enabled" (default,
+	// platform host active) or "disabled" (platform host dropped; only custom
+	// hosts in Hosts[] serve the App). Cannot be "disabled" with no Hosts —
+	// that would leave the service unreachable. An unrecognized value is
+	// core.ErrBadRequest.
+	SubdomainPolicy string
 	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
 	// command run to completion against the new revision's image before it serves
 	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
@@ -1360,6 +1376,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	subdomainPolicy, err := normalizeSubdomainPolicy(req.SubdomainPolicy)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
+	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
+	}
 	spec := appv1alpha1.AppSpec{
 		Type:            svcType,
 		Repo:            req.Repo,
@@ -1382,6 +1405,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Env:              req.Env,
 		AutoDeploy:       autoDeploy,
 		NotifyOnFail:     notifyOnFail,
+		SubdomainPolicy:  subdomainPolicy,
 		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
@@ -1411,6 +1435,20 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 // time and by view(), so an App created before this field existed reports the
 // same "default" behavior it always had.
 const notifyOnFailDefault = "default"
+
+// normalizeSubdomainPolicy validates Render's exact renderSubdomainPolicy enum
+// (enabled|disabled); empty means "enabled" (the platform subdomain is always
+// present unless explicitly opted out). An unrecognized value is a named 400.
+func normalizeSubdomainPolicy(v string) (string, error) {
+	switch v {
+	case "", appv1alpha1.SubdomainPolicyEnabled:
+		return appv1alpha1.SubdomainPolicyEnabled, nil
+	case appv1alpha1.SubdomainPolicyDisabled:
+		return appv1alpha1.SubdomainPolicyDisabled, nil
+	default:
+		return "", fmt.Errorf("%w: renderSubdomainPolicy must be enabled or disabled", core.ErrBadRequest)
+	}
+}
 
 // normalizeNotifyOnFail validates Render's exact notifyOnFail enum
 // (default|notify|ignore, docs/render-artifacts/notify-on-fail.md); empty
@@ -1517,6 +1555,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
 	dst.NotifyOnFail = want.NotifyOnFail
+	dst.SubdomainPolicy = want.SubdomainPolicy
 	dst.PreDeployCommand = want.PreDeployCommand
 	dst.Expose = want.Expose
 	dst.Host = want.Host
@@ -2064,6 +2103,29 @@ func (s *Service) SetNotifyOnFail(ctx context.Context, name, value string) (AppV
 	}
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.NotifyOnFail = normalized
+	})
+}
+
+// SetSubdomainPolicy changes Render's renderSubdomainPolicy (enabled|disabled):
+// whether the platform host <slug>.<domain> appears in the Ingress and status
+// URL. Cannot be set to "disabled" without at least one custom host already
+// configured on the App — that would leave the service silently unreachable.
+func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (AppView, error) {
+	normalized, err := normalizeSubdomainPolicy(policy)
+	if err != nil {
+		return AppView{}, err
+	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if normalized == appv1alpha1.SubdomainPolicyDisabled {
+		if a.Spec.Host == "" && len(a.Spec.Hosts) == 0 {
+			return AppView{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
+		}
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.SubdomainPolicy = normalized
 	})
 }
 

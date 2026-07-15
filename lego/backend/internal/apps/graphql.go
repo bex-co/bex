@@ -288,8 +288,13 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and
 		// writes it via setNotifyOnFail.
-		"notifyOnFail":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
-		"healthCheckPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
+		"notifyOnFail": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
+		// renderSubdomainPolicy is Render's field controlling whether the platform
+		// subdomain <slug>.onbex.co is active (enabled|disabled, w7/m31). The
+		// Settings → Custom Domains section reads it and writes it via
+		// setSubdomainPolicy.
+		"renderSubdomainPolicy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RenderSubdomainPolicy })},
+		"healthCheckPath":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
 		"maxShutdownDelaySeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any {
 			if a.MaxShutdownDelaySeconds == 0 {
 				return nil
@@ -1028,6 +1033,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetNotifyOnFail(p.Context, p.Args["id"].(string), p.Args["value"].(string))
+			},
+		},
+		// setSubdomainPolicy: the Settings → Custom Domains platform-subdomain
+		// toggle (w7/m31). Changes spec.subdomainPolicy — enabled | disabled,
+		// Render's exact renderSubdomainPolicy enum. "disabled" without a custom
+		// domain ⇒ core.ErrBadRequest (would silently kill the service).
+		"setSubdomainPolicy": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"policy": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetSubdomainPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
 			},
 		},
 		// Static-site edge-rule mutations: replace the whole routes/headers list

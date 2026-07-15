@@ -43,6 +43,15 @@ func TestEffectiveHostsPrefersSubdomain(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "a"},
 			Spec:       appv1alpha1.AppSpec{Expose: true},
 		}, "onbex.co", []string{"a.onbex.co"}},
+		// w7/m31: subdomainPolicy=disabled drops the platform host; custom hosts still serve.
+		{"disabled subdomain drops platform host", &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "a"},
+			Spec: appv1alpha1.AppSpec{
+				Expose:          true,
+				SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled,
+				Hosts:           []string{"www.example.com"},
+			},
+		}, "onbex.co", []string{"www.example.com"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
