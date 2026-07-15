@@ -11,8 +11,10 @@
 #      still download its runtime at boot (else its nodes come up with no runtime).
 #      Any other imageName is rejected. (Control-plane uses KubeadmControlPlane, not
 #      a worker MachineDeployment, so it is out of scope here.)
-#   2. the packer bake (infra/packer/bex-worker.pkr.hcl) installs no trimmed package.
-#   3. the packer version pins (k8s/containerd/runc) MATCH the overlay — the bake
+#   2. the platform pool floor stays at three nodes — prod OpenBao has three
+#      required-anti-affinity Raft members, so a two-node floor is not viable.
+#   3. the packer bake (infra/packer/bex-worker.pkr.hcl) installs no trimmed package.
+#   4. the packer version pins (k8s/containerd/runc) MATCH the overlay — the bake
 #      and the download-at-boot pools must stay in lockstep.
 # Run locally before pushing overlay/packer changes; CI runs it via
 # .github/workflows/clusterapi-validate.yml.
@@ -58,7 +60,20 @@ while read -r md infra cfg; do
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
 
-# 2. The bake must not reintroduce a trimmed package.
+# 2. The platform autoscaler must preserve one node per OpenBao Raft member.
+echo "==> $OVERLAY platform autoscaler floor"
+platform_min="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"' "$OVERLAY")"
+platform_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-platform") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"' "$OVERLAY")"
+if [ "$platform_min" != "3" ]; then
+  echo "FAIL: bex-platform autoscaler min-size is '$platform_min' (want 3 for the three anti-affined OpenBao members)" >&2
+  fail=1
+fi
+if ! [[ "$platform_max" =~ ^[0-9]+$ ]] || (( platform_max < 3 )); then
+  echo "FAIL: bex-platform autoscaler max-size is '$platform_max' (want >=3)" >&2
+  fail=1
+fi
+
+# 3. The bake must not reintroduce a trimmed package.
 echo "==> $PACKER installs no trimmed apt package"
 if [ -f "$PACKER" ]; then
   bad="$(grep -nE "apt-get.*install.*$TRIMMED_PKGS" "$PACKER" || true)"
@@ -71,7 +86,7 @@ else
   echo "FAIL: $PACKER missing — the baked-image recipe must stay in the repo (w1/m36 t001)" >&2; fail=1
 fi
 
-# 3. The bake pins and the overlay must not drift.
+# 4. The bake pins and the overlay must not drift.
 echo "==> $PACKER version pins match the overlay"
 if [ -f "$PACKER" ]; then
   pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
