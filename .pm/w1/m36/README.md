@@ -1,16 +1,16 @@
 # w1 · m36 — Node bring-up efficiency: baked snapshot image + trimmed provisioning
 
-**Worker:** worker1 **Goal:** Autoscaled nodes stop downloading ~350MB from external hosts in the scale-up hot path: a baked Hetzner snapshot image carries runc/containerd/kubelet, workers stop pre-pulling control-plane images, the apt list is trimmed, and `app-cluster.yml` caches clusterctl. **Status:** in progress — implementation landed (bake recipe + overlay + CI cache + structural guard); the live bake → roll → measure (t005) + closeout (t008) are an operator step (billed Hetzner snapshot + prod worker-pool roll + `/ship`), see the runbook in [`infra/packer/README.md`](../../../infra/packer/README.md).
+**Worker:** worker1 **Goal:** Autoscaled nodes stop downloading ~350MB from external hosts in the scale-up hot path: a baked Hetzner snapshot image carries runc/containerd/kubelet, workers stop pre-pulling control-plane images, the apt list is trimmed, and `app-cluster.yml` caches clusterctl. **Status:** in progress — bake done + **tenant pool rolled & measured live 2026-07-15** (54 s vs ~101–218 s Ready, apps healthy on the baked node). Remaining: the **platform pool** roll (Push 2b — held for a monitored maintenance window, evicts CNPG/OpenBao) and t008 closeout. See the runbook in [`infra/packer/README.md`](../../../infra/packer/README.md).
 
 ## Tasks (in order)
 
 | id   | title                                                         | est | depends_on       |
 | ---- | ------------------------------------------------------------- | --- | ---------------- |
-| t001 | Bake a Hetzner snapshot image + `HCloudMachineTemplate.imageName` | 60m | —                | — recipe + wiring landed; **bake+provision-verify pending operator**
-| t002 | Drop `kubeadm config images pull` from the worker templates   | 20m | —                | — code landed; **live provision-log verify pending operator**
-| t003 | Trim the apt package list                                     | 20m | —                | — code landed; **live provision verify pending operator**
-| t004 | Cache the clusterctl download in `app-cluster.yml`            | 20m | —                | — code landed; **warm-cache job-log verify pending CI run**
-| t005 | Measure node-join time before/after on a real scale-up        | 30m | t001, t002, t003 | — **pending operator** (live roll)
+| t001 | Bake a Hetzner snapshot image + `HCloudMachineTemplate.imageName` | 60m | —                | — **DONE** (snapshot 408665247 baked; tenant pool provisioned from it live, containerd/kubelet baked, 54 s Ready)
+| t002 | Drop `kubeadm config images pull` from the worker templates   | 20m | —                | — **DONE** (tenant); platform mirrors on Push 2b
+| t003 | Trim the apt package list                                     | 20m | —                | — **DONE** (tenant); platform mirrors on Push 2b
+| t004 | Cache the clusterctl download in `app-cluster.yml`            | 20m | —                | — code landed; **warm-cache job-log verify pending next CI run**
+| t005 | Measure node-join time before/after on a real scale-up        | 30m | t001, t002, t003 | — **DONE** (tenant roll: 54 s vs ~101–218 s; app pulled from Zot after the SA pull-secret fix)
 | t006 | Simplify                                                      | 30m | t005             | — **DONE** (behavior-preserving review of the diff; changes already minimal)
 | t007 | Test coverage                                                 | 30m | t005             | — **DONE** (`scripts/clusterapi-validate.sh` + `.github/workflows/clusterapi-validate.yml`, negative-tested)
 | t008 | Closeout                                                      | 15m | t007             | — **pending** (DoD must hold live first)
@@ -36,15 +36,17 @@ A fresh autoscaler-minted tenant node joins with no runc/containerd/kubelet down
 
 Method: on a real autoscaler scale-up (or the recorded most-recent one), time **machine `Created` → node `Ready`** — `kubectl get machine <m> -o jsonpath` `.metadata.creationTimestamp` vs. the node's `Ready` condition `lastTransitionTime`. Confirm a tenant App schedules and pulls from Zot first-try on the new node.
 
-| metric                                 | before (ubuntu-24.04 + boot downloads)                       | after (baked `bex-worker`)          |
-| -------------------------------------- | ------------------------------------------------------------ | ----------------------------------- |
-| machine `Created` → node `Ready`       | ~101–218 s (freshest CP/platform nodes, 2026-07-15)          | _TBD (tenant roll)_                 |
-| external bytes pulled during provision | ~350 MB (runc+containerd+kubelet+CP images)                  | ~0 (binaries baked)                 |
-| tenant App scheduled + pulled from Zot | n/a                                                          | _TBD (must hold)_                   |
+| metric                                 | before (ubuntu-24.04 + boot downloads)              | after (baked `bex-worker`)                          |
+| -------------------------------------- | -------------------------------------------------- | --------------------------------------------------- |
+| machine `Created` → node `Ready`       | ~101–218 s (freshest CP/platform nodes)            | **54 s** (tenant node `bex-tenant-0-8fkmg-nqskf`)   |
+| external bytes pulled during provision | ~350 MB (runc+containerd+kubelet+CP images)        | ~0 (containerd 1.7.26 + kubelet 1.31.0 baked)       |
+| tenant App scheduled + pulled from Zot | n/a                                                | ✅ held (after the pull-auth fix below)             |
 
-**Finding (2026-07-15):** on Hetzner's fast datacenter network the download itself is cheap (~100–220 s created→Ready on the ubuntu path), so the baked image's headline win is **fragility, not raw speed** — node bring-up no longer depends on github.com / pkgs.k8s.io being up (the milestone's stated goal). The `after` numbers land when the tenant pool rolls.
+**Result (tenant pool rolled 2026-07-15):** the baked node joined `Ready` in **54 s vs ~101–218 s** (~50–75% faster) with runc/containerd/kubelet already present (no github.com / pkgs.k8s.io download). CI (`app-cluster.yml` run 29391348299) green; the old tenant machine drained and was deleted; all four tenant apps came back `Running` on the baked node. The download was never the big time cost on Hetzner's fast network — the durable win is **fragility**: node bring-up no longer depends on github.com / pkgs.k8s.io being up (the milestone's stated goal), now also ~3× faster.
 
-**Roll status:** staged (user decision 2026-07-15). Push 2a rolls the **tenant** pool only; the **platform** pool stays on `ubuntu-24.04` until a monitored maintenance window (rolling it evicts CNPG / OpenBao's 2-member raft, which needs a manual unseal on reschedule).
+**⚠️ Latent gap the roll exposed (NOT an m36 regression — pre-existing, out of scope):** the tenant App Deployments carry **no `imagePullSecret`**, and Zot has required auth since ~2026-07-14 (`bex-registry-pull` secret, w7/m8). The old node had every image cached from before auth existed, so it never re-pulled; the **fresh** baked node had to pull and hit `authorization failed: no basic auth credentials` → the three git-built CMS apps went `ImagePullBackOff`. Any fresh tenant node (autoscaler, failure, this roll) would have hit this. **Fix applied live:** attached `bex-registry-pull` to the `default` ServiceAccount's `imagePullSecrets` (auto-injected into every pod, node-agnostic, operator-safe — the Deployments are App-CR-owned so a direct patch would revert) + recreated the stuck pods. Apps recovered. **Follow-up (needs a task):** this SA patch is live prod state not in git — declare it in `deploy/gitops` (or make the operator attach `BEX_REGISTRY_PULL_SECRET` per docs/ADR022 §Registry access control), else it's undeclared drift.
+
+**Roll status:** staged (user decision 2026-07-15). Push 2a rolled the **tenant** pool ✅. The **platform** pool stays on `ubuntu-24.04` until a monitored maintenance window (rolling it evicts CNPG / OpenBao's 2-member raft, which needs a manual unseal on reschedule) — Push 2b. Orphan cleanup after settle: `kubectl delete hcloudmachinetemplate bex-tenant-0` (the old tenant template).
 
 ## Source + Goal linkage
 
