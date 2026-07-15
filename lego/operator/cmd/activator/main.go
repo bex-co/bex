@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -206,7 +207,7 @@ func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (
 	transport := &http.Transport{
 		ForceAttemptHTTP2:     true,
 		ResponseHeaderTimeout: customPageTimeout,
-		DialContext:           safeDialContext,
+		DialContext:           netutil.SafeDialContext(customPageTimeout),
 	}
 	defer transport.CloseIdleConnections()
 	hc := &http.Client{
@@ -247,31 +248,6 @@ func validateCustomPageURL(rawURI string, app *appv1alpha1.App) (*url.URL, error
 		}
 	}
 	return u, nil
-}
-
-func safeDialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, err
-	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return nil, err
-	}
-	for _, addr := range addrs {
-		if unsafeOriginIP(addr.IP) {
-			return nil, errors.New("custom maintenance origin resolves to a private address")
-		}
-	}
-	if len(addrs) == 0 {
-		return nil, errors.New("custom maintenance origin did not resolve")
-	}
-	return (&net.Dialer{Timeout: customPageTimeout}).DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
-}
-
-func unsafeOriginIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified()
 }
 
 func appHosts(app *appv1alpha1.App) map[string]struct{} {

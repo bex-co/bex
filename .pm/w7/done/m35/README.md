@@ -1,16 +1,16 @@
 # w7 · m35 — Outbound webhook SSRF guard (shared dial-time IP block with the activator)
 
-**Worker:** worker7 **Goal:** Close the one open ADR028 security finding: the outbound-webhook worker POSTs to tenant-supplied URLs with no SSRF protection, so a tenant can register `http://169.254.169.254/…` or an internal `10.x`/`192.168.x` endpoint and bex-api will POST to it. Port `w1/m37`'s dial-time IP guard (built for the maintenance-page fetch) to the webhook path, extracting it to a shared helper. **Status:** todo
+**Worker:** worker7 **Goal:** Close the one open ADR028 security finding: the outbound-webhook worker POSTs to tenant-supplied URLs with no SSRF protection, so a tenant can register `http://169.254.169.254/…` or an internal `10.x`/`192.168.x` endpoint and bex-api will POST to it. Port `w1/m37`'s dial-time IP guard (built for the maintenance-page fetch) to the webhook path, extracting it to a shared helper. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Extract m37's dial-time IP guard from the activator into a shared helper (one implementation, two call sites) | 45m | —          |
-| t002 | Apply it to `webhooks/worker.go`'s `defaultClient` (block loopback/private/link-local/unspecified at dial, no redirect-follow); activator switches to the shared helper | 30m | t001       |
-| t003 | SSRF test battery: `169.254.169.254`, `10.x`, `127.0.0.1`, DNS-rebind-to-private, redirect-to-metadata — all blocked; public destinations still deliver | 30m | t002       |
-| t004 | Simplify — `/simplify` over the code this milestone changed                                         | 20m | t003       |
-| t005 | Closeout — DoD met → move milestone to `done/`                                                      | 10m | t004       |
+| t001 | Extract m37's dial-time IP guard from the activator into a shared helper (one implementation, two call sites) | 45m | — | — **DONE** |
+| t002 | Apply it to `webhooks/worker.go`'s `defaultClient` (block loopback/private/link-local/unspecified at dial, no redirect-follow); activator switches to the shared helper | 30m | t001 | — **DONE** |
+| t003 | SSRF test battery: `169.254.169.254`, `10.x`, `127.0.0.1`, DNS-rebind-to-private, redirect-to-metadata — all blocked; public destinations still deliver | 30m | t002 | — **DONE** |
+| t004 | Simplify — `/simplify` over the code this milestone changed                                         | 20m | t003 | — **DONE** |
+| t005 | Closeout — DoD met → move milestone to `done/`                                                      | 10m | t004 | — **DONE** |
 
 ## Definition of done
 

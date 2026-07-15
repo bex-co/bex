@@ -33,6 +33,7 @@ import (
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // worker.go is the delivery side (w3/m11/t002+t003), two phases per tick:
@@ -178,8 +179,22 @@ func (w *Worker) backoff() []time.Duration {
 }
 
 // defaultClient is the production HTTP client — one shared instance (its
-// transport pools connections), not a per-attempt construction.
-var defaultClient = &http.Client{Timeout: requestTimeout}
+// transport pools connections), not a per-attempt construction. The SSRF guard
+// blocks loopback/private/link-local destinations at dial time so a tenant
+// cannot register a webhook endpoint that probes cloud metadata or internal
+// services. Redirects are never followed (a 3xx is treated as a delivery
+// failure) so a redirect-to-private chain cannot bypass the dial guard.
+var defaultClient = func() *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = netutil.SafeDialContext(requestTimeout)
+	return &http.Client{
+		Timeout:   requestTimeout,
+		Transport: tr,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+}()
 
 func (w *Worker) client() *http.Client {
 	if w.Client != nil {
