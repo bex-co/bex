@@ -23,7 +23,9 @@ mkdir -p "$ENVDIR/.pids" "$ENVDIR/logs" "$ENVDIR/bin"
 KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
 
 echo "==> refreshing kubeconfig for kind cluster 'bex'"
-kind get kubeconfig --name bex > "$KUBECONFIG_FILE"
+# kind sometimes emits a 0.0.0.0 server address (host-networking quirk); the API
+# server cert is valid for 127.0.0.1 but not 0.0.0.0, so pin it to loopback.
+kind get kubeconfig --name bex | sed 's#https://0\.0\.0\.0:#https://127.0.0.1:#' > "$KUBECONFIG_FILE"
 export KUBECONFIG="$PWD/$KUBECONFIG_FILE"
 
 echo "==> namespaces"

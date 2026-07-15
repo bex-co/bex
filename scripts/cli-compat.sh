@@ -50,12 +50,19 @@ TOKEN=$(curl -sf -X POST "$HYDRA_PUBLIC_URL/oauth2/token" \
 
 export RENDER_HOST="$BEX_API_URL/v1/"
 export RENDER_API_KEY="$TOKEN"
+export HYDRA_PUBLIC_URL # verify.sh's logout leg re-exchanges a throwaway key here
 export RENDER_WORKSPACE="${CLI_COMPAT_TENANT_ID:-}"
 export CLI_COMPAT_EMAIL="${CLI_COMPAT_EMAIL:-}" # the key-minting user's email (verify.sh's whoami row)
 export RENDER_CLI_CONFIG_PATH="${RENDER_CLI_CONFIG_PATH:-$(mktemp -d)/cli.yaml}"
 
 if [ "${1:-}" = "verify" ]; then
   exec bash .pm/w9/done/m2/verify.sh   # cwd is already repo root (see the cd above)
+fi
+
+if [ "${1:-}" = "mutation-check" ]; then
+  # w9/m4/t005: prove the verify legs fail loudly against a broken wire shape.
+  exec env BEX_API_URL="$BEX_API_URL" HYDRA_PUBLIC_URL="$HYDRA_PUBLIC_URL" \
+    bash .pm/w9/done/m4/mutation-check.sh
 fi
 
 exec "$RENDER_BIN" "$@"
