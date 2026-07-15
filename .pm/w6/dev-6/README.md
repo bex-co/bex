@@ -34,6 +34,7 @@ concurrently.
 | --- | --- |
 | dashboard | `50060` |
 | kratos-public (port-forward) | `51060` |
+| kratos-admin (port-forward, `BEX_KRATOS_ADMIN_URL`) | `57060` |
 | hydra-admin (port-forward) | `52060` |
 | mailpit UI (port-forward) | `53060` |
 | bex-api (local process) | `54060` |

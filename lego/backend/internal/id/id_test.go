@@ -18,6 +18,7 @@ package id
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -105,6 +106,29 @@ func TestDerivePanicsOnUnregisteredKind(t *testing.T) {
 		}
 	}()
 	_ = Derive(Kind{}, "x")
+}
+
+func TestDeriveServiceInstanceIsStableAndRenderShaped(t *testing.T) {
+	serviceID := "srv-c185th5c2rvvnhbfiltg"
+	podUID := "fd57f2ee-57a4-4dc5-98aa-fd972f098a34"
+	got := DeriveServiceInstance(serviceID, podUID)
+	if got != DeriveServiceInstance(serviceID, podUID) {
+		t.Fatalf("DeriveServiceInstance is not deterministic: %q", got)
+	}
+	instanceRE := regexp.MustCompile(`^srv-[a-z0-9]{20}-[a-z0-9]{20}$`)
+	if !instanceRE.MatchString(got) {
+		t.Fatalf("DeriveServiceInstance = %q, want Render's compound service-instance shape", got)
+	}
+	if got == DeriveServiceInstance(serviceID, "another-pod-uid") {
+		t.Fatalf("different Pod UIDs produced the same instance id %q", got)
+	}
+	if !dns1123Label.MatchString(got) {
+		t.Fatalf("DeriveServiceInstance = %q is not DNS-1123 safe", got)
+	}
+	legacy := DeriveServiceInstance("hand-applied", podUID)
+	if !strings.HasPrefix(legacy, "hand-applied-") {
+		t.Fatalf("legacy service parent was not preserved: %q", legacy)
+	}
 }
 
 // TestNewPanicsOnUnregisteredKind documents the compile-time closure's runtime

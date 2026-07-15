@@ -345,7 +345,7 @@ func TestRESTListServiceInstancesForOfficialCLI(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != "web-7c8d9" || got[0].CreatedAt == "" {
+	if len(got) != 1 || !strings.HasPrefix(got[0].ID, "web-") || got[0].ID == "web-7c8d9" || got[0].CreatedAt == "" {
 		t.Fatalf("instances = %#v", got)
 	}
 
