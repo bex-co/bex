@@ -16,3 +16,17 @@ metadata:
     pod-security.kubernetes.io/warn-version: latest
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/audit-version: latest
+---
+# Attach the Zot pull credential to the default ServiceAccount so kubelet
+# authenticates pulls on any fresh node (autoscaler scale-up, node replacement,
+# k8s upgrade roll). The operator also attaches it per-Deployment
+# (BEX_REGISTRY_PULL_SECRET in manager.yaml), but this SA-level injection is a
+# belt-and-suspenders fallback that Argo owns — closing the undeclared prod drift
+# exposed by the w1/m36 node roll (w7/001).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: default
+imagePullSecrets:
+  - name: bex-registry-pull
