@@ -136,6 +136,10 @@ func (callbackGitHubClient) RepoAccessible(context.Context, string, string, stri
 	return false, nil
 }
 
+func (callbackGitHubClient) GetCommit(context.Context, string, string, string, string) (github.Commit, error) {
+	return github.Commit{}, nil
+}
+
 type callbackGitHubStore struct {
 	connections map[string]store.GitConnection
 }
