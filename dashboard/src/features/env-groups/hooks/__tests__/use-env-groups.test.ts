@@ -21,6 +21,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Scoped to the switcher's selection (w6/m24), never a workspace the hook
+// resolves itself — same seam useApiKeys/useServices use.
+let currentWorkspaceId: string | null = "tea-1";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId }),
+}));
+
 import {
   classifyEnvGroupError,
   isEnvGroupNotFound,
@@ -38,6 +45,7 @@ beforeEach(() => {
   mockClientQuery.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
+  currentWorkspaceId = "tea-1";
 });
 
 const wireGroup = {
@@ -90,6 +98,26 @@ describe("environment-group queries", () => {
     expect(result.current.groups).toEqual([]);
   });
 
+  it("sends the switcher's workspace as ownerId, skipped until it resolves", () => {
+    currentWorkspaceId = null;
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvGroups());
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ variables: { ownerId: null }, skip: true }),
+    );
+    // Skip means loading stays true regardless of Apollo's own flag, so the
+    // list page doesn't flash an empty state before the selection resolves.
+    expect(result.current.loading).toBe(true);
+  });
+
   it("maps one detail response and refetches the same shape", async () => {
     const refetch = vi.fn().mockResolvedValue({
       data: { envGroup: { ...wireGroup, name: "renamed" } },
@@ -126,9 +154,29 @@ describe("useEnvGroupMutations", () => {
     });
 
     expect(id).toBe("eg-new");
-    expect(mutate).toHaveBeenCalledWith({ variables: { name: "shared" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { name: "shared", ownerId: "tea-1" },
+    });
     expect(refetch).toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalledWith("Created shared");
+  });
+
+  it("refuses to create until the switcher's workspace resolves", async () => {
+    currentWorkspaceId = null;
+    const mutate = vi.fn();
+    mockUseMutation.mockImplementation(() => [mutate]);
+
+    const { result } = renderHook(() =>
+      useEnvGroupMutations(vi.fn().mockResolvedValue([])),
+    );
+    let id: string | null = "unset";
+    await act(async () => {
+      id = await result.current.createGroup("shared");
+    });
+
+    expect(id).toBeNull();
+    expect(mutate).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith("Couldn't create shared");
   });
 
   it("links a service and explains that linked services roll out", async () => {

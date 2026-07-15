@@ -94,7 +94,7 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	}
 
 	// envVarGroups materialized a group named "shared" with its literal + generate.
-	groups, err := eg.ListEnvGroups(ctx)
+	groups, err := eg.ListEnvGroups(ctx, "")
 	if err != nil {
 		t.Fatalf("ListEnvGroups: %v", err)
 	}

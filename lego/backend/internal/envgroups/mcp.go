@@ -20,18 +20,28 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the env-groups MCP fragment (Render's official MCP has no env-group
 // tools, so these are bex extensions named after Render's env-groups REST noun).
 // Every tool delegates to the same Service method the REST/GraphQL surfaces call.
+// OwnerID on list/create (w6/m24) follows the shared ownerId precedence every
+// workspace-scoped MCP tool uses (core.SelectedWorkspace): explicit arg > the
+// session's select_workspace > the caller's default workspace.
 
 type envGroupArgs struct {
 	ID string `json:"id" jsonschema:"the env group id (evg-...)"`
 }
 
+type listEnvGroupsArgs struct {
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to list; defaults to the selected or caller's default workspace"`
+}
+
 type createEnvGroupArgs struct {
-	Name string `json:"name" jsonschema:"the env group name"`
+	Name    string `json:"name" jsonschema:"the env group name"`
+	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to create the group in; defaults to the selected or caller's default workspace"`
 }
 
 type renameEnvGroupArgs struct {
@@ -83,9 +93,9 @@ type okResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_groups",
-		Description: "List all environment groups (names, linked services, and env-var keys / secret-file names — no values).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listEnvGroupsResult, error) {
-		groups, err := s.ListEnvGroups(ctx)
+		Description: "List one workspace's environment groups (names, linked services, and env-var keys / secret-file names — no values).",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
+		groups, err := s.ListEnvGroups(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
 		return nil, listEnvGroupsResult{EnvGroups: groups}, err
 	})
 
@@ -100,8 +110,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_env_group",
 		Description: "Create an environment group with a name; add vars/files and link services afterward.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.CreateEnvGroup(ctx, in.Name)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+		g, err := s.CreateEnvGroup(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.Name)
 		return nil, g, err
 	})
 

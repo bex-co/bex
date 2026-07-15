@@ -330,7 +330,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// using envVarGroups/fromGroup/sync:false/generateValue then fails before any
 	// write, never silently drops the var).
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Selections: selections}
 	var envSeeder apps.EnvSeeder
 	var envGroupApplier apps.EnvGroupApplier
 	if d.Secrets != nil {

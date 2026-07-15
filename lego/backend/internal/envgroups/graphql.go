@@ -49,9 +49,12 @@ var envGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"id":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ID })},
 		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.Name })},
+		"ownerId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.OwnerID })},
 		"serviceLinks": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.ServiceLinks })},
 		"envVars":      &graphql.Field{Type: graphql.NewList(envGroupVarGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.EnvVars })},
 		"secretFiles":  &graphql.Field{Type: graphql.NewList(envGroupFileGQLType), Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.SecretFiles })},
+		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.CreatedAt })},
+		"updatedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(g EnvGroupView) any { return g.UpdatedAt })},
 	},
 })
 
@@ -82,12 +85,18 @@ func varsFromArgs(raw []any) []EnvVarView {
 	return vars
 }
 
-// GraphQLQuery returns the env-group read fields.
+// GraphQLQuery returns the env-group read fields. envGroups' ownerId (w6/m24)
+// names the workspace to list; omitted means the caller's default workspace.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"envGroups": &graphql.Field{
-			Type:    graphql.NewList(envGroupGQLType),
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListEnvGroups(p.Context) },
+			Type: graphql.NewList(envGroupGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListEnvGroups(p.Context, gqlStr(p.Args, "ownerId"))
+			},
 		},
 		"envGroup": &graphql.Field{
 			Type: envGroupGQLType,
@@ -129,9 +138,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
 		"createEnvGroup": &graphql.Field{
 			Type: envGroupGQLType,
-			Args: graphql.FieldConfigArgument{"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}},
+			Args: graphql.FieldConfigArgument{
+				"name":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateEnvGroup(p.Context, p.Args["name"].(string))
+				return s.CreateEnvGroup(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string))
 			},
 		},
 		"renameEnvGroup": &graphql.Field{
@@ -229,4 +241,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+}
+
+// gqlStr reads an optional string arg, "" when absent — package-local per
+// apikeys' own gqlStr precedent (not worth a shared gqlutil helper for a
+// one-line copy).
+func gqlStr(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
 }

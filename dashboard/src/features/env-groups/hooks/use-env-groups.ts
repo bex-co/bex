@@ -18,6 +18,7 @@ import {
   UnlinkEnvGroupDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { EnvGroupQuery, EnvGroupsQuery } from "@/graphql/definitions";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { EnvVarKey, SecretFileName } from "@/features/services/types";
@@ -59,9 +60,16 @@ export interface UseEnvGroupsResult {
   refetch: () => Promise<EnvGroupView[]>;
 }
 
-/** Reads every environment group in the selected workspace. */
+/**
+ * Reads every environment group in the switcher-selected workspace (w6/m24):
+ * skipped until the selection resolves to an id, mirroring useApiKeys/useServices.
+ */
 export function useEnvGroups(): UseEnvGroupsResult {
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(EnvGroupsDocument, {
+    variables: { ownerId: currentWorkspaceId },
+    skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
@@ -73,7 +81,7 @@ export function useEnvGroups(): UseEnvGroupsResult {
 
   return {
     groups: mapEnvGroups(data?.envGroups),
-    loading,
+    loading: !resolved || loading,
     error,
     refetch: refetchGroups,
   };
@@ -133,6 +141,7 @@ export function useEnvGroupMutations(
   options: { skipDeleteRefetch?: boolean } = {},
 ): UseEnvGroupMutationsResult {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const [createEnvGroup] = useMutation(CreateEnvGroupDocument);
   const [renameEnvGroup] = useMutation(RenameEnvGroupDocument);
   const [deleteEnvGroup] = useMutation(DeleteEnvGroupDocument);
@@ -142,9 +151,19 @@ export function useEnvGroupMutations(
 
   const createGroup = useCallback(
     async (name: string) => {
+      // Scoped to the switcher's selected workspace (w6/m24) — refused (never
+      // sent with a null ownerId, which the backend would silently route to
+      // the caller's default workspace) until the workspace list resolves,
+      // mirroring useCreateApiKey.
+      if (currentWorkspaceId == null) {
+        toast.error(t("envGroups.createError", { name }));
+        return null;
+      }
       setBusy(true);
       try {
-        const result = await createEnvGroup({ variables: { name } });
+        const result = await createEnvGroup({
+          variables: { name, ownerId: currentWorkspaceId },
+        });
         const id = result.data?.createEnvGroup?.id ?? null;
         if (!id) throw new Error("createEnvGroup returned no id");
         await bestEffortRefetch(refetch);
@@ -157,7 +176,7 @@ export function useEnvGroupMutations(
         setBusy(false);
       }
     },
-    [createEnvGroup, refetch, t],
+    [createEnvGroup, currentWorkspaceId, refetch, t],
   );
 
   const renameGroup = useCallback(

@@ -31,7 +31,7 @@ import (
 // returns core.ErrSecretsUnavailable => 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
-		out, err := s.ListEnvGroups(r.Context())
+		out, err := s.ListEnvGroups(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -40,13 +40,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name string `json:"name"`
+			Name    string `json:"name"`
+			OwnerID string `json:"ownerId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		g, err := s.CreateEnvGroup(r.Context(), req.Name)
+		g, err := s.CreateEnvGroup(r.Context(), req.OwnerID, req.Name)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

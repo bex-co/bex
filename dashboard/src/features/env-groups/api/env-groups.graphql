@@ -1,8 +1,11 @@
 # Workspace environment groups. List/detail reads are keys/names-only; the
 # dedicated per-value queries reveal sensitive data only when the user asks.
 
-query EnvGroups {
-  envGroups {
+# ownerId (w6/m24): the workspace to list/create in — the dashboard always
+# sends the switcher's selection so a multi-workspace caller manages the right
+# workspace's groups, not just whichever workspace they resolve to implicitly.
+query EnvGroups($ownerId: String) {
+  envGroups(ownerId: $ownerId) {
     id
     name
     serviceLinks
@@ -43,8 +46,8 @@ query EnvGroupSecretFileContent($id: String!, $name: String!) {
   }
 }
 
-mutation CreateEnvGroup($name: String!) {
-  createEnvGroup(name: $name) {
+mutation CreateEnvGroup($name: String!, $ownerId: String) {
+  createEnvGroup(name: $name, ownerId: $ownerId) {
     id
     name
   }
