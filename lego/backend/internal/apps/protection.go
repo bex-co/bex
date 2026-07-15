@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -81,12 +82,19 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 	if s.Store == nil {
 		return nil
 	}
-	id := a.Labels[store.LabelAppID]
+	id := managedAppID(a)
 	if id == "" {
 		return nil
 	}
 	protectedStatus, err := s.Store.GetAppProtectedStatus(ctx, id)
 	if err != nil {
+		// Delete is deliberately row-first. If a process dies or the request is
+		// cancelled after removing that source row but before deleting the CR,
+		// the retry must still remove the orphaned Kubernetes object. A missing
+		// row has no Environment whose protection could be bypassed.
+		if errors.Is(err, store.ErrNotFound) {
+			return nil
+		}
 		return err
 	}
 	if protectedStatus != core.ProtectedStatusProtected {

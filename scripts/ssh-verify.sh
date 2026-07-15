@@ -111,7 +111,7 @@ if [[ -n "${BEX_SSH_VERIFY_SERVICE:-}" ]]; then
 else
   service_name="ssh-verify-$(date +%s)-$$"
   create_payload="$(jq -n --arg name "$service_name" '{
-    type:"web_service", name:$name, image:{imagePath:"nginx:1.27-alpine"}, port:80,
+    type:"web_service", name:$name, image:{imagePath:"nginxinc/nginx-unprivileged:1.27-alpine"}, port:8080,
     serviceDetails:{plan:"starter",numInstances:2,healthCheckPath:"/"},
     envVars:[{key:"BEX_SSH_SMOKE_VALUE",value:"w2-m39-runtime"}]
   }')"

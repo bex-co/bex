@@ -699,7 +699,9 @@ func TestSuspendManagedAppWritesRowThenCR(t *testing.T) {
 
 func TestSuspendUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
-	svc, cl := newService(rec, sampleApp("hand"))
+	a := sampleApp("hand")
+	a.Labels = map[string]string{core.LabelAppID: "srv-direct"}
+	svc, cl := newService(rec, a)
 
 	if _, err := svc.Suspend(context.Background(), "hand"); err != nil {
 		t.Fatalf("Suspend: %v", err)
@@ -709,6 +711,22 @@ func TestSuspendUnmanagedAppSkipsStore(t *testing.T) {
 	}
 	if !getApp(t, cl, "hand").Spec.Suspended {
 		t.Fatal("CR should be suspended")
+	}
+}
+
+func TestSetSourceUnmanagedAppWithPublicIDSkipsStore(t *testing.T) {
+	rec := &recordingStore{err: errors.New("unexpected store write")}
+	a := sampleApp("hand")
+	a.Labels = map[string]string{core.LabelAppID: "srv-direct"}
+	a.Spec.Image = "old:1"
+	svc, cl := newService(rec, a)
+
+	image := "new:1"
+	if _, err := svc.SetSource(context.Background(), "hand", nil, &image, nil); err != nil {
+		t.Fatalf("SetSource: %v", err)
+	}
+	if got := getApp(t, cl, "hand").Spec.Image; got != image {
+		t.Fatalf("CR spec.image = %q, want %q", got, image)
 	}
 }
 
@@ -779,7 +797,9 @@ func TestSetPlanManagedAppWritesRowThenCR(t *testing.T) {
 
 func TestSetPlanUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
-	svc, cl := newService(rec, sampleApp("hand"))
+	a := sampleApp("hand")
+	a.Labels = map[string]string{core.LabelAppID: "srv-direct"}
+	svc, cl := newService(rec, a)
 
 	if _, err := svc.SetPlan(context.Background(), "hand", "standard"); err != nil {
 		t.Fatalf("SetPlan: %v", err)
@@ -999,7 +1019,9 @@ func TestDeleteManagedAppDeletesRowThenCR(t *testing.T) {
 
 func TestDeleteUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
-	svc, cl := newService(rec, sampleApp("hand")) // no app-id label
+	a := sampleApp("hand")
+	a.Labels = map[string]string{core.LabelAppID: "srv-direct"}
+	svc, cl := newService(rec, a)
 	if err := svc.Delete(context.Background(), "hand"); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

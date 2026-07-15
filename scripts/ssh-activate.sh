@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/ssh-edge.sh
+source "$repo_root/scripts/lib/ssh-edge.sh"
+
 # Publish BEX_SSH_HOST to bex-api only after DNS/TCP/22 presents the stable key.
 mode="${1:-}"
 if [[ -n "$mode" && "$mode" != "--check" ]]; then
@@ -35,7 +39,7 @@ expected="$(printf '%s\n' "$public_key" | ssh-keygen -lf - | awk '{print $2}')"
 # happens to reach first. A stale Cloudflare-proxied AAAA record can otherwise
 # break IPv6-preferred OpenSSH clients even after the A record points directly
 # at the Hetzner LoadBalancer.
-edge_addresses="$(kubectl -n traefik get service traefik -o jsonpath='{range .status.loadBalancer.ingress[*]}{.ip}{"\n"}{end}' | awk 'NF' | sort -u)"
+edge_addresses="$(bex_ssh_public_ingress_addresses)"
 dns_addresses="$({ dig +short A "$BEX_SSH_HOST" || true; dig +short AAAA "$BEX_SSH_HOST" || true; } | awk '/^[0-9a-fA-F:.]+$/' | sort -u)"
 if [[ -z "$edge_addresses" || "$dns_addresses" != "$edge_addresses" ]]; then
   echo "refusing activation: public A/AAAA records must equal the Traefik LoadBalancer ingress addresses" >&2

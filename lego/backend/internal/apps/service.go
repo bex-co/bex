@@ -71,7 +71,7 @@ type Service struct {
 	// still checked by the gateway for every connection.
 	SSHHost string
 	// Store is the Postgres source of truth for store-managed Apps (those carrying
-	// the bex.co/app-id label). Suspend/Resume write the row first — the row owns
+	// both the managed-by and app-id labels). Suspend/Resume write the row first — the row owns
 	// spec.suspended, and the projection loop reverts CR patches it didn't
 	// originate — then patch the CR as the fast-converge path. Nil (tests, DB-less
 	// mode) falls back to CR-only patches, safe only for hand-applied Apps.
@@ -144,6 +144,16 @@ type Service struct {
 	// unknown-versus-foreign classification and project lookup for all resource
 	// kinds, so service/Postgres/Key Value creates cannot drift.
 	Environments core.EnvironmentResolver
+}
+
+// managedAppID distinguishes a projected control-plane App from a direct CR.
+// Every App has a stable public app-id, including store-less API creates; only
+// the managed-by label proves that the id names a Postgres source row.
+func managedAppID(a *appv1alpha1.App) string {
+	if a == nil || a.Labels[store.LabelManagedBy] != store.ManagedByValue {
+		return ""
+	}
+	return a.Labels[store.LabelAppID]
 }
 
 // AppSecretsEraser clears per-app secrets from the external store on service
@@ -1642,7 +1652,7 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 		return err
 	}
 	if s.Store != nil {
-		if id := a.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(a); id != "" {
 			// An already-gone row is the intended end state, not an error (a
 			// resync may have raced us) — treat it like RemoveDomain does and
 			// fall through to delete the orphaned CR.
@@ -2479,7 +2489,7 @@ func (s *Service) SetSource(ctx context.Context, name string, repo, image, branc
 		nextBranch = "main"
 	}
 	if s.Store != nil {
-		if id := a.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(a); id != "" {
 			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
@@ -2748,7 +2758,7 @@ func (s *Service) writeThroughStoreFetched(
 	mutate func(*appv1alpha1.App),
 ) (AppView, error) {
 	if s.Store != nil {
-		if id := a.Labels[store.LabelAppID]; id != "" {
+		if id := managedAppID(a); id != "" {
 			if err := writeRow(ctx, id); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}

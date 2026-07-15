@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -77,6 +78,16 @@ func TestDelete_UnprotectedNeedsNoConfirm(t *testing.T) {
 	if err := svc.Delete(context.Background(), "web"); err != nil {
 		t.Fatalf("Delete on an unprotected member: %v", err)
 	}
+}
+
+func TestDelete_RetryRemovesCRAfterSourceRowIsGone(t *testing.T) {
+	rec := &recordingStore{err: store.ErrNotFound}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("Delete after row-first interruption: %v", err)
+	}
+	gone(t, cl, "web")
 }
 
 func TestSuspend_BlockedWhenProtectedWithoutConfirm(t *testing.T) {

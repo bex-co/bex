@@ -426,7 +426,9 @@ func TestDeleteDomainManagedAppWritesRowThenCR(t *testing.T) {
 
 func TestAddDomainUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
-	svc, cl := newService(rec, sampleApp("hand"))
+	a := sampleApp("hand")
+	a.Labels = map[string]string{core.LabelAppID: "srv-direct"}
+	svc, cl := newService(rec, a)
 
 	if _, err := svc.AddDomain(context.Background(), "hand", "app.example.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
