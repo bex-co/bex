@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -213,7 +214,7 @@ func TestEnvVar_SingleKey(t *testing.T) {
 	if _, err := svc.SetEnvVars(ctx, "web", []EnvVarView{{Key: "KEEP", Value: "1"}}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	got, err := svc.SetEnvVar(ctx, "web", "ADDED", "2")
+	got, err := svc.SetEnvVar(ctx, "web", "ADDED", EnvVarWrite{Value: "2"})
 	if err != nil || got.Key != "ADDED" || got.Value != "2" {
 		t.Fatalf("SetEnvVar: %+v err=%v", got, err)
 	}
@@ -314,6 +315,41 @@ func TestEnvVars_Authorization(t *testing.T) {
 	}
 }
 
+func TestListEnvVarsPageVisitsEveryKeyExactlyOnce(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	ctx := context.Background()
+	input := []EnvVarView{
+		{Key: "E", Value: "5"}, {Key: "A", Value: "1"}, {Key: "D", Value: "4"},
+		{Key: "B", Value: "2"}, {Key: "C", Value: "3"},
+	}
+	if _, err := svc.SetEnvVars(ctx, "web", input); err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string
+	cursor := ""
+	for {
+		page, err := svc.ListEnvVarsPage(ctx, "web", cursor, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		for _, v := range page {
+			got = append(got, v.Key)
+		}
+		cursor = page[len(page)-1].Key
+	}
+	if want := []string{"A", "B", "C", "D", "E"}; !slices.Equal(got, want) {
+		t.Fatalf("paged keys = %v, want %v", got, want)
+	}
+	all, err := svc.ListEnvVarsPage(ctx, "web", "", 0)
+	if err != nil || len(all) != len(input) {
+		t.Fatalf("omitted pagination = %d vars, %v; want all %d", len(all), err, len(input))
+	}
+}
+
 // --- REST fragment ------------------------------------------------------------
 
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
@@ -377,6 +413,23 @@ func TestREST_EnvVars(t *testing.T) {
 	if serveREST(svc, "GET", "/v1/services/ghost/env-vars", "").Code != 404 {
 		t.Error("unknown service => 404")
 	}
+
+	// Requested pagination is cursor-exclusive; omitting both params remains
+	// the pre-pagination full-list behavior.
+	var firstPage, secondPage []envVarWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars?limit=1", "").Body.Bytes(), &firstPage)
+	if len(firstPage) != 1 {
+		t.Fatalf("first page = %+v, want one item", firstPage)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars?limit=1&cursor="+firstPage[0].Cursor, "").Body.Bytes(), &secondPage)
+	if len(secondPage) != 1 || secondPage[0].EnvVar.Key == firstPage[0].EnvVar.Key {
+		t.Fatalf("second page = %+v after %+v", secondPage, firstPage)
+	}
+	var unpaged []envVarWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars", "").Body.Bytes(), &unpaged)
+	if len(unpaged) != 2 {
+		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)
+	}
 }
 
 func TestREST_UnconfiguredIs503(t *testing.T) {
@@ -386,6 +439,37 @@ func TestREST_UnconfiguredIs503(t *testing.T) {
 	}
 	if serveREST(svc, "PUT", "/v1/services/web/env-vars", `[]`).Code != 503 {
 		t.Error("PUT without a store => 503")
+	}
+}
+
+func TestREST_GenerateValue(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	var bulk []envVarWithCursor
+	rec := serveREST(svc, "PUT", "/v1/services/web/env-vars", `[{"key":"BULK_TOKEN","generateValue":true}]`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("generated bulk PUT => %d: %s", rec.Code, rec.Body.String())
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &bulk)
+	if len(bulk) != 1 || len(bulk[0].EnvVar.Value) != 44 {
+		t.Fatalf("generated bulk response = %+v", bulk)
+	}
+	var generated EnvVarView
+	rec = serveREST(svc, "PUT", "/v1/services/web/env-vars/TOKEN", `{"generateValue":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("generated PUT => %d: %s", rec.Code, rec.Body.String())
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &generated)
+	if generated.Key != "TOKEN" || len(generated.Value) != 44 {
+		t.Fatalf("generated response = %+v", generated)
+	}
+	var revealed EnvVarView
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars/TOKEN", "").Body.Bytes(), &revealed)
+	if revealed.Value != generated.Value {
+		t.Fatalf("revealed value = %q, generated = %q", revealed.Value, generated.Value)
+	}
+	rec = serveREST(svc, "PUT", "/v1/services/web/env-vars/TOKEN", `{"value":"literal","generateValue":true}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("conflicting PUT => %d, want 400: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -423,8 +507,11 @@ func TestMCP_EnvVars(t *testing.T) {
 	}
 
 	var res envVarsResult
-	call("update_env_vars", map[string]any{"serviceId": "web", "envVars": []map[string]any{{"key": "FOO", "value": "bar"}}}, &res)
-	if len(res.EnvVars) != 1 || store.m[envPath("web")]["FOO"] != "bar" {
+	call("update_env_vars", map[string]any{"serviceId": "web", "envVars": []map[string]any{
+		{"key": "FOO", "value": "bar"},
+		{"key": "BULK_RANDOM", "generateValue": true},
+	}}, &res)
+	if len(res.EnvVars) != 2 || store.m[envPath("web")]["FOO"] != "bar" || len(store.m[envPath("web")]["BULK_RANDOM"]) != 44 {
 		t.Fatalf("update_env_vars: %+v store=%+v", res.EnvVars, store.m[envPath("web")])
 	}
 	var single EnvVarView
@@ -437,12 +524,25 @@ func TestMCP_EnvVars(t *testing.T) {
 		t.Fatalf("get_env_var: %+v", single)
 	}
 	call("list_env_vars", map[string]any{"serviceId": "web"}, &res)
-	if len(res.EnvVars) != 2 {
+	if len(res.EnvVars) != 3 {
 		t.Fatalf("list_env_vars: %+v", res.EnvVars)
+	}
+	call("list_env_vars", map[string]any{"serviceId": "web", "limit": 1}, &res)
+	if len(res.EnvVars) != 1 || res.Cursor == "" {
+		t.Fatalf("paged list_env_vars: %+v", res)
+	}
+	var next envVarsResult
+	call("list_env_vars", map[string]any{"serviceId": "web", "limit": 1, "cursor": res.Cursor}, &next)
+	if len(next.EnvVars) != 1 || next.EnvVars[0].Key == res.EnvVars[0].Key {
+		t.Fatalf("next list_env_vars page: first=%+v next=%+v", res, next)
+	}
+	call("set_env_var", map[string]any{"serviceId": "web", "key": "RANDOM", "generateValue": true}, &single)
+	if len(single.Value) != 44 || store.m[envPath("web")]["RANDOM"] != single.Value {
+		t.Fatalf("generated set_env_var: %+v", single)
 	}
 	var del deleteEnvVarResult
 	call("delete_env_var", map[string]any{"serviceId": "web", "key": "FOO"}, &del)
-	if !del.Deleted || len(store.m[envPath("web")]) != 1 {
+	if !del.Deleted || store.m[envPath("web")]["FOO"] != "" || len(store.m[envPath("web")]) != 3 {
 		t.Fatalf("delete_env_var: %+v store=%+v", del, store.m[envPath("web")])
 	}
 }

@@ -6,13 +6,13 @@
 # mutation names weren't captured). `service(id)` is Render's dashboard alias for
 # a single service (beside `server(id)`).
 
-query EnvVarKeys($id: String!) {
-  service(id: $id) {
-    id
-    envVarKeys {
+query EnvVarKeys($serviceId: String!, $cursor: String, $limit: Int) {
+  envVars(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    envVar {
       id
       key
     }
+    cursor
   }
 }
 
@@ -31,8 +31,18 @@ mutation SetEnvVars($serviceId: String!, $envVars: [EnvVarInput!]!) {
   setEnvVars(serviceId: $serviceId, envVars: $envVars)
 }
 
-mutation SetEnvVar($serviceId: String!, $key: String!, $value: String) {
-  setEnvVar(serviceId: $serviceId, key: $key, value: $value)
+mutation SetEnvVar(
+  $serviceId: String!
+  $key: String!
+  $value: String
+  $generateValue: Boolean
+) {
+  setEnvVar(
+    serviceId: $serviceId
+    key: $key
+    value: $value
+    generateValue: $generateValue
+  )
 }
 
 mutation DeleteEnvVar($serviceId: String!, $key: String!) {

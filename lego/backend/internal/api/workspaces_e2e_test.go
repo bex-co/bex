@@ -350,7 +350,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		secretsStore = secrets.NewOpenBaoStore(baoURL)
 		secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
 		aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
-		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", "bar"); err != nil {
+		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
 			t.Fatalf("seed secret: %v", err)
 		}
 	}

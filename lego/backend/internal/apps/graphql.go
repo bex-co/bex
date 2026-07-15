@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/graphql-go/graphql"
 
@@ -159,10 +160,10 @@ func gqlHeaderInputs(args map[string]any, key string) []StaticHeaderView {
 	return out
 }
 
-func gqlEnvVarInputs(args map[string]any, key string) []appv1alpha1.EnvVar {
+func gqlEnvVarInputs(args map[string]any, key string) ([]appv1alpha1.EnvVar, error) {
 	raw, ok := args[key].([]any)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	out := make([]appv1alpha1.EnvVar, 0, len(raw))
 	for _, e := range raw {
@@ -170,9 +171,22 @@ func gqlEnvVarInputs(args map[string]any, key string) []appv1alpha1.EnvVar {
 		if !ok {
 			continue
 		}
-		out = append(out, appv1alpha1.EnvVar{Name: gqlStr(m, "key"), Value: gqlStr(m, "value")})
+		name := gqlStr(m, "key")
+		value := gqlStr(m, "value")
+		generate, _ := m["generateValue"].(bool)
+		if generate && value != "" {
+			return nil, fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, name)
+		}
+		if generate {
+			var err error
+			value, err = core.GenerateValue()
+			if err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, appv1alpha1.EnvVar{Name: name, Value: value})
 	}
-	return out
+	return out, nil
 }
 
 var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -748,6 +762,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				dryRun, _ := p.Args["dryRun"].(bool)
+				env, err := gqlEnvVarInputs(p.Args, "envVars")
+				if err != nil {
+					return nil, err
+				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID:                 gqlStr(p.Args, "ownerId"),
 					Name:                    p.Args["name"].(string),
@@ -769,7 +787,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					NotifyOnFail:            gqlStr(p.Args, "notifyOnFail"),
 					Port:                    int32(gqlInt(p.Args, "port")),
 					Replicas:                int32(gqlInt(p.Args, "replicas")),
-					Env:                     gqlEnvVarInputs(p.Args, "envVars"),
+					Env:                     env,
 					PublishPath:             gqlStr(p.Args, "publishPath"),
 					Routes:                  gqlRouteInputs(p.Args, "routes"),
 					Headers:                 gqlHeaderInputs(p.Args, "headers"),

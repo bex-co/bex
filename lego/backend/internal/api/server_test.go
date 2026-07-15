@@ -924,7 +924,7 @@ func TestAuditNeverCarriesSecretValues(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
 
 	const secretValue = "sk_live_do_not_leak_this_9f8e7d6c"
-	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", secretValue); err != nil {
+	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", secrets.EnvVarWrite{Value: secretValue}); err != nil {
 		t.Fatalf("SetEnvVar: %v", err)
 	}
 	if len(sink.events) != 1 {

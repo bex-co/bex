@@ -28,6 +28,8 @@ import (
 
 type serviceEnvArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name)"`
+	Cursor    string `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the previous list_env_vars result); omit for the first page"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"maximum variables to return (1-100); omit for the complete list"`
 }
 
 type envVarKeyArgs struct {
@@ -36,18 +38,26 @@ type envVarKeyArgs struct {
 }
 
 type setEnvVarsArgs struct {
-	ServiceID string       `json:"serviceId" jsonschema:"the service id (bex App name)"`
-	EnvVars   []EnvVarView `json:"envVars" jsonschema:"the complete desired set of {key,value} variables (replace semantics)"`
+	ServiceID string           `json:"serviceId" jsonschema:"the service id (bex App name)"`
+	EnvVars   []envVarWriteArg `json:"envVars" jsonschema:"the complete desired set of value-or-generate variables (replace semantics)"`
+}
+
+type envVarWriteArg struct {
+	Key           string `json:"key" jsonschema:"the environment variable name"`
+	Value         string `json:"value,omitempty" jsonschema:"the value to set; omit when generateValue is true"`
+	GenerateValue bool   `json:"generateValue,omitempty" jsonschema:"mint a base64-encoded 256-bit value server-side; cannot be combined with value"`
 }
 
 type setEnvVarArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name)"`
-	Key       string `json:"key" jsonschema:"the environment variable name"`
-	Value     string `json:"value" jsonschema:"the value to set"`
+	ServiceID     string `json:"serviceId" jsonschema:"the service id (bex App name)"`
+	Key           string `json:"key" jsonschema:"the environment variable name"`
+	Value         string `json:"value,omitempty" jsonschema:"the value to set; omit when generateValue is true"`
+	GenerateValue bool   `json:"generateValue,omitempty" jsonschema:"mint a base64-encoded 256-bit value server-side; cannot be combined with value"`
 }
 
 type envVarsResult struct {
 	EnvVars []EnvVarView `json:"envVars"`
+	Cursor  string       `json:"cursor,omitempty"`
 }
 
 type deleteEnvVarResult struct {
@@ -79,8 +89,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_env_vars",
 		Description: "List a service's environment variables (key/value), sorted by key.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, envVarsResult, error) {
-		vars, err := s.ListEnvVars(ctx, in.ServiceID)
-		return nil, envVarsResult{EnvVars: vars}, err
+		vars, err := s.ListEnvVarsPage(ctx, in.ServiceID, in.Cursor, in.Limit)
+		result := envVarsResult{EnvVars: vars}
+		if (in.Limit > 0 || in.Cursor != "") && len(vars) > 0 {
+			result.Cursor = vars[len(vars)-1].Key
+		}
+		return nil, result, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -95,7 +109,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_env_vars",
 		Description: "Replace a service's whole environment-variable set (Render's replace semantics) and return the new set; the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarsArgs) (*mcp.CallToolResult, envVarsResult, error) {
-		vars, err := s.SetEnvVars(ctx, in.ServiceID, in.EnvVars)
+		writes := make([]EnvVarView, 0, len(in.EnvVars))
+		for _, v := range in.EnvVars {
+			writes = append(writes, EnvVarView{Key: v.Key, Value: v.Value, Generate: v.GenerateValue})
+		}
+		vars, err := s.SetEnvVars(ctx, in.ServiceID, writes)
 		return nil, envVarsResult{EnvVars: vars}, err
 	})
 
@@ -103,7 +121,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "set_env_var",
 		Description: "Add or update one environment variable of a service (merged into the existing set, not a replace); the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
-		v, err := s.SetEnvVar(ctx, in.ServiceID, in.Key, in.Value)
+		v, err := s.SetEnvVar(ctx, in.ServiceID, in.Key, EnvVarWrite{Value: in.Value, GenerateValue: in.GenerateValue})
 		return nil, v, err
 	})
 

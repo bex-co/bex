@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
 const mockClientQuery = vi.fn();
+const mockApolloClient = { query: mockClientQuery };
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
-  useApolloClient: () => ({ query: mockClientQuery }),
+  useApolloClient: () => mockApolloClient,
 }));
 
 const toastSuccess = vi.fn();
@@ -35,19 +36,24 @@ beforeEach(() => {
 });
 
 describe("useEnvVarKeys", () => {
-  it("maps the nested envVarKeys to a keys-only list, dropping nulls; id falls back to key", () => {
+  it("maps the paged env-var envelope to keys only, dropping nulls; id falls back to key", () => {
     mockUseQuery.mockReturnValue({
       data: {
-        service: {
-          __typename: "Service",
-          id: "web",
-          envVarKeys: [
-            { __typename: "EnvVar", id: "FOO", key: "FOO" },
-            { __typename: "EnvVar", id: null, key: "BAR" },
-            null,
-            { __typename: "EnvVar", id: "x", key: null },
-          ],
-        },
+        envVars: [
+          {
+            envVar: { __typename: "EnvVarListValue", id: "FOO", key: "FOO" },
+            cursor: "FOO",
+          },
+          {
+            envVar: { __typename: "EnvVarListValue", id: null, key: "BAR" },
+            cursor: "BAR",
+          },
+          null,
+          {
+            envVar: { __typename: "EnvVarListValue", id: "x", key: null },
+            cursor: "x",
+          },
+        ],
       },
       loading: false,
       error: undefined,
@@ -63,13 +69,43 @@ describe("useEnvVarKeys", () => {
 
   it("returns an empty list (not a crash) when the service is null", () => {
     mockUseQuery.mockReturnValue({
-      data: { service: null },
+      data: { envVars: null },
       loading: true,
       error: undefined,
       refetch: vi.fn(),
     });
     const { result } = renderHook(() => useEnvVarKeys("web"));
     expect(result.current.keys).toEqual([]);
+  });
+
+  it("walks every cursor page and appends each key once", async () => {
+    const first = Array.from({ length: 100 }, (_, i) => {
+      const key = `KEY_${String(i).padStart(3, "0")}`;
+      return { envVar: { id: key, key }, cursor: key };
+    });
+    mockUseQuery.mockReturnValue({
+      data: { envVars: first },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    mockClientQuery.mockResolvedValue({
+      data: {
+        envVars: [
+          { envVar: { id: "KEY_100", key: "KEY_100" }, cursor: "KEY_100" },
+          { envVar: { id: "KEY_101", key: "KEY_101" }, cursor: "KEY_101" },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useEnvVarKeys("web"));
+    await waitFor(() => expect(result.current.keys).toHaveLength(102));
+    expect(new Set(result.current.keys.map((key) => key.id)).size).toBe(102);
+    expect(mockClientQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { serviceId: "web", cursor: "KEY_099", limit: 100 },
+      }),
+    );
   });
 });
 
@@ -107,7 +143,12 @@ describe("useEnvVarMutations", () => {
 
     expect(ok).toBe(true);
     expect(setEnvVar).toHaveBeenCalledWith({
-      variables: { serviceId: "web", key: "FOO", value: "bar" },
+      variables: {
+        serviceId: "web",
+        key: "FOO",
+        value: "bar",
+        generateValue: undefined,
+      },
     });
     expect(refetch).toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalledWith(
@@ -132,6 +173,26 @@ describe("useEnvVarMutations", () => {
     expect(ok).toBe(false);
     expect(toastError).toHaveBeenCalledWith("Couldn't save FOO");
     expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("setVar sends generateValue without a conflicting literal", async () => {
+    const setEnvVar = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation(() => [setEnvVar]);
+    const refetch = vi.fn().mockResolvedValue([]);
+    const { result } = renderHook(() => useEnvVarMutations("web", refetch));
+
+    await act(async () => {
+      await result.current.setVar("TOKEN", "ignored", true);
+    });
+
+    expect(setEnvVar).toHaveBeenCalledWith({
+      variables: {
+        serviceId: "web",
+        key: "TOKEN",
+        value: undefined,
+        generateValue: true,
+      },
+    });
   });
 });
 

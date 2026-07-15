@@ -128,6 +128,20 @@ describe("EnvVarsPanel", () => {
     expect(mockSetVar).toHaveBeenCalledWith("API_KEY", "v");
   });
 
+  it("requests server-side generation without sending a literal value", async () => {
+    mockUseEnvVarKeys.mockReturnValue(keysResult([]));
+    const user = userEvent.setup();
+    render(<EnvVarsPanel serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: /Add variable/ }));
+    await user.type(screen.getByLabelText("Key"), "SESSION_SECRET");
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText("Value")).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockSetVar).toHaveBeenCalledWith("SESSION_SECRET", "", true);
+  });
+
   it("deletes a variable after confirming", async () => {
     mockUseEnvVarKeys.mockReturnValue(keysResult([{ id: "FOO", key: "FOO" }]));
     const user = userEvent.setup();

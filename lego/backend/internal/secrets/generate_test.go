@@ -46,6 +46,32 @@ func TestSetEnvVarsGenerateValue(t *testing.T) {
 	}
 }
 
+func TestSetEnvVarGenerateValueIsFresh(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+
+	first, err := svc.SetEnvVar(ctx, "web", "TOKEN", EnvVarWrite{GenerateValue: true})
+	if err != nil {
+		t.Fatalf("first generated SetEnvVar: %v", err)
+	}
+	second, err := svc.SetEnvVar(ctx, "web", "TOKEN", EnvVarWrite{GenerateValue: true})
+	if err != nil {
+		t.Fatalf("second generated SetEnvVar: %v", err)
+	}
+	if len(first.Value) != 44 || len(second.Value) != 44 || first.Value == second.Value {
+		t.Fatalf("generated values = %q, %q; want distinct 44-char values", first.Value, second.Value)
+	}
+}
+
+func TestSetEnvVarValuePlusGenerateRejected(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	_, err := svc.SetEnvVar(context.Background(), "web", "TOKEN", EnvVarWrite{Value: "literal", GenerateValue: true})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("single value + generateValue => ErrBadRequest, got %v", err)
+	}
+}
+
 func TestSetEnvVarsValuePlusGenerateRejected(t *testing.T) {
 	svc := newService(newFakeSecretStore(), sampleApp("web"))
 	_, err := svc.SetEnvVars(context.Background(), "web", []EnvVarView{{Key: "X", Value: "v", Generate: true}})
@@ -73,7 +99,7 @@ func TestSeedEnvVarsSeedsOnce(t *testing.T) {
 	}
 
 	// Simulate a dashboard edit through the normal env-vars API.
-	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", "edited-live"); err != nil {
+	if _, err := svc.SetEnvVar(ctx, "web", "API_KEY", EnvVarWrite{Value: "edited-live"}); err != nil {
 		t.Fatalf("SetEnvVar: %v", err)
 	}
 

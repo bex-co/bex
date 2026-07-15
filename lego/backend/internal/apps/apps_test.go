@@ -1345,6 +1345,7 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 				envVars: [
 					{key: "PORT", value: "8080"}
 					{key: "LOG_LEVEL", value: "debug"}
+					{key: "SESSION_SECRET", generateValue: true}
 				]
 			) { id }
 		}`,
@@ -1355,12 +1356,16 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 
 	a := getApp(t, cl, "svc-with-env")
 	want := []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}, {Name: "LOG_LEVEL", Value: "debug"}}
-	if len(a.Spec.Env) != len(want) {
-		t.Fatalf("spec.Env len = %d, want %d", len(a.Spec.Env), len(want))
+	if len(a.Spec.Env) != len(want)+1 {
+		t.Fatalf("spec.Env len = %d, want %d", len(a.Spec.Env), len(want)+1)
 	}
 	for i, w := range want {
 		if a.Spec.Env[i] != w {
 			t.Errorf("spec.Env[%d] = %+v, want %+v", i, a.Spec.Env[i], w)
 		}
+	}
+	generated := a.Spec.Env[len(want)]
+	if generated.Name != "SESSION_SECRET" || len(generated.Value) != 44 {
+		t.Fatalf("generated env = %+v, want SESSION_SECRET with a 44-char value", generated)
 	}
 }

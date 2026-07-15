@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Plus, KeyRound, ShieldAlert, AlertTriangle } from "lucide-react";
+import {
+  Plus,
+  KeyRound,
+  ShieldAlert,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -104,7 +110,11 @@ export function EnvVarsEditor({
   loading: boolean;
   errorKind: SensitiveEditorErrorKind | null;
   reveal: (key: string) => Promise<string>;
-  setVar: (key: string, value: string) => Promise<boolean>;
+  setVar: (
+    key: string,
+    value: string,
+    generateValue?: boolean,
+  ) => Promise<boolean>;
   deleteVar: (key: string) => Promise<boolean>;
   busy: boolean;
   copy: EnvVarsEditorCopy;
@@ -171,19 +181,25 @@ function AddVarButton({
   setVar,
   disabled,
 }: {
-  setVar: (key: string, value: string) => Promise<boolean>;
+  setVar: (
+    key: string,
+    value: string,
+    generateValue?: boolean,
+  ) => Promise<boolean>;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
+  const [generateValue, setGenerateValue] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const [saving, setSaving] = useState(false);
 
   function reset() {
     setKey("");
     setValue("");
+    setGenerateValue(false);
     setInvalid(false);
     setOpen(false);
   }
@@ -194,7 +210,9 @@ function AddVarButton({
       return;
     }
     setSaving(true);
-    const ok = await setVar(key.trim(), value);
+    const ok = generateValue
+      ? await setVar(key.trim(), "", true)
+      : await setVar(key.trim(), value);
     setSaving(false);
     if (ok) reset();
   }
@@ -230,14 +248,30 @@ function AddVarButton({
         <Input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={t("services.envValuePlaceholder")}
+          placeholder={
+            generateValue
+              ? t("services.envGeneratePlaceholder")
+              : t("services.envValuePlaceholder")
+          }
           aria-label={t("services.envColValue")}
           className="w-40 font-mono text-sm"
+          disabled={generateValue}
           onKeyDown={(e) => {
             if (e.key === "Enter") void submit();
             if (e.key === "Escape") reset();
           }}
         />
+        <Button
+          size="sm"
+          variant={generateValue ? "secondary" : "outline"}
+          aria-pressed={generateValue}
+          onClick={() => {
+            setGenerateValue((current) => !current);
+            setValue("");
+          }}
+        >
+          <Sparkles /> {t("services.envGenerate")}
+        </Button>
         <Button size="sm" disabled={saving} onClick={() => void submit()}>
           {t("services.envSave")}
         </Button>

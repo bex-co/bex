@@ -68,7 +68,17 @@ func toSecretFileList(files []SecretFileView) []secretFileWithCursor {
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	for _, base := range []string{"/v1/services", "/v1/apps"} {
 		mux.HandleFunc("GET "+base+"/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
-			vars, err := s.ListEnvVars(r.Context(), r.PathValue("id"))
+			q := r.URL.Query()
+			var vars []EnvVarView
+			var err error
+			if q.Has("cursor") || q.Has("limit") {
+				after, limit := core.PageParams(q)
+				vars, err = s.ListEnvVarsPage(r.Context(), r.PathValue("id"), after, limit)
+			} else {
+				// Compatibility with the pre-pagination endpoint: callers that omit
+				// both parameters still receive the complete list.
+				vars, err = s.ListEnvVars(r.Context(), r.PathValue("id"))
+			}
 			if err != nil {
 				core.WriteErr(w, err)
 				return
@@ -98,13 +108,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 		mux.HandleFunc("PUT "+base+"/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
 			var req struct {
-				Value string `json:"value"`
+				Value         string `json:"value"`
+				GenerateValue bool   `json:"generateValue"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				core.WriteErr(w, core.ErrBadRequest)
 				return
 			}
-			v, err := s.SetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"), req.Value)
+			v, err := s.SetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
 			if err != nil {
 				core.WriteErr(w, err)
 				return
