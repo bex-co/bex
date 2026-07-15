@@ -123,6 +123,18 @@ func TestListStoreLessIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestRenderMaintenanceAuditTypesAndMetadata(t *testing.T) {
+	disabled := false
+	toggle := toRenderAuditLog(Event{Verb: "apps.SetMaintenanceMode", MaintenanceModeTo: &disabled})
+	if toggle.Action != "MaintenanceModeEnabledEvent" || toggle.Metadata == nil || toggle.Metadata.To == nil || *toggle.Metadata.To {
+		t.Fatalf("toggle audit = %+v, want MaintenanceModeEnabledEvent metadata.to=false", toggle)
+	}
+	uri := toRenderAuditLog(Event{Verb: "apps.SetMaintenanceModeURI"})
+	if uri.Action != "MaintenanceModeURIUpdatedEvent" || uri.Metadata == nil || uri.Metadata.To != nil {
+		t.Fatalf("URI audit = %+v, want MaintenanceModeURIUpdatedEvent with empty metadata", uri)
+	}
+}
+
 // TestListPropagatesStoreError proves a store failure surfaces to the caller
 // rather than being swallowed into an empty list (which would look
 // indistinguishable from "no events").

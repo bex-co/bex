@@ -58,8 +58,10 @@ const (
 // internal/events maps it onto Render's event vocabulary. Deploy rows fill
 // DeployID/Trigger/Status; audit rows fill Verb/Caller. No column here can carry
 // a value: deploy rows hold ids and a status enum, audit rows hold a verb name
-// and a caller subject (the audit table has never stored verb ARGUMENTS — the
-// structural reason no env-var value can reach a feed).
+// and a caller subject. The audit table has no generic verb-arguments column;
+// its one typed maintenance-toggle boolean belongs to the workspace audit
+// projection and is intentionally absent here. That remains the structural
+// reason no env-var value can reach a feed.
 type ServiceEventRow struct {
 	// Key is the row's stable identity within the feed: "<source row id>:<phase>"
 	// for a deploy ("dep-abc:started"), "<audit row id>:" for an audit event. It

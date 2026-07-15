@@ -205,6 +205,7 @@ export function ServiceSettingsPage() {
             <MaintenanceModeSection
               serviceId={serviceId}
               serviceName={service.name}
+              plan={service.plan}
               maintenanceMode={service.maintenanceMode}
             />
           )}

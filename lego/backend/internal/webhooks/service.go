@@ -83,15 +83,17 @@ import (
 // is Render's own and differs from its list-events enum where the two overlap
 // (webhooks say service_suspended; the events feed says suspender_added).
 const (
-	TypeDeployStarted            = "deploy_started"
-	TypeDeployEnded              = "deploy_ended"
-	TypeServerRestarted          = "server_restarted"
-	TypeServiceSuspended         = "service_suspended"
-	TypeServiceResumed           = "service_resumed"
-	TypeInstanceCountChanged     = "instance_count_changed"
-	TypeAutoscalingConfigChanged = "autoscaling_config_changed"
-	TypeCronJobRunStarted        = "cron_job_run_started"
-	TypeCronJobRunEnded          = "cron_job_run_ended"
+	TypeDeployStarted             = "deploy_started"
+	TypeDeployEnded               = "deploy_ended"
+	TypeServerRestarted           = "server_restarted"
+	TypeServiceSuspended          = "service_suspended"
+	TypeServiceResumed            = "service_resumed"
+	TypeInstanceCountChanged      = "instance_count_changed"
+	TypeAutoscalingConfigChanged  = "autoscaling_config_changed"
+	TypeCronJobRunStarted         = "cron_job_run_started"
+	TypeCronJobRunEnded           = "cron_job_run_ended"
+	TypeMaintenanceModeEnabled    = "maintenance_mode_enabled"
+	TypeMaintenanceModeURIUpdated = "maintenance_mode_uri_updated"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -101,15 +103,17 @@ const (
 // event. Deploy transitions come from deploys rows, not a verb (see
 // eventTypeOf).
 var verbEvents = map[string]string{
-	"apps.Restart":              TypeServerRestarted,
-	"apps.Suspend":              TypeServiceSuspended,
-	"apps.Resume":               TypeServiceResumed,
-	"apps.Scale":                TypeInstanceCountChanged,
-	"apps.SetAutoscaling":       TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":    TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":       TypeCronJobRunStarted,
-	"apps.CancelCronRun":        TypeCronJobRunEnded,
-	"apps.CancelCurrentCronRun": TypeCronJobRunEnded,
+	"apps.Restart":                          TypeServerRestarted,
+	"apps.Suspend":                          TypeServiceSuspended,
+	"apps.Resume":                           TypeServiceResumed,
+	"apps.Scale":                            TypeInstanceCountChanged,
+	"apps.SetAutoscaling":                   TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":                TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":                   TypeCronJobRunStarted,
+	"apps.CancelCronRun":                    TypeCronJobRunEnded,
+	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
+	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
+	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

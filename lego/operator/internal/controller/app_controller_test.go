@@ -474,6 +474,7 @@ var _ = Describe("App Controller", func() {
 			r = &AppReconciler{
 				Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
 				ActivatorService: "bex-activator", ActivatorPort: 8888,
+				MaintenanceService: "bex-activator", MaintenanceNamespace: "default", MaintenancePort: 8888,
 			}
 		})
 		reconcileN := func() {
@@ -560,7 +561,7 @@ var _ = Describe("App Controller", func() {
 			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)))
 		})
 
-		It("suspend wins: a suspended App's Ingress backend is unaffected by maintenance mode", func() {
+		It("maintenance remains public while suspension independently scales the workload to zero", func() {
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 				Spec: appv1alpha1.AppSpec{
@@ -577,13 +578,13 @@ var _ = Describe("App Controller", func() {
 			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)))
 			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
 
-			By("suspend keeps the Ingress pointed at the app's own Service, not the activator")
+			By("maintenance keeps the Ingress pointed at the responder")
 			svc, port := backendOf(getIngress(), 0)
-			Expect(svc).To(Equal(name))
-			Expect(port).To(Equal(int32(3000)))
+			Expect(svc).To(Equal("bex-activator"))
+			Expect(port).To(Equal(int32(8888)))
 		})
 
-		It("waking into maintenance: an already auto-hibernated app un-hibernates when maintenance mode is enabled", func() {
+		It("maintenance takes routing precedence over an already auto-hibernated workload", func() {
 			By("creating a free-tier App idle past its TTL — it auto-hibernates")
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
@@ -606,12 +607,12 @@ var _ = Describe("App Controller", func() {
 			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)), "idle past its TTL, the app auto-hibernates")
 			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
 
-			By("enabling maintenance mode un-hibernates it — pods must be running while in maintenance")
+			By("enabling maintenance keeps the legacy free workload asleep")
 			app = getApp()
 			app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
 			reconcileN()
-			Expect(*getDep().Spec.Replicas).To(Equal(int32(2)), "maintenance mode must restore replicas, not leave it scaled to 0")
+			Expect(*getDep().Spec.Replicas).To(Equal(int32(0)), "maintenance routing must not override auto-sleep replicas")
 
 			By("the Ingress still routes to the activator throughout (auto-hibernate, then maintenance)")
 			svc, port := backendOf(getIngress(), 0)

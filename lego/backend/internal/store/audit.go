@@ -50,6 +50,9 @@ type AuditRow struct {
 	Target  string
 	Outcome string
 	At      time.Time
+	// MaintenanceModeTo is Render's MaintenanceModeEnabledEvent metadata.to.
+	// It is nil for every other audit verb.
+	MaintenanceModeTo *bool
 }
 
 // AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
@@ -82,17 +85,17 @@ func workspaceOf(resource string) string {
 // type needed.
 func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, outcome, at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, string(ev.Outcome), ev.At)
+		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, outcome, at, maintenance_mode_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, string(ev.Outcome), ev.At, ev.MaintenanceModeTo)
 	return err
 }
 
-const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, outcome, at`
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, outcome, at, maintenance_mode_to`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.Outcome, &r.At)
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.Outcome, &r.At, &r.MaintenanceModeTo)
 	return r, err
 }
 

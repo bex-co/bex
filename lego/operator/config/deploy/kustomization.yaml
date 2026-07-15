@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Disposable local/build overlay. Make copies this file beside config/default,
+# sets controller to IMG in the copy, builds it, then removes the copy. Keeping
+# the image transform above default updates every binary in the shared image
+# without rewriting the checked-in default kustomization.
+resources:
+  - ../default
+
+images:
+  - name: controller
+    newName: bex-operator
+    newTag: dev

@@ -191,6 +191,31 @@ func TestCreateValidatesURLAndEventTypes(t *testing.T) {
 	}
 }
 
+func TestMaintenanceEventTypesAreSubscribableAndMapped(t *testing.T) {
+	for verb, want := range map[string]string{
+		"apps.SetMaintenanceMode":    TypeMaintenanceModeEnabled,
+		"apps.SetMaintenanceModeURI": TypeMaintenanceModeURIUpdated,
+	} {
+		if got := verbEvents[verb]; got != want {
+			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, want)
+		}
+		if !slices.Contains(EventTypes, want) {
+			t.Errorf("EventTypes does not contain %q: %v", want, EventTypes)
+		}
+	}
+	svc, _ := newTestService()
+	created, err := svc.Create(context.Background(), CreateRequest{
+		URL:        "https://example.com/maintenance-hook",
+		EventTypes: []string{TypeMaintenanceModeURIUpdated, TypeMaintenanceModeEnabled},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(created.EventTypes, []string{TypeMaintenanceModeEnabled, TypeMaintenanceModeURIUpdated}) {
+		t.Fatalf("maintenance subscriptions = %v", created.EventTypes)
+	}
+}
+
 func TestCreateDeduplicatesEventTypesInCanonicalOrder(t *testing.T) {
 	s, _ := newTestService()
 	created, err := s.Create(context.Background(), CreateRequest{

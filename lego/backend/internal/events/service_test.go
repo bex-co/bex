@@ -148,6 +148,14 @@ func TestViewMapsEverySource(t *testing.T) {
 		row:      store.ServiceEventRow{Key: "aud-source:", Source: store.EventSourceAudit, Verb: "apps.SetSource", Caller: "user-x"},
 		wantType: TypeSourceChanged,
 	}, {
+		name:     "maintenance toggle uses Render vocabulary without leaking its value",
+		row:      store.ServiceEventRow{Key: "aud-maintenance:", Source: store.EventSourceAudit, Verb: "apps.SetMaintenanceMode", Caller: "user-x"},
+		wantType: TypeMaintenanceModeEnabled,
+	}, {
+		name:     "maintenance URI edit is a distinct event",
+		row:      store.ServiceEventRow{Key: "aud-maintenance-uri:", Source: store.EventSourceAudit, Verb: "apps.SetMaintenanceModeURI", Caller: "user-x"},
+		wantType: TypeMaintenanceModeURIUpdated,
+	}, {
 		name:     "env-var write carries neither key nor value",
 		row:      store.ServiceEventRow{Key: "aud-7:", Source: store.EventSourceAudit, Verb: "secrets.SetEnvVar", Caller: "user-x"},
 		wantType: TypeEnvVarsChanged,

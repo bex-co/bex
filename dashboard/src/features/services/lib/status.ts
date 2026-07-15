@@ -62,9 +62,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
     renderSubdomainPolicy:
-      "renderSubdomainPolicy" in s
-        ? (s.renderSubdomainPolicy ?? null)
-        : null,
+      "renderSubdomainPolicy" in s ? (s.renderSubdomainPolicy ?? null) : null,
     healthCheckPath:
       "healthCheckPath" in s ? (s.healthCheckPath ?? null) : null,
     maxShutdownDelaySeconds:

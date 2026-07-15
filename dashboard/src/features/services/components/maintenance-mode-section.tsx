@@ -27,6 +27,8 @@ import type { MaintenanceModeView } from "@/features/services/types";
 export interface MaintenanceModeSectionProps {
   serviceId: string;
   serviceName: string;
+  /** Render exposes maintenance mode only on paid web-service plans. */
+  plan?: string | null;
   /** Current spec.maintenanceMode; null while the detail query is still loading. */
   maintenanceMode: MaintenanceModeView | null;
 }
@@ -42,11 +44,13 @@ export interface MaintenanceModeSectionProps {
 export function MaintenanceModeSection({
   serviceId,
   serviceName,
+  plan,
   maintenanceMode,
 }: MaintenanceModeSectionProps) {
   const { t } = useTranslations();
   const { setMaintenanceMode, busy } = useMaintenanceMode();
   const enabled = maintenanceMode?.enabled ?? false;
+  const eligible = plan !== "free";
   const current = maintenanceMode?.uri ?? "";
   const [draft, setDraft] = useState(current);
   const [confirmEnable, setConfirmEnable] = useState(false);
@@ -77,13 +81,15 @@ export function MaintenanceModeSection({
                 : t("services.maintenanceModeDisabled")}
             </Label>
             <p className="text-muted-foreground mt-1 text-sm">
-              {t("services.maintenanceModeSwitchHint")}
+              {eligible
+                ? t("services.maintenanceModeSwitchHint")
+                : t("services.maintenanceModePaidOnly")}
             </p>
           </div>
           <Switch
             id="maintenance-mode-switch"
             checked={enabled}
-            disabled={busy}
+            disabled={busy || !eligible}
             onCheckedChange={(checked) => {
               if (checked) {
                 setConfirmEnable(true);
@@ -103,6 +109,7 @@ export function MaintenanceModeSection({
             <Input
               id="maintenance-mode-uri"
               value={draft}
+              disabled={!eligible || busy}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("services.maintenanceModeUriPlaceholder")}
               className="font-mono text-sm"
@@ -110,7 +117,7 @@ export function MaintenanceModeSection({
             <Button
               variant="outline"
               size="sm"
-              disabled={busy || !uriChanged}
+              disabled={busy || !eligible || !uriChanged}
               onClick={() => void setMaintenanceMode(serviceId, enabled, draft)}
             >
               {t("services.maintenanceModeSaveUri")}

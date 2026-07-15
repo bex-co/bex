@@ -14,18 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// bex-activator is the shared interstitial responder for two App states the
-// Ingress can route here instead of the app's own Service: (1) auto-hibernated
-// free-tier apps — it wakes the app on the next request and returns 503
-// Retry-After so the client retries once the pod is ready; (2) maintenance
-// mode (docs/render-artifacts/maintenance-mode.md) — it serves the
-// maintenance page (default or spec.maintenanceMode.uri, fetched and served)
-// and returns 503 without touching replicas or last-active, since the pods
-// are meant to keep running untouched. A request is resolved to an App by
-// Host, then maintenance mode is checked first (it takes priority — the
-// operator suppresses auto-hibernate while maintenance is enabled, so the two
-// states shouldn't coincide in steady state, but maintenance still wins any
-// transient overlap since it's the state a human deliberately requested).
+// bex-activator is the shared public interstitial responder. For an
+// auto-hibernated free-tier App it wakes the Deployment and returns 503 with a
+// retry hint. For an App in maintenance mode it serves the default or bounded
+// custom maintenance page without touching the App or workload.
 package main
 
 import (
@@ -35,11 +27,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -52,6 +45,12 @@ import (
 )
 
 const annotLastActive = "app.bex.co/last-active"
+
+const (
+	customPageTimeout = 5 * time.Second
+	customPageMaxSize = 1 << 20 // 1 MiB
+	maxRedirects      = 5
+)
 
 var scheme = runtime.NewScheme()
 
@@ -75,68 +74,234 @@ func main() {
 		addr = v
 	}
 
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		host := r.Host
-		if h, _, err2 := net.SplitHostPort(host); err2 == nil {
-			host = h
-		}
-
-		ctx := r.Context()
-		app, err2 := findAppByHost(ctx, c, host)
-		if err2 != nil {
-			log.Error(err2, "listing apps", "host", host)
-			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		if app == nil {
-			log.Info("no hibernated app found for host", "host", host)
-			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
-			return
-		}
-
-		if app.Spec.MaintenanceMode != nil && app.Spec.MaintenanceMode.Enabled {
-			log.Info("serving maintenance page", "app", app.Name, "host", host)
-			serveMaintenancePage(w, r, app.Spec.MaintenanceMode.URI)
-			return
-		}
-
-		// Touch last-active so the operator's shouldAutoHibernate returns false
-		// on the next reconcile, allowing the Ingress to switch back to the app.
-		now := time.Now().UTC().Format(time.RFC3339)
-		base := app.DeepCopy()
-		if app.Annotations == nil {
-			app.Annotations = map[string]string{}
-		}
-		app.Annotations[annotLastActive] = now
-		if err2 := c.Patch(ctx, app, client.MergeFrom(base)); err2 != nil {
-			log.Error(err2, "patching last-active annotation", "app", app.Name)
-		}
-
-		// Bump Deployment replicas to 1 — this is what triggers the operator
-		// reconcile (via Owns watch) that switches the Ingress back to the app.
-		dep := &appsv1.Deployment{}
-		if err2 := c.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, dep); err2 == nil {
-			one := int32(1)
-			depBase := dep.DeepCopy()
-			dep.Spec.Replicas = &one
-			if err2 := c.Patch(ctx, dep, client.MergeFrom(depBase)); err2 != nil {
-				log.Error(err2, "patching deployment replicas", "app", app.Name)
-			}
-		}
-
-		log.Info("waking app", "app", app.Name, "host", host)
-		respondNegotiated(w, r, "5", loadingPage, `{"error":"service hibernated","retryAfter":5}`)
-	})
+	http.Handle("/", newHandler(c, log))
 
 	log.Info("listening", "addr", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		fmt.Fprintf(os.Stderr, "activator: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func newHandler(c client.Client, log logr.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		host := requestHost(r.Host)
+		ctx := r.Context()
+		app, err := findAppByHost(ctx, c, host)
+		if err != nil {
+			log.Error(err, "listing apps", "host", host)
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if app == nil {
+			log.Info("no routed app found for host", "host", host)
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		// Maintenance routing is a public interstitial only. Do not touch the App,
+		// Deployment, or wake annotations: its workload remains exactly as it was.
+		if app.Spec.MaintenanceMode != nil && app.Spec.MaintenanceMode.Enabled {
+			serveMaintenance(w, r, app)
+			return
+		}
+
+		wakeApp(ctx, c, log, app, host)
+		writeWakeResponse(w, r)
+	})
+}
+
+func wakeApp(ctx context.Context, c client.Client, log logr.Logger, app *appv1alpha1.App, host string) {
+	// Touch last-active so the operator's shouldAutoHibernate returns false on
+	// the next reconcile, allowing the Ingress to switch back to the app.
+	base := app.DeepCopy()
+	if app.Annotations == nil {
+		app.Annotations = map[string]string{}
+	}
+	app.Annotations[annotLastActive] = time.Now().UTC().Format(time.RFC3339)
+	if err := c.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+		log.Error(err, "patching last-active annotation", "app", app.Name)
+	}
+
+	dep := &appsv1.Deployment{}
+	if err := c.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, dep); err == nil {
+		one := int32(1)
+		depBase := dep.DeepCopy()
+		dep.Spec.Replicas = &one
+		if err := c.Patch(ctx, dep, client.MergeFrom(depBase)); err != nil {
+			log.Error(err, "patching deployment replicas", "app", app.Name)
+		}
+	}
+	log.Info("waking app", "app", app.Name, "host", host)
+}
+
+func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Retry-After", "5")
+	if strings.Contains(r.Header.Get("Accept"), "text/html") {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = fmt.Fprint(w, loadingPage)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_, _ = fmt.Fprint(w, `{"error":"service hibernated","retryAfter":5}`)
+}
+
+func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App) {
+	serveMaintenanceWithFetcher(w, r, app, fetchCustomPage)
+}
+
+func serveMaintenanceWithFetcher(
+	w http.ResponseWriter,
+	r *http.Request,
+	app *appv1alpha1.App,
+	fetch func(context.Context, *appv1alpha1.App, string) (*http.Response, error),
+) {
+	w.Header().Set("Cache-Control", "no-store")
+	if app.Spec.MaintenanceMode.URI == "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		if r.Method != http.MethodHead {
+			_, _ = io.WriteString(w, maintenancePage)
+		}
+		return
+	}
+
+	resp, err := fetch(r.Context(), app, app.Spec.MaintenanceMode.URI)
+	if err != nil {
+		http.Error(w, "custom maintenance page unavailable", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, customPageMaxSize+1))
+	if err != nil || len(body) > customPageMaxSize {
+		http.Error(w, "custom maintenance page unavailable", http.StatusBadGateway)
+		return
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	status := resp.StatusCode
+	if status >= 200 && status < 400 {
+		status = http.StatusServiceUnavailable
+	}
+	w.WriteHeader(status)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(body)
+	}
+}
+
+func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string) (*http.Response, error) {
+	u, err := validateCustomPageURL(rawURI, app)
+	if err != nil {
+		return nil, err
+	}
+	transport := &http.Transport{
+		ForceAttemptHTTP2:     true,
+		ResponseHeaderTimeout: customPageTimeout,
+		DialContext:           safeDialContext,
+	}
+	defer transport.CloseIdleConnections()
+	hc := &http.Client{
+		Transport:     transport,
+		Timeout:       customPageTimeout,
+		CheckRedirect: customPageRedirectPolicy(app),
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "bex-maintenance-responder/1.0")
+	return hc.Do(req)
+}
+
+func customPageRedirectPolicy(app *appv1alpha1.App) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) > maxRedirects {
+			return errors.New("too many redirects")
+		}
+		_, err := validateCustomPageURL(req.URL.String(), app)
+		return err
+	}
+}
+
+func validateCustomPageURL(rawURI string, app *appv1alpha1.App) (*url.URL, error) {
+	u, err := url.Parse(rawURI)
+	if err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return nil, errors.New("maintenance uri must be an absolute HTTP(S) URL")
+	}
+	if u.User != nil {
+		return nil, errors.New("maintenance uri must not contain credentials")
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	for owned := range appHosts(app) {
+		if host == owned {
+			return nil, errors.New("maintenance uri must not point to this service")
+		}
+	}
+	return u, nil
+}
+
+func safeDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		if unsafeOriginIP(addr.IP) {
+			return nil, errors.New("custom maintenance origin resolves to a private address")
+		}
+	}
+	if len(addrs) == 0 {
+		return nil, errors.New("custom maintenance origin did not resolve")
+	}
+	return (&net.Dialer{Timeout: customPageTimeout}).DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
+}
+
+func unsafeOriginIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified()
+}
+
+func appHosts(app *appv1alpha1.App) map[string]struct{} {
+	hosts := make(map[string]struct{})
+	add := func(value string) {
+		if u, err := url.Parse(value); err == nil && u.Hostname() != "" {
+			hosts[strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))] = struct{}{}
+			return
+		}
+		value = requestHost(value)
+		if value != "" {
+			hosts[value] = struct{}{}
+		}
+	}
+	add(app.Spec.Host)
+	for _, host := range app.Spec.Hosts {
+		add(host)
+	}
+	add(app.Status.URL)
+	for _, value := range app.Status.URLs {
+		add(value)
+	}
+	return hosts
+}
+
+func requestHost(value string) string {
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		value = host
+	}
+	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
 // findAppByHost returns the first App whose status URL matches the given host,
@@ -148,120 +313,26 @@ func findAppByHost(ctx context.Context, c client.Client, host string) (*appv1alp
 	}
 	for i := range list.Items {
 		app := &list.Items[i]
-		for _, u := range app.Status.URLs {
-			if trimScheme(u) == host {
-				return app, nil
-			}
-		}
-		if trimScheme(app.Status.URL) == host {
+		if _, ok := appHosts(app)[requestHost(host)]; ok {
 			return app, nil
 		}
 	}
 	return nil, nil
 }
 
-func trimScheme(u string) string {
-	u = strings.TrimPrefix(u, "https://")
-	u = strings.TrimPrefix(u, "http://")
-	return u
-}
-
-// respondNegotiated writes a 503 with retryAfter, content-negotiated between
-// an HTML interstitial (browsers) and a JSON error (API clients) — the shape
-// both the wake-on-request and default-maintenance-page responses share.
-func respondNegotiated(w http.ResponseWriter, r *http.Request, retryAfter, html, json string) {
-	w.Header().Set("Retry-After", retryAfter)
-	if strings.Contains(r.Header.Get("Accept"), "text/html") {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = fmt.Fprint(w, html)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = fmt.Fprint(w, json)
-	}
-}
-
-// maintenanceFetchTimeout bounds how long serveMaintenancePage waits on a
-// custom uri before treating it as a fetch failure.
-const maintenanceFetchTimeout = 5 * time.Second
-
-// errBlockedAddr is returned by maintenanceFetchClient's dial Control hook to
-// abort a connection to a disallowed address.
-var errBlockedAddr = errors.New("blocked address")
-
-// maintenanceFetchClient fetches a tenant-supplied maintenance-mode uri
-// (docs/render-artifacts/maintenance-mode.md). spec.maintenanceMode.uri is
-// tenant input and the activator runs with a k8s ServiceAccount token — an
-// unrestricted fetch would be SSRF into the cluster (the API server, OpenBao,
-// other tenants' pods) or the cloud metadata endpoint. The dialer's Control
-// hook runs after DNS resolution, on the actual IP being connected to (so a
-// hostname that resolves to a public IP on lookup and a private one at
-// connect time — DNS rebinding — is still blocked); redirects are not
-// followed, so a 3xx response can't be used to reach a blocked address after
-// the initial one passed validation.
-var maintenanceFetchClient = &http.Client{
-	Timeout:       maintenanceFetchTimeout,
-	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	Transport: &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: maintenanceFetchTimeout,
-			Control: func(_, address string, c syscall.RawConn) error {
-				host, _, err := net.SplitHostPort(address)
-				if err != nil {
-					return err
-				}
-				ip := net.ParseIP(host)
-				if ip == nil || isBlockedMaintenanceFetchIP(ip) {
-					return errBlockedAddr
-				}
-				return nil
-			},
-		}).DialContext,
-	},
-}
-
-// isBlockedMaintenanceFetchIP reports whether ip is loopback, private,
-// link-local (covers the 169.254.169.254 cloud-metadata address), or
-// unspecified — every non-public range a tenant-supplied uri must not reach.
-func isBlockedMaintenanceFetchIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
-}
-
-// serveMaintenancePage answers a request while spec.maintenanceMode.enabled:
-// always 503 (matching Render). Empty uri serves the default page,
-// content-negotiated (HTML for browsers, JSON for API clients) like the
-// wake-interstitial above. A non-empty uri is fetched and its body/content-type
-// streamed through as-is — not a redirect, per
-// docs/render-artifacts/maintenance-mode.md — so the visitor sees the tenant's
-// own page while the address bar stays on the service's own host. A fetch
-// failure (network error or non-2xx) is surfaced to the visitor as 502 rather
-// than silently falling back to the default page, matching Render's
-// documented behavior.
-func serveMaintenancePage(w http.ResponseWriter, r *http.Request, uri string) {
-	if uri == "" {
-		respondNegotiated(w, r, "60", defaultMaintenancePage, `{"error":"service in maintenance mode"}`)
-		return
-	}
-
-	resp, err := maintenanceFetchClient.Get(uri)
-	if err != nil || resp.StatusCode >= 300 {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-		http.Error(w, "maintenance page unavailable", http.StatusBadGateway)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if ct := resp.Header.Get("Content-Type"); ct != "" {
-		w.Header().Set("Content-Type", ct)
-	}
-	w.Header().Set("Retry-After", "60")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_, _ = io.Copy(w, resp.Body)
-}
+const maintenancePage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Under maintenance</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#111827;color:#f9fafb}
+    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem}p{color:#d1d5db;line-height:1.6}
+  </style>
+</head>
+<body><main><h1>This site is currently under maintenance.</h1><p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
+</html>`
 
 const loadingPage = `<!DOCTYPE html>
 <html lang="en">
@@ -283,22 +354,5 @@ const loadingPage = `<!DOCTYPE html>
   <h1>Waking up your app&hellip;</h1>
   <p>This free-tier app was sleeping. It will be ready in a few seconds.</p>
   <p><small>Auto-refreshing in 5&nbsp;seconds&hellip;</small></p>
-</body>
-</html>`
-
-const defaultMaintenancePage = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Down for maintenance</title>
-  <style>
-    body{font-family:system-ui,sans-serif;max-width:480px;margin:120px auto;text-align:center;color:#333}
-    h1{font-size:1.5rem;margin-bottom:.5rem}
-    p{color:#666}
-  </style>
-</head>
-<body>
-  <h1>Down for maintenance</h1>
-  <p>This service is temporarily offline for maintenance. Please check back soon.</p>
 </body>
 </html>`

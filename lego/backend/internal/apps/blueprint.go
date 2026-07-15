@@ -110,6 +110,9 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string
 	}
 	st, err := parseStack(DeployRequest{Manifest: bexYAML})
 	if err == nil {
+		err = s.validateBlueprintServices(st)
+	}
+	if err == nil {
 		plan := blueprintValidationPlan(st)
 		return BlueprintValidation{Valid: true, Plan: &plan}, nil
 	}
@@ -208,7 +211,7 @@ func blueprintErrorPath(manifest, message string) string {
 }
 
 func blueprintErrorField(message string) string {
-	for _, field := range []string{"plan", "domains", "schedule", "runtime", "type", "image", "name"} {
+	for _, field := range []string{"maintenanceMode", "plan", "domains", "schedule", "runtime", "type", "image", "name"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
 		}

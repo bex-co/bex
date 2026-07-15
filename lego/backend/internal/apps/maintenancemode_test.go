@@ -42,7 +42,7 @@ func TestRESTCreateThreadsMaintenanceModeAndReadsItBack(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":"https://status.example.com/maintenance"}}}`
+	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"plan":"starter","maintenanceMode":{"enabled":true,"uri":"https://status.example.com/maintenance"}}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
@@ -92,7 +92,7 @@ func TestRESTGetMaintenanceModeDefaultsToDisabled(t *testing.T) {
 }
 
 func TestRESTPatchServiceMaintenanceMode(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -150,7 +150,7 @@ func TestGraphQLCreateAndReadMaintenanceMode(t *testing.T) {
 	schema := mustSchema(t, svc)
 
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `mutation { createService(name: "web", type: "web_service", image: "nginx", maintenanceMode: {enabled: true, uri: "https://status.example.com/m"}) { maintenanceMode { enabled uri } } }`})
+		RequestString: `mutation { createService(name: "web", type: "web_service", image: "nginx", plan: "starter", maintenanceMode: {enabled: true, uri: "https://status.example.com/m"}) { maintenanceMode { enabled uri } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("createService: %v", res.Errors)
 	}
@@ -175,7 +175,7 @@ func TestGraphQLCreateAndReadMaintenanceMode(t *testing.T) {
 }
 
 func TestGraphQLSetMaintenanceMode(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 	schema := mustSchema(t, svc)
 
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
@@ -225,7 +225,7 @@ func TestMCPCreateWebServiceThreadsMaintenanceMode(t *testing.T) {
 }
 
 func TestMCPSetMaintenanceMode(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 
 	v, err := svc.SetMaintenanceMode(context.Background(), "web", MaintenanceModeView{Enabled: true, URI: "https://status.example.com/m"})
 	if err != nil {
@@ -268,6 +268,7 @@ func TestSetMaintenanceModeAllowsLegacyEmptyType(t *testing.T) {
 	// rejected by requireWebService.
 	app := sampleApp("legacy")
 	app.Spec.Type = ""
+	app.Spec.Tier = "starter"
 	svc, cl := newService(nil, app)
 
 	if _, err := svc.SetMaintenanceMode(context.Background(), "legacy", MaintenanceModeView{Enabled: true}); err != nil {
@@ -279,7 +280,7 @@ func TestSetMaintenanceModeAllowsLegacyEmptyType(t *testing.T) {
 }
 
 func TestSetMaintenanceModeValidatesURI(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 
 	for _, bad := range []string{"not a url", "ftp://example.com/page", "/relative/path", "javascript:alert(1)"} {
 		if _, err := svc.SetMaintenanceMode(context.Background(), "web", MaintenanceModeView{Enabled: true, URI: bad}); !errors.Is(err, core.ErrBadRequest) {
@@ -303,13 +304,14 @@ func TestSetMaintenanceModeValidatesURI(t *testing.T) {
 // enabled maintenance window nor silently re-enable a disabled one.
 func TestRedeployNeverTouchesMaintenanceMode(t *testing.T) {
 	app := repoApp("web", "https://github.com/x/mono", "main")
+	app.Spec.Tier = "starter"
 	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true, URI: "https://status.example.com/m"}
 	svc, cl := newService(nil, app)
 
 	// A manifest that changes a create-owned field (buildCommand), so the
 	// idempotent-upsert path actually reaches applyCreateToSpec instead of
 	// short-circuiting as a no-op.
-	manifest := "apps:\n  - name: web\n    repo: https://github.com/x/mono\n    buildCommand: make build\n"
+	manifest := "apps:\n  - name: web\n    repo: https://github.com/x/mono\n    plan: starter\n    buildCommand: make build\n"
 	if _, err := svc.Deploy(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("Deploy (redeploy): %v", err)
 	}

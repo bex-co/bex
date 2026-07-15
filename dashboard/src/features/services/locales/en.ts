@@ -1223,6 +1223,10 @@ const enServices: Record<string, TranslationEntry> = {
       "Every host this service serves will answer with the maintenance page.",
     description: "Maintenance-mode section hint text next to the switch",
   },
+  "services.maintenanceModePaidOnly": {
+    message: "Maintenance mode is available on paid web service plans.",
+    description: "Maintenance mode free-plan eligibility note",
+  },
   "services.maintenanceModeToggleLabel": {
     message: "Toggle maintenance mode",
     description: "Accessible label for the maintenance-mode Switch",

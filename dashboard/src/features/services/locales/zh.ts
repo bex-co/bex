@@ -1202,6 +1202,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "此服务提供的所有主机都将显示维护页面。",
     description: "Maintenance-mode section hint text next to the switch",
   },
+  "services.maintenanceModePaidOnly": {
+    message: "维护模式仅适用于付费 Web 服务套餐。",
+    description: "Maintenance mode free-plan eligibility note",
+  },
   "services.maintenanceModeToggleLabel": {
     message: "切换维护模式",
     description: "Accessible label for the maintenance-mode Switch",

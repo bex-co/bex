@@ -45,6 +45,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     revision: "abc123",
     plan: null,
     idleTTLSeconds: null,
+    maintenanceMode: null,
     schedule: null,
     command: null,
     runs: [],
@@ -55,6 +56,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     builder: null,
     startCommand: null,
     dockerfilePath: null,
+    ipAllowList: null,
     ...overrides,
   };
 }
@@ -88,6 +90,7 @@ describe("toServiceView", () => {
       revision: "abc123",
       plan: null,
       idleTTLSeconds: 0,
+      maintenanceMode: null,
       schedule: null,
       command: null,
       runs: [],

@@ -17,133 +17,211 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func TestIsBlockedMaintenanceFetchIP(t *testing.T) {
-	cases := []struct {
-		ip      string
-		blocked bool
-	}{
-		{"8.8.8.8", false},
-		{"93.184.216.34", false}, // a public IP (example.com at capture time)
-		{"127.0.0.1", true},
-		{"10.0.0.5", true},
-		{"172.16.0.5", true},
-		{"192.168.1.1", true},
-		{"169.254.169.254", true}, // cloud metadata
-		{"0.0.0.0", true},
-		{"::1", true},
-		{"fe80::1", true},
-		{"fc00::1", true},
+func maintenanceApp(uri string) *appv1alpha1.App {
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"},
+		Spec: appv1alpha1.AppSpec{
+			MaintenanceMode: &appv1alpha1.MaintenanceModeSpec{Enabled: true, URI: uri},
+			Hosts:           []string{"custom.example.com"},
+		},
+		Status: appv1alpha1.AppStatus{URL: "https://web.onbex.co", URLs: []string{"https://web.onbex.co", "https://custom.example.com"}},
 	}
-	for _, tc := range cases {
-		t.Run(tc.ip, func(t *testing.T) {
-			ip := net.ParseIP(tc.ip)
-			if ip == nil {
-				t.Fatalf("net.ParseIP(%q) = nil", tc.ip)
-			}
-			if got := isBlockedMaintenanceFetchIP(ip); got != tc.blocked {
-				t.Errorf("isBlockedMaintenanceFetchIP(%s) = %v, want %v", tc.ip, got, tc.blocked)
+}
+
+func TestMaintenanceHandlerDoesNotWakeOrMutateWorkload(t *testing.T) {
+	app := maintenanceApp("")
+	zero := int32(0)
+	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"}, Spec: appsv1.DeploymentSpec{Replicas: &zero}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "https://web.onbex.co/arbitrary/path", strings.NewReader("ignored"))
+	newHandler(cl, logr.Discard()).ServeHTTP(rr, req)
+	if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "currently under maintenance") {
+		t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+	var got appsv1.Deployment
+	if err := cl.Get(context.Background(), clientKey("web"), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Spec.Replicas == nil || *got.Spec.Replicas != 0 {
+		t.Fatalf("maintenance request woke Deployment: replicas=%v", got.Spec.Replicas)
+	}
+	var gotApp appv1alpha1.App
+	if err := cl.Get(context.Background(), clientKey("web"), &gotApp); err != nil {
+		t.Fatal(err)
+	}
+	if gotApp.Annotations[annotLastActive] != "" {
+		t.Fatalf("maintenance request touched last-active: %#v", gotApp.Annotations)
+	}
+}
+
+func TestMaintenanceHandlerCoversPlatformAndCustomHostsOnEveryMethod(t *testing.T) {
+	app := maintenanceApp("")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	handler := newHandler(cl, logr.Discard())
+
+	for _, tc := range []struct {
+		host   string
+		method string
+		path   string
+	}{
+		{host: "web.onbex.co", method: http.MethodGet, path: "/"},
+		{host: "custom.example.com", method: http.MethodPost, path: "/api/orders"},
+		{host: "web.onbex.co", method: http.MethodPut, path: "/deep/path?x=1"},
+		{host: "custom.example.com", method: http.MethodDelete, path: "/anything"},
+	} {
+		t.Run(tc.method+" "+tc.host+tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, "https://"+tc.host+tc.path, nil)
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+			if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "currently under maintenance") {
+				t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
 			}
 		})
 	}
 }
 
-func TestMaintenanceFetchClientBlocksLoopback(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("should never be reached"))
-	}))
-	defer srv.Close()
+func TestCustomMaintenancePageSuccessAndOriginError(t *testing.T) {
+	app := maintenanceApp("https://status.example.com/page")
+	for _, tc := range []struct {
+		name       string
+		originCode int
+		wantCode   int
+	}{
+		{name: "success becomes maintenance 503", originCode: http.StatusOK, wantCode: http.StatusServiceUnavailable},
+		{name: "origin error passes through", originCode: http.StatusTeapot, wantCode: http.StatusTeapot},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fetch := func(context.Context, *appv1alpha1.App, string) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: tc.originCode,
+					Header:     http.Header{"Content-Type": []string{"text/html"}},
+					Body:       io.NopCloser(strings.NewReader("custom body")),
+				}, nil
+			}
+			rr := httptest.NewRecorder()
+			serveMaintenanceWithFetcher(rr, httptest.NewRequest(http.MethodGet, "/anything", nil), app, fetch)
+			if rr.Code != tc.wantCode || rr.Body.String() != "custom body" || rr.Header().Get("Content-Type") != "text/html" {
+				t.Fatalf("response = %d %q %#v", rr.Code, rr.Body.String(), rr.Header())
+			}
+		})
+	}
 
-	// httptest servers listen on 127.0.0.1 — exactly the loopback address the
-	// dial Control hook must reject, proving the guard runs at connect time.
-	_, err := maintenanceFetchClient.Get(srv.URL)
-	if err == nil {
-		t.Fatal("expected the loopback fetch to be blocked, got nil error")
+	rr := httptest.NewRecorder()
+	serveMaintenanceWithFetcher(rr, httptest.NewRequest(http.MethodGet, "/", nil), app,
+		func(context.Context, *appv1alpha1.App, string) (*http.Response, error) {
+			return nil, errors.New("timeout")
+		})
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("fetch failure status = %d", rr.Code)
 	}
 }
 
-func TestServeMaintenancePageDefaultContentNegotiation(t *testing.T) {
-	t.Run("browser gets the HTML default page", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("Accept", "text/html")
-		w := httptest.NewRecorder()
-		serveMaintenancePage(w, req, "")
-
-		if w.Code != http.StatusServiceUnavailable {
-			t.Errorf("status = %d, want 503", w.Code)
+func TestCustomMaintenancePageHeadAndSizeLimit(t *testing.T) {
+	app := maintenanceApp("https://status.example.com/page")
+	fetchBody := func(body string) func(context.Context, *appv1alpha1.App, string) (*http.Response, error) {
+		return func(context.Context, *appv1alpha1.App, string) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"text/plain"}},
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
 		}
-		if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
-			t.Errorf("Content-Type = %q, want text/html", ct)
-		}
-		if !strings.Contains(w.Body.String(), "maintenance") {
-			t.Errorf("body doesn't look like the maintenance page: %s", w.Body.String())
-		}
-	})
-
-	t.Run("API client gets JSON", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("Accept", "application/json")
-		w := httptest.NewRecorder()
-		serveMaintenancePage(w, req, "")
-
-		if w.Code != http.StatusServiceUnavailable {
-			t.Errorf("status = %d, want 503", w.Code)
-		}
-		if ct := w.Header().Get("Content-Type"); ct != "application/json" {
-			t.Errorf("Content-Type = %q, want application/json", ct)
-		}
-		if !strings.Contains(w.Body.String(), "maintenance") {
-			t.Errorf("body doesn't look like a maintenance JSON error: %s", w.Body.String())
-		}
-	})
-}
-
-func TestServeMaintenancePageCustomURIFetchedAndServed(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("tenant's own maintenance page"))
-	}))
-	defer upstream.Close()
-
-	// The real maintenanceFetchClient blocks loopback by design (that's
-	// TestMaintenanceFetchClientBlocksLoopback above); swap in a plain client
-	// so this test can exercise serveMaintenancePage's own passthrough logic
-	// (status, content-type, body) against an httptest server, which only
-	// ever binds to loopback addresses.
-	prev := maintenanceFetchClient
-	maintenanceFetchClient = &http.Client{Timeout: maintenanceFetchTimeout}
-	t.Cleanup(func() { maintenanceFetchClient = prev })
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	serveMaintenancePage(w, req, upstream.URL)
-
-	if w.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503 (Render always returns 503 while enabled)", w.Code)
 	}
-	if got := w.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want the upstream's", got)
+
+	head := httptest.NewRecorder()
+	serveMaintenanceWithFetcher(head, httptest.NewRequest(http.MethodHead, "/any", nil), app, fetchBody("must not be written"))
+	if head.Code != http.StatusServiceUnavailable || head.Body.Len() != 0 {
+		t.Fatalf("HEAD response = %d %q", head.Code, head.Body.String())
 	}
-	if w.Body.String() != "tenant's own maintenance page" {
-		t.Errorf("body = %q", w.Body.String())
+
+	oversized := httptest.NewRecorder()
+	serveMaintenanceWithFetcher(oversized, httptest.NewRequest(http.MethodGet, "/", nil), app, fetchBody(strings.Repeat("x", customPageMaxSize+1)))
+	if oversized.Code != http.StatusBadGateway || !strings.Contains(oversized.Body.String(), "unavailable") {
+		t.Fatalf("oversized response = %d %q", oversized.Code, oversized.Body.String())
 	}
 }
 
-func TestServeMaintenancePageFetchFailureReturns502(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	// A loopback uri is both unreachable (SSRF-blocked) and a stand-in for
-	// "the fetch failed" — either way serveMaintenancePage must surface 502,
-	// never silently fall back to the default page.
-	serveMaintenancePage(w, req, "http://127.0.0.1:1/unreachable")
-
-	if w.Code != http.StatusBadGateway {
-		t.Errorf("status = %d, want 502", w.Code)
+func TestMaintenanceURLSafety(t *testing.T) {
+	app := maintenanceApp("")
+	for _, raw := range []string{
+		"/relative",
+		"ftp://example.com/page",
+		"https://user:password@status.example.com/page",
+		"https://web.onbex.co/page",
+		"https://custom.example.com/page",
+	} {
+		if _, err := validateCustomPageURL(raw, app); err == nil {
+			t.Errorf("validateCustomPageURL(%q) succeeded", raw)
+		}
 	}
+	for _, raw := range []string{"https://status.example.com/page", "http://status.example.com"} {
+		if _, err := validateCustomPageURL(raw, app); err != nil {
+			t.Errorf("validateCustomPageURL(%q): %v", raw, err)
+		}
+	}
+	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "169.254.1.1", "::1"} {
+		if !unsafeOriginIP(net.ParseIP(raw)) {
+			t.Errorf("unsafeOriginIP(%s) = false", raw)
+		}
+	}
+	if _, err := safeDialContext(context.Background(), "tcp", "127.0.0.1:80"); err == nil || !strings.Contains(err.Error(), "private address") {
+		t.Fatalf("safeDialContext(loopback) error = %v", err)
+	}
+}
+
+func TestMaintenanceRedirectPolicyRejectsSelfAndLongChains(t *testing.T) {
+	app := maintenanceApp("")
+	policy := customPageRedirectPolicy(app)
+	self := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/redirected", nil)
+	if err := policy(self, []*http.Request{httptest.NewRequest(http.MethodGet, "https://status.example.com", nil)}); err == nil || !strings.Contains(err.Error(), "this service") {
+		t.Fatalf("redirect-to-self error = %v", err)
+	}
+
+	external := httptest.NewRequest(http.MethodGet, "https://status.example.com/final", nil)
+	via := make([]*http.Request, maxRedirects+1)
+	for i := range via {
+		via[i] = httptest.NewRequest(http.MethodGet, "https://status.example.com/hop", nil)
+	}
+	if err := policy(external, via); err == nil || !strings.Contains(err.Error(), "too many redirects") {
+		t.Fatalf("long redirect chain error = %v", err)
+	}
+}
+
+func TestFindAppByHostCoversSpecAndStatusHosts(t *testing.T) {
+	app := maintenanceApp("")
+	app.Spec.Host = "legacy.example.com"
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	for _, host := range []string{"web.onbex.co", "custom.example.com", "legacy.example.com"} {
+		got, err := findAppByHost(context.Background(), cl, host)
+		if err != nil || got == nil || got.Name != "web" {
+			t.Fatalf("findAppByHost(%q) = %+v, %v", host, got, err)
+		}
+	}
+}
+
+func clientKey(name string) client.ObjectKey {
+	return client.ObjectKey{Name: name, Namespace: "bex-system"}
 }

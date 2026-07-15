@@ -64,16 +64,20 @@ limitations under the License.
 //	custom_domain_added/removed apps.Add/DeleteDomain
 //	notify_on_fail_changed      apps.SetNotifyOnFail            (w4/m21, a bex-only name — Render's field has no dedicated event type)
 //	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
-//	maintenance_mode_changed    apps.SetMaintenanceMode         (w1/m37, a bex-only name — not verified against Render's real events enum, which may name this differently or not at all)
+//	maintenance_mode_enabled    apps.SetMaintenanceMode         (w1/m37, matching Render's webhook/audit vocabulary; audit metadata.to distinguishes enable from disable)
+//	maintenance_mode_uri_updated
+//	                            apps.SetMaintenanceModeURI      (w1/m37, matching Render's webhook/audit vocabulary)
 //
 // # Redaction (structural, not filtered)
 //
-// No value can reach an event because no value is ever stored: an audit row
-// carries a verb NAME, a caller subject, and (since w3/m7) a target resource
-// NAME — never a verb's arguments (core.AuditEvent). An env-var write is
-// therefore visible as "alice changed env vars at 03:12" and cannot be anything
-// more, however the feed is queried. That is the guarantee; the missing detail
-// below is its price, paid deliberately.
+// No arbitrary value can reach an event: an audit row carries a verb NAME, a
+// caller subject, and (since w3/m7) a target resource NAME — never a generic
+// verb-arguments object. The sole typed detail is maintenance_mode_to, a
+// non-secret boolean used only by the audit-log projection and intentionally
+// absent from this service-event feed. An env-var write is therefore visible
+// as "alice changed env vars at 03:12" and cannot be anything more, however the
+// feed is queried. That is the guarantee; the missing detail below is its price,
+// paid deliberately.
 //
 // # Omissions (honest, not faked)
 //
@@ -97,7 +101,7 @@ limitations under the License.
 //     produce no deploy_started; when they do, this feed shows them with no
 //     change here.
 //   - build_started/build_ended, server_failed, disk_* — no bex source at all.
-//     (maintenance_* now has a source — see maintenance_mode_changed above —
+//     (maintenance_* now has a source — see the maintenance-mode types above —
 //     but only for the tenant-facing toggle this feed's apps.SetMaintenanceMode
 //     records; Render's platform-scheduled infra-maintenance concept, if its
 //     enum names one, still has none.)
@@ -143,31 +147,32 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged          = "env_vars_changed"
-	TypeEnvGroupLinked          = "env_group_linked"
-	TypeEnvGroupUnlinked        = "env_group_unlinked"
-	TypeAutoDeployChanged       = "auto_deploy_changed"
-	TypeIdleTimeoutChanged      = "idle_timeout_changed"
-	TypeRootDirectoryChanged    = "root_directory_changed"
-	TypeDockerfilePathChanged   = "dockerfile_path_changed"
-	TypeBuildFilterChanged      = "build_filter_changed"
-	TypeCommandsChanged         = "commands_changed"
-	TypeSourceChanged           = "source_changed"
-	TypeDisplayNameChanged      = "display_name_changed"
-	TypePreDeployChanged        = "pre_deploy_command_changed"
-	TypeMaxShutdownDelayChanged = "max_shutdown_delay_changed"
-	TypePublishPathChanged      = "publish_path_changed"
-	TypeRoutesChanged           = "routes_changed"
-	TypeHeadersChanged          = "headers_changed"
-	TypeCustomDomainAdded       = "custom_domain_added"
-	TypeCustomDomainRemoved     = "custom_domain_removed"
-	TypeDeployHookRegenerated   = "deploy_hook_regenerated"
-	TypeNotifyOnFailChanged     = "notify_on_fail_changed"
-	TypeSubdomainPolicyChanged  = "subdomain_policy_changed"
-	TypeIPAllowListChanged      = "ip_allow_list_changed"
-	TypeJobStarted              = "job_started"
-	TypeJobCanceled             = "job_canceled"
-	TypeMaintenanceModeChanged  = "maintenance_mode_changed"
+	TypeEnvVarsChanged            = "env_vars_changed"
+	TypeEnvGroupLinked            = "env_group_linked"
+	TypeEnvGroupUnlinked          = "env_group_unlinked"
+	TypeAutoDeployChanged         = "auto_deploy_changed"
+	TypeIdleTimeoutChanged        = "idle_timeout_changed"
+	TypeRootDirectoryChanged      = "root_directory_changed"
+	TypeDockerfilePathChanged     = "dockerfile_path_changed"
+	TypeBuildFilterChanged        = "build_filter_changed"
+	TypeCommandsChanged           = "commands_changed"
+	TypeSourceChanged             = "source_changed"
+	TypeDisplayNameChanged        = "display_name_changed"
+	TypePreDeployChanged          = "pre_deploy_command_changed"
+	TypeMaxShutdownDelayChanged   = "max_shutdown_delay_changed"
+	TypePublishPathChanged        = "publish_path_changed"
+	TypeRoutesChanged             = "routes_changed"
+	TypeHeadersChanged            = "headers_changed"
+	TypeCustomDomainAdded         = "custom_domain_added"
+	TypeCustomDomainRemoved       = "custom_domain_removed"
+	TypeDeployHookRegenerated     = "deploy_hook_regenerated"
+	TypeNotifyOnFailChanged       = "notify_on_fail_changed"
+	TypeSubdomainPolicyChanged    = "subdomain_policy_changed"
+	TypeIPAllowListChanged        = "ip_allow_list_changed"
+	TypeJobStarted                = "job_started"
+	TypeJobCanceled               = "job_canceled"
+	TypeMaintenanceModeEnabled    = "maintenance_mode_enabled"
+	TypeMaintenanceModeURIUpdated = "maintenance_mode_uri_updated"
 )
 
 // eventTypes maps an audited verb (core.callerVerb's "<package>.<Method>") to the
@@ -183,45 +188,46 @@ const (
 //   - deploys.Trigger — the deploys row it opens IS the deploy_started event;
 //     mapping the verb too would show every API deploy twice.
 var eventTypes = map[string]string{
-	"apps.Suspend":                 TypeSuspenderAdded,
-	"apps.Resume":                  TypeSuspenderRemoved,
-	"apps.Restart":                 TypeServerRestarted,
-	"apps.SetPlan":                 TypePlanChanged,
-	"apps.Scale":                   TypeInstanceCountChanged,
-	"apps.SetAutoscaling":          TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":       TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":          TypeCronJobRunStarted,
-	"apps.CancelCronRun":           TypeCronJobRunEnded,
-	"apps.CancelCurrentCronRun":    TypeCronJobRunEnded,
-	"apps.SetAutoDeploy":           TypeAutoDeployChanged,
-	"apps.SetNotifyOnFail":         TypeNotifyOnFailChanged,
-	"apps.SetSubdomainPolicy":      TypeSubdomainPolicyChanged,
-	"apps.SetIPAllowList":          TypeIPAllowListChanged,
-	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
-	"apps.SetRootDir":              TypeRootDirectoryChanged,
-	"apps.SetDockerfilePath":       TypeDockerfilePathChanged,
-	"apps.SetBuildFilter":          TypeBuildFilterChanged,
-	"apps.SetCommands":             TypeCommandsChanged,
-	"apps.SetSource":               TypeSourceChanged,
-	"apps.SetDisplayName":          TypeDisplayNameChanged,
-	"apps.SetPreDeployCommand":     TypePreDeployChanged,
-	"apps.SetMaxShutdownDelay":     TypeMaxShutdownDelayChanged,
-	"apps.SetPublishPath":          TypePublishPathChanged,
-	"apps.SetRoutes":               TypeRoutesChanged,
-	"apps.SetHeaders":              TypeHeadersChanged,
-	"apps.AddDomain":               TypeCustomDomainAdded,
-	"apps.DeleteDomain":            TypeCustomDomainRemoved,
-	"secrets.SetEnvVars":           TypeEnvVarsChanged,
-	"secrets.SetEnvVar":            TypeEnvVarsChanged,
-	"secrets.DeleteEnvVar":         TypeEnvVarsChanged,
-	"secrets.SeedEnvVars":          TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
-	"envgroups.LinkService":        TypeEnvGroupLinked,
-	"envgroups.UnlinkService":      TypeEnvGroupUnlinked,
-	"envgroups.LinkEnvGroup":       TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
-	"deploys.RegenerateDeployHook": TypeDeployHookRegenerated,
-	"jobs.Create":                  TypeJobStarted,
-	"jobs.Cancel":                  TypeJobCanceled,
-	"apps.SetMaintenanceMode":      TypeMaintenanceModeChanged,
+	"apps.Suspend":                          TypeSuspenderAdded,
+	"apps.Resume":                           TypeSuspenderRemoved,
+	"apps.Restart":                          TypeServerRestarted,
+	"apps.SetPlan":                          TypePlanChanged,
+	"apps.Scale":                            TypeInstanceCountChanged,
+	"apps.SetAutoscaling":                   TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":                TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":                   TypeCronJobRunStarted,
+	"apps.CancelCronRun":                    TypeCronJobRunEnded,
+	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
+	"apps.SetAutoDeploy":                    TypeAutoDeployChanged,
+	"apps.SetNotifyOnFail":                  TypeNotifyOnFailChanged,
+	"apps.SetSubdomainPolicy":               TypeSubdomainPolicyChanged,
+	"apps.SetIPAllowList":                   TypeIPAllowListChanged,
+	"apps.SetIdleTTL":                       TypeIdleTimeoutChanged,
+	"apps.SetRootDir":                       TypeRootDirectoryChanged,
+	"apps.SetDockerfilePath":                TypeDockerfilePathChanged,
+	"apps.SetBuildFilter":                   TypeBuildFilterChanged,
+	"apps.SetCommands":                      TypeCommandsChanged,
+	"apps.SetSource":                        TypeSourceChanged,
+	"apps.SetDisplayName":                   TypeDisplayNameChanged,
+	"apps.SetPreDeployCommand":              TypePreDeployChanged,
+	"apps.SetMaxShutdownDelay":              TypeMaxShutdownDelayChanged,
+	"apps.SetPublishPath":                   TypePublishPathChanged,
+	"apps.SetRoutes":                        TypeRoutesChanged,
+	"apps.SetHeaders":                       TypeHeadersChanged,
+	"apps.AddDomain":                        TypeCustomDomainAdded,
+	"apps.DeleteDomain":                     TypeCustomDomainRemoved,
+	"secrets.SetEnvVars":                    TypeEnvVarsChanged,
+	"secrets.SetEnvVar":                     TypeEnvVarsChanged,
+	"secrets.DeleteEnvVar":                  TypeEnvVarsChanged,
+	"secrets.SeedEnvVars":                   TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
+	"envgroups.LinkService":                 TypeEnvGroupLinked,
+	"envgroups.UnlinkService":               TypeEnvGroupUnlinked,
+	"envgroups.LinkEnvGroup":                TypeEnvGroupLinked, // blueprint fromGroup (w1/m35)
+	"deploys.RegenerateDeployHook":          TypeDeployHookRegenerated,
+	"jobs.Create":                           TypeJobStarted,
+	"jobs.Cancel":                           TypeJobCanceled,
+	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
+	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
 }
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —

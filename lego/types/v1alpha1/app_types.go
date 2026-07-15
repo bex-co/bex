@@ -495,10 +495,8 @@ type MaintenanceModeSpec struct {
 	// URI is an absolute http(s) URL to a custom maintenance page, fetched and
 	// served in place of the default page (not a redirect — the visitor's
 	// address bar stays on the service's own host). Empty serves bex's default
-	// page. Must not point at the service itself, which is unreachable while
-	// maintenance mode is enabled — Render's own documented constraint; bex
-	// does not special-case it, the fetch simply fails and that failure is
-	// surfaced to the visitor, same as any other unreachable uri.
+	// page. The API rejects URLs that point back to the same service to avoid a
+	// routing loop while maintenance mode owns its public hosts.
 	// +optional
 	// +kubebuilder:validation:MaxLength=2048
 	URI string `json:"uri,omitempty"`

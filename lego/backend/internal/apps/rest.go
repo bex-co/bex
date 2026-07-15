@@ -46,11 +46,8 @@ type patchServiceRequest struct {
 		BuildCommand     *string         `json:"buildCommand"`
 		EnvSpecific      json.RawMessage `json:"envSpecificDetails"`
 		Previews         json.RawMessage `json:"previews"`
-		// MaintenanceMode is Render's maintenanceMode object (webServiceDetails,
-		// docs/render-artifacts/maintenance-mode.md). A pointer so "absent" (leave
-		// unchanged) is distinct from an explicit object; web_service only.
-		MaintenanceMode *MaintenanceModeView `json:"maintenanceMode"`
-		IPAllowList     json.RawMessage      `json:"ipAllowList"`
+		MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
+		IPAllowList      json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -244,10 +241,25 @@ type serviceDetailsReq struct {
 	// (Render-faithful) or at the top level (top level wins).
 	PreDeployCommand string          `json:"preDeployCommand"`
 	Previews         json.RawMessage `json:"previews"`
-	// MaintenanceMode is Render's maintenanceMode object (webServiceDetails,
-	// docs/render-artifacts/maintenance-mode.md). nil means unset (disabled).
-	MaintenanceMode *MaintenanceModeView `json:"maintenanceMode"`
-	IPAllowList     json.RawMessage      `json:"ipAllowList"`
+	MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
+	IPAllowList      json.RawMessage `json:"ipAllowList"`
+}
+
+// decodeMaintenanceMode preserves Render's required-key semantics: when the
+// object is supplied, both enabled and uri must be present (including explicit
+// false and the empty string).
+func decodeMaintenanceMode(raw json.RawMessage) (*MaintenanceModeView, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var wire struct {
+		Enabled *bool   `json:"enabled"`
+		URI     *string `json:"uri"`
+	}
+	if string(raw) == "null" || json.Unmarshal(raw, &wire) != nil || wire.Enabled == nil || wire.URI == nil {
+		return nil, fmt.Errorf("%w: serviceDetails.maintenanceMode requires enabled and uri", core.ErrBadRequest)
+	}
+	return &MaintenanceModeView{Enabled: *wire.Enabled, URI: *wire.URI}, nil
 }
 
 type envSpecificDetailsReq struct {
@@ -342,7 +354,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
 	if r.ServiceDetails != nil {
-		maintenanceMode = r.ServiceDetails.MaintenanceMode
+		maintenanceMode, _ = decodeMaintenanceMode(r.ServiceDetails.MaintenanceMode)
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
@@ -654,7 +666,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		var maintenanceMode *MaintenanceModeView
 		if req.ServiceDetails != nil {
-			maintenanceMode = req.ServiceDetails.MaintenanceMode
+			var maintenanceErr error
+			maintenanceMode, maintenanceErr = decodeMaintenanceMode(req.ServiceDetails.MaintenanceMode)
+			if maintenanceErr != nil {
+				core.WriteErr(w, maintenanceErr)
+				return
+			}
 		}
 		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil && maintenanceMode == nil {
 			get(w, r) // no supported field present => read-only no-op
@@ -676,6 +693,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if req.Repo != nil || image != nil || req.Branch != nil {
 			if app, err = s.SetSource(r.Context(), id, req.Repo, image, req.Branch); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		// A simultaneous downgrade must disable maintenance first; every other
+		// combination applies the plan first so validation sees the final plan.
+		maintenanceBeforePlan := maintenanceMode != nil && !maintenanceMode.Enabled && plan == "free"
+		if maintenanceBeforePlan {
+			if app, err = s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -788,8 +814,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 		}
-		if maintenanceMode != nil {
-			if app, err = s.SetMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
+		if maintenanceMode != nil && !maintenanceBeforePlan {
+			if app, err = s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -828,6 +854,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if field := req.unsupportedField(); field != "" {
 			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
 			return
+		}
+		if req.ServiceDetails != nil {
+			if _, err := decodeMaintenanceMode(req.ServiceDetails.MaintenanceMode); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
 		}
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true

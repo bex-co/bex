@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // AuditOutcome is the result of an authorized write attempt (w4/m10).
@@ -35,10 +37,11 @@ const (
 
 // AuditEvent is one recorded write-verb authorization decision: who attempted
 // what, against which object, and whether it was allowed. Never carries
-// request bodies or values — Verb/Resource/Target are derived from the call
-// site, the OpenFGA object string, and the verb's resource NAME, never from a
-// verb's value-bearing arguments, so there is no path for a secret to reach an
-// event.
+// request bodies or arbitrary values — Verb/Resource/Target are derived from
+// the call site, the OpenFGA object string, and the verb's resource NAME. The
+// sole typed detail is MaintenanceModeTo, a non-secret boolean required by
+// Render's MaintenanceModeEnabledEvent contract; there is no free-form path
+// for a secret to reach an event.
 type AuditEvent struct {
 	Caller       string // core.Identity.Subject; empty for an unauthenticated caller
 	CallerMethod string // core.Identity.Method ("oauth2" | "session")
@@ -47,6 +50,67 @@ type AuditEvent struct {
 	Target       string // the resource acted ON, e.g. "service:my-api"; empty for a workspace-wide verb
 	Outcome      AuditOutcome
 	At           time.Time
+	// MaintenanceModeTo is Render's MaintenanceModeEnabledEvent metadata.to.
+	// Nil for every other verb; a pointer preserves an explicit false value.
+	MaintenanceModeTo *bool
+}
+
+type auditMaintenanceModeToKey struct{}
+
+type deferAllowedWriteAuditKey struct{}
+
+const (
+	// AuditVerbMaintenanceModeEnabled and AuditVerbMaintenanceModeURIUpdated
+	// are Render's two field-level maintenance effects. Unlike ordinary verbs,
+	// both may be emitted by one atomic ConfigureMaintenanceMode write.
+	AuditVerbMaintenanceModeEnabled    = "apps.SetMaintenanceMode"
+	AuditVerbMaintenanceModeURIUpdated = "apps.SetMaintenanceModeURI"
+)
+
+// WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
+// audit detail to the authorization context. It is deliberately narrower than
+// a generic metadata map so value-bearing verb arguments remain structurally
+// unable to enter the audit store.
+func WithAuditMaintenanceModeTo(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, auditMaintenanceModeToKey{}, enabled)
+}
+
+// WithDeferredAllowedWriteAudit keeps denied authorization attempts visible
+// while deferring an allowed write event until the caller confirms its state
+// mutation succeeded. Composite atomic verbs use it when their successful
+// effects must be represented by more than one Render event.
+func WithDeferredAllowedWriteAudit(ctx context.Context) context.Context {
+	return context.WithValue(ctx, deferAllowedWriteAuditKey{}, true)
+}
+
+func defersAllowedWriteAudit(ctx context.Context) bool {
+	deferred, _ := ctx.Value(deferAllowedWriteAuditKey{}).(bool)
+	return deferred
+}
+
+// RecordMaintenanceModeEffects records the successful field-level effects of
+// one atomic maintenance-mode write. URI precedes enabled when both changed,
+// matching the documented deterministic ordering. The fixed verbs keep this
+// narrow: callers cannot inject arbitrary audit vocabulary or metadata.
+func (b *Base) RecordMaintenanceModeEffects(
+	ctx context.Context,
+	app *appv1alpha1.App,
+	uriChanged bool,
+	enabledChanged *bool,
+) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve maintenance resource: %v", err)
+		return
+	}
+	target := canonicalAppTarget(app)
+	if uriChanged {
+		b.emit(ctx, AuditVerbMaintenanceModeURIUpdated, resource, target, nil)
+	}
+	if enabledChanged != nil {
+		toggleCtx := WithAuditMaintenanceModeTo(ctx, *enabledChanged)
+		b.emit(toggleCtx, AuditVerbMaintenanceModeEnabled, resource, target, nil)
+	}
 }
 
 // ServiceTarget is the AuditEvent.Target of a verb acting on one service — the
@@ -231,6 +295,11 @@ func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr
 		outcome = AuditDenied
 	}
 	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now()}
+	if verb == AuditVerbMaintenanceModeEnabled {
+		if enabled, ok := ctx.Value(auditMaintenanceModeToKey{}).(bool); ok {
+			ev.MaintenanceModeTo = &enabled
+		}
+	}
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
 	}
