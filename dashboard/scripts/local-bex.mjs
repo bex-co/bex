@@ -1497,13 +1497,16 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const k = KEY_VALUES.find((kv) => kv.id === variables.id);
       if (!k) return { keyValueConnectionInfo: null };
       const pw = "s3cr3t_stub_kv_password_not_real_0123456789ab";
-      const internal = `redis://:${pw}@${k.id}.default.svc:6379`;
+      // Explicit "default" user, not the empty-username redis://:<password>@
+      // shorthand: valkey-cli 8.1.8's URI parser fails AUTH against that form
+      // on a --requirepass server (see lego/operator/internal/controller/keyvalue_controller.go).
+      const internal = `redis://default:${pw}@${k.id}.default.svc:6379`;
       return {
         keyValueConnectionInfo: {
           __typename: "KeyValueConnectionInfo",
           internalConnectionString: internal,
           externalConnectionString: k.public
-            ? `rediss://:${pw}@${k.externalHost}:6379`
+            ? `rediss://default:${pw}@${k.externalHost}:6379`
             : "",
           cliCommand: `redis-cli -u ${internal}`,
         },

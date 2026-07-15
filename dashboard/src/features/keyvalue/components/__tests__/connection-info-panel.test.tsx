@@ -45,14 +45,14 @@ describe("ConnectionInfoPanel", () => {
 
   it("shows the internal and CLI fields but omits the external field when not public", () => {
     state.info = {
-      internalConnectionString: "redis://:s3cr3t@kv.default.svc:6379",
+      internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
       externalConnectionString: "",
-      cliCommand: "redis-cli -u redis://:s3cr3t@kv.default.svc:6379",
+      cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
     render(<ConnectionInfoPanel id="kv" />);
 
     expect(screen.getByText("Internal Key Value URL")).toBeInTheDocument();
-    expect(screen.getByText("redis://:s3cr3t@kv.default.svc:6379")).toBeInTheDocument();
+    expect(screen.getByText("redis://default:s3cr3t@kv.default.svc:6379")).toBeInTheDocument();
     expect(screen.getByText("Valkey CLI command")).toBeInTheDocument();
     // Not public: the external field is replaced by the "enable public access" note.
     expect(screen.queryByText("External Key Value URL")).not.toBeInTheDocument();
@@ -63,15 +63,15 @@ describe("ConnectionInfoPanel", () => {
 
   it("shows the external field only when the store is public", () => {
     state.info = {
-      internalConnectionString: "redis://:s3cr3t@kv.default.svc:6379",
-      externalConnectionString: "rediss://:s3cr3t@kv.kv.bex.co:6379",
-      cliCommand: "redis-cli -u redis://:s3cr3t@kv.default.svc:6379",
+      internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
+      externalConnectionString: "rediss://default:s3cr3t@kv.kv.bex.co:6379",
+      cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
     render(<ConnectionInfoPanel id="kv" />);
 
     expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
     expect(
-      screen.getByText("rediss://:s3cr3t@kv.kv.bex.co:6379"),
+      screen.getByText("rediss://default:s3cr3t@kv.kv.bex.co:6379"),
     ).toBeInTheDocument();
   });
 

@@ -106,7 +106,10 @@ type KeyValueView struct {
 // KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
 // internal string, an optional external (TLS) string, and a ready-to-run CLI
 // command. The password is embedded inside the connection strings (Valkey's
-// redis://:<password>@host form), never a standalone field — matching Render.
+// redis://default:<password>@host form), never a standalone field — matching
+// Render. The explicit "default" user, not the empty-username redis://:<password>@
+// shorthand: verified live that valkey-cli 8.1.8's URI parser fails AUTH
+// against the empty-username form on a --requirepass server.
 type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString,omitempty"`
@@ -484,8 +487,8 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
-	internal := string(sec.Data["uri"])         // redis://:<password>@<host>:6379
-	external := string(sec.Data["externalUri"]) // rediss://:<password>@<host>:6379 (public only)
+	internal := string(sec.Data["uri"])         // redis://default:<password>@<host>:6379
+	external := string(sec.Data["externalUri"]) // rediss://default:<password>@<host>:6379 (public only)
 
 	// Render's cliCommand connects over the reachable endpoint — the external
 	// (TLS) one when public, otherwise the internal one. redis-cli reads the URI

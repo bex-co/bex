@@ -1,0 +1,30 @@
+# Kratos identity DB for the dev-alpha isolated environment — same shape as
+# deploy/gitops/charts/auth-dbs/kratos-db.yaml, sized down for local (1Gi,
+# local-path) like deploy/gitops/overlays/local's Argo patch does for the
+# shared "auth" namespace's cluster. A distinct namespace (dev-alpha-auth)
+# means this never collides with the shared cluster's kratos-db.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: kratos-db
+  namespace: dev-alpha-auth
+spec:
+  instances: 1
+  affinity:
+    nodeSelector:
+      bex.co/pool: platform
+    tolerations:
+      - key: bex.co/platform
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  storage:
+    size: 1Gi
+    storageClass: local-path
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  bootstrap:
+    initdb:
+      database: kratos
+      owner: kratos

@@ -142,7 +142,7 @@ func valkeyMaxmemory(plan tiers.ValkeyTier) string {
 
 // generatePassword returns a URL-safe random password for a Valkey instance.
 // RawURLEncoding keeps it free of +, /, and = so it embeds cleanly in a
-// redis://:<password>@host connection URI without escaping.
+// redis://default:<password>@host connection URI without escaping.
 func generatePassword() (string, error) {
 	b := make([]byte, 24)
 	if _, err := rand.Read(b); err != nil {
@@ -218,11 +218,18 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		sec.Data["username"] = []byte("default")
 		sec.Data["host"] = []byte(internalHost)
 		sec.Data["port"] = []byte(strconv.Itoa(kvPort))
-		uri := fmt.Sprintf("redis://:%s@%s:%d", password, internalHost, kvPort)
+		// Explicit "default" user, not the empty-username redis://:<password>@
+		// shorthand: verified live against valkey-cli 8.1.8 (the tool the
+		// dashboard's own CLI-command helper recommends) — the empty-username
+		// form fails AUTH ("NOAUTH"/"WRONGPASS") against a --requirepass server
+		// (which sets the ACL default user's password), while an explicit
+		// default:<password> URI authenticates correctly. -a/plain AUTH
+		// (single-arg) is unaffected; this is specifically a URI-parsing gap.
+		uri := fmt.Sprintf("redis://default:%s@%s:%d", password, internalHost, kvPort)
 		sec.Data["uri"] = []byte(uri)
 		if kv.Spec.Public && r.KvDomain != "" {
 			external := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-			externalURI := fmt.Sprintf("rediss://:%s@%s:%d", password, external, kvPort)
+			externalURI := fmt.Sprintf("rediss://default:%s@%s:%d", password, external, kvPort)
 			sec.Data["externalUri"] = []byte(externalURI)
 		} else {
 			delete(sec.Data, "externalUri")

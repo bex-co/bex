@@ -20,9 +20,9 @@ describe("useConnectionInfo", () => {
       data: {
         keyValueConnectionInfo: {
           __typename: "KeyValueConnectionInfo",
-          internalConnectionString: "redis://:s3cret@kv.default.svc:6379",
+          internalConnectionString: "redis://default:s3cret@kv.default.svc:6379",
           externalConnectionString: "",
-          cliCommand: "redis-cli -u redis://:s3cret@kv.default.svc:6379",
+          cliCommand: "redis-cli -u redis://default:s3cret@kv.default.svc:6379",
         },
       },
     });
@@ -37,7 +37,7 @@ describe("useConnectionInfo", () => {
     expect(arg.fetchPolicy).toBe("network-only");
     expect(arg.variables).toEqual({ id: "kv" });
     expect(result.current.info?.internalConnectionString).toBe(
-      "redis://:s3cret@kv.default.svc:6379",
+      "redis://default:s3cret@kv.default.svc:6379",
     );
   });
 

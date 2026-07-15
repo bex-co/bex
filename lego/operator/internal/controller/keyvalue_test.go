@@ -292,7 +292,7 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
 		firstPw := string(sec.Data["password"])
 		Expect(firstPw).NotTo(BeEmpty())
-		Expect(string(sec.Data["uri"])).To(ContainSubstring("redis://:"), "internal URI form")
+		Expect(string(sec.Data["uri"])).To(ContainSubstring("redis://default:"), "internal URI form")
 		Expect(string(sec.Data["host"])).To(Equal("smoke-kv.default.svc"))
 		// a second reconcile must not rotate the password
 		reconcileN()

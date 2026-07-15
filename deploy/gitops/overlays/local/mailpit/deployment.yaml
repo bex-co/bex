@@ -34,10 +34,18 @@ spec:
         runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+        - name: tmp
+          emptyDir: {}
       containers:
         - name: mailpit
           image: axllent/mailpit:v1.21.8
           # In-memory store (no MP_DATABASE) — a catcher needs no persistence.
+          # v1.21.8 still writes a scratch sqlite file under os.TempDir() at
+          # startup regardless (crashes with "read-only file system" under
+          # readOnlyRootFilesystem without this mount — caught standing up a
+          # second mailpit instance from this same manifest; an existing
+          # long-running pod predates hitting this path).
           env:
             - name: MP_SMTP_AUTH_ACCEPT_ANY
               value: "1"
@@ -65,6 +73,9 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 10m

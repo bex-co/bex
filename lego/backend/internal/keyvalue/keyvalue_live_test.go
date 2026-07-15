@@ -127,10 +127,10 @@ func TestKeyValueLiveIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("KeyValueConnectionInfo: %v", err)
 	}
-	if !strings.HasPrefix(ci.InternalConnectionString, "redis://:") {
+	if !strings.HasPrefix(ci.InternalConnectionString, "redis://default:") {
 		t.Errorf("internal string = %q", redact(ci.InternalConnectionString))
 	}
-	if !strings.HasPrefix(ci.ExternalConnectionString, "rediss://:") {
+	if !strings.HasPrefix(ci.ExternalConnectionString, "rediss://default:") {
 		t.Errorf("external string (public store) = %q", redact(ci.ExternalConnectionString))
 	}
 	if !strings.HasPrefix(ci.CLICommand, "redis-cli -u rediss://") {

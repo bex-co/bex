@@ -27,7 +27,7 @@ flowchart LR
 
 |  | bex |
 | --- | --- |
-| **Internal URL** | the headless **`<name>` Service**: `redis://:<password>@<name>.<tenant-ns>.svc:6379` — in-cluster only, for the tenant's Apps. |
+| **Internal URL** | the headless **`<name>` Service**: `redis://default:<password>@<name>.<tenant-ns>.svc:6379` — in-cluster only, for the tenant's Apps. Explicit `default` user, not the empty-username `redis://:<password>@` shorthand: verified live that valkey-cli 8.1.8's URI parser fails AUTH against the empty-username form on a `--requirepass` server. |
 | **External URL** | a **Traefik TCP router with SNI + TLS passthrough** on a shared `:6379` entrypoint, routing `<name>.kv.bex.co` → that store's Service. Opt-in per store via `spec.public`. |
 
 The external route is created by the operator only when `spec.public: true` **and** `BEX_KV_DOMAIN` is set (private by default) — exactly the Postgres pattern. The credentials Secret carries both URL forms (`uri` internal, `externalUri` external) plus `host`/`port`/`password`, so a future API layer can assemble a Connections panel without re-deriving them.

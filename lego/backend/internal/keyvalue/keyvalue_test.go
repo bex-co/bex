@@ -80,8 +80,8 @@ func seedKeyValue(t *testing.T, cl client.Client, name string) {
 			"password":    []byte("s3cret"),
 			"host":        []byte(name + ".default.svc"),
 			"port":        []byte("6379"),
-			"uri":         []byte("redis://:s3cret@" + name + ".default.svc:6379"),
-			"externalUri": []byte("rediss://:s3cret@" + name + ".kv.bex.co:6379"),
+			"uri":         []byte("redis://default:s3cret@" + name + ".default.svc:6379"),
+			"externalUri": []byte("rediss://default:s3cret@" + name + ".kv.bex.co:6379"),
 		},
 	}
 	if err := cl.Create(context.Background(), kv); err != nil {
@@ -218,14 +218,14 @@ func TestRESTKeyValueConnectionInfo(t *testing.T) {
 	body := serveREST(svc, "GET", "/v1/key-value/conn-kv/connection-info", "").Body.Bytes()
 	var ci KeyValueConnectionInfo
 	_ = json.Unmarshal(body, &ci)
-	if ci.InternalConnectionString != "redis://:s3cret@conn-kv.default.svc:6379" {
+	if ci.InternalConnectionString != "redis://default:s3cret@conn-kv.default.svc:6379" {
 		t.Errorf("internal = %q", ci.InternalConnectionString)
 	}
-	if ci.ExternalConnectionString != "rediss://:s3cret@conn-kv.kv.bex.co:6379" {
+	if ci.ExternalConnectionString != "rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
 		t.Errorf("external = %q", ci.ExternalConnectionString)
 	}
 	// cliCommand connects over the external (TLS) endpoint when public.
-	if ci.CLICommand != "redis-cli -u rediss://:s3cret@conn-kv.kv.bex.co:6379" {
+	if ci.CLICommand != "redis-cli -u rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
 		t.Errorf("cliCommand = %q", ci.CLICommand)
 	}
 	// Render's keyValueConnectionInfo has no standalone password field — the
@@ -245,7 +245,7 @@ func TestRESTKeyValueConnectionInfoInternalOnly(t *testing.T) {
 	}
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "priv", Namespace: "default"},
-		Data:       map[string][]byte{"uri": []byte("redis://:pw@priv.default.svc:6379")},
+		Data:       map[string][]byte{"uri": []byte("redis://default:pw@priv.default.svc:6379")},
 	}
 	_ = cl.Create(context.Background(), kv)
 	_ = cl.Create(context.Background(), sec)
@@ -255,7 +255,7 @@ func TestRESTKeyValueConnectionInfoInternalOnly(t *testing.T) {
 	if ci.ExternalConnectionString != "" {
 		t.Errorf("private store must have no external string, got %q", ci.ExternalConnectionString)
 	}
-	if ci.CLICommand != "redis-cli -u redis://:pw@priv.default.svc:6379" {
+	if ci.CLICommand != "redis-cli -u redis://default:pw@priv.default.svc:6379" {
 		t.Errorf("cliCommand should use internal for a private store, got %q", ci.CLICommand)
 	}
 }
