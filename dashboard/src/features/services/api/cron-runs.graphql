@@ -1,0 +1,19 @@
+# First-class cron run history. The list is cursor-paged by the stable crr- id;
+# cancel returns the accepted terminal run and the operator converges the Job.
+query CronJobRuns($serviceId: String!, $cursor: String, $limit: Int) {
+  cronJobRuns(serviceId: $serviceId, cursor: $cursor, limit: $limit) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}
+
+mutation CancelCronJobRun($serviceId: String!, $runId: String!) {
+  cancelCronJobRun(serviceId: $serviceId, runId: $runId) {
+    id
+    status
+    startedAt
+    finishedAt
+  }
+}

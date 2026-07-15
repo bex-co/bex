@@ -186,10 +186,14 @@ type IntentStore interface {
 // App's status run history the adapters render (Render exposes cron runs at
 // /cron-jobs/{id}/runs). Newest first.
 type CronRunView struct {
-	Name       string `json:"name"`
+	// ID is a stable crr- id derived from Name through internal/id. Name remains
+	// an internal/legacy projection for the nested Service.runs field; the
+	// first-class run APIs expose ID and never leak the Kubernetes Job name.
+	ID         string `json:"id"`
+	Name       string `json:"name,omitempty"`
 	StartedAt  string `json:"startedAt,omitempty"`
 	FinishedAt string `json:"finishedAt,omitempty"`
-	Status     string `json:"status"` // Running | Succeeded | Failed
+	Status     string `json:"status"` // pending | successful | unsuccessful | canceled
 }
 
 // ServiceInstanceView is Render's complete public service-instance shape. It
@@ -252,6 +256,9 @@ type AppView struct {
 	Command string `json:"command,omitempty"`
 	// Runs is a cron_job's recent run history (status.runs), newest first.
 	Runs []CronRunView `json:"runs,omitempty"`
+	// LastSuccessfulRunAt is Render's cronJobDetails.lastSuccessfulRunAt,
+	// derived from the newest successful status.runs entry.
+	LastSuccessfulRunAt string `json:"lastSuccessfulRunAt,omitempty"`
 	// Plan is Render's public spelling of the App's tier (e.g. "pro_plus" for
 	// spec.tier "pro-plus"), sourced from lego/types/tiers. Omitted — not
 	// faked as "" — when spec.tier is empty or not a recognized tier, so a
@@ -462,41 +469,42 @@ func view(a *appv1alpha1.App) AppView {
 	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
 	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
 	return AppView{
-		ID:              appID,
-		Name:            name,
-		Slug:            a.Spec.PlatformSubdomain(a.Name),
-		DisplayName:     a.Spec.DisplayName,
-		Type:            svcType,
-		Phase:           string(a.Status.Phase),
-		URL:             a.Status.URL,
-		URLs:            a.Status.URLs,
-		Image:           a.Status.Image,
-		SourceImage:     a.Spec.Image,
-		Runtime:         a.Spec.Runtime,
-		BuildCommand:    a.Spec.BuildCommand,
-		StartCommand:    a.Spec.StartCommand,
-		Builder:         a.Spec.Builder,
-		Replicas:        a.Spec.Replicas,
-		Suspended:       a.Spec.Suspended,
-		Schedule:        a.Spec.Schedule,
-		Command:         a.Spec.Command,
-		Runs:            cronRunViews(a.Status.Runs),
-		Plan:            plan,
-		Revision:        a.Status.ActiveRevision,
-		CreatedAt:       created,
-		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
-		OwnerID:         a.Labels[core.LabelTenant],
-		ProjectID:       a.Labels[core.LabelProject],
-		EnvironmentID:   a.Labels[core.LabelEnvironment],
-		RootDir:         a.Spec.RootDir,
-		DockerfilePath:  a.Spec.DockerfilePath,
-		Repo:            a.Spec.Repo,
-		Branch:          a.Spec.Branch,
-		BuildFilter:     buildFilterView(a.Spec.BuildFilter),
-		Autoscaling:     asView,
-		AutoDeploy:      a.Spec.AutoDeploy,
-		NotifyOnFail:    notifyOnFail,
-		HealthCheckPath: a.Spec.HealthCheckPath,
+		ID:                  appID,
+		Name:                name,
+		Slug:                a.Spec.PlatformSubdomain(a.Name),
+		DisplayName:         a.Spec.DisplayName,
+		Type:                svcType,
+		Phase:               string(a.Status.Phase),
+		URL:                 a.Status.URL,
+		URLs:                a.Status.URLs,
+		Image:               a.Status.Image,
+		SourceImage:         a.Spec.Image,
+		Runtime:             a.Spec.Runtime,
+		BuildCommand:        a.Spec.BuildCommand,
+		StartCommand:        a.Spec.StartCommand,
+		Builder:             a.Spec.Builder,
+		Replicas:            a.Spec.Replicas,
+		Suspended:           a.Spec.Suspended,
+		Schedule:            a.Spec.Schedule,
+		Command:             a.Spec.Command,
+		Runs:                cronRunViews(a.Status.Runs),
+		LastSuccessfulRunAt: lastSuccessfulCronRunAt(a.Status.Runs),
+		Plan:                plan,
+		Revision:            a.Status.ActiveRevision,
+		CreatedAt:           created,
+		IdleTTLSeconds:      a.Spec.IdleTTLSeconds,
+		OwnerID:             a.Labels[core.LabelTenant],
+		ProjectID:           a.Labels[core.LabelProject],
+		EnvironmentID:       a.Labels[core.LabelEnvironment],
+		RootDir:             a.Spec.RootDir,
+		DockerfilePath:      a.Spec.DockerfilePath,
+		Repo:                a.Spec.Repo,
+		Branch:              a.Spec.Branch,
+		BuildFilter:         buildFilterView(a.Spec.BuildFilter),
+		Autoscaling:         asView,
+		AutoDeploy:          a.Spec.AutoDeploy,
+		NotifyOnFail:        notifyOnFail,
+		HealthCheckPath:     a.Spec.HealthCheckPath,
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
 			svcType, a.Spec.MaxShutdownDelaySeconds,
 		),
@@ -521,9 +529,41 @@ func cronRunViews(runs []appv1alpha1.CronRun) []CronRunView {
 	}
 	out := make([]CronRunView, len(runs))
 	for i, r := range runs {
-		out[i] = CronRunView{Name: r.Name, StartedAt: r.StartedAt, FinishedAt: r.FinishedAt, Status: r.Status}
+		out[i] = cronRunView(r)
 	}
 	return out
+}
+
+func cronRunView(r appv1alpha1.CronRun) CronRunView {
+	return CronRunView{
+		ID:         ids.Derive(ids.CronRun, r.Name),
+		Name:       r.Name,
+		StartedAt:  r.StartedAt,
+		FinishedAt: r.FinishedAt,
+		Status:     renderCronRunStatus(r.Status),
+	}
+}
+
+func renderCronRunStatus(status string) string {
+	switch strings.ToLower(status) {
+	case "succeeded", "successful":
+		return "successful"
+	case "failed", "unsuccessful":
+		return "unsuccessful"
+	case "canceled", "cancelled":
+		return "canceled"
+	default:
+		return "pending"
+	}
+}
+
+func lastSuccessfulCronRunAt(runs []appv1alpha1.CronRun) string {
+	for _, run := range runs {
+		if renderCronRunStatus(run.Status) == "successful" && run.FinishedAt != "" {
+			return run.FinishedAt
+		}
+	}
+	return ""
 }
 
 // List returns the caller's Apps, optionally narrowed to a single owning
@@ -1541,21 +1581,140 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 }
 
 // TriggerCronRun requests a one-off run of a cron_job now (Render's
-// POST /cron-jobs/{id}/runs): it bumps spec.runAt (verb-as-timestamp, like
-// Restart), and the operator materializes a single Job the run history then
-// shows. Rejected for a non-cron service. Intent only — the run appears in
-// status.runs once the operator reconciles, not synchronously.
-func (s *Service) TriggerCronRun(ctx context.Context, name string) (AppView, error) {
+// POST /cron-jobs/{id}/runs). Render guarantees one active cron execution: a
+// manual trigger cancels the current run before starting its replacement, so
+// the same spec patch carries both pieces of intent when status has an active
+// run. The operator materializes the deterministic Job and owns cancellation.
+// The pending run object can be returned synchronously because both its public
+// crr- id and backing Job name are deterministic functions of runAt.
+func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
-		return AppView{}, err
+		return CronRunView{}, err
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
-		return AppView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
+		return CronRunView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
-		a.Spec.RunAt = s.Now().UTC().Format(time.RFC3339Nano)
+	now := s.Now().UTC()
+	runAt := now.Format(time.RFC3339Nano)
+	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
+	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		for _, run := range a.Status.Runs {
+			if renderCronRunStatus(run.Status) == "pending" {
+				a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt}
+				break
+			}
+		}
+		a.Spec.RunAt = runAt
 	})
+	if err != nil {
+		return CronRunView{}, err
+	}
+	return CronRunView{ID: ids.Derive(ids.CronRun, jobName), Name: jobName, Status: "pending"}, nil
+}
+
+// ListCronRuns returns a cron_job's first-class run history, newest first. The
+// status slice is already bounded by the operator; Page supplies Render-style
+// cursor/limit semantics and an unknown cursor yields an empty tail.
+func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit int) ([]CronRunView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	if err != nil {
+		return nil, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return nil, core.ErrNotFound
+	}
+	if limit < 1 {
+		limit = core.DefaultPageLimit
+	}
+	if limit > core.MaxPageLimit {
+		limit = core.MaxPageLimit
+	}
+	runs := cronRunViews(a.Status.Runs)
+	return core.Page(runs, cursor, limit, func(run CronRunView) string { return run.ID }), nil
+}
+
+// GetCronRun fetches one run by its stable derived id, scoped to its cron_job.
+// A run from another service, an unknown id, or a non-cron service is the same
+// 404 shape so ids cannot be used to probe across resources.
+func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	if err != nil {
+		return CronRunView{}, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return CronRunView{}, core.ErrNotFound
+	}
+	return cronRunByID(a.Status.Runs, runID)
+}
+
+// CancelCronRun records cancellation intent for one pending run. Terminal runs
+// return 409; cancellation is never a successful no-op. The operator deletes
+// the backing Job and owns the authoritative status write-back. The returned
+// object reflects the accepted terminal intent immediately, while subsequent
+// reads settle on the operator-written identical status/timestamp.
+func (s *Service) CancelCronRun(ctx context.Context, name, runID string) (CronRunView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return CronRunView{}, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return CronRunView{}, core.ErrNotFound
+	}
+	run, err := cronRunByID(a.Status.Runs, runID)
+	if err != nil {
+		return CronRunView{}, err
+	}
+	return s.cancelCronRunFetched(ctx, a, run)
+}
+
+// CancelCurrentCronRun implements Render's current DELETE
+// /cron-jobs/{id}/runs contract. It selects the sole pending run; the operator
+// configures CronJob concurrency as Forbid and manual triggers cancel before
+// replacement, so more than one active run is not a supported steady state.
+func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRunView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return CronRunView{}, err
+	}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		return CronRunView{}, core.ErrNotFound
+	}
+	for _, raw := range a.Status.Runs {
+		run := cronRunView(raw)
+		if run.Status == "pending" {
+			return s.cancelCronRunFetched(ctx, a, run)
+		}
+	}
+	return CronRunView{}, fmt.Errorf("%w: cron job %q has no active run", core.ErrConflict, name)
+}
+
+func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, run CronRunView) (CronRunView, error) {
+	if run.Status != "pending" {
+		return CronRunView{}, fmt.Errorf("%w: cron run %q is already %s", core.ErrConflict, run.ID, run.Status)
+	}
+	now := s.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: now}
+	}); err != nil {
+		return CronRunView{}, err
+	}
+	run.Status = "canceled"
+	run.FinishedAt = now
+	return run, nil
+}
+
+func cronRunByID(runs []appv1alpha1.CronRun, runID string) (CronRunView, error) {
+	if kind, ok := ids.KindOf(runID); !ok || kind != ids.CronRun {
+		return CronRunView{}, core.ErrNotFound
+	}
+	for _, raw := range runs {
+		run := cronRunView(raw)
+		if run.ID == runID {
+			return run, nil
+		}
+	}
+	return CronRunView{}, core.ErrNotFound
 }
 
 // Suspend parks the App (spec.suspended = true): scaled to 0, host/certs kept.

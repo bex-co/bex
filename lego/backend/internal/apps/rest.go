@@ -775,21 +775,58 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent) // Render: delete => 204, empty body
 	}
 
-	// runCron handles the cron run trigger (Render's POST /cron-jobs/{id}/runs):
-	// bump spec.runAt so the operator materializes a one-off Job. Render returns a
-	// cronJobRun; bex returns the updated service (its status.runs gains the run
-	// once the operator reconciles). 201 Created, matching create-style verbs.
+	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
+	// deterministic pending run is returned immediately; if another run is active,
+	// the same intent patch asks the operator to cancel it before replacement.
 	runCron := func(w http.ResponseWriter, r *http.Request) {
-		app, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
+		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, toRenderService(app))
+		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
 	}
-	// Render's canonical path is /cron-jobs/{id}/runs; bex also accepts it under the
-	// /v1/services and /v1/apps nouns (registered in the base loop below).
+	listCronRuns := func(w http.ResponseWriter, r *http.Request) {
+		cursor, limit := core.PageParams(r.URL.Query())
+		runs, err := s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toCronJobRunList(runs))
+	}
+	getCronRun := func(w http.ResponseWriter, r *http.Request) {
+		run, err := s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
+	}
+	cancelCronRun := func(w http.ResponseWriter, r *http.Request) {
+		run, err := s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
+	}
+	// Render's current cancel route addresses the active run implicitly and
+	// returns 204. The per-run POST route above is a documented bex extension.
+	cancelCurrentCronRun := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := s.CancelCurrentCronRun(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+	// Render's canonical noun. bex also accepts these under /services and /apps
+	// (registered in the base loop below) for its historical noun aliases.
+	mux.HandleFunc("GET /v1/cron-jobs/{id}/runs", listCronRuns)
 	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs", runCron)
+	mux.HandleFunc("DELETE /v1/cron-jobs/{id}/runs", cancelCurrentCronRun)
+	mux.HandleFunc("GET /v1/cron-jobs/{id}/runs/{runId}", getCronRun)
+	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs/{runId}/cancel", cancelCronRun)
 
 	// Custom-domains sub-resource (Render-compatible).
 	listDomains := func(w http.ResponseWriter, r *http.Request) {
@@ -973,7 +1010,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
 		mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
 		mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
-		mux.HandleFunc("POST "+base+"/{id}/runs", runCron)                           // cron run trigger (bex noun)
+		mux.HandleFunc("GET "+base+"/{id}/runs", listCronRuns)
+		mux.HandleFunc("POST "+base+"/{id}/runs", runCron)
+		mux.HandleFunc("DELETE "+base+"/{id}/runs", cancelCurrentCronRun)
+		mux.HandleFunc("GET "+base+"/{id}/runs/{runId}", getCronRun)
+		mux.HandleFunc("POST "+base+"/{id}/runs/{runId}/cancel", cancelCronRun)
 		mux.HandleFunc("GET "+base+"/{id}/autoscaling", getAutoscaling)
 		mux.HandleFunc("PUT "+base+"/{id}/autoscaling", putAutoscaling)
 		mux.HandleFunc("DELETE "+base+"/{id}/autoscaling", deleteAutoscaling)

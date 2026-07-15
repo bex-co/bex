@@ -190,6 +190,22 @@ type envVarArg struct {
 	Value string `json:"value" jsonschema:"the literal value"`
 }
 
+type listCronJobRunsArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the cron job service id, as returned by list_services"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 10)"`
+	Cursor    string `json:"cursor,omitempty" jsonschema:"resume after this cursor; omit for the first page"`
+}
+
+type cronJobRunArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the cron job service id, as returned by list_services"`
+	RunID     string `json:"runId" jsonschema:"the crr- run id, as returned by list_cron_job_runs"`
+}
+
+type listCronJobRunsResult struct {
+	CronJobRuns []renderCronJobRun `json:"cronJobRuns"`
+	Cursor      string             `json:"cursor"`
+}
+
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	return CreateRequest{
 		OwnerID:                 a.OwnerID,
@@ -517,8 +533,49 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_cron_job",
-		Description: "Trigger a one-off run of a cron job now (Render's cron run trigger). The run appears in the service's run history once it starts. bex extension over Render's MCP.",
-	}, s.serviceTool(s.TriggerCronRun))
+		Description: "Trigger a one-off run of a cron job now, canceling an active run first like Render. Returns the deterministic pending run. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
+		run, err := s.TriggerCronRun(ctx, in.ServiceID)
+		return nil, toRenderCronJobRun(run), err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_cron_job_runs",
+		Description: "bex extension: list a cron job's runs newest first. Returns up to limit runs (default 10) plus a cursor to pass to the next call.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCronJobRunsArgs) (*mcp.CallToolResult, listCronJobRunsResult, error) {
+		limit := in.Limit
+		if limit < 1 {
+			limit = 10
+		}
+		runs, err := s.ListCronRuns(ctx, in.ServiceID, in.Cursor, limit)
+		if err != nil {
+			return nil, listCronJobRunsResult{}, err
+		}
+		out := listCronJobRunsResult{CronJobRuns: make([]renderCronJobRun, len(runs))}
+		for i, run := range runs {
+			out.CronJobRuns[i] = toRenderCronJobRun(run)
+		}
+		if len(runs) > 0 {
+			out.Cursor = runs[len(runs)-1].ID
+		}
+		return nil, out, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_cron_job_run",
+		Description: "bex extension: get one cron job run by its crr- id.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
+		run, err := s.GetCronRun(ctx, in.ServiceID, in.RunID)
+		return nil, toRenderCronJobRun(run), err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "cancel_cron_job_run",
+		Description: "bex extension: cancel one pending cron job run by crr- id. The operator terminates its Kubernetes Job; a terminal run returns a conflict instead of silently succeeding.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
+		run, err := s.CancelCronRun(ctx, in.ServiceID, in.RunID)
+		return nil, toRenderCronJobRun(run), err
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_cron_job",

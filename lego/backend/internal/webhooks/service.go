@@ -92,6 +92,7 @@ const (
 	TypeInstanceCountChanged     = "instance_count_changed"
 	TypeAutoscalingConfigChanged = "autoscaling_config_changed"
 	TypeCronJobRunStarted        = "cron_job_run_started"
+	TypeCronJobRunEnded          = "cron_job_run_ended"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -101,13 +102,15 @@ const (
 // event. Deploy transitions come from deploys rows, not a verb (see
 // eventTypeOf).
 var verbEvents = map[string]string{
-	"apps.Restart":           TypeServerRestarted,
-	"apps.Suspend":           TypeServiceSuspended,
-	"apps.Resume":            TypeServiceResumed,
-	"apps.Scale":             TypeInstanceCountChanged,
-	"apps.SetAutoscaling":    TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling": TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":    TypeCronJobRunStarted,
+	"apps.Restart":              TypeServerRestarted,
+	"apps.Suspend":              TypeServiceSuspended,
+	"apps.Resume":               TypeServiceResumed,
+	"apps.Scale":                TypeInstanceCountChanged,
+	"apps.SetAutoscaling":       TypeAutoscalingConfigChanged,
+	"apps.DeleteAutoscaling":    TypeAutoscalingConfigChanged,
+	"apps.TriggerCronRun":       TypeCronJobRunStarted,
+	"apps.CancelCronRun":        TypeCronJobRunEnded,
+	"apps.CancelCurrentCronRun": TypeCronJobRunEnded,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,
