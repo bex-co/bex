@@ -778,9 +778,10 @@ metadata:
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
-    # min 2: the platform stack (CNPG × 4, Ory, OpenBao, Traefik, monitoring)
-    # needs two nodes for capacity and failure-domain spread.
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "2"
+    # min 3: prod OpenBao runs three required-anti-affinity Raft members. A
+    # two-node floor leaves one member Pending and lets an autoscaler scale-down
+    # race an intentional MachineDeployment roll, draining two nodes together.
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "3"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
     # Capacity hints (used by scale-from-zero; kept for symmetry with the pools):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-07-09).
