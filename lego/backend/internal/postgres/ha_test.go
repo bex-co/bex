@@ -36,8 +36,10 @@ func TestHACreate(t *testing.T) {
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
+	var view PostgresView
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
 	var cr appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "ha-db"}, &cr); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &cr); err != nil {
 		t.Fatalf("CR not created: %v", err)
 	}
 	if !cr.Spec.HighAvailability {
@@ -52,8 +54,10 @@ func TestHACreateWithReadReplicas(t *testing.T) {
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}
+	var view PostgresView
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
 	var cr appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "rep-db"}, &cr); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: view.ID}, &cr); err != nil {
 		t.Fatalf("CR not created: %v", err)
 	}
 	if len(cr.Spec.ReadReplicas) != 2 {

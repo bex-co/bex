@@ -52,7 +52,7 @@ type setProjectServicesArgs struct {
 
 type setProjectDatabasesArgs struct {
 	ID          string   `json:"id" jsonschema:"the project id (prj-…)"`
-	DatabaseIDs []string `json:"databaseIds" jsonschema:"Database CR names (same as the id field on a postgres instance) to assign to the project — replaces the full list"`
+	DatabaseIDs []string `json:"databaseIds" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) to assign to the project — replaces the full list"`
 }
 
 type setProjectKeyValuesArgs struct {
@@ -125,7 +125,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_project_databases",
-		Description: "Assign managed Postgres databases to a project (replaces the full list). Pass databaseIds as Database CR names — the same id shown by list_postgres_instances. bex extension.",
+		Description: "Assign managed Postgres databases to a project (replaces the full list). Pass immutable databaseIds — the id shown by list_postgres_instances. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectDatabasesArgs) (*mcp.CallToolResult, ProjectView, error) {
 		if in.DatabaseIDs == nil {
 			in.DatabaseIDs = []string{}

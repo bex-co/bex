@@ -105,6 +105,16 @@ spec:
                 items:
                   type: string
                 type: array
+              name:
+                description: |-
+                  Name is the mutable, user-facing database name. metadata.name is the
+                  immutable dpg-... resource id and the data-plane identity used for every
+                  CNPG/PVC/Secret/route name. Empty is the legacy representation: readers
+                  fall back to metadata.name until the backfill sets this field.
+                maxLength: 30
+                minLength: 1
+                pattern: ^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$
+                type: string
               parameters:
                 additionalProperties:
                   type: string

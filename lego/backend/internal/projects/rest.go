@@ -201,8 +201,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// PUT /v1/projects/{id}/database-links replaces the full list of managed
-	// Postgres databases in a project. Body: {"databaseIds": ["name1", "name2"]}
-	// where databaseIds are Database CR names (w1/m31 extension).
+	// Postgres databases in a project. Body: {"databaseIds": ["dpg-..."]}, where
+	// databaseIds are immutable Database CR names (w1/m31 extension).
 	mux.HandleFunc("PUT /v1/projects/{id}/database-links", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			DatabaseIDs []string `json:"databaseIds"`

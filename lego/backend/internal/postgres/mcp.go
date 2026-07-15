@@ -33,10 +33,10 @@ import (
 // call, so those three surfaces can't drift.
 
 // postgresArgs is the shared single-instance argument. Render's tools key on
-// `postgresId`; for bex that id is the Database name (opaque, round-tripped from
-// list_postgres_instances).
+// `postgresId`; bex round-trips the immutable dpg-... id returned by
+// list_postgres_instances (legacy resources retain their original id).
 type postgresArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 }
 
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
@@ -67,21 +67,29 @@ type listPostgresArgs struct {
 // (postgresId, sql) — a Render-trained agent calls the tool literally, so the
 // names can't drift.
 type queryPostgresArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 	SQL        string `json:"sql" jsonschema:"the read-only SQL query to run (SELECT/SHOW/EXPLAIN); writes, DDL and multi-statement input are rejected"`
 }
 
 // updatePlanArgs is update_postgres_plan's input — the postgres id and the
 // desired new plan (e.g. "basic-1gb").
 type updatePlanArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, basic-256mb, basic-1gb)"`
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 type updateVersionArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the postgres id (bex Database name), as returned by list_postgres_instances"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
 	Version    string `json:"version" jsonschema:"the target PostgreSQL major version (13 through 18); it must be newer than the running version"`
+}
+
+// renamePostgresArgs is rename_postgres's input. A rename changes only the
+// mutable display name; the id, connection details, and data plane stay put.
+type renamePostgresArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
+	Name       string `json:"name" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters)"`
+	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
 }
 
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
@@ -160,6 +168,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Upgrade a managed Postgres database to a newer supported major version. The database is offline during CNPG's pg_upgrade. Durable plans require a completed physical backup first; downgrades and unknown versions are rejected.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateVersionArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.SetVersion(ctx, in.PostgresID, in.Version)
+		return nil, v, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "rename_postgres",
+		Description: "Rename a managed Postgres database without changing its immutable id, connection details, project/environment membership, or data-plane objects. Pass dryRun:true to validate and preview without writes.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renamePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		patch := PostgresPatch{Name: &in.Name}
+		if in.DryRun {
+			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
+			return nil, v, err
+		}
+		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
 		return nil, v, err
 	})
 

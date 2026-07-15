@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -161,13 +162,16 @@ func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Recover => %v", err)
 	}
-	if v.ID != "restored-db" {
-		t.Fatalf("recover returned %q, want restored-db", v.ID)
+	if !strings.HasPrefix(v.ID, "dpg-") || v.Name != "restored-db" {
+		t.Fatalf("recover returned %+v, want a dpg-... id and name restored-db", v)
 	}
 	// New instance carries the recovery bootstrap + inherits the source's plan/version.
 	var made appv1alpha1.Database
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "restored-db"}, &made); err != nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: v.ID}, &made); err != nil {
 		t.Fatalf("new db not created: %v", err)
+	}
+	if made.Spec.Name != "restored-db" {
+		t.Fatalf("new db display name = %q, want restored-db", made.Spec.Name)
 	}
 	if made.Spec.Recovery == nil || made.Spec.Recovery.SourceDatabase != "src-db" ||
 		made.Spec.Recovery.TargetTime != "2026-07-09T10:00:00Z" {

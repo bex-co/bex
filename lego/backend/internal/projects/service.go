@@ -278,7 +278,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in a
-// project. databaseIDs are Database CR names (e.g. "mydb"), not store rows —
+// project. databaseIDs are immutable Database CR names (normally dpg-...), not store rows —
 // unlike SetServices' apps.project_id column, a Database's membership is
 // purely the core.LabelProject label (w1/m31 extension), so this diffs the
 // current label state against the wanted set and calls SetProjectID per

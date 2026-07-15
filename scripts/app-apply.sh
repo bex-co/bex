@@ -13,7 +13,7 @@
 # so pre-existing bex.yml files apply unchanged.
 #
 # Databases apply first, then services, so a service's fromDatabase env reference
-# (resolved to a secretRef into the CNPG "<name>-app" connection Secret) waits on
+# (resolved to a secretRef into the CNPG "<stable-id>-app" connection Secret) waits on
 # a Database that is already provisioning. Re-applying is a server-side idempotent
 # upsert (kubectl apply). bex v1 does NOT sync-delete resources absent from the
 # file — a documented divergence from Render Blueprints' optional sync.
@@ -48,8 +48,10 @@ else
 fi
 
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 [ -n "$svc_key" ] && yq ".$svc_key" "$manifest" > "$tmp/services.yml"
 yq '.databases // []' "$manifest" > "$tmp/databases.yml"
+printf '{}\n' > "$tmp/database-ids.yml"
 
 apply_cr() { # reads a YAML CR on stdin, applies or print it
   if [ "${DRY_RUN:-}" = "1" ]; then echo "---"; cat
@@ -64,6 +66,34 @@ snapshot_svc() { yq ".[] | select(.name == \"$1\")" "$tmp/services.yml" > "$tmp/
 # sf reads .$field off the current service snapshot (set by snapshot_svc).
 sf() { yq ".$1" "$tmp/svc.yml"; } # $1 = field
 df() { yq ".[] | select(.name == \"$1\") | .$2" "$tmp/databases.yml"; } # $1=name $2=field
+db_id() { NAME="$1" yq -r '.[strenv(NAME)] // ""' "$tmp/database-ids.yml"; }
+
+# resolve_database_id preserves an existing Database's metadata.name when its
+# mutable spec.name matches the Blueprint display name, or mints a canonical
+# dpg-... id through backend/internal/id for a new Database. Legacy CRs without
+# spec.name fall back to metadata.name and are backfilled by the rendered spec.
+resolve_database_id() { # $1 = display name
+  local name=$1 matches count database_id
+  if [ "${#name}" -gt 30 ] || [[ ! "$name" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+    echo "error: database '$name' must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen" >&2
+    exit 1
+  fi
+  matches=""
+  if [ "${DRY_RUN:-}" != "1" ]; then
+    matches=$(DISPLAY_NAME="$name" kubectl get databases.app.bex.co -o json |
+      DISPLAY_NAME="$name" yq -p=json -r '.items[] | select((.spec.name // .metadata.name) == strenv(DISPLAY_NAME)) | .metadata.name')
+  fi
+  count=$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')
+  if [ "$count" -gt 1 ]; then
+    echo "error: database display name '$name' resolves to multiple CRs; run scripts/postgres-name-migrate.sh first" >&2
+    exit 1
+  elif [ "$count" -eq 1 ]; then
+    database_id=$matches
+  else
+    database_id=$(cd "$repo_root/lego/backend" && go run ./cmd/idgen postgres)
+  fi
+  NAME="$name" ID="$database_id" yq -i '.[strenv(NAME)] = strenv(ID)' "$tmp/database-ids.yml"
+}
 
 # service_kind maps a service to the normalized bex kind (web|private|worker|cron|
 # static), folding render.yaml's runtime:static (type:web+runtime:static) and the
@@ -77,7 +107,7 @@ service_kind() { # reads $tmp/svc.yml
   else echo "$t"; fi
 }
 
-# db_secret_key maps a render.yaml fromDatabase property to the CNPG "<name>-app"
+# db_secret_key maps a render.yaml fromDatabase property to the CNPG "<stable-id>-app"
 # Secret key (the connection vocabulary: username/password/dbname/host/port/uri).
 db_secret_key() { # $1 = property
   case "$1" in
@@ -90,13 +120,13 @@ db_secret_key() { # $1 = property
 
 # build_env writes a JSON array of spec.env entries to $1 from the current
 # service snapshot ($tmp/svc.yml). Literal {key,value} stays literal; fromDatabase
-# {name,property} -> secretRef into the CNPG "<name>-app" Secret (never a plaintext
+# {name,property} -> secretRef into the CNPG "<stable-id>-app" Secret (never a plaintext
 # copy); fromService {name,property} host/port/hostport -> literal (bare <name>
 # resolves in-cluster; port from the referenced service's declared port — that one
 # read queries the full services list, default 3000). Written to a file (not
 # echoed) because the JSON contains '"' — yq load consumes it.
 build_env() { # $1 = output file
-  local out=$1 nev i key fdn fdp fsn fsp refport val
+  local out=$1 nev i key fdn fdp fsn fsp refport val database_id
   nev=$(yq '.envVars | length' "$tmp/svc.yml")
   if [ "$nev" -gt 0 ] 2>/dev/null; then
     printf '[' > "$out"; i=0
@@ -108,8 +138,10 @@ build_env() { # $1 = output file
       fsp=$(yq ".envVars[$i].fromService.property // \"\"" "$tmp/svc.yml")
       [ "$i" -gt 0 ] && printf ',' >> "$out"
       if [ -n "$fdn" ]; then
+        database_id=$(db_id "$fdn")
+        [ -n "$database_id" ] || { echo "error: fromDatabase references unknown database '$fdn'" >&2; exit 1; }
         printf '{"name":"%s","valueFrom":{"secretKeyRef":{"name":"%s-app","key":"%s"}}}' \
-          "$key" "$fdn" "$(db_secret_key "$fdp")" >> "$out"
+          "$key" "$database_id" "$(db_secret_key "$fdp")" >> "$out"
       elif [ -n "$fsn" ]; then
         case "$fsp" in
           host) val="$fsn" ;;
@@ -196,20 +228,22 @@ render_app() { # $1 = name (snapshot already set by the caller)
 }
 
 # render_db emits one Database CR for databases[$name] on stdout.
-render_db() { # $1 = name
-  local name=$1 plan version storage ha v
+render_db() { # $1 = display name
+  local name=$1 database_id plan version storage ha v
+  database_id=$(db_id "$name")
   plan=$(df "$name" plan); version=$(df "$name" postgresMajorVersion)
   v=$(df "$name" diskSizeGB); [ "$v" = "null" ] || [ -z "$v" ] && storage=0 || storage="$v"
   ha=$(df "$name" 'highAvailability.enabled // false')
   yq -o=json ".[] | select(.name == \"$name\") | (.ipAllowList // []) | map(.source)" "$tmp/databases.yml" > "$tmp/ipallow.json"
   yq -o=json ".[] | select(.name == \"$name\") | .readReplicas // []" "$tmp/databases.yml" > "$tmp/replicas.json"
-  NAME="$name" PLAN="$plan" VERSION="$version" STORAGE="$storage" HA="$ha" \
+  ID="$database_id" NAME="$name" PLAN="$plan" VERSION="$version" STORAGE="$storage" HA="$ha" \
   IPALLOW="$tmp/ipallow.json" REPLICAS="$tmp/replicas.json" \
   yq --null-input -o=yaml '
     . = {
       "apiVersion":"app.bex.co/v1alpha1","kind":"Database",
-      "metadata":{"name": strenv(NAME)},
+      "metadata":{"name": strenv(ID)},
       "spec":{
+        "name": strenv(NAME),
         "plan": strenv(PLAN), "version": strenv(VERSION),
         "storageGB": (strenv(STORAGE) | to_number),
         "ipAllowList": (load strenv(IPALLOW)),
@@ -219,12 +253,16 @@ render_db() { # $1 = name
     }' | strip_empty
 }
 
-# --- databases first (a fromDatabase env ref waits on the <name>-app Secret) ---
+# --- databases first (a fromDatabase env ref waits on the <stable-id>-app Secret) ---
 ndb=$(yq 'length' "$tmp/databases.yml")
 if [ "${ndb:-0}" -gt 0 ] 2>/dev/null; then
   for i in $(seq 0 $((ndb - 1))); do
     name=$(yq ".[$i].name" "$tmp/databases.yml")
     [ "$name" != "null" ] && [ -n "$name" ] || { echo "error: databases[$i].name is required" >&2; exit 1; }
+    resolve_database_id "$name"
+  done
+  for i in $(seq 0 $((ndb - 1))); do
+    name=$(yq ".[$i].name" "$tmp/databases.yml")
     render_db "$name" | apply_cr
   done
 fi

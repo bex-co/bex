@@ -409,7 +409,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in an
-// environment. databaseIDs are Database CR names (e.g. "mydb"), not store
+// environment. databaseIDs are immutable Database CR names (normally dpg-...), not store
 // rows — unlike SetServices' apps.environment_id column, a Database's
 // membership is purely the core.LabelEnvironment label (w6/m20 extension), so
 // this diffs the current label state against the wanted set and calls

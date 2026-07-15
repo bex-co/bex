@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -99,12 +100,15 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if pg.ID != "pg-test" || pg.DatabaseName != "pg_test" || pg.DatabaseUser != "pg_test_user" || pg.Plan != "free" || !pg.Public {
+	if !strings.HasPrefix(pg.ID, "dpg-") || pg.Name != "pg-test" || pg.DatabaseName != pgIdent(pg.ID) || pg.DatabaseUser != pgIdent(pg.ID)+"_user" || pg.Plan != "free" || !pg.Public {
 		t.Fatalf("normalized names/spec wrong: %+v", pg)
 	}
 	var got appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "pg-test"}, &got); err != nil {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: pg.ID}, &got); err != nil {
 		t.Fatalf("db CR not created: %v", err)
+	}
+	if got.Spec.Name != "pg-test" {
+		t.Fatalf("spec.name = %q, want pg-test", got.Spec.Name)
 	}
 
 	// list — Render's cursor envelope ({postgres, cursor} per item, RC3):
@@ -114,19 +118,19 @@ func TestRESTPostgresCRUD(t *testing.T) {
 	// length-only check).
 	var list []postgresWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres", "").Body.Bytes(), &list)
-	if len(list) != 1 || list[0].Postgres.ID != "pg-test" || list[0].Cursor != "pg-test" {
+	if len(list) != 1 || list[0].Postgres.ID != pg.ID || list[0].Cursor != pg.ID {
 		t.Fatalf("list => one {postgres,cursor} entry for pg-test, got %+v", list)
 	}
-	if serveREST(svc, "GET", "/v1/postgres/pg-test", "").Code != 200 {
+	if serveREST(svc, "GET", "/v1/postgres/"+pg.ID, "").Code != 200 {
 		t.Fatal("get failed")
 	}
 	if serveREST(svc, "GET", "/v1/postgres/nope", "").Code != 404 {
 		t.Error("unknown => 404")
 	}
-	if serveREST(svc, "DELETE", "/v1/postgres/pg-test", "").Code != 204 {
+	if serveREST(svc, "DELETE", "/v1/postgres/"+pg.ID, "").Code != 204 {
 		t.Error("delete => 204")
 	}
-	if serveREST(svc, "GET", "/v1/postgres/pg-test", "").Code != 404 {
+	if serveREST(svc, "GET", "/v1/postgres/"+pg.ID, "").Code != 404 {
 		t.Error("deleted db should be gone")
 	}
 }
@@ -205,9 +209,13 @@ func TestGraphQLPostgres(t *testing.T) {
 	if ci["password"] != "s3cret" || ci["externalConnectionString"] == "" {
 		t.Fatalf("connection info: %+v", ci)
 	}
-	run(`mutation { createDatabase(name:"gql-new", plan:"basic-1gb") { id databaseName } }`)
+	renamed := run(`mutation { renameDatabase(id:"gql-db", name:"gql-renamed") { id name databaseName } }`)["renameDatabase"].(map[string]any)
+	if renamed["id"] != "gql-db" || renamed["name"] != "gql-renamed" || renamed["databaseName"] != "gql_db" {
+		t.Fatalf("renameDatabase changed identity/physical name: %+v", renamed)
+	}
+	created := run(`mutation { createDatabase(name:"gql-new", plan:"basic-1gb") { id name databaseName } }`)["createDatabase"].(map[string]any)
 	var made appv1alpha1.Database
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "gql-new"}, &made); err != nil || made.Spec.Plan != "basic-1gb" {
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: created["id"].(string)}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "gql-new" {
 		t.Fatalf("createDatabase did not create the CR with plan: %v %+v", err, made.Spec)
 	}
 
@@ -261,12 +269,17 @@ func TestMCPPostgres(t *testing.T) {
 	if got := call("get_postgres", map[string]any{"postgresId": "mcp-db"}); got["id"] != "mcp-db" {
 		t.Fatalf("get_postgres id = %v", got["id"])
 	}
+	if got := call("rename_postgres", map[string]any{"postgresId": "mcp-db", "name": "mcp-renamed"}); got["id"] != "mcp-db" || got["name"] != "mcp-renamed" || got["databaseName"] != "mcp_db" {
+		t.Fatalf("rename_postgres changed identity/physical name: %+v", got)
+	}
 	// create_postgres delegates to CreatePostgres — verify the CR lands.
-	if got := call("create_postgres", map[string]any{"name": "mcp-new", "plan": "basic-1gb"}); got["id"] != "mcp-new" {
-		t.Fatalf("create_postgres id = %v", got["id"])
+	created := call("create_postgres", map[string]any{"name": "mcp-new", "plan": "basic-1gb"})
+	createdID, _ := created["id"].(string)
+	if !strings.HasPrefix(createdID, "dpg-") || created["name"] != "mcp-new" {
+		t.Fatalf("create_postgres = %+v", created)
 	}
 	var made appv1alpha1.Database
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-new"}, &made); err != nil || made.Spec.Plan != "basic-1gb" {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: createdID}, &made); err != nil || made.Spec.Plan != "basic-1gb" || made.Spec.Name != "mcp-new" {
 		t.Fatalf("create_postgres did not create the CR: %v %+v", err, made.Spec)
 	}
 }
@@ -412,13 +425,23 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	svc, cl := newService()
 	seedDatabase(t, cl, "upd-db")
 	ctx := context.Background()
+	var got appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	got.Labels = map[string]string{
+		core.LabelProject:     "prj-platform",
+		core.LabelEnvironment: "env-production",
+	}
+	if err := cl.Update(ctx, &got); err != nil {
+		t.Fatal(err)
+	}
 
 	// disk resize alone, no plan — must succeed (previously 400'd).
 	w := serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":20}`)
 	if w.Code != 200 {
 		t.Fatalf("disk-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var got appv1alpha1.Database
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -470,19 +493,72 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		t.Errorf("spec.ipAllowList should be cleared, got %v", got.Spec.IPAllowList)
 	}
 
-	// renaming isn't supported (bex uses the name as the id, ADR020) — must
-	// fail clearly, not as a misleading plan-validation error.
+	// Rename changes only spec.name: the API id and every physical identity
+	// derived from metadata.name remain stable.
+	beforeID, beforeDatabaseName, beforeUser, beforeHost := pg.ID, pg.DatabaseName, pg.DatabaseUser, pg.ExternalHost
 	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"renamed-db"}`)
-	if w.Code != 400 {
-		t.Errorf("rename attempt => 400, got %d: %s", w.Code, w.Body.String())
+	if w.Code != 200 {
+		t.Fatalf("rename => 200, got %d: %s", w.Code, w.Body.String())
 	}
-	if !strings.Contains(w.Body.String(), "renaming") {
-		t.Errorf("rename error should explain why, got: %s", w.Body.String())
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if pg.ID != beforeID || pg.Name != "renamed-db" || pg.DatabaseName != beforeDatabaseName || pg.DatabaseUser != beforeUser || pg.ExternalHost != beforeHost {
+		t.Errorf("rename changed stable identity/connection fields: before=%q/%q/%q/%q after=%+v", beforeID, beforeDatabaseName, beforeUser, beforeHost, pg)
 	}
-	// ...but a same-name "rename" (a no-op) is not an error.
-	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"upd-db","diskSizeGB":25}`)
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if got.Spec.Name != "renamed-db" || got.Name != "upd-db" {
+		t.Fatalf("rename should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
+	}
+	if got.Labels[core.LabelProject] != "prj-platform" || got.Labels[core.LabelEnvironment] != "env-production" {
+		t.Fatalf("rename changed project/environment membership labels: %+v", got.Labels)
+	}
+	if pg.ProjectID != "prj-platform" || pg.EnvironmentID != "env-production" {
+		t.Fatalf("rename response changed project/environment membership: project=%q environment=%q", pg.ProjectID, pg.EnvironmentID)
+	}
+
+	// The official CLI resolves a name through GET /postgres?name=...; the new
+	// display name resolves. This fixture is a grandfathered Database whose old
+	// display name is also its immutable id, so that string intentionally remains
+	// resolvable as an id after rename.
+	var filtered []postgresWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres?name=renamed-db", "").Body.Bytes(), &filtered)
+	if len(filtered) != 1 || filtered[0].Postgres.ID != "upd-db" {
+		t.Fatalf("new name filter did not resolve stable id: %+v", filtered)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/postgres?name=upd-db", "").Body.Bytes(), &filtered)
+	if len(filtered) != 1 || filtered[0].Postgres.ID != "upd-db" {
+		t.Fatalf("stable id must remain resolvable through the name/id filter: %+v", filtered)
+	}
+
+	// A same-display-name rename is an idempotent success.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"renamed-db","diskSizeGB":25}`)
 	if w.Code != 200 {
 		t.Errorf("same-name PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Invalid and colliding names fail specifically and leave the object alone.
+	if w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"Bad Name"}`); w.Code != 400 || !strings.Contains(w.Body.String(), "lowercase") {
+		t.Errorf("invalid rename => descriptive 400, got %d: %s", w.Code, w.Body.String())
+	}
+	other := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "other-db", Namespace: "default"}, Spec: appv1alpha1.DatabaseSpec{Name: "taken", Plan: "free"}}
+	if err := cl.Create(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	if w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"taken"}`); w.Code != 409 || !strings.Contains(w.Body.String(), "already exists") {
+		t.Errorf("colliding rename => descriptive 409, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Rename dry-run previews the new name without persisting it.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db?dryRun=true", `{"name":"preview-name"}`)
+	if w.Code != 200 {
+		t.Fatalf("rename dry-run => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &pg)
+	if pg.Name != "preview-name" || pg.ID != "upd-db" {
+		t.Errorf("rename dry-run preview = %+v", pg)
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if got.Spec.Name != "renamed-db" {
+		t.Errorf("rename dry-run wrote spec.name = %q", got.Spec.Name)
 	}
 
 	// dry-run: previews the disk change without writing it.
@@ -498,6 +574,42 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	if got.Spec.StorageGB == 99 {
 		t.Error("dry-run must not write to the CR")
 	}
+}
+
+func TestRESTRenameOpaqueIDStopsResolvingOldDisplayName(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-stable", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "old-name", Plan: "free"},
+	}
+	svc, _ := newService(db)
+
+	w := serveREST(svc, "PATCH", "/v1/postgres/dpg-stable", `{"name":"new-name"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("rename => 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	assertIDs := func(filter string, want ...string) {
+		t.Helper()
+		var got []postgresWithCursor
+		w := serveREST(svc, "GET", "/v1/postgres?name="+filter, "")
+		if w.Code != http.StatusOK {
+			t.Fatalf("filter %q => 200, got %d: %s", filter, w.Code, w.Body.String())
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode filter %q: %v", filter, err)
+		}
+		ids := make([]string, 0, len(got))
+		for _, item := range got {
+			ids = append(ids, item.Postgres.ID)
+		}
+		if !slices.Equal(ids, want) {
+			t.Fatalf("filter %q ids = %v, want %v", filter, ids, want)
+		}
+	}
+
+	assertIDs("new-name", "dpg-stable")
+	assertIDs("dpg-stable", "dpg-stable")
+	assertIDs("old-name")
 }
 
 func TestGraphQLSetPostgresPlan(t *testing.T) {

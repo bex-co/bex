@@ -502,6 +502,23 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetVersion(p.Context, p.Args["id"].(string), p.Args["version"].(string))
 			},
 		},
+		"renameDatabase": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				name := p.Args["name"].(string)
+				patch := PostgresPatch{Name: &name}
+				dryRun, _ := p.Args["dryRun"].(bool)
+				if dryRun {
+					return s.PreviewUpdatePostgres(p.Context, p.Args["id"].(string), patch)
+				}
+				return s.UpdatePostgres(p.Context, p.Args["id"].(string), patch)
+			},
+		},
 
 		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
 		"failoverDatabase": &graphql.Field{

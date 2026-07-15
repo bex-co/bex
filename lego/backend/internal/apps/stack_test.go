@@ -21,8 +21,10 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -88,7 +90,7 @@ func TestParseStackProjectsServicesAndDatabases(t *testing.T) {
 		t.Fatalf("services = %d, want 3", len(st.services))
 	}
 	db := st.databases[0].spec
-	if db.Plan != "basic-256mb" || db.StorageGB != 5 || db.Version != "16" {
+	if db.Name != "db" || db.Plan != "basic-256mb" || db.StorageGB != 5 || db.Version != "16" {
 		t.Errorf("db spec = %+v", db)
 	}
 	if len(db.ReadReplicas) != 1 || db.ReadReplicas[0].Name != "db-ro" {
@@ -122,28 +124,24 @@ func TestParseStackLegacyAppsUnchanged(t *testing.T) {
 	}
 }
 
-func TestParseStackResolvesFromDatabaseAsSecretRef(t *testing.T) {
+func TestParseStackDefersFromDatabaseUntilStableIDIsKnown(t *testing.T) {
 	st, err := parseStack(DeployRequest{Manifest: stackManifest})
 	if err != nil {
 		t.Fatalf("parseStack: %v", err)
 	}
-	web := findSvc(t, st, "web").req
-	du := findEnv(t, web.Env, "DATABASE_URL")
-	// fromDatabase resolves to a secretRef into the CNPG "<name>-app" Secret,
-	// mapped by property -> key (connectionString -> uri); the credential NEVER
-	// appears as a plaintext value (survives rotation, nothing sensitive in spec).
-	if du.Value != "" {
-		t.Errorf("DATABASE_URL must carry no plaintext value, got %q", du.Value)
+	web := findSvc(t, st, "web")
+	if len(web.databaseRefs) != 2 {
+		t.Fatalf("database refs = %+v, want 2 deferred refs", web.databaseRefs)
 	}
-	if du.ValueFrom == nil || du.ValueFrom.SecretKeyRef == nil {
-		t.Fatalf("DATABASE_URL must be a secretKeyRef, got %+v", du)
+	if got := web.databaseRefs[0].FromDatabase.Name; got != "db" {
+		t.Errorf("deferred database name = %q, want db", got)
 	}
-	if ref := du.ValueFrom.SecretKeyRef; ref.Name != "db-app" || ref.Key != "uri" {
-		t.Errorf("secretRef = %+v, want {db-app, uri}", ref)
-	}
-	pw := findEnv(t, web.Env, "DB_PASSWORD").ValueFrom.SecretKeyRef
-	if pw.Name != "db-app" || pw.Key != "password" {
-		t.Errorf("password ref = %+v, want {db-app, password}", pw)
+	for _, name := range []string{"DATABASE_URL", "DB_PASSWORD"} {
+		for _, env := range web.req.Env {
+			if env.Name == name {
+				t.Errorf("%s was resolved before the immutable database id was known", name)
+			}
+		}
 	}
 }
 
@@ -262,15 +260,18 @@ func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
 	if len(res.Databases) != 1 || res.Databases[0].Name != "db" {
 		t.Fatalf("databases = %+v", res.Databases)
 	}
+	if !strings.HasPrefix(res.Databases[0].ID, "dpg-") {
+		t.Fatalf("database id = %q, want dpg-...", res.Databases[0].ID)
+	}
 	if len(res.Services) != 3 {
 		t.Fatalf("services = %d, want 3", len(res.Services))
 	}
 	var db appv1alpha1.Database
-	if err := cl.Get(context.Background(), key("db"), &db); err != nil {
-		t.Fatalf("database db not created: %v", err)
+	if err := cl.Get(context.Background(), key(res.Databases[0].ID), &db); err != nil {
+		t.Fatalf("database %s not created: %v", res.Databases[0].ID, err)
 	}
-	if db.Spec.Plan != "basic-256mb" {
-		t.Errorf("db plan = %q", db.Spec.Plan)
+	if db.Spec.Name != "db" || db.Spec.Plan != "basic-256mb" {
+		t.Errorf("db spec = %+v", db.Spec)
 	}
 	for _, name := range []string{"web", "api", "worker"} {
 		if getApp(t, cl, name).Name != name {
@@ -279,8 +280,9 @@ func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
 	}
 	// The web service's fromDatabase env landed as a secretRef in the App spec.
 	du := findEnv(t, getApp(t, cl, "web").Spec.Env, "DATABASE_URL")
-	if du.ValueFrom == nil || du.ValueFrom.SecretKeyRef == nil || du.ValueFrom.SecretKeyRef.Name != "db-app" {
-		t.Errorf("web DATABASE_URL not a db-app secretRef: %+v", du)
+	wantSecret := res.Databases[0].ID + "-app"
+	if du.ValueFrom == nil || du.ValueFrom.SecretKeyRef == nil || du.ValueFrom.SecretKeyRef.Name != wantSecret {
+		t.Errorf("web DATABASE_URL not a %s secretRef: %+v", wantSecret, du)
 	}
 }
 
@@ -323,7 +325,12 @@ func TestDeployStackIdempotentReapplyIsNoOp(t *testing.T) {
 		t.Fatalf("first DeployStack: %v", err)
 	}
 	firstRA := getApp(t, cl, "web").Spec.RestartedAt
-	firstDB := getDB(t, cl, "db").ResourceVersion
+	first := listDBs(t, cl)
+	if len(first) != 1 {
+		t.Fatalf("database count = %d, want 1", len(first))
+	}
+	firstDBID := first[0].Name
+	firstDB := first[0].ResourceVersion
 
 	// Re-applying the SAME file converges with zero spec change, zero new deploy
 	// records, and no RestartedAt bump (the DoD's idempotency contract).
@@ -336,8 +343,60 @@ func TestDeployStackIdempotentReapplyIsNoOp(t *testing.T) {
 	if len(rec.deployCalls) != 0 {
 		t.Errorf("idempotent re-apply opened %d deploy records, want 0", len(rec.deployCalls))
 	}
-	if getDB(t, cl, "db").ResourceVersion != firstDB {
+	if getDB(t, cl, firstDBID).ResourceVersion != firstDB {
 		t.Error("Database was patched on a no-op re-apply")
+	}
+}
+
+func TestDeployStackReapplyAfterRenameKeepsDatabaseIdentity(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	first, err := svc.DeployStack(ctx, DeployRequest{Manifest: stackManifest})
+	if err != nil {
+		t.Fatalf("first DeployStack: %v", err)
+	}
+	databaseID := first.Databases[0].ID
+	db := getDB(t, cl, databaseID)
+	db.Spec.Name = "renamed-db"
+	if err := cl.Update(ctx, db); err != nil {
+		t.Fatalf("rename database: %v", err)
+	}
+
+	renamedManifest := strings.ReplaceAll(stackManifest, "fromDatabase: {name: db,", "fromDatabase: {name: renamed-db,")
+	renamedManifest = strings.Replace(renamedManifest, "databases:\n  - name: db\n", "databases:\n  - name: renamed-db\n", 1)
+	second, err := svc.DeployStack(ctx, DeployRequest{Manifest: renamedManifest})
+	if err != nil {
+		t.Fatalf("reapply renamed stack: %v", err)
+	}
+	if len(second.Databases) != 1 || second.Databases[0].ID != databaseID || second.Databases[0].Name != "renamed-db" {
+		t.Fatalf("renamed database = %+v, want id %s", second.Databases, databaseID)
+	}
+	if got := len(listDBs(t, cl)); got != 1 {
+		t.Fatalf("database count after rename reapply = %d, want 1", got)
+	}
+	du := findEnv(t, getApp(t, cl, "web").Spec.Env, "DATABASE_URL")
+	if got := du.ValueFrom.SecretKeyRef.Name; got != databaseID+"-app" {
+		t.Errorf("database secret after rename = %q, want %q", got, databaseID+"-app")
+	}
+}
+
+func TestDeployStackBackfillsLegacyDatabaseNameWithoutChangingIdentity(t *testing.T) {
+	legacy := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "default"}}
+	cl := fakeClient(legacy)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	res, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: stackManifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if res.Databases[0].ID != "db" || res.Databases[0].Name != "db" {
+		t.Fatalf("legacy database view = %+v", res.Databases[0])
+	}
+	if got := getDB(t, cl, "db").Spec.Name; got != "db" {
+		t.Errorf("legacy spec.name = %q, want db", got)
+	}
+	du := findEnv(t, getApp(t, cl, "web").Spec.Env, "DATABASE_URL")
+	if got := du.ValueFrom.SecretKeyRef.Name; got != "db-app" {
+		t.Errorf("legacy database secret = %q, want db-app", got)
 	}
 }
 
@@ -419,4 +478,13 @@ func getDB(t *testing.T, cl client.Client, name string) *appv1alpha1.Database {
 		t.Fatalf("get db %s: %v", name, err)
 	}
 	return &d
+}
+
+func listDBs(t *testing.T, cl client.Client) []appv1alpha1.Database {
+	t.Helper()
+	var dbs appv1alpha1.DatabaseList
+	if err := cl.List(context.Background(), &dbs); err != nil {
+		t.Fatalf("list databases: %v", err)
+	}
+	return dbs.Items
 }

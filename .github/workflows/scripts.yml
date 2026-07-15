@@ -1,9 +1,7 @@
 name: scripts (test)
 
-# Pure-bash unit tests for the prod-wiring scripts — no cluster, no kubectl, no
-# curl. Currently: scripts/bao-init.test.sh (bao-init.sh's .env editor + the
-# env-template / gh-secrets.sh wiring, docs/ADR013-secrets.md). Add script tests here
-# as they appear.
+# Pure-bash unit tests for production-sensitive scripts. The test harnesses use
+# shell fakes, so no live cluster or credentials are required.
 on:
   pull_request:
     paths:
@@ -12,6 +10,8 @@ on:
       - "scripts/bao-endpoints.sh"
       - "scripts/bao-k8s-auth.sh"
       - "scripts/gh-secrets.sh"
+      - "scripts/postgres-name-migrate.sh"
+      - "scripts/postgres-name-migrate.test.sh"
       - ".env.example"
       - ".env.template"
       - ".github/workflows/scripts.yml"
@@ -23,6 +23,8 @@ on:
       - "scripts/bao-endpoints.sh"
       - "scripts/bao-k8s-auth.sh"
       - "scripts/gh-secrets.sh"
+      - "scripts/postgres-name-migrate.sh"
+      - "scripts/postgres-name-migrate.test.sh"
       - ".env.example"
       - ".env.template"
       - ".github/workflows/scripts.yml"
@@ -41,3 +43,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
+      - name: Postgres name-migration unit tests
+        run: bash scripts/postgres-name-migrate.test.sh

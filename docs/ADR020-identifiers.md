@@ -17,6 +17,7 @@ Registered prefixes (the `id.Kind` registry — Render's public-API spellings, s
 | ------ | --------------------------- | ------ |
 | `tea-` | workspace (tenant)          | teams  |
 | `srv-` | service (app)               | srv    |
+| `dpg-` | managed Postgres database   | dpg    |
 | `cdm-` | custom domain               | cdm    |
 | `evt-` | service event (**derived**) | evt    |
 | `crr-` | cron-job run (**derived**)  | —      |
@@ -45,7 +46,7 @@ Determinism is the requirement, not a nicety: a client pages with an event/run c
 
 An **id** and a **name** are different things and must not be conflated:
 
-- **ids** (`tea-…`/`srv-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
+- **ids** (`tea-…`/`srv-…`/`dpg-…`) are stable, opaque **keys** — the primary key in Postgres and the identifier in API URLs. A rename never changes an id, so references never break ([ADR009-postgresql-management.md](ADR009-postgresql-management.md) §4).
 - **names** (a workspace's name, an app's name) are **user-chosen DNS labels** (`[a-z0-9-]`, ≤30 chars) that become part of a CR name (`<workspace>-<app>`). They're human-facing and mutable.
 
 Render's own workspace names are freeform; bex constrains them to DNS labels because they land in CR/host names. That divergence is noted where it's enforced (`internal/workspaces`, `internal/store/api.go`).
@@ -62,7 +63,8 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
 ## Known deviations (deliberate, documented)
 
-- **Managed datastores use the name as the id, not `dpg-<xid>`/`red-<xid>`.** `internal/postgres` exposes a `Database`'s user-chosen name as its id, and `internal/keyvalue` does the same for a `KeyValue` (both CRs are name-keyed). Render uses `dpg-…` / `red-…`. This is a conscious deviation — bex datastores are named CRs with no separate opaque key — recorded here rather than silently diverging, and applied uniformly so the two sibling datastore surfaces stay consistent (minting a `red-` id for key-value alone would split them). Revisit if datastores ever need rename-stable references.
+- **Key Value still uses its name as the id rather than `red-<xid>`.** `internal/keyvalue` remains name-keyed, a documented Render divergence to revisit when Key Value needs rename-stable references.
+- **Legacy Postgres ids are grandfathered.** New managed Postgres resources use a minted `dpg-<xid>` as `Database.metadata.name` and keep the mutable display name in `spec.name`. Databases created before this split retain their existing metadata name as their stable API id; the migration only backfills `spec.name` and never re-keys a live CR. This is an intentional compatibility exception, not a second mint path.
 - **API keys carry Hydra's `client_id`, not a bex id.** OAuth2 clients are minted by Ory Hydra ([ADR012-auth.md](ADR012-auth.md)); their id format is Hydra's, outside this convention by design.
 
 ## Alternatives considered

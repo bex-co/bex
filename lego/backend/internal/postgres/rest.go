@@ -19,7 +19,6 @@ package postgres
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"slices"
 
@@ -118,7 +117,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			if names := q["name"]; len(names) > 0 {
 				filtered := make([]PostgresView, 0, len(out))
 				for _, p := range out {
-					if slices.Contains(names, p.Name) {
+					if slices.Contains(names, p.Name) || slices.Contains(names, p.ID) {
 						filtered = append(filtered, p)
 					}
 				}
@@ -399,15 +398,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	// bex uses the Database name as its id (docs/ADR020-identifiers.md
-	// §Known deviations) — unlike Render's opaque dpg-... ids, renaming isn't
-	// a field update, it's a k8s object rename. Reject cleanly instead of
-	// silently ignoring the request or misreporting it as a plan error.
-	if req.Name != nil && *req.Name != id {
-		core.WriteErr(w, fmt.Errorf("%w: renaming a Postgres database isn't supported — bex uses the database name as its id (docs/ADR020-identifiers.md)", core.ErrBadRequest))
-		return
-	}
-	patch := PostgresPatch{Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
+	patch := PostgresPatch{Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB, EnableHighAvailability: req.EnableHighAvailability}
 	if req.IPAllowList != nil {
 		cidrs := ipAllowListFromWire(*req.IPAllowList)
 		patch.IPAllowList = &cidrs

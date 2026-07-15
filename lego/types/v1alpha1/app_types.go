@@ -531,7 +531,7 @@ type EnvVarSource struct {
 
 // SecretKeySelector names one key of one Secret in the App's namespace.
 type SecretKeySelector struct {
-	// Name is the Secret name (e.g. a Database's "<name>-app" connection Secret).
+	// Name is the Secret name (e.g. a Database's "<stable-id>-app" connection Secret).
 	// +required
 	Name string `json:"name"`
 

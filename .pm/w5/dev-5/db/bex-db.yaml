@@ -10,11 +10,9 @@ spec:
   instances: 1
   affinity:
     nodeSelector:
-      bex.co/pool: platform
+      node-role.kubernetes.io/control-plane: ""
     tolerations:
-      - key: bex.co/platform
-        operator: Equal
-        value: "true"
+      - key: node-role.kubernetes.io/control-plane
         effect: NoSchedule
   storage:
     size: 1Gi

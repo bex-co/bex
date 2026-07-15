@@ -181,8 +181,15 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("%w: name (the new instance) is required", core.ErrBadRequest)
 	}
-	if req.Name == name {
+	if err := validateDatabaseName(req.Name); err != nil {
+		return PostgresView{}, err
+	}
+	if req.Name == src.DisplayName() {
 		return PostgresView{}, fmt.Errorf("%w: recover creates a NEW instance; name must differ from the source", core.ErrBadRequest)
+	}
+	tenantID := src.Labels[core.LabelTenant]
+	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
+		return PostgresView{}, err
 	}
 	if req.TargetTime != "" {
 		if _, err := time.Parse(time.RFC3339, req.TargetTime); err != nil {
@@ -205,24 +212,25 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		sourceBackupServerName = src.Name
 	}
 	newDB := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: s.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.Namespace},
 		Spec: appv1alpha1.DatabaseSpec{
+			Name:    req.Name,
 			Plan:    plan,
 			Version: version,
 			Recovery: &appv1alpha1.DatabaseRecovery{
-				SourceDatabase:         name,
+				SourceDatabase:         src.Name,
 				SourceBackupServerName: sourceBackupServerName,
 				TargetTime:             req.TargetTime,
 			},
 		},
 	}
-	if tenantID, ok := s.Tenant(ctx); ok {
+	if tenantID != "" {
 		newDB.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	resourcemeta.Touch(newDB, s.Now())
 	if err := s.Client.Create(ctx, newDB); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return PostgresView{}, fmt.Errorf("%w: a database named %q already exists", core.ErrBadRequest, req.Name)
+			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
 		}
 		return PostgresView{}, err
 	}

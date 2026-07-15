@@ -20,11 +20,10 @@ limitations under the License.
 // the connection strings (which embed the password) are surfaced — to an
 // authenticated caller — read from the operator-generated Secret at request time.
 //
-// It is the datastore sibling of internal/postgres: the KeyValue's user-chosen
-// name is its id (name-as-id), the same deliberate deviation managed databases
-// take (docs/ADR020-identifiers.md § Known deviations) — a named CR with no separate
-// opaque key. Keeping both datastore surfaces name-keyed is what makes them
-// uniform for clients.
+// It is the datastore sibling of internal/postgres, but KeyValue still keeps its
+// user-chosen name as its id (name-as-id). Postgres now separates a mutable
+// display name from its stable dpg- id; KeyValue's remaining deviation is tracked
+// in docs/ADR020-identifiers.md § Known deviations.
 package keyvalue
 
 import (
@@ -66,7 +65,7 @@ type Service struct {
 // KeyValue CR fields (w5/011); the object stays a safe superset a Render client
 // can read (docs/ADR018-render-parity.md § Key Value).
 type KeyValueView struct {
-	ID        string `json:"id"` // the KeyValue name (name-as-id, postgres sibling)
+	ID        string `json:"id"` // the KeyValue name (name-as-id)
 	Name      string `json:"name"`
 	Plan      string `json:"plan"`
 	Version   string `json:"version,omitempty"`

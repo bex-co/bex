@@ -17,6 +17,7 @@ import { HAPanel } from "@/features/databases/components/ha-panel";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
+import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -76,12 +77,17 @@ export function DatabaseDetailPage() {
                 database={database}
                 onChanged={() => void refetch()}
               />
+              <DatabaseNameSection
+                key={database.name}
+                database={database}
+                onChanged={() => void refetch()}
+              />
               <ConnectionInfoPanel id={database.id} />
               <SQLConsole key={database.id} id={database.id} />
               <HAPanel database={database} refetch={refetch} />
               <DatastoreMetricsPanel
                 kind="database"
-                resource={database.name}
+                resource={database.id}
                 highAvailabilityEnabled={database.highAvailabilityEnabled}
               />
               <DatabasePlanSection

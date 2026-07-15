@@ -782,6 +782,36 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法更新规格，请重试。",
     description: "Toast when a plan update fails",
   },
+  // --- Name section (w9/m3) ---
+  "databases.nameTitle": {
+    message: "数据库名称",
+    description: "Database detail rename card title",
+  },
+  "databases.nameDescription": {
+    message: "更改显示名称。数据库 ID 和所有连接信息保持不变。",
+    description: "Database detail rename card description",
+  },
+  "databases.nameSave": {
+    message: "保存名称",
+    description: "Database rename save button",
+  },
+  "databases.nameSuccess": {
+    message: "数据库已重命名为 {name}。",
+    description: "Toast after a database rename succeeds",
+  },
+  "databases.nameError": {
+    message: "无法重命名数据库，请重试。",
+    description: "Toast when a database rename fails unexpectedly",
+  },
+  "databases.nameConflict": {
+    message: "此工作区中已存在同名数据库。",
+    description: "Toast when a database rename collides with another name",
+  },
+  "databases.nameInvalid": {
+    message:
+      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
+    description: "Database rename validation message",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "洞察",
