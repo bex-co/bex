@@ -345,7 +345,7 @@ jobs:
           # Poll actual availability: `rollout status` returns instantly on a
           # deployment whose progress deadline already lapsed, even as the fix
           # is still converging.
-          timeout 600 bash -c 'until [ "$(kubectl -n auth get deploy openfga -o jsonpath="{.status.availableReplicas}" 2>/dev/null)" = "1" ]; do sleep 10; done' || {
+          timeout 600 bash -c 'until available="$(kubectl -n auth get deploy openfga -o jsonpath="{.status.availableReplicas}" 2>/dev/null)"; [ "${available:-0}" -ge 1 ]; do sleep 10; done' || {
             echo "openfga not ready — diagnosis:"
             kubectl -n auth get pods -o wide
             kubectl -n auth describe deploy openfga | tail -20
