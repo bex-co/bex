@@ -69,7 +69,10 @@ export const ValidateBlueprintDocument = gql`
       errors
     }
   }
-` as unknown as TypedDocumentNode<ValidateBlueprintQuery, ValidateBlueprintQueryVars>;
+` as unknown as TypedDocumentNode<
+  ValidateBlueprintQuery,
+  ValidateBlueprintQueryVars
+>;
 
 // --- mutations ---
 
@@ -77,13 +80,24 @@ export interface SyncBlueprintVars {
   id: string;
   ownerId?: string | null;
   bexYaml?: string | null;
+  confirm?: string | null;
 }
 export interface SyncBlueprintMutation {
   syncBlueprint: SyncBlueprintResult | null;
 }
 export const SyncBlueprintDocument = gql`
-  mutation SyncBlueprint($id: String!, $ownerId: String, $bexYaml: String) {
-    syncBlueprint(id: $id, ownerId: $ownerId, bexYaml: $bexYaml) {
+  mutation SyncBlueprint(
+    $id: String!
+    $ownerId: String
+    $bexYaml: String
+    $confirm: String
+  ) {
+    syncBlueprint(
+      id: $id
+      ownerId: $ownerId
+      bexYaml: $bexYaml
+      confirm: $confirm
+    ) {
       blueprint {
         id
         name

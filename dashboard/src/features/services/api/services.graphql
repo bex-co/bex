@@ -28,8 +28,8 @@ query Services($ownerId: String) {
   }
 }
 
-mutation SuspendService($id: String!) {
-  suspendService(id: $id) {
+mutation SuspendService($id: String!, $confirm: String) {
+  suspendService(id: $id, confirm: $confirm) {
     id
     suspended
     phase
@@ -50,8 +50,8 @@ mutation ResumeService($id: String!) {
 # deleteService returns a success boolean — there's no service left to select
 # (backend/internal/apps/graphql.go, following the deleteDatabase shape). The
 # dashboard danger zone (w5/m14) gates it behind a typed-name confirm.
-mutation DeleteService($id: String!) {
-  deleteService(id: $id)
+mutation DeleteService($id: String!, $confirm: String) {
+  deleteService(id: $id, confirm: $confirm)
 }
 
 # The create wizard's submit (w5/m15, extended in w5/m17): exactly one of repo

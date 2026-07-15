@@ -1,4 +1,4 @@
-# w4 · m25 — Official Render CLI browser login via Hydra device flow
+# w4 · m27 — Official Render CLI browser login via Hydra device flow
 
 **Worker:** worker4 **Goal:** Make the official, unmodified `render login` work against production bex with Render's fixed public client and wire protocol: one permanent platform OAuth client, short-lived access tokens, automatic refresh, human tenancy, and per-user logout that never deletes the shared client. **Status:** todo
 

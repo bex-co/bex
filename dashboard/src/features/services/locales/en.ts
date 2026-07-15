@@ -1,6 +1,19 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enServices: Record<string, TranslationEntry> = {
+  "services.protectedConfirmationTitle": {
+    message: "Protected environment confirmation",
+    description: "Title of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationBody": {
+    message:
+      '"{name}" belongs to a protected environment. Enter the exact sudo command returned by bex-api to continue.',
+    description: "Body of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationPrompt": {
+    message: "Type {confirmation} to confirm",
+    description: "Label for the exact protected-action confirmation phrase",
+  },
   "services.connect": {
     message: "Connect",
     description: "Open the service connection menu",

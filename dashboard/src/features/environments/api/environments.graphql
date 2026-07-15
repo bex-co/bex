@@ -7,6 +7,7 @@ fragment EnvironmentFields on Environment {
   serviceIds
   databaseIds
   keyValueIds
+  envGroupIds
   protectedStatus
   networkIsolationEnabled
   ipAllowList
@@ -48,6 +49,12 @@ mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {
 
 mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {
   setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {
+    ...EnvironmentFields
+  }
+}
+
+mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {
+  setEnvironmentEnvGroups(id: $id, envGroupIds: $envGroupIds) {
     ...EnvironmentFields
   }
 }

@@ -35,6 +35,7 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { POSTGRES_VERSIONS } from "@/features/databases/lib/versions";
+import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // PostgreSQL major versions bex offers. Keep in sync with the Database CRD's
 // authoritative enum (lego/types/v1alpha1/database_types.go, spec.version
@@ -86,6 +87,8 @@ export function CreateDatabaseDialog({
   const [version, setVersion] = useState<string>(VERSION_DEFAULT);
   const [diskSizeGB, setDiskSizeGB] = useState<string>("");
   const [isPublic, setIsPublic] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [environmentId, setEnvironmentId] = useState<string | null>(null);
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
   const selectedPlan = useMemo(
@@ -103,6 +106,8 @@ export function CreateDatabaseDialog({
     setVersion(VERSION_DEFAULT);
     setDiskSizeGB("");
     setIsPublic(false);
+    setProjectId(null);
+    setEnvironmentId(null);
   }
 
   function handleOpenChange(next: boolean) {
@@ -119,6 +124,7 @@ export function CreateDatabaseDialog({
       version: version === VERSION_DEFAULT ? "" : version,
       diskSizeGB: Number(diskSizeGB) || 0,
       public: isPublic,
+      environmentId: environmentId ?? undefined,
     });
     if (id) {
       handleOpenChange(false);
@@ -215,6 +221,13 @@ export function CreateDatabaseDialog({
               />
             </div>
           </div>
+
+          <ProjectEnvironmentSelector
+            projectId={projectId}
+            environmentId={environmentId}
+            onProjectChange={setProjectId}
+            onEnvironmentChange={setEnvironmentId}
+          />
 
           <div className="flex items-center justify-between rounded-md border p-3">
             <div className="space-y-0.5 pr-4">

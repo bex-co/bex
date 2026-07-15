@@ -10,6 +10,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { sleep } from "@/common/lib/utils/time";
 import { deriveStatus } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import {
+  protectedConfirmationFromError,
+  type ProtectedActionResult,
+} from "@/features/services/lib/protected-confirmation";
 
 /** The action currently in flight for a given service id (or null). */
 export interface PendingLifecycle {
@@ -26,9 +30,15 @@ export interface UseServiceLifecycleOptions {
   maxPolls?: number;
 }
 
+export type RunServiceAction = (
+  action: LifecycleAction,
+  service: ServiceView,
+  confirmation?: string,
+) => Promise<ProtectedActionResult>;
+
 export interface UseServiceLifecycleResult {
   pending: PendingLifecycle | null;
-  run: (action: LifecycleAction, service: ServiceView) => Promise<void>;
+  run: RunServiceAction;
 }
 
 // A service has converged once the observed state reflects the requested verb.
@@ -72,8 +82,12 @@ export function useServiceLifecycle(
   const [triggerDeploy] = useMutation(TriggerDeployDocument, {
     refetchQueries: ["ServiceEvents"],
   });
-  const mutate: Record<LifecycleAction, (id: string) => Promise<unknown>> = {
-    suspend: (id) => suspend({ variables: { id } }),
+  const mutate: Record<
+    LifecycleAction,
+    (id: string, confirmation?: string) => Promise<unknown>
+  > = {
+    suspend: (id, confirmation) =>
+      suspend({ variables: { id, confirm: confirmation } }),
     resume: (id) => resume({ variables: { id } }),
     restart: (id) => triggerDeploy({ variables: { serviceId: id } }),
   };
@@ -92,14 +106,27 @@ export function useServiceLifecycle(
   );
 
   const run = useCallback(
-    async (action: LifecycleAction, service: ServiceView) => {
+    async (
+      action: LifecycleAction,
+      service: ServiceView,
+      confirmation?: string,
+    ) => {
       setPending({ id: service.id, action });
       try {
-        await mutate[action](service.id);
+        await mutate[action](service.id, confirmation);
         toast.success(t(SUCCESS_KEY[action], { name: service.name }));
         await pollUntilConverged(action, service.id);
-      } catch {
+        return { status: "success" } as const;
+      } catch (err) {
+        const requiredConfirmation = protectedConfirmationFromError(err);
+        if (requiredConfirmation) {
+          return {
+            status: "confirmation_required",
+            confirmation: requiredConfirmation,
+          } as const;
+        }
         toast.error(t("services.toastError", { name: service.name }));
+        return { status: "error" } as const;
       } finally {
         setPending(null);
       }

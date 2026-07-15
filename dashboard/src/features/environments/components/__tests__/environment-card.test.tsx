@@ -14,6 +14,11 @@ vi.mock("@/features/environments/hooks/use-delete-environment", () => ({
   useDeleteEnvironment: () => ({ remove, deleting: null }),
 }));
 
+const saveACL = vi.fn();
+vi.mock("@/features/environments/hooks/use-set-environment-acl", () => ({
+  useSetEnvironmentACL: () => ({ saveACL, saving: false }),
+}));
+
 // The manage-resources dialog reaches Apollo when opened; the card never opens
 // it in these tests, but stub it so mounting the (closed) dialog stays inert.
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
@@ -31,6 +36,10 @@ const env: EnvironmentView = {
   serviceIds: [],
   databaseIds: [],
   keyValueIds: [],
+  envGroupIds: [],
+  protectedStatus: "unprotected",
+  networkIsolationEnabled: false,
+  ipAllowList: [],
 };
 
 function renderCard() {
@@ -53,6 +62,8 @@ beforeEach(() => {
   rename.mockResolvedValue(true);
   remove.mockReset();
   remove.mockResolvedValue(true);
+  saveACL.mockReset();
+  saveACL.mockResolvedValue(true);
 });
 
 describe("EnvironmentCard", () => {
@@ -94,5 +105,39 @@ describe("EnvironmentCard", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     expect(remove).toHaveBeenCalledWith("env-1", "staging");
+  });
+
+  it("full-replaces protection, network isolation, and inbound IP rules", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "All settings" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("switch", { name: "Protected environment" }),
+    );
+    await user.click(
+      within(dialog).getByRole("switch", {
+        name: "Block cross-environment connections",
+      }),
+    );
+    await user.type(
+      within(dialog).getByPlaceholderText("203.0.113.0/24"),
+      "10.0.0.0/24",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add source" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(saveACL).toHaveBeenCalledWith("env-1", "staging", {
+      protectedStatus: "protected",
+      networkIsolationEnabled: true,
+      ipAllowList: ["10.0.0.0/24"],
+    });
   });
 });

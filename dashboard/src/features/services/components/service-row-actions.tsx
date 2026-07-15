@@ -21,6 +21,8 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
+import { ProtectedConfirmationDialog } from "@/features/services/components/protected-confirmation-dialog";
 
 const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
   suspend: "services.actionSuspend",
@@ -49,7 +51,11 @@ export interface ServiceRowActionsProps {
   service: ServiceView;
   /** The action in flight for this row, or null. Disables the control. */
   pending: LifecycleAction | null;
-  onRun: (action: LifecycleAction, service: ServiceView) => void;
+  onRun: (
+    action: LifecycleAction,
+    service: ServiceView,
+    confirmation?: string,
+  ) => Promise<ProtectedActionResult>;
   /**
    * Omit "Restart" from this menu (Render parity, service-detail header
    * only): the header's `ManualDeployButton` dropdown already carries
@@ -68,6 +74,10 @@ export function ServiceRowActions({
 }: ServiceRowActionsProps) {
   const { t } = useTranslations();
   const [confirm, setConfirm] = useState<LifecycleAction | null>(null);
+  const [protectedConfirm, setProtectedConfirm] = useState<{
+    action: LifecycleAction;
+    confirmation: string;
+  } | null>(null);
   const busy = pending !== null;
 
   // A suspended App can only be resumed; a live one can be suspended or
@@ -82,7 +92,21 @@ export function ServiceRowActions({
     if (CONFIRM[action]) {
       setConfirm(action);
     } else {
-      onRun(action, service);
+      void runAction(action);
+    }
+  }
+
+  async function runAction(action: LifecycleAction, confirmation?: string) {
+    const result = confirmation
+      ? await onRun(action, service, confirmation)
+      : await onRun(action, service);
+    if (result.status === "confirmation_required") {
+      setProtectedConfirm({
+        action,
+        confirmation: result.confirmation,
+      });
+    } else if (result.status === "success") {
+      setProtectedConfirm(null);
     }
   }
 
@@ -135,8 +159,9 @@ export function ServiceRowActions({
           <AlertDialogFooter>
             <AlertDialogCancel>{t("services.confirmCancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (confirm) onRun(confirm, service);
+              onClick={(event) => {
+                event.preventDefault();
+                if (confirm) void runAction(confirm);
                 setConfirm(null);
               }}
             >
@@ -145,6 +170,25 @@ export function ServiceRowActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProtectedConfirmationDialog
+        key={
+          protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
+        }
+        open={protectedConfirm !== null}
+        serviceName={service.name}
+        requiredConfirmation={protectedConfirm?.confirmation ?? ""}
+        actionLabel={
+          protectedConfirm ? t(ACTION_LABEL[protectedConfirm.action]) : ""
+        }
+        busy={busy}
+        onOpenChange={(open) => !open && setProtectedConfirm(null)}
+        onConfirm={(confirmation) =>
+          protectedConfirm
+            ? runAction(protectedConfirm.action, confirmation)
+            : Promise.resolve()
+        }
+      />
     </>
   );
 }

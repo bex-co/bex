@@ -1,6 +1,19 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhServices: Record<string, TranslationEntry> = {
+  "services.protectedConfirmationTitle": {
+    message: "受保护环境确认",
+    description: "Title of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationBody": {
+    message:
+      "“{name}”属于受保护环境。请输入 bex-api 返回的完整 sudo 命令以继续。",
+    description: "Body of a protected-service destructive-action retry dialog",
+  },
+  "services.protectedConfirmationPrompt": {
+    message: "输入 {confirmation} 以确认",
+    description: "Label for the exact protected-action confirmation phrase",
+  },
   "services.connect": {
     message: "连接",
     description: "Open the service connection menu",

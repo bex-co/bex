@@ -21,15 +21,17 @@ const enEnvironments: Record<string, TranslationEntry> = {
   "environments.resourceCount": {
     message: "{count} resource(s)",
     description:
-      "Count of services+databases+key-value instances assigned to an environment, next to its name",
+      "Count of visible services+databases+key-value instances assigned to an environment, next to its name",
   },
   "environments.manageButton": {
     message: "Manage resources",
-    description: "Button on an environment card that opens the manage-resources dialog",
+    description:
+      "Button on an environment card that opens the manage-resources dialog",
   },
   "environments.moreActions": {
     message: "More actions",
-    description: "Accessible label for an environment card's overflow (•••) menu",
+    description:
+      "Accessible label for an environment card's overflow (•••) menu",
   },
   "environments.renameAction": {
     message: "Rename",
@@ -42,7 +44,8 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.cardEmpty": {
     message: "No resources in this environment yet.",
-    description: "Shown inside an environment card when it has no assigned resources",
+    description:
+      "Shown inside an environment card when it has no assigned resources",
   },
   "environments.createTitle": {
     message: "New Environment",
@@ -125,23 +128,28 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.tabDatabases": {
     message: "Databases",
-    description: "Manage-resources dialog tab label for the databases checklist",
+    description:
+      "Manage-resources dialog tab label for the databases checklist",
   },
   "environments.tabKeyValues": {
     message: "Key Value",
-    description: "Manage-resources dialog tab label for the key-value checklist",
+    description:
+      "Manage-resources dialog tab label for the key-value checklist",
   },
   "environments.manageNoServices": {
     message: "This workspace has no services to assign yet.",
-    description: "Manage-resources dialog empty state when the workspace has no services",
+    description:
+      "Manage-resources dialog empty state when the workspace has no services",
   },
   "environments.manageNoDatabases": {
     message: "This workspace has no databases to assign yet.",
-    description: "Manage-resources dialog empty state when the workspace has no databases",
+    description:
+      "Manage-resources dialog empty state when the workspace has no databases",
   },
   "environments.manageNoKeyValues": {
     message: "This workspace has no key-value instances to assign yet.",
-    description: "Manage-resources dialog empty state when the workspace has no key-value instances",
+    description:
+      "Manage-resources dialog empty state when the workspace has no key-value instances",
   },
   "environments.manageSubmit": {
     message: "Save",
@@ -165,11 +173,123 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignKeyValuesSuccess": {
     message: 'Key-value instances for "{name}" updated.',
-    description: "Toast shown after an environment's key-value instances are updated",
+    description:
+      "Toast shown after an environment's key-value instances are updated",
   },
   "environments.assignKeyValuesError": {
     message: 'Failed to update key-value instances for "{name}".',
-    description: "Toast shown when updating an environment's key-value instances fails",
+    description:
+      "Toast shown when updating an environment's key-value instances fails",
+  },
+  "environments.tabEnvGroups": {
+    message: "Env Groups",
+    description: "Manage-resources dialog tab label for environment groups",
+  },
+  "environments.manageNoEnvGroups": {
+    message: "This workspace has no environment groups to assign yet.",
+    description: "Environment-groups checklist empty state",
+  },
+  "environments.assignEnvGroupsSuccess": {
+    message: 'Environment groups for "{name}" updated.',
+    description: "Toast shown after environment-group membership is updated",
+  },
+  "environments.assignEnvGroupsError": {
+    message: 'Failed to update environment groups for "{name}".',
+    description:
+      "Toast shown when environment-group membership fails to update",
+  },
+  "environments.settingsAction": {
+    message: "All settings",
+    description: "Environment overflow-menu action opening ACL settings",
+  },
+  "environments.settingsTitle": {
+    message: 'Settings for "{name}"',
+    description: "Environment ACL settings dialog title",
+  },
+  "environments.settingsDescription": {
+    message:
+      "Manage permissions, private-network isolation, and inbound IP rules.",
+    description: "Environment ACL settings dialog description",
+  },
+  "environments.protectedBadge": {
+    message: "Protected",
+    description: "Badge shown beside a protected environment name",
+  },
+  "environments.protectedLabel": {
+    message: "Protected environment",
+    description: "Protected-status setting label",
+  },
+  "environments.protectedHint": {
+    message:
+      "Require an explicit sudo confirmation for destructive service actions.",
+    description: "Protected-status setting explanation",
+  },
+  "environments.isolationLabel": {
+    message: "Block cross-environment connections",
+    description: "Private-network isolation setting label",
+  },
+  "environments.isolationHint": {
+    message:
+      "Prevent private network traffic from crossing this environment boundary.",
+    description: "Private-network isolation setting explanation",
+  },
+  "environments.ipAllowListLabel": {
+    message: "Inbound IP restrictions",
+    description: "Environment inbound-IP allowlist heading",
+  },
+  "environments.ipAllowListHint": {
+    message:
+      "Only the listed IPv4 CIDR ranges can reach public datastores in this environment.",
+    description: "Environment inbound-IP allowlist explanation",
+  },
+  "environments.ipAllowListOpen": {
+    message: "No restrictions — open to all source IPs.",
+    description: "Empty environment inbound-IP allowlist state",
+  },
+  "environments.ipAllowListRemove": {
+    message: "Remove {cidr}",
+    description: "Accessible label for an inbound-IP rule remove button",
+  },
+  "environments.ipAllowListAdd": {
+    message: "Add source",
+    description: "Button adding an inbound-IP CIDR rule",
+  },
+  "environments.settingsSave": {
+    message: "Save",
+    description: "Environment ACL settings save button",
+  },
+  "environments.aclSaveSuccess": {
+    message: 'Settings for "{name}" saved.',
+    description: "Toast shown after an Environment ACL is saved",
+  },
+  "environments.aclSaveError": {
+    message: 'Failed to save settings for "{name}".',
+    description: "Toast shown when an Environment ACL save fails",
+  },
+  "environments.assignmentTitle": {
+    message: "Project and Environment",
+    description: "Shared create-form Project/Environment selector heading",
+  },
+  "environments.assignmentProject": {
+    message: "Project",
+    description: "Accessible label for a create-form Project selector",
+  },
+  "environments.assignmentProjectNone": {
+    message: "No project",
+    description: "Unassigned Project selector option",
+  },
+  "environments.assignmentEnvironment": {
+    message: "Environment",
+    description: "Accessible label for a create-form Environment selector",
+  },
+  "environments.assignmentEnvironmentNone": {
+    message: "No environment",
+    description: "Unassigned Environment selector option",
+  },
+  "environments.assignmentHint": {
+    message:
+      "Optional. Selecting an environment also adds the resource to its project.",
+    description: "Shared create-form Environment-assignment hint",
   },
 };
 

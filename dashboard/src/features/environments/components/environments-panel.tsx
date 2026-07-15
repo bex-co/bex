@@ -7,8 +7,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import { NewEnvironmentDialog } from "@/features/environments/components/new-environment-dialog";
-import type { LifecycleAction, ServiceView } from "@/features/services/types";
-import type { PendingLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import type { ServiceView } from "@/features/services/types";
+import type {
+  PendingLifecycle,
+  RunServiceAction,
+} from "@/features/services/hooks/use-service-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -21,7 +24,7 @@ export interface EnvironmentsPanelProps {
   /** The workspace's key-value instances — same role as `services` (w6/m20 extension). */
   keyValues: KeyValueView[];
   servicePending: PendingLifecycle | null;
-  onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
 }

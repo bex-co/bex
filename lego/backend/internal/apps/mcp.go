@@ -419,6 +419,7 @@ type syncBlueprintArgs struct {
 	ID      string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
 	BexYAML string `json:"bexYaml,omitempty" jsonschema:"optional updated bex.yml to store and apply; omit to re-apply the stored manifest unchanged"`
 	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id (tea-...); omit to use the session's selected workspace"`
+	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 }
 
 // autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
@@ -1079,7 +1080,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "sync_blueprint",
 		Description: "Re-apply a stored blueprint idempotently — same all-or-nothing semantics as deploy, but sourced from the stored manifest. If bex_yaml is provided, the stored manifest is replaced before re-apply. Returns {blueprint, stack: {services, databases}}. Use validate_bex_yml first to catch errors with no side effects. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
-		res, err := s.SyncBlueprint(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML)
+		res, err := s.SyncBlueprint(ctx, in.ID, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.BexYAML, in.Confirm)
 		return nil, res, err
 	})
 }

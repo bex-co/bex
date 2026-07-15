@@ -55,10 +55,25 @@ describe("useCreateKeyValue", () => {
           plan: "starter",
           version: "8",
           public: false,
+          environmentId: undefined,
         },
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith("Creating cache…");
+  });
+
+  it("forwards an optional environment assignment", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createKeyValue: { id: "kv-1" } } });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateKeyValue());
+    await act(async () => {
+      await result.current.create({ ...input, environmentId: "env-1" });
+    });
+
+    expect(mutate.mock.calls[0][0].variables.environmentId).toBe("env-1");
   });
 
   it("follows a workspace switch — the next create carries the new ownerId", async () => {

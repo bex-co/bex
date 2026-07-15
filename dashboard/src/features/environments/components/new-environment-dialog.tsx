@@ -81,7 +81,9 @@ export function NewEnvironmentDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label htmlFor="environment-name">{t("environments.fieldName")}</Label>
+          <Label htmlFor="environment-name">
+            {t("environments.fieldName")}
+          </Label>
           <Input
             id="environment-name"
             value={name}

@@ -17,6 +17,8 @@ export interface CreateKeyValueInput {
   maxmemoryPolicy: string;
   /** Persistence mode (Render's Persistence Mode): journal-snapshot|snapshot|off. */
   persistenceMode: string;
+  /** Optional Environment; the server also joins its parent Project. */
+  environmentId?: string;
 }
 
 export interface UseCreateKeyValueResult {
@@ -59,6 +61,7 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
           variables: {
             name: input.name,
             ownerId: currentWorkspaceId,
+            environmentId: input.environmentId,
             plan: input.plan || undefined,
             version: input.version || undefined,
             public: input.public,

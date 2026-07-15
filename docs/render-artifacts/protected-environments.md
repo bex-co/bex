@@ -1,0 +1,48 @@
+# Render protected-environments dashboard contract
+
+**Captured:** 2026-07-15, live from an authenticated Render dashboard session plus current official documentation. The dashboard inspection was read-only: no environment protection, isolation, or IP rule was changed.
+
+This is the UI source for `w5/m31`'s Environment settings and protected-action flows. Transient screenshots are stored under the gitignored `.playwright-mcp/` directory.
+
+## Environment controls
+
+An Environment card's `•••` menu exposes both a direct **Block cross-environment connections** toggle and **All settings**. The latter opens an Environment settings page whose **Permissions** section presents:
+
+- a default state where all team members can delete and suspend resources, move services, and manage database networking;
+- **Protected**, labeled “Best for production”; and
+- cross-environment connections as **Allowed** or **Blocked**.
+
+Render's documentation confirms that protection is role enforcement: Admins can designate an Environment as protected, after which only Admins can perform the listed destructive or sensitive actions. The restricted set includes deleting resources, creating/moving resources, suspending or resuming services, changing datastore access-control IPs, and accessing secrets or shells. Blueprint updates are a documented exception for non-Admin members. Network isolation affects only private traffic; it does not block public endpoints or SSH. See [Projects and Environments](https://render.com/docs/projects) and [workspace roles](https://render.com/docs/team-members).
+
+Evidence:
+
+- `.playwright-mcp/render-protected-environment-menu.png`
+- `.playwright-mcp/render-protected-environment-settings.png`
+
+## Typed destructive confirmations
+
+Render's ordinary destructive dialogs use a resource-type-specific `sudo` phrase, independent of the protected-environment role gate. Two live dialogs showed:
+
+- deleting the web service `beancount-cms-v2`: `sudo delete web service beancount-cms-v2`
+- suspending the static site `beancount-cms`: `sudo suspend static site beancount-cms`
+
+The action remains disabled until the entire phrase matches. Render protection itself does not add a second typed-confirmation bypass for a non-Admin; the role lacks permission.
+
+Evidence:
+
+- `.playwright-mcp/render-delete-service-confirmation.png`
+- `.playwright-mcp/render-suspend-service-confirmation.png`
+
+## Environment inbound IP rules
+
+Environment-level rules live under **Networking → Inbound IP Restrictions** on eligible Scale/Enterprise plans. The editor is a replaceable list: edit an existing CIDR, **Add source**, delete with the trash control, then **Save**. Render seeds `0.0.0.0/0` as the allow-all default. Deleting every rule means deny-all, and a source must pass every applicable workspace, Environment, and service rule. Only IPv4 CIDRs are supported. See [Inbound IP Rules](https://render.com/docs/inbound-ip-rules).
+
+Evidence: `.playwright-mcp/render-environment-ip-rules.png` (current official dashboard image captured through the docs page).
+
+## bex implementation decisions and drift
+
+`w5/m31` mirrors the discoverability of Render's Environment card: **All settings** opens protection, cross-environment isolation, and a full-replace CIDR editor. It also exposes Environment-group membership in the existing **Manage resources** dialog and reuses one Project/Environment selector across service, Postgres, and Key Value creation.
+
+For protected actions, bex follows its already-shipped backend contract rather than pretending Render has the same authorization model. A first delete, suspend, or Blueprint sync that would override a protected service returns the authoritative bex phrase (`sudo <verb> service <name>`). The dashboard displays that exact phrase, requires an exact match, and retries with it; it never synthesizes the phrase or turns a generic error into a bypass. Unprotected actions retain their existing confirmation flow.
+
+The IP editor intentionally reflects current bex semantics: a string CIDR list is fanned out only to member Postgres/Key Value resources and an empty list means open. This differs from Render's all-eligible-service, layered, empty-means-deny behavior. The pre-existing object-wire drift remains in `w4/m23/t004`; the broader enforcement/default drift found here is filed as `.pm/w4/018.md` rather than hidden in UI copy.

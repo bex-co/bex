@@ -208,7 +208,7 @@ func TestListBlueprintsEmpty(t *testing.T) {
 
 func TestSyncBlueprintNoStore(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "tea-a", ""); !errors.Is(err, ErrBlueprintsUnavailable) {
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "tea-a", "", ""); !errors.Is(err, ErrBlueprintsUnavailable) {
 		t.Errorf("SyncBlueprint no store: want ErrBlueprintsUnavailable, got %v", err)
 	}
 }
@@ -219,7 +219,7 @@ func TestSyncBlueprintNotFound(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", ""); !errors.Is(err, store.ErrNotFound) {
+	if _, err := svc.SyncBlueprint(ctx, "blp-missing", "tea-a", "", ""); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("SyncBlueprint missing id: want ErrNotFound, got %v", err)
 	}
 }
@@ -238,7 +238,7 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "")
+	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
 	if err != nil {
 		t.Fatalf("SyncBlueprint: %v", err)
 	}
@@ -270,7 +270,7 @@ services:
     type: web
     image: {url: "nginx:latest"}
 `
-	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", newManifest)
+	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", newManifest, "")
 	if err != nil {
 		t.Fatalf("SyncBlueprint replace: %v", err)
 	}

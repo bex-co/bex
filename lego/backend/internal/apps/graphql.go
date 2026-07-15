@@ -1324,10 +1324,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"bexYaml": &graphql.ArgumentConfig{Type: graphql.String},
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
-					gqlStr(p.Args, "ownerId"), gqlStr(p.Args, "bexYaml"))
+					gqlStr(p.Args, "ownerId"), gqlStr(p.Args, "bexYaml"), gqlStr(p.Args, "confirm"))
 			},
 		},
 	}

@@ -22,6 +22,33 @@ vi.mock("@/features/environments/hooks/use-set-environment-keyvalues", () => ({
   useSetEnvironmentKeyValues: () => ({ setKeyValues, busyId: null }),
 }));
 
+const setEnvGroups = vi.fn();
+vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
+  useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
+}));
+
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({
+    groups: [
+      {
+        id: "evg-shared",
+        name: "shared",
+        serviceLinks: [],
+        envVarKeys: [],
+        secretFileNames: [],
+      },
+      {
+        id: "evg-production",
+        name: "production-secrets",
+        serviceLinks: [],
+        envVarKeys: [],
+        secretFileNames: [],
+      },
+    ],
+    loading: false,
+  }),
+}));
+
 function svc(id: string): ServiceView {
   return {
     id,
@@ -77,6 +104,10 @@ const env: EnvironmentView = {
   serviceIds: ["api"],
   databaseIds: ["primary-db"],
   keyValueIds: ["cache"],
+  envGroupIds: ["evg-shared"],
+  protectedStatus: "unprotected",
+  networkIsolationEnabled: false,
+  ipAllowList: [],
 };
 
 beforeEach(() => {
@@ -86,6 +117,8 @@ beforeEach(() => {
   setDatabases.mockResolvedValue(true);
   setKeyValues.mockReset();
   setKeyValues.mockResolvedValue(true);
+  setEnvGroups.mockReset();
+  setEnvGroups.mockResolvedValue(true);
 });
 
 function renderDialog(onOpenChange = vi.fn()) {
@@ -135,7 +168,9 @@ describe("ManageResourcesDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Databases" }));
     expect(screen.getByRole("checkbox", { name: /primary-db/ })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /replica-db/ })).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /replica-db/ }),
+    ).not.toBeChecked();
 
     await user.click(screen.getByRole("checkbox", { name: /replica-db/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -183,5 +218,28 @@ describe("ManageResourcesDialog", () => {
       screen.getByText("This workspace has no services to assign yet."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("full-replaces environment-group membership from workspace-scoped candidates", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("tab", { name: "Env Groups" }));
+    expect(screen.getByRole("checkbox", { name: /shared/ })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /production-secrets/ }),
+    ).not.toBeChecked();
+
+    await user.click(screen.getByRole("checkbox", { name: /shared/ }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /production-secrets/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setEnvGroups).toHaveBeenCalledWith("env-1", "staging", [
+      "evg-production",
+    ]);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

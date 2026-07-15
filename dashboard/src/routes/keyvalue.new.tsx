@@ -32,6 +32,7 @@ import type { en } from "@/i18n";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
 import { KeyValuePlanPicker } from "@/features/keyvalue/components/key-value-plan-picker";
+import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // Valkey major versions bex offers, matching the KeyValue CRD's authoritative
 // enum (lego/types/v1alpha1/keyvalue_types.go, spec.version
@@ -81,7 +82,8 @@ export const Route = createFileRoute("/keyvalue/new")({
  * a full page, not a dialog — bex's subset covers name, plan (tier cards from
  * the shared tiers catalog), version, the public (external endpoint) toggle, and
  * the Maxmemory Policy / Persistence Mode settings (w5/011, now backed by the
- * KeyValue CR). Project/region axes remain omitted (not in bex's contract).
+ * KeyValue CR). Project/Environment assignment uses the shared create selector;
+ * region remains omitted because it is not caller-selectable in bex's contract.
  */
 export function NewKeyValuePage() {
   const { t } = useTranslations();
@@ -99,6 +101,8 @@ export function NewKeyValuePage() {
   const [persistenceMode, setPersistenceMode] = useState<string>(
     PERSISTENCE_MODES[0],
   );
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [environmentId, setEnvironmentId] = useState<string | null>(null);
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
   // The Free plan has no persistent disk, so persistence is forced Off and both
@@ -119,6 +123,7 @@ export function NewKeyValuePage() {
       public: isPublic,
       maxmemoryPolicy,
       persistenceMode: effectivePersistence,
+      environmentId: environmentId ?? undefined,
     });
     if (id) {
       void navigate({
@@ -243,6 +248,13 @@ export function NewKeyValuePage() {
                     : t("keyvalue.fieldPersistenceModeHint")}
                 </p>
               </div>
+
+              <ProjectEnvironmentSelector
+                projectId={projectId}
+                environmentId={environmentId}
+                onProjectChange={setProjectId}
+                onEnvironmentChange={setEnvironmentId}
+              />
 
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div className="space-y-0.5 pr-4">

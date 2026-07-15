@@ -30,12 +30,13 @@ import {
 } from "@/features/services/lib/service-type";
 import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
+import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
 
 export interface ServiceDetailHeaderProps {
   service: ServiceView;
   /** The lifecycle action in flight for this service, or null. */
   pending: LifecycleAction | null;
-  onRun: (action: LifecycleAction, service: ServiceView) => void;
+  onRun: RunServiceAction;
 }
 
 /**

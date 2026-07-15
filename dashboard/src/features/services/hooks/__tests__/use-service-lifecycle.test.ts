@@ -5,8 +5,8 @@ import type { ServiceView } from "@/features/services/types";
 
 // --- mocks ---------------------------------------------------------------
 
-const mutateCalls: { op: string; id: string }[] = [];
-let rejectNext = false;
+const mutateCalls: { op: string; id: string; confirm?: string }[] = [];
+let rejectNext: Error | null = null;
 
 vi.mock("@apollo/client/react", () => ({
   // Each useMutation(doc) returns a fn tagged with the operation name so the
@@ -17,11 +17,20 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: (doc: { definitions: { name: { value: string } }[] }) => {
     const op = doc.definitions[0].name.value;
     const fn = vi.fn(
-      async ({ variables }: { variables: { id?: string; serviceId?: string } }) => {
-        mutateCalls.push({ op, id: variables.id ?? variables.serviceId ?? "" });
+      async ({
+        variables,
+      }: {
+        variables: { id?: string; serviceId?: string; confirm?: string };
+      }) => {
+        mutateCalls.push({
+          op,
+          id: variables.id ?? variables.serviceId ?? "",
+          confirm: variables.confirm,
+        });
         if (rejectNext) {
-          rejectNext = false;
-          throw new Error("boom");
+          const err = rejectNext;
+          rejectNext = null;
+          throw err;
         }
         return { data: {} };
       },
@@ -57,7 +66,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 
 beforeEach(() => {
   mutateCalls.length = 0;
-  rejectNext = false;
+  rejectNext = null;
   toastSuccess.mockReset();
   toastError.mockReset();
 });
@@ -111,7 +120,7 @@ describe("useServiceLifecycle", () => {
   });
 
   it("clears pending and toasts an error when the mutation fails", async () => {
-    rejectNext = true;
+    rejectNext = new Error("boom");
     const refetch = vi.fn(async () => [svc()]);
     const { result } = renderHook(() =>
       useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
@@ -126,5 +135,44 @@ describe("useServiceLifecycle", () => {
     expect(result.current.pending).toBeNull();
     // a failed mutation does not poll for convergence
     expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("returns the exact protected phrase and sends it on the retry", async () => {
+    rejectNext = new Error(
+      'service is in a protected environment; retry with confirm="sudo suspend service app"',
+    );
+    const refetch = vi.fn(async () => [
+      svc({ suspended: true, phase: "Hibernated" }),
+    ]);
+    const { result } = renderHook(() =>
+      useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
+    );
+
+    let first;
+    await act(async () => {
+      first = await result.current.run("suspend", svc());
+    });
+
+    expect(first).toEqual({
+      status: "confirmation_required",
+      confirmation: "sudo suspend service app",
+    });
+    expect(toastError).not.toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.run("suspend", svc(), "sudo suspend service app");
+    });
+
+    expect(mutateCalls).toEqual([
+      { op: "SuspendService", id: "app", confirm: undefined },
+      {
+        op: "SuspendService",
+        id: "app",
+        confirm: "sudo suspend service app",
+      },
+    ]);
+    expect(toastSuccess).toHaveBeenCalledOnce();
+    expect(refetch).toHaveBeenCalledOnce();
   });
 });

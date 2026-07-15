@@ -40,7 +40,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 beforeEach(() => {
   mockNavigate.mockReset();
   remove.mockReset();
-  remove.mockResolvedValue(true);
+  remove.mockResolvedValue({ status: "success" });
 });
 
 describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
@@ -98,7 +98,7 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
 
-    expect(remove).toHaveBeenCalledWith("web", "web");
+    expect(remove).toHaveBeenCalledWith("web", "web", undefined);
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
@@ -122,11 +122,11 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
     await user.type(input, "stable-id");
     await user.click(confirm);
 
-    expect(remove).toHaveBeenCalledWith("stable-id", "Customer API");
+    expect(remove).toHaveBeenCalledWith("stable-id", "Customer API", undefined);
   });
 
   it("stays put when the delete fails (no redirect)", async () => {
-    remove.mockResolvedValue(false);
+    remove.mockResolvedValue({ status: "error" });
     const user = userEvent.setup();
     render(<DeleteServiceCard service={svc()} />);
 
@@ -140,7 +140,49 @@ describe("DeleteServiceCard — type-to-confirm danger zone (w5/m14)", () => {
       within(dialog).getByRole("button", { name: "Delete Service" }),
     );
 
-    expect(remove).toHaveBeenCalledWith("web", "web");
+    expect(remove).toHaveBeenCalledWith("web", "web", undefined);
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("requires the backend's exact protected-environment phrase before retrying", async () => {
+    remove
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo delete service web",
+      })
+      .mockResolvedValueOnce({ status: "success" });
+    const user = userEvent.setup();
+    render(<DeleteServiceCard service={svc()} />);
+
+    await user.click(screen.getByRole("button", { name: "Delete Service" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(/Type web to confirm/);
+    await user.type(input, "web");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete Service" }),
+    );
+
+    expect(remove).toHaveBeenNthCalledWith(1, "web", "web", undefined);
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    const protectedInput = within(dialog).getByLabelText(
+      /sudo delete service web/,
+    );
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete Service",
+    });
+    await user.type(protectedInput, "sudo delete service we");
+    expect(confirm).toBeDisabled();
+    await user.type(protectedInput, "b");
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+
+    expect(remove).toHaveBeenNthCalledWith(
+      2,
+      "web",
+      "web",
+      "sudo delete service web",
+    );
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 });

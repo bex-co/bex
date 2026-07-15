@@ -207,6 +207,7 @@ query DatabaseInstanceTypes {
 mutation CreateDatabase(
   $name: String!
   $ownerId: String
+  $environmentId: String
   $plan: String
   $version: String
   $diskSizeGB: Int
@@ -215,6 +216,7 @@ mutation CreateDatabase(
   createDatabase(
     name: $name
     ownerId: $ownerId
+    environmentId: $environmentId
     plan: $plan
     version: $version
     diskSizeGB: $diskSizeGB
@@ -224,6 +226,8 @@ mutation CreateDatabase(
     name
     plan
     status
+    projectId
+    environmentId
   }
 }
 
