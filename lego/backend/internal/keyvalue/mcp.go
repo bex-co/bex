@@ -25,23 +25,24 @@ import (
 )
 
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
-// official MCP server (render-oss/render-mcp-server): list_key_value_instances /
-// get_key_value / create_key_value, keyed on Render's `keyValueId`. Render's MCP
-// server exposes no delete/suspend/resume KV tools, so bex mirrors that exactly —
-// those lifecycle verbs live on REST + GraphQL only (a deliberate match, noted in
-// docs/ADR018-render-parity.md, not a gap). Every tool delegates to the same Service
-// method REST and GraphQL call, so the surfaces can't drift.
+// official MCP server (render-oss/render-mcp-server): list_key_value /
+// get_key_value / create_key_value, keyed on Render's `keyValueId`. The former
+// list_key_value_instances spelling remains as a deprecated compatibility alias.
+// Render's MCP server exposes no delete/suspend/resume KV tools, so bex mirrors
+// that exactly — those lifecycle verbs live on REST + GraphQL only (a deliberate
+// match, noted in docs/ADR018-render-parity.md, not a gap). Every tool delegates
+// to the same Service method REST and GraphQL call, so the surfaces can't drift.
 
 // keyValueArgs is the shared single-instance argument. Render's tools key on
 // `keyValueId`; for bex that id is the KeyValue name (opaque, round-tripped from
-// list_key_value_instances).
+// list_key_value; the former list_key_value_instances alias returns the same).
 type keyValueArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value_instances"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
 }
 
 // updateKeyValuePlanArgs is update_key_value_plan's input.
 type updateKeyValuePlanArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value_instances"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id (bex KeyValue name), as returned by list_key_value"`
 	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, starter, standard)"`
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
@@ -67,24 +68,25 @@ type listKeyValueResult struct {
 	KeyValues []KeyValueView `json:"keyValues"`
 }
 
-// listKeyValueArgs is list_key_value_instances' input — the ownerId scoping
-// filter (w6/m4/t002), mirroring the REST/GraphQL surfaces. Empty => unscoped.
-type listKeyValueArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
-}
+// listKeyValueArgs is deliberately empty: Render's official list_key_value
+// tool accepts no arguments. bex selects the workspace through
+// select_workspace/session state.
+type listKeyValueArgs struct{}
 
 // RegisterMCP adds the managed key-value tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_key_value_instances",
-		Description: "List all managed key-value (Valkey/Redis) stores in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
-		list, err := s.ListKeyValues(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
-		if err != nil {
-			return nil, listKeyValueResult{}, err
-		}
-		return nil, listKeyValueResult{KeyValues: list}, nil
-	})
+	registerList := func(name, description string) {
+		mcp.AddTool(srv, &mcp.Tool{Name: name, Description: description},
+			func(ctx context.Context, req *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
+				list, err := s.ListKeyValues(ctx, core.SelectedWorkspace(s.Selections, req, ""))
+				if err != nil {
+					return nil, listKeyValueResult{}, err
+				}
+				return nil, listKeyValueResult{KeyValues: list}, nil
+			})
+	}
+	registerList("list_key_value", "List all managed key-value (Valkey/Redis) stores in the selected workspace with their status. Use select_workspace first to change workspace.")
+	registerList("list_key_value_instances", "Deprecated alias for list_key_value; returns all managed key-value stores in the selected workspace.")
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_key_value",

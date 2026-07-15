@@ -1636,6 +1636,8 @@ export type QueryDatabaseUsersArgs = {
 
 
 export type QueryDatabasesArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -1743,6 +1745,8 @@ export type QueryKeyValueIpAllowListArgs = {
 
 
 export type QueryKeyValuesArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

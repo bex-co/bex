@@ -370,6 +370,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 		"run_cron_job", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run",
 		"create_api_key", "list_api_keys", "revoke_api_key",
 		"list_postgres_instances", "get_postgres", "create_postgres",
+		"list_key_value", "get_key_value", "create_key_value",
 	} {
 		if !got[want] {
 			t.Errorf("missing Render-consistent tool %q (have %v)", want, got)

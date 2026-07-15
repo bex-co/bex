@@ -200,8 +200,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		// Render's cursor-pagination envelope — a bare array breaks the official
 		// CLI's list decode (ListKeyValueResponse.JSON200 is *[]KeyValueWithCursor).
+		// Omission preserves the original complete-list behavior; requested pages
+		// use stable id order so a full walk has no gaps or duplicates.
 		after, limit := core.PageParams(q)
-		page := core.Page(out, after, limit, func(kv KeyValueView) string { return kv.ID })
+		page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(kv KeyValueView) string { return kv.ID })
 		core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
 	})
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {

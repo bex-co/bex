@@ -136,7 +136,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_project_keyvalues",
-		Description: "Assign managed key-value instances to a project (replaces the full list). Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value_instances. bex extension.",
+		Description: "Assign managed key-value instances to a project (replaces the full list). Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectKeyValuesArgs) (*mcp.CallToolResult, ProjectView, error) {
 		if in.KeyValueIDs == nil {
 			in.KeyValueIDs = []string{}

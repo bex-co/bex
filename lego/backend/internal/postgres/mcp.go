@@ -58,11 +58,10 @@ type listPostgresResult struct {
 	Postgres []PostgresView `json:"postgres"`
 }
 
-// listPostgresArgs is list_postgres_instances' input — the ownerId scoping
-// filter (w6/m2/t004), mirroring the REST/GraphQL surfaces. Empty => unscoped.
-type listPostgresArgs struct {
-	OwnerID string `json:"ownerId,omitempty" jsonschema:"restrict the list to this workspace id (tea-…); omit to use the session's selected workspace, if any"`
-}
+// listPostgresArgs is deliberately empty: Render's official
+// list_postgres_instances tool accepts no arguments and walks the REST pages
+// internally. bex selects the workspace through select_workspace/session state.
+type listPostgresArgs struct{}
 
 // queryPostgresArgs mirrors Render's query_render_postgres arguments verbatim
 // (postgresId, sql) — a Render-trained agent calls the tool literally, so the
@@ -97,9 +96,9 @@ type renamePostgresArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_instances",
-		Description: "List all managed Postgres databases in the workspace with their status. Scoped to ownerId if given, else to the session's selected workspace (select_workspace), else unscoped.",
+		Description: "List all managed Postgres databases in the selected workspace with their status. Use select_workspace first to change workspace.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
-		list, err := s.ListPostgres(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		list, err := s.ListPostgres(ctx, core.SelectedWorkspace(s.Selections, req, ""))
 		if err != nil {
 			return nil, listPostgresResult{}, err
 		}

@@ -17,11 +17,14 @@ limitations under the License.
 package keyvalue
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -138,6 +141,99 @@ func TestRESTKeyValueCRUD(t *testing.T) {
 	}
 	if serveREST(svc, "GET", "/v1/key-value/cache-1", "").Code != 404 {
 		t.Error("deleted store should be gone")
+	}
+}
+
+func TestKeyValueListPaginationAcrossRESTAndGraphQL(t *testing.T) {
+	svc, cl := newService()
+	for i := 22; i >= 0; i-- { // deliberately seed opposite cursor order
+		seedKeyValue(t, cl, fmt.Sprintf("kv-%02d", i))
+	}
+
+	ctx := context.Background()
+	all, err := svc.ListKeyValues(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantBody, _ := json.Marshal(svc.toKeyValueList(ctx, all))
+	wantBody = append(wantBody, '\n')
+	omitted := serveREST(svc, http.MethodGet, "/v1/key-value", "")
+	if !bytes.Equal(omitted.Body.Bytes(), wantBody) {
+		t.Fatalf("omitted params changed full-list body\ngot:  %s\nwant: %s", omitted.Body.Bytes(), wantBody)
+	}
+
+	var walked []string
+	cursor := ""
+	var firstREST []string
+	for {
+		path := "/v1/key-value?limit=7"
+		if cursor != "" {
+			path += "&cursor=" + cursor
+		}
+		var page []keyValueWithCursor
+		if err := json.Unmarshal(serveREST(svc, http.MethodGet, path, "").Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode %s: %v", path, err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		ids := make([]string, 0, len(page))
+		for _, item := range page {
+			if item.Cursor != item.KeyValue.ID {
+				t.Fatalf("cursor %q != key-value id %q", item.Cursor, item.KeyValue.ID)
+			}
+			ids = append(ids, item.KeyValue.ID)
+		}
+		if firstREST == nil {
+			firstREST = slices.Clone(ids)
+		}
+		walked = append(walked, ids...)
+		cursor = page[len(page)-1].Cursor
+	}
+	wantIDs := make([]string, 23)
+	for i := range wantIDs {
+		wantIDs[i] = fmt.Sprintf("kv-%02d", i)
+	}
+	if !slices.Equal(walked, wantIDs) {
+		t.Fatalf("REST page walk = %v, want every id once in %v", walked, wantIDs)
+	}
+	var pastEnd []keyValueWithCursor
+	_ = json.Unmarshal(serveREST(svc, http.MethodGet, "/v1/key-value?limit=7&cursor=does-not-exist", "").Body.Bytes(), &pastEnd)
+	if len(pastEnd) != 0 {
+		t.Fatalf("unknown REST cursor = %v, want empty page", pastEnd)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gqlIDs := func(query string) []string {
+		t.Helper()
+		res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: query})
+		if len(res.Errors) > 0 {
+			t.Fatalf("GraphQL %s: %v", query, res.Errors)
+		}
+		raw := res.Data.(map[string]any)["keyValues"].([]any)
+		ids := make([]string, 0, len(raw))
+		for _, item := range raw {
+			ids = append(ids, item.(map[string]any)["id"].(string))
+		}
+		return ids
+	}
+	if got := gqlIDs(`{ keyValues { id } }`); len(got) != len(wantIDs) {
+		t.Fatalf("omitted GraphQL args returned %d items, want full %d", len(got), len(wantIDs))
+	}
+	firstGQL := gqlIDs(`{ keyValues(limit: 7) { id } }`)
+	if !slices.Equal(firstGQL, firstREST) {
+		t.Fatalf("first REST/GQL pages drift: REST=%v GQL=%v", firstREST, firstGQL)
+	}
+	if got := gqlIDs(`{ keyValues(cursor: "kv-06", limit: 7) { id } }`); !slices.Equal(got, wantIDs[7:14]) {
+		t.Fatalf("second GraphQL page = %v, want %v", got, wantIDs[7:14])
+	}
+	if got := gqlIDs(`{ keyValues(cursor: "does-not-exist", limit: 7) { id } }`); len(got) != 0 {
+		t.Fatalf("unknown GraphQL cursor = %v, want empty page", got)
 	}
 }
 
@@ -379,6 +475,30 @@ func TestMCPKeyValue(t *testing.T) {
 		t.Fatalf("client connect: %v", err)
 	}
 	defer cs.Close()
+	tools, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantedLists := map[string]bool{"list_key_value": false, "list_key_value_instances": false}
+	for _, tool := range tools.Tools {
+		if _, ok := wantedLists[tool.Name]; !ok {
+			continue
+		}
+		wantedLists[tool.Name] = true
+		b, _ := json.Marshal(tool.InputSchema)
+		var schema struct {
+			Properties map[string]any `json:"properties"`
+		}
+		_ = json.Unmarshal(b, &schema)
+		if len(schema.Properties) != 0 {
+			t.Fatalf("%s args = %v, Render accepts none", tool.Name, schema.Properties)
+		}
+	}
+	for name, found := range wantedLists {
+		if !found {
+			t.Fatalf("missing key-value list tool %q", name)
+		}
+	}
 
 	call := func(name string, args map[string]any) map[string]any {
 		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
@@ -394,8 +514,11 @@ func TestMCPKeyValue(t *testing.T) {
 	}
 
 	// Render's tool names + arg (keyValueId), delegating to the same Core verbs.
+	if list, ok := call("list_key_value", nil)["keyValues"].([]any); !ok || len(list) != 1 {
+		t.Fatalf("list_key_value want 1, got %v", call("list_key_value", nil))
+	}
 	if list, ok := call("list_key_value_instances", nil)["keyValues"].([]any); !ok || len(list) != 1 {
-		t.Fatalf("list_key_value_instances want 1, got %v", call("list_key_value_instances", nil))
+		t.Fatalf("deprecated list alias want 1, got %v", call("list_key_value_instances", nil))
 	}
 	if got := call("get_key_value", map[string]any{"keyValueId": "mcp-kv"}); got["id"] != "mcp-kv" {
 		t.Fatalf("get_key_value id = %v", got["id"])

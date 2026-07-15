@@ -125,9 +125,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
 			// verified against the render-oss/cli generated client: a bare array of
-			// Postgres objects breaks the official CLI's list decode.
+			// Postgres objects breaks the official CLI's list decode. Omission of both
+			// paging params preserves bex's original complete-list behavior; once either
+			// is present the stable id order makes a full walk gap/duplicate-free.
 			after, limit := core.PageParams(q)
-			page := core.Page(out, after, limit, func(p PostgresView) string { return p.ID })
+			page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(p PostgresView) string { return p.ID })
 			core.WriteJSON(w, http.StatusOK, s.toPostgresList(r.Context(), page)) // [{postgres, cursor}, ...]
 		})
 		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {

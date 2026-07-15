@@ -17,7 +17,9 @@ limitations under the License.
 package core
 
 import (
+	"cmp"
 	"net/url"
+	"slices"
 	"strconv"
 )
 
@@ -41,13 +43,20 @@ func PageParams(q url.Values) (after string, limit int) {
 			limit = n
 		}
 	}
+	return after, PageLimit(limit)
+}
+
+// PageLimit clamps a caller-supplied page size to Render's public bounds.
+// Adapters with typed arguments (GraphQL/MCP) use this to apply the same
+// semantics as PageParams without round-tripping through URL strings.
+func PageLimit(limit int) int {
 	switch {
 	case limit < 1:
 		limit = 1
 	case limit > MaxPageLimit:
 		limit = MaxPageLimit
 	}
-	return after, limit
+	return limit
 }
 
 // Page returns the window of items after the `after` cursor (exclusive; empty
@@ -76,4 +85,22 @@ func Page[T any](items []T, after string, limit int, cursorOf func(T) string) []
 		end = len(items)
 	}
 	return items[start:end]
+}
+
+// StablePage applies cursor pagination only when requested. An omitted
+// cursor+limit returns items unchanged, preserving pre-pagination clients'
+// complete-list response and ordering. A requested page is sorted by its
+// stable unique cursor first, so separate requests cannot duplicate or skip an
+// item merely because the backing store returned a different list order.
+//
+// Callers normalize limit with PageParams or PageLimit before calling.
+func StablePage[T any](items []T, after string, limit int, requested bool, cursorOf func(T) string) []T {
+	if !requested {
+		return items
+	}
+	ordered := slices.Clone(items)
+	slices.SortStableFunc(ordered, func(a, b T) int {
+		return cmp.Compare(cursorOf(a), cursorOf(b))
+	})
+	return Page(ordered, after, limit, cursorOf)
 }
