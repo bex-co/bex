@@ -5,12 +5,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/common/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/common/components/ui/tabs";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set-environment-services";
 import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
 import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-set-environment-keyvalues";
+import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
 import { ResourceChecklist } from "@/features/environments/components/resource-checklist";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
@@ -18,6 +24,7 @@ import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-st
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 
 export interface ManageResourcesDialogProps {
   environment: EnvironmentView;
@@ -78,8 +85,15 @@ function ManageResourcesForm({
 }) {
   const { t } = useTranslations();
   const { setServices, busyId: servicesBusyId } = useSetEnvironmentServices();
-  const { setDatabases, busyId: databasesBusyId } = useSetEnvironmentDatabases();
-  const { setKeyValues, busyId: keyValuesBusyId } = useSetEnvironmentKeyValues();
+  const { setDatabases, busyId: databasesBusyId } =
+    useSetEnvironmentDatabases();
+  const { setKeyValues, busyId: keyValuesBusyId } =
+    useSetEnvironmentKeyValues();
+  const { setEnvGroups, busyId: envGroupsBusyId } =
+    useSetEnvironmentEnvGroups();
+  // The query is scoped to the workspace switcher's current selection, so a
+  // cross-workspace group is never offered as an assignment candidate.
+  const { groups: envGroups } = useEnvGroups();
 
   return (
     <>
@@ -93,10 +107,19 @@ function ManageResourcesForm({
       </DialogHeader>
 
       <Tabs defaultValue="services">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="services">{t("environments.tabServices")}</TabsTrigger>
-          <TabsTrigger value="databases">{t("environments.tabDatabases")}</TabsTrigger>
-          <TabsTrigger value="keyvalues">{t("environments.tabKeyValues")}</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="services">
+            {t("environments.tabServices")}
+          </TabsTrigger>
+          <TabsTrigger value="databases">
+            {t("environments.tabDatabases")}
+          </TabsTrigger>
+          <TabsTrigger value="keyvalues">
+            {t("environments.tabKeyValues")}
+          </TabsTrigger>
+          <TabsTrigger value="envgroups">
+            {t("environments.tabEnvGroups")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="services">
           <ResourceChecklist
@@ -122,7 +145,9 @@ function ManageResourcesForm({
             initialChecked={environment.databaseIds}
             busy={databasesBusyId === environment.id}
             emptyLabel={t("environments.manageNoDatabases")}
-            onSave={(ids) => setDatabases(environment.id, environment.name, ids)}
+            onSave={(ids) =>
+              setDatabases(environment.id, environment.name, ids)
+            }
             onClose={onClose}
           />
         </TabsContent>
@@ -136,7 +161,25 @@ function ManageResourcesForm({
             initialChecked={environment.keyValueIds}
             busy={keyValuesBusyId === environment.id}
             emptyLabel={t("environments.manageNoKeyValues")}
-            onSave={(ids) => setKeyValues(environment.id, environment.name, ids)}
+            onSave={(ids) =>
+              setKeyValues(environment.id, environment.name, ids)
+            }
+            onClose={onClose}
+          />
+        </TabsContent>
+        <TabsContent value="envgroups">
+          <ResourceChecklist
+            items={envGroups.map((group) => ({
+              id: group.id,
+              name: group.name,
+              badge: null,
+            }))}
+            initialChecked={environment.envGroupIds}
+            busy={envGroupsBusyId === environment.id}
+            emptyLabel={t("environments.manageNoEnvGroups")}
+            onSave={(ids) =>
+              setEnvGroups(environment.id, environment.name, ids)
+            }
             onClose={onClose}
           />
         </TabsContent>

@@ -26,6 +26,8 @@ import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { ProtectedConfirmationDialog } from "@/features/services/components/protected-confirmation-dialog";
+import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   component: BlueprintDetailPage,
@@ -41,13 +43,23 @@ export function BlueprintDetailPage() {
   const { blueprint, loading, refetch } = useBlueprint(blueprintId);
   const { sync, busy } = useSyncBlueprint();
   const [confirming, setConfirming] = useState(false);
+  const [protectedConfirmation, setProtectedConfirmation] = useState<
+    string | null
+  >(null);
 
   const showNotFound = !loading && !blueprint;
 
-  async function handleSync() {
+  async function handleSync(confirmation?: string) {
     setConfirming(false);
-    await sync(blueprintId);
-    refetch();
+    const result = await sync(blueprintId, confirmation);
+    if (result.status === "confirmation_required") {
+      setProtectedConfirmation(result.confirmation);
+      return;
+    }
+    if (result.status === "success") {
+      setProtectedConfirmation(null);
+      refetch();
+    }
   }
 
   return (
@@ -57,14 +69,12 @@ export function BlueprintDetailPage() {
           <h1 className="truncate text-xl font-semibold">
             {blueprint?.name ?? blueprintId}
           </h1>
-          {blueprint ? <BlueprintStatusBadge status={blueprint.status} /> : null}
+          {blueprint ? (
+            <BlueprintStatusBadge status={blueprint.status} />
+          ) : null}
         </div>
         {blueprint ? (
-          <Button
-            size="sm"
-            onClick={() => setConfirming(true)}
-            disabled={busy}
-          >
+          <Button size="sm" onClick={() => setConfirming(true)} disabled={busy}>
             {t("blueprints.syncButton")}
           </Button>
         ) : null}
@@ -88,23 +98,35 @@ export function BlueprintDetailPage() {
                 <CardContent>
                   <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
                     <div>
-                      <dt className="text-muted-foreground">{t("blueprints.metaRepo")}</dt>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaRepo")}
+                      </dt>
                       <dd className="truncate font-medium">{blueprint.repo}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">{t("blueprints.metaBranch")}</dt>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaBranch")}
+                      </dt>
                       <dd className="font-medium">{blueprint.branch}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">{t("blueprints.metaCreated")}</dt>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaCreated")}
+                      </dt>
                       <dd className="font-medium">
-                        {blueprint.createdAt ? formatRelativeAge(blueprint.createdAt) : "—"}
+                        {blueprint.createdAt
+                          ? formatRelativeAge(blueprint.createdAt)
+                          : "—"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">{t("blueprints.metaUpdated")}</dt>
+                      <dt className="text-muted-foreground">
+                        {t("blueprints.metaUpdated")}
+                      </dt>
                       <dd className="font-medium">
-                        {blueprint.updatedAt ? formatRelativeAge(blueprint.updatedAt) : "—"}
+                        {blueprint.updatedAt
+                          ? formatRelativeAge(blueprint.updatedAt)
+                          : "—"}
                       </dd>
                     </div>
                   </dl>
@@ -113,7 +135,9 @@ export function BlueprintDetailPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">{t("blueprints.manifestTitle")}</CardTitle>
+                  <CardTitle className="text-base">
+                    {t("blueprints.manifestTitle")}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs leading-relaxed">
@@ -133,7 +157,9 @@ export function BlueprintDetailPage() {
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("blueprints.syncConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("blueprints.syncConfirmTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {t("blueprints.syncConfirmBody")}
             </AlertDialogDescription>
@@ -146,6 +172,23 @@ export function BlueprintDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProtectedConfirmationDialog
+        key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
+        open={protectedConfirmation !== null}
+        serviceName={
+          protectedConfirmation
+            ? protectedServiceName(protectedConfirmation)
+            : (blueprint?.name ?? blueprintId)
+        }
+        requiredConfirmation={protectedConfirmation ?? ""}
+        actionLabel={t("blueprints.syncConfirmAction")}
+        busy={busy}
+        onOpenChange={(open) => !open && setProtectedConfirmation(null)}
+        onConfirm={async (confirmation) => {
+          await handleSync(confirmation);
+        }}
+      />
     </DashboardLayout>
   );
 }

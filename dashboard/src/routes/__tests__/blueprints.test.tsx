@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -18,7 +18,12 @@ const blueprintsState: {
   loading: boolean;
   error: Error | undefined;
   refetch: () => Promise<unknown>;
-} = { blueprints: [], loading: false, error: undefined, refetch: vi.fn(async () => undefined) };
+} = {
+  blueprints: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(async () => undefined),
+};
 vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   useBlueprints: () => blueprintsState,
 }));
@@ -35,7 +40,7 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
 }));
 
 // --- sync hook mock ---
-const sync = vi.fn(async () => null);
+const sync = vi.fn(async () => ({ status: "success", result: null }));
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
@@ -87,7 +92,9 @@ function renderDetailPage(blueprintId = "blp-abc123") {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([route]),
-    history: createMemoryHistory({ initialEntries: [`/blueprints/${blueprintId}`] }),
+    history: createMemoryHistory({
+      initialEntries: [`/blueprints/${blueprintId}`],
+    }),
     context: { client: {} as never, session: null },
   });
   return render(<RouterProvider router={router} />);
@@ -100,20 +107,27 @@ beforeEach(() => {
   blueprintDetailState.blueprint = null;
   blueprintDetailState.loading = false;
   blueprintDetailState.error = undefined;
+  blueprintDetailState.refetch = vi.fn();
   sync.mockReset();
-  sync.mockResolvedValue(null);
+  sync.mockResolvedValue({ status: "success", result: null });
 });
 
 describe("BlueprintsPage (list)", () => {
   it("renders blueprint rows with name/repo/branch/status", async () => {
     blueprintsState.blueprints = [
-      bp({ name: "hello-go", repo: "https://github.com/example/hello-go", branch: "main" }),
+      bp({
+        name: "hello-go",
+        repo: "https://github.com/example/hello-go",
+        branch: "main",
+      }),
     ];
 
     renderBlueprintsPage();
 
     expect(await screen.findByText("hello-go")).toBeInTheDocument();
-    expect(screen.getByText("https://github.com/example/hello-go")).toBeInTheDocument();
+    expect(
+      screen.getByText("https://github.com/example/hello-go"),
+    ).toBeInTheDocument();
     expect(screen.getByText("main")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
@@ -129,7 +143,9 @@ describe("BlueprintsPage (list)", () => {
     blueprintsState.error = new Error("network down");
     renderBlueprintsPage();
 
-    expect(await screen.findByText("Couldn't load blueprints")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't load blueprints"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });
@@ -141,7 +157,9 @@ describe("BlueprintDetailPage", () => {
 
     expect(await screen.findAllByText("hello-go")).toHaveLength(2);
     expect(screen.getByText(/services:.*name: api/s)).toBeInTheDocument();
-    expect(screen.getByText("https://github.com/example/hello-go")).toBeInTheDocument();
+    expect(
+      screen.getByText("https://github.com/example/hello-go"),
+    ).toBeInTheDocument();
   });
 
   it("shows not-found state when blueprint is null after loading", async () => {
@@ -158,7 +176,7 @@ describe("BlueprintDetailPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
 
-    expect(sync).toHaveBeenCalledWith("blp-abc123");
+    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
     expect(blueprintDetailState.refetch).toHaveBeenCalled();
   });
 
@@ -170,5 +188,39 @@ describe("BlueprintDetailPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(sync).not.toHaveBeenCalled();
+  });
+
+  it("retries a protected deploy override only with the exact server phrase", async () => {
+    sync
+      .mockResolvedValueOnce({
+        status: "confirmation_required",
+        confirmation: "sudo deploy service api",
+      })
+      .mockResolvedValueOnce({ status: "success", result: null });
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    renderDetailPage();
+
+    await user.click(await screen.findByRole("button", { name: /sync/i }));
+    await user.click(screen.getByRole("button", { name: /^sync$/i }));
+
+    const protectedDialog = await screen.findByRole("dialog");
+    const input = within(protectedDialog).getByLabelText(
+      /sudo deploy service api/,
+    );
+    const retry = within(protectedDialog).getByRole("button", {
+      name: /^sync$/i,
+    });
+    await user.type(input, "sudo deploy service ap");
+    expect(retry).toBeDisabled();
+    await user.type(input, "i");
+    await user.click(retry);
+
+    expect(sync).toHaveBeenNthCalledWith(
+      2,
+      "blp-abc123",
+      "sudo deploy service api",
+    );
+    expect(blueprintDetailState.refetch).toHaveBeenCalledOnce();
   });
 });

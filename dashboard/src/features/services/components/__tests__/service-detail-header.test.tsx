@@ -11,6 +11,7 @@ import {
 import { ServiceDetailHeader } from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
+import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
 
 // ServiceDetailHeader renders ServiceRowActions, which renders a "Move to
 // project" submenu via useMoveToProject — needs an ApolloProvider + workspace
@@ -72,7 +73,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 // The header links to the plan tab, so it needs a router around it.
 function renderHeader(
   service: ServiceView,
-  props: Partial<{ pending: null | "restart"; onRun: () => void }> = {},
+  props: Partial<{ pending: null | "restart"; onRun: RunServiceAction }> = {},
 ) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
@@ -82,7 +83,9 @@ function renderHeader(
       <ServiceDetailHeader
         service={service}
         pending={props.pending ?? null}
-        onRun={props.onRun ?? vi.fn()}
+        onRun={
+          props.onRun ?? vi.fn(async () => ({ status: "success" as const }))
+        }
       />
     ),
   });
@@ -206,7 +209,7 @@ describe("ServiceDetailHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30), not a duplicate control in the \"•••\" menu", async () => {
+  it('restarts through the Manual Deploy dropdown via triggerDeploy (w2/m30), not a duplicate control in the "•••" menu', async () => {
     triggerDeploy.mockClear();
     const user = userEvent.setup();
     renderHeader(svc());
@@ -225,9 +228,7 @@ describe("ServiceDetailHeader", () => {
 
     // the "•••" menu keeps Suspend but no longer offers Restart — it's owned
     // by Manual Deploy on this page (Render's own grouping)
-    await user.click(
-      screen.getByRole("button", { name: "Open actions menu" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
     expect(
       screen.getByRole("menuitem", { name: "Suspend" }),
     ).toBeInTheDocument();
@@ -237,7 +238,7 @@ describe("ServiceDetailHeader", () => {
   });
 
   it("fires a lifecycle action through the reused row-actions control", async () => {
-    const onRun = vi.fn();
+    const onRun = vi.fn(async () => ({ status: "success" as const }));
     const suspended = svc({ suspended: true, phase: "Hibernated", url: null });
     const user = userEvent.setup();
 

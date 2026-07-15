@@ -11,7 +11,11 @@ export interface UseSetEnvironmentKeyValuesResult {
    * instances auto-joins them to the environment's parent project, mirroring
    * useSetEnvironmentDatabases. Resolves true on success (toasted either way).
    */
-  setKeyValues: (id: string, envName: string, keyValueIds: string[]) => Promise<boolean>;
+  setKeyValues: (
+    id: string,
+    envName: string,
+    keyValueIds: string[],
+  ) => Promise<boolean>;
   /** The environment id currently being written, or null. */
   busyId: string | null;
 }
@@ -34,7 +38,9 @@ export function useSetEnvironmentKeyValues(): UseSetEnvironmentKeyValuesResult {
       setBusyId(id);
       try {
         await mutate({ variables: { id, keyValueIds } });
-        toast.success(t("environments.assignKeyValuesSuccess", { name: envName }));
+        toast.success(
+          t("environments.assignKeyValuesSuccess", { name: envName }),
+        );
         return true;
       } catch {
         toast.error(t("environments.assignKeyValuesError", { name: envName }));

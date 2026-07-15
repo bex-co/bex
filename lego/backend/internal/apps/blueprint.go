@@ -254,7 +254,9 @@ func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]Bluepri
 // manifest first. Idempotent: an unchanged bex.yml is a no-op re-apply.
 // ownerID scopes the fetch to the caller's workspace (prevents cross-workspace
 // sync). If bexYAML is non-empty the stored manifest is replaced before apply.
-func (s *Service) SyncBlueprint(ctx context.Context, id, ownerID, bexYAML string) (SyncBlueprintResult, error) {
+// confirm carries the exact protected-environment phrase for an existing
+// service override; empty preserves the ordinary unprotected path.
+func (s *Service) SyncBlueprint(ctx context.Context, id, ownerID, bexYAML, confirm string) (SyncBlueprintResult, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
@@ -280,6 +282,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, id, ownerID, bexYAML string
 		Repo:     b.Repo,
 		Branch:   b.Branch,
 		Manifest: b.Manifest,
+		Confirm:  confirm,
 	})
 	if err != nil {
 		return SyncBlueprintResult{}, err

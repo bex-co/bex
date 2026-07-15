@@ -18,14 +18,16 @@ import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-st
 import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
 import { ResourceTypeBadge } from "@/features/projects/components/resource-type-badge";
 import type { ResourceRow } from "@/features/projects/types";
-import type { LifecycleAction, ServiceView } from "@/features/services/types";
-import type { PendingLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import type {
+  PendingLifecycle,
+  RunServiceAction,
+} from "@/features/services/hooks/use-service-lifecycle";
 
 export interface ResourceTableProps {
   rows: ResourceRow[];
   loading?: boolean;
   servicePending: PendingLifecycle | null;
-  onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
 }
@@ -92,7 +94,7 @@ function ResourceTableRow({
 }: {
   row: ResourceRow;
   servicePending: PendingLifecycle | null;
-  onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
 }) {

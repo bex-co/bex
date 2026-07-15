@@ -41,19 +41,35 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
   const { remove, deleting } = useDeleteService();
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
-  const matches = confirmation === service.id;
+  const [requiredConfirmation, setRequiredConfirmation] = useState<
+    string | null
+  >(null);
+  const expectedConfirmation = requiredConfirmation ?? service.id;
+  const matches = confirmation === expectedConfirmation;
 
   async function handleDelete() {
     if (!matches || deleting) return;
-    const ok = await remove(service.id, service.name);
-    if (!ok) return;
+    const result = await remove(
+      service.id,
+      service.name,
+      requiredConfirmation ?? undefined,
+    );
+    if (result.status === "confirmation_required") {
+      setRequiredConfirmation(result.confirmation);
+      setConfirmation("");
+      return;
+    }
+    if (result.status !== "success") return;
     setOpen(false);
     void navigate({ to: "/" });
   }
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
-    if (!next) setConfirmation("");
+    if (!next) {
+      setConfirmation("");
+      setRequiredConfirmation(null);
+    }
   }
 
   return (
@@ -77,19 +93,27 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
               {t("services.deleteConfirmTitle", { name: service.name })}
             </DialogTitle>
             <DialogDescription>
-              {t("services.deleteConfirmBody")}
+              {requiredConfirmation
+                ? t("services.protectedConfirmationBody", {
+                    name: service.name,
+                  })
+                : t("services.deleteConfirmBody")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="service-delete-confirm">
-              {t("services.deleteConfirmPrompt", { name: service.id })}
+              {requiredConfirmation
+                ? t("services.protectedConfirmationPrompt", {
+                    confirmation: requiredConfirmation,
+                  })
+                : t("services.deleteConfirmPrompt", { name: service.id })}
             </Label>
             <Input
               id="service-delete-confirm"
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
               autoComplete="off"
-              placeholder={service.id}
+              placeholder={expectedConfirmation}
             />
           </div>
           <DialogFooter>

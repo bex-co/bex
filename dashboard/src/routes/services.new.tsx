@@ -70,8 +70,7 @@ import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
-import { useProjects } from "@/features/projects/hooks/use-projects";
-import { useEnvironments } from "@/features/environments/hooks/use-environments";
+import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -445,7 +444,6 @@ export function NewServicePage() {
     useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
-  const { projects } = useProjects();
 
   const [serviceType, setServiceType] = useState<ServiceType>("web_service");
   const [tab, setTab] = useState<SourceTab>("github");
@@ -470,7 +468,6 @@ export function NewServicePage() {
   const [secretFiles, setSecretFiles] = useState<SecretFileEntry[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [environmentId, setEnvironmentId] = useState<string | null>(null);
-  const { environments } = useEnvironments(projectId);
 
   const isCronType = serviceType === "cron_job";
   const isStaticType = serviceType === "static_site";
@@ -1125,63 +1122,12 @@ export function NewServicePage() {
                   </div>
                 ) : null}
 
-                <div className="space-y-2">
-                  <Label>{t("services.createFieldEnvironmentTitle")}</Label>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <Select
-                      value={projectId ?? "unassigned"}
-                      onValueChange={(value) => {
-                        setProjectId(value === "unassigned" ? null : value);
-                        setEnvironmentId(null);
-                      }}
-                    >
-                      <SelectTrigger
-                        aria-label={t("services.createFieldProject")}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">
-                          {t("services.createFieldProjectNone")}
-                        </SelectItem>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      disabled={projectId == null}
-                      value={environmentId ?? "unassigned"}
-                      onValueChange={(value) =>
-                        setEnvironmentId(value === "unassigned" ? null : value)
-                      }
-                    >
-                      <SelectTrigger
-                        aria-label={t("services.createFieldEnvironment")}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">
-                          {t("services.createFieldEnvironmentNone")}
-                        </SelectItem>
-                        {environments.map((environment) => (
-                          <SelectItem
-                            key={environment.id}
-                            value={environment.id}
-                          >
-                            {environment.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("services.createFieldEnvironmentHint")}
-                  </p>
-                </div>
+                <ProjectEnvironmentSelector
+                  projectId={projectId}
+                  environmentId={environmentId}
+                  onProjectChange={setProjectId}
+                  onEnvironmentChange={setEnvironmentId}
+                />
 
                 {isGitSource ? (
                   <div className="flex items-center justify-between rounded-md border p-3">

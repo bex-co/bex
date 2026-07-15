@@ -1102,9 +1102,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var body struct {
 			BexYAML string `json:"bexYaml"`
 			OwnerID string `json:"ownerId"`
+			Confirm string `json:"confirm"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		res, err := s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML)
+		res, err := s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

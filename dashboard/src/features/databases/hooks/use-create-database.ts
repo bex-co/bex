@@ -14,6 +14,8 @@ export interface CreateDatabaseInput {
   version: string;
   diskSizeGB: number;
   public: boolean;
+  /** Optional Environment; the server also joins its parent Project. */
+  environmentId?: string;
 }
 
 export interface UseCreateDatabaseResult {
@@ -57,6 +59,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
           variables: {
             name: input.name,
             ownerId: currentWorkspaceId,
+            environmentId: input.environmentId,
             plan: input.plan || undefined,
             version: input.version || undefined,
             diskSizeGB: input.diskSizeGB > 0 ? input.diskSizeGB : undefined,

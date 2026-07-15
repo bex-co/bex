@@ -15,7 +15,9 @@ export interface UseCreateEnvironmentResult {
  * bex extension). Scoped to a project — the workspace is inherited from the
  * project server-side, so the caller only supplies the name.
  */
-export function useCreateEnvironment(projectId: string): UseCreateEnvironmentResult {
+export function useCreateEnvironment(
+  projectId: string,
+): UseCreateEnvironmentResult {
   const { t } = useTranslations();
   // Refetch the active Environments list by name (the panel's query), the same
   // pattern useTriggerDeploy uses — so the new environment appears without any

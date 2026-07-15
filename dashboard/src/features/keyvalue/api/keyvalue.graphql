@@ -79,6 +79,7 @@ query KeyValueIpAllowList($id: String!) {
 mutation CreateKeyValue(
   $name: String!
   $ownerId: String
+  $environmentId: String
   $plan: String
   $version: String
   $storageGB: Int
@@ -89,6 +90,7 @@ mutation CreateKeyValue(
   createKeyValue(
     name: $name
     ownerId: $ownerId
+    environmentId: $environmentId
     plan: $plan
     version: $version
     storageGB: $storageGB
@@ -100,6 +102,8 @@ mutation CreateKeyValue(
     name
     plan
     status
+    projectId
+    environmentId
   }
 }
 

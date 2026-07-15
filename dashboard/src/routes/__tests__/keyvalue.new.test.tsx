@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -10,6 +10,15 @@ import {
 } from "@tanstack/react-router";
 import { NewKeyValuePage } from "../keyvalue.new";
 import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
+
+beforeAll(() => {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => {};
+  }
+});
 
 const instanceTypesState: {
   instanceTypes: KeyValueInstanceTypeView[];
@@ -24,6 +33,21 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
 const create = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-create-key-value", () => ({
   useCreateKeyValue: () => ({ create, busy: false }),
+}));
+
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({
+    projects: [{ id: "prj-1", name: "Commerce" }],
+  }),
+}));
+
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: (projectId: string | null) => ({
+    environments:
+      projectId === "prj-1"
+        ? [{ id: "env-1", projectId: "prj-1", name: "Production" }]
+        : [],
+  }),
 }));
 
 const FREE: KeyValueInstanceTypeView = {
@@ -112,7 +136,26 @@ describe("NewKeyValuePage", () => {
       public: false,
       maxmemoryPolicy: "allkeys-lru",
       persistenceMode: "journal-snapshot",
+      environmentId: undefined,
     });
+  });
+
+  it("submits the selected environment so the backend auto-joins its project", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "cache-1");
+    await user.click(screen.getByRole("combobox", { name: "Project" }));
+    await user.click(await screen.findByRole("option", { name: "Commerce" }));
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(await screen.findByRole("option", { name: "Production" }));
+    await user.click(
+      screen.getByRole("button", { name: "Create Key Value Instance" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: "env-1" }),
+    );
   });
 
   it("forces persistence to off on the Free plan (Render parity, w5/011)", async () => {

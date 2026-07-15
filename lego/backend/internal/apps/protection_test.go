@@ -163,6 +163,33 @@ func TestDeployStack_DirectOverrideSucceedsWithConfirm(t *testing.T) {
 	}
 }
 
+func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
+	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
+	existing := managedApp("web", "srv-1")
+	existing.Spec.Image = "old:1"
+	svc, cl := newService(rec, existing)
+	svc.Blueprints = newFakeBlueprintStore(store.Blueprint{
+		ID:       "blp-1",
+		Manifest: "services:\n  - {name: web, image: new:1}\n",
+		Status:   "active",
+	})
+
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("SyncBlueprint override on a protected member: got %v, want ErrBadRequest", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Image; got != "old:1" {
+		t.Fatalf("blocked sync changed image to %q", got)
+	}
+
+	confirm := ProtectedConfirmation("deploy", "web")
+	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", confirm); err != nil {
+		t.Fatalf("SyncBlueprint with correct confirm: %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Image; got != "new:1" {
+		t.Fatalf("image = %q, want new:1", got)
+	}
+}
+
 // TestDeployStack_NewServiceNeverBlocked proves a brand-new service (no
 // existing App to override) is exempt — only an override of something
 // already running is guarded.

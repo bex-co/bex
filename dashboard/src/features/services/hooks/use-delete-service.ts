@@ -3,10 +3,18 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  protectedConfirmationFromError,
+  type ProtectedActionResult,
+} from "@/features/services/lib/protected-confirmation";
 
 export interface UseDeleteServiceResult {
-  /** Fires deleteService; resolves true on success (toasted either way). */
-  remove: (id: string, name: string) => Promise<boolean>;
+  /** Fires deleteService and surfaces an authoritative protected retry phrase. */
+  remove: (
+    id: string,
+    name: string,
+    confirmation?: string,
+  ) => Promise<ProtectedActionResult>;
   /** True while the delete is in flight (disables the confirm control). */
   deleting: boolean;
 }
@@ -25,21 +33,28 @@ export function useDeleteService(): UseDeleteServiceResult {
   const [deleting, setDeleting] = useState(false);
 
   const remove = useCallback(
-    async (id: string, name: string) => {
+    async (id: string, name: string, confirmation?: string) => {
       setDeleting(true);
       try {
         await mutate({
-          variables: { id },
+          variables: { id, confirm: confirmation },
           update(cache) {
             cache.evict({ id: cache.identify({ __typename: "Service", id }) });
             cache.gc();
           },
         });
         toast.success(t("services.deleteSuccess", { name }));
-        return true;
-      } catch {
+        return { status: "success" } as const;
+      } catch (err) {
+        const requiredConfirmation = protectedConfirmationFromError(err);
+        if (requiredConfirmation) {
+          return {
+            status: "confirmation_required",
+            confirmation: requiredConfirmation,
+          } as const;
+        }
         toast.error(t("services.deleteError", { name }));
-        return false;
+        return { status: "error" } as const;
       } finally {
         setDeleting(false);
       }

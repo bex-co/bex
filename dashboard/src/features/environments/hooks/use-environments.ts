@@ -11,6 +11,7 @@ export interface EnvironmentView {
   serviceIds: string[];
   databaseIds: string[];
   keyValueIds: string[];
+  envGroupIds: string[];
   /** Render's protectedStatus (w6/m19): "protected" or "unprotected". */
   protectedStatus: string;
   networkIsolationEnabled: boolean;
@@ -30,7 +31,9 @@ export interface UseEnvironmentsResult {
  * extension, w1/m32). Environments are project-scoped, so this takes a
  * `projectId` rather than a workspace id and skips the query until it resolves.
  */
-export function useEnvironments(projectId: string | null): UseEnvironmentsResult {
+export function useEnvironments(
+  projectId: string | null,
+): UseEnvironmentsResult {
   const resolved = projectId != null && projectId !== "";
   const { data, loading, error, refetch } = useQuery(EnvironmentsDocument, {
     variables: { projectId: projectId! },
@@ -56,9 +59,14 @@ export function useEnvironments(projectId: string | null): UseEnvironmentsResult
         keyValueIds: (e.keyValueIds ?? []).filter(
           (s): s is string => s != null,
         ),
+        envGroupIds: (e.envGroupIds ?? []).filter(
+          (s): s is string => s != null,
+        ),
         protectedStatus: e.protectedStatus ?? "unprotected",
         networkIsolationEnabled: e.networkIsolationEnabled ?? false,
-        ipAllowList: (e.ipAllowList ?? []).filter((c): c is string => c != null),
+        ipAllowList: (e.ipAllowList ?? []).filter(
+          (c): c is string => c != null,
+        ),
       }));
   }, [data]);
 

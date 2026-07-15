@@ -62,10 +62,25 @@ describe("useCreateDatabase", () => {
           version: "16",
           diskSizeGB: 10,
           public: false,
+          environmentId: undefined,
         },
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith("Creating db…");
+  });
+
+  it("forwards an optional environment assignment", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createDatabase: { id: "dpg-1" } } });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    await act(async () => {
+      await result.current.create({ ...input, environmentId: "env-1" });
+    });
+
+    expect(mutate.mock.calls[0][0].variables.environmentId).toBe("env-1");
   });
 
   it("follows a workspace switch — the next create carries the new ownerId", async () => {

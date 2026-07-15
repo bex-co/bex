@@ -39,12 +39,9 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [x] **m22** — Close the ADR032-flagged `internal/projects` authz + error-mapping gaps (8 tasks) ← done 2026-07-14: Projects + Environments pin cross-tenant-existing 403 vs nonexistent 404; Projects joined the shared authz/audit/relation sweep; store-off Projects maps to REST 503 and native GraphQL/MCP errors; the official CLI's real-Project Environments success path + unknown-id 404 passed live after m22 found/fixed the missing `{environment,cursor}` list envelope. Remaining Render `ipAllowList` wire drift filed as `017.md`; moved to `done/m22/`
 - [ ] **m23** — Audit & payload-parity chores round 2 (8 tasks) ← groups `013` + `014` + `015` + `017` 2026-07-15 (the m20 chores pattern): audit-log `direction` honored-or-400, `suspenders` on the service object, the denied-read audit fan-out latency fix, Environment `ipAllowList` `{cidrBlock, description}` wire shape — t001–t005 + t007 shipped 2026-07-15 (a parallel session implemented the notes directly before m23 was picked up; resolutions in `done/013`–`017`); t006 (simplify pass) + t008 (closeout) remain
 - [ ] **m24** — ipAllowList descriptions: persist what we accept (7 tasks) ← from `/pm-brainstorm` round 10, 2026-07-15 (RC12/RC14's recorded "accepted but dropped" subset for Postgres/Key Value + Environments' bare strings; descriptions persist and round-trip end to end, CRD → surfaces → dashboard → CLI verify)
-<<<<<<< Updated upstream
 - [ ] **m25** — Identity completeness: user `name` + machine-caller resolution (8 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (`workspaces/service.go:285` — Name "is always ''"; ADR018:217's left-open API-key-caller half); `render whoami` returns real name/email for session and API-key callers
-=======
-- [ ] **m25** — Official Render CLI browser login via Hydra device flow (9 tasks) ← user request 2026-07-15 + w9/m2 auth-gap investigation; needs m9 + m17
 - [ ] **m26** — Audit-log Render-shape verification, evidence-first (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (parity-ledger mining: ADR018:134 is the only substantive ◐ with no owner — "schema wasn't resolvable from public docs at authoring time"; the pinned OpenAPI, CLI source, and real-account capture workflows postdate that assessment)
->>>>>>> Stashed changes
+- [ ] **m27** — Official Render CLI browser login via Hydra device flow (9 tasks) ← user request 2026-07-15 + w9/m2 auth-gap investigation; needs m9 + m17
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
@@ -52,7 +49,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-(empty)
+- `018.md` — align Environment inbound-IP enforcement/default semantics with Render (eligible public services + datastores, layered rules, empty means deny-all) ← found during `w5/m31` parity closeout 2026-07-15
 
 > `013.md` (audit-log `direction`), `014.md` (`suspenders` array), `015.md` (fallback-loop audit serialization), and `017.md` (Environment `ipAllowList` wire shape) were grouped into **m23** 2026-07-15 and the implementation shipped the same day (a parallel session worked the notes directly; the two closures merged — m23's t001–t005 + t007 are done, see each note's resolution in `done/`): `013` implemented Render's `backward`/`forward` enum end-to-end (mirrored keyset cursor, named 400 on unknown values, real-Postgres-verified); `014` emits `["user"]`/`[]` across REST/GraphQL/MCP via one derivation helper; `015` resolved as its shape 2 — per-candidate denied audits capped at `core.maxFallbackCandidateAudits` (3) + one aggregate denial row against the caller's workspace, bounding both worst-case latency and the one-request→N-inserts amplification while keeping recording synchronous; `017` gave the standard environments POST/PATCH Render's full body (`{cidrBlock, description}` objects + `protectedStatus`/`networkIsolationEnabled`, per-field-partial PATCH, no orphan row on a 400) — notes moved to `done/`.
 

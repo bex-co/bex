@@ -11,7 +11,11 @@ export interface UseSetEnvironmentServicesResult {
    * environment's parent project (docs/ADR032-environments.md). Resolves true
    * on success (toasted either way).
    */
-  setServices: (id: string, envName: string, serviceIds: string[]) => Promise<boolean>;
+  setServices: (
+    id: string,
+    envName: string,
+    serviceIds: string[],
+  ) => Promise<boolean>;
   /** The environment id currently being written, or null. */
   busyId: string | null;
 }

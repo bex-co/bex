@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { Loader2, MoreVertical, Pencil, Settings2, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  LockKeyhole,
+  MoreVertical,
+  Pencil,
+  Settings2,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import {
   Card,
   CardAction,
@@ -8,6 +16,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { Badge } from "@/common/components/ui/badge";
 import { Input } from "@/common/components/ui/input";
 import {
   Dialog,
@@ -44,8 +53,12 @@ import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-e
 import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
-import type { LifecycleAction, ServiceView } from "@/features/services/types";
-import type { PendingLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import { EnvironmentSettingsDialog } from "@/features/environments/components/environment-settings-dialog";
+import type { ServiceView } from "@/features/services/types";
+import type {
+  PendingLifecycle,
+  RunServiceAction,
+} from "@/features/services/hooks/use-service-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -58,7 +71,7 @@ export interface EnvironmentCardProps {
   /** All the workspace's key-value instances — same role as `services` (w6/m20 extension). */
   keyValues: KeyValueView[];
   servicePending: PendingLifecycle | null;
-  onRunServiceAction: (action: LifecycleAction, service: ServiceView) => void;
+  onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
 }
@@ -90,6 +103,7 @@ export function EnvironmentCard({
   const [renameValue, setRenameValue] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
@@ -143,12 +157,24 @@ export function EnvironmentCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {environment.name}
+          {environment.protectedStatus === "protected" ? (
+            <Badge variant="secondary">
+              <LockKeyhole />
+              {t("environments.protectedBadge")}
+            </Badge>
+          ) : null}
           <span className="text-xs font-normal text-muted-foreground">
-            {t("environments.resourceCount", { count: rows.length })}
+            {t("environments.resourceCount", {
+              count: rows.length,
+            })}
           </span>
         </CardTitle>
         <CardAction className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAssignOpen(true)}
+          >
             <Settings2 />
             {t("environments.manageButton")}
           </Button>
@@ -166,6 +192,10 @@ export function EnvironmentCard({
               <DropdownMenuItem onClick={openRename}>
                 <Pencil />
                 {t("environments.renameAction")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                <ShieldCheck />
+                {t("environments.settingsAction")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
@@ -261,6 +291,11 @@ export function EnvironmentCard({
         keyValues={keyValues}
         open={assignOpen}
         onOpenChange={setAssignOpen}
+      />
+      <EnvironmentSettingsDialog
+        environment={environment}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
       />
     </Card>
   );

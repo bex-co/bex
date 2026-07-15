@@ -11,7 +11,11 @@ export interface UseSetEnvironmentDatabasesResult {
    * auto-joins them to the environment's parent project, mirroring
    * useSetEnvironmentServices. Resolves true on success (toasted either way).
    */
-  setDatabases: (id: string, envName: string, databaseIds: string[]) => Promise<boolean>;
+  setDatabases: (
+    id: string,
+    envName: string,
+    databaseIds: string[],
+  ) => Promise<boolean>;
   /** The environment id currently being written, or null. */
   busyId: string | null;
 }
@@ -34,7 +38,9 @@ export function useSetEnvironmentDatabases(): UseSetEnvironmentDatabasesResult {
       setBusyId(id);
       try {
         await mutate({ variables: { id, databaseIds } });
-        toast.success(t("environments.assignDatabasesSuccess", { name: envName }));
+        toast.success(
+          t("environments.assignDatabasesSuccess", { name: envName }),
+        );
         return true;
       } catch {
         toast.error(t("environments.assignDatabasesError", { name: envName }));

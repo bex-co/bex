@@ -43,6 +43,7 @@ describe("useEnvironments", () => {
             serviceIds: ["svc-a", null, "svc-b"],
             databaseIds: ["db-a", null],
             keyValueIds: [null, "kv-a"],
+            envGroupIds: ["evg-a", null],
           },
           null,
         ],
@@ -64,6 +65,7 @@ describe("useEnvironments", () => {
       serviceIds: ["svc-a", "svc-b"],
       databaseIds: ["db-a"],
       keyValueIds: ["kv-a"],
+      envGroupIds: ["evg-a"],
       // w6/m19: absent ACL fields default to Render's own defaults.
       protectedStatus: "unprotected",
       networkIsolationEnabled: false,

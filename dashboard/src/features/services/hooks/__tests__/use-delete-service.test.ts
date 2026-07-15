@@ -16,6 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
+import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
@@ -29,14 +30,14 @@ describe("useDeleteService", () => {
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteService());
-    let ok: boolean | undefined;
+    let outcome: ProtectedActionResult | undefined;
     await act(async () => {
-      ok = await result.current.remove("web", "web");
+      outcome = await result.current.remove("web", "web");
     });
 
-    expect(ok).toBe(true);
+    expect(outcome).toEqual({ status: "success" });
     expect(mutate).toHaveBeenCalledWith(
-      expect.objectContaining({ variables: { id: "web" } }),
+      expect.objectContaining({ variables: { id: "web", confirm: undefined } }),
     );
     expect(toastSuccess).toHaveBeenCalledWith("Deleted web");
     expect(toastError).not.toHaveBeenCalled();
@@ -69,17 +70,17 @@ describe("useDeleteService", () => {
     expect(cache.gc).toHaveBeenCalled();
   });
 
-  it("surfaces a mutation failure as an error toast and resolves false", async () => {
+  it("surfaces a mutation failure as an error toast and error result", async () => {
     const mutate = vi.fn().mockRejectedValue(new Error("forbidden"));
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteService());
-    let ok: boolean | undefined;
+    let outcome: ProtectedActionResult | undefined;
     await act(async () => {
-      ok = await result.current.remove("web", "web");
+      outcome = await result.current.remove("web", "web");
     });
 
-    expect(ok).toBe(false);
+    expect(outcome).toEqual({ status: "error" });
     expect(toastError).toHaveBeenCalledWith("Couldn't delete web");
     expect(toastSuccess).not.toHaveBeenCalled();
   });
@@ -97,7 +98,7 @@ describe("useDeleteService", () => {
     const { result } = renderHook(() => useDeleteService());
     expect(result.current.deleting).toBe(false);
 
-    let pending!: Promise<boolean>;
+    let pending!: Promise<ProtectedActionResult>;
     act(() => {
       pending = result.current.remove("web", "web");
     });
@@ -108,5 +109,28 @@ describe("useDeleteService", () => {
       await pending;
     });
     expect(result.current.deleting).toBe(false);
+  });
+
+  it("returns the server's exact protected confirmation without error toast", async () => {
+    const mutate = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          'service is in a protected environment; retry with confirm="sudo delete service web"',
+        ),
+      );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useDeleteService());
+    let outcome: ProtectedActionResult | undefined;
+    await act(async () => {
+      outcome = await result.current.remove("web", "web");
+    });
+
+    expect(outcome).toEqual({
+      status: "confirmation_required",
+      confirmation: "sudo delete service web",
+    });
+    expect(toastError).not.toHaveBeenCalled();
   });
 });

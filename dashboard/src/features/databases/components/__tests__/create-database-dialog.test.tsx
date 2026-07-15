@@ -1,8 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateDatabaseDialog } from "@/features/databases/components/create-database-dialog";
 import type { DatabaseInstanceTypeView } from "@/features/databases/types";
+
+beforeAll(() => {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => {};
+  }
+});
 
 const instanceTypesState: {
   instanceTypes: DatabaseInstanceTypeView[];
@@ -17,6 +26,21 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 const create = vi.fn();
 vi.mock("@/features/databases/hooks/use-create-database", () => ({
   useCreateDatabase: () => ({ create, busy: false }),
+}));
+
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({
+    projects: [{ id: "prj-1", name: "Commerce" }],
+  }),
+}));
+
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: (projectId: string | null) => ({
+    environments:
+      projectId === "prj-1"
+        ? [{ id: "env-1", projectId: "prj-1", name: "Production" }]
+        : [],
+  }),
 }));
 
 const FREE: DatabaseInstanceTypeView = {
@@ -85,7 +109,30 @@ describe("CreateDatabaseDialog", () => {
       version: "",
       diskSizeGB: 0,
       public: false,
+      environmentId: undefined,
     });
     expect(onCreated).toHaveBeenCalledWith("shop-db");
+  });
+
+  it("submits the selected environment so the backend auto-joins its project", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    await user.click(within(dialog).getByRole("combobox", { name: "Project" }));
+    await user.click(await screen.findByRole("option", { name: "Commerce" }));
+    await user.click(
+      within(dialog).getByRole("combobox", { name: "Environment" }),
+    );
+    await user.click(await screen.findByRole("option", { name: "Production" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: "env-1" }),
+    );
   });
 });
