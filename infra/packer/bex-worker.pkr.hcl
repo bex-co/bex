@@ -105,6 +105,9 @@ build {
   sources = ["source.hcloud.worker"]
 
   provisioner "shell" {
+    # Run under bash — the inline uses `set -o pipefail` (to fail the curl|gpg
+    # k8s-key pipe on a bad download), which packer's default /bin/sh (dash) rejects.
+    inline_shebang = "/bin/bash -e"
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive",
       "CONTAINERD=${var.containerd_version}",
