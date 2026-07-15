@@ -173,13 +173,13 @@ func TestRESTCreateStaticSite(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create static_site => 201, got %d: %s", rec.Code, rec.Body)
 	}
-	var got renderService
+	var got serviceAndDeploy
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	// publishPath is nested under serviceDetails, matching Render.
-	if got.ServiceDetails["publishPath"] != "dist" {
-		t.Errorf("serviceDetails.publishPath = %v, want dist", got.ServiceDetails["publishPath"])
+	if got.Service.ServiceDetails["publishPath"] != "dist" {
+		t.Errorf("serviceDetails.publishPath = %v, want dist", got.Service.ServiceDetails["publishPath"])
 	}
 }
 

@@ -169,12 +169,14 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/services ownerId=bravo: %d %s", rec.Code, rec.Body.String())
 	}
-	var created struct{ OwnerID string }
+	var created struct {
+		Service struct{ OwnerID string }
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if created.OwnerID != wsB.ID {
-		t.Errorf("response ownerId = %q, want bravo %q", created.OwnerID, wsB.ID)
+	if created.Service.OwnerID != wsB.ID {
+		t.Errorf("response ownerId = %q, want bravo %q", created.Service.OwnerID, wsB.ID)
 	}
 	if got := appTenantOf(t, wsB.ID, bravoWeb); got != wsB.ID {
 		t.Errorf("App landed in %q, want bravo %q", got, wsB.ID)

@@ -20,24 +20,61 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
+// keyValueWithCursor is components.schemas.keyValueWithCursor — the list-item
+// envelope GET /v1/key-value returns as a bare JSON array (cursor is a
+// SIBLING of the keyValue object, not a wrapper member; the same shape
+// postgresWithCursor/serviceWithCursor use), verified against the
+// render-oss/cli generated client.
+type keyValueWithCursor struct {
+	KeyValue KeyValueView `json:"keyValue"`
+	Cursor   string       `json:"cursor"`
+}
+
+func toKeyValueList(kvs []KeyValueView) []keyValueWithCursor {
+	out := make([]keyValueWithCursor, 0, len(kvs))
+	for _, kv := range kvs {
+		// cursor is opaque in Render; the KeyValue name/id is a stable, valid cursor.
+		out = append(out, keyValueWithCursor{KeyValue: kv, Cursor: kv.ID})
+	}
+	return out
+}
+
 // RegisterREST adds the managed key-value endpoints, Render-shaped
-// (/v1/key-value), mirroring the postgres feature's /v1/postgres surface. The
-// list envelope (a bare array) matches the datastore sibling; delete => 204,
-// create => 201 (Render conventions).
+// (/v1/key-value), mirroring the postgres feature's /v1/postgres surface.
+// delete => 204, create => 201 (Render conventions).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	base := "/v1/key-value"
 
 	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
-		out, err := s.ListKeyValues(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		out, err := s.ListKeyValues(r.Context(), q.Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, out)
+		// name filters by exact name, OR'd across repeated ?name= values (Render's
+		// documented "Filter by name" — the official CLI resolves a bare
+		// name/id argument to a key-value id by calling this with ?name=, and
+		// requires it to narrow to exactly one match).
+		if names := q["name"]; len(names) > 0 {
+			filtered := make([]KeyValueView, 0, len(out))
+			for _, kv := range out {
+				if slices.Contains(names, kv.Name) {
+					filtered = append(filtered, kv)
+				}
+			}
+			out = filtered
+		}
+		// Render's cursor-pagination envelope — a bare array breaks the official
+		// CLI's list decode (ListKeyValueResponse.JSON200 is *[]KeyValueWithCursor).
+		after, limit := core.PageParams(q)
+		page := core.Page(out, after, limit, func(kv KeyValueView) string { return kv.ID })
+		core.WriteJSON(w, http.StatusOK, toKeyValueList(page)) // [{keyValue, cursor}, ...]
 	})
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 		var req CreateKeyValueRequest

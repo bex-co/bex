@@ -2,3 +2,4 @@
 .pids/
 logs/
 bin/
+.render-cli/

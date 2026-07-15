@@ -48,6 +48,16 @@ type ownerWithCursor struct {
 	Cursor string      `json:"cursor"`
 }
 
+// renderUser mirrors components.schemas.user — GET /v1/users' response shape.
+type renderUser struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+func toRenderUser(u UserView) renderUser {
+	return renderUser{Email: u.Email, Name: u.Name}
+}
+
 func toRenderOwner(o OwnerView) renderOwner {
 	return renderOwner{ID: o.ID, Name: o.Name, Email: o.Email, Type: renderOwnerType}
 }

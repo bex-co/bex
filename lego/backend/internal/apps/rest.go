@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -322,6 +323,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		// name filters by exact name, OR'd across repeated ?name= values (Render's
+		// documented "Filter by name" — the official CLI resolves a bare
+		// name/id argument to a service id by calling this with ?name=, and
+		// requires it to narrow to exactly one match).
+		if names := q["name"]; len(names) > 0 {
+			filtered := make([]AppView, 0, len(apps))
+			for _, a := range apps {
+				if slices.Contains(names, a.Name) {
+					filtered = append(filtered, a)
+				}
+			}
+			apps = filtered
+		}
 		// Render's cursor pagination (docs/render-artifacts/owners-api.md): a
 		// service's cursor is its name; `cursor`/`limit` page the result.
 		after, limit := core.PageParams(q)
@@ -499,7 +513,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, http.StatusOK, toRenderService(app)) // dry-run: 200 (nothing created)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, toRenderService(app)) // Render: create => 201
+		// Render: create => 201, body wraps the service under serviceAndDeploy.
+		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: toRenderService(app)})
 	}
 
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the

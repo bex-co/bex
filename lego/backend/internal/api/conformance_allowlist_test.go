@@ -44,35 +44,20 @@ type conformanceDivergence struct {
 // conformanceAllowlist maps Render operationId to the list of known divergences
 // whose validation errors are suppressed during TestRenderConformance.
 var conformanceAllowlist = map[string][]conformanceDivergence{
-	// bex's GET /v1/postgres returns a flat []PostgresView (each item is a
-	// Postgres object directly). Render's list-postgres-databases returns
-	// [{postgres:{…}, cursor:"…"}] — a cursor-envelope array. The structural
-	// mismatch means each item is missing the "postgres" wrapper and the
-	// per-item "cursor" field.
-	// ADR018 §Postgres — REST column: "list returns flat array (no cursor envelope)".
-	"list-postgres-databases": {
-		{
-			contains: `missing required field "postgres"`,
-			adr018:   "ADR018 §Postgres REST: bex list-postgres returns []PostgresView (flat); Render returns [{postgres:{}, cursor}] (cursor-envelope)",
-		},
-		{
-			contains: `missing required field "cursor"`,
-			adr018:   "ADR018 §Postgres REST: flat array has no per-item cursor field",
-		},
-	},
-
-	// bex's GET /v1/key-value returns a flat []KeyValueView. Render's list-redis
-	// returns [{redis:{…}, cursor:"…"}] — a cursor-envelope array. Same rationale
-	// as postgres above.
-	// ADR018 §Key Value — REST column: "list returns flat array (no cursor envelope)".
+	// bex's GET /v1/key-value wraps each item as {keyValue:{…}, cursor:"…"},
+	// matching the field name the OFFICIAL render CLI's generated client
+	// expects (render-oss/cli pkg/client: KeyValueWithCursor.KeyValue,
+	// json:"keyValue") — verified by driving the real CLI (v2.21.0) against a
+	// live bex-api. testdata/render-openapi.json is a vendored, dated snapshot
+	// that still carries the product's pre-rename schema name ("redis"); the
+	// CLI's own generated types are the ones actually exercised at runtime, so
+	// bex follows them over the stale spec. Revisit if a refreshed OpenAPI
+	// snapshot confirms Render renamed the wire field too.
+	// ADR018 §Key Value — REST column: "list envelope key is keyValue, not redis (CLI-verified; spec snapshot predates the rename)".
 	"list-redis": {
 		{
 			contains: `missing required field "redis"`,
-			adr018:   "ADR018 §Key Value REST: bex list-key-value returns []KeyValueView (flat); Render returns [{redis:{}, cursor}] (cursor-envelope)",
-		},
-		{
-			contains: `missing required field "cursor"`,
-			adr018:   "ADR018 §Key Value REST: flat array has no per-item cursor field",
+			adr018:   "ADR018 §Key Value REST: bex list-key-value wraps items as {keyValue:{}, cursor} (CLI-verified); the vendored spec's stale schema name is \"redis\"",
 		},
 	},
 }

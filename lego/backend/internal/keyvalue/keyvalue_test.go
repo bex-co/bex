@@ -163,7 +163,9 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 	}
 	var view KeyValueView
 	_ = json.Unmarshal(w.Body.Bytes(), &view)
-	if view.MaxmemoryPolicy != "volatile-ttl" || view.PersistenceMode != "off" {
+	// The view echoes Render's underscore-separated wire format regardless of
+	// which separator the create request used (renderToCRD/crdToRender).
+	if view.MaxmemoryPolicy != "volatile_ttl" || view.PersistenceMode != "off" {
 		t.Fatalf("view settings = %q/%q", view.MaxmemoryPolicy, view.PersistenceMode)
 	}
 	var made appv1alpha1.KeyValue
@@ -199,7 +201,7 @@ func TestKeyValueMaxmemoryPersistence(t *testing.T) {
 		t.Fatalf("gql create: %v", res.Errors)
 	}
 	obj := res.Data.(map[string]any)["createKeyValue"].(map[string]any)
-	if obj["maxmemoryPolicy"] != "allkeys-lfu" || obj["persistenceMode"] != "snapshot" {
+	if obj["maxmemoryPolicy"] != "allkeys_lfu" || obj["persistenceMode"] != "snapshot" {
 		t.Fatalf("gql view = %v", obj)
 	}
 	var gqlMade appv1alpha1.KeyValue

@@ -19,6 +19,7 @@ package logs
 import (
 	"fmt"
 	"hash/fnv"
+	"time"
 )
 
 // render.go maps LogEntry onto Render's public-API log object: a required id,
@@ -84,7 +85,14 @@ func toRenderLog(e LogEntry) renderLog {
 	return renderLog{ID: logID(e), Message: e.Message, Timestamp: e.Timestamp, Labels: labels}
 }
 
-func toRenderLogList(entries []LogEntry, limit int64) renderLogList {
+// toRenderLogList builds the logs envelope. since/end are the query's own
+// resolved time bounds — Render marks nextStartTime/nextEndTime as REQUIRED
+// timestamps (never omitted or empty, verified against the render-oss/cli
+// generated client's Logs200Response: both are plain time.Time, not
+// pointers), so an empty-result query still needs valid cursors; the query's
+// own window is the only bound available when there are no entries to derive
+// one from.
+func toRenderLogList(entries []LogEntry, limit int64, since, end time.Time) renderLogList {
 	out := renderLogList{Logs: make([]renderLog, 0, len(entries))}
 	for _, e := range entries {
 		out.Logs = append(out.Logs, toRenderLog(e))
@@ -93,6 +101,15 @@ func toRenderLogList(entries []LogEntry, limit int64) renderLogList {
 	if n := len(entries); n > 0 {
 		out.NextStartTime = entries[n-1].Timestamp // newest
 		out.NextEndTime = entries[0].Timestamp     // oldest
+	} else {
+		if since.IsZero() {
+			since = time.Now().Add(-time.Hour) // Render's documented startTime default
+		}
+		if end.IsZero() {
+			end = time.Now() // Render's documented endTime default
+		}
+		out.NextStartTime = since.UTC().Format(time.RFC3339)
+		out.NextEndTime = end.UTC().Format(time.RFC3339)
 	}
 	out.HasMore = limit > 0 && int64(len(entries)) >= limit
 	return out

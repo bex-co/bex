@@ -20,9 +20,29 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+// postgresWithCursor is components.schemas.postgresWithCursor — the list-item
+// envelope GET /v1/postgres returns as a bare JSON array (cursor is a SIBLING
+// of the postgres object, not a wrapper member; the same shape
+// serviceWithCursor/ownerWithCursor use), verified against the render-oss/cli
+// generated client.
+type postgresWithCursor struct {
+	Postgres PostgresView `json:"postgres"`
+	Cursor   string       `json:"cursor"`
+}
+
+func toPostgresList(pgs []PostgresView) []postgresWithCursor {
+	out := make([]postgresWithCursor, 0, len(pgs))
+	for _, p := range pgs {
+		// cursor is opaque in Render; the Database name/id is a stable, valid cursor.
+		out = append(out, postgresWithCursor{Postgres: p, Cursor: p.ID})
+	}
+	return out
+}
 
 // RegisterREST adds the managed-Postgres endpoints, Render-shaped (/v1/postgres)
 // plus a bex-native /v1/databases alias.
@@ -41,12 +61,31 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	for _, base := range []string{"/v1/postgres", "/v1/databases"} {
 		mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
-			out, err := s.ListPostgres(r.Context(), r.URL.Query().Get("ownerId"))
+			q := r.URL.Query()
+			out, err := s.ListPostgres(r.Context(), q.Get("ownerId"))
 			if err != nil {
 				core.WriteErr(w, err)
 				return
 			}
-			core.WriteJSON(w, http.StatusOK, out)
+			// name filters by exact name, OR'd across repeated ?name= values (Render's
+			// documented "Filter by name" — the official CLI resolves a bare
+			// name/id argument to a database id by calling this with ?name=, and
+			// requires it to narrow to exactly one match).
+			if names := q["name"]; len(names) > 0 {
+				filtered := make([]PostgresView, 0, len(out))
+				for _, p := range out {
+					if slices.Contains(names, p.Name) {
+						filtered = append(filtered, p)
+					}
+				}
+				out = filtered
+			}
+			// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
+			// verified against the render-oss/cli generated client: a bare array of
+			// Postgres objects breaks the official CLI's list decode.
+			after, limit := core.PageParams(q)
+			page := core.Page(out, after, limit, func(p PostgresView) string { return p.ID })
+			core.WriteJSON(w, http.StatusOK, toPostgresList(page)) // [{postgres, cursor}, ...]
 		})
 		mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 			var req CreatePostgresRequest

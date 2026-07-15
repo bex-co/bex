@@ -269,6 +269,37 @@ func (s *Service) defaultWorkspace(ctx context.Context) (WorkspaceView, error) {
 	return view(t, "admin"), nil
 }
 
+// UserView is the caller's own account info — GET /v1/users
+// (components.schemas.user: {email, name}).
+type UserView struct {
+	Email string
+	Name  string
+}
+
+// CurrentUser answers GET /v1/users, Render's "who am I" endpoint (used by e.g.
+// the official Render CLI's `render whoami`). A session caller's email comes
+// straight off their Kratos identity (already resolved onto core.Identity by the
+// auth gate); a machine (API-key) caller carries no email of its own, so it
+// reports its bound workspace's earliest-admin email — the human who minted the
+// key, via the same ownerEmail lookup ListOwners uses. Name is not yet tracked
+// by bex's identity model (Kratos' default schema carries only email) and is
+// always "" — an honest subset, not a fabricated value. No GraphQL/MCP
+// equivalent: the dashboard authenticates with its Kratos session directly
+// rather than this REST-only endpoint, and no MCP tool needs "who am I".
+func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return UserView{}, err
+	}
+	id, _ := core.IdentityFrom(ctx)
+	email := id.Email
+	if email == "" {
+		if tenantID, ok := s.Tenant(ctx); ok {
+			email = s.ownerEmail(ctx, tenantID)
+		}
+	}
+	return UserView{Email: email}, nil
+}
+
 // OwnerFilter narrows ListOwners (GET /v1/owners): Names/Emails are OR'd within
 // each field, AND'd across fields (Render's docs: "one of the provided names" /
 // "one of the provided email addresses"). Both empty => no filtering.

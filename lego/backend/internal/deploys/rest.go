@@ -45,21 +45,30 @@ type renderCommit struct {
 	Message string `json:"message,omitempty"`
 }
 
+// renderDeployImage is Render's nested deploy.image object
+// (components.schemas.Deploy: "Image information used when creating the
+// deploy. Not present for Git-backed deploys" — {ref, registryCredential,
+// sha}), verified against the render-oss/cli generated client. bex only
+// tracks the resolved image string, reported as Ref.
+type renderDeployImage struct {
+	Ref string `json:"ref,omitempty"`
+}
+
 // renderDeploy mirrors Render's deploy object for the fields bex can honor
-// (id, status, commit, timestamps) plus bex-native extras (trigger, image,
+// (id, status, commit, timestamps) plus bex-native extras (trigger,
 // rollbackOf). Commit (w9/001) is Render's nested commit object, present only
 // when the deploy's triggering ref was resolved through the workspace's
 // GitHub connection — omitted, not faked, otherwise.
 type renderDeploy struct {
-	ID         string        `json:"id"`
-	Status     string        `json:"status"`
-	Trigger    string        `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "deploy_hook" | "rollback"
-	Image      string        `json:"image,omitempty"`      // bex extra
-	RollbackOf string        `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
-	Commit     *renderCommit `json:"commit,omitempty"`
-	CreatedAt  string        `json:"createdAt,omitempty"`
-	StartedAt  string        `json:"startedAt,omitempty"`
-	FinishedAt string        `json:"finishedAt,omitempty"`
+	ID         string             `json:"id"`
+	Status     string             `json:"status"`
+	Trigger    string             `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "deploy_hook" | "rollback"
+	Image      *renderDeployImage `json:"image,omitempty"`      // Render's nested image object, not a bare string
+	RollbackOf string             `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
+	Commit     *renderCommit      `json:"commit,omitempty"`
+	CreatedAt  string             `json:"createdAt,omitempty"`
+	StartedAt  string             `json:"startedAt,omitempty"`
+	FinishedAt string             `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome (bex extra, w1/m33):
 	// "running" | "succeeded" | "failed"; omitted when no pre-deploy step ran.
 	// Distinguishes a migration failure from a health-check failure (both
@@ -86,12 +95,14 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		ID:              d.ID,
 		Status:          d.Status,
 		Trigger:         d.Trigger,
-		Image:           d.Image,
 		RollbackOf:      d.RollbackOf,
 		CreatedAt:       formatTime(d.CreatedAt),
 		StartedAt:       formatTimePtr(d.StartedAt),
 		FinishedAt:      formatTimePtr(d.FinishedAt),
 		PreDeployStatus: d.PreDeployStatus,
+	}
+	if d.Image != "" {
+		out.Image = &renderDeployImage{Ref: d.Image}
 	}
 	if d.CommitID != "" {
 		out.Commit = &renderCommit{ID: d.CommitID, Message: d.CommitMessage}

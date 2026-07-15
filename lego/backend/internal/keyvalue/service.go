@@ -150,6 +150,18 @@ var validMaxmemoryPolicies = []string{
 
 var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
 
+// Render's wire format for these two enums is underscore-separated
+// (maxmemoryPolicy: "allkeys_lru"; persistenceMode: "journal_snapshot" —
+// verified against the render-oss/cli generated client's MaxmemoryPolicy/
+// PersistenceMode constants), while the KeyValue CRD's markers (and the
+// Valkey CLI flags the operator ultimately passes) are hyphenated. renderToCRD
+// normalizes an incoming Render-shaped value before validation/storage;
+// crdToRender converts a stored value back for a Render client to read. Both
+// are no-ops on values that already use the other separator, so accepting a
+// bare hyphenated value (bex's pre-w9 behavior) keeps working too.
+func renderToCRD(s string) string { return strings.ReplaceAll(s, "_", "-") }
+func crdToRender(s string) string { return strings.ReplaceAll(s, "-", "_") }
+
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus string.
 func kvStatus(p appv1alpha1.KeyValuePhase) string {
 	switch p {
@@ -176,8 +188,8 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
 		IPAllowList:     kv.Spec.IPAllowList,
-		MaxmemoryPolicy: kv.Spec.MaxmemoryPolicy,
-		PersistenceMode: kv.Spec.PersistenceMode,
+		MaxmemoryPolicy: crdToRender(kv.Spec.MaxmemoryPolicy),
+		PersistenceMode: crdToRender(kv.Spec.PersistenceMode),
 		ExternalHost:    kv.Status.ExternalHost,
 		Public:          kv.Spec.Public,
 		OwnerID:         kv.Labels[core.LabelTenant],
@@ -273,10 +285,12 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return KeyValueView{}, err
 	}
-	if req.MaxmemoryPolicy != "" && !slices.Contains(validMaxmemoryPolicies, req.MaxmemoryPolicy) {
+	maxmemoryPolicy := renderToCRD(req.MaxmemoryPolicy)
+	if maxmemoryPolicy != "" && !slices.Contains(validMaxmemoryPolicies, maxmemoryPolicy) {
 		return KeyValueView{}, fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, req.MaxmemoryPolicy, validMaxmemoryPolicies)
 	}
-	if req.PersistenceMode != "" && !slices.Contains(validPersistenceModes, req.PersistenceMode) {
+	persistenceMode := renderToCRD(req.PersistenceMode)
+	if persistenceMode != "" && !slices.Contains(validPersistenceModes, persistenceMode) {
 		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
 	}
 	// Per-workspace key-value cap (w7/m9).
@@ -299,8 +313,8 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 			StorageGB:       req.StorageGB,
 			Public:          req.Public,
 			IPAllowList:     req.IPAllowList,
-			MaxmemoryPolicy: req.MaxmemoryPolicy,
-			PersistenceMode: req.PersistenceMode,
+			MaxmemoryPolicy: maxmemoryPolicy,
+			PersistenceMode: persistenceMode,
 		},
 	}
 	// Stamp both the tenant label (ownerId scoping — kvView/ListKeyValues read

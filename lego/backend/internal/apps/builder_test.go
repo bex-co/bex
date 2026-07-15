@@ -53,10 +53,12 @@ func TestRenderNativeBuildContractAcrossCreateSurfaces(t *testing.T) {
 			t.Fatalf("spec = %+v", app.Spec)
 		}
 		var out struct {
-			Builder        string         `json:"builder"`
-			ServiceDetails map[string]any `json:"serviceDetails"`
+			Service struct {
+				Builder        string         `json:"builder"`
+				ServiceDetails map[string]any `json:"serviceDetails"`
+			} `json:"service"`
 		}
-		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Builder != "" || out.ServiceDetails["runtime"] != "node" {
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Service.Builder != "" || out.Service.ServiceDetails["runtime"] != "node" {
 			t.Fatalf("response = %s", rec.Body)
 		}
 	})

@@ -70,8 +70,11 @@ type renderService struct {
 	// autoscaling is not configured.
 	Autoscaling *renderAutoscaling `json:"autoscaling,omitempty"`
 	// AutoDeploy is Render's Auto-Deploy toggle: whether a signed git push
-	// redeploys this service (spec.autoDeploy).
-	AutoDeploy bool `json:"autoDeploy"`
+	// redeploys this service (spec.autoDeploy). Render's public API represents
+	// this as the string enum "yes"|"no" (components.schemas.autoDeploy), not a
+	// JSON boolean — a client generated from Render's OpenAPI spec (e.g. the
+	// official CLI) fails to unmarshal a bool here.
+	AutoDeploy string `json:"autoDeploy"`
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore. Required on Render's
 	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
@@ -96,6 +99,25 @@ type renderAutoscaling struct {
 type serviceWithCursor struct {
 	Service renderService `json:"service"`
 	Cursor  string        `json:"cursor"`
+}
+
+// serviceAndDeploy is components.schemas.serviceAndDeploy — the envelope
+// Render's POST /v1/services (create) returns, verified against the
+// render-oss/cli generated client (ServiceAndDeploy: {deployId?, service?}). A
+// client that unwraps `.service` from the create response (the official CLI's
+// ServiceRepo.CreateService does exactly this) breaks against a bare service
+// object. DeployId is omitted (bex's create doesn't yet mint a deploy record
+// id inline) rather than faked — an honest subset, not a wrong value.
+type serviceAndDeploy struct {
+	Service renderService `json:"service"`
+}
+
+// yesNoEnum renders Render's autoDeploy bool as its wire enum ("yes"/"no").
+func yesNoEnum(autoDeploy bool) string {
+	if autoDeploy {
+		return "yes"
+	}
+	return "no"
 }
 
 func toRenderService(a AppView) renderService {
@@ -178,7 +200,7 @@ func toRenderService(a AppView) renderService {
 		Repo:            a.Repo,
 		Branch:          a.Branch,
 		Autoscaling:     ras,
-		AutoDeploy:      a.AutoDeploy,
+		AutoDeploy:      yesNoEnum(a.AutoDeploy),
 		NotifyOnFail:    a.NotifyOnFail,
 		HealthCheckPath: a.HealthCheckPath,
 	}

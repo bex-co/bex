@@ -205,12 +205,12 @@ func TestREST_CreateHonorsOwnerIDInTheBody(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/services: %d body=%s", rec.Code, rec.Body.String())
 	}
-	var out renderService
+	var out serviceAndDeploy
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if out.OwnerID != "tea-2" {
-		t.Errorf("response ownerId = %q, want tea-2", out.OwnerID)
+	if out.Service.OwnerID != "tea-2" {
+		t.Errorf("response ownerId = %q, want tea-2", out.Service.OwnerID)
 	}
 	if got := createdApp(t, svc, "web").Labels[core.LabelTenant]; got != "tea-2" {
 		t.Errorf("App tenant label = %q, want tea-2", got)

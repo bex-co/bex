@@ -28,6 +28,16 @@ import (
 // here — Render exposes none, and bex's workspace-mutation surface is the
 // dashboard GraphQL (w6/m1's create/rename/delete).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	// GET /v1/users — Render's "who am I" endpoint (components.schemas.user):
+	// the CLI's `render whoami` and any client resolving its own identity.
+	mux.HandleFunc("GET /v1/users", func(w http.ResponseWriter, r *http.Request) {
+		u, err := s.CurrentUser(r.Context())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderUser(u))
+	})
 	mux.HandleFunc("GET /v1/owners", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		owners, err := s.ListOwners(r.Context(), OwnerFilter{Names: q["name"], Emails: q["email"]})

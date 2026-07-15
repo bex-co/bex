@@ -34,14 +34,22 @@ func WriteJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-// WriteErr maps a domain error sentinel onto its HTTP status and writes a
-// {"error": msg} body. One mapper for every feature's REST fragment, so the
-// surfaces answer identically.
+// WriteErr maps a domain error sentinel onto its HTTP status and writes the
+// body. The envelope carries BOTH bex's original {"error": msg} shape (kept
+// for existing tooling) and Render's public-API error schema
+// (components.schemas.error: {"id", "message"}, verified against the
+// render-oss/cli generated client) — a client written for Render (the
+// official CLI, any Render SDK) reads `.message` to report a real failure
+// reason instead of falling back to a generic "unknown error"; bex-only
+// callers keep reading `.error` unchanged. One mapper for every feature's
+// REST fragment, so the surfaces answer identically.
 func WriteErr(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
+	id := "internal_error"
 	switch {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
+		id = "not_found"
 	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrLogStoreUnavailable),
 		errors.Is(err, ErrAPIKeysUnavailable),
 		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
@@ -51,19 +59,24 @@ func WriteErr(w http.ResponseWriter, err error) {
 		errors.Is(err, ErrEventsUnavailable), errors.Is(err, ErrRegistryCredentialsUnavailable),
 		errors.Is(err, ErrWebhooksUnavailable):
 		code = http.StatusServiceUnavailable
+		id = "unavailable"
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest
+		id = "bad_request"
 	case errors.Is(err, ErrForbidden):
 		code = http.StatusForbidden
+		id = "forbidden"
 	case errors.Is(err, ErrConflict):
 		code = http.StatusConflict
+		id = "conflict"
 	}
+	msg := err.Error()
 	var ce *CodedError
 	if errors.As(err, &ce) {
-		WriteJSON(w, code, map[string]any{"error": err.Error(), "code": ce.Code, "params": ce.Params})
+		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": id, "code": ce.Code, "params": ce.Params})
 		return
 	}
-	WriteJSON(w, code, map[string]string{"error": err.Error()})
+	WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": id})
 }
 
 const (
