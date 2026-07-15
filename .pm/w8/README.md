@@ -28,6 +28,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **m13** — Datastore list pagination: Postgres + Key Value (7 tasks) ← from `/pm-brainstorm more milestones for each worker` round 3, 2026-07-14 (`core.PageParams` in `apps/rest.go:309` but nowhere in `postgres/rest.go`/`keyvalue/rest.go`; Render's `GET /postgres` + `GET /key-value` both page); datastore-family placement per the m12 precedent
 - [ ] **m14** — Postgres disk autoscaling (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `enableDiskAutoscaling`/`diskAutoscalingEnabled`, zero hits; the control loop between grow-only `storageGB` and w3/m10's already-scraped kubelet volume stats)
 - [ ] **m15** — Complete outbound-bandwidth accounting: HTTP + WebSocket + direct + datastore TCP (14 tasks) ← prerequisite split from `001` 2026-07-14; replaces the HTTP-only counter before bandwidth caps can be promoted
+- [ ] **m16** — Managed-datastore polish chores: create ipAllowList parity + pg_stat_statements backfill + KV version assessment (7 tasks) ← groups round-14 consistency find (postgres create `ipAllowList` is REST-only while keyvalue has all three surfaces) with notes `003` + `006`, 2026-07-15 (the w7/m37 chores pattern); coordinates with w4/m24 (descriptions) and w9/m38 (error bodies)
 
 ## Inbox
 

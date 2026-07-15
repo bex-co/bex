@@ -42,6 +42,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [ ] **m25** — Identity completeness: user `name` + machine-caller resolution (8 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (`workspaces/service.go:285` — Name "is always ''"; ADR018:217's left-open API-key-caller half); `render whoami` returns real name/email for session and API-key callers
 - [ ] **m26** — Audit-log Render-shape verification, evidence-first (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (parity-ledger mining: ADR018:134 is the only substantive ◐ with no owner — "schema wasn't resolvable from public docs at authoring time"; the pinned OpenAPI, CLI source, and real-account capture workflows postdate that assessment)
 - [ ] **m27** — Official Render CLI browser login via Hydra device flow (9 tasks) ← user request 2026-07-15 + w9/m2 auth-gap investigation; needs m9 + m17
+- [ ] **m28** — Environment inbound-IP rules: real enforcement semantics (8 tasks) ← promotes `018` (filed by w5/m31's closeout), `/pm-brainstorm` round 14, 2026-07-15; Render applies environment rules to eligible public web services/static sites + datastores, composes workspace/env/service layers, and treats empty as deny-all (seeded `0.0.0.0/0`) — bex fans only to member datastores and treats empty as open; coordinate with m24
 
 ## Suggested execution order (2026-07-09 brainstorm)
 

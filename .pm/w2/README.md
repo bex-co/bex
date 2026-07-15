@@ -47,6 +47,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m41** — Blueprint Key Value resources + keyvalue `fromService` refs (9 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (`blueprint.go:73`'s wire-compat placeholder + `deploy.go:1200`'s named rejection + checklist line 84); makes all three managed resource types Blueprint-first-class
 - [ ] **m42** — Deploy commit author timestamp: `commit.createdAt` (7 tasks) ← promotes `011` 2026-07-15 (filed by `w2/m38`'s Render recheck); captured at deploy-open, never inferred from deploy time
 - [ ] **m43** — Machine-surface list consistency: GraphQL/MCP pagination + service identity drift (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (the datastore cross-surface sweep 89c42936 left services/environments behind: GraphQL/MCP lists unpaged, GraphQL `Service.id` returns the App name vs REST/MCP `srv-…`, no `updatedAt`, ~10 stale "bex App name" MCP descriptions; verify-first on the id flip and on MCP `list_services` arg-free-by-design)
+- [ ] **m44** — Image-origin override: manual-deploy `imageUrl` + deploy-hook `imgURL` (8 tasks) ← promotes `012` + the unowned m30 residual (`w2/done/m30/t005.md:41`), `/pm-brainstorm` round 14, 2026-07-15; one origin-safety design (t001) unlocks both entry points, retiring the deploy surface's last two named-rejection 400s
 
 ## Inbox
 
