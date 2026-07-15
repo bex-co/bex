@@ -97,6 +97,8 @@ export interface ServiceView {
    * bex-api reports empty as "default", never a bare empty string.
    */
   notifyOnFail: string | null;
+  /** Render's service notification override: default | none | failure | all. */
+  notificationsToSend: string | null;
   /**
    * HTTP path the ReadinessProbe polls before routing traffic (`spec.healthCheckPath`,
    * w1/m23/t001); null/empty means the platform default "/". Only applies to

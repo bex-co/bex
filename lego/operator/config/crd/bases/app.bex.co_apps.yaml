@@ -441,6 +441,18 @@ spec:
                 maximum: 300
                 minimum: 1
                 type: integer
+              notificationsToSend:
+                description: |-
+                  NotificationsToSend is Render's authoritative per-service notification
+                  override: "default" inherits the workspace/member preference, "failure"
+                  sends only failure mail, "all" sends every supported lifecycle mail, and
+                  "none" suppresses all deploy mail. Empty is the legacy/default state.
+                enum:
+                - default
+                - none
+                - failure
+                - all
+                type: string
               notifyOnFail:
                 description: |-
                   NotifyOnFail is Render's per-service deploy-failure notification override

@@ -61,6 +61,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
+    notificationsToSend:
+      "notificationsToSend" in s ? (s.notificationsToSend ?? null) : null,
     renderSubdomainPolicy:
       "renderSubdomainPolicy" in s ? (s.renderSubdomainPolicy ?? null) : null,
     healthCheckPath:

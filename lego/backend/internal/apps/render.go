@@ -93,7 +93,8 @@ type renderService struct {
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore. Required on Render's
 	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
-	NotifyOnFail string `json:"notifyOnFail"`
+	NotifyOnFail        string `json:"notifyOnFail"`
+	NotificationsToSend string `json:"notificationsToSend"`
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
 	// empty means the default "/". Render's healthCheckPath field.
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
@@ -300,6 +301,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Autoscaling:           ras,
 		AutoDeploy:            yesNoEnum(a.AutoDeploy),
 		NotifyOnFail:          a.NotifyOnFail,
+		NotificationsToSend:   a.NotificationsToSend,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
 		IPAllowList:           toIPAllowListEntries(a.IPAllowList),

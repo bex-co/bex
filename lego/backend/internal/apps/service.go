@@ -339,6 +339,9 @@ type AppView struct {
 	// notify-on-fail.md). Empty is reported as "default". The Settings →
 	// Notifications section reads it and writes it via SetNotifyOnFail.
 	NotifyOnFail string `json:"notifyOnFail"`
+	// NotificationsToSend is Render's richer service notification policy:
+	// default | none | failure | all.
+	NotificationsToSend string `json:"notificationsToSend"`
 	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
 	// (enabled|disabled): whether the platform subdomain <slug>.onbex.co is
 	// active for this service. "enabled" (default) keeps it; "disabled" drops
@@ -640,9 +643,8 @@ func view(a *appv1alpha1.App) AppView {
 		v := autoscalingView(a)
 		asView = &v
 	}
-	// normalizeNotifyOnFail's error is unreachable here: the CRD enum already
-	// guarantees a.Spec.NotifyOnFail is "", "default", "notify", or "ignore".
-	notifyOnFail, _ := normalizeNotifyOnFail(a.Spec.NotifyOnFail)
+	policy := a.Spec.EffectiveNotificationsToSend()
+	notifyOnFail := appv1alpha1.NotifyOnFailForNotificationsToSend(policy)
 	// normalizeSubdomainPolicy's error is unreachable: the CRD enum guarantees
 	// a.Spec.SubdomainPolicy is "", "enabled", or "disabled".
 	subdomainPolicy, _ := normalizeSubdomainPolicy(a.Spec.SubdomainPolicy)
@@ -683,6 +685,7 @@ func view(a *appv1alpha1.App) AppView {
 		Autoscaling:           asView,
 		AutoDeploy:            a.Spec.AutoDeploy,
 		NotifyOnFail:          notifyOnFail,
+		NotificationsToSend:   policy,
 		RenderSubdomainPolicy: subdomainPolicy,
 		HealthCheckPath:       a.Spec.HealthCheckPath,
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
@@ -1973,6 +1976,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
 	dst.NotifyOnFail = want.NotifyOnFail
+	dst.NotificationsToSend = want.NotificationsToSend
 	dst.SubdomainPolicy = want.SubdomainPolicy
 	dst.PreDeployCommand = want.PreDeployCommand
 	if want.MaintenanceMode != nil {
@@ -2048,7 +2052,7 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, n
 	if tenantID == "" {
 		return
 	}
-	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, name)
+	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, name, a.Spec.NotificationsToSend)
 }
 
 // Restart requests a rolling restart (spec.restartedAt = now). The operator
@@ -2580,6 +2584,20 @@ func (s *Service) SetNotifyOnFail(ctx context.Context, name, value string) (AppV
 	}
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.NotifyOnFail = normalized
+		a.Spec.NotificationsToSend = ""
+	})
+}
+
+// SetNotificationsToSend changes Render's authoritative service notification
+// override. notifyOnFail remains a compatibility projection.
+func (s *Service) SetNotificationsToSend(ctx context.Context, name, value string) (AppView, error) {
+	normalized, err := normalizeNotificationsToSend(value)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+		a.Spec.NotificationsToSend = normalized
+		a.Spec.NotifyOnFail = appv1alpha1.NotifyOnFailForNotificationsToSend(normalized)
 	})
 }
 

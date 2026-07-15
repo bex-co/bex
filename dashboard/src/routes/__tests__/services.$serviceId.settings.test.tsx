@@ -100,9 +100,9 @@ vi.mock("@/features/services/hooks/use-maintenance-mode", () => ({
 
 // Notifications row (w4/m21) calls setNotifyOnFail via Apollo; mock it so
 // section-presence assertions don't need an Apollo client.
-vi.mock("@/features/services/hooks/use-notify-on-fail", () => ({
-  useNotifyOnFail: () => ({
-    setNotifyOnFail: vi.fn(async () => true),
+vi.mock("@/features/services/hooks/use-service-notifications", () => ({
+  useServiceNotifications: () => ({
+    setNotificationsToSend: vi.fn(async () => true),
     busy: false,
   }),
 }));

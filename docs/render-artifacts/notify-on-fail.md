@@ -29,20 +29,23 @@ Two tiers: workspace/owner defaults, and a per-service override that can defer t
 
 ## bex parity decisions
 
-bex's existing notification system (w3/m9, `docs/ADR018-render-parity.md` § Notifications) is **member-scoped**, not workspace-scoped: every member has their own `deploySucceeded`/`deployFailed` booleans, and `NotifyDeploy` emails whichever members opted in. Render's `notificationsToSend`/owner-settings richness (Slack, "all" vs "failure-only", preview-environment toggle) has no bex equivalent and is out of scope here — this milestone ships exactly the field the task names, `notifyOnFail`, with Render's exact name and enum, layered on top of bex's existing member-preference model rather than replacing it with Render's separate-endpoint/two-tier design:
+bex now implements Render's service-level `notificationsToSend` policy and exact override endpoint while retaining the existing member-scoped email settings as the workspace-default layer:
 
 | Decision | bex |
 | --- | --- |
-| Field name + enum | `notifyOnFail`, values `default` \| `notify` \| `ignore` — byte-identical to Render's `notifySetting` |
-| Placement | Top-level on the service object (`spec.notifyOnFail`), matching Render's service-object placement — **not** a separate overrides endpoint (Render's `notificationsToSend`/`previewNotificationsEnabled` richness is not modeled) |
-| Settable via | Create (`POST /v1/services` body, `serviceDetails`/create request) and `PATCH /v1/services/{id}` (top-level, alongside `autoDeploy`) — a deliberate simplification of Render's real write path (the separate `/notification-settings/overrides/services/{id}` endpoint), consistent with this task's own instruction to wire it through the existing create/PATCH surface rather than add a new endpoint family |
-| Scope | **Failure only** — the field's own name says so, and it composes with bex's per-member `deployFailed` preference, never `deploySucceeded`. A success email is unaffected by `notifyOnFail`; it always follows each member's own `deploySucceeded` preference, matching w3/m9. |
-| `default` | Defers entirely to bex's existing member-preference behavior (each opted-in member gets the failure email) — the composition rule the milestone's DoD calls out |
-| `ignore` | Suppresses the failure email for this service for **every** member, regardless of individual `deployFailed` preference — the DoD's "mute one flaky cron" case |
-| `notify` | Forces the failure email to every workspace member with a resolvable email, regardless of individual `deployFailed` opt-out — the symmetric override to `ignore` (Render's `notificationsToSend: "all"` plays the analogous force-on role at its layer) |
+| Authoritative field | `App.spec.notificationsToSend`, values `default` \| `none` \| `failure` \| `all` |
+| Render REST | `GET`/`PATCH /v1/notification-settings/overrides/services/{serviceId}`; PATCH accepts `notificationsToSend`. `previewNotificationsEnabled` is returned as `default`; non-default writes are rejected rather than ignored. |
+| Other surfaces | GraphQL `setNotificationsToSend`, MCP `set_notifications_to_send`, and the Service Settings selector all use the same four-state policy. |
+| `default` | Defers to each member's deploy-started/succeeded/failed preferences. A missing member-settings row defaults to failure-only. |
+| `none` | Suppresses every deploy lifecycle email for the service. |
+| `failure` | Sends only failed-deploy email to every resolvable workspace member. |
+| `all` | Sends deploy-started, succeeded, and failed email to every resolvable workspace member. |
+| Legacy compatibility | Existing CRs with no `notificationsToSend` retain the narrow `notifyOnFail` behavior: `ignore`/`notify` affect failures only, while started/succeeded still defer to member preferences. The legacy setter clears the richer field; richer-policy writes maintain a read-side `notifyOnFail` projection. |
+| Default migration | Schema defaults and absent settings rows are failure-only. Rows still equal to the former all-enabled default are migrated to failure-only; customized rows are not overwritten. |
 | Unknown value | `core.ErrBadRequest` (named 400), matching bex's `SetPlan`/`normalizeType` enum-validation convention |
 
 ## Divergences from Render, stated
 
-- No `notificationsToSend`/`previewNotificationsEnabled` owner- or service-level richness, no Slack channel, no separate overrides endpoint — bex's per-member preference model (w3/m9) already covers the workspace-default tier in its own way (opt-in per person, not per workspace), and `notifyOnFail` is the one additional per-service knob this milestone's DoD asks for.
-- Render's `notifyOnFail` is documented as read-only on the service object and driven by a separate endpoint; bex makes it directly settable on create/PATCH for surface consistency with every other spec field (`autoDeploy`, `healthCheckPath`, …) and because bex has no equivalent to Render's separate notification-overrides endpoint family to route through instead. A client reading `GET /v1/services/{id}` sees the same field name/enum Render returns; a client trying to PATCH it against real Render would 400 (Render silently ignores unknown PATCH fields, per `rest.go`'s own `patchServiceRequest` doc comment) — noted as a divergence, not hidden.
+- Workspace defaults remain member-scoped instead of Render's owner-wide email/Slack configuration.
+- Slack and preview-environment notification behavior are not implemented. The service endpoint exposes `previewNotificationsEnabled: default` only.
+- bex includes deploy-started email in `all`; Render's public enum does not enumerate individual event types.

@@ -1,8 +1,0 @@
-# setNotifyOnFail changes a service's deploy-failure notification override
-# (w4/m21, docs/render-artifacts/notify-on-fail.md): default | notify | ignore.
-mutation SetNotifyOnFail($id: String!, $value: String!) {
-  setNotifyOnFail(id: $id, value: $value) {
-    id
-    notifyOnFail
-  }
-}

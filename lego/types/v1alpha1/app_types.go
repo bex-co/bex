@@ -322,6 +322,14 @@ type AppSpec struct {
 	// +kubebuilder:validation:Enum=default;notify;ignore
 	NotifyOnFail string `json:"notifyOnFail,omitempty"`
 
+	// NotificationsToSend is Render's authoritative per-service notification
+	// override: "default" inherits the workspace/member preference, "failure"
+	// sends only failure mail, "all" sends every supported lifecycle mail, and
+	// "none" suppresses all deploy mail. Empty is the legacy/default state.
+	// +optional
+	// +kubebuilder:validation:Enum=default;none;failure;all
+	NotificationsToSend string `json:"notificationsToSend,omitempty"`
+
 	// PreDeployCommand is a command run to completion against the new revision's
 	// image before that revision serves traffic (Render's Pre-Deploy Command —
 	// typically a database migration or other one-off setup step). The operator

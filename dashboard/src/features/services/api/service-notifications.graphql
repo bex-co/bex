@@ -1,0 +1,7 @@
+mutation SetNotificationsToSend($id: String!, $value: String!) {
+  setNotificationsToSend(id: $id, value: $value) {
+    id
+    notificationsToSend
+    notifyOnFail
+  }
+}

@@ -138,6 +138,7 @@ const SERVICE = {
   runs: [],
   healthCheckPath: "/healthz",
   notifyOnFail: "default",
+  notificationsToSend: "default",
   maxShutdownDelaySeconds: 30,
   preDeployCommand: null,
   idleTTLSeconds: 0,
@@ -181,6 +182,7 @@ const WORKER = {
   runs: [],
   healthCheckPath: null,
   notifyOnFail: "default",
+  notificationsToSend: "default",
   maxShutdownDelaySeconds: 45,
   preDeployCommand: null,
   idleTTLSeconds: 0,
@@ -243,6 +245,7 @@ const CRON = {
   ],
   healthCheckPath: null,
   notifyOnFail: "default",
+  notificationsToSend: "default",
   maxShutdownDelaySeconds: null,
   preDeployCommand: null,
   idleTTLSeconds: 0,
@@ -1012,6 +1015,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         runs: [],
         healthCheckPath: null,
         notifyOnFail: "default",
+        notificationsToSend: "default",
         maxShutdownDelaySeconds: 30,
         preDeployCommand: null,
         idleTTLSeconds: 0,
@@ -1865,12 +1869,36 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // SetNotifyOnFail (w4/m21): persist the deploy-failure notification override.
     case "SetNotifyOnFail": {
       const svc = serviceById(variables.id);
-      if (svc) svc.notifyOnFail = variables.value || "default";
+      if (svc) {
+        svc.notifyOnFail = variables.value || "default";
+        delete svc.notificationsToSend;
+      }
       return {
         setNotifyOnFail: {
           __typename: "Service",
           id: variables.id,
           notifyOnFail: svc?.notifyOnFail ?? variables.value,
+        },
+      };
+    }
+    // SetNotificationsToSend: persist Render's service notification policy.
+    case "SetNotificationsToSend": {
+      const svc = serviceById(variables.id);
+      const value = variables.value || "default";
+      if (svc) {
+        svc.notificationsToSend = value;
+        svc.notifyOnFail =
+          value === "none"
+            ? "ignore"
+            : value === "default"
+              ? "default"
+              : "notify";
+      }
+      return {
+        setNotificationsToSend: {
+          __typename: "Service",
+          id: variables.id,
+          notificationsToSend: svc?.notificationsToSend ?? value,
         },
       };
     }

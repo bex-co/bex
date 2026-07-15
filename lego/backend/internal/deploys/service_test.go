@@ -82,7 +82,7 @@ func newBlockingStartedNotifier() *blockingStartedNotifier {
 	return &blockingStartedNotifier{calls: make(chan startedCall, 1), release: make(chan struct{})}
 }
 
-func (n *blockingStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName string) {
+func (n *blockingStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName, _ string) {
 	n.calls <- startedCall{tenantID: tenantID, appName: appName}
 	<-n.release
 }

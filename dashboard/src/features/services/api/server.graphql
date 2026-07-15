@@ -52,6 +52,7 @@ query Server($id: String!) {
     # notifyOnFail is Render's per-service deploy-failure notification override
     # (w4/m21, docs/render-artifacts/notify-on-fail.md): default | notify | ignore.
     notifyOnFail
+    notificationsToSend
     # renderSubdomainPolicy controls whether the platform subdomain is active
     # (enabled|disabled, Render's renderSubdomainPolicy, w7/m31).
     renderSubdomainPolicy

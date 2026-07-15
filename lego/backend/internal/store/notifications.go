@@ -26,8 +26,7 @@ import (
 // NotificationSettings is a row of `notification_settings` — one member's
 // override of their per-workspace deploy-email preferences (w3/m9). A member
 // with no row is not "opted out" — internal/notifications.Service applies the
-// default (all three lifecycle events true) when GetNotificationSettings
-// returns ErrNotFound.
+// failure-only default when GetNotificationSettings returns ErrNotFound.
 type NotificationSettings struct {
 	ID              string    `json:"id"`
 	TenantID        string    `json:"tenantId"`
@@ -41,7 +40,8 @@ type NotificationSettings struct {
 
 // NotifyRecipient is one workspace member's resolved deploy-notification
 // preferences — an explicit notification_settings row's values, or the
-// default (all three true) for a member who never customized them. Returned by
+// default (started=false, succeeded=false, failed=true) for a member who never
+// customized them. Returned by
 // ListNotifyRecipients, the notification service's fan-out source: it names WHO to
 // consider emailing, not their address (email resolution is the identity
 // provider's job, outside the store).
@@ -91,14 +91,14 @@ func (s *PGStore) UpsertNotificationSettings(ctx context.Context, tenantID, subj
 
 // ListNotifyRecipients returns every member of tenantID with their resolved
 // deploy-notification preferences: an explicit row's values via the LEFT
-// JOIN, or the default (all three true) via COALESCE for a member who never
+// JOIN, or the failure-only default via COALESCE for a member who never
 // customized them. One query serves the notification fan-out on every deploy
 // lifecycle event, rather than a settings lookup per member.
 func (s *PGStore) ListNotifyRecipients(ctx context.Context, tenantID string) ([]NotifyRecipient, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT m.subject,
-		       COALESCE(n.deploy_started, true),
-		       COALESCE(n.deploy_succeeded, true),
+		       COALESCE(n.deploy_started, false),
+		       COALESCE(n.deploy_succeeded, false),
 		       COALESCE(n.deploy_failed, true)
 		FROM tenant_members m
 		LEFT JOIN notification_settings n ON n.tenant_id = m.tenant_id AND n.subject = m.subject

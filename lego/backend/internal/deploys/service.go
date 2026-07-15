@@ -85,7 +85,7 @@ type CommitResolver interface {
 // avoids a feature-package dependency while letting Trigger fire only after
 // the deploy row was opened successfully.
 type DeployStartedNotifier interface {
-	NotifyDeployStarted(ctx context.Context, tenantID, appName string)
+	NotifyDeployStarted(ctx context.Context, tenantID, appName, notificationsToSend string)
 }
 
 // DeployView is the neutral projection of a store.Deploy the adapters render
@@ -399,7 +399,7 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, s
 	if tenantID == "" {
 		return
 	}
-	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, service)
+	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, service, a.Spec.NotificationsToSend)
 }
 
 // resolveCommit resolves the ref a trigger will build — the explicit

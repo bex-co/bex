@@ -105,6 +105,7 @@ describe("toServiceView", () => {
       autoDeploy: null,
       notifyOnFail: null,
       renderSubdomainPolicy: null,
+      notificationsToSend: null,
       healthCheckPath: null,
       maxShutdownDelaySeconds: null,
       preDeployCommand: null,
@@ -121,9 +122,9 @@ describe("toServiceView", () => {
   });
 
   it("carries a copy-ready SSH address only when the detail query selected it", () => {
-    expect(toServiceView(node({ sshAddress: "srv-example@ssh.bex.co" })).sshAddress).toBe(
-      "srv-example@ssh.bex.co",
-    );
+    expect(
+      toServiceView(node({ sshAddress: "srv-example@ssh.bex.co" })).sshAddress,
+    ).toBe("srv-example@ssh.bex.co");
   });
 
   it("falls back to id for a missing name and null for a missing url", () => {
