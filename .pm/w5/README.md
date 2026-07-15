@@ -44,10 +44,11 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - [x] **m28** — Dashboard SQL console for managed Postgres (8 tasks) ← from `/pm-brainstorm more` 2026-07-13 (second pass; `docs/ADR018-render-parity.md` "Read-only SQL query" row, UI cell) — done 2026-07-14, moved to `done/m28/`
 - [x] **m29** — Deploy detail page: build log + status timeline (9 tasks; DONE 2026-07-14 — exact deploy links, truthful row/event timeline, Git `type=build` pane + store-unavailable state, shared Cancel/Rollback, full eleven-status UI vocabulary; real mock-cluster deploy click-through passed; backend commit/lifecycle depth filed as `w2/m37`) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14 (Render's per-deploy page; w5/m21 shipped the list only); build-log pane consumes `w7/m28`
 - [x] **m30** — Dockerfile path + start command dashboard controls (9 tasks) ← promotes `w6/015.md` (filed by `w6/m21`'s parity check) via `/pm-brainstorm` round 5 + `$pm`, 2026-07-14; closes missing detail projection/narrow GraphQL setters plus the UI gaps (`dockerfilePath` absent, `startCommand` create-only) — **DONE**
+- [ ] **m31** — Environments UX round 2: ACLs, membership, confirmations, create-selectors (9 tasks) ← from `/pm-brainstorm` rounds 8–9, 2026-07-15; folds `014`; `w6/m19`'s ACLs and `w6/m24`'s env-group membership shipped backend-only, and a protected service currently can't be deleted/suspended from the browser at all (no `ProtectedConfirmation` in `dashboard/src`)
 
 ## Inbox
 
-- `014.md` — add Project/Environment selectors to managed Postgres and Key Value create pages (API create support shipped in w2/m37).
+_(`014.md` folded into **m31** (t005) 2026-07-15; note moved to `done/`)_
 
 - `013.md` — ADR018 stale-marker sweep (cron Build Command, header-rules UI ◐, email-recovery ◐) — sub-hour doc sweep; coordinate with `w4/m20/t003` on the email-recovery row ← from `/pm-brainstorm` round 4, 2026-07-14
 

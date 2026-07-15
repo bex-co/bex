@@ -32,11 +32,13 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m30** — Render OpenAPI contract-conformance suite in CI (8 tasks) ← from `/pm-brainstorm more milestones for each worker` round 4, 2026-07-14 (the parity ledger's manual "verified vs Render's OpenAPI" method has no automated guard; the gap-well is dry so the risk is now drift, not absence). Mechanizes ADR018's central claim; w7's CI-guard charter (gitleaks/trivy/structural guards). Render-parity closing task omitted — the milestone IS the parity check
 - [x] **m31** — `renderSubdomainPolicy`: disable the platform subdomain (9 tasks) ← from `/pm-brainstorm` round 6, 2026-07-14 (field-level spec-grep: enum enabled|disabled on webServiceDetails + POST/PATCH, zero hits in `lego/`; bex mirror = drop `<slug>.onbex.co` from `effectiveHosts` while custom hosts serve); host policy is the m6 domain-guard territory
 - [x] **m32** — Service inbound `ipAllowList`: web services + static sites (10 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `[{cidrBlock, description}]` on webServiceDetails + staticSiteDetails POST/PATCH, zero hits in apps; the m5 Traefik-middleware mechanism, HTTP flavor)
+- [ ] **m33** — Fix CNPG bootstrap vs. the tenant egress deny (6 tasks) ← promotes `004` 2026-07-15 (production defect from the `w9/m3` rollout verification: new managed Postgres on tenant nodes stalls in CNPG init — the m4 egress-deny policy selects the workspace label the operator propagates onto CNPG pods, blocking their k8s-API traffic; deny-overrides-allow ⇒ the selectors must be split)
 
 ## Inbox
 
-- `001.md` — Fresh tenant nodes cannot pull authenticated Zot images because App workloads carry no `imagePullSecret`; replace the live default-ServiceAccount patch with declared operator or GitOps ownership
-- `004.md` — Production CNPG bootstrap cannot reach the Kubernetes API through the tenant egress deny — exposed by the w9/m3 stable-ID rename smoke; split/narrow the Cilium policy without reopening node or metadata access
+- `001.md` — Fresh tenant nodes cannot pull authenticated Zot images because App workloads carry no `imagePullSecret` — **promoted to `w6/m29`** 2026-07-15 (materialized under w6 for capacity); the note stays here until w6/m29 closes out, which retires it to `done/` (the `w6/015` cross-workstream precedent)
+
+> `004.md` promoted to **m33** 2026-07-15; note moved to `done/`.
 
 ## Not in w7 (deliberate)
 
