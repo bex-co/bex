@@ -52,7 +52,15 @@ If working tree is clean and there's nothing to commit, skip to Step 4 (pull + p
 git pull --rebase origin main
 ```
 
-If the rebase has conflicts, **STOP** and report. Do not abort the rebase or use `--strategy=ours` without user confirmation.
+If the pull/rebase has conflicts, resolve them proactively and continue shipping. A conflict by itself is not a reason to stop or ask the user what to do.
+
+1. Inspect `git status`, the unmerged-file list (`git diff --name-only --diff-filter=U`), each combined diff, and relevant surrounding code/history. For difficult cases, inspect both index stages (`git show :2:<path>` and `git show :3:<path>`) and the commits being replayed.
+2. Infer the intent of both sides and produce the smallest coherent merge that preserves both whenever possible. Follow current repository conventions and update dependent code, tests, generated outputs, or documentation when the combined result requires it.
+3. Do not resolve wholesale with `--ours`, `--theirs`, `--strategy=ours`, or by blindly choosing the newer side. Use a side-specific version only when inspection shows that it is the complete intended result for that file.
+4. Remove all conflict markers, run the most relevant formatting, generation, and tests that are practical, and review the resolved diff for accidental loss.
+5. Stage only the resolved paths explicitly, run `git rebase --continue` (with a non-interactive editor if needed), and repeat until the rebase completes. If an autostash is restored with conflicts after the rebase, resolve and validate those conflicts with the same care, but do not run `git rebase --continue` when no rebase is active.
+
+Exhaust repository evidence and reasonable repairs before escalating. Escalate only when competing resolutions would materially change behavior and the intended choice cannot be inferred safely, or when resolution requires unavailable credentials/external state. Leave the worktree and rebase state intact, explain the exact files and competing semantics, and ask one narrow decision question—never a generic “what should I do?” Do not abort the rebase unless the user directs it.
 
 ## Step 4 — Stage and commit (if changes pending)
 
@@ -78,7 +86,7 @@ If a pre-commit hook fails, fix the underlying issue and create a NEW commit. Do
 git push origin main
 ```
 
-If the push is rejected (non-fast-forward), re-run Step 3 to rebase against the latest, then retry push. Do not force-push to `main`.
+If the push is rejected (non-fast-forward), re-run Step 3, resolve any conflicts using its procedure, and retry push. Do not force-push to `main`.
 
 ## Step 6 — Report
 
@@ -93,7 +101,7 @@ Shipped: a1b2c3d feat: add tp-backend IDL + CLI
 - Never `git push --force` to `main`.
 - Never `--no-verify` or skip hooks.
 - Never `git reset --hard` or `git checkout .` without user confirmation.
-- If anything ambiguous comes up (untracked files, divergent branch, unexpected remote state), stop and ask.
+- Investigate ambiguity using repository state and history before escalating. For untracked files, divergent history, or unexpected remote state, continue when the safe intent is evident; otherwise stop before destructive action and ask one narrow, evidence-backed question.
 
 ## Optional User Context
 
