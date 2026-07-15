@@ -1,18 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@apollo/client/react";
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  CircleDot,
+  PauseCircle,
+  PlayCircle,
+  RefreshCcw,
+  Rocket,
+  Scale,
+  XCircle,
+} from "lucide-react";
 import { ServiceEventsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
+  CardDescription,
   CardHeader,
   CardTitle,
   CardContent,
 } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
+import { formatRelativeAge } from "@/features/services/lib/format";
 import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
@@ -40,21 +55,116 @@ type TriggerFlags = {
   rollback?: boolean | null;
 } | null;
 
-function triggerLabel(trigger: TriggerFlags): string | null {
+function triggerKey(trigger: TriggerFlags): string | null {
   if (!trigger) return null;
-  if (trigger.rollback) return "rollback";
-  if (trigger.firstBuild) return "first build";
-  if (trigger.manual) return "manual";
-  if (trigger.envUpdated) return "env updated";
-  if (trigger.clearCache) return "clear cache";
-  if (trigger.deployedByRender) return "deployed by render";
+  if (trigger.rollback) return "services.eventsTriggerRollback";
+  if (trigger.firstBuild) return "services.eventsTriggerFirstBuild";
+  if (trigger.manual) return "services.eventsTriggerManual";
+  if (trigger.envUpdated) return "services.eventsTriggerEnvUpdated";
+  if (trigger.clearCache) return "services.eventsTriggerClearCache";
+  if (trigger.deployedByRender) return "services.eventsTriggerDeployedByRender";
   return null;
+}
+
+function eventTitleKey(type: string): string {
+  switch (type) {
+    case "deploy_started":
+      return "services.eventsTypeDeployStarted";
+    case "deploy_ended":
+      return "services.eventsTypeDeployFinished";
+    case "suspender_added":
+      return "services.eventsTypeSuspended";
+    case "suspender_removed":
+      return "services.eventsTypeResumed";
+    case "server_restarted":
+      return "services.eventsTypeRestarted";
+    case "plan_changed":
+      return "services.eventsTypePlanChanged";
+    case "instance_count_changed":
+      return "services.eventsTypeInstanceCountChanged";
+    case "autoscaling_config_changed":
+      return "services.eventsTypeAutoscalingChanged";
+    case "cron_job_run_started":
+      return "services.eventsTypeCronRunStarted";
+    case "cron_job_run_ended":
+      return "services.eventsTypeCronRunFinished";
+    case "env_vars_changed":
+      return "services.eventsTypeEnvVarsChanged";
+    case "env_group_linked":
+      return "services.eventsTypeEnvGroupLinked";
+    case "env_group_unlinked":
+      return "services.eventsTypeEnvGroupUnlinked";
+    case "auto_deploy_changed":
+      return "services.eventsTypeAutoDeployChanged";
+    case "idle_timeout_changed":
+      return "services.eventsTypeIdleTimeoutChanged";
+    case "display_name_changed":
+      return "services.eventsTypeDisplayNameChanged";
+    case "custom_domain_added":
+      return "services.eventsTypeCustomDomainAdded";
+    case "custom_domain_removed":
+      return "services.eventsTypeCustomDomainRemoved";
+    case "notify_on_fail_changed":
+      return "services.eventsTypeNotificationsChanged";
+    case "subdomain_policy_changed":
+      return "services.eventsTypeSubdomainPolicyChanged";
+    case "publish_path_changed":
+    case "routes_changed":
+    case "headers_changed":
+      return "services.eventsTypeStaticSiteChanged";
+    case "root_directory_changed":
+    case "dockerfile_path_changed":
+    case "build_filter_changed":
+    case "commands_changed":
+    case "source_changed":
+    case "pre_deploy_command_changed":
+    case "max_shutdown_delay_changed":
+      return "services.eventsTypeBuildSettingsChanged";
+    default:
+      return "services.eventsTypeServiceChanged";
+  }
+}
+
+function EventIcon({ type, status }: { type: string; status: string }) {
+  const iconProps = { className: "size-4", "aria-hidden": true } as const;
+
+  if (type === "deploy_started") return <Rocket {...iconProps} />;
+  if (type === "deploy_ended") {
+    return status === "update_failed" ? (
+      <XCircle {...iconProps} />
+    ) : (
+      <CheckCircle2 {...iconProps} />
+    );
+  }
+  if (type === "suspender_added") return <PauseCircle {...iconProps} />;
+  if (type === "suspender_removed") return <PlayCircle {...iconProps} />;
+  if (type === "server_restarted") return <RefreshCcw {...iconProps} />;
+  if (
+    type === "instance_count_changed" ||
+    type === "autoscaling_config_changed"
+  ) {
+    return <Scale {...iconProps} />;
+  }
+  return <CircleDot {...iconProps} />;
+}
+
+function eventIconClass(type: string, status: string): string {
+  if (status === "update_failed") {
+    return "bg-destructive/10 text-destructive";
+  }
+  if (type === "deploy_ended" && status === "live") {
+    return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+  }
+  if (type === "deploy_started") {
+    return "bg-primary/10 text-primary";
+  }
+  return "bg-muted text-muted-foreground";
 }
 
 export function ServiceEventsPage() {
   const { serviceId } = Route.useParams();
   const { t } = useTranslations();
-  const { data, loading, refetch } = useQuery(ServiceEventsDocument, {
+  const { data, loading, error, refetch } = useQuery(ServiceEventsDocument, {
     variables: { serviceId, limit: 20 },
     fetchPolicy: "cache-and-network",
   });
@@ -66,24 +176,84 @@ export function ServiceEventsPage() {
     (event): event is NonNullable<typeof event> & { id: string } =>
       event != null && !!event.id,
   );
+  const finishedDeployIds = new Set(
+    events
+      .filter((event) => event.type === "deploy_ended")
+      .map((event) => event.details?.deployId)
+      .filter((id): id is string => !!id),
+  );
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("services.eventsTitle")}</CardTitle>
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardHeader className="border-b py-5">
+          <div className="flex items-start gap-3">
+            <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+              <Activity className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2">
+                <CardTitle>{t("services.eventsTitle")}</CardTitle>
+                {!loading && !error && events.length > 0 ? (
+                  <Badge
+                    variant="secondary"
+                    aria-label={t("services.eventsCount", {
+                      count: events.length,
+                    })}
+                  >
+                    {events.length}
+                  </Badge>
+                ) : null}
+              </div>
+              <CardDescription>
+                {t("services.eventsDescription")}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading && events.length === 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-5 p-5 sm:p-6">
               {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-14 w-full" />
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2 pt-0.5">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-3 w-12" />
+                </div>
               ))}
             </div>
+          ) : error ? (
+            <div className="flex flex-col items-center px-6 py-14 text-center">
+              <div className="bg-destructive/10 text-destructive mb-4 flex size-10 items-center justify-center rounded-full">
+                <AlertCircle className="size-5" aria-hidden="true" />
+              </div>
+              <p className="font-medium">{t("services.eventsErrorTitle")}</p>
+              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                {t("services.eventsErrorDescription")}
+              </p>
+              <Button
+                className="mt-4"
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+              >
+                <RefreshCcw className="size-3.5" aria-hidden="true" />
+                {t("services.eventsRetry")}
+              </Button>
+            </div>
           ) : events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("services.eventsEmpty")}
-            </p>
+            <div className="flex flex-col items-center px-6 py-14 text-center">
+              <div className="bg-muted text-muted-foreground mb-4 flex size-10 items-center justify-center rounded-full">
+                <Activity className="size-5" aria-hidden="true" />
+              </div>
+              <p className="font-medium">{t("services.eventsEmptyTitle")}</p>
+              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                {t("services.eventsEmpty")}
+              </p>
+            </div>
           ) : (
             <div className="divide-y">
               {events.map((event) => {
@@ -95,18 +265,23 @@ export function ServiceEventsPage() {
                 // that API boundary for the shared badge and action helpers.
                 const status =
                   event.type === "deploy_started"
-                    ? "update_in_progress"
+                    ? finishedDeployIds.has(deployId)
+                      ? ""
+                      : "update_in_progress"
                     : details?.deployStatus === "succeeded"
                       ? "live"
                       : details?.deployStatus === "failed"
                         ? "update_failed"
                         : (details?.deployStatus ?? "");
-                const label = triggerLabel(details?.trigger ?? null);
+                const trigger = triggerKey(details?.trigger ?? null);
                 const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
                 const summary = (
                   <EventSummary
+                    type={event.type ?? ""}
                     status={status}
-                    label={label}
+                    trigger={trigger}
+                    deployId={deployId}
+                    actor={details?.actor || details?.triggeredByUser || ""}
                     preDeployStatus={details?.preDeployStatus ?? ""}
                     preDeploy={preDeploy}
                     timestamp={event.timestamp}
@@ -119,13 +294,13 @@ export function ServiceEventsPage() {
                 return (
                   <div
                     key={event.id}
-                    className="flex items-start justify-between gap-4 py-3"
+                    className="hover:bg-muted/30 flex flex-col gap-3 px-5 py-4 transition-colors sm:flex-row sm:items-start sm:px-6"
                   >
                     {deployId ? (
                       <Link
                         to="/services/$serviceId/deploys/$deployId"
                         params={{ serviceId, deployId }}
-                        className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="group min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {summary}
                       </Link>
@@ -133,12 +308,14 @@ export function ServiceEventsPage() {
                       <div className="min-w-0 flex-1">{summary}</div>
                     )}
                     {hasAction ? (
-                      <DeployActions
-                        serviceId={serviceId}
-                        deployId={deployId}
-                        status={status}
-                        onChanged={() => void refetch()}
-                      />
+                      <div className="shrink-0 self-end sm:self-center">
+                        <DeployActions
+                          serviceId={serviceId}
+                          deployId={deployId}
+                          status={status}
+                          onChanged={() => void refetch()}
+                        />
+                      </div>
                     ) : null}
                   </div>
                 );
@@ -156,47 +333,76 @@ export function ServiceEventsPage() {
 }
 
 function EventSummary({
+  type,
   status,
-  label,
+  trigger,
+  deployId,
+  actor,
   preDeployStatus,
   preDeploy,
   timestamp,
 }: {
+  type: string;
   status: string;
-  label: string | null;
+  trigger: string | null;
+  deployId: string;
+  actor: string;
   preDeployStatus: string;
   preDeploy: string | null;
   timestamp: string | null;
 }) {
   const { t } = useTranslations();
+  const isDeploy = type === "deploy_started" || type === "deploy_ended";
+  const exactTimestamp = timestamp
+    ? new Date(timestamp).toLocaleString()
+    : null;
+
   return (
-    <>
-      <div className="flex items-center gap-2">
-        <Badge variant={statusVariant(status)}>
-          {t(statusKey(status) as Parameters<typeof t>[0])}
-        </Badge>
-        {label ? (
-          <span className="text-xs capitalize text-muted-foreground">
-            {label}
-          </span>
+    <div className="flex min-w-0 items-start gap-3">
+      <div
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${eventIconClass(type, status)}`}
+      >
+        <EventIcon type={type} status={status} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium group-hover:text-primary">
+            {t(eventTitleKey(type) as Parameters<typeof t>[0])}
+          </p>
+          {isDeploy && status ? (
+            <Badge variant={statusVariant(status)}>
+              {t(statusKey(status) as Parameters<typeof t>[0])}
+            </Badge>
+          ) : null}
+        </div>
+        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          {trigger ? (
+            <span>{t(trigger as Parameters<typeof t>[0])}</span>
+          ) : null}
+          {actor ? <span>{t("services.eventsActor", { actor })}</span> : null}
+          {deployId ? (
+            <span className="font-mono">
+              {t("services.eventsDeployReference", { id: deployId })}
+            </span>
+          ) : null}
+          {timestamp && exactTimestamp ? (
+            <time dateTime={timestamp} title={exactTimestamp}>
+              {formatRelativeAge(timestamp)}
+            </time>
+          ) : null}
+        </div>
+        {preDeploy ? (
+          <p
+            className={`mt-2 text-xs ${
+              preDeployStatus === "failed"
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
+            {t(preDeploy as Parameters<typeof t>[0])}
+          </p>
         ) : null}
       </div>
-      {preDeploy ? (
-        <p
-          className={`mt-1 text-xs ${
-            preDeployStatus === "failed"
-              ? "text-destructive"
-              : "text-muted-foreground"
-          }`}
-        >
-          {t(preDeploy as Parameters<typeof t>[0])}
-        </p>
-      ) : null}
-      {timestamp ? (
-        <p className="mt-1 text-xs text-muted-foreground">
-          {new Date(timestamp).toLocaleString()}
-        </p>
-      ) : null}
-    </>
+    </div>
   );
 }

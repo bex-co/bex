@@ -61,7 +61,7 @@ export function ServiceNav({ serviceId }: { serviceId: string }) {
   return (
     <nav
       aria-label={t("services.navLabel")}
-      className="flex gap-1 border-b px-2 sm:px-4"
+      className="flex snap-x gap-1 overflow-x-auto border-b px-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden"
     >
       {ITEMS.map((item) => (
         <Link
@@ -70,7 +70,7 @@ export function ServiceNav({ serviceId }: { serviceId: string }) {
           params={{ serviceId }}
           activeOptions={{ exact: item.exact }}
           className={cn(
-            "border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground",
+            "shrink-0 snap-start whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground",
             "data-[status=active]:border-foreground data-[status=active]:text-foreground",
           )}
         >

@@ -1112,8 +1112,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab platform-subdomain section title",
   },
   "services.platformSubdomainDescription": {
-    message:
-      "控制你的服务是否在平台子域名上响应，可与自定义域名同时生效。",
+    message: "控制你的服务是否在平台子域名上响应，可与自定义域名同时生效。",
     description: "Settings tab platform-subdomain section description",
   },
   "services.platformSubdomainEnabled": {
@@ -2210,9 +2209,157 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "活动",
     description: "Events tab card title",
   },
+  "services.eventsDescription": {
+    message: "最近的部署和服务变更。",
+    description: "Events tab card description",
+  },
+  "services.eventsCount": {
+    message: "最近 {count} 条事件",
+    description: "Accessible label for the number of visible service events",
+  },
+  "services.eventsEmptyTitle": {
+    message: "暂无活动",
+    description: "Events tab empty-state title",
+  },
   "services.eventsEmpty": {
-    message: "暂无事件。",
-    description: "Events tab empty state",
+    message: "部署和服务变更将显示在这里。",
+    description: "Events tab empty-state description",
+  },
+  "services.eventsErrorTitle": {
+    message: "活动暂不可用",
+    description: "Events tab query-error title",
+  },
+  "services.eventsErrorDescription": {
+    message: "无法加载最近活动，请稍后重试。",
+    description: "Events tab query-error description",
+  },
+  "services.eventsRetry": {
+    message: "重试",
+    description: "Events tab query-error retry button",
+  },
+  "services.eventsActor": {
+    message: "由 {actor} 操作",
+    description: "Actor attribution shown on a service event",
+  },
+  "services.eventsDeployReference": {
+    message: "部署 {id}",
+    description: "Deploy identifier shown on a deploy activity row",
+  },
+  "services.eventsTriggerRollback": {
+    message: "回滚",
+    description: "Deploy event trigger: rollback",
+  },
+  "services.eventsTriggerFirstBuild": {
+    message: "首次构建",
+    description: "Deploy event trigger: initial build",
+  },
+  "services.eventsTriggerManual": {
+    message: "手动部署",
+    description: "Deploy event trigger: manual",
+  },
+  "services.eventsTriggerEnvUpdated": {
+    message: "环境已更新",
+    description: "Deploy event trigger: environment update",
+  },
+  "services.eventsTriggerClearCache": {
+    message: "已清除缓存",
+    description: "Deploy event trigger: build-cache clear",
+  },
+  "services.eventsTriggerDeployedByRender": {
+    message: "平台部署",
+    description: "Deploy event trigger: platform initiated",
+  },
+  "services.eventsTypeDeployStarted": {
+    message: "部署已开始",
+    description: "Service activity type: deploy started",
+  },
+  "services.eventsTypeDeployFinished": {
+    message: "部署已完成",
+    description: "Service activity type: deploy finished",
+  },
+  "services.eventsTypeSuspended": {
+    message: "服务已暂停",
+    description: "Service activity type: service suspended",
+  },
+  "services.eventsTypeResumed": {
+    message: "服务已恢复",
+    description: "Service activity type: service resumed",
+  },
+  "services.eventsTypeRestarted": {
+    message: "服务已重启",
+    description: "Service activity type: service restarted",
+  },
+  "services.eventsTypePlanChanged": {
+    message: "实例类型已更改",
+    description: "Service activity type: plan changed",
+  },
+  "services.eventsTypeInstanceCountChanged": {
+    message: "实例数量已更改",
+    description: "Service activity type: manual scale",
+  },
+  "services.eventsTypeAutoscalingChanged": {
+    message: "自动伸缩已更新",
+    description: "Service activity type: autoscaling configuration changed",
+  },
+  "services.eventsTypeCronRunStarted": {
+    message: "定时任务已开始",
+    description: "Service activity type: cron run started",
+  },
+  "services.eventsTypeCronRunFinished": {
+    message: "定时任务已完成",
+    description: "Service activity type: cron run finished",
+  },
+  "services.eventsTypeEnvVarsChanged": {
+    message: "环境变量已更改",
+    description: "Service activity type: environment variables changed",
+  },
+  "services.eventsTypeEnvGroupLinked": {
+    message: "已关联环境组",
+    description: "Service activity type: environment group linked",
+  },
+  "services.eventsTypeEnvGroupUnlinked": {
+    message: "已取消关联环境组",
+    description: "Service activity type: environment group unlinked",
+  },
+  "services.eventsTypeAutoDeployChanged": {
+    message: "自动部署已更新",
+    description: "Service activity type: auto-deploy setting changed",
+  },
+  "services.eventsTypeIdleTimeoutChanged": {
+    message: "空闲超时已更新",
+    description: "Service activity type: idle timeout changed",
+  },
+  "services.eventsTypeDisplayNameChanged": {
+    message: "显示名称已更改",
+    description: "Service activity type: display name changed",
+  },
+  "services.eventsTypeCustomDomainAdded": {
+    message: "已添加自定义域名",
+    description: "Service activity type: custom domain added",
+  },
+  "services.eventsTypeCustomDomainRemoved": {
+    message: "已移除自定义域名",
+    description: "Service activity type: custom domain removed",
+  },
+  "services.eventsTypeNotificationsChanged": {
+    message: "失败通知已更新",
+    description: "Service activity type: failure notification setting changed",
+  },
+  "services.eventsTypeSubdomainPolicyChanged": {
+    message: "平台子域名已更新",
+    description: "Service activity type: platform subdomain policy changed",
+  },
+  "services.eventsTypeStaticSiteChanged": {
+    message: "静态站点设置已更改",
+    description: "Service activity type: static-site configuration changed",
+  },
+  "services.eventsTypeBuildSettingsChanged": {
+    message: "构建和部署设置已更改",
+    description: "Service activity type: build or deploy configuration changed",
+  },
+  "services.eventsTypeServiceChanged": {
+    message: "服务设置已更改",
+    description: "Fallback service activity type",
   },
   "services.eventsManualDeploy": {
     message: "手动部署",
