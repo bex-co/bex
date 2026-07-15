@@ -51,9 +51,13 @@ export function ResourceTable({
       <TableHeader>
         <TableRow>
           <TableHead>{t("projects.colName")}</TableHead>
-          <TableHead>{t("projects.colType")}</TableHead>
+          <TableHead className="hidden sm:table-cell">
+            {t("projects.colType")}
+          </TableHead>
           <TableHead>{t("projects.colStatus")}</TableHead>
-          <TableHead>{t("projects.colCreated")}</TableHead>
+          <TableHead className="hidden md:table-cell">
+            {t("projects.colCreated")}
+          </TableHead>
           <TableHead className="w-0 text-right">
             <span className="sr-only">{t("projects.colActions")}</span>
           </TableHead>
@@ -96,22 +100,25 @@ function ResourceTableRow({
     const service = row.service;
     return (
       <TableRow>
-        <TableCell className="font-medium">
+        <TableCell className="min-w-0 font-medium">
           <Link
             to="/services/$serviceId"
             params={{ serviceId: service.id }}
-            className="hover:underline"
+            className="block max-w-40 truncate hover:underline sm:max-w-56"
           >
             {service.name}
           </Link>
+          <div className="mt-1 sm:hidden">
+            <ResourceTypeBadge kind="service" />
+          </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden sm:table-cell">
           <ResourceTypeBadge kind="service" />
         </TableCell>
         <TableCell>
           <ServiceStatusBadge service={service} />
         </TableCell>
-        <TableCell className="tabular-nums text-muted-foreground">
+        <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
           {formatRelativeAge(service.createdAt)}
         </TableCell>
         <TableCell className="text-right">
@@ -131,26 +138,32 @@ function ResourceTableRow({
     const database = row.database;
     return (
       <TableRow>
-        <TableCell className="font-medium">
+        <TableCell className="min-w-0 font-medium">
           <Link
             to="/databases/$databaseId"
             params={{ databaseId: database.id }}
-            className="hover:underline"
+            className="block max-w-40 truncate hover:underline sm:max-w-56"
           >
             {database.name}
           </Link>
+          <div className="mt-1 sm:hidden">
+            <ResourceTypeBadge kind="database" />
+          </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden sm:table-cell">
           <ResourceTypeBadge kind="database" />
         </TableCell>
         <TableCell>
           <DatabaseStatusBadge status={database.status} />
         </TableCell>
-        <TableCell className="tabular-nums text-muted-foreground">
+        <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
           {formatRelativeAge(database.createdAt)}
         </TableCell>
         <TableCell className="text-right">
-          <DatabaseRowActions database={database} onDeleted={onDatabaseDeleted} />
+          <DatabaseRowActions
+            database={database}
+            onDeleted={onDatabaseDeleted}
+          />
         </TableCell>
       </TableRow>
     );
@@ -160,26 +173,32 @@ function ResourceTableRow({
     const keyValue = row.keyValue;
     return (
       <TableRow>
-        <TableCell className="font-medium">
+        <TableCell className="min-w-0 font-medium">
           <Link
             to="/keyvalue/$keyValueId"
             params={{ keyValueId: keyValue.id }}
-            className="hover:underline"
+            className="block max-w-40 truncate hover:underline sm:max-w-56"
           >
             {keyValue.name}
           </Link>
+          <div className="mt-1 sm:hidden">
+            <ResourceTypeBadge kind="keyvalue" />
+          </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden sm:table-cell">
           <ResourceTypeBadge kind="keyvalue" />
         </TableCell>
         <TableCell>
           <KeyValueStatusBadge status={keyValue.status} />
         </TableCell>
-        <TableCell className="tabular-nums text-muted-foreground">
+        <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
           {formatRelativeAge(keyValue.createdAt)}
         </TableCell>
         <TableCell className="text-right">
-          <KeyValueRowActions keyValue={keyValue} onDeleted={onKeyValueDeleted} />
+          <KeyValueRowActions
+            keyValue={keyValue}
+            onDeleted={onKeyValueDeleted}
+          />
         </TableCell>
       </TableRow>
     );
@@ -194,13 +213,13 @@ function ResourceSkeletonRow() {
       <TableCell>
         <Skeleton className="h-4 w-32" />
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden sm:table-cell">
         <Skeleton className="h-5 w-20 rounded-md" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-5 w-16 rounded-md" />
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         <Skeleton className="h-4 w-10" />
       </TableCell>
       <TableCell className="text-right">

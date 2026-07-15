@@ -137,6 +137,19 @@ describe("environment-group queries", () => {
       name: "renamed",
     });
   });
+
+  it("treats an empty adapter detail object as not found", () => {
+    mockUseQuery.mockReturnValue({
+      data: { envGroup: { id: "", name: "" } },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvGroup("missing"));
+
+    expect(result.current.group).toBeNull();
+  });
 });
 
 describe("useEnvGroupMutations", () => {

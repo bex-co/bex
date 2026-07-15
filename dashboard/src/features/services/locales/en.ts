@@ -184,6 +184,14 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The request to bex-api failed. Check your connection and retry.",
     description: "Services list error card body",
   },
+  "services.detailErrorTitle": {
+    message: "Couldn't load service",
+    description: "Service detail query error card title",
+  },
+  "services.detailErrorBody": {
+    message: "The request to bex-api failed. The service may still exist.",
+    description: "Service detail query error card body",
+  },
   "services.emptyTitle": {
     message: "No services yet",
     description: "Services list empty state title",

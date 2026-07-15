@@ -78,7 +78,9 @@ export function WorkspaceDetailsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("workspaces.settingsTitle")}</CardTitle>
+        <CardTitle>
+          <h1>{t("workspaces.settingsTitle")}</h1>
+        </CardTitle>
         <CardDescription>{t("workspaces.settingsDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

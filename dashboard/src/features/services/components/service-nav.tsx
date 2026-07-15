@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import type { en } from "@/i18n";
@@ -57,9 +58,28 @@ const ITEMS: ServiceNavItem[] = [
 
 export function ServiceNav({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const navRef = useRef<HTMLElement>(null);
+
+  // The tab row scrolls horizontally on narrow screens. Keep the current tab
+  // visible after direct navigation (especially Scaling and Settings, which
+  // otherwise start beyond the right edge with no visible active indicator).
+  useEffect(() => {
+    const active = navRef.current?.querySelector<HTMLElement>(
+      '[data-status="active"]',
+    );
+    active?.scrollIntoView?.({
+      behavior: "instant",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [pathname]);
 
   return (
     <nav
+      ref={navRef}
       aria-label={t("services.navLabel")}
       className="flex snap-x gap-1 overflow-x-auto border-b px-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden"
     >

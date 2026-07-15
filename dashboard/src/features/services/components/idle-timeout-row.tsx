@@ -55,7 +55,7 @@ export function IdleTimeoutRow({
   // Paid tiers never sleep (w1/m4) — no control, just the always-on notice.
   if (!planSleeps(plan)) {
     return (
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           {label}
           <div className="mt-1 text-sm text-muted-foreground italic">
@@ -69,8 +69,8 @@ export function IdleTimeoutRow({
   const options = idleTimeoutOptions(idleTTLSeconds);
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         {label}
         <div className="mt-1 text-sm text-muted-foreground">
           {t("services.settingsIdleTimeoutHint")}
@@ -84,7 +84,7 @@ export function IdleTimeoutRow({
           if (next !== idleTTLSeconds) void setIdleTimeout(serviceId, next);
         }}
       >
-        <SelectTrigger size="sm" className="w-40">
+        <SelectTrigger size="sm" className="w-full sm:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

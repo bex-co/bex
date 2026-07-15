@@ -191,10 +191,11 @@ describe("HomePage", () => {
     expect(within(table).getByText("shop-db")).toBeInTheDocument();
     expect(within(table).getByText("sessions-cache")).toBeInTheDocument();
 
-    // one Type badge per row, telling the three kinds apart in the merged table
-    expect(within(table).getByText("Service")).toBeInTheDocument();
-    expect(within(table).getByText("Database")).toBeInTheDocument();
-    expect(within(table).getAllByText("Key Value")).toHaveLength(1);
+    // Each kind has a desktop Type-cell badge and a mobile badge below its
+    // name; responsive display classes ensure exactly one is visible.
+    expect(within(table).getAllByText("Service")).toHaveLength(2);
+    expect(within(table).getAllByText("Database")).toHaveLength(2);
+    expect(within(table).getAllByText("Key Value")).toHaveLength(2);
 
     // each row still links to its own kind's detail page
     expect(within(table).getByText("hello-go").closest("a")).toHaveAttribute(
