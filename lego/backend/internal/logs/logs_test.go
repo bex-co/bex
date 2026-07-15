@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -474,6 +475,51 @@ func TestGraphQLLogsMaxQueryHoursBounds(t *testing.T) {
 		res := graphql.Do(graphql.Params{Schema: schema, RequestString: q, Context: context.Background()})
 		if len(res.Errors) == 0 {
 			t.Errorf("%s: an over-wide window => resolver error, got none", q)
+		}
+	}
+}
+
+// TestMCPLogsMaxQueryHoursBounds covers w9/004: BEX_MAX_QUERY_HOURS bounds
+// MCP's list_logs/list_log_label_values exactly as it bounds REST and GraphQL
+// (rest.go's checkWindow) — before this, MCP was the one surface that could
+// scan an unbounded startTime..endTime range.
+func TestMCPLogsMaxQueryHoursBounds(t *testing.T) {
+	svc := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
+		sampleApp("web"), podFor("web", webInst))
+	svc.MaxQueryHours = 24
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { cs.Close() })
+
+	wide := map[string]any{
+		"resource":  []string{"web"},
+		"startTime": "2020-01-01T00:00:00Z",
+		"endTime":   "2026-01-01T00:00:00Z",
+	}
+	for _, tool := range []string{"list_logs", "list_log_label_values"} {
+		args := map[string]any{}
+		for k, v := range wide {
+			args[k] = v
+		}
+		if tool == "list_log_label_values" {
+			args["label"] = "level"
+		}
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
+		if err != nil {
+			t.Fatalf("%s: transport error: %v", tool, err)
+		}
+		if !res.IsError {
+			t.Errorf("%s: an over-wide window => tool error, got success", tool)
 		}
 	}
 }

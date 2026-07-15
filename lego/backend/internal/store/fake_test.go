@@ -507,18 +507,18 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 	return res, nil
 }
 
-func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (Deploy, error) {
+func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
 	m.deploys[d.ID] = d
 	return d, nil
 }
 
-func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string) (Deploy, error) {
+func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
@@ -526,7 +526,7 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	}
 	d := Deploy{
 		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Status: DeployUpdateInProgress, CreatedAt: time.Now(),
+		RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress, CreatedAt: time.Now(),
 	}
 	m.deploys[d.ID] = d
 	return d, nil

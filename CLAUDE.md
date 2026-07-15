@@ -84,7 +84,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_RATE_LIMIT` | per-caller token-bucket fill rate in requests/min (default 500 — Render's documented budget); `0` disables rate limiting (docs/ADR006-bex-api.md §Rate limits) |
 | bex-api | `BEX_RATE_BURST` | token-bucket burst capacity (default = `BEX_RATE_LIMIT`); `0` defaults to `BEX_RATE_LIMIT` |
 | bex-api | `BEX_MAX_BODY_BYTES` | max non-GET request body size in bytes (default 2097152 = 2 MiB); `0` disables |
-| bex-api | `BEX_MAX_QUERY_HOURS` | max `startTime`..`endTime` window for REST log/metrics queries in hours (default 720 = 30 days); `0` disables |
+| bex-api | `BEX_MAX_QUERY_HOURS` | max `startTime`..`endTime` window for log/metrics queries in hours (default 720 = 30 days); enforced on the log reads across REST, GraphQL, and MCP (w9/004); `0` disables |
 | bex-api | `BEX_MAX_SSE_CONNS` | max concurrent `GET /v1/logs/subscribe` SSE connections (default 100); `0` disables |
 | bex-api | `BEX_MAX_SERVICES` | per-workspace service creation cap (docs/ADR006-bex-api.md §Per-workspace resource caps); `0` = unlimited (default, byte-identical). Render Hobby anchor: 25 |
 | bex-api | `BEX_MAX_POSTGRES` | per-workspace Postgres creation cap; `0` = unlimited. Render Hobby anchor: 1 |

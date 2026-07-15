@@ -41,10 +41,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 }
 
 // checkWindow enforces BEX_MAX_QUERY_HOURS on a query's time range. Every REST
-// log read goes through it — the historical query AND label discovery — and
-// so does GraphQL's `logs`/`logLabelValues` (graphql.go, w9/m1/t002) — both
-// accept the same startTime/endTime and would otherwise let a caller scan the
-// store unbounded.
+// log read goes through it — the historical query AND label discovery — and so
+// do GraphQL's `logs`/`logLabelValues` (graphql.go, w9/m1/t002) and MCP's
+// `list_logs`/`list_log_label_values` (mcp.go, w9/004) — all accept the same
+// startTime/endTime and would otherwise let a caller scan the store unbounded.
 func (s *Service) checkWindow(q LogQuery) error {
 	if s.MaxQueryHours <= 0 || q.Since.IsZero() {
 		return nil

@@ -323,7 +323,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		d.Usage.Selections = selections
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,
@@ -345,6 +345,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Deploys: &deploys.Service{
 			Base:              base,
 			Store:             d.DeployStore,
+			Commits:           gh.DeployCommitSource(),
 			BuildNamespace:    d.DeployBuildNamespace,
 			DeployHookBaseURL: d.DeployHookBaseURL,
 			DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),

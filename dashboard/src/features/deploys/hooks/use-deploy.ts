@@ -12,6 +12,9 @@ export interface DeployView {
   trigger: string;
   image: string;
   rollbackOf: string;
+  /** The resolved commit this deploy ran (w9/001); "" when unresolved. */
+  commitId: string;
+  commitMessage: string;
   createdAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -68,6 +71,8 @@ function toDeployView(
     trigger: d.trigger ?? "",
     image: d.image ?? "",
     rollbackOf: d.rollbackOf ?? "",
+    commitId: d.commitId ?? "",
+    commitMessage: d.commitMessage ?? "",
     createdAt: d.createdAt ?? null,
     startedAt: d.startedAt ?? null,
     finishedAt: d.finishedAt ?? null,

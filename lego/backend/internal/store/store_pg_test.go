@@ -312,9 +312,15 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2)
+	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2, CommitInfo{Hash: "abc1234def", Message: "fix: header"})
 	if err != nil || second.Status != DeployUpdateInProgress {
 		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
+	}
+	// Commit metadata round-trips through the real columns (w9/001) — `commit`
+	// is an unreserved SQL keyword, so this also proves the unquoted column
+	// name survives real Postgres.
+	if got, err := s.GetDeploy(ctx, app.ID, second.ID); err != nil || got.Commit != "abc1234def" || got.CommitMessage != "fix: header" {
+		t.Fatalf("commit round-trip = %+v (err %v), want hash+message back", got, err)
 	}
 	deploys, err = s.ListDeploys(ctx, app.ID, DeployFilter{})
 	if err != nil || len(deploys) != 2 || deploys[0].ID != second.ID {

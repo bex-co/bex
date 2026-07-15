@@ -290,3 +290,6 @@ func (f *fakeGitHubAPIClient) MintInstallationToken(context.Context, int64) (git
 func (f *fakeGitHubAPIClient) RepoAccessible(context.Context, string, string, string) (bool, error) {
 	return false, nil
 }
+func (f *fakeGitHubAPIClient) GetCommit(context.Context, string, string, string, string) (github.Commit, error) {
+	return github.Commit{}, nil
+}

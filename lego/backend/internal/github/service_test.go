@@ -63,6 +63,11 @@ type fakeClient struct {
 	tokenErr   error
 	repoOK     bool // RepoAccessible result
 	repoErr    error
+	commit     Commit // GetCommit result (w9/001)
+	commitErr  error
+	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
+	// with, for assertions.
+	gotCommitRef []string
 }
 
 func (c *fakeClient) InstallURL() string { return "https://github.com/apps/bex/installations/new" }
@@ -87,6 +92,14 @@ func (c *fakeClient) MintInstallationToken(_ context.Context, _ int64) (Installa
 
 func (c *fakeClient) RepoAccessible(_ context.Context, _, _, _ string) (bool, error) {
 	return c.repoOK, c.repoErr
+}
+
+func (c *fakeClient) GetCommit(_ context.Context, token, owner, repo, ref string) (Commit, error) {
+	c.gotCommitRef = []string{token, owner, repo, ref}
+	if c.commitErr != nil {
+		return Commit{}, c.commitErr
+	}
+	return c.commit, nil
 }
 
 // allowChecker allows exactly the relations in its set.
@@ -306,6 +319,59 @@ func TestCloneToken(t *testing.T) {
 	failCheck := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoErr: &APIError{Status: 500}}, Store: st}
 	if _, _, err := failCheck.cloneToken(ctx, "default", "https://github.com/octo/app"); err == nil {
 		t.Error("repo-access-check failure must surface an error")
+	}
+}
+
+// TestResolveCommit covers w9/001: the deploy path's commit resolution —
+// connected repo => the ref's resolved SHA+message; every "nothing to
+// resolve" shape (github off, no connection, unparseable repo URL, unknown
+// ref/out-of-grant repo per 404/422) => (false, nil), never an error a
+// caller might mistake for a deploy-blocking failure.
+func TestResolveCommit(t *testing.T) {
+	st := newFakeStore()
+	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	ctx := context.Background()
+
+	cl := &fakeClient{token: "ghs_fresh", commit: Commit{SHA: "abc1234def", Message: "fix: header"}}
+	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: st}
+	c, ok, err := svc.DeployCommitSource().ResolveCommit(ctx, "default", "https://github.com/octo/app", "main")
+	if err != nil || !ok || c.Hash != "abc1234def" || c.Message != "fix: header" {
+		t.Fatalf("resolveCommit = %+v,%v,%v, want the resolved commit", c, ok, err)
+	}
+	// The lookup authenticates with the freshly minted installation token.
+	if len(cl.gotCommitRef) != 4 || cl.gotCommitRef[0] != "ghs_fresh" || cl.gotCommitRef[3] != "main" {
+		t.Errorf("GetCommit called with %v, want the minted token + the ref", cl.gotCommitRef)
+	}
+
+	// Unknown ref / repo out of the grant (GitHub 422/404) => (false, nil).
+	for _, status := range []int{404, 422} {
+		bad := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: &APIError{Status: status}}, Store: st}
+		if _, ok, err := bad.resolveCommit(ctx, "default", "https://github.com/octo/app", "gone"); ok || err != nil {
+			t.Errorf("status %d: want (false, nil), got ok=%v err=%v", status, ok, err)
+		}
+	}
+
+	// A real GitHub failure surfaces as an error (the caller decides it's
+	// best-effort, not this seam).
+	down := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: &APIError{Status: 500}}, Store: st}
+	if _, _, err := down.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); err == nil {
+		t.Error("a 500 from GitHub must surface an error")
+	}
+
+	// Nothing to resolve: github off, no connection, unparseable URL, empty ref.
+	off := &Service{Base: &core.Base{Namespace: "default"}}
+	if _, ok, err := off.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); ok || err != nil {
+		t.Errorf("github off = ok=%v err=%v, want (false, nil)", ok, err)
+	}
+	noConn := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+	if _, ok, err := noConn.resolveCommit(ctx, "default", "https://github.com/octo/app", "main"); ok || err != nil {
+		t.Errorf("no connection = ok=%v err=%v, want (false, nil)", ok, err)
+	}
+	if _, ok, err := svc.resolveCommit(ctx, "default", "not-a-url", "main"); ok || err != nil {
+		t.Errorf("unparseable repo = ok=%v err=%v, want (false, nil)", ok, err)
+	}
+	if _, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/octo/app", ""); ok || err != nil {
+		t.Errorf("empty ref = ok=%v err=%v, want (false, nil)", ok, err)
 	}
 }
 

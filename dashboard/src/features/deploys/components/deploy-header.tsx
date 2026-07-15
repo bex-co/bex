@@ -70,6 +70,21 @@ export function DeployHeader({ deploy }: DeployHeaderProps) {
           </p>
         )}
 
+        {/* The resolved commit this deploy ran (w9/001) — Render's deploy-page
+            header leads with it for repo-backed deploys: short SHA + the
+            message's first line. Absent (image-backed, or no GitHub connection
+            to resolve through) => omitted, not faked. */}
+        {deploy.commitId && (
+          <p className="truncate text-xs text-foreground">
+            <span className="font-mono text-muted-foreground">
+              {deploy.commitId.slice(0, 7)}
+            </span>
+            {deploy.commitMessage && (
+              <> {deploy.commitMessage.split("\n")[0]}</>
+            )}
+          </p>
+        )}
+
         {deploy.image && (
           <p className="truncate font-mono text-xs text-muted-foreground">
             {deploy.image}

@@ -1960,6 +1960,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Events",
     description: "Service-detail nav item (events tab)",
   },
+  "services.navDeploys": {
+    message: "Deploys",
+    description: "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
   "services.eventsTitle": {
     message: "Activity",
     description: "Events tab card title",

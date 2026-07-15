@@ -81,6 +81,13 @@ type App struct {
 	IdleTTLSeconds int32     `json:"idleTTLSeconds"`
 	Suspended      bool      `json:"suspended"`
 	CreatedAt      time.Time `json:"createdAt"`
+	// FirstDeployCommit is CreateApp INPUT only (w9/001): the resolved commit
+	// stamped onto the first deploy row (trigger "create") CreateApp opens in
+	// the same transaction. Not an apps column — never persisted on, or read
+	// back from, the app row itself. Zero value ⇒ the first deploy carries no
+	// commit metadata (image-backed app, or no GitHub connection to resolve
+	// the branch through).
+	FirstDeployCommit CommitInfo `json:"-"`
 }
 
 // Deploy status vocabulary — Render's deploy status enum, the subset bex can
@@ -132,14 +139,25 @@ const (
 	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
 )
 
+// CommitInfo is the git commit a build-from-git deploy runs — the resolved
+// SHA plus its message (w9/001). Zero value = unknown: image-backed app, no
+// GitHub connection to resolve through, or resolution failed. Commit metadata
+// is best-effort provenance, never load-bearing — a deploy with an empty
+// CommitInfo is still a fully valid deploy.
+type CommitInfo struct {
+	Hash    string `json:"hash,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
 // first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),
 // "deploy_hook" (the service's secret URL), or "rollback" (w2/m10: a deploy
-// created by Rollback, RollbackOf naming the source deploy it restores). Commit
-// is omitted here — it stays empty until
-// w1/m5 tracks build-from-git commits; callers project it out rather than
-// surface an always-empty field. ResolvedImage is the image this deploy
+// created by Rollback, RollbackOf naming the source deploy it restores).
+// Commit/CommitMessage (w9/001) are the resolved commit a build-from-git
+// deploy ran, captured once at open time via the workspace's GitHub App
+// connection — "" when unresolvable (omitted by the views, not faked).
+// ResolvedImage is the image this deploy
 // actually put into the cluster (backfilled by CloseDeploy once the deploy
 // reaches live — "" until then, and forever for one that never does): the
 // only field Rollback (w2/m10) trusts as a restore target, since Image alone
@@ -156,6 +174,8 @@ type Deploy struct {
 	ResolvedImage string     `json:"-"`
 	RollbackOf    string     `json:"rollbackOf,omitempty"`
 	Generation    int64      `json:"-"`
+	Commit        string     `json:"commit,omitempty"`
+	CommitMessage string     `json:"commitMessage,omitempty"`
 	Status        string     `json:"status"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	StartedAt     *time.Time `json:"startedAt,omitempty"`
@@ -294,14 +314,17 @@ type Store interface {
 	// metadata.generation this deploy runs under, captured once at open time
 	// (w2/m10) — Cancel's build-Job identity is derived from this stored
 	// value, not a fresh re-fetch, so a later unrelated spec write can't make
-	// it compute the wrong Job name. The reconciler's write-back closes it.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (Deploy, error)
+	// it compute the wrong Job name. commit is the resolved commit this deploy
+	// runs (w9/001), zero when unresolvable. The reconciler's write-back
+	// closes it.
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error)
 	// CreateRollbackDeploy opens a new deploy row for appID whose trigger is
 	// "rollback" and whose image/resolvedImage are the target being restored
 	// — Render models rollback as a fresh deploy, never a history rewrite
 	// (w2/m10). rollbackOf records provenance: the source deploy id being
-	// rolled back to.
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error)
+	// rolled back to; commit is the target's own commit metadata (w9/001),
+	// copied rather than re-resolved against a branch that has since moved.
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error)
 	// ListDeploys returns an app's deploy history, newest first, narrowed by
 	// filter (w2/m31) — a zero DeployFilter returns the full history, the
 	// pre-m31 contract.
@@ -562,8 +585,8 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			// brand-new App CR, and a freshly created Kubernetes object always
 			// starts at metadata.generation 1.
 			_, err := tx.Exec(ctx,
-				`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, 1, $5)`,
-				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, DeployUpdateInProgress)
+				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, 1, $5, $6, $7)`,
+				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployUpdateInProgress)
 			return err
 		})
 		if err == nil {
@@ -833,11 +856,11 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 	return nil
 }
 
-func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: DeployUpdateInProgress}
+func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress}
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, generation, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Status,
+		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING created_at`,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.Status,
 	).Scan(&d.CreatedAt)
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
@@ -848,13 +871,16 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
 // unlike a normal trigger, the restored image is already fully known (it ran
 // live before), so resolved_image is set immediately rather than waiting for
-// the reconciler's write-back to backfill it on convergence.
-func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Status: DeployUpdateInProgress}
+// the reconciler's write-back to backfill it on convergence. commit is the
+// TARGET deploy's commit metadata (w9/001) — a rollback re-runs what the
+// restored deploy built, so its provenance is copied, never re-resolved
+// against a branch that has since moved.
+func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress}
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, status)
-		 VALUES ($1, $2, $3, $4, $4, $5, $6) RETURNING created_at`,
-		d.ID, d.AppID, d.Trigger, image, rollbackOf, d.Status,
+		`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, commit, commit_message, status)
+		 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8) RETURNING created_at`,
+		d.ID, d.AppID, d.Trigger, image, rollbackOf, d.Commit, d.CommitMessage, d.Status,
 	).Scan(&d.CreatedAt)
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
@@ -916,11 +942,11 @@ func pageNewestFirst(query string, args []any, table, sortCol, cursor string, li
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, status, created_at, started_at, finished_at, pre_deploy_status`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, status, created_at, started_at, finished_at, pre_deploy_status`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
 	return d, err
 }
 

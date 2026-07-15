@@ -96,7 +96,7 @@ func TestCloseDeployIsIdempotentAndListIsNewestFirst(t *testing.T) {
 		t.Fatalf("open deploy after close: ok=%v (err %v), want none open", ok, err)
 	}
 
-	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2", 2)
+	second, err := s.CreateDeploy(ctx, app.ID, "api", "img:2", 2, CommitInfo{})
 	if err != nil {
 		t.Fatalf("trigger deploy: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestCreateRollbackDeployRecordsProvenanceAndResolvedImage(t *testing.T) {
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	first, _, _ := openDeployFor(ctx, s, app.ID)
 
-	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID)
+	rb, err := s.CreateRollbackDeploy(ctx, app.ID, "img:1", first.ID, CommitInfo{})
 	if err != nil {
 		t.Fatalf("create rollback deploy: %v", err)
 	}

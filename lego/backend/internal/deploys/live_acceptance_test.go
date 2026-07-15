@@ -172,7 +172,7 @@ func TestLiveAcceptance(t *testing.T) {
 	if err := cl.Update(ctx, webApp); err != nil {
 		t.Fatalf("patch web to a bad image: %v", err)
 	}
-	badDeploy, err := st.CreateDeploy(ctx, app.ID, "api", "typo-registry.invalid/no/such/image:latest", webApp.Generation)
+	badDeploy, err := st.CreateDeploy(ctx, app.ID, "api", "typo-registry.invalid/no/such/image:latest", webApp.Generation, store.CommitInfo{})
 	if err != nil {
 		t.Fatalf("open bad deploy on web: %v", err)
 	}

@@ -32,15 +32,29 @@ const VIEWPORT_HEIGHT = 520;
 
 interface LogLineListProps {
   lines: LogLine[];
+  /** Wrap long lines (default). false => single-line rows with horizontal scroll. */
+  wrap?: boolean;
+  /** Show the per-line timestamp column (default). */
+  showTimestamps?: boolean;
+  /** Fill the parent's height instead of the fixed viewport (the deploy
+   *  page's maximized mode, w9/003). The parent owns the height. */
+  fill?: boolean;
 }
 
 /**
  * The monospace log line list (Render's layout: timestamp · [instance] ·
  * message, newest at the bottom). Autoscrolls to the newest line while the user
  * is pinned to the bottom; scrolling up releases the pin (so reading history
- * isn't yanked away) and surfaces a "jump to latest" affordance.
+ * isn't yanked away) and surfaces a "jump to latest" affordance. The wrap/
+ * timestamp toggles (w9/003) are display-only knobs the deploy page's options
+ * menu drives; both default to today's behavior.
  */
-export function LogLineList({ lines }: LogLineListProps) {
+export function LogLineList({
+  lines,
+  wrap = true,
+  showTimestamps = true,
+  fill = false,
+}: LogLineListProps) {
   const { t } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
@@ -66,22 +80,30 @@ export function LogLineList({ lines }: LogLineListProps) {
   }, [lines, pinned]);
 
   return (
-    <div className="relative">
+    <div className={cn("relative", fill && "h-full")}>
       <div
         ref={viewportRef}
         onScroll={onScroll}
-        style={{ height: VIEWPORT_HEIGHT }}
-        className="overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed"
+        style={fill ? undefined : { height: VIEWPORT_HEIGHT }}
+        className={cn(
+          "overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed",
+          fill && "h-full",
+        )}
       >
-        <div className="min-w-full p-3">
+        <div className={cn("p-3", wrap ? "min-w-full" : "w-max min-w-full")}>
           {lines.map((line) => (
             <div
               key={line.key}
-              className="flex gap-3 whitespace-pre-wrap break-words px-1 py-0.5 hover:bg-muted/60"
+              className={cn(
+                "flex gap-3 px-1 py-0.5 hover:bg-muted/60",
+                wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+              )}
             >
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {line.time}
-              </span>
+              {showTimestamps ? (
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {line.time}
+                </span>
+              ) : null}
               {line.instance ? (
                 <span className="shrink-0 text-muted-foreground/70">
                   [{line.instance}]

@@ -1931,6 +1931,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "事件",
     description: "Service-detail nav item (events tab)",
   },
+  "services.navDeploys": {
+    message: "部署",
+    description: "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
   "services.eventsTitle": {
     message: "活动",
     description: "Events tab card title",

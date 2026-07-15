@@ -10,6 +10,8 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     trigger: "api",
     image: "registry.example.com/web:1",
     rollbackOf: "",
+    commitId: "",
+    commitMessage: "",
     createdAt: "2026-07-14T00:00:00Z",
     startedAt: "2026-07-14T00:00:01Z",
     finishedAt: "2026-07-14T00:01:00Z",
@@ -55,6 +57,25 @@ describe("DeployHeader", () => {
       />,
     );
     expect(screen.getByText("rollback to dep-live-001")).toBeInTheDocument();
+  });
+
+  it("renders the resolved commit as short SHA + the message's first line (w9/001)", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          commitId: "abc1234def5678",
+          commitMessage: "fix: header\n\nlonger body that must not render",
+        })}
+      />,
+    );
+    expect(screen.getByText("abc1234")).toBeInTheDocument();
+    expect(screen.getByText(/fix: header/)).toBeInTheDocument();
+    expect(screen.queryByText(/longer body/)).not.toBeInTheDocument();
+  });
+
+  it("shows no commit line when the commit was never resolved", () => {
+    render(<DeployHeader deploy={deploy({ commitId: "" })} />);
+    expect(screen.queryByText("abc1234")).not.toBeInTheDocument();
   });
 
   it("renders the deploy's image", () => {

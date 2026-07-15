@@ -137,6 +137,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, listLogsResult{}, err
 		}
+		// BEX_MAX_QUERY_HOURS bounds this surface too (w9/004) — the same
+		// checkWindow REST's logsQuery/logsValues and GraphQL's resolvers call,
+		// so no adapter lets a caller scan the store unbounded.
+		if err := s.checkWindow(q); err != nil {
+			return nil, listLogsResult{}, err
+		}
 		q.Limit = in.Limit
 
 		var all []LogEntry
@@ -163,6 +169,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, listLogLabelValuesResult, error) {
 		q, err := in.query()
 		if err != nil {
+			return nil, listLogLabelValuesResult{}, err
+		}
+		if err := s.checkWindow(q); err != nil {
 			return nil, listLogLabelValuesResult{}, err
 		}
 		all := []string{}

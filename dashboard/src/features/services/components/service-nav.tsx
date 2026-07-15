@@ -20,6 +20,14 @@ const ITEMS: ServiceNavItem[] = [
     to: "/services/$serviceId/events",
     exact: false,
   },
+  // The dedicated deploy-history tab (w9/002) — Render's standalone Deploys
+  // list. exact:false keeps it highlighted on the nested per-deploy pages
+  // (/deploys/$deployId).
+  {
+    labelKey: "services.navDeploys",
+    to: "/services/$serviceId/deploys",
+    exact: false,
+  },
   {
     labelKey: "services.navEnvironment",
     to: "/services/$serviceId/env",

@@ -45,6 +45,7 @@ type APIClient interface {
 	ListRepos(ctx context.Context, installationID int64) ([]Repo, error)
 	MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error)
 	RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error)
+	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
 }
 
 // Service manages a workspace's GitHub App connection and lists its repos over
@@ -293,6 +294,64 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 		return "", false, nil
 	}
 	return tok.Token, true, nil
+}
+
+// commitSource adapts the Service to the deploys/apps CommitResolver seam
+// (w9/001), the tokenSource precedent: resolveCommit authenticates via the
+// deploy path's own authorization rather than an Authorize call, so exposing
+// it as an exported Service verb would (rightly) trip TestAuthzGuardsEveryVerb.
+type commitSource struct{ s *Service }
+
+// ResolveCommit satisfies deploys.CommitResolver and apps.CommitResolver.
+func (t commitSource) ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {
+	return t.s.resolveCommit(ctx, workspaceID, repoURL, ref)
+}
+
+// DeployCommitSource returns the deploy path's commit-resolution seam (wired
+// onto deploys.Service and apps.Service in the composition root).
+func (s *Service) DeployCommitSource() commitSource { return commitSource{s} }
+
+// resolveCommit resolves ref (a branch, tag, or SHA) to the exact commit it
+// points at, via workspaceID's GitHub connection — the provenance a deploy
+// row is stamped with (w9/001). NOT authz-gated: the caller (a deploy
+// trigger) has already authorized its own verb.
+//
+//   - ok=false, nil err: GitHub off, no connection, the repo isn't an
+//     owner/repo URL or isn't in the grant, or the ref doesn't exist — the
+//     deploy proceeds with no commit metadata (omitted, not faked).
+//   - non-nil err: a GitHub failure. Unlike cloneToken, callers may treat
+//     this the same as ok=false — commit metadata is provenance, never worth
+//     failing a deploy over.
+func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {
+	if !s.configured() || ref == "" {
+		return store.CommitInfo{}, false, nil
+	}
+	owner, repo, ok := ownerRepo(repoURL)
+	if !ok {
+		return store.CommitInfo{}, false, nil
+	}
+	row, err := s.Store.GetGitConnection(ctx, workspaceID)
+	if errors.Is(err, store.ErrNotFound) {
+		return store.CommitInfo{}, false, nil
+	}
+	if err != nil {
+		return store.CommitInfo{}, false, err
+	}
+	tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
+	if err != nil {
+		return store.CommitInfo{}, false, err
+	}
+	c, err := s.GitHub.GetCommit(ctx, tok.Token, owner, repo, ref)
+	if err != nil {
+		// 404 = repo not in the grant; 422 = no such ref. Both mean "nothing to
+		// resolve", not a GitHub failure.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && (apiErr.Status == 404 || apiErr.Status == 422) {
+			return store.CommitInfo{}, false, nil
+		}
+		return store.CommitInfo{}, false, err
+	}
+	return store.CommitInfo{Hash: c.SHA, Message: c.Message}, true, nil
 }
 
 // ownerRepo extracts the "owner"/"repo" pair from a git URL of any form

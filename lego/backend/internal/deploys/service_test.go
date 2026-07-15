@@ -81,22 +81,22 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
 
-func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64) (store.Deploy, error) {
+func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
 }
 
-func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string) (store.Deploy, error) {
+func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, commit store.CommitInfo) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.nextID++
 	d := store.Deploy{
 		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Status: store.DeployUpdateInProgress, CreatedAt: time.Now(),
+		RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: store.DeployUpdateInProgress, CreatedAt: time.Now(),
 	}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
@@ -247,7 +247,7 @@ func TestDeployRecordSurfacesPreDeployStatus(t *testing.T) {
 
 func TestListGetTriggerLifecycle(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, cl := newService(ds, sampleApp("web", "srv-1"))
 
 	list, err := svc.List(context.Background(), "web", ListFilter{})
@@ -427,7 +427,7 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 
 func TestRESTListGetTrigger(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	do := newRESTHarness(t, svc)
 
@@ -531,7 +531,7 @@ func TestREST503WithoutStore(t *testing.T) {
 // not a second implementation.
 func TestMCPMatchesREST(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	ctx := context.Background()
 	cs := newMCPSession(t, svc)

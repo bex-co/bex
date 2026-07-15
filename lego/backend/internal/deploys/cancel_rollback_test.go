@@ -41,7 +41,7 @@ import (
 
 func TestCancelClosesOpenDeployAndIsIdempotentConflict(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 
 	got, err := svc.Cancel(context.Background(), "web", first.ID)
@@ -64,7 +64,7 @@ func TestCancelClosesOpenDeployAndIsIdempotentConflict(t *testing.T) {
 
 func TestCancelRefusesAlreadyLiveDeploy(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
 		t.Fatalf("close: won=%v err=%v", won, err)
 	}
@@ -90,7 +90,7 @@ func TestCancelUnknownDeployIsNotFound(t *testing.T) {
 // a repo-backed App with an open deploy.
 func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3, store.CommitInfo{})
 	app := sampleApp("web", "srv-1")
 	app.Spec.Image = ""
 	app.Spec.Repo = "https://example.invalid/acme/web.git"
@@ -110,7 +110,7 @@ func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 
 func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3, store.CommitInfo{})
 	app := sampleApp("web", "srv-1")
 	app.Spec.Image = ""
 	app.Spec.Repo = "https://example.invalid/acme/web.git"
@@ -136,7 +136,7 @@ func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 // no-op and the row still closes canceled.
 func TestCancelImageBackedAppIsNoJobNoop(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1")) // Repo == "", Image set — no Job ever existed
 
 	got, err := svc.Cancel(context.Background(), "web", first.ID)
@@ -152,11 +152,11 @@ func TestCancelImageBackedAppIsNoJobNoop(t *testing.T) {
 
 func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
 		t.Fatalf("close first live: won=%v err=%v", won, err)
 	}
-	bad, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:bad", 2)
+	bad, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:bad", 2, store.CommitInfo{})
 	if won, err := ds.CloseDeploy(context.Background(), bad.ID, store.DeployUpdateFailed, ""); err != nil || !won {
 		t.Fatalf("close bad failed: won=%v err=%v", won, err)
 	}
@@ -190,7 +190,7 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 
 func TestRollbackRefusesNonLiveTarget(t *testing.T) {
 	ds := newFakeStore()
-	stillOpen, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	stillOpen, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 
 	if _, err := svc.Rollback(context.Background(), "web", stillOpen.ID); !errors.Is(err, core.ErrConflict) {
@@ -209,7 +209,7 @@ func TestRollbackUnknownDeployIsNotFound(t *testing.T) {
 
 func TestRollbackRefusesSuspendedService(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	_, _ = ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1")
 	app := sampleApp("web", "srv-1")
 	app.Spec.Suspended = true
@@ -247,7 +247,7 @@ func TestCancelRollbackUnavailableWithoutStore(t *testing.T) {
 
 func TestRESTCancelAndRollback(t *testing.T) {
 	ds := newFakeStore()
-	open, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v2", 2)
+	open, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v2", 2, store.CommitInfo{})
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -270,7 +270,7 @@ func TestRESTCancelAndRollback(t *testing.T) {
 	}
 
 	// Rollback needs a live target.
-	live, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v1", 2)
+	live, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v1", 2, store.CommitInfo{})
 	if won, err := ds.CloseDeploy(context.Background(), live.ID, store.DeployLive, "web:v1"); err != nil || !won {
 		t.Fatalf("close live: won=%v err=%v", won, err)
 	}
@@ -310,7 +310,7 @@ func TestREST503CancelRollbackWithoutStore(t *testing.T) {
 // cancel_deploy/rollback_deploy are registered alongside list_deploys/get_deploy.
 func TestMCPRegistersCancelAndRollback(t *testing.T) {
 	ds := newFakeStore()
-	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1)
+	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{})
 	_, _ = ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1")
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 
@@ -350,7 +350,7 @@ func TestMCPRegistersCancelAndRollback(t *testing.T) {
 		t.Errorf("cancel_deploy on a live deploy: want a tool error, got %+v", res)
 	}
 
-	second, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v2", 2)
+	second, _ := ds.CreateDeploy(context.Background(), "srv-1", "api", "web:v2", 2, store.CommitInfo{})
 	_, _ = ds.CloseDeploy(context.Background(), second.ID, store.DeployLive, "web:v2")
 	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "rollback_deploy", Arguments: map[string]any{"serviceId": "web", "deployId": first.ID}})
 	if err != nil || res.IsError {

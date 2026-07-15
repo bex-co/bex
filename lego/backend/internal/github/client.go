@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -244,6 +245,47 @@ func (c *Client) RepoAccessible(ctx context.Context, token, owner, repo string) 
 	default:
 		return false, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
+}
+
+// Commit is the resolved tip of a ref — the SHA plus its message (w9/001).
+// The subset of GitHub's commit object the deploy path stamps onto a deploy
+// row as provenance.
+type Commit struct {
+	SHA     string `json:"sha"`
+	Message string `json:"message"`
+}
+
+// GetCommit resolves ref (a branch name, tag, or SHA) to the exact commit it
+// points at (GET /repos/{owner}/{repo}/commits/{ref}). An unknown ref or an
+// out-of-grant repo returns an *APIError (404/422) — callers treat those as
+// "unresolvable", not a failure.
+func (c *Client) GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/commits/%s", c.baseURL, owner, repo, neturl.PathEscape(ref))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return Commit{}, err
+	}
+	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Accept", acceptHeader)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return Commit{}, fmt.Errorf("github: get commit: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		return Commit{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+	}
+	var out struct {
+		SHA    string `json:"sha"`
+		Commit struct {
+			Message string `json:"message"`
+		} `json:"commit"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return Commit{}, fmt.Errorf("github: decode commit response: %w", err)
+	}
+	return Commit{SHA: out.SHA, Message: out.Commit.Message}, nil
 }
 
 // ghRepo is GitHub's wire shape; mapped to the exported Repo.

@@ -68,6 +68,11 @@ type Service struct {
 	// trigger whose repo belongs to the workspace's connection, so private repos
 	// clone (docs/ADR026-github-integration.md). nil => public-clone only, unchanged.
 	GitHub CloneTokenSource
+	// Commits resolves a repo-backed deploy's triggering ref to the exact
+	// commit it points at (w9/001) — github.Service's DeployCommitSource, the
+	// same seam deploys.Service.Commits wires. nil => the deploy rows this
+	// package opens carry no commit metadata.
+	Commits CommitResolver
 	// RegistryCreds, when set (registrycreds.Service is wired), materializes a
 	// dockerconfigjson pull Secret for an image-backed App whose image's
 	// registry host matches a workspace-stored credential (w2/m14). nil =>
@@ -118,9 +123,10 @@ type IntentStore interface {
 	// generation is the App CR's metadata.generation this deploy runs under,
 	// captured after the redeploy's own patch (w2/m10: Cancel's build-Job
 	// identity is derived from this stored value, not a fresh re-fetch, so it
-	// must be the generation this deploy actually runs under). The
+	// must be the generation this deploy actually runs under). commit is the
+	// resolved commit this deploy runs (w9/001), zero when unresolvable. The
 	// reconciler's write-back closes the row once the CR reaches Running/Failed.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
 	// store-managed App's existence. The projector deletes the orphaned App CR
 	// on its next pass, so the row delete (not a bare CR delete) is what keeps
@@ -715,6 +721,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 			Port:     desired.Port,
 			Replicas: desired.Replicas,
 			Tier:     desired.Tier,
+			// Provenance for the first deploy row CreateApp opens (w9/001):
+			// the branch tip this create will build, resolved best-effort.
+			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConflict) {
@@ -832,6 +841,9 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 			Port:     desired.Port,
 			Replicas: desired.Replicas,
 			Tier:     desired.Tier,
+			// Provenance for the first deploy row CreateApp opens (w9/001) —
+			// same best-effort resolution as create()'s.
+			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
 		})
 		if err != nil {
 			// Same TOCTOU backstop as create() (w4/m19): applyCreate's own

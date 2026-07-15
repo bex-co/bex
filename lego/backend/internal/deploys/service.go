@@ -51,11 +51,13 @@ type DeployStore interface {
 	// CreateDeploy opens a deploy row; generation is the App CR's
 	// metadata.generation this deploy runs under, captured once at open time
 	// (w2/m10) — Cancel derives its build-Job identity from the stored value,
-	// never a fresh re-fetch (see buildJobName).
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64) (store.Deploy, error)
+	// never a fresh re-fetch (see buildJobName). commit is the resolved commit
+	// this deploy runs (w9/001), zero when unresolvable.
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error)
 	// CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10)
-	// restoring image, provenance-tagged with the source deploy id.
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string) (store.Deploy, error)
+	// restoring image, provenance-tagged with the source deploy id and the
+	// target's own commit metadata (w9/001).
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit store.CommitInfo) (store.Deploy, error)
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
 	// CloseDeploy transitions a still-open deploy row terminal, CAS-guarded
@@ -67,20 +69,33 @@ type DeployStore interface {
 	SetAppImage(ctx context.Context, id string, image string) error
 }
 
+// CommitResolver resolves a repo ref (branch, tag, or SHA) to the exact
+// commit it points at, via workspaceID's GitHub App connection —
+// github.Service's DeployCommitSource satisfies it (w9/001). nil on the
+// Service ⇒ deploy rows carry no commit metadata (omitted, not faked).
+// ok=false (nil err) means "nothing to resolve" (no connection, repo not in
+// the grant, unknown ref); commit metadata is provenance, so callers treat a
+// non-nil err the same way rather than failing the deploy.
+type CommitResolver interface {
+	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
+}
+
 // DeployView is the neutral projection of a store.Deploy the adapters render
-// in Render's deploy shape. Commit is left out — it stays empty until w1/m5
-// tracks build-from-git commits, so there is nothing yet worth surfacing.
-// RollbackOf is a bex extra (w2/m10): empty for every deploy except one
-// Rollback created, naming the source deploy it restores.
+// in Render's deploy shape. CommitID/CommitMessage (w9/001) are the resolved
+// commit a build-from-git deploy ran, "" when unresolved — the adapters omit
+// rather than fake them. RollbackOf is a bex extra (w2/m10): empty for every
+// deploy except one Rollback created, naming the source deploy it restores.
 type DeployView struct {
-	ID         string
-	Status     string
-	Image      string
-	Trigger    string
-	RollbackOf string
-	CreatedAt  time.Time
-	StartedAt  *time.Time
-	FinishedAt *time.Time
+	ID            string
+	Status        string
+	Image         string
+	Trigger       string
+	RollbackOf    string
+	CommitID      string
+	CommitMessage string
+	CreatedAt     time.Time
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy (w1/m33):
 	// "" (no step) | "running" | "succeeded" | "failed". A deploy that fails its
 	// migration is update_failed with PreDeployStatus "failed"; one that fails its
@@ -97,6 +112,8 @@ func view(d store.Deploy) DeployView {
 		Image:           d.Image,
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
+		CommitID:        d.Commit,
+		CommitMessage:   d.CommitMessage,
 		CreatedAt:       d.CreatedAt,
 		StartedAt:       d.StartedAt,
 		FinishedAt:      d.FinishedAt,
@@ -110,6 +127,10 @@ func view(d store.Deploy) DeployView {
 type Service struct {
 	*core.Base
 	Store DeployStore
+	// Commits resolves the triggering ref to the exact commit a
+	// build-from-git deploy runs (w9/001) — github.Service's
+	// DeployCommitSource. nil ⇒ deploy rows open with no commit metadata.
+	Commits CommitResolver
 	// DeployHookBaseURL is BEX_API_PUBLIC_URL (for example
 	// "https://api.bex.co"). It prefixes the secret trigger path returned by the
 	// authenticated REST/GraphQL/MCP management surfaces. Empty keeps the path
@@ -334,6 +355,10 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
 		return DeployView{}, fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
 	}
+	// Resolve the triggering ref to its exact commit BEFORE the CR patch that
+	// starts the rollout (w9/001) — best-effort provenance: the deploy row
+	// opens either way, so a GitHub hiccup can never block a deploy.
+	commit := s.resolveCommit(ctx, a, p.CommitID)
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		// Always write BuildCommit — set to the requested ref, or "" to reset to
@@ -343,11 +368,45 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	}); err != nil {
 		return DeployView{}, err
 	}
-	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, a.Generation)
+	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, a.Generation, commit)
 	if err != nil {
 		return DeployView{}, err
 	}
 	return view(d), nil
+}
+
+// resolveCommit resolves the ref a trigger will build — the explicit
+// commitId, else the App's branch (the operator's own default-"main"
+// fallback, app_controller.go) — to its exact commit via the App's OWN
+// workspace's GitHub connection (its core.LabelTenant label, the
+// apps.deployWorkspace precedent, so the identity-less deploy hook resolves
+// the right connection too). Best-effort by design (w9/001): an image-backed
+// App, a missing resolver, or any resolution failure returns the zero
+// CommitInfo — the deploy row simply carries no commit metadata, mirroring
+// the "omitted, not faked" contract the views hold.
+func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref string) store.CommitInfo {
+	if s.Commits == nil || a.Spec.Repo == "" {
+		return store.CommitInfo{}
+	}
+	if ref == "" {
+		ref = a.Spec.Branch
+	}
+	if ref == "" {
+		ref = "main"
+	}
+	workspace := a.Labels[core.LabelTenant]
+	if workspace == "" {
+		if t, ok := s.Tenant(ctx); ok && t != "" {
+			workspace = t
+		} else {
+			workspace = core.DefaultTenant
+		}
+	}
+	commit, ok, err := s.Commits.ResolveCommit(ctx, workspace, a.Spec.Repo, ref)
+	if err != nil || !ok {
+		return store.CommitInfo{}
+	}
+	return commit
 }
 
 // Cancel kills a still-open deploy (Render's POST .../deploys/{id}/cancel,
@@ -463,7 +522,8 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	if err := s.Store.SetAppImage(ctx, appID, target.ResolvedImage); err != nil {
 		return DeployView{}, fmt.Errorf("update source of truth: %w", err)
 	}
-	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID)
+	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID,
+		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage})
 	if err != nil {
 		return DeployView{}, err
 	}

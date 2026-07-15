@@ -714,7 +714,8 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 	applyCreateToSpec(&existing.Spec, desired)
 	if s.Store != nil {
 		if id := existing.Labels[store.LabelAppID]; id != "" {
-			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation); err != nil {
+			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
+			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation, commit); err != nil {
 				return AppView{}, fmt.Errorf("recording redeploy: %w", err)
 			}
 		}

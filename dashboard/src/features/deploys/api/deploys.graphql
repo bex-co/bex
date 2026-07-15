@@ -1,0 +1,35 @@
+# bex-api's deploy-history list (internal/deploys/graphql.go, GraphQL-parity'd
+# since w2/m31) — the dedicated Deploys tab's read (w9/002). Same filter args
+# as REST's GET .../deploys: status[], createdBefore/After, keyset cursor (a
+# previously returned deploy's id), limit. Field selection mirrors
+# deploy.graphql so the list rows and the detail header render from the same
+# shape.
+query Deploys(
+  $serviceId: String!
+  $status: [String]
+  $createdBefore: String
+  $createdAfter: String
+  $cursor: String
+  $limit: Int
+) {
+  deploys(
+    serviceId: $serviceId
+    status: $status
+    createdBefore: $createdBefore
+    createdAfter: $createdAfter
+    cursor: $cursor
+    limit: $limit
+  ) {
+    id
+    status
+    trigger
+    image
+    rollbackOf
+    commitId
+    commitMessage
+    createdAt
+    startedAt
+    finishedAt
+    preDeployStatus
+  }
+}

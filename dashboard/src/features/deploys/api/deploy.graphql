@@ -9,6 +9,8 @@ query Deploy($serviceId: String!, $deployId: String!) {
     trigger
     image
     rollbackOf
+    commitId
+    commitMessage
     createdAt
     startedAt
     finishedAt

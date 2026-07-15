@@ -324,6 +324,8 @@ const DEPLOYS_BY_SERVICE = {
       trigger: "api",
       image: "registry.example.com/eden-cms-v2:a1b2c3d",
       rollbackOf: "",
+      commitId: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+      commitMessage: "feat(cms): lazy-load the asset picker\n\nCuts editor TTI by ~400ms.",
       createdAt: "2026-07-11T14:30:00Z",
       startedAt: "2026-07-11T14:30:05Z",
       finishedAt: "2026-07-11T14:31:40Z",
@@ -336,6 +338,8 @@ const DEPLOYS_BY_SERVICE = {
       trigger: "api",
       image: "registry.example.com/eden-cms-v2:9f8e7d6",
       rollbackOf: "",
+      commitId: "9f8e7d6c5b4a30291827364554637281909aebcd",
+      commitMessage: "chore: bump image base",
       createdAt: "2026-07-11T13:00:00Z",
       startedAt: "2026-07-11T13:00:04Z",
       finishedAt: "2026-07-11T13:01:12Z",
@@ -423,7 +427,7 @@ const TERMINAL_DEPLOY_STATUSES = new Set(["live", "update_failed", "canceled"]);
 // DEPLOYS_BY_SERVICE and reference it (never copy its fields) from the
 // matching ServiceEvent via deployServiceEvent below, so there is exactly one
 // place a status transition needs to be written.
-function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStatus = "" }) {
+function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStatus = "", commitId = "", commitMessage = "" }) {
   const createdAt = new Date().toISOString();
   return {
     __typename: "Deploy",
@@ -436,6 +440,8 @@ function makeDeploy({ id, status, trigger, rollbackOf = "", image, preDeployStat
     rollbackOf,
     image,
     preDeployStatus,
+    commitId,
+    commitMessage,
   };
 }
 
@@ -1061,6 +1067,22 @@ function resolveGraphQL({ operationName, variables = {} }) {
     // resolves null — never a borrowed deploy (deployById's contract above).
     case "Deploy":
       return { deploy: deployById(variables.serviceId, variables.deployId) };
+    // Deploy-history list (w9/002, the dedicated Deploys tab): status[] +
+    // keyset cursor + limit over the same per-service rows, newest-first —
+    // mirrors internal/store's pageNewestFirst contract (unknown cursor =>
+    // empty page, never the unfiltered list).
+    case "Deploys": {
+      let rows = deploysFor(variables.serviceId);
+      const statuses = (variables.status ?? []).filter(Boolean);
+      if (statuses.length > 0) rows = rows.filter((d) => statuses.includes(d.status));
+      if (variables.cursor) {
+        const at = rows.findIndex((d) => d.id === variables.cursor);
+        rows = at === -1 ? [] : rows.slice(at + 1);
+      }
+      const limit = variables.limit ?? 0;
+      if (limit > 0) rows = rows.slice(0, limit);
+      return { deploys: rows };
+    }
     // Logs-tab filter dropdowns (w5/008): observed label values for one App.
     // `level`/`instance` are the two labels the synthetic app-log generator
     // actually varies (see MESSAGES/instancesFor above); the request-log-only
