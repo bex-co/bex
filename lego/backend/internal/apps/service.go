@@ -113,12 +113,23 @@ type Service struct {
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a
 	// manifest using those forms is rejected before any write.
 	EnvSeeder EnvSeeder
+	// SecretFileSeeder, when set (OpenBao is wired), persists and materializes
+	// the official CLI's create-time secretFiles payload. nil makes such a
+	// create fail before the App is written rather than silently discarding it.
+	SecretFileSeeder SecretFileSeeder
 }
 
 // AppSecretsEraser clears per-app secrets from the external store on service
 // delete. Satisfied structurally by *secrets.WorkspacePurger.
 type AppSecretsEraser interface {
 	PurgeApp(ctx context.Context, name string) error
+}
+
+// SecretFileSeeder is the narrow create-time seam onto the secrets feature.
+// *secrets.Service satisfies it structurally, avoiding an apps -> secrets
+// dependency cycle.
+type SecretFileSeeder interface {
+	SeedSecretFiles(ctx context.Context, service string, files []core.SecretFile) error
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -151,6 +162,12 @@ type IntentStore interface {
 	// idle-timeout verb on store-managed Apps, same row-first rationale as
 	// SetAppReplicas (the projector owns spec.idleTTLSeconds).
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
+	// SetAppSource updates the projector-owned repo/image/branch tuple in one
+	// row write so a source PATCH cannot be reverted on the next resync.
+	SetAppSource(ctx context.Context, id, repo, image, branch string) error
+	// GetEnvironment resolves a Render create request's environment assignment
+	// and its owning project before the App row is written.
+	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
 	// AddDomain appends a custom domain row. Idempotent — conflict silently
 	// ignored. The projector carries it into spec.hosts[] on the next resync.
 	AddDomain(ctx context.Context, appID, host string) error
@@ -202,6 +219,11 @@ type AppView struct {
 	URL   string   `json:"url"`
 	URLs  []string `json:"urls"`
 	Image string   `json:"image"`
+	// SourceImage is the configured prebuilt image. Image above is observed
+	// deployment state (status.image), which can be empty until the operator has
+	// reconciled; Render's imagePath is configuration and must be available
+	// immediately so clients can clone an image-backed service.
+	SourceImage string `json:"sourceImage,omitempty"`
 	// Runtime/build/start mirror Render's native source-build contract.
 	Runtime      string `json:"runtime,omitempty"`
 	BuildCommand string `json:"buildCommand,omitempty"`
@@ -237,6 +259,10 @@ type AppView struct {
 	// for Apps the control-plane projector didn't stamp (the hand-applied path,
 	// scripts/app-apply.sh) — an honest superset rather than a faked id.
 	OwnerID string `json:"ownerId,omitempty"`
+	// ProjectID/EnvironmentID are projected from the control-plane row onto
+	// labels so Render REST clients can hydrate and filter service membership.
+	ProjectID     string `json:"projectId,omitempty"`
+	EnvironmentID string `json:"environmentId,omitempty"`
 	// RootDir is the subdirectory of the repo this App builds from (Render's
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir        string `json:"rootDir,omitempty"`
@@ -437,6 +463,7 @@ func view(a *appv1alpha1.App) AppView {
 		URL:             a.Status.URL,
 		URLs:            a.Status.URLs,
 		Image:           a.Status.Image,
+		SourceImage:     a.Spec.Image,
 		Runtime:         a.Spec.Runtime,
 		BuildCommand:    a.Spec.BuildCommand,
 		StartCommand:    a.Spec.StartCommand,
@@ -451,6 +478,8 @@ func view(a *appv1alpha1.App) AppView {
 		CreatedAt:       created,
 		IdleTTLSeconds:  a.Spec.IdleTTLSeconds,
 		OwnerID:         a.Labels[core.LabelTenant],
+		ProjectID:       a.Labels[core.LabelProject],
+		EnvironmentID:   a.Labels[core.LabelEnvironment],
 		RootDir:         a.Spec.RootDir,
 		DockerfilePath:  a.Spec.DockerfilePath,
 		Repo:            a.Spec.Repo,
@@ -577,6 +606,28 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	return view(a), nil
 }
 
+// ListInstances returns the running and pending Kubernetes pods that implement
+// one service. Render models an instance with only an id and creation time;
+// pod names are stable opaque instance ids for this adapter.
+func (s *Service) ListInstances(ctx context.Context, name string) ([]renderServiceInstance, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	if err != nil {
+		return nil, err
+	}
+	pods, err := s.AppPods(ctx, a.Name)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]renderServiceInstance, 0, len(pods))
+	for i := range pods {
+		out = append(out, renderServiceInstance{
+			ID:        pods[i].Name,
+			CreatedAt: pods[i].CreationTimestamp.UTC().Format(time.RFC3339),
+		})
+	}
+	return out, nil
+}
+
 // CreateRequest is the neutral create-or-update input the three surfaces (and
 // the bex.yml deploy mapper) share — Render's create body projected onto the
 // App CR spec. One of Repo/Image is required. Zero values fall back to the
@@ -594,7 +645,10 @@ type CreateRequest struct {
 	// GraphQL arg, the MCP session's selected workspace), so the workspace a
 	// create targets is decided in exactly one place: Create.
 	OwnerID string
-	Name    string
+	// EnvironmentID optionally assigns the new service to an existing
+	// environment (and therefore that environment's project).
+	EnvironmentID string
+	Name          string
 	// Type is the Render serviceType: web_service (default), private_service,
 	// background_worker, cron_job. Empty defaults to web_service.
 	Type string
@@ -628,7 +682,10 @@ type CreateRequest struct {
 	// non-nil values must be 1-300 and only apply to web/private/worker services.
 	MaxShutdownDelaySeconds *int32
 	Env                     []appv1alpha1.EnvVar
-	Hosts                   []string
+	// SecretFiles are Render's create-time secret files. They live in OpenBao,
+	// not the App spec, and are materialized by SecretFileSeeder after create.
+	SecretFiles []core.SecretFile
+	Hosts       []string
 	// AutoDeploy controls whether a signed git push to Branch redeploys this App
 	// (the webhook honors spec.autoDeploy). nil => the default: on for a
 	// repo-backed service (Render's default too), off for an image-backed one
@@ -687,7 +744,25 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}
-	return s.create(ctx, req)
+	if len(req.SecretFiles) > 0 {
+		for i := range req.SecretFiles {
+			req.SecretFiles[i].Name = strings.TrimSpace(req.SecretFiles[i].Name)
+			if !core.ValidSecretFileName(req.SecretFiles[i].Name) {
+				return AppView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, req.SecretFiles[i].Name)
+			}
+		}
+		if s.SecretFileSeeder == nil {
+			return AppView{}, core.ErrSecretsUnavailable
+		}
+	}
+	app, err := s.create(ctx, req)
+	if err != nil || req.DryRun || len(req.SecretFiles) == 0 {
+		return app, err
+	}
+	if err := s.SecretFileSeeder.SeedSecretFiles(ctx, app.Name, req.SecretFiles); err != nil {
+		return AppView{}, fmt.Errorf("seed secret files: %w", err)
+	}
+	return app, nil
 }
 
 // create is the unauthorized core of Create — a same-workspace duplicate name
@@ -704,6 +779,22 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
+	var environment store.Environment
+	if req.EnvironmentID != "" {
+		if s.Store == nil || tenantID == "" {
+			return AppView{}, fmt.Errorf("%w: environment assignment requires the control-plane store", core.ErrBadRequest)
+		}
+		environment, err = s.Store.GetEnvironment(ctx, req.EnvironmentID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return AppView{}, fmt.Errorf("%w: environment %q not found", core.ErrBadRequest, req.EnvironmentID)
+			}
+			return AppView{}, fmt.Errorf("resolving environment: %w", err)
+		}
+		if environment.TenantID != tenantID {
+			return AppView{}, fmt.Errorf("%w: environment %q does not belong to the target workspace", core.ErrBadRequest, req.EnvironmentID)
+		}
+	}
 
 	// Dry-run: return the resolved spec preview without any k8s or store writes.
 	if req.DryRun {
@@ -713,6 +804,10 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		a.Spec = desired
 		if tenantID != "" {
 			a.Labels = map[string]string{core.LabelTenant: tenantID}
+		}
+		if environment.ID != "" {
+			a.Labels[core.LabelProject] = environment.ProjectID
+			a.Labels[core.LabelEnvironment] = environment.ID
 		}
 		return view(a), nil
 	}
@@ -782,6 +877,10 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// alone no longer serves that purpose once it's tenant-prefixed.
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
+	if environment.ID != "" {
+		a.Labels[core.LabelProject] = environment.ProjectID
+		a.Labels[core.LabelEnvironment] = environment.ID
+	}
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11). The store's own
@@ -790,14 +889,16 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// still surfaces as ErrConflict here, never an unclassified 500.
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID: tenantID,
-			Name:     req.Name,
-			Repo:     req.Repo,
-			Image:    req.Image,
-			Branch:   desired.Branch,
-			Port:     desired.Port,
-			Replicas: desired.Replicas,
-			Tier:     desired.Tier,
+			TenantID:      tenantID,
+			Name:          req.Name,
+			Repo:          req.Repo,
+			Image:         req.Image,
+			Branch:        desired.Branch,
+			Port:          desired.Port,
+			Replicas:      desired.Replicas,
+			Tier:          desired.Tier,
+			ProjectID:     environment.ProjectID,
+			EnvironmentID: environment.ID,
 			// Provenance for the first deploy row CreateApp opens (w9/001):
 			// the branch tip this create will build, resolved best-effort.
 			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
@@ -1568,6 +1669,79 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.PreDeployCommand = strings.TrimSpace(command)
+	})
+}
+
+// SetCommands applies Render's runtime-specific build/start command PATCH.
+// The official CLI sends these inside serviceDetails.envSpecificDetails; cron
+// jobs call their start command `command`, while the other runtime-backed
+// service types persist it as spec.startCommand.
+func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, startCommand *string) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type == appv1alpha1.TypeStaticSite && startCommand != nil {
+		return AppView{}, fmt.Errorf("%w: start command is not applicable to a static_site", core.ErrBadRequest)
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		if buildCommand != nil {
+			a.Spec.BuildCommand = strings.TrimSpace(*buildCommand)
+		}
+		if startCommand != nil {
+			if a.Spec.Type == appv1alpha1.TypeCronJob {
+				a.Spec.Command = strings.TrimSpace(*startCommand)
+			} else {
+				a.Spec.StartCommand = strings.TrimSpace(*startCommand)
+			}
+		}
+	})
+}
+
+// SetSource applies the official CLI's repo/image/branch PATCH. Repo and image
+// remain mutually exclusive; specifying either source kind switches away from
+// the other. Store-managed Apps write the row first because the projector owns
+// these fields.
+func (s *Service) SetSource(ctx context.Context, name string, repo, image, branch *string) (AppView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, a.Spec.Branch
+	if repo != nil {
+		nextRepo = strings.TrimSpace(*repo)
+		if nextRepo == "" || !store.ValidRepo(nextRepo) {
+			return AppView{}, fmt.Errorf("%w: invalid repository URL", core.ErrBadRequest)
+		}
+		nextImage = ""
+	}
+	if image != nil {
+		nextImage = strings.TrimSpace(*image)
+		if nextImage == "" {
+			return AppView{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
+		}
+		nextRepo = ""
+	}
+	if branch != nil {
+		nextBranch = strings.TrimSpace(*branch)
+		if !store.ValidGitRef(nextBranch) {
+			return AppView{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
+		}
+	}
+	if nextBranch == "" {
+		nextBranch = "main"
+	}
+	if s.Store != nil {
+		if id := a.Labels[store.LabelAppID]; id != "" {
+			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch); err != nil {
+				return AppView{}, fmt.Errorf("update source of truth: %w", err)
+			}
+		}
+	}
+	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+		a.Spec.Repo = nextRepo
+		a.Spec.Image = nextImage
+		a.Spec.Branch = nextBranch
 	})
 }
 

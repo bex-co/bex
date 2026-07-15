@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -79,6 +79,30 @@ func TestSecretFiles_RoundTripAndProjection(t *testing.T) {
 	app = getApp(t, svc.Client, "web")
 	if slices.Contains(app.Spec.FilesFromSecrets, "web-files") {
 		t.Errorf("mount reference should be removed once empty: %+v", app.Spec.FilesFromSecrets)
+	}
+}
+
+func TestSeedSecretFilesWritesAllFilesTogether(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+	files := []core.SecretFile{
+		{Name: "ca.pem", Content: "CERT"},
+		{Name: "config.json", Content: `{"enabled":true}`},
+	}
+	if err := svc.SeedSecretFiles(ctx, "web", files); err != nil {
+		t.Fatalf("SeedSecretFiles: %v", err)
+	}
+	got, err := store.Get(ctx, filesPath("web"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["ca.pem"] != "CERT" || got["config.json"] != `{"enabled":true}` {
+		t.Fatalf("stored files = %#v", got)
+	}
+	app := getApp(t, svc.Client, "web")
+	if len(app.Spec.FilesFromSecrets) != 1 || app.Spec.FilesFromSecrets[0] != "web-files" {
+		t.Fatalf("files projection = %#v", app.Spec.FilesFromSecrets)
 	}
 }
 

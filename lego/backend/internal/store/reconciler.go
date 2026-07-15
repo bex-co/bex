@@ -367,6 +367,18 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 	set(LabelTenant, d.TenantID)       // the tenant id (tea-<id>), what List/Get filter on
 	set(LabelWorkspace, d.TenantID)    // workspace identity for NetworkPolicy selectors (t002)
 	set(core.LabelServiceName, d.Name) // the public name — see core.GetApp's cross-workspace fallback
+	setOptional := func(k, v string) {
+		if v == "" {
+			if _, ok := cur.Labels[k]; ok {
+				delete(cur.Labels, k)
+				changed = true
+			}
+			return
+		}
+		set(k, v)
+	}
+	setOptional(core.LabelProject, d.ProjectID)
+	setOptional(core.LabelEnvironment, d.EnvironmentID)
 	return changed
 }
 

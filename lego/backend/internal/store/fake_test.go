@@ -378,6 +378,18 @@ func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) er
 	return nil
 }
 
+func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.apps[id]
+	if !ok {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	a.Repo, a.Image, a.Branch = repo, image, branch
+	m.apps[id] = a
+	return nil
+}
+
 func (m *memStore) SetAppImage(_ context.Context, id string, image string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -107,7 +107,7 @@ func TestRESTDisplayNamePatchRoundTripAndOmission(t *testing.T) {
 		return out
 	}
 
-	if out := patch(`{"displayName":"Customer API"}`); out["displayName"] != "Customer API" || out["name"] != "web" || out["id"] != "web" {
+	if out := patch(`{"displayName":"Customer API"}`); out["displayName"] != "Customer API" || out["name"] != "Customer API" || out["id"] != "web" {
 		t.Fatalf("set response = %#v", out)
 	}
 	if out := patch(`{}`); out["displayName"] != "Customer API" {
@@ -189,7 +189,7 @@ func TestMCPDisplayNameRoundTrip(t *testing.T) {
 	}
 
 	set := call("set_display_name", map[string]any{"serviceId": "web", "displayName": "Customer API"})
-	if set["name"] != "web" || set["displayName"] != "Customer API" {
+	if set["name"] != "Customer API" || set["displayName"] != "Customer API" {
 		t.Fatalf("set_display_name = %#v", set)
 	}
 	read := call("get_service", map[string]any{"serviceId": "web"})

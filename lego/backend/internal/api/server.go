@@ -332,9 +332,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
 	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Selections: selections}
 	var envSeeder apps.EnvSeeder
+	var secretFileSeeder apps.SecretFileSeeder
 	var envGroupApplier apps.EnvGroupApplier
 	if d.Secrets != nil {
 		envSeeder = secretsSvc
+		secretFileSeeder = secretsSvc
 		envGroupApplier = envGroupsSvc
 	}
 	// Usage is constructed and its metering loop started in cmd/api/main.go
@@ -368,7 +370,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return e.OwnerID, nil
 	}
 	return &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder},
+		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder},
 		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
 		Metrics: &metrics.Service{
 			Base:                       base,

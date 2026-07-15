@@ -31,13 +31,23 @@ import (
 )
 
 // patchServiceRequest is the subset of Render's PATCH /v1/services/{id} body
-// bex honors: a plan change nested under serviceDetails, a human-facing display
-// name, a root-directory change, and Render's top-level autoDeploy toggle. PATCH
-// is partial — fields this bex doesn't support (name, ...) are silently ignored
-// rather than rejected, a safe superset; omitting a field leaves it unchanged.
+// bex honors: plan and type-specific details nested under serviceDetails plus
+// Render's top-level identity, source, and deploy settings. PATCH is partial —
+// recognized fields that bex cannot honor are rejected explicitly, so an
+// official CLI command never reports success after silently dropping intent;
+// omitting a field leaves it unchanged.
 type patchServiceRequest struct {
 	ServiceDetails *struct {
-		Plan string `json:"plan"`
+		Plan             string          `json:"plan"`
+		HealthCheckPath  *string         `json:"healthCheckPath"`
+		PreDeployCommand *string         `json:"preDeployCommand"`
+		Schedule         *string         `json:"schedule"`
+		PublishPath      *string         `json:"publishPath"`
+		BuildCommand     *string         `json:"buildCommand"`
+		EnvSpecific      json.RawMessage `json:"envSpecificDetails"`
+		Previews         json.RawMessage `json:"previews"`
+		MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
+		IPAllowList      json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -47,6 +57,13 @@ type patchServiceRequest struct {
 		// field-named 400 for strings, fractions, booleans, or null.
 		MaxShutdownDelaySeconds optionalInt32 `json:"maxShutdownDelaySeconds"`
 	} `json:"serviceDetails"`
+	// Render calls the mutable human-facing label `name`; displayName remains a
+	// bex extension accepted for dashboard/backward compatibility.
+	Name *string `json:"name"`
+	Repo *string `json:"repo"`
+	// Image is present when the official CLI updates an image-backed service.
+	Image  *imageRef `json:"image"`
+	Branch *string   `json:"branch"`
 	// DisplayName is the mutable human label. A pointer distinguishes omission
 	// (leave unchanged) from an explicit empty string (clear and fall back to the
 	// immutable App name).
@@ -127,18 +144,20 @@ type createServiceRequest struct {
 	// the caller is not a member of is 403, never a silent create somewhere else.
 	OwnerID string `json:"ownerId"`
 	// Render fields.
-	Type       string    `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
-	Schedule   string    `json:"schedule"` // cron expression, required when type is cron_job
-	Command    string    `json:"command"`  // overrides the image's entrypoint for a cron_job; empty runs its own command
-	Name       string    `json:"name"`
-	Repo       string    `json:"repo"`
-	Image      *imageRef `json:"image"` // prebuilt image: Render nests the path in an object
-	Branch     string    `json:"branch"`
-	AutoDeploy string    `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
+	Type          string    `json:"type"`     // web_service (default) | private_service | background_worker | cron_job
+	Schedule      string    `json:"schedule"` // cron expression, required when type is cron_job
+	Command       string    `json:"command"`  // overrides the image's entrypoint for a cron_job; empty runs its own command
+	Name          string    `json:"name"`
+	Repo          string    `json:"repo"`
+	Image         *imageRef `json:"image"` // prebuilt image: Render nests the path in an object
+	Branch        string    `json:"branch"`
+	EnvironmentID string    `json:"environmentId"`
+	AutoDeploy    string    `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore); "" => default (docs/render-artifacts/notify-on-fail.md).
 	NotifyOnFail   string             `json:"notifyOnFail"`
 	EnvVars        []keyValue         `json:"envVars"`
+	SecretFiles    []secretFileInput  `json:"secretFiles"`
 	ServiceDetails *serviceDetailsReq `json:"serviceDetails"`
 	// bex extensions (no Render create-body equivalent): the build strategy, the
 	// listen port (Render auto-detects it; bex's App CR needs it explicitly),
@@ -175,11 +194,17 @@ type keyValue struct {
 	Value string `json:"value"`
 }
 
+type secretFileInput struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
 // imageRef is Render's prebuilt-image object: the image path lives under
-// `image.imagePath`, not a bare top-level string (ownerId/registry credential
-// are Render-registry concerns bex doesn't model, so they're ignored).
+// `image.imagePath`, not a bare top-level string. An explicit registry
+// credential is decoded so unsupportedField can reject it honestly.
 type imageRef struct {
-	ImagePath string `json:"imagePath"`
+	ImagePath            string          `json:"imagePath"`
+	RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 }
 
 // serviceDetailsReq is where Render nests plan, numInstances and healthCheckPath
@@ -196,6 +221,9 @@ type serviceDetailsReq struct {
 	EnvSpecificDetails *envSpecificDetailsReq `json:"envSpecificDetails"`
 	Schedule           string                 `json:"schedule"`
 	Command            string                 `json:"command"`
+	// BuildCommand is staticSiteDetails.buildCommand. Runtime-backed service
+	// types carry it inside envSpecificDetails instead.
+	BuildCommand string `json:"buildCommand"`
 	// PublishPath is Render's staticSiteDetails.publishPath — the built output
 	// directory a static_site serves. Accepted here or at the top level (top
 	// level wins), mirroring schedule/command.
@@ -203,15 +231,69 @@ type serviceDetailsReq struct {
 	// PreDeployCommand is Render's serviceDetails.preDeployCommand — the command
 	// run against the new image before it serves traffic (w1/m33). Accepted here
 	// (Render-faithful) or at the top level (top level wins).
-	PreDeployCommand string `json:"preDeployCommand"`
+	PreDeployCommand string          `json:"preDeployCommand"`
+	Previews         json.RawMessage `json:"previews"`
+	MaintenanceMode  json.RawMessage `json:"maintenanceMode"`
+	IPAllowList      json.RawMessage `json:"ipAllowList"`
 }
 
 type envSpecificDetailsReq struct {
-	BuildCommand   string `json:"buildCommand"`
-	StartCommand   string `json:"startCommand"`
-	DockerCommand  string `json:"dockerCommand"`
-	DockerContext  string `json:"dockerContext"`
-	DockerfilePath string `json:"dockerfilePath"`
+	BuildCommand         string          `json:"buildCommand"`
+	StartCommand         string          `json:"startCommand"`
+	DockerCommand        string          `json:"dockerCommand"`
+	DockerContext        string          `json:"dockerContext"`
+	DockerfilePath       string          `json:"dockerfilePath"`
+	RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
+}
+
+// unsupportedField names an official-CLI field that the platform cannot yet
+// enforce. Rejecting it is materially safer than accepting a command whose
+// requested runtime behavior is then absent.
+func (r createServiceRequest) unsupportedField() string {
+	if r.Image != nil && len(r.Image.RegistryCredentialID) > 0 {
+		return "registryCredentialId"
+	}
+	if r.ServiceDetails == nil {
+		return ""
+	}
+	if len(r.ServiceDetails.Previews) > 0 {
+		return "previews"
+	}
+	if len(r.ServiceDetails.MaintenanceMode) > 0 {
+		return "maintenanceMode"
+	}
+	if len(r.ServiceDetails.IPAllowList) > 0 {
+		return "ipAllowList"
+	}
+	if r.ServiceDetails.EnvSpecificDetails != nil && len(r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID) > 0 {
+		return "registryCredentialId"
+	}
+	return ""
+}
+
+func (r patchServiceRequest) unsupportedField() string {
+	if r.Image != nil && len(r.Image.RegistryCredentialID) > 0 {
+		return "registryCredentialId"
+	}
+	if r.ServiceDetails == nil {
+		return ""
+	}
+	if len(r.ServiceDetails.Previews) > 0 {
+		return "previews"
+	}
+	if len(r.ServiceDetails.MaintenanceMode) > 0 {
+		return "maintenanceMode"
+	}
+	if len(r.ServiceDetails.IPAllowList) > 0 {
+		return "ipAllowList"
+	}
+	if len(r.ServiceDetails.EnvSpecific) > 0 {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(r.ServiceDetails.EnvSpecific, &fields) == nil && len(fields["registryCredentialId"]) > 0 {
+			return "registryCredentialId"
+		}
+	}
+	return ""
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -245,6 +327,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 				}
 			}
 		}
+		if r.ServiceDetails.BuildCommand != "" {
+			buildCommand = r.ServiceDetails.BuildCommand
+		}
 		replicas = r.ServiceDetails.NumInstances
 		if r.ServiceDetails.MaxShutdownDelaySeconds.Set {
 			value := r.ServiceDetails.MaxShutdownDelaySeconds.Value
@@ -255,6 +340,9 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		}
 		if command == "" {
 			command = r.ServiceDetails.Command // top-level command wins over the nested one
+		}
+		if command == "" && r.Type == appv1alpha1.TypeCronJob {
+			command = startCommand // official CLI encodes cron command in envSpecificDetails.startCommand
 		}
 		if publishPath == "" {
 			publishPath = r.ServiceDetails.PublishPath // top-level publishPath wins over the nested one
@@ -271,8 +359,13 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 	for _, e := range r.EnvVars {
 		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
 	}
+	secretFiles := make([]core.SecretFile, 0, len(r.SecretFiles))
+	for _, f := range r.SecretFiles {
+		secretFiles = append(secretFiles, core.SecretFile{Name: f.Name, Content: f.Content})
+	}
 	return CreateRequest{
 		OwnerID:                 r.OwnerID,
+		EnvironmentID:           r.EnvironmentID,
 		Name:                    r.Name,
 		Type:                    r.Type,
 		Schedule:                schedule,
@@ -293,6 +386,7 @@ func (r createServiceRequest) toCreateRequest() CreateRequest {
 		HealthCheckPath:         health,
 		MaxShutdownDelaySeconds: maxShutdownDelaySeconds,
 		Env:                     env,
+		SecretFiles:             secretFiles,
 		Hosts:                   r.Domains,
 		AutoDeploy:              parseYesNo(r.AutoDeploy),
 		NotifyOnFail:            r.NotifyOnFail,
@@ -343,6 +437,21 @@ func parseYesNo(s string) *bool {
 	}
 }
 
+// renderListParam expands Render's form-style array encoding. The generated
+// CLI sends a multi-value flag as one comma-separated value, while hand-written
+// clients commonly repeat the query key; accept both forms.
+func renderListParam(values []string) []string {
+	var out []string
+	for _, raw := range values {
+		for _, value := range strings.Split(raw, ",") {
+			if value = strings.TrimSpace(value); value != "" {
+				out = append(out, value)
+			}
+		}
+	}
+	return out
+}
+
 // RegisterREST mounts the App-lifecycle routes — Render-public-API compatible.
 // Paths, the {service, cursor} list envelope, the string suspended enum, and the
 // verb status codes (suspend/resume 202, restart 200) all match Render's OpenAPI
@@ -360,10 +469,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// documented "Filter by name" — the official CLI resolves a bare
 		// name/id argument to a service id by calling this with ?name=, and
 		// requires it to narrow to exactly one match).
-		if names := q["name"]; len(names) > 0 {
+		if names := renderListParam(q["name"]); len(names) > 0 {
 			filtered := make([]AppView, 0, len(apps))
 			for _, a := range apps {
-				if slices.Contains(names, a.Name) {
+				if slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a)) {
+					filtered = append(filtered, a)
+				}
+			}
+			apps = filtered
+		}
+		if environmentIDs := renderListParam(q["environmentId"]); len(environmentIDs) > 0 {
+			filtered := make([]AppView, 0, len(apps))
+			for _, a := range apps {
+				if slices.Contains(environmentIDs, a.EnvironmentID) {
 					filtered = append(filtered, a)
 				}
 			}
@@ -382,6 +500,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderService(app))
+	}
+	listInstances := func(w http.ResponseWriter, r *http.Request) {
+		instances, err := s.ListInstances(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, instances)
 	}
 	// verb maps a Service action to a handler with a Render-accurate status
 	// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
@@ -411,14 +537,42 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
+		if field := req.unsupportedField(); field != "" {
+			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
+			return
+		}
 		id := r.PathValue("id")
 		dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 		var plan string
 		var idleTTL *int32
 		var maxShutdownDelay optionalInt32
+		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand *string
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
+			healthCheckPath = req.ServiceDetails.HealthCheckPath
+			preDeployCommand = req.ServiceDetails.PreDeployCommand
+			schedule = req.ServiceDetails.Schedule
+			publishPath = req.ServiceDetails.PublishPath
+			buildCommand = req.ServiceDetails.BuildCommand
+			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
+				var envSpecific struct {
+					BuildCommand  *string `json:"buildCommand"`
+					StartCommand  *string `json:"startCommand"`
+					DockerCommand *string `json:"dockerCommand"`
+				}
+				if err := json.Unmarshal(req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
+					core.WriteErr(w, core.ErrBadRequest)
+					return
+				}
+				if envSpecific.BuildCommand != nil {
+					buildCommand = envSpecific.BuildCommand
+				}
+				startCommand = envSpecific.StartCommand
+				if envSpecific.DockerCommand != nil {
+					startCommand = envSpecific.DockerCommand
+				}
+			}
 		}
 		autoDeploy := parseYesNo(req.AutoDeploy) // nil => not provided (don't change)
 
@@ -437,7 +591,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && req.DisplayName == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil {
+		displayName := req.DisplayName
+		if req.Name != nil {
+			displayName = req.Name
+		}
+		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil {
 			get(w, r) // no supported field present => read-only no-op
 			return
 		}
@@ -445,8 +603,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// least one runs, so app is always set by the time we serialize.
 		var app AppView
 		var err error
-		if req.DisplayName != nil {
-			if app, err = s.SetDisplayName(r.Context(), id, *req.DisplayName); err != nil {
+		if displayName != nil {
+			if app, err = s.SetDisplayName(r.Context(), id, *displayName); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		var image *string
+		if req.Image != nil {
+			image = &req.Image.ImagePath
+		}
+		if req.Repo != nil || image != nil || req.Branch != nil {
+			if app, err = s.SetSource(r.Context(), id, req.Repo, image, req.Branch); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -505,6 +673,36 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 		}
+		if healthCheckPath != nil {
+			if app, err = s.SetHealthCheckPath(r.Context(), id, *healthCheckPath); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if preDeployCommand != nil {
+			if app, err = s.SetPreDeployCommand(r.Context(), id, *preDeployCommand); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if schedule != nil {
+			if app, err = s.SetCronJob(r.Context(), id, schedule, nil); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if publishPath != nil {
+			if app, err = s.SetPublishPath(r.Context(), id, *publishPath); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
+		if buildCommand != nil || startCommand != nil {
+			if app, err = s.SetCommands(r.Context(), id, buildCommand, startCommand); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+		}
 		if req.NotifyOnFail != nil {
 			if app, err = s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail); err != nil {
 				core.WriteErr(w, err)
@@ -540,6 +738,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req createServiceRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+			return
+		}
+		if field := req.unsupportedField(); field != "" {
+			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
 			return
 		}
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
@@ -761,6 +963,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		mux.HandleFunc("GET "+base, list)
 		mux.HandleFunc("POST "+base, create) // Render: create => 201
 		mux.HandleFunc("GET "+base+"/{id}", get)
+		mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
 		mux.HandleFunc("PATCH "+base+"/{id}", patch)
 		mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
 		mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))

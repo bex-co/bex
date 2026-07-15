@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -174,6 +175,42 @@ func TestReconcileWorkspaceLabelSurvivesResync(t *testing.T) {
 	app = getApp(t, cl)
 	if got := app.Labels[LabelWorkspace]; got != ten.ID {
 		t.Errorf("LabelWorkspace after resync = %q; want %q", got, ten.ID)
+	}
+}
+
+func TestReconcileProjectsServiceAssociationsForRESTClients(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	store.mu.Lock()
+	a := store.apps[row.ID]
+	a.ProjectID, a.EnvironmentID = "prj-example", "env-staging"
+	store.apps[row.ID] = a
+	store.mu.Unlock()
+
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile association labels: %v", err)
+	}
+	app := getApp(t, cl)
+	if app.Labels[core.LabelProject] != "prj-example" || app.Labels[core.LabelEnvironment] != "env-staging" {
+		t.Fatalf("association labels = %v", app.Labels)
+	}
+
+	store.mu.Lock()
+	a = store.apps[row.ID]
+	a.ProjectID, a.EnvironmentID = "", ""
+	store.apps[row.ID] = a
+	store.mu.Unlock()
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("clear association labels: %v", err)
+	}
+	app = getApp(t, cl)
+	if _, ok := app.Labels[core.LabelProject]; ok {
+		t.Fatalf("project label survived clear: %v", app.Labels)
+	}
+	if _, ok := app.Labels[core.LabelEnvironment]; ok {
+		t.Fatalf("environment label survived clear: %v", app.Labels)
 	}
 }
 

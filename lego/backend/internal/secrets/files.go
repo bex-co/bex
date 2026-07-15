@@ -123,6 +123,40 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	return SecretFileView{Name: name, Content: content}, nil
 }
 
+// SeedSecretFiles persists the official CLI's create-time secretFiles payload
+// in one write and materializes the service's files Secret. All names are
+// validated before any mutation, so one bad entry cannot partially seed the
+// request. Existing values are merged for idempotent/retry-safe behavior.
+func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial []core.SecretFile) error {
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	if err != nil {
+		return err
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	if len(initial) == 0 {
+		return nil
+	}
+	for i := range initial {
+		initial[i].Name = strings.TrimSpace(initial[i].Name)
+		if !core.ValidSecretFileName(initial[i].Name) {
+			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, initial[i].Name)
+		}
+	}
+	files, err := s.Store.Get(ctx, filesPath(service))
+	if err != nil {
+		return err
+	}
+	for _, f := range initial {
+		files[f.Name] = f.Content
+	}
+	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
+		return err
+	}
+	return s.materializeFiles(ctx, a, files)
+}
+
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),
 // re-projecting the reduced set. Unknown file => core.ErrNotFound.
 func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) error {

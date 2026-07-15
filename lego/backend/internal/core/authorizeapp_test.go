@@ -86,6 +86,58 @@ func TestAuthorizeAppResolvesTypedServiceID(t *testing.T) {
 	}
 }
 
+func TestAuthorizeAppResolvesTypedPublicID(t *testing.T) {
+	a := sampleApp("tea-a-web", "tea-a")
+	a.Labels[LabelServiceName] = "Customer API"
+	a.Labels[LabelAppID] = "srv-d9example"
+	b := &Base{
+		Client: fakeAppClient(a), Namespace: "default",
+		Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{},
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	got, err := b.AuthorizeApp(ctx, RelCanOperate, "srv-d9example")
+	if err != nil {
+		t.Fatalf("AuthorizeApp by typed id: %v", err)
+	}
+	if got.Name != "tea-a-web" {
+		t.Fatalf("resolved App = %q, want tea-a-web", got.Name)
+	}
+}
+
+func TestAuthorizeAppTypedIDAuditsCanonicalPublicName(t *testing.T) {
+	a := sampleApp("tea-a-web", "tea-a")
+	a.Labels[LabelServiceName] = "Customer API"
+	a.Labels[LabelAppID] = "srv-d9example"
+	sink := &recordingSink{}
+	b := &Base{
+		Client: fakeAppClient(a), Namespace: "default",
+		Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: &fakeAllowChecker{}, Audit: sink,
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := b.AuthorizeApp(ctx, RelCanOperate, "srv-d9example"); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Target != ServiceTarget("Customer API") {
+		t.Fatalf("audit events = %#v, want canonical public-name target", sink.events)
+	}
+}
+
+func TestAuthorizeAppTypedPublicIDStillEnforcesOwningWorkspace(t *testing.T) {
+	a := sampleApp("tea-b-web", "tea-b")
+	a.Labels[LabelAppID] = "srv-d9other"
+	b := &Base{
+		Client: fakeAppClient(a), Namespace: "default",
+		Workspace: fakeWorkspace{"identity-a": "tea-a"}, Authz: fakeDenyChecker{},
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	if _, err := b.AuthorizeApp(ctx, RelCanView, "srv-d9other"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("cross-workspace typed id: got %v, want ErrForbidden", err)
+	}
+}
+
 func TestAuthorizeAppCrossWorkspaceStillChecksTheRelationThere(t *testing.T) {
 	cl := fakeAppClient(sampleApp("web", "tea-b"))
 	b := &Base{

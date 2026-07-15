@@ -51,6 +51,8 @@ limitations under the License.
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
 //	build_filter_changed        apps.SetBuildFilter
+//	commands_changed            apps.SetCommands
+//	source_changed              apps.SetSource
 //	display_name_changed        apps.SetDisplayName
 //	pre_deploy_command_changed  apps.SetPreDeployCommand
 //	max_shutdown_delay_changed  apps.SetMaxShutdownDelay
@@ -140,6 +142,8 @@ const (
 	TypeIdleTimeoutChanged      = "idle_timeout_changed"
 	TypeRootDirectoryChanged    = "root_directory_changed"
 	TypeBuildFilterChanged      = "build_filter_changed"
+	TypeCommandsChanged         = "commands_changed"
+	TypeSourceChanged           = "source_changed"
 	TypeDisplayNameChanged      = "display_name_changed"
 	TypePreDeployChanged        = "pre_deploy_command_changed"
 	TypeMaxShutdownDelayChanged = "max_shutdown_delay_changed"
@@ -178,6 +182,8 @@ var eventTypes = map[string]string{
 	"apps.SetIdleTTL":              TypeIdleTimeoutChanged,
 	"apps.SetRootDir":              TypeRootDirectoryChanged,
 	"apps.SetBuildFilter":          TypeBuildFilterChanged,
+	"apps.SetCommands":             TypeCommandsChanged,
+	"apps.SetSource":               TypeSourceChanged,
 	"apps.SetDisplayName":          TypeDisplayNameChanged,
 	"apps.SetPreDeployCommand":     TypePreDeployChanged,
 	"apps.SetMaxShutdownDelay":     TypeMaxShutdownDelayChanged,
@@ -360,8 +366,12 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if appID == "" {
 		return []Event{}, nil
 	}
+	targetName := a.Labels[core.LabelServiceName]
+	if targetName == "" {
+		targetName = a.Name
+	}
 	verbs, phases := pushDown(filter.Type)
-	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(service), a.Labels[core.LabelTenant], store.ServiceEventFilter{
+	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(targetName), a.Labels[core.LabelTenant], store.ServiceEventFilter{
 		Since:    since,
 		Until:    until,
 		AfterAt:  after.At,

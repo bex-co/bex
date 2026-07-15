@@ -114,18 +114,18 @@ const LabelWorkspace = "app.bex.co/workspace"
 
 // LabelProject carries a Database or KeyValue CR's project assignment (w1/m31
 // extension): the owning Project's id (prj-<xid>), or absent when unassigned.
-// Services group into a project via the control-plane store's apps.project_id
-// column instead (internal/store/projects.go) since they have a store row;
-// Database/KeyValue CRs have none, so this label is their only association —
+// Services group via apps.project_id and the projector mirrors it onto this
+// label for read-side adapters. Database/KeyValue CRs have no store row, so
+// this label is their source of association —
 // set/cleared by postgres.Service.SetProjectID / keyvalue.Service.SetProjectID.
 const LabelProject = "app.bex.co/project-id"
 
 // LabelEnvironment carries a Database or KeyValue CR's environment assignment
 // (w6/m20 extension, LabelProject's sibling): the owning Environment's id
-// (env-<xid>), or absent when unassigned. Services group into an environment
-// via the control-plane store's apps.environment_id column instead
-// (internal/store/environments.go) since they have a store row; Database/
-// KeyValue CRs have none, so this label is their only association — set/
+// (env-<xid>), or absent when unassigned. Services group via
+// apps.environment_id and the projector mirrors it onto this label for
+// read-side adapters. Database/KeyValue CRs have no store row, so this label
+// is their source of association — set/
 // cleared by postgres.Service.SetEnvironmentID / keyvalue.Service.SetEnvironmentID.
 const LabelEnvironment = "app.bex.co/environment-id"
 
@@ -438,19 +438,24 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
 		return nil, err
 	}
-	for i := range byID.Items {
-		object, resolveErr := b.resourceWorkspace(ctx, byID.Items[i].Labels)
-		if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err != nil {
-			return nil, err
+	if len(byID.Items) > 0 {
+		var lastErr error
+		for i := range byID.Items {
+			object, resolveErr := b.resourceWorkspace(ctx, byID.Items[i].Labels)
+			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&byID.Items[i]), verb, resolveErr); err == nil {
+				return &byID.Items[i], nil
+			} else {
+				lastErr = err
+			}
 		}
-		return &byID.Items[i], nil
+		return nil, lastErr
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
 		getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: candidate}, &a)
 		if getErr == nil {
 			object, resolveErr := b.resourceWorkspace(ctx, a.Labels)
-			if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err != nil {
+			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
 				return nil, err
 			}
 			return &a, nil
@@ -468,7 +473,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		var lastErr error
 		for i := range list.Items {
 			object, resolveErr := b.resourceWorkspace(ctx, list.Items[i].Labels)
-			if err := b.authorizeAndAudit(ctx, relation, object, ServiceTarget(name), verb, resolveErr); err == nil {
+			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr); err == nil {
 				return &list.Items[i], nil
 			} else {
 				lastErr = err
@@ -483,6 +488,18 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		return nil, err
 	}
 	return nil, ErrNotFound
+}
+
+// canonicalAppTarget keeps one service activity stream regardless of whether
+// a client addressed the App by mutable public name, internal CR name, or its
+// stable srv-… id. Store-managed Apps always carry LabelServiceName; legacy
+// and hand-applied Apps fall back to metadata.name.
+func canonicalAppTarget(a *appv1alpha1.App) string {
+	name := a.Labels[LabelServiceName]
+	if name == "" {
+		name = a.Name
+	}
+	return ServiceTarget(name)
 }
 
 // AuthorizeDatabase is AuthorizeApp for a managed Postgres Database — same
@@ -671,11 +688,16 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		client.InNamespace(b.Namespace), client.MatchingLabels{LabelAppID: name}); err != nil {
 		return nil, err
 	}
-	for i := range byID.Items {
-		if err := b.AuthorizeLabeled(ctx, relation, byID.Items[i].Labels); err != nil {
-			return nil, err
+	if len(byID.Items) > 0 {
+		lastErr := error(ErrNotFound)
+		for i := range byID.Items {
+			if err := b.AuthorizeLabeled(ctx, relation, byID.Items[i].Labels); err == nil {
+				return &byID.Items[i], nil
+			} else {
+				lastErr = err
+			}
 		}
-		return &byID.Items[i], nil
+		return nil, lastErr
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
