@@ -57,6 +57,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 - [ ] **m39** — Dependency security: clear the 18-alert spike (7 tasks) ← from `/pm-brainstorm` round 10, 2026-07-15 (Dependabot 4 → 18 alerts — 7 critical, 3 high — during the round-9 push wave, likely the SSH-gateway dep surface and/or the vendored CLI checkout; the m23/m30 triage pattern at milestone size)
 - [ ] **m40** — Wake interstitial: the "sleeping, click to wake" page (7 tasks) ← from `/pm-brainstorm` round 11, 2026-07-15 (ADR007:36 records the wake page as future work; the activator returns raw `503` JSON today — `activator/main.go:152`; `w1/m37` just shipped the custom-page-serving mechanism to reuse; polishes m4/m4.5 free-tier sleep)
 - [ ] **m41** — Stable Traefik LB origin IP across rebuilds (7 tasks) ← from `.pm/FUTURE-MAYBE.md` (trigger read as fired by `w7/m29`'s executed DR drills; user confirmed 2026-07-15, `/pm-brainstorm` round 12); closes the 2026-07-10 LB-IP-released-to-the-pool incident class via a Terraform-owned LB the CCM adopts by name
+- [ ] **m42** — Projects list: real cursor pagination (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (mechanical-consistency mining: `internal/projects/rest.go` emits per-item cursors it never honors — a compliant paging client loops forever; the CLI `projects` row was only ever verified against an empty list); t001 decides the absent-`limit` convention w6/m32 + w7/m38 inherit
 
 ## Suggested execution order (2026-07-08 refinement, superseded 2026-07-09)
 
