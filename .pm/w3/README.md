@@ -31,7 +31,7 @@ Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `005.md` — "deploy started" notification toggle (w3/m9 residual, sub-hour) ← from `/pm-brainstorm more milestones for each worker` 2026-07-14; filed rather than scheduled — w3's queue is full
+> `005.md` ("deploy started" notification toggle) done 2026-07-15 — `deployStarted` now persists and ships across REST/GraphQL/MCP/dashboard, with best-effort request-time hooks on API/deploy-hook and signed git-push deploys; moved to `done/005.md`.
 
 > `003.md` closed 2026-07-13 — conflicts with `.pm/DO_NOT_DO.md`'s "external log/metric drains — non-goal" entry; not built, moved to `done/003.md`.
 > `004.md` promoted to **m13** 2026-07-13; note moved to `done/`.

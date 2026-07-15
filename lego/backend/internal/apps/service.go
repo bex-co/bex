@@ -81,6 +81,9 @@ type Service struct {
 	// same seam deploys.Service.Commits wires. nil => the deploy rows this
 	// package opens carry no commit metadata.
 	Commits CommitResolver
+	// StartedNotifier is invoked asynchronously after a signed git push has
+	// successfully started the redeploy. nil leaves push-to-deploy unchanged.
+	StartedNotifier DeployStartedNotifier
 	// RegistryCreds, when set (registrycreds.Service is wired), materializes a
 	// dockerconfigjson pull Secret for an image-backed App whose image's
 	// registry host matches a workspace-stored credential (w2/m14). nil =>
@@ -1621,13 +1624,32 @@ func (s *Service) redeploy(ctx context.Context, name string) (AppView, error) {
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	s.notifyDeployStarted(ctx, a, name)
+	return v, nil
+}
+
+// notifyDeployStarted keeps identity-provider and SMTP I/O off the signed
+// webhook request path. The App's owner label is authoritative because a git
+// callback has no caller identity from which to resolve a workspace.
+func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, name string) {
+	if s.StartedNotifier == nil {
+		return
+	}
+	tenantID := a.Labels[core.LabelTenant]
+	if tenantID == "" {
+		return
+	}
+	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, name)
 }
 
 // Restart requests a rolling restart (spec.restartedAt = now). The operator

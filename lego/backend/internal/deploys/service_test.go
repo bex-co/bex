@@ -71,6 +71,22 @@ func newService(ds DeployStore, objs ...client.Object) (*Service, client.Client)
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: ds}, cl
 }
 
+type startedCall struct{ tenantID, appName string }
+
+type blockingStartedNotifier struct {
+	calls   chan startedCall
+	release chan struct{}
+}
+
+func newBlockingStartedNotifier() *blockingStartedNotifier {
+	return &blockingStartedNotifier{calls: make(chan startedCall, 1), release: make(chan struct{})}
+}
+
+func (n *blockingStartedNotifier) NotifyDeployStarted(_ context.Context, tenantID, appName string) {
+	n.calls <- startedCall{tenantID: tenantID, appName: appName}
+	<-n.release
+}
+
 // fakeStore is an in-memory DeployStore, newest-first like PGStore/memStore.
 type fakeStore struct {
 	mu       sync.Mutex
@@ -278,6 +294,39 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	}
 	if _, err := svc.Get(context.Background(), "web", "dep-doesnotexist"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("unknown deploy: want core.ErrNotFound, got %v", err)
+	}
+}
+
+func TestTriggerNotifiesDeployStartedOffRequestPath(t *testing.T) {
+	ds := newFakeStore()
+	a := sampleApp("web", "srv-1")
+	a.Labels[core.LabelTenant] = "tea-a"
+	svc, _ := newService(ds, a)
+	notifier := newBlockingStartedNotifier()
+	defer close(notifier.release)
+	svc.StartedNotifier = notifier
+
+	result := make(chan error, 1)
+	go func() {
+		_, err := svc.Trigger(context.Background(), "web", TriggerParams{})
+		result <- err
+	}()
+
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("Trigger: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Trigger blocked on deploy-start notification delivery")
+	}
+	select {
+	case got := <-notifier.calls:
+		if got != (startedCall{tenantID: "tea-a", appName: "web"}) {
+			t.Errorf("started notification = %+v", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Trigger returned without issuing a deploy-start notification")
 	}
 }
 

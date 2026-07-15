@@ -7,8 +7,16 @@ const zhNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.description": {
     message:
-      "当你的某个服务部署成功或失败时通过邮件通知你。这些是你的个人偏好设置——工作区内每位成员都可独立设置自己的通知偏好。",
+      "当你的某个服务开始部署、部署成功或失败时通过邮件通知你。这些是你的个人偏好设置——工作区内每位成员都可独立设置自己的通知偏好。",
     description: "Settings Notifications section card description",
+  },
+  "notifications.deployStarted": {
+    message: "部署开始",
+    description: "Toggle label",
+  },
+  "notifications.deployStartedHint": {
+    message: "部署开始时通过邮件通知我。",
+    description: "Toggle hint",
   },
   "notifications.deploySucceeded": {
     message: "部署成功",

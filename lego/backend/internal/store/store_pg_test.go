@@ -1082,9 +1082,9 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}
 	recordAudit(at, "apps.Restart", ten.ID, fullTarget, core.AuditAllowed)
 	recordAudit(at.Add(time.Second), "apps.Restart", ten.ID, bareTarget, core.AuditAllowed)
-	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, core.AuditDenied)                // denied: excluded
+	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, core.AuditDenied)                  // denied: excluded
 	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, core.AuditAllowed) // cross-tenant: excluded
-	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, core.AuditAllowed)             // verb not pushed down: excluded
+	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, core.AuditAllowed)               // verb not pushed down: excluded
 
 	rows, err := s.ListWebhookEvents(ctx, at.Add(-time.Second), "", time.Now().UTC().Add(time.Hour), []string{"apps.Restart"}, []string{ten.ID}, 100)
 	if err != nil {
@@ -1553,21 +1553,21 @@ func TestNotificationSettings(t *testing.T) {
 		t.Fatalf("recipients = %d (%v), want 2", len(recipients), err)
 	}
 	for _, r := range recipients {
-		if !r.DeploySucceeded || !r.DeployFailed {
-			t.Errorf("recipient %s defaults = (%v,%v), want (true,true)", r.Subject, r.DeploySucceeded, r.DeployFailed)
+		if !r.DeployStarted || !r.DeploySucceeded || !r.DeployFailed {
+			t.Errorf("recipient %s defaults = (%v,%v,%v), want (true,true,true)", r.Subject, r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 		}
 	}
 
-	// bob opts out of success emails only.
-	got, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", false, true)
+	// bob opts out of start and success emails only.
+	got, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", false, false, true)
 	if err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
-	if got.DeploySucceeded || !got.DeployFailed {
-		t.Errorf("upserted = (%v,%v), want (false,true)", got.DeploySucceeded, got.DeployFailed)
+	if got.DeployStarted || got.DeploySucceeded || !got.DeployFailed {
+		t.Errorf("upserted = (%v,%v,%v), want (false,false,true)", got.DeployStarted, got.DeploySucceeded, got.DeployFailed)
 	}
-	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || got.DeploySucceeded || !got.DeployFailed {
-		t.Errorf("get after upsert = %+v (%v), want (false,true)", got, err)
+	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || got.DeployStarted || got.DeploySucceeded || !got.DeployFailed {
+		t.Errorf("get after upsert = %+v (%v), want (false,false,true)", got, err)
 	}
 	// admin-1 is untouched — still the default via the join.
 	recipients, err = s.ListNotifyRecipients(ctx, ten.ID)
@@ -1577,18 +1577,18 @@ func TestNotificationSettings(t *testing.T) {
 	for _, r := range recipients {
 		switch r.Subject {
 		case "bob":
-			if r.DeploySucceeded || !r.DeployFailed {
-				t.Errorf("bob recipient = (%v,%v), want (false,true)", r.DeploySucceeded, r.DeployFailed)
+			if r.DeployStarted || r.DeploySucceeded || !r.DeployFailed {
+				t.Errorf("bob recipient = (%v,%v,%v), want (false,false,true)", r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 			}
 		case "admin-1":
-			if !r.DeploySucceeded || !r.DeployFailed {
-				t.Errorf("admin-1 recipient = (%v,%v), want (true,true) (default, unmodified)", r.DeploySucceeded, r.DeployFailed)
+			if !r.DeployStarted || !r.DeploySucceeded || !r.DeployFailed {
+				t.Errorf("admin-1 recipient = (%v,%v,%v), want (true,true,true) (default, unmodified)", r.DeployStarted, r.DeploySucceeded, r.DeployFailed)
 			}
 		}
 	}
 
 	// A second upsert updates the same row (unique index), not a duplicate.
-	if _, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", true, false); err != nil {
+	if _, err := s.UpsertNotificationSettings(ctx, ten.ID, "bob", true, true, false); err != nil {
 		t.Fatalf("re-upsert: %v", err)
 	}
 	var n int
@@ -1598,8 +1598,8 @@ func TestNotificationSettings(t *testing.T) {
 	if n != 1 {
 		t.Errorf("rows for bob = %d, want 1 (upsert, not insert)", n)
 	}
-	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || !got.DeploySucceeded || got.DeployFailed {
-		t.Errorf("get after re-upsert = %+v (%v), want (true,false)", got, err)
+	if got, err := s.GetNotificationSettings(ctx, ten.ID, "bob"); err != nil || !got.DeployStarted || !got.DeploySucceeded || got.DeployFailed {
+		t.Errorf("get after re-upsert = %+v (%v), want (true,true,false)", got, err)
 	}
 
 	// Deleting the workspace cascades its notification_settings rows.

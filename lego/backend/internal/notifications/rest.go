@@ -44,7 +44,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		v, err := s.UpdateSettings(r.Context(), req.DeploySucceeded, req.DeployFailed)
+		v, err := s.UpdateSettings(r.Context(), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

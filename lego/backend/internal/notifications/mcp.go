@@ -27,6 +27,7 @@ import (
 // usage, pillar 3).
 
 type updateSettingsArgs struct {
+	DeployStarted   bool `json:"deployStarted" jsonschema:"email me when one of my services' deploys starts"`
 	DeploySucceeded bool `json:"deploySucceeded" jsonschema:"email me when one of my services' deploys succeeds"`
 	DeployFailed    bool `json:"deployFailed" jsonschema:"email me when one of my services' deploys fails"`
 }
@@ -45,7 +46,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_notification_settings",
 		Description: "Update the caller's own deploy-notification email preferences for their workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateSettingsArgs) (*mcp.CallToolResult, SettingsView, error) {
-		v, err := s.UpdateSettings(ctx, in.DeploySucceeded, in.DeployFailed)
+		v, err := s.UpdateSettings(ctx, in.DeployStarted, in.DeploySucceeded, in.DeployFailed)
 		return nil, v, err
 	})
 }

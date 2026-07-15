@@ -11,9 +11,7 @@ vi.mock("sonner", () => ({
   toast: { error: (...a: unknown[]) => toastError(...a), success: vi.fn() },
 }));
 
-import {
-  useUpdateNotificationSettings,
-} from "@/features/notifications/hooks/use-update-notification-settings";
+import { useUpdateNotificationSettings } from "@/features/notifications/hooks/use-update-notification-settings";
 import { NotificationSettingsDocument } from "@/graphql/definitions";
 
 beforeEach(() => {
@@ -26,16 +24,33 @@ describe("useUpdateNotificationSettings", () => {
     mockUseMutation.mockReturnValue([vi.fn()]);
     renderHook(() => useUpdateNotificationSettings());
 
-    const [, options] = mockUseMutation.mock.calls[0] as [unknown, { update: (cache: unknown, result: unknown) => void }];
+    const [, options] = mockUseMutation.mock.calls[0] as [
+      unknown,
+      { update: (cache: unknown, result: unknown) => void },
+    ];
     const writeQuery = vi.fn();
     const fakeCache = { writeQuery };
     options.update(fakeCache, {
-      data: { updateNotificationSettings: { __typename: "NotificationSettings", deploySucceeded: false, deployFailed: true } },
+      data: {
+        updateNotificationSettings: {
+          __typename: "NotificationSettings",
+          deployStarted: true,
+          deploySucceeded: false,
+          deployFailed: true,
+        },
+      },
     });
 
     expect(writeQuery).toHaveBeenCalledWith({
       query: NotificationSettingsDocument,
-      data: { notificationSettings: { __typename: "NotificationSettings", deploySucceeded: false, deployFailed: true } },
+      data: {
+        notificationSettings: {
+          __typename: "NotificationSettings",
+          deployStarted: true,
+          deploySucceeded: false,
+          deployFailed: true,
+        },
+      },
     });
   });
 
@@ -43,25 +58,36 @@ describe("useUpdateNotificationSettings", () => {
     mockUseMutation.mockReturnValue([vi.fn()]);
     renderHook(() => useUpdateNotificationSettings());
 
-    const [, options] = mockUseMutation.mock.calls[0] as [unknown, { update: (cache: unknown, result: unknown) => void }];
+    const [, options] = mockUseMutation.mock.calls[0] as [
+      unknown,
+      { update: (cache: unknown, result: unknown) => void },
+    ];
     const writeQuery = vi.fn();
     options.update({ writeQuery }, { data: undefined });
 
     expect(writeQuery).not.toHaveBeenCalled();
   });
-  it("sends both preference fields as mutation variables and resolves true", async () => {
+  it("sends all three preference fields as mutation variables and resolves true", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useUpdateNotificationSettings());
     let ok;
     await act(async () => {
-      ok = await result.current.update({ deploySucceeded: false, deployFailed: true });
+      ok = await result.current.update({
+        deployStarted: false,
+        deploySucceeded: false,
+        deployFailed: true,
+      });
     });
 
     expect(ok).toBe(true);
     expect(mutate).toHaveBeenCalledWith({
-      variables: { deploySucceeded: false, deployFailed: true },
+      variables: {
+        deployStarted: false,
+        deploySucceeded: false,
+        deployFailed: true,
+      },
     });
     expect(toastError).not.toHaveBeenCalled();
   });
@@ -73,7 +99,11 @@ describe("useUpdateNotificationSettings", () => {
     const { result } = renderHook(() => useUpdateNotificationSettings());
     let ok;
     await act(async () => {
-      ok = await result.current.update({ deploySucceeded: true, deployFailed: true });
+      ok = await result.current.update({
+        deployStarted: true,
+        deploySucceeded: true,
+        deployFailed: true,
+      });
     });
 
     expect(ok).toBe(false);

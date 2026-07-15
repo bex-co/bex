@@ -1442,6 +1442,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return {
         notificationSettings: {
           __typename: "NotificationSettings",
+          deployStarted: true,
           deploySucceeded: true,
           deployFailed: true,
         },
