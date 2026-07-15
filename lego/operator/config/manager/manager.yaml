@@ -112,7 +112,8 @@ spec:
           # control): Zot denies anonymous catalog/pull/push. These name docker-config
           # Secrets (minted out-of-band by scripts/registry-secrets.sh) — the build Job
           # mounts PUSH_SECRET to authenticate its push; PULL_SECRET is attached to
-          # tenant Deployments as an imagePullSecret so kubelet pulls authenticate.
+          # tenant Deployments, CronJobs, and tenant-image Jobs as an imagePullSecret
+          # so kubelet pulls authenticate.
           # Both live in the build/apps namespace; unset => unauthenticated (dev only).
           - name: BEX_REGISTRY_PUSH_SECRET
             value: bex-registry-push

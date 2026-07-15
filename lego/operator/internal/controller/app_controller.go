@@ -217,6 +217,17 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{Requeue: true}, nil // finalizer update doesn't bump generation
 	}
 
+	// Registry auth is operator-level configuration, so converge it before a
+	// source build can halt this pass. A failed newer build deliberately leaves
+	// the previous Deployment/CronJob serving; without this early backfill that
+	// older workload could retain an unauthenticated pod template forever and
+	// fail as soon as Kubernetes reschedules it onto a fresh node.
+	if r.Mode == ModeKubernetes {
+		if err := r.backfillWorkloadPullSecrets(ctx, &app); err != nil {
+			return r.fail(ctx, &app, "RegistryPullSecretFailed", err)
+		}
+	}
+
 	// NOTE: intentionally NO early-return on ObservedGeneration==Generation here.
 	// This controller is level-triggered: every reconcile re-applies desired state
 	// (Deployment/Service/Ingress via CreateOrUpdate below) so operator-level config
@@ -429,6 +440,68 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
 	}
 	return out
+}
+
+// backfillWorkloadPullSecrets converges existing long-running pod templates
+// before image resolution/building. It is intentionally update-only: the normal
+// workload reconcilers remain the single creation seam, while this closes the
+// migration gap for an old revision that stays live because a newer source
+// build or pre-deploy step fails. Jobs are immutable and revision-scoped; every
+// newly generated manual/pre-deploy/static-publish Job already receives the
+// secret at construction time.
+func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *appv1alpha1.App) error {
+	if r.RegistryPullSecret == "" || r.Registry == "" {
+		return nil
+	}
+
+	patch := func(obj client.Object, podSpec *corev1.PodSpec) error {
+		if !metav1.IsControlledBy(obj, app) || len(podSpec.Containers) == 0 {
+			return nil
+		}
+		image := podSpec.Containers[0].Image
+		if !strings.HasPrefix(image, r.Registry+"/") {
+			return nil
+		}
+		desired := r.imagePullSecrets(app, image)
+		if localObjectReferencesEqual(podSpec.ImagePullSecrets, desired) {
+			return nil
+		}
+		before := obj.DeepCopyObject().(client.Object)
+		podSpec.ImagePullSecrets = desired
+		return r.Patch(ctx, obj, client.MergeFrom(before))
+	}
+
+	key := client.ObjectKey{Name: app.Name, Namespace: app.Namespace}
+	var dep appsv1.Deployment
+	if err := r.Get(ctx, key, &dep); err == nil {
+		if err := patch(&dep, &dep.Spec.Template.Spec); err != nil {
+			return fmt.Errorf("backfill Deployment %s/%s imagePullSecrets: %w", app.Namespace, app.Name, err)
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("get Deployment %s/%s for imagePullSecrets backfill: %w", app.Namespace, app.Name, err)
+	}
+
+	var cron batchv1.CronJob
+	if err := r.Get(ctx, key, &cron); err == nil {
+		if err := patch(&cron, &cron.Spec.JobTemplate.Spec.Template.Spec); err != nil {
+			return fmt.Errorf("backfill CronJob %s/%s imagePullSecrets: %w", app.Namespace, app.Name, err)
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("get CronJob %s/%s for imagePullSecrets backfill: %w", app.Namespace, app.Name, err)
+	}
+	return nil
+}
+
+func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Name != b[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 // copyCloneSecret relocates an opaque git-credential Secret from srcNS to dstNS
