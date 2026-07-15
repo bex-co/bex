@@ -599,10 +599,7 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
-	if protectedStatus != ProtectedStatusProtected && protectedStatus != ProtectedStatusUnprotected {
-		return EnvironmentView{}, fmt.Errorf("%w: protectedStatus must be %q or %q", core.ErrBadRequest, ProtectedStatusProtected, ProtectedStatusUnprotected)
-	}
-	if err := core.ValidateCIDRs(ipAllowList); err != nil {
+	if err := validateACL(protectedStatus, ipAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
@@ -644,6 +641,16 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 		return EnvironmentView{}, err
 	}
 	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
+}
+
+// validateACL is SetACL's input check, factored out so the Render-shaped
+// REST create can reject a bad ACL BEFORE creating the environment (w4/017)
+// — one source of truth, no orphan row on a 400.
+func validateACL(protectedStatus string, ipAllowList []string) error {
+	if protectedStatus != ProtectedStatusProtected && protectedStatus != ProtectedStatusUnprotected {
+		return fmt.Errorf("%w: protectedStatus must be %q or %q", core.ErrBadRequest, ProtectedStatusProtected, ProtectedStatusUnprotected)
+	}
+	return core.ValidateCIDRs(ipAllowList)
 }
 
 // requireProject fetches a project and authorizes it against the workspace it

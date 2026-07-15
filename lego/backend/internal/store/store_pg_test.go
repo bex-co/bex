@@ -527,6 +527,22 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 		t.Fatalf("windowed list = %+v (err %v), want the single denied event", windowed, err)
 	}
 
+	// OldestFirst (Render's direction=forward, w4/013) is the exact mirror:
+	// ASC total order, cursor resumes strictly NEWER than the cursor row.
+	forward, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{OldestFirst: true})
+	if err != nil || len(forward) != 3 {
+		t.Fatalf("oldest-first list = %+v (err %v), want 3 rows", forward, err)
+	}
+	for i := range forward {
+		if forward[i].ID != recorded[len(recorded)-1-i].ID {
+			t.Fatalf("oldest-first order = %+v, want the newest-first list reversed (%+v)", forward, recorded)
+		}
+	}
+	fwdPage2, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{OldestFirst: true, Limit: 1, Cursor: forward[0].ID})
+	if err != nil || len(fwdPage2) != 1 || fwdPage2[0].ID != forward[1].ID {
+		t.Fatalf("oldest-first second page = %+v (err %v), want [%s]", fwdPage2, err, forward[1].ID)
+	}
+
 	// An unknown cursor yields an empty page, not an error or the unfiltered list.
 	if junk, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Cursor: "aud-doesnotexist00000"}); err != nil || len(junk) != 0 {
 		t.Fatalf("unknown cursor = %+v (err %v), want an empty page", junk, err)

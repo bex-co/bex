@@ -700,6 +700,17 @@ func view(a *appv1alpha1.App) AppView {
 	}
 }
 
+// suspenders projects spec.suspended into Render's suspenders array. The
+// user-driven suspend verb is the only way an App becomes suspended in bex,
+// so a suspended App always reports exactly ["user"]; enum values bex has no
+// source for (admin, billing, parent_service, …) are omitted, never faked.
+func suspenders(suspended bool) []string {
+	if suspended {
+		return []string{"user"}
+	}
+	return []string{}
+}
+
 func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
 	v.DashboardURL = s.Metadata.DashboardURL("services", v.ID)

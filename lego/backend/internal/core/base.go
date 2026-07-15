@@ -341,12 +341,29 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 // still audited, so a cross-workspace attempt leaves the same denial trail
 // an OpenFGA "no" does.
 func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string, resolveErr error) error {
+	return b.authorizeAndRecord(ctx, relation, object, target, verb, resolveErr, true)
+}
+
+// authorizeAndRecord is authorizeAndAudit with the DENIAL recording
+// suppressible (recordDenial=false): AuthorizeApp's name-collision fallback
+// loop caps how many rejected candidates it individually audits (w4/015), so
+// its beyond-the-cap checks run through here without a per-candidate row. An
+// ALLOWED write still always records — the write-audit invariant ("a write
+// relation always records, allowed or denied") is never suppressible by
+// recordDenial; the one allowed-write suppression is the caller's own
+// WithDeferredAllowedWriteAudit (a composite atomic verb deferring its
+// success events until the mutation lands — denials stay visible either way).
+func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool) error {
 	err := resolveErr
 	if err == nil {
 		err = b.checkAuthz(ctx, relation, object)
 	}
-	if (writeRelations[relation] || (readRelations[relation] && err != nil)) &&
-		!(err == nil && defersAllowedWriteAudit(ctx)) {
+	switch {
+	case err == nil:
+		if writeRelations[relation] && !defersAllowedWriteAudit(ctx) {
+			b.emit(ctx, verb, object, target, nil)
+		}
+	case recordDenial && (writeRelations[relation] || readRelations[relation]):
 		b.emit(ctx, verb, object, target, err)
 	}
 	return err
@@ -420,10 +437,12 @@ func (b *Base) Tenant(ctx context.Context) (string, bool) {
 // appCandidateNames + GetApp's own doc): the acting workspace's own object name,
 // the bare name (hand-applied or pre-w4/m19 CRs), then — only if neither direct
 // candidate exists — every App carrying `name` as LabelServiceName, authorized
-// in turn via resourceWorkspace/authorizeAndAudit so a denied candidate still
+// in turn via resourceWorkspace/authorizeAndRecord so a denied candidate still
 // leaves its own audit trail (consistent with the resolveErr-before-the-check
 // case above) until one the caller may access is found or the search is
-// exhausted.
+// exhausted. Per-candidate denial rows are capped at
+// maxFallbackCandidateAudits per request, with one aggregate row past the cap
+// (w4/015 — see the constant's doc for the latency/amplification rationale).
 func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
 	verb := callerVerb(verbFrameSkip)
 	acting, actingErr := b.resolveWorkspace(ctx)
@@ -473,16 +492,34 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			client.InNamespace(b.Namespace), client.MatchingLabels{LabelServiceName: name}); err != nil {
 			return nil, err
 		}
+		// Every colliding candidate is a distinct authorization decision, but
+		// individually auditing an unbounded number of them would let one GET
+		// against a common colliding name serialize one synchronous audit
+		// write (bounded by auditRecordTimeout EACH) per tenant sharing it
+		// (w4/015, a concern since w4/m20/t001 widened denied-READ recording
+		// to this loop). So: the first maxFallbackCandidateAudits denials
+		// record per-candidate as before; the remainder are still fully
+		// checked but unrecorded, and ONE aggregate denial row against the
+		// caller's own workspace marks that the probe went past the cap. An
+		// allowed candidate always records per the normal relation rules
+		// regardless of position (authorizeAndRecord).
 		var lastErr error
+		denied := 0
 		for i := range list.Items {
 			object, resolveErr := b.resourceWorkspace(ctx, list.Items[i].Labels)
-			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr); err == nil {
+			record := denied < maxFallbackCandidateAudits
+			if err := b.authorizeAndRecord(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr, record); err == nil {
 				return &list.Items[i], nil
 			} else {
 				lastErr = err
+				denied++
 			}
 		}
 		if lastErr != nil {
+			if denied > maxFallbackCandidateAudits && (writeRelations[relation] || readRelations[relation]) {
+				object, _ := b.callerWorkspace(ctx)
+				b.emit(ctx, verb, object, ServiceTarget(name), lastErr)
+			}
 			return nil, lastErr
 		}
 	}

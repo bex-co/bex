@@ -36,6 +36,18 @@ type renderCIDR struct {
 	Description string `json:"description"`
 }
 
+// cidrBlocks strips Render's {cidrBlock, description} objects down to the
+// CIDR strings the neutral core carries (w4/017). bex stores only the CIDR —
+// description is accepted on input and discarded, the same conscious
+// divergence apps/postgres/keyvalue document (ADR018).
+func cidrBlocks(in []renderCIDR) []string {
+	out := make([]string, len(in))
+	for i := range in {
+		out[i] = in[i].CIDRBlock
+	}
+	return out
+}
+
 type renderEnvironment struct {
 	ID                      string       `json:"id"`
 	ProjectID               string       `json:"projectId"`
@@ -135,19 +147,48 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, out)
 	})
 
+	// POST /v1/environments takes Render's full create body (w4/017): name +
+	// projectId plus the optional ACL triple — protectedStatus,
+	// networkIsolationEnabled, and ipAllowList as Render's
+	// [{cidrBlock, description}] objects (description accepted and discarded;
+	// bex stores only the CIDR). The ACL is validated BEFORE the create so a
+	// bad CIDR is a clean 400, never an orphaned environment, then applied
+	// through the same SetACL verb the bex-native /acl route uses.
 	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name      string `json:"name"`
-			ProjectID string `json:"projectId"`
+			Name                    string       `json:"name"`
+			ProjectID               string       `json:"projectId"`
+			ProtectedStatus         string       `json:"protectedStatus"`
+			NetworkIsolationEnabled bool         `json:"networkIsolationEnabled"`
+			IPAllowList             []renderCIDR `json:"ipAllowList"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" || req.ProjectID == "" {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
+		// A fresh environment defaults to unprotected/unisolated/open (the
+		// store's own defaults), so the SetACL round-trip only runs when the
+		// caller named an ACL field.
+		hasACL := req.ProtectedStatus != "" || req.NetworkIsolationEnabled || len(req.IPAllowList) > 0
+		if req.ProtectedStatus == "" {
+			req.ProtectedStatus = ProtectedStatusUnprotected
+		}
+		if hasACL {
+			if err := validateACL(req.ProtectedStatus, cidrBlocks(req.IPAllowList)); err != nil {
+				writeErr(w, err)
+				return
+			}
+		}
 		e, err := s.Create(r.Context(), req.ProjectID, strings.TrimSpace(req.Name))
 		if err != nil {
 			writeErr(w, err)
 			return
+		}
+		if hasACL {
+			if e, err = s.SetACL(r.Context(), e.ID, req.ProtectedStatus, req.NetworkIsolationEnabled, cidrBlocks(req.IPAllowList)); err != nil {
+				writeErr(w, err)
+				return
+			}
 		}
 		core.WriteJSON(w, http.StatusCreated, toRenderEnvironment(e))
 	})
@@ -161,18 +202,65 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})
 
+	// PATCH /v1/environments/{id} takes Render's full update body (w4/017):
+	// every field optional, absent fields untouched — name renames; the ACL
+	// fields merge into the current triple (SetACL is full-replace by design,
+	// so the handler reads the current values first) and flow through the same
+	// SetACL verb the bex-native /acl route uses. ipAllowList arrives as
+	// Render's [{cidrBlock, description}] objects (description accepted and
+	// discarded). Pointer fields distinguish "absent" from a zero value —
+	// networkIsolationEnabled:false must be appliable.
 	mux.HandleFunc("PATCH /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name string `json:"name"`
+			Name                    *string       `json:"name"`
+			ProtectedStatus         *string       `json:"protectedStatus"`
+			NetworkIsolationEnabled *bool         `json:"networkIsolationEnabled"`
+			IPAllowList             *[]renderCIDR `json:"ipAllowList"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		e, err := s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(req.Name))
-		if err != nil {
-			writeErr(w, err)
+		hasACL := req.ProtectedStatus != nil || req.NetworkIsolationEnabled != nil || req.IPAllowList != nil
+		if req.Name == nil && !hasACL {
+			core.WriteErr(w, core.ErrBadRequest)
 			return
+		}
+		if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		var e EnvironmentView
+		var err error
+		if req.Name != nil {
+			if e, err = s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(*req.Name)); err != nil {
+				writeErr(w, err)
+				return
+			}
+		}
+		if hasACL {
+			cur, err := s.Get(r.Context(), r.PathValue("id"))
+			if err != nil {
+				writeErr(w, err)
+				return
+			}
+			status, isolated, cidrs := cur.ProtectedStatus, cur.NetworkIsolationEnabled, cur.IPAllowList
+			if status == "" { // pre-ACL-migration rows surface as empty
+				status = ProtectedStatusUnprotected
+			}
+			if req.ProtectedStatus != nil {
+				status = *req.ProtectedStatus
+			}
+			if req.NetworkIsolationEnabled != nil {
+				isolated = *req.NetworkIsolationEnabled
+			}
+			if req.IPAllowList != nil {
+				cidrs = cidrBlocks(*req.IPAllowList)
+			}
+			if e, err = s.SetACL(r.Context(), r.PathValue("id"), status, isolated, cidrs); err != nil {
+				writeErr(w, err)
+				return
+			}
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})

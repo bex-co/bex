@@ -61,8 +61,9 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery contributes `auditLogs(ownerId, startTime, endTime, cursor,
-// limit)` to the root Query.
+// GraphQLQuery contributes `auditLogs(ownerId, startTime, endTime, direction,
+// cursor, limit)` to the root Query. direction is validated by the verb
+// (Service.List), so an unknown value errors identically over REST and here.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"auditLogs": &graphql.Field{
@@ -71,6 +72,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
 				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
+				"direction": &graphql.ArgumentConfig{Type: graphql.String},
 				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
 				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
@@ -86,6 +88,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 						f.Until = t
 					}
 				}
+				f.Direction, _ = p.Args["direction"].(string)
 				f.Cursor, _ = p.Args["cursor"].(string)
 				if v, ok := p.Args["limit"].(int); ok {
 					f.Limit = v

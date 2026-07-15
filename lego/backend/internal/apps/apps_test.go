@@ -182,6 +182,82 @@ func TestSlugPresentOnAllThreeSurfaces(t *testing.T) {
 	}
 }
 
+// TestSuspendersPresentOnAllThreeSurfaces is w4/014's adapter-parity check:
+// Render's suspenders array reads ["user"] while an App is suspended (the
+// user-driven suspend verb is bex's only suspend path) and [] otherwise —
+// always an array, never null, and never a faked value bex has no source
+// for (admin, billing, …). Same three-surface shape as the slug test above.
+func TestSuspendersPresentOnAllThreeSurfaces(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		suspended bool
+		want      []string
+	}{
+		{name: "running-app-empty-array", suspended: false, want: []string{}},
+		{name: "user-suspended-app", suspended: true, want: []string{"user"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := sampleApp("web")
+			app.Spec.Suspended = tc.suspended
+			svc, _ := newService(nil, app)
+			ctx := context.Background()
+
+			// REST
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/apps/web", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
+			}
+			var restBody map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
+				t.Fatalf("decode REST body: %v", err)
+			}
+			got, ok := restBody["suspenders"].([]any)
+			if !ok {
+				t.Fatalf("REST suspenders = %v (%T), want a JSON array (never null)", restBody["suspenders"], restBody["suspenders"])
+			}
+			if len(got) != len(tc.want) || (len(tc.want) == 1 && got[0] != tc.want[0]) {
+				t.Errorf("REST suspenders = %v, want %v", got, tc.want)
+			}
+
+			// GraphQL
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			})
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+				RequestString: `{ service(id: "web") { suspenders } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			gqlGot, ok := res.Data.(map[string]any)["service"].(map[string]any)["suspenders"].([]any)
+			if !ok {
+				t.Fatalf("GraphQL suspenders not a list")
+			}
+			if len(gqlGot) != len(tc.want) || (len(tc.want) == 1 && gqlGot[0] != tc.want[0]) {
+				t.Errorf("GraphQL suspenders = %v, want %v", gqlGot, tc.want)
+			}
+
+			// MCP (get_service's handler, the same toRenderService REST's GET uses)
+			handler := svc.serviceTool(svc.Get)
+			_, mcpService, err := handler(ctx, nil, serviceArgs{ServiceID: "web"})
+			if err != nil {
+				t.Fatalf("MCP get_service: %v", err)
+			}
+			if mcpService.Suspenders == nil {
+				t.Fatalf("MCP suspenders = nil, want an array (never null)")
+			}
+			if len(mcpService.Suspenders) != len(tc.want) || (len(tc.want) == 1 && mcpService.Suspenders[0] != tc.want[0]) {
+				t.Errorf("MCP suspenders = %v, want %v", mcpService.Suspenders, tc.want)
+			}
+		})
+	}
+}
+
 // --- Workspace-scoped List/Get/Create (w1/m9) ---
 
 // fakeWorkspace is a map-backed core.WorkspaceResolver: identities not in the

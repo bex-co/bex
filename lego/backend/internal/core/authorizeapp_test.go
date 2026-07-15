@@ -19,7 +19,12 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // authorizeapp_test.go covers w6/m17: AuthorizeApp collapses the old
@@ -204,6 +209,94 @@ func TestAuthorizeAppNamedWorkspaceNonMemberIsForbidden(t *testing.T) {
 	if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
 		t.Errorf("AuthorizeApp naming a workspace alice does not belong to: got %v, want ErrForbidden", err)
 	}
+}
+
+// TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits is w4/015: the
+// LabelServiceName collision-fallback loop audits at most
+// maxFallbackCandidateAudits rejected candidates individually, then records
+// ONE aggregate denial row against the caller's own workspace — so a denied
+// read of a pathologically common name can't serialize an unbounded run of
+// synchronous audit writes (each bounded by auditRecordTimeout) or amplify
+// one request into one insert per colliding tenant. Below the cap, behavior
+// is unchanged: one row per rejected candidate, no aggregate row.
+func TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits(t *testing.T) {
+	collidingApps := func(n int) []*appv1alpha1.App {
+		apps := make([]*appv1alpha1.App, n)
+		for i := range apps {
+			a := sampleApp(fmt.Sprintf("tea-%c-web", 'b'+i), fmt.Sprintf("tea-%c", 'b'+i))
+			a.Labels[LabelServiceName] = "web"
+			apps[i] = a
+		}
+		return apps
+	}
+	newBase := func(sink *recordingSink, apps []*appv1alpha1.App) *Base {
+		objs := make([]client.Object, len(apps))
+		for i := range apps {
+			objs[i] = apps[i]
+		}
+		return &Base{
+			Client: fakeAppClient(objs...), Namespace: "default",
+			Workspace: fakeWorkspace{"identity-a": "tea-a"},
+			Authz:     fakeDenyChecker{}, Audit: sink,
+		}
+	}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	t.Run("below the cap every candidate keeps its own row", func(t *testing.T) {
+		sink := &recordingSink{}
+		b := newBase(sink, collidingApps(2))
+		if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+			t.Fatalf("got %v, want ErrForbidden", err)
+		}
+		if len(sink.events) != 2 {
+			t.Fatalf("recorded %d events, want 2 (one per rejected candidate, no aggregate)", len(sink.events))
+		}
+	})
+
+	t.Run("past the cap the remainder collapses into one aggregate row", func(t *testing.T) {
+		sink := &recordingSink{}
+		b := newBase(sink, collidingApps(maxFallbackCandidateAudits+4))
+		if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+			t.Fatalf("got %v, want ErrForbidden", err)
+		}
+		if want := maxFallbackCandidateAudits + 1; len(sink.events) != want {
+			t.Fatalf("recorded %d events, want %d (%d per-candidate + 1 aggregate)",
+				len(sink.events), want, maxFallbackCandidateAudits)
+		}
+		agg := sink.events[len(sink.events)-1]
+		if agg.Resource != WorkspaceObject("tea-a") {
+			t.Errorf("aggregate row Resource = %q, want the CALLER's workspace (%q)", agg.Resource, WorkspaceObject("tea-a"))
+		}
+		if agg.Target != ServiceTarget("web") || agg.Outcome != AuditDenied {
+			t.Errorf("aggregate row = %+v, want a denied service:web row", agg)
+		}
+	})
+
+	t.Run("an allowed candidate past the cap is still served", func(t *testing.T) {
+		apps := collidingApps(maxFallbackCandidateAudits + 2)
+		last := apps[len(apps)-1]
+		sink := &recordingSink{}
+		b := newBase(sink, apps)
+		// The caller is a member of the LAST candidate's workspace (viewer
+		// there) and denied everywhere else.
+		b.Workspace = multiWorkspace{"identity-a": {"tea-a", last.Labels[LabelTenant]}}
+		b.Authz = denyAllButChecker{allowed: WorkspaceObject(last.Labels[LabelTenant])}
+		got, err := b.AuthorizeApp(ctx, RelCanView, "web")
+		if err != nil {
+			t.Fatalf("AuthorizeApp: %v (a candidate past the cap must still be checked and served)", err)
+		}
+		if got.Name != last.Name {
+			t.Fatalf("served %q, want %q", got.Name, last.Name)
+		}
+	})
+}
+
+// denyAllButChecker denies every workspace object except one — the
+// "authorized only for the last colliding candidate" fixture above.
+type denyAllButChecker struct{ allowed string }
+
+func (c denyAllButChecker) Check(_ context.Context, _, _, object string) (bool, error) {
+	return object == c.allowed, nil
 }
 
 // TestAuthorizeAppAuditsOnceAgainstTheResourceWorkspace: a write-relation call
