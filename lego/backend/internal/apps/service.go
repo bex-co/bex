@@ -91,6 +91,17 @@ type Service struct {
 	// list/sync verbs. nil => list/sync return ErrBlueprintsUnavailable; validate
 	// is always available (stateless).
 	Blueprints BlueprintStore
+	// SecretsEraser, when set, purges the app's OpenBao env-var and secret-file
+	// paths on delete. nil => OpenBao paths are not purged on service delete
+	// (they are purged on workspace delete via WorkspacePurger). Satisfied
+	// structurally by *secrets.WorkspacePurger so apps never imports secrets.
+	SecretsEraser AppSecretsEraser
+}
+
+// AppSecretsEraser clears per-app secrets from the external store on service
+// delete. Satisfied structurally by *secrets.WorkspacePurger.
+type AppSecretsEraser interface {
+	PurgeApp(ctx context.Context, name string) error
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -912,6 +923,13 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// pullsecret.go), so it needs the same explicit delete.
 	if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
 		return fmt.Errorf("delete registry pull secret: %w", err)
+	}
+	// Purge OpenBao env-var and secret-file paths — not owned by the App CR, so
+	// they don't cascade with the CR delete and would otherwise linger forever.
+	if s.SecretsEraser != nil {
+		if err := s.SecretsEraser.PurgeApp(ctx, a.Name); err != nil {
+			return fmt.Errorf("purge app secrets: %w", err)
+		}
 	}
 	// IgnoreNotFound: the CR may already be gone (a racing projector pass, or a
 	// store-managed App whose row delete triggered a Kick) — the end state is

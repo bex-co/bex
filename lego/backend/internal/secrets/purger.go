@@ -69,3 +69,17 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	}
 	return nil
 }
+
+// PurgeApp deletes the OpenBao env-var and secret-file paths for a single named
+// app — the per-app complement to PurgeWorkspace, called on individual service
+// deletion so secrets don't linger after the App CR is gone. Idempotent: nil
+// Store or absent paths are no-ops.
+func (p *WorkspacePurger) PurgeApp(ctx context.Context, name string) error {
+	if p.Store == nil {
+		return nil
+	}
+	if err := p.Store.Delete(ctx, envPath(name)); err != nil {
+		return err
+	}
+	return p.Store.Delete(ctx, filesPath(name))
+}

@@ -537,6 +537,50 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 	return nil
 }
 
+// DeleteAppArtifacts deletes ALL build Jobs, predeploy Jobs, and kpack Images
+// for the named app in namespace — called by the App finalizer to clean up
+// cross-namespace artifacts that ownerRefs can't cascade (build/predeploy run
+// in the build namespace, a different namespace from the App CR).
+func DeleteAppArtifacts(ctx context.Context, name, namespace string, cl client.Client) error {
+	// Build Jobs (labeled app.bex.co/build: <name>)
+	var buildJobs batchv1.JobList
+	if err := cl.List(ctx, &buildJobs, client.InNamespace(namespace),
+		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
+		return fmt.Errorf("list build jobs for %s: %w", name, err)
+	}
+	for i := range buildJobs.Items {
+		if err := cl.Delete(ctx, &buildJobs.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("delete build job %s: %w", buildJobs.Items[i].Name, err)
+		}
+	}
+	// Predeploy Jobs (labeled app.bex.co/predeploy: <name>)
+	var preJobs batchv1.JobList
+	if err := cl.List(ctx, &preJobs, client.InNamespace(namespace),
+		client.MatchingLabels{"app.bex.co/predeploy": name}); err != nil {
+		return fmt.Errorf("list predeploy jobs for %s: %w", name, err)
+	}
+	for i := range preJobs.Items {
+		if err := cl.Delete(ctx, &preJobs.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("delete predeploy job %s: %w", preJobs.Items[i].Name, err)
+		}
+	}
+	// kpack Images (if kpack is installed; tolerate "no matches for kind")
+	images := newKpackImageList()
+	if err := cl.List(ctx, images, client.InNamespace(namespace),
+		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
+		if !apierrors.IsNotFound(err) && !strings.Contains(err.Error(), "no matches for kind") {
+			return fmt.Errorf("list kpack images for %s: %w", name, err)
+		}
+	} else {
+		for i := range images.Items {
+			if err := cl.Delete(ctx, &images.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("delete kpack image %s: %w", images.Items[i].GetName(), err)
+			}
+		}
+	}
+	return nil
+}
+
 // ActiveWorkspaceBuilds counts active (not Complete, not Failed) build Jobs in
 // namespace that carry the given workspace label — used by the operator to
 // enforce the per-workspace concurrent-build cap (w7/m9). Returns 0 for an

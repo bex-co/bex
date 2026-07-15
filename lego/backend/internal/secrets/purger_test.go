@@ -69,6 +69,62 @@ func TestWorkspacePurger_NilStoreIsANoOp(t *testing.T) {
 	}
 }
 
+func TestWorkspacePurger_PurgeApp_DeletesBothPaths(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, tenantApp("web", "tea-a"), tenantApp("other", "tea-b"))
+	if err := store.Put(context.Background(), envPath("web"), map[string]string{"FOO": "bar"}); err != nil {
+		t.Fatalf("seed env: %v", err)
+	}
+	if err := store.Put(context.Background(), filesPath("web"), map[string]string{"cert.pem": "---"}); err != nil {
+		t.Fatalf("seed files: %v", err)
+	}
+	if err := store.Put(context.Background(), envPath("other"), map[string]string{"BAZ": "qux"}); err != nil {
+		t.Fatalf("seed other env: %v", err)
+	}
+	purger := &WorkspacePurger{Service: svc}
+
+	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+		t.Fatalf("PurgeApp: %v", err)
+	}
+
+	// web's paths must be empty.
+	if env, err := store.Get(context.Background(), envPath("web")); err != nil || len(env) != 0 {
+		t.Fatalf("web env after PurgeApp = %+v, err=%v; want empty", env, err)
+	}
+	if files, err := store.Get(context.Background(), filesPath("web")); err != nil || len(files) != 0 {
+		t.Fatalf("web files after PurgeApp = %+v, err=%v; want empty", files, err)
+	}
+	// other's path must be untouched.
+	if env, err := store.Get(context.Background(), envPath("other")); err != nil || len(env) != 1 {
+		t.Fatalf("other env after PurgeApp('web') = %+v, err=%v; want untouched", env, err)
+	}
+}
+
+func TestWorkspacePurger_PurgeApp_NilStoreIsANoOp(t *testing.T) {
+	svc := newService(nil, tenantApp("web", "tea-a"))
+	purger := &WorkspacePurger{Service: svc}
+
+	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+		t.Fatalf("PurgeApp with secrets disabled should be a no-op, got: %v", err)
+	}
+}
+
+func TestWorkspacePurger_PurgeApp_IdempotentOnSecondCall(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, tenantApp("web", "tea-a"))
+	if err := store.Put(context.Background(), envPath("web"), map[string]string{"FOO": "bar"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	purger := &WorkspacePurger{Service: svc}
+
+	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+		t.Fatalf("first PurgeApp: %v", err)
+	}
+	if err := purger.PurgeApp(context.Background(), "web"); err != nil {
+		t.Fatalf("second PurgeApp (already-gone) should be a no-op, got: %v", err)
+	}
+}
+
 func TestWorkspacePurger_SecondPurgeIsANoOp(t *testing.T) {
 	store := newFakeSecretStore()
 	svc := newService(store, tenantApp("web", "tea-a"))

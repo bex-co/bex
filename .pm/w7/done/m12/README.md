@@ -1,6 +1,6 @@
 # w7 · m12 — Delete really deletes: purge orphaned tenant artifacts on service/Postgres/Key Value deletion
 
-**Worker:** worker7 **Goal:** deleting a service, a managed Postgres, or a managed Key Value destroys _all_ of its tenant data and platform artifacts — not just the CR and its ownerRef children. **Status:** todo
+**Worker:** worker7 **Goal:** deleting a service, a managed Postgres, or a managed Key Value destroys _all_ of its tenant data and platform artifacts — not just the CR and its ownerRef children. **Status:** DONE — 2026-07-14
 
 The delete **verbs** shipped long ago (w2/m4: REST/GraphQL/MCP; w5/m14: dashboard danger-zone — all ✅ in `docs/ADR018-render-parity.md`), but a code survey (2026-07-14) found the teardown leaks tenant credentials and data on every delete:
 
@@ -18,18 +18,20 @@ The delete **verbs** shipped long ago (w2/m4: REST/GraphQL/MCP; w5/m14: dashboar
 
 | id   | title                                                                           | est | depends_on                               |
 | ---- | ------------------------------------------------------------------------------- | --- | ---------------------------------------- |
-| t001 | Service delete: purge per-app OpenBao env vars + secret files                    | 45m | —                                        |
-| t002 | App finalizer: delete-time teardown hook + build-artifact GC in build namespace  | 60m | —                                        |
-| t003 | App delete: remove the app's built images from Zot (manifest delete + GC)        | 60m | t002                                     |
-| t004 | Static-site delete: purge the app's object-store prefix                          | 45m | t002                                     |
-| t005 | App delete: remove orphaned cert-manager TLS Secrets for app hosts               | 30m | t002                                     |
-| t006 | Key Value delete: PVCs go with the StatefulSet (retention policy)                | 30m | —                                        |
-| t007 | Postgres delete: decide + implement CNPG object-store backup retention           | 45m | —                                        |
-| t008 | Delete-cascade acceptance: zero-leftover audit across all three types            | 45m | t001, t003, t004, t005, t006, t007       |
-| t009 | Render parity: delete semantics across REST/GraphQL/MCP/UI                       | 30m | t008                                     |
-| t010 | Simplify the changed code                                                        | 30m | t009                                     |
-| t011 | Test coverage for delete-time teardown                                           | 45m | t009                                     |
-| t012 | Closeout                                                                         | 15m | t010, t011                               |
+| id   | title                                                                           | est | depends_on                               | status    |
+| ---- | ------------------------------------------------------------------------------- | --- | ---------------------------------------- | --------- |
+| t001 | Service delete: purge per-app OpenBao env vars + secret files                    | 45m | —                                        | — **DONE** |
+| t002 | App finalizer: delete-time teardown hook + build-artifact GC in build namespace  | 60m | —                                        | — **DONE** |
+| t003 | App delete: remove the app's built images from Zot (manifest delete + GC)        | 60m | t002                                     | — **DONE** |
+| t004 | Static-site delete: purge the app's object-store prefix                          | 45m | t002                                     | — **DONE** |
+| t005 | App delete: remove orphaned cert-manager TLS Secrets for app hosts               | 30m | t002                                     | — **DONE** |
+| t006 | Key Value delete: PVCs go with the StatefulSet (retention policy)                | 30m | —                                        | — **DONE** |
+| t007 | Postgres delete: decide + implement CNPG object-store backup retention           | 45m | —                                        | — **DONE** |
+| t008 | Delete-cascade acceptance: zero-leftover audit across all three types            | 45m | t001, t003, t004, t005, t006, t007       | — **DONE** |
+| t009 | Render parity: delete semantics across REST/GraphQL/MCP/UI                       | 30m | t008                                     | — **DONE** |
+| t010 | Simplify the changed code                                                        | 30m | t009                                     | — **DONE** |
+| t011 | Test coverage for delete-time teardown                                           | 45m | t009                                     | — **DONE** |
+| t012 | Closeout                                                                         | 15m | t010, t011                               | — **DONE** |
 
 ## Definition of done
 

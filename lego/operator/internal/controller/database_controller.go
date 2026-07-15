@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -76,6 +79,12 @@ const (
 	// backupSchedule is the daily base-backup cron (CNPG's 6-field form:
 	// sec min hour dom mon dow) — 03:00 UTC.
 	backupSchedule = "0 0 3 * * *"
+	// dbFinalizer is the finalizer stamped on every Database so the controller can
+	// purge barman object-store backups after the CNPG Cluster is gone (w7/m12).
+	// Decision: delete S3 backups on Database deletion (30d retention via CNPG's own
+	// policy would not run once the Cluster is gone; explicit purge avoids unbounded
+	// storage accumulation and prevents inadvertent restore from a deleted tenant's data).
+	dbFinalizer = "app.bex.co/db-finalizer"
 )
 
 // BackupStore is the object-store target CNPG's barmanObjectStore writes to
@@ -360,6 +369,7 @@ type DatabaseReconciler struct {
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 // Secrets access is namespace-scoped to the apps namespace via deploy/gitops/base/operator-apps-rbac.yaml.
 
 // upsertOwned creates-or-updates an owned unstructured object (gvk/name in the
@@ -395,11 +405,20 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, req.NamespacedName, &db); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
 	// Deletion: the CNPG Cluster (and the ScheduledBackup, Pooler, routes and
-	// middleware) is owned by the Database, so it is garbage-collected via owner
-	// refs automatically.
+	// middleware) is owned by the Database and garbage-collected via owner refs.
+	// The finalizer waits for the Cluster to be fully gone before purging S3
+	// backups so we don't race with in-flight WAL archiving (w7/m12).
 	if !db.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
+		return r.handleDBDeletion(ctx, req, &db)
+	}
+	// Stamp the finalizer so deletion goes through the teardown path above.
+	if controllerutil.AddFinalizer(&db, dbFinalizer) {
+		if err := r.Update(ctx, &db); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	plan, storageGB := resolvePlan(db.Spec)
@@ -724,4 +743,88 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named("database").
 		Complete(r)
+}
+
+// handleDBDeletion runs the finalizer teardown for a Database being deleted:
+// waits for the CNPG Cluster to be fully gone (preventing a race with in-flight
+// WAL archiving), then optionally dispatches an S3 backup purge Job before
+// removing the finalizer. Extracted from Reconcile to keep its cyclomatic
+// complexity in check.
+func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Request, db *appv1alpha1.Database) (ctrl.Result, error) {
+	if controllerutil.ContainsFinalizer(db, dbFinalizer) {
+		// Wait for the CNPG Cluster to be gone before purging its S3 backups.
+		cluster := &unstructured.Unstructured{}
+		cluster.SetGroupVersionKind(cnpgClusterGVK)
+		if err := r.Get(ctx, req.NamespacedName, cluster); err == nil {
+			// Cluster still present — requeue until the cascade completes.
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		} else if !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+		// Cluster is gone: purge barman S3 backups (best-effort, don't block).
+		if db.Status.BackupsEnabled && r.Backup.configured() {
+			if err := r.purgeDBBackups(ctx, db); err != nil {
+				logf.FromContext(ctx).Error(err, "dispatch DB backup purge job", "db", db.Name)
+			}
+		}
+		controllerutil.RemoveFinalizer(db, dbFinalizer)
+		if err := r.Update(ctx, db); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+// purgeDBBackups dispatches a fire-and-forget in-cluster Job to recursively
+// delete the database's barman object-store prefix (DestinationPath/<dbName>/).
+// CNPG defaults the serverName to the cluster name (= db.Name), so that is the
+// exact path barman writes to. The Job TTLs out after 1 hour.
+func (r *DatabaseReconciler) purgeDBBackups(ctx context.Context, db *appv1alpha1.Database) error {
+	ttl := int32(3600)
+	// barman stores WAL and base backups under <DestinationPath>/<serverName>/;
+	// the serverName defaults to the cluster name (= db.Name) when not set explicitly.
+	prefix := strings.TrimRight(r.Backup.DestinationPath, "/") + "/" + db.Name + "/"
+	jobName := "purge-db-" + db.Name
+	if len(jobName) > 63 {
+		jobName = jobName[:63]
+	}
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: db.Namespace,
+			Labels: map[string]string{
+				"app.bex.co/purge-db":  db.Name,
+				"app.bex.co/component": "purge",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: &ttl,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app.bex.co/purge-db": db.Name},
+				},
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{{
+						Name:  "purge",
+						Image: publish.DefaultAWSCLIImage,
+						Command: []string{
+							"aws", "s3", "rm", prefix,
+							"--recursive",
+							"--endpoint-url", r.Backup.EndpointURL,
+						},
+						EnvFrom: []corev1.EnvFromSource{{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
+							},
+						}},
+					}},
+				},
+			},
+		},
+	}
+	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("create backup purge job: %w", err)
+	}
+	return nil
 }

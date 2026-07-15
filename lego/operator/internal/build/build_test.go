@@ -662,3 +662,89 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
 	}
 }
+
+// ---- DeleteAppArtifacts tests (w7/m12) ----
+
+func buildJob(name, appName, ns string) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels:    map[string]string{"app.bex.co/build": appName},
+		},
+	}
+}
+
+func predeployJob(name, appName, ns string) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels:    map[string]string{"app.bex.co/predeploy": appName},
+		},
+	}
+}
+
+func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
+	ctx := context.Background()
+	cl := fakeClient(
+		buildJob("bld-hello-gen-1", "hello", "build"),
+		buildJob("bld-hello-gen-2", "hello", "build"),
+		predeployJob("pred-hello-gen-1", "hello", "build"),
+		// another app's jobs — must NOT be deleted
+		buildJob("bld-other-gen-1", "other", "build"),
+	)
+
+	if err := DeleteAppArtifacts(ctx, "hello", "build", cl); err != nil {
+		t.Fatalf("DeleteAppArtifacts: %v", err)
+	}
+
+	// hello's build Jobs must be gone.
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/build": "hello"}); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(jobs.Items) != 0 {
+		t.Errorf("build Jobs for 'hello' still present: %d", len(jobs.Items))
+	}
+
+	// hello's predeploy Jobs must be gone.
+	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/predeploy": "hello"}); err != nil {
+		t.Fatalf("list predeploy: %v", err)
+	}
+	if len(jobs.Items) != 0 {
+		t.Errorf("predeploy Jobs for 'hello' still present: %d", len(jobs.Items))
+	}
+
+	// other's build Job must still be there.
+	if err := cl.List(ctx, &jobs, client.InNamespace("build"),
+		client.MatchingLabels{"app.bex.co/build": "other"}); err != nil {
+		t.Fatalf("list other: %v", err)
+	}
+	if len(jobs.Items) != 1 {
+		t.Errorf("other app's build Job was incorrectly deleted; want 1, got %d", len(jobs.Items))
+	}
+}
+
+func TestDeleteAppArtifacts_EmptyNamespaceReturnsNil(t *testing.T) {
+	// No pre-existing objects — should be a no-op, not an error.
+	cl := fakeClient()
+	if err := DeleteAppArtifacts(context.Background(), "hello", "build", cl); err != nil {
+		t.Fatalf("DeleteAppArtifacts on empty namespace: %v", err)
+	}
+}
+
+func TestDeleteAppArtifacts_MissingKpackIsNotAnError(t *testing.T) {
+	// kpack CRD is not installed; the fake client returns "no matches for kind".
+	// DeleteAppArtifacts should tolerate that and return nil.
+	ctx := context.Background()
+	cl := fakeClient(buildJob("bld-hello-gen-1", "hello", "build"))
+
+	// Even without kpack registered in the scheme the function should succeed
+	// (the build Job is deleted, the kpack list error is tolerated).
+	if err := DeleteAppArtifacts(ctx, "hello", "build", cl); err != nil {
+		t.Fatalf("DeleteAppArtifacts without kpack in scheme: %v", err)
+	}
+}

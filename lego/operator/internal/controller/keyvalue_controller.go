@@ -267,6 +267,14 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				},
 			}}
 		}
+		// PVC retention policy: delete PVCs when the StatefulSet is deleted (GA in
+		// k8s 1.30, StatefulSetAutoDeletePVC feature gate) so Valkey data doesn't
+		// orphan on KeyValue deletion. WhenScaled=Retain keeps PVCs on scale-down
+		// (they'd re-attach on scale-up). This is mutable on an existing StatefulSet.
+		sts.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+			WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+			WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+		}
 		sts.Spec.Replicas = &replicas
 		sts.Spec.Template.Labels = podLabels
 		// The Valkey password, shared by the server (arg expansion) and the metrics

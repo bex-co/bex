@@ -39,10 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// defaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
+// DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
 // CLIs send CRC64 checksums that S3-compatibles (Wasabi/Hetzner) reject — the
 // same pin the etcd/OpenBao backup CronJobs use (docs/ADR011-etcd-backup-restore.md).
-const defaultAWSCLIImage = "amazon/aws-cli:2.22.35"
+const DefaultAWSCLIImage = "amazon/aws-cli:2.22.35"
 
 // publishTimeout bounds a single publish Job's wall-clock; the Job's own
 // activeDeadlineSeconds matches so a stuck upload is reaped, not left lingering.
@@ -185,7 +185,7 @@ func Publish(ctx context.Context, o Options) error {
 func PublishJob(o Options) *batchv1.Job {
 	awsImage := o.AWSCLIImage
 	if awsImage == "" {
-		awsImage = defaultAWSCLIImage
+		awsImage = DefaultAWSCLIImage
 	}
 
 	deadline := int64(publishTimeout / time.Second)
@@ -300,6 +300,79 @@ func jobCondition(j *batchv1.Job, t batchv1.JobConditionType) bool {
 		}
 	}
 	return false
+}
+
+// PurgeApp dispatches a fire-and-forget in-cluster Job that recursively deletes
+// all of the named app's published content from the object store
+// (s3://<bucket>/<appName>/). Returns as soon as the Job is created — it runs
+// asynchronously and is reaped by its TTL. Called from the App finalizer so the
+// finalizer doesn't block on slow S3 operations. Best-effort: if the Job
+// already exists (a previous finalizer attempt) it is tolerated as a no-op.
+func PurgeApp(ctx context.Context, appName string, store Store, namespace string, cl client.Client, pullSecret, awsCLIImage string) error {
+	if !store.Configured() {
+		return nil
+	}
+	if awsCLIImage == "" {
+		awsCLIImage = DefaultAWSCLIImage
+	}
+	prefix := "s3://" + store.Bucket + "/" + appName + "/"
+	ttl := int32(3600)
+	var env []corev1.EnvVar
+	if store.Region != "" {
+		env = append(env, corev1.EnvVar{Name: "AWS_DEFAULT_REGION", Value: store.Region})
+	}
+	// Clamp job name to 63 chars (DNS label limit)
+	jobName := "purge-" + appName
+	if len(jobName) > 63 {
+		jobName = jobName[:63]
+	}
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.bex.co/purge":     appName,
+				"app.bex.co/component": "purge",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: &ttl,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app.bex.co/purge": appName},
+				},
+				Spec: corev1.PodSpec{
+					RestartPolicy:    corev1.RestartPolicyNever,
+					ImagePullSecrets: imagePullSecrets(pullSecret),
+					Containers: []corev1.Container{{
+						Name:  "purge",
+						Image: awsCLIImage,
+						Command: []string{
+							"aws", "s3", "rm", prefix,
+							"--recursive",
+							"--endpoint-url", store.Endpoint,
+						},
+						Env: env,
+						EnvFrom: []corev1.EnvFromSource{{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{Name: store.Secret},
+							},
+						}},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("50m"),
+								corev1.ResourceMemory: resource.MustParse("64Mi"),
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+	if err := cl.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("purge: create job: %w", err)
+	}
+	return nil
 }
 
 // jobFailureMessage extracts the JobFailed condition's reason/message for the

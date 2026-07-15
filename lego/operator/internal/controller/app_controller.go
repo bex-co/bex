@@ -19,7 +19,10 @@ package controller
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -164,19 +167,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Deletion: tear down external resources (OpenSandbox sandbox); the owned k8s
-	// Deployment/Service are garbage-collected via owner refs.
+	// Deletion: tear down external resources; the owned k8s Deployment/Service/
+	// Ingress/CronJob/NetworkPolicy are garbage-collected via owner refs. The
+	// finalizer cleans up artifacts that ownerRefs can't reach: cross-namespace
+	// build artifacts, cert-manager TLS Secrets, static-site S3 content, and
+	// registry images (w7/m12).
 	if !app.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(&app, finalizer) {
-			if app.Status.SandboxID != "" {
-				_ = r.Runtime.Delete(ctx, app.Status.SandboxID)
-			}
-			controllerutil.RemoveFinalizer(&app, finalizer)
-			if err := r.Update(ctx, &app); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, nil
+		return r.handleAppDeletion(ctx, &app)
 	}
 	if controllerutil.AddFinalizer(&app, finalizer) {
 		if err := r.Update(ctx, &app); err != nil {
@@ -1725,4 +1722,182 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named("app").
 		Complete(r)
+}
+
+// deleteTLSSecrets removes the cert-manager TLS Secrets for every host the App
+// handleAppDeletion runs the finalizer teardown for an App being deleted:
+// cleans up build artifacts, cert-manager TLS Secrets, static-site S3 content,
+// and Zot registry images that ownerRefs can't cascade to. Extracted from
+// Reconcile to keep its cyclomatic complexity in check.
+func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, error) {
+	if controllerutil.ContainsFinalizer(app, finalizer) {
+		log := logf.FromContext(ctx)
+		if app.Status.SandboxID != "" {
+			_ = r.Runtime.Delete(ctx, app.Status.SandboxID)
+		}
+		// Cross-namespace build/predeploy Jobs and kpack Images in the build
+		// namespace — ownerRefs are invalid across namespaces so nothing cascades.
+		ns := r.BuildNamespace
+		if ns == "" {
+			ns = app.Namespace
+		}
+		cl := r.Client
+		if r.BuildClient != nil {
+			cl = r.BuildClient
+		}
+		if err := build.DeleteAppArtifacts(ctx, app.Name, ns, cl); err != nil {
+			log.Error(err, "delete build artifacts", "app", app.Name)
+		}
+		// cert-manager TLS Secrets
+		r.deleteTLSSecrets(ctx, app)
+		// Static-site S3 prefix
+		if app.Spec.Type == appv1alpha1.TypeStaticSite && r.StaticStore.Configured() {
+			if err := publish.PurgeApp(ctx, app.Name, r.StaticStore, ns, cl,
+				r.RegistryPullSecret, ""); err != nil {
+				log.Error(err, "dispatch static purge job", "app", app.Name)
+			}
+		}
+		// Registry images
+		if r.Registry != "" && app.Status.Image != "" &&
+			strings.HasPrefix(app.Status.Image, r.Registry+"/") {
+			if err := r.deleteRegistryRepo(ctx, app); err != nil {
+				log.Error(err, "delete registry images", "app", app.Name)
+			}
+		}
+		controllerutil.RemoveFinalizer(app, finalizer)
+		if err := r.Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+// served. cert-manager does not garbage-collect the Secret when the Certificate
+// or Ingress is removed, so they would otherwise persist indefinitely. The
+// Ingress is already cascaded via ownerRef; this cleans up the Secret it left.
+func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) {
+	log := logf.FromContext(ctx)
+	for i, h := range effectiveHosts(app, r.BaseDomain) {
+		name := tlsSecretName(app.Name, i, h)
+		sec := &corev1.Secret{}
+		sec.Name = name
+		sec.Namespace = app.Namespace
+		if err := r.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
+			log.Error(err, "delete TLS secret", "secret", name)
+		}
+	}
+}
+
+// deleteRegistryRepo removes all manifests for the app's image repository from
+// the in-cluster OCI registry via the OCI Distribution Spec v2 HTTP API. Best-
+// effort: errors are logged and do not block finalizer removal. After all
+// manifests are deleted, Zot's periodic GC reclaims the unreferenced blobs.
+func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) error {
+	registry := r.Registry
+	base := "http://" + registry
+	if strings.HasPrefix(registry, "http://") || strings.HasPrefix(registry, "https://") {
+		base = registry
+	}
+	repo := app.Name
+
+	authHdr, err := r.registryAuthHeader(ctx, app.Namespace)
+	if err != nil {
+		return fmt.Errorf("registry auth: %w", err)
+	}
+
+	do := func(method, url string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, method, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept",
+			"application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json")
+		if authHdr != "" {
+			req.Header.Set("Authorization", authHdr)
+		}
+		return http.DefaultClient.Do(req)
+	}
+
+	resp, err := do(http.MethodGet, fmt.Sprintf("%s/v2/%s/tags/list", base, repo))
+	if err != nil {
+		return fmt.Errorf("list tags: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("list tags: status %d: %s", resp.StatusCode, body)
+	}
+	var tagList struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tagList); err != nil {
+		return fmt.Errorf("decode tags: %w", err)
+	}
+
+	seen := map[string]bool{}
+	for _, tag := range tagList.Tags {
+		r2, err := do(http.MethodHead, fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, tag))
+		if err != nil {
+			return fmt.Errorf("head manifest %s: %w", tag, err)
+		}
+		_ = r2.Body.Close()
+		if r2.StatusCode == http.StatusNotFound {
+			continue
+		}
+		digest := r2.Header.Get("Docker-Content-Digest")
+		if digest == "" || seen[digest] {
+			continue
+		}
+		seen[digest] = true
+		r3, err := do(http.MethodDelete, fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, digest))
+		if err != nil {
+			return fmt.Errorf("delete manifest %s: %w", digest, err)
+		}
+		body, _ := io.ReadAll(r3.Body)
+		_ = r3.Body.Close()
+		if r3.StatusCode != http.StatusAccepted && r3.StatusCode != http.StatusOK {
+			return fmt.Errorf("delete manifest %s: status %d: %s", digest, r3.StatusCode, body)
+		}
+	}
+	return nil
+}
+
+// registryAuthHeader reads the docker config push Secret and returns an HTTP
+// Basic Authorization header for the registry, or "" when no auth is configured.
+func (r *AppReconciler) registryAuthHeader(ctx context.Context, fallbackNS string) (string, error) {
+	if r.RegistryPushSecret == "" {
+		return "", nil
+	}
+	ns := r.BuildNamespace
+	if ns == "" {
+		ns = fallbackNS
+	}
+	cl := r.Client
+	if r.BuildClient != nil {
+		cl = r.BuildClient
+	}
+	var sec corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: r.RegistryPushSecret}, &sec); err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	data, ok := sec.Data["config.json"]
+	if !ok {
+		return "", nil
+	}
+	var cfg struct {
+		Auths map[string]struct{ Auth string } `json:"auths"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return "", nil // malformed docker config; skip auth
+	}
+	if e, ok := cfg.Auths[r.Registry]; ok && e.Auth != "" {
+		return "Basic " + e.Auth, nil
+	}
+	return "", nil
 }

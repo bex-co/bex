@@ -385,6 +385,11 @@ func main() {
 	//   projector runs immediately instead of waiting the next resync period.
 	// rec.Run is started here — after the wiring — so CloneSecrets is already
 	// set before the first reconcile pass runs.
+	// Wire the secrets purger into the apps service so individual service deletes
+	// purge OpenBao env-var and secret-file paths (w7/m12). Uses the same
+	// WorkspacePurger that workspace delete already uses — just the per-app method.
+	srv.Apps.SecretsEraser = &secrets.WorkspacePurger{Service: srv.Secrets}
+
 	if rec != nil {
 		rec.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
 		srv.Apps.Kick = rec.Kick
