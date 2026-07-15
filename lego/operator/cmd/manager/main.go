@@ -168,8 +168,10 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	appsNamespace := envOr("BEX_APPS_NAMESPACE", "default")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
+		Cache:                  controller.NamespacedSecretCacheOptions(appsNamespace),
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,

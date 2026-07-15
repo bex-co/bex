@@ -114,6 +114,12 @@ spec:
             value: bex-registry-push
           - name: BEX_REGISTRY_PULL_SECRET
             value: bex-registry-pull
+          # Namespace containing tenant App/Database/KeyValue CRs and their
+          # credentials Secrets. The manager caches Secrets only in this namespace
+          # so its namespace Role is sufficient; keep aligned with bex-api's
+          # BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE.
+          - name: BEX_APPS_NAMESPACE
+            value: default
           # Namespace the BuildKit Jobs / kpack Images run in; empty => the
           # App's own namespace.
           - name: BEX_BUILD_NAMESPACE

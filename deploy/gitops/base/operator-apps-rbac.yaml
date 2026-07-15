@@ -4,7 +4,8 @@
 # namespaces (CRDs, Deployments, Services, Ingresses, …). Scoping secrets here means
 # a compromised operator pod cannot read platform credentials (Kratos/Hydra in auth,
 # OpenBao in secrets, CNPG creds in bex-system, the GitHub App key) — only the
-# tenant apps namespace it actually serves.
+# tenant apps namespace it actually serves (BEX_APPS_NAMESPACE on the operator;
+# BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE on bex-api).
 #
 # What the operator needs in the apps namespace:
 #   database_controller: get/list/watch — reads CNPG-generated "<db>-app" secrets to
@@ -18,9 +19,9 @@
 # This file lives in deploy/gitops (not lego/operator/config/rbac) because
 # config/default's kustomize namePrefix+namespace transform would rewrite any
 # namespace field to "bex-system", breaking the Role's target namespace. Same caveat
-# as bex-api-apps-rbac.yaml: if a non-default apps namespace is used, duplicate this
-# Role+RoleBinding there. For deployments using BEX_BUILD_NAMESPACE (a separate build
-# namespace), add a second RoleBinding for that namespace.
+# as bex-api-apps-rbac.yaml: if a non-default BEX_APPS_NAMESPACE is used, move or
+# duplicate this Role+RoleBinding there. For deployments using BEX_BUILD_NAMESPACE
+# (a separate build namespace), add a second RoleBinding for that namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
