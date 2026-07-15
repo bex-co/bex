@@ -282,6 +282,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 		GitHubClient:      callbackGitHubClient{},
 		GitHubStore:       st,
 		GitHubStateSecret: []byte("test-only-high-entropy-state-secret"),
+		DashboardURL:      "https://dash.bex.co",
 	})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	h, err := srv.Handler()
@@ -312,16 +313,40 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 	}
 
 	// GitHub's redirect carries no Ory credential. It passes the exact auth-gate
-	// exception, verifies state in the feature, and records the connection.
+	// exception, verifies state in the feature, records the connection, and
+	// redirects the browser when the production dashboard URL is configured.
 	callback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state), nil)
 	callbackRec := httptest.NewRecorder()
 	h.ServeHTTP(callbackRec, callback)
-	if callbackRec.Code != http.StatusOK {
-		t.Fatalf("callback status = %d, want 200; body=%s", callbackRec.Code, callbackRec.Body.String())
+	if callbackRec.Code != http.StatusFound {
+		t.Fatalf("callback status = %d, want 302; body=%s", callbackRec.Code, callbackRec.Body.String())
+	}
+	if got := callbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings" {
+		t.Fatalf("callback Location = %q", got)
 	}
 	got := st.connections[core.DefaultTenant]
 	if got.InstallationID != 42 || got.AccountLogin != "octo" {
 		t.Fatalf("recorded connection = %+v", got)
+	}
+
+	// The legacy API/agent callback uses its ordinary Bearer identity and omits
+	// state. DashboardURL must not turn that JSON API response into a redirect.
+	apiCallback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42", nil)
+	apiCallback.Header.Set("Authorization", "Bearer "+testToken)
+	apiCallbackRec := httptest.NewRecorder()
+	h.ServeHTTP(apiCallbackRec, apiCallback)
+	if apiCallbackRec.Code != http.StatusOK {
+		t.Fatalf("authenticated callback status = %d, want 200; body=%s", apiCallbackRec.Code, apiCallbackRec.Body.String())
+	}
+	var apiBody map[string]string
+	if err := json.Unmarshal(apiCallbackRec.Body.Bytes(), &apiBody); err != nil {
+		t.Fatal(err)
+	}
+	if apiBody["status"] != "connected" {
+		t.Fatalf("authenticated callback body = %v", apiBody)
+	}
+	if got := apiCallbackRec.Header().Get("Location"); got != "" {
+		t.Fatalf("authenticated callback redirected to %q", got)
 	}
 }
 

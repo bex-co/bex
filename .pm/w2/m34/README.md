@@ -1,6 +1,6 @@
 # w2 · m34 — Fix GitHub Connect: browser install-callback can't record the connection
 
-**Worker:** worker2 **Goal:** let a normal signed-in dashboard user complete a GitHub App connection through the browser, not just via a Bearer-token API/agent call **Status:** todo (t001–t006 done; t007 live verification pending)
+**Worker:** worker2 **Goal:** let a normal signed-in dashboard user complete a GitHub App connection through the browser, not just via a Bearer-token API/agent call **Status:** todo (t001–t006 and t008–t009 done; t007 live Bearer re-verification and t010 pending)
 
 ## Tasks (in order)
 
@@ -13,23 +13,24 @@
 | t005 | Dashboard: on callback failure, redirect to `/settings` with a visible error state instead of leaving the user on a bare API error page | 1h  | t003       | — **DONE** |
 | t006 | Update `docs/ADR026-github-integration.md`'s "Known limitation" section to describe the implemented mechanism; note the auth-gate exception in `lego/backend/internal/api/CLAUDE.md` if it states the blanket-gate invariant | 30m | t004       | — **DONE** |
 | t007 | Render parity: verify the connect flow now works consistently for both the browser (dashboard) and API/agent (Bearer) paths | 30m | t005, t006 |
-| t008 | Simplify                                                                                                    | 30m | t007       |
-| t009 | Test coverage                                                                                               | 1h  | t007       |
+| t008 | Simplify                                                                                                    | 30m | t007       | — **DONE** |
+| t009 | Test coverage                                                                                               | 1h  | t007       | — **DONE** |
 | t010 | Closeout                                                                                                    | 15m | t009       |
 
 ## Definition of done
 
 A normal signed-in dashboard user can click "Connect GitHub," complete the GitHub App install flow in the browser, and land back on `/settings` with the connection recorded and visible — verified live end-to-end, not via the Bearer-token workaround the current DoD relies on.
 
-## Implementation evidence (2026-07-14; live DoD pending)
+## Implementation evidence (2026-07-14; final live Bearer re-verification pending)
 
 - `StartConnect` now returns a 15-minute HMAC-SHA256 state token bound to the authorized workspace; callback verification covers valid, missing, tampered, expired, and oversized values. The GitHub App private key's existing PEM bytes are the shared signing key, so no new secret rollout is required; the production API manifest now sets the already-supported `BEX_DASHBOARD_URL=https://dashboard.bex.co` redirect origin.
 - The auth gate bypass is exact to an otherwise-uncredentialed `GET /v1/git/callback`; method/path neighbors stay 401, while supplied Bearer/session credentials retain the original authorized `Connect` path. A full-handler test proves authenticated start → anonymous signed callback → connection persisted.
 - State callbacks persist against the encoded workspace, validate `installation_id` against GitHub before writing, and redirect failures to bounded `/settings?git_error=…` values with `Referrer-Policy: no-referrer`. The dashboard renders localized, non-reflective retry guidance.
-- Current official parity evidence matches the implemented browser shape: [GitHub preserves `state` through App installation](https://docs.github.com/en/apps/sharing-github-apps/sharing-your-github-app); [Render redirects to GitHub and then back to a connected repo list](https://render.com/docs/github). No remaining behavior drift was identified in the source comparison.
-- Green verification: backend `go test ./...`, `go build ./...`, and `make lint-backend` (0 issues); operator `make test` (including envtest) plus a kustomize render assertion for `BEX_DASHBOARD_URL`; dashboard `yarn typecheck`, `yarn lint`, `yarn test` (158 files / 967 tests), and `yarn build`; `git diff --check`; repository Markdown Prettier pass.
-- Live environment audit: `bex.co` and `dashboard.bex.co` return 200 and `api.bex.co` is reachable, but an uncredentialed production callback still returns `401` with the OAuth protected-resource challenge—the exact pre-fix behavior. A non-mutating production Bearer `StartConnect` check is green (authorized existing connection + install URL), and its missing `state` further proves the old build is live. The recovered local CAPD cluster has no bex API/dashboard workloads or route, so it cannot stand in for the GitHub App's production Setup URL.
-- **Remaining gate:** after an explicit `$ship` authorizes commit/push and the build is deployed, complete the real dashboard → GitHub install → callback → `/settings` browser round trip plus the live Bearer-path regression in [t007](t007.md). No production deployment or GitHub App configuration was mutated during this implementation run.
+- Current official parity evidence matches the implemented browser shape: [GitHub's installation flow](https://docs.github.com/en/apps/using-github-apps/installing-a-github-app-from-a-third-party) selects an account and repository grants before returning through the app's setup URL; [Render redirects to GitHub and then back to a connected repo list](https://render.com/docs/github), and uses the same `installations/new` route to manage an existing installation. No bex-specific behavior drift remains.
+- Live browser evidence is green across the bex boundary: the normal signed-in production Settings UI disconnected, invoked **Connect GitHub**, reached the real `bex-co` organization installation, completed the UI-minted signed callback, returned to `/settings`, and visibly showed **Connected as bex-co**. A forged-state browser navigation returned to the styled card with bounded retry guidance. GitHub's existing-installation sudo prompt prevented an unnecessary repository-grant edit; it is provider behavior shared by Render's management flow, not a bex callback failure.
+- Live Bearer verification found one response regression while proving persistence: production `StartConnect` returns signed state and the credentialed callback keeps installation `90623475` connected, but the callback returns `302 /settings` instead of its legacy JSON response when `BEX_DASHBOARD_URL` is configured. The local fix redirects only state/browser callbacks; a full-handler regression test configures `DashboardURL`, requires the signed browser redirect, then requires `200 {"status":"connected"}` with no redirect for the authenticated path on the same server.
+- Green verification after that fix: backend `go test ./...`, `go build ./...`, and `make lint-backend` (0 issues); operator `make test` (including envtest); dashboard `yarn typecheck`, `yarn lint`, `yarn test` (168 files / 1025 tests), and `yarn build`; `git diff --check`.
+- **Remaining gate:** after an explicit `$ship` authorizes commit/push and deployment, replay the live Bearer callback and require the original `200` JSON response plus the unchanged `bex-co` connection. Then complete t007 and move the milestone for t010.
 
 ## Source + Goal linkage
 
