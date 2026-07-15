@@ -17,3 +17,5 @@ projects-to-deploy
 .tmp
 .env
 .playwright-mcp
+
+cli
