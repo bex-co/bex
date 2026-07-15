@@ -478,19 +478,39 @@ func TestRESTTriggerWithCommitID(t *testing.T) {
 	}
 }
 
-func TestRESTTriggerClearCacheRejected(t *testing.T) {
+// TestRESTTriggerClearCacheEnum pins Render's real wire type for clearCache:
+// the string enum "clear"/"do_not_clear" (cli/pkg/client/types_gen.go), not a
+// bool — the official CLI always sends one of these two values on every
+// deploys-create call. bex builds are already always cache-free, so both
+// recognized values are accepted as no-ops; only an unrecognized value 400s.
+func TestRESTTriggerClearCacheEnum(t *testing.T) {
 	ds := newFakeStore()
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	req := httptest.NewRequest("POST", "/v1/services/web/deploys", strings.NewReader(`{"clearCache":true}`))
-	req.Header.Set("Content-Type", "application/json")
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	trigger := func(body string) int {
+		req := httptest.NewRequest("POST", "/v1/services/web/deploys", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
 
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("clearCache=true: want 400, got %d; body=%s", rec.Code, rec.Body)
+	if code := trigger(`{"clearCache":"do_not_clear"}`); code != http.StatusCreated {
+		t.Errorf(`clearCache="do_not_clear": want 201, got %d`, code)
+	}
+	if code := trigger(`{"clearCache":"clear"}`); code != http.StatusCreated {
+		t.Errorf(`clearCache="clear": want 201, got %d`, code)
+	}
+	if code := trigger(`{}`); code != http.StatusCreated {
+		t.Errorf("omitted clearCache: want 201, got %d", code)
+	}
+	if code := trigger(`{"clearCache":"purge_everything"}`); code != http.StatusBadRequest {
+		t.Errorf("unknown clearCache value: want 400, got %d", code)
+	}
+	if code := trigger(`{"clearCache":true}`); code != http.StatusBadRequest {
+		t.Errorf("bool clearCache (the old, wrong wire type): want 400 (JSON decode failure), got %d", code)
 	}
 }
 
