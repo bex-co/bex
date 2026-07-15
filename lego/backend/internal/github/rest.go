@@ -107,9 +107,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			return
 		}
-		if location := s.callbackRedirect(""); location != "" {
-			redirectCallback(w, r, location)
-			return
+		if browserCallback {
+			if location := s.callbackRedirect(""); location != "" {
+				redirectCallback(w, r, location)
+				return
+			}
 		}
 		core.WriteJSON(w, http.StatusOK, map[string]string{"status": "connected"})
 	})

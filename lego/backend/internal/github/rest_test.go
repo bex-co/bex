@@ -284,7 +284,12 @@ func TestRESTCallbackRecordsStateWorkspace(t *testing.T) {
 
 func TestRESTCallbackKeepsAuthenticatedPath(t *testing.T) {
 	st := newFakeStore()
-	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: st}
+	svc := &Service{
+		Base:         &core.Base{Namespace: "default"},
+		GitHub:       &fakeClient{login: "octo"},
+		Store:        st,
+		DashboardURL: "https://dash.bex.co",
+	}
 	req := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "agent", Method: "oauth2"}))
 	rec := httptest.NewRecorder()
@@ -294,5 +299,15 @@ func TestRESTCallbackKeepsAuthenticatedPath(t *testing.T) {
 	}
 	if got := st.conns[core.DefaultTenant]; got.InstallationID != 42 {
 		t.Fatalf("authenticated callback connection = %+v", got)
+	}
+	if got := rec.Header().Get("Location"); got != "" {
+		t.Fatalf("authenticated callback redirected to %q", got)
+	}
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["status"] != "connected" {
+		t.Fatalf("authenticated callback body = %v", body)
 	}
 }
