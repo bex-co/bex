@@ -182,4 +182,23 @@ if [ "$barman" = "null" ] || [ -z "$barman" ]; then
   fail=1
 fi
 
+# log-shipper node-scope guard (w3/m13): every Alloy replica runs as a DaemonSet
+# pod, one per node. Without a node-scoped field selector on the shared
+# `discovery.kubernetes "pods"` block, every replica discovers and tails EVERY
+# pod cluster-wide, so each log line ships once per node (N×) instead of once —
+# the duplication bug this milestone fixed. Guard against it silently coming
+# back: the committed Alloy River config must carry the field-selector
+# expression, keyed off K8S_NODE_NAME — a downward-API env var the alloy chart
+# itself injects into every replica unconditionally (containers/_agent.yaml),
+# so there's no extraEnv of our own to check for. Checks the source values
+# string directly (same shape as the zot auth guard above) — no chart render
+# needed to catch a regression at the source.
+LOGSHIP="deploy/gitops/base/log-shipper.yaml"
+if [ -f "$LOGSHIP" ]; then
+  echo "==> $LOGSHIP node-scoped pod discovery"
+  vals="$(yq '.spec.source.helm.values' "$LOGSHIP")"
+  echo "$vals" | grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' \
+    || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

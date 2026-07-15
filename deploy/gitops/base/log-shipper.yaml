@@ -32,6 +32,49 @@
 # baked into the ServiceName regex below), and the Loki push URL. If any differs on
 # a cluster, tune the relabel rules / stages / endpoint below. Confirm the pinned
 # alloy chart line against the repo before a first real sync.
+#
+# NODE SCOPING (w3/m13): every Alloy replica runs as a DaemonSet pod, one per
+# node. `loki.source.kubernetes` tails logs by opening an API log-follow stream
+# per discovered pod — with NO node scope on `discovery.kubernetes "pods"`, each
+# replica discovers and tails EVERY pod cluster-wide, so a line ships once per
+# node (N×, N = node count), not once. Fed by `K8S_NODE_NAME` — a downward-API
+# env var (fieldRef spec.nodeName) the alloy chart ALREADY injects into every
+# replica unconditionally (containers/_agent.yaml, "Default used by some Alloy
+# components"), so no extraEnv addition of our own is needed — the
+# `selectors { field = "spec.nodeName=..." }` field selector on the shared pods
+# discovery, below, reads it via sys.env() so each replica only ever sees pods
+# scheduled on its own node — filtered server-side at the apiserver, not by a
+# client-side relabel `keep` (cheaper: no wasted List/Watch bandwidth on other
+# nodes' pods). This is the ONLY discovery.kubernetes block in this config —
+# app_pods/build_pods/traefik discovery.relabel all read discovery.kubernetes.pods.targets,
+# so scoping it once scopes every pipeline.
+#
+# HELM TPL ESCAPING (w3/m13, pre-existing since w3/m8): the whole
+# alloy.configMap.content string below is run through Helm's `tpl` function at
+# chart-render time (alloy/templates/configmap.yaml does `tpl $values.configMap.content .`),
+# which eagerly evaluates every double-brace action it finds using Helm's own
+# (Sprig) function map. The two `stage.template` blocks below use River's own
+# templating syntax (double-brace actions, incl. a ToLower call) meant for
+# Alloy's pipeline-stage template engine to evaluate later, at log-processing
+# time — Helm's function map has no ToLower, so an unescaped double-brace
+# action there makes `tpl` fail at chart-render time, which is a hard failure:
+# Argo CD cannot generate a target manifest at all (ComparisonError), so
+# selfHeal/prune can't act and the live ConfigMap silently freezes at whatever
+# last rendered successfully. Confirmed this actually happened: prod's
+# log-shipper Application was stuck in ComparisonError, its live ConfigMap
+# frozen at a pre-w3/m8 version (no request-log pipeline, no level
+# normalization) despite git holding the current config since w3/m8 landed.
+# Fix: escape every double-brace-open as `{{ "{{" }}` and every double-brace-close
+# as `{{ "}}" }}` — a self-evaluating Helm action that outputs the two literal
+# characters, so Helm's parser never treats them as an action boundary; Alloy's
+# own pipeline template engine (which does define ToLower) sees the real
+# double-brace syntax once the ConfigMap is written. Verified via a standalone
+# `helm template` round-trip: the escaped source renders back byte-for-byte to
+# the original unescaped River template. IMPORTANT: this means NOTHING inside
+# alloy.configMap.content may contain a raw double-brace pair (including in
+# comments — an explanatory comment that shows the literal syntax hits the
+# exact same `tpl` failure); describe the pattern in prose here at the file
+# level instead, where `tpl` never reaches.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -61,8 +104,13 @@ spec:
           # access logs) -> label -> push.
           configMap:
             content: |-
+              // Node-scoped: see the NODE SCOPING note at the top of this file.
               discovery.kubernetes "pods" {
                 role = "pod"
+                selectors {
+                  role  = "pod"
+                  field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
+                }
               }
 
               // --- type=app: tenant App container logs ---
@@ -123,7 +171,9 @@ spec:
                 // this template can only ever emit those 5 values.
                 stage.template {
                   source   = "level"
-                  template = "{{ $l := ToLower (or .Value .severity) }}{{ if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") }}error{{ else if or (eq $l \"warn\") (eq $l \"warning\") }}warn{{ else if or (eq $l \"info\") (eq $l \"notice\") }}info{{ else if or (eq $l \"debug\") (eq $l \"trace\") }}debug{{ else }}unknown{{ end }}"
+                  // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
+                  // note at the top of this file for why.
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warn{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 // The `unknown` bucket, and Render's type vocabulary (app | request
@@ -283,7 +333,9 @@ spec:
                 // emit "<no value>" and sail straight past the drop below.)
                 stage.template {
                   source   = "app"
-                  template = "{{ if .Value }}{{ .Value }}{{ end }}"
+                  // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
+                  // note at the top of this file for why.
+                  template = "{{ "{{" }} if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.drop {
                   source              = "app"
