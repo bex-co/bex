@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -146,6 +147,75 @@ func TestNotificationDeployStartedMigrationRepairsSkippedPrerequisite(t *testing
 	}
 	if indexes != 1 {
 		t.Errorf("repaired notification_settings member indexes = %d, want 1", indexes)
+	}
+}
+
+func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	sql, err := migrationsFS.ReadFile("migrations/0032_deploy_lifecycle.up.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0032_deploy_lifecycle;
+		SET LOCAL search_path TO migration_0032_deploy_lifecycle;
+		CREATE TABLE deploys (
+			id text PRIMARY KEY,
+			app_id text NOT NULL,
+			status text NOT NULL,
+			created_at timestamptz NOT NULL,
+			finished_at timestamptz
+		);
+		INSERT INTO deploys (id, app_id, status, created_at, finished_at) VALUES
+			('dep-old-live', 'srv-1', 'live', '2026-07-01T00:00:00Z', '2026-07-01T00:01:00Z'),
+			('dep-old-open', 'srv-2', 'update_in_progress', '2026-07-01T00:02:00Z', NULL),
+			('dep-new-open', 'srv-2', 'update_in_progress', '2026-07-01T00:03:00Z', NULL);
+	`); err != nil {
+		t.Fatalf("prepare old deploy schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(sql)); err != nil {
+		t.Fatalf("migration 0031 against old deploy rows: %v", err)
+	}
+
+	var liveUpdated, liveFinished, openUpdated, openCreated time.Time
+	if err := tx.QueryRow(ctx, `SELECT updated_at, finished_at FROM deploys WHERE id = 'dep-old-live'`).Scan(&liveUpdated, &liveFinished); err != nil {
+		t.Fatal(err)
+	}
+	if !liveUpdated.Equal(liveFinished) {
+		t.Errorf("closed old row updated_at=%s, want finished_at=%s", liveUpdated, liveFinished)
+	}
+	var oldStatus string
+	var oldFinished *time.Time
+	if err := tx.QueryRow(ctx, `SELECT status, created_at, updated_at, finished_at FROM deploys WHERE id = 'dep-old-open'`).Scan(&oldStatus, &openCreated, &openUpdated, &oldFinished); err != nil {
+		t.Fatal(err)
+	}
+	if oldStatus != DeployCanceled || oldFinished == nil || !openUpdated.Equal(*oldFinished) {
+		t.Errorf("superseded old open row = status %q updated %s finished %v, want canceled at one transition timestamp", oldStatus, openUpdated, oldFinished)
+	}
+	var newestStatus string
+	if err := tx.QueryRow(ctx, `SELECT status FROM deploys WHERE id = 'dep-new-open'`).Scan(&newestStatus); err != nil {
+		t.Fatal(err)
+	}
+	if newestStatus != DeployUpdateInProgress {
+		t.Errorf("newest old open row status = %q, want update_in_progress", newestStatus)
+	}
+	if openCreated.IsZero() {
+		t.Fatal("old row is no longer readable after migration")
 	}
 }
 

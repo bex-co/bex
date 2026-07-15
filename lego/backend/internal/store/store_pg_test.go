@@ -91,6 +91,7 @@ func TestPGStore(t *testing.T) {
 	assertSlugMinting(ctx, t, s, app)
 	assertProjectionJoin(ctx, t, s, app)
 	assertDeployLifecycle(ctx, t, s, app)
+	assertConcurrentDeployTriggers(ctx, t, s, ten.ID)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
@@ -99,6 +100,85 @@ func TestPGStore(t *testing.T) {
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+// assertConcurrentDeployTriggers proves the App-row lock and partial unique
+// index turn overlapping API triggers into deterministic newest-wins history:
+// both callers succeed, exactly one row stays open, and it has the highest App
+// generation even if the older request reaches Postgres last.
+func assertConcurrentDeployTriggers(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
+	t.Helper()
+	app, err := s.CreateApp(ctx, App{
+		TenantID: tenantID, Name: "deploy-race", Image: "traefik/whoami",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatalf("create deploy-race app: %v", err)
+	}
+	defer func() {
+		if err := s.DeleteApp(ctx, app.ID); err != nil {
+			t.Errorf("delete deploy-race app: %v", err)
+		}
+	}()
+
+	start := make(chan struct{})
+	created := make([]Deploy, 2)
+	errs := make([]error, 2)
+	var wg sync.WaitGroup
+	for i := range created {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			created[i], errs[i] = s.CreateDeploy(ctx, app.ID, TriggerAPI, app.Image, int64(i+2), CommitInfo{})
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent trigger %d: %v", i, err)
+		}
+	}
+
+	history, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
+	if err != nil || len(history) != 3 {
+		t.Fatalf("race history = %+v (err %v), want initial + two triggers", history, err)
+	}
+	statusCounts := map[string]int{}
+	for _, d := range history {
+		statusCounts[d.Status]++
+	}
+	if statusCounts[DeployCreated] != 1 || statusCounts[DeployCanceled] != 2 {
+		t.Fatalf("race statuses = %v, want one created and two superseded canceled rows", statusCounts)
+	}
+	open, ok, err := openDeployFor(ctx, s, app.ID)
+	if err != nil || !ok || open.Generation != 3 {
+		t.Fatalf("race open deploy = %+v ok=%v (err %v), want highest App generation 3", open, ok, err)
+	}
+
+	// Cancel and convergence use the same row-locked transition writer. Let
+	// them race and prove exactly one terminal fact wins without a rewrite.
+	var results [2]bool
+	errs = make([]error, 2)
+	start = make(chan struct{})
+	for i, status := range []string{DeployCanceled, DeployLive} {
+		wg.Add(1)
+		go func(i int, status string) {
+			defer wg.Done()
+			<-start
+			results[i], errs[i] = s.CloseDeploy(ctx, open.ID, status, "")
+		}(i, status)
+	}
+	close(start)
+	wg.Wait()
+	if errs[0] != nil || errs[1] != nil || results[0] == results[1] {
+		t.Fatalf("cancel/live race = results %v errors %v, want exactly one successful transition", results, errs)
+	}
+	settled, err := s.GetDeploy(ctx, app.ID, open.ID)
+	if err != nil || (settled.Status != DeployCanceled && settled.Status != DeployLive) || settled.FinishedAt == nil {
+		t.Fatalf("cancel/live race settled = %+v (err %v), want immutable canceled or live terminal row", settled, err)
+	}
 }
 
 // assertRegistryCredentials exercises w2/m14's registry_credentials store
@@ -286,7 +366,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if err != nil {
 		t.Fatalf("list deploys: %v", err)
 	}
-	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Status != DeployUpdateInProgress {
+	if len(deploys) != 1 || deploys[0].Trigger != "create" || deploys[0].Status != DeployCreated {
 		t.Fatalf("deploy #1 (from CreateApp) = %+v", deploys)
 	}
 	first := deploys[0]
@@ -313,7 +393,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	}
 
 	second, err := s.CreateDeploy(ctx, app.ID, "api", app.Image, 2, CommitInfo{Hash: "abc1234def", Message: "fix: header"})
-	if err != nil || second.Status != DeployUpdateInProgress {
+	if err != nil || second.Status != DeployCreated {
 		t.Fatalf("trigger deploy: %+v (err %v)", second, err)
 	}
 	// Commit metadata round-trips through the real columns (w9/001) — `commit`
@@ -358,6 +438,27 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 
 	if _, err := s.GetDeploy(ctx, "srv-doesnotexist00000", second.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get deploy scoped to the wrong app: want ErrNotFound, got %v", err)
+	}
+
+	// Reaching live atomically deactivates the prior live deploy and advances
+	// both rows' transition timestamps. The prior finished_at remains the time
+	// it originally reached live; deactivation is represented by updated_at.
+	if won, err := s.CloseDeploy(ctx, second.ID, DeployLive, "img:second"); err != nil || !won {
+		t.Fatalf("close second live: won=%v err=%v", won, err)
+	}
+	prior, err := s.GetDeploy(ctx, app.ID, first.ID)
+	if err != nil || prior.Status != DeployDeactivated || prior.FinishedAt == nil || !prior.FinishedAt.Equal(*closed.FinishedAt) || !prior.UpdatedAt.After(closed.UpdatedAt) {
+		t.Fatalf("prior deploy after second live = %+v (err %v), want deactivated with original finished_at and newer updated_at", prior, err)
+	}
+	current, err := s.GetDeploy(ctx, app.ID, second.ID)
+	if err != nil || current.Status != DeployLive || current.StartedAt == nil || current.FinishedAt == nil || !current.UpdatedAt.After(second.UpdatedAt) {
+		t.Fatalf("current deploy = %+v (err %v), want live with transition timestamps", current, err)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{UpdatedAfter: second.UpdatedAt}); err != nil || len(got) != 2 {
+		t.Fatalf("updatedAfter = %+v (err %v), want both rows changed by the live/deactivate transaction", got, err)
+	}
+	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{FinishedAfter: second.CreatedAt}); err != nil || len(got) != 1 || got[0].ID != second.ID {
+		t.Fatalf("finishedAfter = %+v (err %v), want only the second deploy", got, err)
 	}
 }
 
@@ -454,8 +555,8 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 // stability when a row is inserted between two pages.
 //
 // It runs after assertDeployLifecycle, so `app` already has the two deploys that
-// function left behind: #1 closed live (started + ended = two events) and #2 open
-// (started only) — three deploy events.
+// function left behind: #1 deactivated and #2 live. Both have a started and an
+// ended event — four deploy events total.
 func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant, app App) {
 	t.Helper()
 	target := core.ServiceTarget(app.Name)
@@ -494,8 +595,8 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if err != nil {
 		t.Fatalf("list service events: %v", err)
 	}
-	if len(all) != 5 {
-		t.Fatalf("feed = %d events, want 5 (3 deploy + 2 audit; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
+	if len(all) != 6 {
+		t.Fatalf("feed = %d events, want 6 (4 deploy + 2 audit; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
 	}
 	// Newest first, and the order is TOTAL: every adjacent pair is strictly
 	// ordered by (at, key), never merely equal — which is what makes the cursor
@@ -512,15 +613,16 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if all[0].Source != EventSourceAudit || all[0].Caller != "user-x" {
 		t.Errorf("audit event = %+v, want source=audit caller=user-x", all[0])
 	}
-	// The closed deploy projects BOTH of its transitions; the open one only its start.
+	// Both terminal deploys project their start and end transitions, including
+	// the prior deploy's later deactivation.
 	seenPhases := map[string]int{}
 	for _, e := range all {
 		if e.Source == EventSourceDeploy {
 			seenPhases[e.Phase]++
 		}
 	}
-	if seenPhases[EventPhaseStarted] != 2 || seenPhases[EventPhaseEnded] != 1 {
-		t.Errorf("deploy phases = %v, want 2 started (both deploys) + 1 ended (only the closed one)", seenPhases)
+	if seenPhases[EventPhaseStarted] != 2 || seenPhases[EventPhaseEnded] != 2 {
+		t.Errorf("deploy phases = %v, want 2 started + 2 ended (deactivated and live)", seenPhases)
 	}
 
 	// Keyset paging: walk the feed 2 at a time and reassemble it exactly. Between

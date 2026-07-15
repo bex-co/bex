@@ -55,7 +55,7 @@ func fakeClient(objs ...client.Object) client.Client {
 // — the case with no deploy history at all.
 func sampleApp(name, storeID string) *appv1alpha1.App {
 	a := &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Generation: 1},
 		Spec:       appv1alpha1.AppSpec{Image: name + ":v1"},
 	}
 	if storeID != "" {
@@ -100,19 +100,63 @@ func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Dep
 func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	now := time.Now()
+	status := store.DeployCreated
+	for _, existing := range f.byApp[appID] {
+		if store.IsOpenDeployStatus(existing.Status) && existing.Generation >= generation {
+			status = store.DeployCanceled
+			break
+		}
+	}
+	if status == store.DeployCreated {
+		for i, existing := range f.byApp[appID] {
+			if !store.IsOpenDeployStatus(existing.Status) {
+				continue
+			}
+			existing.Status = store.DeployCanceled
+			existing.UpdatedAt = now
+			existing.FinishedAt = &now
+			f.byApp[appID][i] = existing
+		}
+	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: store.DeployUpdateInProgress, CreatedAt: time.Now()}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now}
+	if status == store.DeployCanceled {
+		d.FinishedAt = &now
+	}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
 }
 
-func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, commit store.CommitInfo) (store.Deploy, error) {
+func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	now := time.Now()
+	status := store.DeployCreated
+	for _, existing := range f.byApp[appID] {
+		if store.IsOpenDeployStatus(existing.Status) && existing.Generation >= generation {
+			status = store.DeployCanceled
+			break
+		}
+	}
+	if status == store.DeployCreated {
+		for i, existing := range f.byApp[appID] {
+			if !store.IsOpenDeployStatus(existing.Status) {
+				continue
+			}
+			existing.Status = store.DeployCanceled
+			existing.UpdatedAt = now
+			existing.FinishedAt = &now
+			f.byApp[appID][i] = existing
+		}
+	}
 	f.nextID++
 	d := store.Deploy{
 		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: store.DeployUpdateInProgress, CreatedAt: time.Now(),
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now,
+	}
+	if status == store.DeployCanceled {
+		d.FinishedAt = &now
 	}
 	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
 	return d, nil
@@ -141,6 +185,18 @@ func (f *fakeStore) ListDeploys(_ context.Context, appID string, filter store.De
 			continue
 		}
 		if !filter.CreatedBefore.IsZero() && !d.CreatedAt.Before(filter.CreatedBefore) {
+			continue
+		}
+		if !filter.UpdatedAfter.IsZero() && !d.UpdatedAt.After(filter.UpdatedAfter) {
+			continue
+		}
+		if !filter.UpdatedBefore.IsZero() && !d.UpdatedAt.Before(filter.UpdatedBefore) {
+			continue
+		}
+		if !filter.FinishedAfter.IsZero() && (d.FinishedAt == nil || !d.FinishedAt.After(filter.FinishedAfter)) {
+			continue
+		}
+		if !filter.FinishedBefore.IsZero() && (d.FinishedAt == nil || !d.FinishedAt.Before(filter.FinishedBefore)) {
 			continue
 		}
 		if filter.Cursor != "" && (cursorRow == nil || d.CreatedAt.After(cursorRow.CreatedAt) ||
@@ -177,16 +233,29 @@ func (f *fakeStore) CloseDeploy(_ context.Context, id, status, resolvedImage str
 			if d.ID != id {
 				continue
 			}
-			if d.FinishedAt != nil {
+			if !store.IsTerminalDeployStatus(status) || status == store.DeployDeactivated || !store.CanTransitionDeploy(d.Status, status) {
 				return false, nil
 			}
 			now := time.Now()
 			d.Status = status
+			d.UpdatedAt = now
 			if resolvedImage != "" {
 				d.ResolvedImage = resolvedImage
 			}
+			if status != store.DeployCanceled && d.StartedAt == nil {
+				d.StartedAt = &now
+			}
 			d.FinishedAt = &now
 			f.byApp[appID][i] = d
+			if status == store.DeployLive {
+				for j, other := range f.byApp[appID] {
+					if j != i && other.Status == store.DeployLive {
+						other.Status = store.DeployDeactivated
+						other.UpdatedAt = now
+						f.byApp[appID][j] = other
+					}
+				}
+			}
 			return true, nil
 		}
 	}
@@ -275,7 +344,7 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Trigger: %v", err)
 	}
-	if triggered.Trigger != "api" || triggered.Status != store.DeployUpdateInProgress {
+	if triggered.Trigger != "api" || triggered.Status != store.DeployCreated {
 		t.Errorf("triggered deploy = %+v", triggered)
 	}
 	app := getApp(t, cl, "web")
@@ -441,8 +510,8 @@ func TestRestartOpensDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Trigger (restart): %v", err)
 	}
-	if d.Trigger != "api" || d.Status != store.DeployUpdateInProgress {
-		t.Errorf("Restart deploy = %+v, want trigger=api, status=update_in_progress", d)
+	if d.Trigger != "api" || d.Status != store.DeployCreated {
+		t.Errorf("Restart deploy = %+v, want trigger=api, status=created", d)
 	}
 	// RestartedAt must be bumped so the operator rolls the pods.
 	app := getApp(t, cl, "web")
@@ -640,7 +709,7 @@ func TestMCPMatchesREST(t *testing.T) {
 	if err := decodeStructured(res.StructuredContent, &oneGot); err != nil {
 		t.Fatalf("decode get_deploy result: %v", err)
 	}
-	if oneGot.ID != first.ID || oneGot.Status != store.DeployUpdateInProgress {
+	if oneGot.ID != first.ID || oneGot.Status != store.DeployCreated {
 		t.Errorf("get_deploy = %+v", oneGot)
 	}
 

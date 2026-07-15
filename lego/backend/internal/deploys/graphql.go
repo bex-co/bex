@@ -45,9 +45,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Empty when unresolved; clients omit rather than fake.
 		"commitId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitID })},
 		"commitMessage": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitMessage })},
-		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
-		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
-		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
+		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
+		"updatedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.UpdatedAt) })},
+		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
+		"finishedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
 		// Pre-deploy step outcome (w1/m33): "running"|"succeeded"|"failed", empty
 		// when no pre-deploy step ran. Distinguishes a migration failure from a
 		// health-check failure (both status=update_failed).
@@ -67,8 +68,8 @@ var deployHookArgs = graphql.FieldConfigArgument{
 }
 
 // GraphQLQuery returns the deploys(serviceId, …) field for the composition
-// root to merge into the root Query. The filter arguments (w2/m31) mirror the
-// REST query params 1:1 — status/createdBefore/createdAfter/cursor/limit —
+// root to merge into the root Query. The filter arguments mirror the REST
+// query params 1:1 — status, created/updated/finished time bounds, cursor, limit —
 // through the same FilterOf translator, so the two surfaces cannot page
 // differently; all absent means the full history, the pre-m31 contract.
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -85,12 +86,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"deploys": &graphql.Field{
 			Type: graphql.NewList(deployGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"status":        &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"createdBefore": &graphql.ArgumentConfig{Type: graphql.String},
-				"createdAfter":  &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":        &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":         &graphql.ArgumentConfig{Type: graphql.Int},
+				"serviceId":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"status":         &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"createdBefore":  &graphql.ArgumentConfig{Type: graphql.String},
+				"createdAfter":   &graphql.ArgumentConfig{Type: graphql.String},
+				"updatedBefore":  &graphql.ArgumentConfig{Type: graphql.String},
+				"updatedAfter":   &graphql.ArgumentConfig{Type: graphql.String},
+				"finishedBefore": &graphql.ArgumentConfig{Type: graphql.String},
+				"finishedAfter":  &graphql.ArgumentConfig{Type: graphql.String},
+				"cursor":         &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":          &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				filter, err := filterFromArgs(p.Args)
@@ -118,7 +123,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 }
 
 // filterFromArgs is the GraphQL twin of rest.go's filterFromQuery: it pulls
-// the same five params out of the resolver's argument map and hands them to
+// the same filter params out of the resolver's argument map and hands them to
 // the one shared translator (FilterOf) — the events.filterFromArgs precedent.
 func filterFromArgs(args map[string]any) (ListFilter, error) {
 	str := func(key string) string {
@@ -144,7 +149,13 @@ func filterFromArgs(args map[string]any) (ListFilter, error) {
 		}
 		limit = v
 	}
-	return FilterOf(statuses, str("createdBefore"), str("createdAfter"), str("cursor"), limit)
+	return FilterOf(
+		statuses,
+		str("createdBefore"), str("createdAfter"),
+		str("updatedBefore"), str("updatedAfter"),
+		str("finishedBefore"), str("finishedAfter"),
+		str("cursor"), limit,
+	)
 }
 
 // deployMutationArgs is the (serviceId, deployId) argument shape cancelDeploy and

@@ -14,6 +14,7 @@ const deploy = (over: Record<string, unknown> = {}) => ({
   image: "registry.example.com/web:1",
   rollbackOf: "",
   createdAt: "2026-07-14T00:00:00Z",
+  updatedAt: "2026-07-14T00:00:01Z",
   startedAt: "2026-07-14T00:00:01Z",
   finishedAt: null,
   preDeployStatus: "",
@@ -28,9 +29,15 @@ beforeEach(() => {
 });
 
 describe("useDeploy", () => {
-  it("polls every 3s while the deploy is non-terminal", () => {
+  it.each([
+    "created",
+    "queued",
+    "build_in_progress",
+    "pre_deploy_in_progress",
+    "update_in_progress",
+  ])("polls every 3s while the deploy is %s", (status) => {
     mockUseQuery.mockReturnValue({
-      data: { deploy: deploy() },
+      data: { deploy: deploy({ status }) },
       loading: false,
       error: undefined,
       previousData: undefined,

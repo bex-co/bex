@@ -92,15 +92,21 @@ type App struct {
 	FirstDeployCommit CommitInfo `json:"-"`
 }
 
-// Deploy status vocabulary — Render's deploy status enum, the subset bex can
-// honor today (docs/ADR004-deployment.md health gating). build_in_progress/
-// build_failed are reserved for w1/m5 (build-from-git); DeployCanceled closes
-// w2/m10's own deferral (deactivated is not modeled — no equivalent verb).
+// Deploy status vocabulary — Render's complete eleven-state enum. The backend
+// persists only states supported by current App/Job evidence; it never invents
+// an unobserved intermediate phase merely to make the sequence look complete.
 const (
-	DeployUpdateInProgress = "update_in_progress"
-	DeployLive             = "live"
-	DeployUpdateFailed     = "update_failed"
-	DeployCanceled         = "canceled"
+	DeployCreated             = "created"
+	DeployQueued              = "queued"
+	DeployBuildInProgress     = "build_in_progress"
+	DeployBuildFailed         = "build_failed"
+	DeployPreDeployInProgress = "pre_deploy_in_progress"
+	DeployPreDeployFailed     = "pre_deploy_failed"
+	DeployUpdateInProgress    = "update_in_progress"
+	DeployLive                = "live"
+	DeployUpdateFailed        = "update_failed"
+	DeployDeactivated         = "deactivated"
+	DeployCanceled            = "canceled"
 )
 
 // Pre-deploy step status vocabulary — the deploy row's pre_deploy_status column
@@ -123,6 +129,10 @@ const (
 func RenderDeployStatus(status string) string {
 	switch status {
 	case DeployLive:
+		return "succeeded"
+	case DeployDeactivated:
+		// A deactivated deploy previously reached live; a newer successful
+		// deploy replaced it. Its deploy_ended outcome remains succeeded.
 		return "succeeded"
 	case DeployCanceled:
 		return "canceled"
@@ -180,6 +190,7 @@ type Deploy struct {
 	CommitMessage string     `json:"commitMessage,omitempty"`
 	Status        string     `json:"status"`
 	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
 	StartedAt     *time.Time `json:"startedAt,omitempty"`
 	FinishedAt    *time.Time `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy
@@ -311,8 +322,8 @@ type Store interface {
 	// daily with the hot-window boundary.
 	CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error)
 
-	// CreateDeploy opens a new deploy row for appID (status
-	// DeployUpdateInProgress) — CreateApp calls this for an app's first deploy
+	// CreateDeploy opens a new deploy row for appID (status DeployCreated) —
+	// CreateApp calls this for an app's first deploy
 	// (trigger "create"); the deploys feature's Trigger verb calls it for an
 	// explicit redeploy (trigger "api"). generation is the App CR's
 	// metadata.generation this deploy runs under, captured once at open time
@@ -328,7 +339,7 @@ type Store interface {
 	// (w2/m10). rollbackOf records provenance: the source deploy id being
 	// rolled back to; commit is the target's own commit metadata (w9/001),
 	// copied rather than re-resolved against a branch that has since moved.
-	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error)
+	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error)
 	// ListDeploys returns an app's deploy history, newest first, narrowed by
 	// filter (w2/m31) — a zero DeployFilter returns the full history, the
 	// pre-m31 contract.
@@ -336,18 +347,19 @@ type Store interface {
 	// GetDeploy fetches one deploy scoped to appID — a deployID belonging to a
 	// different app is ErrNotFound, not a cross-app leak.
 	GetDeploy(ctx context.Context, appID, deployID string) (Deploy, error)
-	// ListOpenDeploys returns every non-terminal (DeployUpdateInProgress)
+	// ListOpenDeploys returns every non-terminal deploy
 	// deploy across all apps in one query — the reconciler's write-back hook
 	// calls this once per ReconcileOnce pass and looks apps up in the result,
 	// rather than one query per app in its per-app loop.
 	ListOpenDeploys(ctx context.Context) ([]Deploy, error)
-	// CloseDeploy marks a deploy row terminal (status DeployLive,
-	// DeployUpdateFailed, or DeployCanceled) with finished_at = now, guarded by
-	// WHERE finished_at IS NULL so a genuinely-converging rollout and a Cancel
-	// call can race safely — whichever gets there first wins, reported by the
-	// returned bool (false = already terminal, a no-op). resolvedImage, when
-	// non-empty, backfills the deploy's ResolvedImage (Rollback's restore
-	// target) — pass "" to leave it untouched (Cancel never has one to give).
+	// TransitionDeploy applies one legal lifecycle transition, advances
+	// updated_at only when the status actually changes, stamps started_at on
+	// the first executing phase and finished_at on terminal transitions, and
+	// atomically deactivates a prior live deploy when this one reaches live.
+	// A stale/repeated/invalid transition returns false without changing data.
+	TransitionDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
+	// CloseDeploy is the terminal-transition compatibility seam used by the
+	// deploy service's Cancel path. It delegates to TransitionDeploy.
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
 	// SetDeployPreDeployStatus records the pre-deploy step's outcome ('' |
 	// 'running' | 'succeeded' | 'failed') on a deploy row (w1/m33), projected from
@@ -590,7 +602,7 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			// starts at metadata.generation 1.
 			_, err := tx.Exec(ctx,
 				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, 1, $5, $6, $7)`,
-				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployUpdateInProgress)
+				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
 			return err
 		})
 		if err == nil {
@@ -893,15 +905,67 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 }
 
 func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING created_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.Status,
-	).Scan(&d.CreatedAt)
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployCreated}
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		status, err := prepareDeployCreate(ctx, tx, appID, generation)
+		if err != nil {
+			return err
+		}
+		d.Status = status
+		return tx.QueryRow(ctx,
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status, finished_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $8 = $9 THEN clock_timestamp() END)
+			 RETURNING created_at, updated_at, finished_at`,
+			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.Status, DeployCanceled,
+		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
+	})
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
 	}
 	return d, nil
+}
+
+// prepareDeployCreate serializes creation for one App, then compares App
+// generations before choosing the visible initial status. A delayed request
+// for an older generation records itself canceled without disturbing the
+// higher-generation open row. Otherwise the new generation cancels every
+// older open row and starts created. The partial unique index is the final
+// one-open-row guard.
+func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64) (string, error) {
+	var lockedID string
+	if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
+		return "", err
+	}
+	var superseded bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (
+			SELECT 1 FROM deploys
+			WHERE app_id = $1 AND status = ANY($2) AND generation >= $3
+		)`, appID, openDeployStatuses, generation,
+	).Scan(&superseded); err != nil {
+		return "", err
+	}
+	if superseded {
+		return DeployCanceled, nil
+	}
+	if err := cancelOpenDeploys(ctx, tx, appID); err != nil {
+		return "", err
+	}
+	return DeployCreated, nil
+}
+
+// cancelOpenDeploys applies bex's newest-wins policy before a newer row is
+// inserted. Keeping the cancellation and insert in one transaction prevents a
+// trigger race from leaving two open deploys for one App.
+func cancelOpenDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE deploys
+		 SET status = $2,
+		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()),
+		     finished_at = clock_timestamp()
+		 WHERE app_id = $1 AND status = ANY($3)`,
+		appID, DeployCanceled, openDeployStatuses)
+	return err
 }
 
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
@@ -911,37 +975,43 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 // TARGET deploy's commit metadata (w9/001) — a rollback re-runs what the
 // restored deploy built, so its provenance is copied, never re-resolved
 // against a branch that has since moved.
-func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, commit, commit_message, status)
-		 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8) RETURNING created_at`,
-		d.ID, d.AppID, d.Trigger, image, rollbackOf, d.Commit, d.CommitMessage, d.Status,
-	).Scan(&d.CreatedAt)
+func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployCreated}
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		status, err := prepareDeployCreate(ctx, tx, appID, generation)
+		if err != nil {
+			return err
+		}
+		d.Status = status
+		return tx.QueryRow(ctx,
+			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, status, finished_at)
+			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = $10 THEN clock_timestamp() END)
+			 RETURNING created_at, updated_at, finished_at`,
+			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.Status, DeployCanceled,
+		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
+	})
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
 	}
 	return d, nil
 }
 
-// DeployFilter narrows ListDeploys (w2/m31) — the subset of Render's
-// ListDeploysParams bex can honestly back today (updatedBefore/updatedAfter
-// wait on w2/m32's updated_at column). Statuses filters to the given deploy
-// statuses (empty ⇒ all; an unknown status simply matches nothing, so the
-// vocabulary can grow without touching this); CreatedBefore/CreatedAfter
-// bound created_at exclusively (Render's createdBefore/createdAfter); Cursor
-// resumes strictly after a previously returned deploy's id (newest-first
-// keyset paging, the AuditFilter convention — stable under concurrent
-// inserts, and an unknown cursor yields an empty page, not the unfiltered
-// list); Limit caps the page (clamped here by clampPageLimit: <=0 means
-// UNBOUNDED, the pre-m31 contract every existing caller keeps — unlike
-// AuditFilter whose zero value pages — and >core.MaxPageLimit clamps).
+// DeployFilter narrows ListDeploys using Render's status and exclusive
+// created/updated/finished time bounds. Cursor resumes strictly after a
+// previously returned deploy's id (newest-first keyset paging, stable under
+// concurrent inserts); an unknown cursor yields an empty page. Limit is
+// clamped here by clampPageLimit: <=0 preserves the store's unbounded legacy
+// contract and >core.MaxPageLimit clamps.
 type DeployFilter struct {
-	Statuses      []string
-	CreatedBefore time.Time
-	CreatedAfter  time.Time
-	Cursor        string
-	Limit         int
+	Statuses       []string
+	CreatedBefore  time.Time
+	CreatedAfter   time.Time
+	UpdatedBefore  time.Time
+	UpdatedAfter   time.Time
+	FinishedBefore time.Time
+	FinishedAfter  time.Time
+	Cursor         string
+	Limit          int
 }
 
 // clampPageLimit is the store's page-size invariant for lists whose zero
@@ -978,11 +1048,11 @@ func pageNewestFirst(query string, args []any, table, sortCol, cursor string, li
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, status, created_at, started_at, finished_at, pre_deploy_status`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, status, created_at, updated_at, started_at, finished_at, pre_deploy_status`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.Status, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.Status, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus)
 	return d, err
 }
 
@@ -1000,6 +1070,22 @@ func (s *PGStore) ListDeploys(ctx context.Context, appID string, filter DeployFi
 	if !filter.CreatedBefore.IsZero() {
 		args = append(args, filter.CreatedBefore)
 		query += fmt.Sprintf(" AND created_at < $%d", len(args))
+	}
+	if !filter.UpdatedAfter.IsZero() {
+		args = append(args, filter.UpdatedAfter)
+		query += fmt.Sprintf(" AND updated_at > $%d", len(args))
+	}
+	if !filter.UpdatedBefore.IsZero() {
+		args = append(args, filter.UpdatedBefore)
+		query += fmt.Sprintf(" AND updated_at < $%d", len(args))
+	}
+	if !filter.FinishedAfter.IsZero() {
+		args = append(args, filter.FinishedAfter)
+		query += fmt.Sprintf(" AND finished_at > $%d", len(args))
+	}
+	if !filter.FinishedBefore.IsZero() {
+		args = append(args, filter.FinishedBefore)
+		query += fmt.Sprintf(" AND finished_at < $%d", len(args))
 	}
 	query, args = pageNewestFirst(query, args, "deploys", "created_at", filter.Cursor, clampPageLimit(filter.Limit))
 	rows, err := s.Pool.Query(ctx, query, args...)
@@ -1029,7 +1115,7 @@ func (s *PGStore) GetDeploy(ctx context.Context, appID, deployID string) (Deploy
 
 func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+deployColumns+` FROM deploys WHERE status = $1`, DeployUpdateInProgress)
+		`SELECT `+deployColumns+` FROM deploys WHERE status = ANY($1)`, openDeployStatuses)
 	if err != nil {
 		return nil, err
 	}
@@ -1045,19 +1131,56 @@ func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	return out, rows.Err()
 }
 
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error) {
+	transitioned := false
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var appID, current string
+		if err := tx.QueryRow(ctx,
+			`SELECT app_id, status FROM deploys WHERE id = $1 FOR UPDATE`, id,
+		).Scan(&appID, &current); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if !CanTransitionDeploy(current, status) {
+			return nil
+		}
+
+		starts := status != DeployQueued && status != DeployCanceled && status != DeployDeactivated
+		terminal := IsTerminalDeployStatus(status)
+		if _, err := tx.Exec(ctx,
+			`UPDATE deploys
+			 SET status = $2,
+			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
+			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp()) ELSE started_at END,
+			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
+			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+			 WHERE id = $1`,
+			id, status, resolvedImage, starts, terminal); err != nil {
+			return err
+		}
+		if status == DeployLive {
+			if _, err := tx.Exec(ctx,
+				`UPDATE deploys
+				 SET status = $3,
+				     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+				 WHERE app_id = $1 AND id <> $2 AND status = $4`,
+				appID, id, DeployDeactivated, DeployLive); err != nil {
+				return err
+			}
+		}
+		transitioned = true
+		return nil
+	})
+	return transitioned, err
+}
+
 func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error) {
-	// COALESCE(NULLIF($3,''), resolved_image): an empty resolvedImage (Cancel
-	// never has one to give) leaves the column untouched, a non-empty one
-	// overwrites it — one statement instead of branching two near-identical
-	// UPDATEs.
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE deploys SET status = $2, resolved_image = COALESCE(NULLIF($3, ''), resolved_image), finished_at = now()
-		 WHERE id = $1 AND finished_at IS NULL`,
-		id, status, resolvedImage)
-	if err != nil {
-		return false, err
+	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
+		return false, nil
 	}
-	return tag.RowsAffected() > 0, nil
+	return s.TransitionDeploy(ctx, id, status, resolvedImage)
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy
@@ -1066,9 +1189,11 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 // row was updated.
 func (s *PGStore) SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error) {
 	tag, err := s.Pool.Exec(ctx,
-		`UPDATE deploys SET pre_deploy_status = $2
-		 WHERE id = $1 AND pre_deploy_status IS DISTINCT FROM $2`,
-		id, status)
+		`UPDATE deploys
+		 SET pre_deploy_status = $2,
+		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+		 WHERE id = $1 AND status = ANY($3) AND pre_deploy_status IS DISTINCT FROM $2`,
+		id, status, openDeployStatuses)
 	if err != nil {
 		return false, err
 	}

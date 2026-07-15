@@ -8,9 +8,7 @@ export type DeployBadgeVariant =
   | "destructive"
   | "outline";
 
-/** Render's terminal deploy statuses. bex emits four today; accepting the full
- *  eleven-value vocabulary keeps polling correct as the backend deepens its
- *  deploy object without another UI migration. */
+/** Terminal values in Render's eleven-state deploy vocabulary. */
 const TERMINAL_STATUSES = new Set([
   "build_failed",
   "canceled",

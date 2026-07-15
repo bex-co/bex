@@ -171,6 +171,12 @@ Skipped when there is no rollout to gate (suspended / auto-hibernating, both sca
 
 The step's outcome and logs are visible on the deploy record: `preDeployStatus` (`internal/store`/`internal/deploys`) distinguishes a migration failure from a health-check failure, and the `predeploy` log type ([ADR006](ADR006-bex-api.md), [ADR010](ADR010-observability.md)) reads the Job pod's logs.
 
+## Control-plane deploy lifecycle
+
+For store-managed Apps, bex-api projects the operator's current-generation facts into Render's deploy vocabulary without adding an operator-to-database dependency. A deploy row begins `created`; `BuildQueued` and `Building` evidence yield `queued` and `build_in_progress`; a generation-scoped pre-deploy Job yields `pre_deploy_in_progress`; rollout reconciliation yields `update_in_progress`; and the corresponding failure or convergence facts yield `build_failed`, `pre_deploy_failed`, `update_failed`, or `live`. Fast phases may be skipped when the polling control plane never observes them. Invalid regressions are rejected.
+
+`updatedAt` advances only on a real stored transition, `startedAt` records the first executing phase, and `finishedAt` records the first terminal result. A newer trigger cancels an older open deploy; a newer live deploy atomically marks the former live revision `deactivated`, retaining its original `finishedAt` and using `updatedAt` for the replacement instant. See [ADR006](ADR006-bex-api.md#deploy-history--trigger-w2m5-render-deploys-compatible) for adapter/filter semantics.
+
 ## Gotchas
 
 - **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/ADR003-control-plane.md`](ADR003-control-plane.md) for the planned Postgres source of truth.

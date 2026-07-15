@@ -250,17 +250,13 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// recordDeploy closes open (the app's open deploy row, t001) once this pass's
-// observed CR status is decisive: Running -> live, Failed -> update_failed,
-// or still open past DeployGateTimeout -> update_failed. The gate-window
-// fallback is not just a backstop: a stuck ImagePullBackOff never reaches
-// PhaseFailed on its own (the App CR's Deployment-readiness check just
-// re-requeues PhaseDeploying forever, lego/operator/internal/controller/
-// app_controller.go), so for that common failure mode the timeout IS the
-// mechanism that ever calls it failed, not a rare fallback. Still open inside
-// the gate window is a no-op — the next pass re-checks. Store errors are
-// logged, not fatal: a deploy-bookkeeping hiccup must never block App CR
-// reconciliation.
+// recordDeploy projects the current generation's observable App/Job facts onto
+// one legal deploy transition. Sampling can skip a fast phase, but it can never
+// invent one: the transition model accepts forward skips and rejects regressions.
+// A rollout that stays open past DeployGateTimeout settles to the failure for
+// its last observed phase (the health-gate timeout remains the mechanism for an
+// ImagePullBackOff that otherwise stays Deploying forever). Store errors are
+// logged, not fatal: deploy bookkeeping must never block App CR reconciliation.
 func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App) {
 	// Project the pre-deploy step's outcome (w1/m33) onto the open row first, so a
 	// migration failure is recorded even on the same pass that closes the deploy
@@ -272,16 +268,9 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		}
 	}
 
-	status := ""
-	switch {
-	case cur.Status.Phase == appv1alpha1.PhaseRunning:
-		status = DeployLive
-	case cur.Status.Phase == appv1alpha1.PhaseFailed:
-		status = DeployUpdateFailed
-	case time.Since(open.CreatedAt) > r.DeployGateTimeout:
-		status = DeployUpdateFailed
-	default:
-		return // still converging, inside the gate window
+	status := observedDeployStatus(open, cur, time.Since(open.CreatedAt) > r.DeployGateTimeout)
+	if status == "" {
+		return
 	}
 	// resolvedImage backfills Deploy.ResolvedImage (Rollback's restore target,
 	// w2/m10) only on a genuine live convergence — cur.Status.Image is the
@@ -292,9 +281,9 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if status == DeployLive {
 		resolvedImage = cur.Status.Image
 	}
-	ok, err := r.Store.CloseDeploy(ctx, open.ID, status, resolvedImage)
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage)
 	if err != nil {
-		log.Printf("controlplane: close deploy %s: %v", open.ID, err)
+		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
 	}
 	// Notify only the pass that actually closed the row (ok) — a race with a
@@ -305,7 +294,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// pass. context.WithoutCancel detaches from ctx's deadline — ctx is
 	// ReconcileOnce's per-pass context and may already be gone by the time a
 	// slow relay would otherwise get to send.
-	if ok && r.DeployNotifier != nil {
+	if ok && r.DeployNotifier != nil && IsTerminalDeployStatus(status) && status != DeployCanceled {
 		go r.DeployNotifier.NotifyDeploy(context.WithoutCancel(ctx), DeployNotification{
 			TenantID:            d.TenantID,
 			AppName:             d.Name,
@@ -314,6 +303,85 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			NotificationsToSend: cur.Spec.NotificationsToSend,
 		})
 	}
+}
+
+// observedDeployStatus maps only current-generation evidence to a Render
+// lifecycle state. Empty means the sample proves no new state. The Ready
+// condition is generation-scoped by the operator's setPhase/fail helpers; that
+// guard prevents a freshly opened row from inheriting the prior revision's
+// Building/Deploying/Failed status before the operator has touched it.
+func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) string {
+	if app.Generation != 0 && open.Generation != 0 && app.Generation != open.Generation {
+		return ""
+	}
+	pds := preDeployStatusFor(app)
+	switch pds {
+	case PreDeployRunning:
+		if timedOut {
+			return DeployPreDeployFailed
+		}
+		return DeployPreDeployInProgress
+	case PreDeployFailed:
+		return DeployPreDeployFailed
+	}
+
+	reason, conditionCurrent := readyReasonForGeneration(app)
+	switch app.Status.Phase {
+	case appv1alpha1.PhaseBuilding:
+		if conditionCurrent && timedOut {
+			return DeployBuildFailed
+		}
+		if conditionCurrent && reason == "BuildQueued" {
+			return DeployQueued
+		}
+		if conditionCurrent {
+			return DeployBuildInProgress
+		}
+	case appv1alpha1.PhaseDeploying:
+		if conditionCurrent {
+			if timedOut {
+				return DeployUpdateFailed
+			}
+			return DeployUpdateInProgress
+		}
+	case appv1alpha1.PhaseRunning:
+		if app.Status.ObservedGeneration == app.Generation {
+			return DeployLive
+		}
+	case appv1alpha1.PhaseFailed:
+		if conditionCurrent {
+			switch reason {
+			case "BuildFailed":
+				return DeployBuildFailed
+			case "PreDeployFailed":
+				return DeployPreDeployFailed
+			default:
+				return DeployUpdateFailed
+			}
+		}
+	}
+
+	if !timedOut {
+		return ""
+	}
+	switch open.Status {
+	case DeployQueued, DeployBuildInProgress:
+		return DeployBuildFailed
+	case DeployPreDeployInProgress:
+		return DeployPreDeployFailed
+	default:
+		return DeployUpdateFailed
+	}
+}
+
+func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
+	for i := range app.Status.Conditions {
+		ready := &app.Status.Conditions[i]
+		if ready.Type == "Ready" && ready.ObservedGeneration == app.Generation {
+			return ready.Reason, true
+		}
+	}
+	return "", false
 }
 
 // preDeployStatusFor maps the App CR's pre-deploy step status (status.preDeploy,

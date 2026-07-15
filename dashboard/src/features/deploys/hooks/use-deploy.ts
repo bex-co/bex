@@ -16,6 +16,7 @@ export interface DeployView {
   commitId: string;
   commitMessage: string;
   createdAt: string | null;
+  updatedAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   preDeployStatus: string;
@@ -33,8 +34,8 @@ export interface UseDeployResult {
 /**
  * Reads bex-api's `deploy(serviceId, deployId)` (w9/m1/t001) — the deploy
  * detail page's header data. Polls every 3s while the deploy is non-terminal
- * (update_in_progress) so the header/log window follow the deploy live, and
- * stops the moment it reaches a terminal status (live/update_failed/canceled).
+ * so the header/log window follows each observed phase, and stops the moment
+ * it reaches any terminal status.
  */
 export function useDeploy(
   serviceId: string,
@@ -81,6 +82,7 @@ function toDeployView(
     commitId: d.commitId ?? "",
     commitMessage: d.commitMessage ?? "",
     createdAt: d.createdAt ?? null,
+    updatedAt: d.updatedAt ?? null,
     startedAt: d.startedAt ?? null,
     finishedAt: d.finishedAt ?? null,
     preDeployStatus: d.preDeployStatus ?? "",

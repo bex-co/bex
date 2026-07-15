@@ -53,6 +53,10 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "创建于",
     description: "Deploy header: created-at label",
   },
+  "deploys.updated": {
+    message: "更新时间",
+    description: "部署最近一次已存储状态转换时间的标签",
+  },
   "deploys.started": {
     message: "开始于",
     description: "Deploy header: started-at label",

@@ -37,7 +37,7 @@ export interface DeployHeaderProps {
 /**
  * The deploy detail page's header (w9/m1/t003): Render's compact deploy-page
  * banner — status badge, trigger/rollback provenance, image, pre-deploy
- * outcome, and the created/started/finished timestamps. Reuses the same
+ * outcome, and the created/updated/started/finished timestamps. Reuses the same
  * status→badge mapping as the Events tab (deploy-status.ts) so the two
  * surfaces can't drift on what a given status looks like.
  */
@@ -99,10 +99,14 @@ export function DeployHeader({
           </p>
         ) : null}
 
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="inline font-medium">{t("deploys.created")}: </dt>
             <dd className="inline">{formatTimestamp(deploy.createdAt)}</dd>
+          </div>
+          <div>
+            <dt className="inline font-medium">{t("deploys.updated")}: </dt>
+            <dd className="inline">{formatTimestamp(deploy.updatedAt)}</dd>
           </div>
           <div>
             <dt className="inline font-medium">{t("deploys.started")}: </dt>

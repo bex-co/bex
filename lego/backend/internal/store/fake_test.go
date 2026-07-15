@@ -227,7 +227,8 @@ func (m *memStore) CreateApp(_ context.Context, a App) (App, error) {
 	}
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: "create", Image: a.Image, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	now := time.Now()
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Generation: 1, Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
 	m.deploys[d.ID] = d
 	return a, nil
 }
@@ -525,23 +526,55 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 	if _, ok := m.apps[appID]; !ok {
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress, CreatedAt: time.Now()}
+	now := time.Now()
+	status := m.prepareDeployCreate(appID, generation, now)
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now}
+	if status == DeployCanceled {
+		d.FinishedAt = &now
+	}
 	m.deploys[d.ID] = d
 	return d, nil
 }
 
-func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, commit CommitInfo) (Deploy, error) {
+func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
+	now := time.Now()
+	status := m.prepareDeployCreate(appID, generation, now)
 	d := Deploy{
 		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Commit: commit.Hash, CommitMessage: commit.Message, Status: DeployUpdateInProgress, CreatedAt: time.Now(),
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now,
+	}
+	if status == DeployCanceled {
+		d.FinishedAt = &now
 	}
 	m.deploys[d.ID] = d
 	return d, nil
+}
+
+func (m *memStore) prepareDeployCreate(appID string, generation int64, now time.Time) string {
+	for _, d := range m.deploys {
+		if d.AppID == appID && IsOpenDeployStatus(d.Status) && d.Generation >= generation {
+			return DeployCanceled
+		}
+	}
+	m.cancelOpenDeploys(appID, now)
+	return DeployCreated
+}
+
+func (m *memStore) cancelOpenDeploys(appID string, now time.Time) {
+	for id, d := range m.deploys {
+		if d.AppID != appID || !IsOpenDeployStatus(d.Status) {
+			continue
+		}
+		d.Status = DeployCanceled
+		d.UpdatedAt = now
+		d.FinishedAt = &now
+		m.deploys[id] = d
+	}
 }
 
 func (m *memStore) ListDeploys(_ context.Context, appID string, filter DeployFilter) ([]Deploy, error) {
@@ -559,6 +592,18 @@ func (m *memStore) ListDeploys(_ context.Context, appID string, filter DeployFil
 			continue
 		}
 		if !filter.CreatedBefore.IsZero() && !d.CreatedAt.Before(filter.CreatedBefore) {
+			continue
+		}
+		if !filter.UpdatedAfter.IsZero() && !d.UpdatedAt.After(filter.UpdatedAfter) {
+			continue
+		}
+		if !filter.UpdatedBefore.IsZero() && !d.UpdatedAt.Before(filter.UpdatedBefore) {
+			continue
+		}
+		if !filter.FinishedAfter.IsZero() && (d.FinishedAt == nil || !d.FinishedAt.After(filter.FinishedAfter)) {
+			continue
+		}
+		if !filter.FinishedBefore.IsZero() && (d.FinishedAt == nil || !d.FinishedAt.Before(filter.FinishedBefore)) {
 			continue
 		}
 		out = append(out, d)
@@ -604,38 +649,62 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	defer m.mu.Unlock()
 	var out []Deploy
 	for _, d := range m.deploys {
-		if d.Status == DeployUpdateInProgress {
+		if IsOpenDeployStatus(d.Status) {
 			out = append(out, d)
 		}
 	}
 	return out, nil
 }
 
-func (m *memStore) CloseDeploy(_ context.Context, id, status, resolvedImage string) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
-	if !ok || d.FinishedAt != nil {
+	if !ok || !CanTransitionDeploy(d.Status, status) {
 		return false, nil
 	}
 	now := time.Now()
 	d.Status = status
+	d.UpdatedAt = now
 	if resolvedImage != "" {
 		d.ResolvedImage = resolvedImage
 	}
-	d.FinishedAt = &now
+	if status != DeployQueued && status != DeployCanceled && status != DeployDeactivated && d.StartedAt == nil {
+		d.StartedAt = &now
+	}
+	if IsTerminalDeployStatus(status) && d.FinishedAt == nil {
+		d.FinishedAt = &now
+	}
 	m.deploys[id] = d
+	if status == DeployLive {
+		for otherID, other := range m.deploys {
+			if otherID == id || other.AppID != d.AppID || other.Status != DeployLive {
+				continue
+			}
+			other.Status = DeployDeactivated
+			other.UpdatedAt = now
+			m.deploys[otherID] = other
+		}
+	}
 	return true, nil
+}
+
+func (m *memStore) CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error) {
+	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
+		return false, nil
+	}
+	return m.TransitionDeploy(ctx, id, status, resolvedImage)
 }
 
 func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
-	if !ok || d.PreDeployStatus == status {
+	if !ok || !IsOpenDeployStatus(d.Status) || d.PreDeployStatus == status {
 		return false, nil
 	}
 	d.PreDeployStatus = status
+	d.UpdatedAt = time.Now()
 	m.deploys[id] = d
 	return true, nil
 }

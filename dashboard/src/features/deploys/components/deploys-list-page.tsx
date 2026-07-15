@@ -32,9 +32,16 @@ const ALL = "all";
 // The status filter's vocabulary: the deploy-status enum the store writes
 // (store.Deploy*), labeled by the same keys the badges use.
 const STATUS_OPTIONS = [
-  "live",
+  "created",
+  "queued",
+  "build_in_progress",
+  "build_failed",
+  "pre_deploy_in_progress",
+  "pre_deploy_failed",
   "update_in_progress",
   "update_failed",
+  "live",
+  "deactivated",
   "canceled",
 ] as const;
 

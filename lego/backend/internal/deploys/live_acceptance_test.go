@@ -119,7 +119,7 @@ func TestLiveAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trigger: %v", err)
 	}
-	if triggered.Status != store.DeployUpdateInProgress || triggered.Trigger != "api" {
+	if triggered.Status != store.DeployCreated || triggered.Trigger != "api" {
 		t.Fatalf("triggered deploy = %+v", triggered)
 	}
 	waitForDeployStatus(t, ctx, rec, svc, name, triggered.ID, store.DeployLive, 60*time.Second)

@@ -11,6 +11,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     image: "",
     rollbackOf: "",
     createdAt: "2026-07-14T00:00:00Z",
+    updatedAt: "2026-07-14T00:02:00Z",
     startedAt: null,
     finishedAt: "2026-07-14T00:02:00Z",
     preDeployStatus: "",
@@ -57,6 +58,8 @@ describe("buildDeployTimeline", () => {
   });
 
   it.each([
+    ["build_failed", "failed"],
+    ["pre_deploy_failed", "failed"],
     ["update_failed", "failed"],
     ["canceled", "canceled"],
   ] as const)("renders %s as its honest terminal state", (status, kind) => {
@@ -75,18 +78,63 @@ describe("buildDeployTimeline", () => {
     ]);
   });
 
-  it("does not fabricate build or started phases when bex did not record them", () => {
-    const steps = buildDeployTimeline(
-      deploy({
-        status: "update_in_progress",
-        startedAt: null,
-        finishedAt: null,
-      }),
-      [],
-    );
+  it.each([
+    "created",
+    "queued",
+    "build_in_progress",
+    "pre_deploy_in_progress",
+    "update_in_progress",
+  ])(
+    "renders the current %s fact without fabricating earlier phases",
+    (status) => {
+      const steps = buildDeployTimeline(
+        deploy({
+          status,
+          startedAt: null,
+          finishedAt: null,
+        }),
+        [],
+      );
 
-    expect(steps.map((step) => step.kind)).toEqual(["created", "in_progress"]);
-    expect(steps.some((step) => step.kind === "started")).toBe(false);
+      expect(steps.map((step) => step.kind)).toEqual([
+        "created",
+        "in_progress",
+      ]);
+      expect(steps.some((step) => step.kind === "started")).toBe(false);
+      expect(steps.at(-1)?.timestamp).toBe("2026-07-14T00:02:00Z");
+      expect(steps.at(-1)?.status).toBe(status);
+    },
+  );
+
+  it("shows when a previously-live deploy was later deactivated", () => {
+    expect(
+      buildDeployTimeline(
+        deploy({
+          status: "deactivated",
+          finishedAt: "2026-07-14T00:02:00Z",
+          updatedAt: "2026-07-14T01:00:00Z",
+        }),
+        [],
+      ),
+    ).toEqual([
+      {
+        id: "created",
+        kind: "created",
+        timestamp: "2026-07-14T00:00:00Z",
+      },
+      {
+        id: "live",
+        kind: "live",
+        timestamp: "2026-07-14T00:02:00Z",
+        status: "live",
+      },
+      {
+        id: "terminal",
+        kind: "deactivated",
+        timestamp: "2026-07-14T01:00:00Z",
+        status: "deactivated",
+      },
+    ]);
   });
 
   it("shows started only when the deploy row has a real startedAt", () => {

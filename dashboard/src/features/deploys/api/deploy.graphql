@@ -12,6 +12,7 @@ query Deploy($serviceId: String!, $deployId: String!) {
     commitId
     commitMessage
     createdAt
+    updatedAt
     startedAt
     finishedAt
     preDeployStatus
