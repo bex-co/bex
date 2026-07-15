@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -421,12 +422,14 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	route := &unstructured.Unstructured{}
 	route.SetGroupVersionKind(traefikIngressRouteTCPGVK)
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.KeyValue{}).
-		Owns(&appsv1.StatefulSet{}).
-		Owns(&corev1.Service{}).
-		Owns(&corev1.Secret{}).
-		Owns(route).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&corev1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// Secret data updates do not increment metadata.generation. ResourceVersion
+		// keeps credential drift self-healing while the manager cache scopes this
+		// watch to BEX_APPS_NAMESPACE (NamespacedSecretCacheOptions).
+		Owns(&corev1.Secret{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(route, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("keyvalue").
 		Complete(r)
 }

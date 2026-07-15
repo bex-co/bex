@@ -13,3 +13,5 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 `up.sh` prints the dashboard command to point at it once bex-api is running.
 
 ## Milestones
+
+- [ ] **m1** — Restore operator reconciliation under namespace-scoped Secret RBAC (6 tasks) ← from `w10/001` production incident
