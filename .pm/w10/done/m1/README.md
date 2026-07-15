@@ -1,6 +1,6 @@
 # w10 · m1 — Restore operator reconciliation under namespace-scoped Secret RBAC
 
-**Worker:** worker10 **Goal:** restore stable operator startup and App/KeyValue reconciliation without granting cluster-wide Secret access **Status:** todo (t001-t005 done)
+**Worker:** worker10 **Goal:** restore stable operator startup and App/KeyValue reconciliation without granting cluster-wide Secret access **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Verify App and KeyValue reconciliation in the isolated stack — **DONE**       | 30m | t002       |
 | t004 | Simplify the operator watch fix — **DONE**                                    | 20m | t003       |
 | t005 | Add durable cache-startup and reconciliation regression coverage — **DONE**   | 45m | t004       |
-| t006 | Close out with production recovery and deploy acceptance           | 30m | t005       |
+| t006 | Close out with production recovery and deploy acceptance — **DONE**           | 30m | t005       |
 
 ## Definition of done
 
