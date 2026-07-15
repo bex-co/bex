@@ -32,6 +32,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - `001.md` — Usage-based plan enforcement (Hobby caps + approaching-limit notifications) — gate audited 2026-07-14: not ready; `m11` first makes collector coverage provable, then the note needs 28 days of real rows and an explicit decision on incomplete outbound-egress coverage
+- `006.md` — backfill `pg_stat_statements` on pre-m25 Postgres clusters so old databases gain Top Queries (`insights.go:257`'s graceful-empty path never self-heals) ← from `/pm-brainstorm` round 12, 2026-07-15
 - `003.md` — Key Value (Valkey) version upgrade assessment: does Render support KV version changes at all? If yes, mirror the m12 pattern; if no, record and close ← from `/pm-brainstorm` round 3, 2026-07-14
 
 > `002.md` promoted to **m9** 2026-07-13; note moved to `done/`. `004.md` (KeyValue `maxmemoryPolicy` underscore-vs-hyphen, filed by `w9/m2`'s Render CLI compatibility walk) fixed 2026-07-15 (`dfff3034`), re-verified live end to end (create/list/get/update/suspend/resume/delete) — note moved to `done/`. `005.md` (Postgres owner/options wire-shape, filed by `w9/m2`) retired 2026-07-15 — a parallel session independently found the same gap across Postgres/Service/KeyValue and filed it as `w6/016`; `005.md` moved to `done/` pointing there rather than duplicating it.
