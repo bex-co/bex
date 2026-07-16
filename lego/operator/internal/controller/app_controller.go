@@ -218,6 +218,7 @@ var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Vers
 
 const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
 
+//nolint:gocyclo // Reconcile intentionally coordinates the App state machine's distinct phases.
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
@@ -345,6 +346,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
 			}
 		}
+		buildRegistrySecret, err := r.prepareBuildRegistrySecret(ctx, &app, buildNs, builder)
+		if err != nil {
+			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err))
+		}
 		res, err := build.Build(ctx, build.Options{
 			Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
 			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name,
@@ -362,7 +367,8 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			CloneSecret:      app.Spec.CloneSecret,
 			SignKeySecret:    r.TenantSignKeySecret,
 			SignImage:        r.TenantSignImage,
-			PushSecret:       r.RegistryPushSecret,
+			PushSecret:       buildRegistrySecret,
+			RegistryConfig:   usesBuildRegistryConfig(&app, builder),
 			Client:           buildClient,
 		})
 		if err != nil {
@@ -2307,6 +2313,9 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		if err := build.DeleteAppArtifacts(ctx, app.Name, ns, cl); err != nil {
 			log.Error(err, "delete build artifacts", "app", app.Name)
 		}
+		if err := r.deleteBuildRegistrySecret(ctx, app.Name, ns); err != nil {
+			log.Error(err, "delete merged build registry credential", "app", app.Name)
+		}
 		// cert-manager TLS Secrets
 		r.deleteTLSSecrets(ctx, app)
 		// Static-site S3 prefix
@@ -2370,10 +2379,10 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 // effort: errors are logged and do not block finalizer removal. After all
 // manifests are deleted, Zot's periodic GC reclaims the unreferenced blobs.
 func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) error {
-	registry := r.Registry
-	base := "http://" + registry
-	if strings.HasPrefix(registry, "http://") || strings.HasPrefix(registry, "https://") {
-		base = registry
+	registryHost := r.Registry
+	base := "http://" + registryHost
+	if strings.HasPrefix(registryHost, "http://") || strings.HasPrefix(registryHost, "https://") {
+		base = registryHost
 	}
 	repo := app.Name
 

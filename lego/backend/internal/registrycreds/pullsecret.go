@@ -85,7 +85,10 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 		}
 		return "", false, nil // legacy auto-match remains optional when unwired
 	}
-	host := registryHost(image)
+	host := ""
+	if strings.TrimSpace(image) != "" {
+		host = registryHost(image)
+	}
 	var cred store.RegistryCredential
 	var lookupErr error
 	if credentialID != nil {
@@ -94,10 +97,16 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 		if lookupErr == nil && cred.WorkspaceID != workspaceID {
 			return "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
 		}
-		if lookupErr == nil && !strings.EqualFold(cred.Host, host) {
+		if lookupErr == nil && host != "" && !strings.EqualFold(cred.Host, host) {
 			return "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
 		}
+		if lookupErr == nil && host == "" {
+			host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
+		}
 	} else {
+		if host == "" {
+			return "", false, nil // repo builds never guess which private FROM registry to use
+		}
 		cred, lookupErr = s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
 	}
 	if lookupErr != nil {

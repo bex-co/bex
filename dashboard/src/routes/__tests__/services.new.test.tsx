@@ -460,6 +460,7 @@ describe("NewServicePage", () => {
 
       expect(screen.getByLabelText("Dockerfile Path")).toBeInTheDocument();
       expect(screen.getByLabelText("Docker Command")).toBeInTheDocument();
+      expect(screen.getByLabelText("Registry credential")).toBeInTheDocument();
       expect(screen.queryByLabelText("Build Command")).not.toBeInTheDocument();
       await user.type(
         screen.getByLabelText("Dockerfile Path"),
@@ -473,6 +474,31 @@ describe("NewServicePage", () => {
           runtime: "docker",
           dockerfilePath: "docker/Dockerfile.prod",
           startCommand: "bin/server",
+        }),
+      );
+    });
+
+    it("submits the selected registry credential for a private Dockerfile base image", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
+      await user.click(screen.getByRole("option", { name: "Docker" }));
+      await user.click(
+        screen.getByRole("combobox", { name: /Registry credential/i }),
+      );
+      await user.click(
+        screen.getByRole("option", { name: /Private GHCR \(ghcr.io\)/i }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repo: "https://github.com/acme-corp/web-frontend.git",
+          runtime: "docker",
+          registryCredentialId: "rgc-private",
         }),
       );
     });

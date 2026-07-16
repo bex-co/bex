@@ -11,23 +11,27 @@ Captured 2026-07-15 from Render's current [public OpenAPI](https://api-docs.rend
 
 The official CLI's `BuildCreateRequest` puts `--registry-credential` in `image.registryCredentialId` whenever `--image` is supplied. For Docker runtimes it instead builds the nested `dockerDetailsPOST` form. Update follows the same split and requires `--registry-credential` to be paired with `--image` unless the existing runtime is Docker.
 
-## bex coverage after w6/m31
+## bex coverage after w6/m34
 
 | Surface | Create | Set/change/clear |
 | --- | --- | --- |
-| REST | `POST /v1/services` → `image.registryCredentialId` | `PATCH /v1/services/{id}` → same object; empty clears. Reads include Render's `registryCredential: {id,name}` summary plus bex's top-level id extension. Credential lookup/CRUD uses canonical `/v1/registrycredentials` plus the older hyphenated alias |
-| GraphQL | `createService(registryCredentialId:)` | `setRegistryCredential(id:, registryCredentialId:)` |
-| MCP | `create_web_service` / `create_cron_job` argument | `set_registry_credential` |
-| Dashboard | Existing Image credential picker | Create flow; “None (public image)” sends explicit empty/no-auth rather than omission/legacy host matching. Settings still manages credential records |
+| REST | Prebuilt images use `image.registryCredentialId`; repository Docker builds use Render's `serviceDetails.envSpecificDetails.registryCredentialId` | `PATCH /v1/services/{id}` accepts the matching source-specific object; empty clears. Reads echo the Docker-build id under `envSpecificDetails` and include Render's `registryCredential: {id,name}` summary plus bex's top-level id extension |
+| GraphQL | `createService(registryCredentialId:)` for either source context | `setRegistryCredential(id:, registryCredentialId:)` |
+| MCP | `create_web_service` / `create_cron_job` argument for either source context | `set_registry_credential` |
+| Dashboard | Credential picker for Existing Image and Git-backed Docker runtime | “None” sends explicit empty/no-auth rather than omission/legacy host matching. Settings still manages credential records |
 
-Every adapter reaches the same App verb. Unknown id is 404; an existing credential in another workspace is 403; image-host mismatch is 400. The exact id is persisted in Postgres and `App.spec.registryCredentialId`, while `App.spec.externalRegistryPullSecret` points at the materialized `kubernetes.io/dockerconfigjson` Secret.
+Every adapter reaches the same App verb. Unknown id is 404; an existing credential in another workspace is 403; image-host mismatch is 400. Native/buildpack/static repository sources reject the field with a named 400. The exact id is persisted in Postgres and `App.spec.registryCredentialId`, while `App.spec.externalRegistryPullSecret` points at the materialized `kubernetes.io/dockerconfigjson` Secret.
 
-## Recorded divergence
+For a Dockerfile build, the operator copies that explicit credential into a deterministic build-namespace Secret and merges the platform push config into it; push auth wins a same-host collision. Only buildkitd (and cosign when enabled) mounts the result at `/docker-config`. It is never a build arg, BuildKit `--secret`, tenant-step environment variable, or tenant-visible mount. The derived Secret is removed by the App finalizer. An unset binding retains the prior Job shape and never guesses a credential from an unknown `FROM` host.
 
-bex rejects a registry credential on a repository-backed Docker service with a named 400. Supporting Render's nested Docker-build form requires a separate BuildKit authentication boundary for private base images; silently accepting it would claim authentication the build Job cannot perform. The follow-up is `.pm/w6/017.md`.
+This closes the repository-Docker divergence recorded by w6/m31. bex still accepts arbitrary registry hosts instead of Render's closed provider enum.
+
+## Docker-build live proof
+
+The final 2026-07-15 CAPD app-cluster run used an authenticated `registry:2` fixture and a repository whose first Dockerfile line referenced a private base image in that registry. With the bound credential, BuildKit logged credential sharing, resolved the private manifest, pushed `m34-positive:gen-4`, and the generated workload reached `Running`. The same source with an intentionally wrong bound credential failed its manifest `HEAD` with `401 Unauthorized`. The generated Job referenced only `bld-m34-positive-registry-auth` at `/docker-config`; its daemon config also selected the platform's already-declared plain-HTTP development registry for source resolution. The Apps, Secrets, registry namespace, host processes, and local image tag were removed after the check.
 
 ## Reproducible official-CLI leg
 
 `scripts/cli-compat.sh registry-credential-verify` drives the unmodified CLI against a live bex-api. It first launches an anonymous, `imagePullPolicy: Always` control Pod and requires `ErrImagePull`/`ImagePullBackOff`, proving the supplied image is private. It then creates a throwaway credential, runs `services create --image … --registry-credential …`, asserts the canonical REST summary, durable App intent, docker-config Secret, Deployment `imagePullSecrets`, kubelet `Pulled` event, and running Pod, then cleans up every resource on exit.
 
-The final 2026-07-15 dev-6 run used CLI `72b3fbd` and an auth-enabled `registry:2` instance. Anonymous `/v2/`, manifest, direct-node, and control-Pod pulls were all refused; the exact credential then produced service `srv-d9c38chjg4r0f1h0jq2g`, the kubelet pulled the same private image, and the App reached `Running`. The run also proved canonical `GET /v1/registrycredentials/{id}` lookup, `registryCredential: {id,name}` readback, Postgres/CR intent, deterministic `kubernetes.io/dockerconfigjson` Secret binding, Deployment wiring, and zero service/credential/App/probe residue after cleanup.
+The final 2026-07-15 dev-6 image-backed run used CLI `72b3fbd` and an auth-enabled `registry:2` instance. Anonymous `/v2/`, manifest, direct-node, and control-Pod pulls were all refused; the exact credential then produced service `srv-d9c38chjg4r0f1h0jq2g`, the kubelet pulled the same private image, and the App reached `Running`. The run also proved canonical `GET /v1/registrycredentials/{id}` lookup, `registryCredential: {id,name}` readback, Postgres/CR intent, deterministic `kubernetes.io/dockerconfigjson` Secret binding, Deployment wiring, and zero service/credential/App/probe residue after cleanup. The repository-Docker CLI request form is pinned by the REST adapter tests; its build-plane behavior is covered by the separate live proof above.

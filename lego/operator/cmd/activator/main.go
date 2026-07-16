@@ -164,7 +164,7 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 // JSON response instead of unexpectedly receiving a document.
 func acceptsHTML(values []string) bool {
 	for _, value := range values {
-		for _, item := range strings.Split(value, ",") {
+		for item := range strings.SplitSeq(value, ",") {
 			mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(item))
 			if err != nil || !strings.EqualFold(mediaType, "text/html") {
 				continue

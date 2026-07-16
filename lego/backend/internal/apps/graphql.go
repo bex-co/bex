@@ -1010,9 +1010,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetDisplayName(p.Context, p.Args["id"].(string), p.Args["displayName"].(string))
 			},
 		},
-		// setRegistryCredential binds an image-backed service to one stored
-		// workspace credential. Empty clears the binding; the service verb owns
-		// the same membership/host checks used by REST and MCP.
+		// setRegistryCredential binds an image-backed service or Dockerfile build
+		// to one stored workspace credential. Empty clears the binding; the
+		// service verb owns the same membership/source checks used by REST/MCP.
 		"setRegistryCredential": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

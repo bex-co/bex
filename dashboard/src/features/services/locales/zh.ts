@@ -2099,11 +2099,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard registry credential picker placeholder",
   },
   "services.createRegistryCredentialNone": {
-    message: "无（公开镜像）",
+    message: "无（公开镜像仓库）",
     description: "Create-wizard registry credential picker empty option",
   },
   "services.createRegistryCredentialDescription": {
-    message: "如果这是私有镜像，请选择工作区中已存储的凭据。",
+    message:
+      "如果镜像或 Dockerfile 基础镜像是私有的，请选择工作区中已存储的凭据。",
     description: "Create-wizard registry credential picker help text",
   },
   "services.createSettingsTitle": {

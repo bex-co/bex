@@ -417,7 +417,7 @@ func buildDockerConfig(username, password, registry, kpackRegistry string) []byt
 	if kpackRegistry != "" && kpackRegistry != registry {
 		auths[kpackRegistry] = authEntry{Username: username, Password: password}
 	}
-	data, _ := json.Marshal(map[string]interface{}{"auths": auths})
+	data, _ := json.Marshal(map[string]any{"auths": auths})
 	return data
 }
 
@@ -445,7 +445,7 @@ func extractPassword(dockerConfigJSON []byte, registry, username string) (string
 // htpasswdHasUser reports whether username appears in an htpasswd byte slice.
 func htpasswdHasUser(htpasswd []byte, username string) bool {
 	prefix := username + ":"
-	for _, line := range strings.Split(string(htpasswd), "\n") {
+	for line := range strings.SplitSeq(string(htpasswd), "\n") {
 		if strings.HasPrefix(line, prefix) {
 			return true
 		}
@@ -464,7 +464,7 @@ func addHTPasswdLine(htpasswd []byte, username, password string) ([]byte, error)
 	prefix := username + ":"
 
 	var lines []string
-	for _, l := range strings.Split(strings.TrimRight(string(htpasswd), "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(string(htpasswd), "\n"), "\n") {
 		if l == "" {
 			continue
 		}
@@ -481,7 +481,7 @@ func addHTPasswdLine(htpasswd []byte, username, password string) ([]byte, error)
 func removeHTPasswdLine(htpasswd []byte, username string) []byte {
 	prefix := username + ":"
 	var lines []string
-	for _, l := range strings.Split(strings.TrimRight(string(htpasswd), "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(string(htpasswd), "\n"), "\n") {
 		if l == "" || strings.HasPrefix(l, prefix) {
 			continue
 		}
@@ -503,16 +503,16 @@ func zotConfigHasRepo(configJSON []byte, repo string) bool {
 
 // addZotACLEntry adds a per-repo policy for zotUser in the Zot config JSON.
 func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(configJSON, &data); err != nil {
 		return nil, err
 	}
 	repos := zotReposMap(data)
-	repos[repo] = map[string]interface{}{
-		"policies": []interface{}{
-			map[string]interface{}{
-				"users":   []interface{}{zotUser},
-				"actions": []interface{}{"read"},
+	repos[repo] = map[string]any{
+		"policies": []any{
+			map[string]any{
+				"users":   []any{zotUser},
+				"actions": []any{"read"},
 			},
 		},
 	}
@@ -521,7 +521,7 @@ func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
 
 // removeZotACLEntry removes the per-repo ACL entry for repo from the Zot config JSON.
 func removeZotACLEntry(configJSON []byte, repo string) ([]byte, error) {
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(configJSON, &data); err != nil {
 		return nil, err
 	}
@@ -531,31 +531,31 @@ func removeZotACLEntry(configJSON []byte, repo string) ([]byte, error) {
 }
 
 // zotRepos parses and returns the accessControl.repositories map (read-only copy).
-func zotRepos(configJSON []byte) map[string]interface{} {
-	var data map[string]interface{}
+func zotRepos(configJSON []byte) map[string]any {
+	var data map[string]any
 	_ = json.Unmarshal(configJSON, &data)
 	return zotReposMap(data)
 }
 
 // zotReposMap returns a reference to data["http"]["accessControl"]["repositories"],
 // creating intermediate maps as needed. Mutations to the returned map mutate data.
-func zotReposMap(data map[string]interface{}) map[string]interface{} {
+func zotReposMap(data map[string]any) map[string]any {
 	if data == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
-	httpBlock, _ := data["http"].(map[string]interface{})
+	httpBlock, _ := data["http"].(map[string]any)
 	if httpBlock == nil {
-		httpBlock = map[string]interface{}{}
+		httpBlock = map[string]any{}
 		data["http"] = httpBlock
 	}
-	ac, _ := httpBlock["accessControl"].(map[string]interface{})
+	ac, _ := httpBlock["accessControl"].(map[string]any)
 	if ac == nil {
-		ac = map[string]interface{}{}
+		ac = map[string]any{}
 		httpBlock["accessControl"] = ac
 	}
-	repos, _ := ac["repositories"].(map[string]interface{})
+	repos, _ := ac["repositories"].(map[string]any)
 	if repos == nil {
-		repos = map[string]interface{}{}
+		repos = map[string]any{}
 		ac["repositories"] = repos
 	}
 	return repos

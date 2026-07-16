@@ -30,13 +30,14 @@ import (
 )
 
 // PullSecretSource resolves a workspace's stored external-registry credential
-// into a materialized pull Secret for an App's image (registrycreds.Service
-// satisfies it — w2/m14). nil on the apps Service => registry credentials are
-// off, unchanged (no external pull secret is ever set).
+// into a materialized docker-config Secret for an App's runtime image or
+// Dockerfile build (registrycreds.Service satisfies it — w2/m14, w6/m34). nil
+// on the apps Service => registry credentials are off, unchanged.
 type PullSecretSource interface {
-	// MaterializePullSecret upserts (and returns the name of) a
-	// dockerconfigjson Secret in a's namespace for image's registry host, if
-	// workspaceID has a matching stored credential. ok=false (nil err) means
+	// MaterializePullSecret upserts (and returns the name of) a dockerconfigjson
+	// Secret in a's namespace. Image-backed services resolve the registry host
+	// from image; Dockerfile builds pass an empty image and require an explicit
+	// credentialID whose stored host becomes the config target. ok=false (nil err) means
 	// no credential matched — a public image, or one from a registry the
 	// workspace hasn't stored credentials for — leave alone. A non-nil err
 	// means a credential DID match but materializing it failed, which the
@@ -50,27 +51,29 @@ type PullSecretSource interface {
 	RegistryCredentialName(ctx context.Context, workspaceID, credentialID string) (name string, ok bool)
 }
 
-// ensureExternalRegistryPullSecret resolves and materializes (when the
-// workspace has a matching stored credential) the pull Secret for an App's
-// image, returning the name to set as spec.externalRegistryPullSecret.
+// ensureExternalRegistryPullSecret resolves and materializes the docker-config
+// Secret for an App's runtime image or Dockerfile build, returning the name to
+// set as spec.externalRegistryPullSecret.
 // Mirrors ensureCloneSecret's shape: the caller sets the spec field itself
 // (as part of its own patch/create diff), this only materializes the Secret
 // and resolves the name.
 //
-// Only image-backed Apps have an external registry host to match — a
-// build-from-git App's image always lands in the internal Zot registry,
-// which the operator's OWN pull-secret path already covers (w7/m8). Returns
-// "" (no error) when RegistryCreds is off, the App has no Image, or no
-// credential matches — the common case, left untouched.
+// Image-backed Apps retain the legacy host-match behavior. A repo-backed
+// Dockerfile build has no image reference from which bex can infer the private
+// FROM registry, so it only materializes an explicitly bound credential; the
+// operator merges that config into BuildKit's daemon-only Docker config. Native
+// and buildpack runtimes reject an explicit binding by name rather than
+// accepting authentication they cannot use.
 func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	if a.Spec.Image == "" {
-		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != "" {
-			return "", fmt.Errorf("%w: registryCredentialId currently applies only to an image-backed service", core.ErrBadRequest)
-		}
+	credentialSet := a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != ""
+	if a.Spec.Image == "" && !credentialSet {
 		return "", nil
 	}
+	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
+		return "", fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
+	}
 	if s.RegistryCreds == nil {
-		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != "" {
+		if credentialSet {
 			return "", core.ErrRegistryCredentialsUnavailable
 		}
 		return "", nil
@@ -83,6 +86,18 @@ func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1
 		return "", nil
 	}
 	return name, nil
+}
+
+func isDockerfileBuild(spec appv1alpha1.AppSpec) bool {
+	if spec.Repo == "" || spec.Type == appv1alpha1.TypeStaticSite {
+		return false
+	}
+	runtime := strings.ToLower(strings.TrimSpace(spec.Runtime))
+	if runtime != "" {
+		return runtime == "docker"
+	}
+	builder := strings.ToLower(strings.TrimSpace(spec.Builder))
+	return builder == "" || builder == "auto" || builder == "dockerfile"
 }
 
 // externalRegistryPullSecretName is the deterministic name of an App's
