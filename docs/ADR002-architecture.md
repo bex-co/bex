@@ -78,7 +78,7 @@ The `bex` layer itself splits in two — keep them distinct (full design: [`ADR0
 
 Business/product logic belongs in the **control plane**; the operator stays a thin, CR-driven reconciler. The **`App` CR is the contract** between them.
 
-**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. This matters because today business state lives _only_ in etcd (not in git — Apps are imperative), and the cluster runs a **single etcd member** for now (interim, while Hetzner quota is still being raised — the path back to a 3-member quorum is a two-number revert, not a rebuild); it is _not_ a single-node cluster, but with only one member there is no etcd HA, so losing that member's disk loses the state. The `hcloud-volumes` default StorageClass keeps the etcd PV across a node _restart_, but a full member loss still loses the unquorumed data. Until the control plane is switched on in prod: `App` CRs are applied directly and etcd is the effective store (snapshot it off-node for interim durability — [ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)).
+**Data layering.** Postgres is the **durable truth**; Kubernetes/**etcd is a rebuildable projection** of it — lose the cluster, re-project from Postgres. Until the control plane is switched on in prod, `App` CRs are applied directly and etcd is the effective store, so it is still snapshotted off-node ([ADR011-etcd-backup-restore.md](ADR011-etcd-backup-restore.md)). The production cluster now runs a three-member stacked-etcd quorum across its three control-plane machines; one member can fail without losing API availability or the effective store.
 
 ## `infra/` vs `deploy/` (both hold YAML — different jobs)
 
@@ -123,7 +123,7 @@ The shape the 2026-07 rebuild established (w1/m19 + m19.1). Everything below is 
 
 **Network** — CAPH owns network `bex` (`10.10.0.0/16`); every machine is attached at creation, so there is zero out-of-band network state. kubeadm advertises each machine's **private IP** (a placeholder `advertiseAddress` rewritten by `preKubeadmCommands` — the accepted CABPK pattern, since kubeadm has no per-machine templating): the `kubernetes` Service endpoint, etcd peer traffic, and apiserver→kubelet all ride the private net. Both LBs target nodes by private IP; Cilium WireGuard encrypts east-west (`devices` pinned to the private NIC — auto-detection needs node IPs the CCM hasn't set yet at bring-up).
 
-**Public surface** — a label-selector Hetzner firewall (auto-inherited by new machines): nodes expose only `:22` (key-only SSH) + ICMP; the LB fronts expose 80/443 (Traefik) and 6443 (kube-api, TLS/RBAC). Ports-only — never source-IP allowlists (see DO_NOT_DO).
+**Public surface** — a label-selector Hetzner firewall (auto-inherited by new machines): nodes expose only `:22` (key-only SSH) + ICMP; the LB fronts expose 22/80/443 (Traefik, including the SSH gateway) and 443 (kube-api, TLS/RBAC). Ports-only — never source-IP allowlists (see DO_NOT_DO).
 
 ### Stable production edge Load Balancer
 
@@ -146,9 +146,9 @@ The adoption is an in-place state operation, not a traffic cutover:
 
 Rollback before the Service proof is simply to stop: the original LB remains in service. If recreation stalls, sync the `traefik` Argo Application and reapply its rendered Service; do not delete or recreate the Hetzner object. Terraform state removal (`terraform state rm`) is reserved for relinquishing ownership and does not delete the LB.
 
-**Interim vs target** — under the current 5-server quota the cluster runs 1 CP + 2 platform + ≥1 tenant; two grep-able `TEMP (m19.1)` knobs in the overlay (KCP replicas, platform max) flip it to 3 CP + 3 platform when the quota lands (trigger + runbook: `.pm/FUTURE-MAYBE.md`).
+**Target realized** — the quota-gated m19 residue landed on 2026-07-15: 3 control-plane + 3 platform + ≥1 autoscaled tenant machine. KCP is a healthy 3/3 quorum, OpenBao is 3/3 unsealed on distinct platform nodes, and the four platform CNPG clusters are 2/2 Ready. [`scripts/verify-substrate.sh`](../scripts/verify-substrate.sh) continuously re-checks the target shape, placement, data, scheduler, CSR, network, autoscaler, and no-bootstrap invariants; [`scripts/verify-elastic.sh`](../scripts/verify-elastic.sh) proves tenant scale-up, MostAllocated packing, and scale-down.
 
-**The change rule** (the rebuild's lesson): the substrate accepts changes **only via declaration** — git → CI → controller. When the declaration layer refuses (immutable fields, webhook validation), the answer is to rebuild the correct declaration, never to bypass it and mutate reality out-of-band; one out-of-band "fix" is how the previous cluster ended up unmanageable-but-unfixable. Full diagnosis and execution trail: `.pm/w1/m19/` (op log) and the git history of `docs/rearchitecture.md`.
+**The change rule** (the rebuild's lesson): the substrate accepts changes **only via declaration** — git → CI → controller. When the declaration layer refuses (immutable fields, webhook validation), the answer is to rebuild the correct declaration, never to bypass it and mutate reality out-of-band; one out-of-band "fix" is how the previous cluster ended up unmanageable-but-unfixable. Full diagnosis and execution trail: `.pm/w1/done/m19/` (op log) and the git history of `docs/rearchitecture.md`.
 
 ## Build → deploy → serve (the product)
 
