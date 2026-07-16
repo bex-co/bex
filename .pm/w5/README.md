@@ -49,8 +49,11 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 - [ ] **m33** — Env Groups create completeness: initial contents + metadata (9 tasks) ← from `/pm-brainstorm` round 12, 2026-07-15 (ADR018:62 — Render's POST accepts initial `envVars`/`secretFiles`/`serviceIds`, bex creates empty groups; dashboard omits `ownerId`/timestamps); one POST/one dialog mints a populated, linked group
 - [ ] **m34** — Lift aal2 step-up detection into the session fetch (6 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (unowned closeout residual `w4/done/m11/README.md:47` — surface `session_aal2_required` from `fetchSession`, redirect with explicit `aal=aal2`, retire the login page's trial-and-error probing; dashboard code, so it lands in w5)
 - [ ] **m35** — Dashboard dead-ends: Postgres parameter-overrides editor + workspace resource caps (6 tasks) ← from `/pm-brainstorm` round 14, 2026-07-15 (capability-diff miner: `use-database-insights.ts:61-96` exports a `saveParameters` mutation hook with zero consumers while `insights-panel.tsx:214-244` renders read-only; `workspaceLimits {used, limit}` exists only in the generated schema — no operation, no component)
+- [ ] **m36** — Dashboard-walk follow-through: close the round-14 gap list (10 tasks) ← from `/pm-brainstorm` round 15, 2026-07-15; absorbs notes `015`–`020` (the six page-level affordances the m32 walk proved Render has and bex lacks — service root → Deploys, Logs time range, Environment Export, Metrics event timeline, Team search, Project resource search/filters), bundled per the w8/m16 note-absorption precedent
 
 ## Inbox
+
+_(`015.md`–`020.md` absorbed into **m36** 2026-07-15; notes moved to `done/`)_
 
 _(`014.md` folded into **m31** (t005) 2026-07-15; note moved to `done/`)_
 
