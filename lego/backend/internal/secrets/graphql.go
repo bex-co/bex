@@ -72,9 +72,26 @@ var envVarWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery exposes the paged env-var list as the GraphQL twin of Render's
-// REST envelope. The existing service.envVarKeys field remains intact for old
-// dashboard clients; new clients use envVars(serviceId,cursor,limit).
+var secretFileListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SecretFileListValue",
+	Fields: graphql.Fields{
+		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f SecretFileView) any { return f.Name })},
+		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f SecretFileView) any { return f.Name })},
+	},
+})
+
+var secretFileWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SecretFileWithCursor",
+	Fields: graphql.Fields{
+		"secretFile": &graphql.Field{Type: secretFileListValueGQLType, Resolve: gqlutil.Field(func(f secretFileWithCursor) any { return f.SecretFile })},
+		"cursor":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f secretFileWithCursor) any { return f.Cursor })},
+	},
+})
+
+// GraphQLQuery exposes the paged env-var and secret-file lists as the GraphQL
+// twins of Render's REST envelopes. The existing nested service.envVarKeys /
+// service.secretFileNames fields remain intact for old dashboard clients; new
+// clients use envVars(serviceId,cursor,limit) / secretFiles(serviceId,cursor,limit).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"envVars": &graphql.Field{
@@ -98,6 +115,29 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				return toEnvVarList(vars), nil
+			},
+		},
+		"secretFiles": &graphql.Field{
+			Type: graphql.NewList(secretFileWithCursorGQLType),
+			Args: graphql.FieldConfigArgument{
+				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				cursor, _ := p.Args["cursor"].(string)
+				limit := 0
+				if value, ok := p.Args["limit"].(int); ok {
+					if value < 1 {
+						return nil, core.ErrBadRequest
+					}
+					limit = value
+				}
+				files, err := s.ListSecretFilesPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
+				if err != nil {
+					return nil, err
+				}
+				return toSecretFileList(files), nil
 			},
 		},
 	}

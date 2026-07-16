@@ -75,6 +75,33 @@ func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]Secret
 	return names, nil
 }
 
+// ListSecretFilesPage returns a stable keyset page of a service's secret-file
+// names, the exact env-vars pattern (ListEnvVarsPage) applied to the sibling
+// route: limit == 0 with no cursor preserves the original unbounded-list
+// behavior; cursor with no limit uses Render's default; a positive limit is
+// clamped to Render's public API maximum. after is the prior page's item cursor
+// (the file name), stable across interleaved writes because ListSecretFiles
+// returns a name-sorted slice.
+func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string, limit int) ([]SecretFileView, error) {
+	files, err := s.ListSecretFiles(ctx, service)
+	if err != nil {
+		return nil, err
+	}
+	if limit == 0 && after == "" {
+		return files, nil
+	}
+	if limit == 0 {
+		limit = core.DefaultPageLimit
+	}
+	if limit < 0 {
+		return nil, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+	}
+	if limit > core.MaxPageLimit {
+		limit = core.MaxPageLimit
+	}
+	return core.Page(files, after, limit, func(f SecretFileView) string { return f.Name }), nil
+}
+
 // GetSecretFile returns one file's name + content (Render's GET
 // .../secret-files/{name}). Unknown service or file => core.ErrNotFound. Sensitive.
 func (s *Service) GetSecretFile(ctx context.Context, service, name string) (SecretFileView, error) {
