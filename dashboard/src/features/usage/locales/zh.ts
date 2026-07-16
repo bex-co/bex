@@ -9,6 +9,34 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "工作区本月累计消耗",
     description: "Usage page subtitle beneath the heading",
   },
+  "usage.resourceCapsTitle": {
+    message: "资源限制",
+    description: "Workspace creation-cap card title on the Usage page",
+  },
+  "usage.resourceCapsDescription": {
+    message: "当前工作区的资源数量",
+    description: "Workspace creation-cap card description",
+  },
+  "usage.resourceCapsServices": {
+    message: "服务",
+    description: "Service count label in the resource-cap card",
+  },
+  "usage.resourceCapsPostgres": {
+    message: "Postgres",
+    description: "Postgres count label in the resource-cap card",
+  },
+  "usage.resourceCapsKeyValues": {
+    message: "Key Value",
+    description: "Key Value count label in the resource-cap card",
+  },
+  "usage.resourceCapsValue": {
+    message: "已使用 {used}/{limit}",
+    description: "Used-versus-limit resource count",
+  },
+  "usage.resourceCapsNearLimit": {
+    message: "接近上限",
+    description: "Warning shown once a resource count reaches 80 percent",
+  },
   "usage.computeTitle": {
     message: "计算",
     description: "Compute section heading on the Usage page",

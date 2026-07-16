@@ -32,3 +32,23 @@ query Usage($period: String, $ownerId: String) {
     }
   }
 }
+
+# Creation-count caps are independent of metered usage, but belong on the same
+# workspace Usage page so a human can see both consumption and remaining
+# capacity before a create call is rejected.
+query WorkspaceLimits($ownerId: String!) {
+  workspaceLimits(ownerId: $ownerId) {
+    services {
+      used
+      limit
+    }
+    postgres {
+      used
+      limit
+    }
+    keyValues {
+      used
+      limit
+    }
+  }
+}

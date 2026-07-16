@@ -899,6 +899,63 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "所有参数均为默认值。",
     description: "Insights parameter-overrides empty state",
   },
+  "databases.insightsParamsAdd": {
+    message: "添加覆盖项",
+    description: "Button that adds a Postgres parameter override row",
+  },
+  "databases.insightsParamsSave": {
+    message: "保存覆盖项",
+    description: "Button that replaces the Postgres parameter overrides",
+  },
+  "databases.insightsParamsSaving": {
+    message: "正在保存…",
+    description: "Postgres parameter-overrides save button while saving",
+  },
+  "databases.insightsParamsDiscard": {
+    message: "放弃更改",
+    description: "Button that restores the last saved parameter draft",
+  },
+  "databases.insightsParamsActions": {
+    message: "操作",
+    description: "Screen-reader-only header for parameter-row actions",
+  },
+  "databases.insightsParamNameLabel": {
+    message: "参数 {index} 名称",
+    description: "Accessible label for a parameter override name input",
+  },
+  "databases.insightsParamValueLabel": {
+    message: "参数 {index} 值",
+    description: "Accessible label for a parameter override value input",
+  },
+  "databases.insightsParamsRemove": {
+    message: "移除 {name}",
+    description: "Accessible label for a parameter override remove button",
+  },
+  "databases.insightsParamsUnnamed": {
+    message: "参数 {index}",
+    description: "Fallback name in the remove label for an empty draft row",
+  },
+  "databases.insightsParamsPending": {
+    message: "待应用",
+    description: "Source shown for a newly added, not-yet-applied override",
+  },
+  "databases.insightsParamsBlank": {
+    message: "每个覆盖项都需要参数名称和值。",
+    description: "Inline validation for an incomplete parameter row",
+  },
+  "databases.insightsParamsDuplicate": {
+    message: "{name} 出现了多次。",
+    description: "Inline validation for duplicate parameter names",
+  },
+  "databases.insightsParamsManaged": {
+    message: "shared_preload_libraries 由 bex 管理，无法覆盖。",
+    description:
+      "Inline validation for the platform-managed Postgres parameter",
+  },
+  "databases.insightsParamsSaveError": {
+    message: "无法保存参数覆盖项，请重试。",
+    description: "Fallback error when the parameter mutation fails",
+  },
   "databases.insightsColTable": {
     message: "表",
     description: "Insights table column header (table name)",
