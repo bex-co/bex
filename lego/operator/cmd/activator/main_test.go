@@ -84,6 +84,107 @@ func TestMaintenanceHandlerDoesNotWakeOrMutateWorkload(t *testing.T) {
 	}
 }
 
+func TestWakeHandlerNegotiatesContentAndAlwaysWakes(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		accept   string
+		wantType string
+		wantBody string
+	}{
+		{
+			name:     "browser gets polling interstitial",
+			accept:   "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			wantType: "text/html; charset=utf-8",
+			wantBody: "Application loading",
+		},
+		{
+			name:     "API gets retryable JSON",
+			accept:   "application/json",
+			wantType: "application/json",
+			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+		},
+		{
+			name:     "wildcard stays on API default",
+			accept:   "*/*",
+			wantType: "application/json",
+			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+		},
+		{
+			name:     "explicit HTML refusal stays on API default",
+			accept:   "text/html;q=0,*/*;q=0.8",
+			wantType: "application/json",
+			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			zero := int32(0)
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+				Status:     appv1alpha1.AppStatus{URL: "https://sleeping.onbex.co"},
+			}
+			dep := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+				Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+			}
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
+
+			req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/ready", nil)
+			req.Header.Set("Accept", tc.accept)
+			rr := httptest.NewRecorder()
+			newHandler(cl, logr.Discard()).ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "5" {
+				t.Fatalf("response = %d, Retry-After %q", rr.Code, rr.Header().Get("Retry-After"))
+			}
+			if got := rr.Header().Get("Content-Type"); got != tc.wantType {
+				t.Fatalf("Content-Type = %q, want %q", got, tc.wantType)
+			}
+			if got := rr.Header().Get("Cache-Control"); got != "no-store" {
+				t.Fatalf("Cache-Control = %q, want no-store", got)
+			}
+			if !strings.Contains(rr.Body.String(), tc.wantBody) {
+				t.Fatalf("body = %q, want substring %q", rr.Body.String(), tc.wantBody)
+			}
+			if tc.wantType == "text/html; charset=utf-8" {
+				for _, want := range []string{
+					"probeIntervalMs = 5000",
+					"fallbackReloadMs = 45000",
+					"method: \"HEAD\"",
+				} {
+					if !strings.Contains(rr.Body.String(), want) {
+						t.Errorf("wake page missing %q", want)
+					}
+				}
+			}
+
+			var gotDep appsv1.Deployment
+			if err := cl.Get(context.Background(), clientKey("sleeping"), &gotDep); err != nil {
+				t.Fatal(err)
+			}
+			if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 1 {
+				t.Fatalf("wake replicas = %v, want 1", gotDep.Spec.Replicas)
+			}
+			var gotApp appv1alpha1.App
+			if err := cl.Get(context.Background(), clientKey("sleeping"), &gotApp); err != nil {
+				t.Fatal(err)
+			}
+			if gotApp.Annotations[annotLastActive] == "" {
+				t.Fatalf("wake did not stamp %s: %#v", annotLastActive, gotApp.Annotations)
+			}
+		})
+	}
+}
+
+func TestWakeHTMLHeadHasNoBody(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodHead, "https://sleeping.onbex.co/", nil)
+	req.Header.Set("Accept", "text/html")
+	writeWakeResponse(rr, req)
+	if rr.Code != http.StatusServiceUnavailable || rr.Body.Len() != 0 {
+		t.Fatalf("HEAD response = %d %q", rr.Code, rr.Body.String())
+	}
+}
+
 func TestMaintenanceHandlerCoversPlatformAndCustomHostsOnEveryMethod(t *testing.T) {
 	app := maintenanceApp("")
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()

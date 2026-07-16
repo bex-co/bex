@@ -33,7 +33,7 @@ The operator copies the value to the pod template annotation `app.bex.co/restart
 
 ### suspend — `spec.suspended: true`
 
-The operator scales the owned Deployment to **0 replicas** and sets `status.phase: Hibernated`. Everything else stays: the Service, the Ingress, the hostname, and the TLS secrets — cert renewals keep working while asleep, because cert-manager's HTTP-01 solver runs its own challenge pods and doesn't need the app. Requests to the host return an error page from the edge until resume (a "sleeping, click to wake" page is future work, see below).
+The operator scales the owned Deployment to **0 replicas** and sets `status.phase: Hibernated`. Everything else stays: the Service, the Ingress, the hostname, and the TLS secrets — cert renewals keep working while asleep, because cert-manager's HTTP-01 solver runs its own challenge pods and doesn't need the app. Requests to an auto-hibernated host route to the activator: it wakes the Deployment, serves browsers a 503 loading interstitial that probes every five seconds and reloads after 45 seconds, and preserves the immediate 503 JSON + `Retry-After` contract for API clients. The exact content-negotiation contract and Render comparison are captured in [wake-interstitial.md](render-artifacts/wake-interstitial.md).
 
 `spec.replicas` is untouched — it keeps meaning "how many when running", so resume knows what to restore. The manual-**scale** verb (`POST /v1/services/{id}/scale`, `{numInstances}`; the first verb built on this precedent — see [ADR006-bex-api.md](ADR006-bex-api.md)) writes exactly this field the same row-first way, and suspend still wins: the operator's `effectiveReplicas` forces 0 while `suspended`, so scaling a suspended App takes visible effect on resume.
 
@@ -72,6 +72,8 @@ The precedence is explicit:
 
 Valid API state does not normally combine maintenance and auto-sleep because maintenance is paid-only while bex auto-sleep is free-plan behavior; the ordering still makes hand-applied legacy CRs deterministic. Suspension continues to scale the Deployment to zero but does not clear maintenance state or its public page; resume restores the configured replica count behind that page. Render does not publish these combined-state rules, so the suspend/auto-sleep precedence is a tested bex policy rather than a parity claim. A plan downgrade to free is rejected until maintenance is disabled; REST accepts a disable and downgrade in the same PATCH and applies the disable first.
 
+The maintenance and wake defaults share one HTML response seam (`writeHTMLPage`) for 503 status, content type, `Cache-Control: no-store`, and `HEAD` behavior. Maintenance never wakes the workload. The wake path always updates last-active and restores one replica before selecting its response: an explicit acceptable `text/html` range gets the polling page; JSON, a missing `Accept`, or only `*/*` gets the retryable JSON error. Render instead holds a non-browser request through the cold start; bex keeps the bounded response as a deliberate agent/API reliability divergence.
+
 ### Who writes the fields
 
 Two ways, same field write:
@@ -96,7 +98,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/services/ed
 
 - Every verb is auditable, idempotent, and replayable — rebuilding the cluster from App CRs reproduces suspended state correctly.
 - A suspended App still owns its hostname and Ingress. Without maintenance mode, visitors follow the ordinary suspended/activator behavior; with maintenance mode enabled, the 503 maintenance page remains public while the workload is scaled to zero.
-- Resume is **manual**. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request need a traffic-aware activator at the edge — the 211.09 roadmap item; this ADR's `suspended` field is deliberately the state that activator will also write, so the manual and automatic paths converge on one mechanism. For agent **sandboxes**, that idle-hibernate + wake-on-connect is designed in [ADR014-sandboxes.md](ADR014-sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
+- Resume is **manual** for an explicitly suspended service. Auto-hibernate (`idleTTLSeconds` after no traffic) and wake-on-request are implemented by the traffic-aware activator at the edge; both paths converge on the same Deployment replica mechanism. For agent **sandboxes**, idle-hibernate + wake-on-connect remains the separate design in [ADR014-sandboxes.md](ADR014-sandboxes.md) (gateway-observed `autoPause` over opensandbox's real pause/resume).
 - Implementation size: 2 CRD fields + ~40 lines in `reconcileKubernetes` + envtest cases (suspend keeps Ingress/TLS and zeroes replicas; restart changes only the template annotation; resume restores and readiness-gates).
 
 ## Verification (when implemented)
