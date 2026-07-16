@@ -240,32 +240,38 @@ var (
 	allPhases = []string{store.EventPhaseStarted, store.EventPhaseEnded}
 )
 
-// pushDown translates a caller's event-TYPE filter into the two sets the store
-// query takes: the audit verbs that produce that type, and the deploy phases
-// that do. It is what keeps the type filter IN SQL — filtering the result in Go
-// after the store's LIMIT would return short (sometimes empty) pages, which a
-// cursor client reads as the end of the feed and stops on.
+// pushDown translates a caller's event-TYPE filter into the sets the store
+// query takes: the audit verbs that produce that type, the deploy phases that
+// do, and (for auto-deploy types) an AutoDeployFilter that discriminates the
+// three sub-types in SQL before the LIMIT. It is what keeps the type filter IN
+// SQL — filtering the result in Go after the store's LIMIT would return short
+// (sometimes empty) pages, which a cursor client reads as the end of the feed
+// and stops on.
 //
 // An empty type asks for everything. An unknown type matches nothing (empty
-// sets), which is an empty feed — not, as a Go-side filter would give, a page of
-// zero items that a client cannot distinguish from the end.
-func pushDown(eventType string) (verbs, phases []string) {
+// sets), which is an empty feed — not, as a Go-side filter would give, a page
+// of zero items that a client cannot distinguish from the end.
+func pushDown(eventType string) (verbs, phases []string, autoDeploy store.AutoDeployFilter) {
 	switch eventType {
 	case "":
-		return allVerbs, allPhases
+		return allVerbs, allPhases, store.AutoDeployFilterNone
 	case TypeDeployStarted:
-		return nil, []string{store.EventPhaseStarted}
+		return nil, []string{store.EventPhaseStarted}, store.AutoDeployFilterNone
 	case TypeDeployEnded:
-		return nil, []string{store.EventPhaseEnded}
-	case TypeAutoDeployEnabled, TypeAutoDeployDisabled:
-		return []string{core.AuditVerbSetAutoDeploy}, nil
+		return nil, []string{store.EventPhaseEnded}, store.AutoDeployFilterNone
+	case TypeAutoDeployEnabled:
+		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterEnabled
+	case TypeAutoDeployDisabled:
+		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterDisabled
+	case TypeAutoDeployChanged:
+		return []string{core.AuditVerbSetAutoDeploy}, nil, store.AutoDeployFilterChanged
 	}
 	for _, verb := range allVerbs {
 		if eventTypes[verb] == eventType {
 			verbs = append(verbs, verb)
 		}
 	}
-	return verbs, nil
+	return verbs, nil, store.AutoDeployFilterNone
 }
 
 // DefaultWindow is how far back an events query reaches when the caller names no
@@ -414,15 +420,16 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if targetName == "" {
 		targetName = a.Name
 	}
-	verbs, phases := pushDown(filter.Type)
+	verbs, phases, autoDeploy := pushDown(filter.Type)
 	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(targetName), a.Labels[core.LabelTenant], store.ServiceEventFilter{
-		Since:    since,
-		Until:    until,
-		AfterAt:  after.At,
-		AfterKey: after.Key,
-		Verbs:    verbs,
-		Phases:   phases,
-		Limit:    filter.Limit,
+		Since:      since,
+		Until:      until,
+		AfterAt:    after.At,
+		AfterKey:   after.Key,
+		Verbs:      verbs,
+		Phases:     phases,
+		AutoDeploy: autoDeploy,
+		Limit:      filter.Limit,
 	})
 	if err != nil {
 		return nil, err
