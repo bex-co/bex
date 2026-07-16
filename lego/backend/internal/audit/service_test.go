@@ -173,12 +173,50 @@ func TestListStoreLessIsUnavailable(t *testing.T) {
 func TestRenderMaintenanceAuditTypesAndMetadata(t *testing.T) {
 	disabled := false
 	toggle := toRenderAuditLog(Event{Verb: "apps.SetMaintenanceMode", MaintenanceModeTo: &disabled})
-	if toggle.Action != "MaintenanceModeEnabledEvent" || toggle.Metadata == nil || toggle.Metadata.To == nil || *toggle.Metadata.To {
+	if toggle.Event != "MaintenanceModeEnabledEvent" || toggle.Metadata["to"] != "false" {
 		t.Fatalf("toggle audit = %+v, want MaintenanceModeEnabledEvent metadata.to=false", toggle)
 	}
 	uri := toRenderAuditLog(Event{Verb: "apps.SetMaintenanceModeURI"})
-	if uri.Action != "MaintenanceModeURIUpdatedEvent" || uri.Metadata == nil || uri.Metadata.To != nil {
+	if uri.Event != "MaintenanceModeURIUpdatedEvent" || uri.Metadata == nil || len(uri.Metadata) != 0 {
 		t.Fatalf("URI audit = %+v, want MaintenanceModeURIUpdatedEvent with empty metadata", uri)
+	}
+}
+
+// TestRenderAuditLogShape pins the Render-captured wire shape (w4/m26,
+// docs/render-artifacts/audit-logs-api.md): event (not action), the closed
+// success|error status enum with the denial preserved in metadata, the
+// {type, id} actor object, and the target keyed by kind in the string-map
+// metadata.
+func TestRenderAuditLogShape(t *testing.T) {
+	denied := toRenderAuditLog(Event{
+		ID: "aud-1", Caller: "client-1", CallerMethod: "oauth2",
+		Verb: "apps.Suspend", Target: "service:my-api", Outcome: string(core.AuditDenied),
+	})
+	if denied.Event != "SuspendServiceEvent" {
+		t.Errorf("event = %q, want SuspendServiceEvent", denied.Event)
+	}
+	if denied.Status != "error" || denied.Metadata["outcome"] != "denied" {
+		t.Errorf("denied row = status %q metadata %v, want error + outcome:denied", denied.Status, denied.Metadata)
+	}
+	if denied.Actor != (renderAuditActor{Type: "rest_api", ID: "client-1"}) {
+		t.Errorf("actor = %+v, want {rest_api client-1}", denied.Actor)
+	}
+	if denied.Metadata["service"] != "my-api" {
+		t.Errorf("metadata = %v, want service:my-api keyed by kind", denied.Metadata)
+	}
+
+	allowed := toRenderAuditLog(Event{Verb: "custom.Verb", Caller: "usr-1", CallerMethod: "session", Outcome: "allowed"})
+	if allowed.Event != "custom.Verb" {
+		t.Errorf("unmapped verb = %q, want passthrough", allowed.Event)
+	}
+	if allowed.Status != "success" || allowed.Actor.Type != "user" {
+		t.Errorf("allowed session row = status %q actor %+v, want success/user", allowed.Status, allowed.Actor)
+	}
+	if allowed.Metadata == nil || len(allowed.Metadata) != 0 {
+		t.Errorf("metadata = %v, want present-and-empty map", allowed.Metadata)
+	}
+	if actorType("") != "system" || actorType("system") != "system" {
+		t.Errorf("unattributed/system callers should map to system")
 	}
 }
 

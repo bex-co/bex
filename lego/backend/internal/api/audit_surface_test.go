@@ -72,18 +72,23 @@ func TestAuditSurfaceParity(t *testing.T) {
 	if restBody.Code != 200 {
 		t.Fatalf("REST audit-logs: %d %s", restBody.Code, restBody.Body.String())
 	}
+	// REST speaks Render's captured auditLog schema (w4/m26): event (not
+	// action), actor an object, metadata a required string map, status the
+	// closed success|error enum. GraphQL keeps bex's own dialect (flat actor,
+	// action, denied) — the parity assertion below is the documented mapping,
+	// not field-for-field equality.
 	var restList []struct {
 		AuditLog struct {
-			ID          string `json:"id"`
-			Timestamp   string `json:"timestamp"`
-			Actor       string `json:"actor"`
-			ActorMethod string `json:"actorMethod"`
-			Action      string `json:"action"`
-			Status      string `json:"status"`
-			Resource    string `json:"resource"`
-			Metadata    *struct {
-				To *bool `json:"to"`
-			} `json:"metadata"`
+			ID        string `json:"id"`
+			Timestamp string `json:"timestamp"`
+			Event     string `json:"event"`
+			Status    string `json:"status"`
+			Actor     struct {
+				Type string `json:"type"`
+				ID   string `json:"id"`
+			} `json:"actor"`
+			Metadata map[string]string `json:"metadata"`
+			Resource string            `json:"resource"`
 		} `json:"auditLog"`
 		Cursor string `json:"cursor"`
 	}
@@ -100,32 +105,43 @@ func TestAuditSurfaceParity(t *testing.T) {
 		t.Fatalf("GraphQL auditLogs = %v, want 2 events", gqlData["auditLogs"])
 	}
 
+	wantActorType := map[string]string{"session": "user", "oauth2": "rest_api"}
+	wantRESTStatus := map[string]string{"success": "success", "denied": "error"}
 	for i, rest := range restList {
 		g := gqlList[i].(map[string]any)
 		if rest.AuditLog.ID != g["id"] || rest.AuditLog.Timestamp != g["timestamp"] ||
-			rest.AuditLog.Actor != g["actor"] || rest.AuditLog.ActorMethod != g["actorMethod"] ||
-			rest.AuditLog.Action != g["action"] || rest.AuditLog.Status != g["status"] ||
+			rest.AuditLog.Event != g["action"] ||
 			rest.AuditLog.Resource != g["resource"] {
 			t.Errorf("event %d diverges: REST=%+v GraphQL=%+v", i, rest.AuditLog, g)
 		}
+		if rest.AuditLog.Actor.ID != g["actor"] || rest.AuditLog.Actor.Type != wantActorType[g["actorMethod"].(string)] {
+			t.Errorf("event %d actor mapping: REST=%+v GraphQL actor=%v method=%v", i, rest.AuditLog.Actor, g["actor"], g["actorMethod"])
+		}
+		if rest.AuditLog.Status != wantRESTStatus[g["status"].(string)] {
+			t.Errorf("event %d status mapping: REST=%q GraphQL=%q", i, rest.AuditLog.Status, g["status"])
+		}
 	}
-	if restList[0].AuditLog.Metadata == nil || restList[0].AuditLog.Metadata.To == nil || *restList[0].AuditLog.Metadata.To ||
+	if restList[0].AuditLog.Metadata["to"] != "false" ||
 		gqlList[0].(map[string]any)["metadata"].(map[string]any)["to"] != false {
 		t.Fatalf("maintenance metadata.to=false diverges: REST=%+v GraphQL=%+v", restList[0].AuditLog.Metadata, gqlList[0])
 	}
-	if restList[0].AuditLog.Action != "MaintenanceModeEnabledEvent" {
-		t.Fatalf("maintenance audit action = %q, want Render event name", restList[0].AuditLog.Action)
+	if restList[0].AuditLog.Event != "MaintenanceModeEnabledEvent" {
+		t.Fatalf("maintenance audit event = %q, want Render event name", restList[0].AuditLog.Event)
 	}
-	if restList[1].AuditLog.Metadata != nil || gqlList[1].(map[string]any)["metadata"] != nil {
-		t.Fatalf("non-maintenance metadata should be omitted/null: REST=%+v GraphQL=%+v", restList[1].AuditLog.Metadata, gqlList[1])
+	if restList[1].AuditLog.Metadata == nil {
+		t.Fatalf("REST metadata is required by Render's schema — must be {} not null: %+v", restList[1].AuditLog)
 	}
 	// Newest first on both surfaces.
 	if restList[0].AuditLog.ID != "aud-1" || restList[1].AuditLog.ID != "aud-2" {
 		t.Errorf("REST not newest-first: %+v", restList)
 	}
-	// A denial renders as "denied", not Render's binary success/error.
-	if restList[1].AuditLog.Status != "denied" {
-		t.Errorf("denied event Status = %q, want %q", restList[1].AuditLog.Status, "denied")
+	// A denial is Render's "error" on REST, with the denial preserved in
+	// metadata; GraphQL keeps bex's richer "denied" (asserted in the loop).
+	if restList[1].AuditLog.Status != "error" || restList[1].AuditLog.Metadata["outcome"] != "denied" {
+		t.Errorf("denied event = status %q metadata %v, want error + outcome:denied", restList[1].AuditLog.Status, restList[1].AuditLog.Metadata)
+	}
+	if restList[1].AuditLog.Event != "DeleteWorkspaceEvent" {
+		t.Errorf("workspaces.Delete = %q, want DeleteWorkspaceEvent", restList[1].AuditLog.Event)
 	}
 	// Cross-workspace: tea-a's data must never answer for another owner.
 	otherWorkspace := do(t, h, "GET", "/v1/owners/tea-other/audit-logs", testToken, "")
