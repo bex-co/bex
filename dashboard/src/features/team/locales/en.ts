@@ -10,6 +10,30 @@ const enTeam: Record<string, TranslationEntry> = {
       "The people in this workspace and what they can do. Invite teammates by email and assign a role; roles are enforced across every resource.",
     description: "Settings Team section card description",
   },
+  "team.searchLabel": {
+    message: "Search members",
+    description: "Accessible label for the accepted-member search field",
+  },
+  "team.searchPlaceholder": {
+    message: "Search members",
+    description: "Placeholder for the accepted-member search field",
+  },
+  "team.emptyTitle": {
+    message: "No members yet",
+    description: "Accepted-member table empty-state title",
+  },
+  "team.emptyBody": {
+    message: "Invite someone to start collaborating in this workspace.",
+    description: "Accepted-member table empty-state description",
+  },
+  "team.noMatchesTitle": {
+    message: "No matching members",
+    description: "Accepted-member search no-results title",
+  },
+  "team.noMatchesBody": {
+    message: "Try a different email or identity.",
+    description: "Accepted-member search no-results description",
+  },
   "team.colMember": {
     message: "Member",
     description: "Team table column header — the member identity",

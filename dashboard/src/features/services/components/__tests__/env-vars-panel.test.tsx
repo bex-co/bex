@@ -9,6 +9,16 @@ const mockUseEnvVarKeys = vi.fn();
 const mockReveal = vi.fn();
 const mockSetVar = vi.fn();
 const mockDeleteVar = vi.fn();
+const mockDownload = vi.fn();
+
+vi.mock("@/features/services/lib/env-export", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/features/services/lib/env-export")>();
+  return {
+    ...actual,
+    downloadEnvFile: (...a: unknown[]) => mockDownload(...a),
+  };
+});
 
 vi.mock("@/features/services/hooks/use-env-vars", async (importOriginal) => {
   const actual =
@@ -47,6 +57,7 @@ beforeEach(() => {
   mockReveal.mockReset();
   mockSetVar.mockReset().mockResolvedValue(true);
   mockDeleteVar.mockReset().mockResolvedValue(true);
+  mockDownload.mockReset();
 });
 
 describe("EnvVarsPanel", () => {
@@ -93,6 +104,51 @@ describe("EnvVarsPanel", () => {
     expect(
       screen.getByText("Environment variables unavailable"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+  });
+
+  it("exports a deterministic dotenv file only after freshly revealing every value", async () => {
+    mockUseEnvVarKeys.mockReturnValue(
+      keysResult([
+        { id: "ZED", key: "ZED" },
+        { id: "ALPHA", key: "ALPHA" },
+      ]),
+    );
+    mockReveal.mockImplementation(async (key: string) => `${key}-value`);
+    const user = userEvent.setup();
+    render(<EnvVarsPanel serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Export" }));
+
+    await waitFor(() =>
+      expect(mockDownload).toHaveBeenCalledWith(
+        "web.env",
+        'ALPHA="ALPHA-value"\nZED="ZED-value"\n',
+      ),
+    );
+    expect(mockReveal).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails closed when any masked value cannot be revealed", async () => {
+    mockUseEnvVarKeys.mockReturnValue(
+      keysResult([
+        { id: "VISIBLE", key: "VISIBLE" },
+        { id: "MASKED", key: "MASKED" },
+      ]),
+    );
+    mockReveal.mockImplementation(async (key: string) => {
+      if (key === "MASKED") throw new Error("secret store unavailable");
+      return "fresh";
+    });
+    const user = userEvent.setup();
+    render(<EnvVarsPanel serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Export" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Export" })).toBeEnabled(),
+    );
+    expect(mockDownload).not.toHaveBeenCalled();
   });
 
   it("renders the forbidden (403) state on a permission error", () => {

@@ -14,6 +14,8 @@ import type {
 } from "@/features/services/hooks/use-service-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+import type { ProjectResourceFilterState } from "@/features/projects/lib/resource-filter";
 
 export interface EnvironmentsPanelProps {
   projectId: string;
@@ -27,6 +29,8 @@ export interface EnvironmentsPanelProps {
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
+  resourceFilter?: ProjectResourceFilterState;
+  onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
 }
 
 /**
@@ -48,9 +52,12 @@ export function EnvironmentsPanel({
   onRunServiceAction,
   onDatabaseDeleted,
   onKeyValueDeleted,
+  resourceFilter,
+  onResourceFilterChange,
 }: EnvironmentsPanelProps) {
   const { t } = useTranslations();
   const { environments, loading, error } = useEnvironments(projectId);
+  const { groups: envGroups } = useEnvGroups();
   const [newOpen, setNewOpen] = useState(false);
 
   return (
@@ -91,6 +98,17 @@ export function EnvironmentsPanel({
               onRunServiceAction={onRunServiceAction}
               onDatabaseDeleted={onDatabaseDeleted}
               onKeyValueDeleted={onKeyValueDeleted}
+              envGroups={envGroups}
+              resourceFilter={
+                resourceFilter?.environmentId === environment.id
+                  ? resourceFilter
+                  : {
+                      environmentId: environment.id,
+                      query: "",
+                      kind: "all",
+                    }
+              }
+              onResourceFilterChange={onResourceFilterChange}
             />
           ))}
         </div>

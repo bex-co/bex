@@ -1,6 +1,51 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enMetrics: Record<string, TranslationEntry> = {
+  "metrics.eventsTitle": {
+    message: "Event timeline",
+    description:
+      "Metrics-page timeline of service events in the selected range",
+  },
+  "metrics.eventsFilterLabel": {
+    message: "Filter events",
+    description: "Accessible label for the Metrics event category filter",
+  },
+  "metrics.eventsFilterAll": {
+    message: "All events",
+    description: "All event categories",
+  },
+  "metrics.eventsFilterDeploys": {
+    message: "Deploys",
+    description: "Deploy events category",
+  },
+  "metrics.eventsFilterLifecycle": {
+    message: "Lifecycle",
+    description: "Lifecycle events category",
+  },
+  "metrics.eventsFilterConfig": {
+    message: "Configuration",
+    description: "Configuration events category",
+  },
+  "metrics.eventsLoading": {
+    message: "Loading events…",
+    description: "Event timeline loading state",
+  },
+  "metrics.eventsError": {
+    message: "Couldn't load events.",
+    description: "Event timeline error state",
+  },
+  "metrics.eventsEmptyTitle": {
+    message: "No events",
+    description: "Event timeline empty-state title",
+  },
+  "metrics.eventsEmptyBody": {
+    message: "It's been quiet in this time range.",
+    description: "Event timeline empty-state body",
+  },
+  "metrics.eventsChanged": {
+    message: "Service changed",
+    description: "Fallback event timeline label",
+  },
   "metrics.subtitle": {
     message: "Metrics — live from bex-api",
     description: "Subtitle on the service metrics page",

@@ -1,6 +1,15 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhLogs: Record<string, TranslationEntry> = {
+  "logs.rangeLabel": {
+    message: "日志历史范围",
+    description: "Accessible label for the relative log-history range controls",
+  },
+  "logs.rangeHistoryNote": {
+    message: "时间范围仅限制历史记录；实时模式会继续追加新日志。",
+    description:
+      "Explains how the bounded history window interacts with live tail",
+  },
   "logs.typeLabel": {
     message: "日志类型",
     description: "Accessible label for the log-type filter dropdown",

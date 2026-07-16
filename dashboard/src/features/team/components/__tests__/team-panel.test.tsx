@@ -199,6 +199,69 @@ describe("TeamPanel", () => {
     expect(screen.getByText("carol@example.com")).toBeInTheDocument();
   });
 
+  it("filters accepted members by email or fallback identity without hiding invites", async () => {
+    teamState.members = [
+      {
+        subject: "id-alice",
+        userId: "own-alice",
+        email: "alice@example.com",
+        role: "ADMIN",
+        createdAt: null,
+      },
+      {
+        subject: "id-bob",
+        userId: "own-bob",
+        email: "bob@example.com",
+        role: "VIEWER",
+        createdAt: null,
+      },
+    ];
+    teamState.invites = [
+      {
+        id: "inv-1",
+        email: "pending@example.com",
+        role: "DEVELOPER",
+        expiresAt: null,
+      },
+    ];
+    const user = userEvent.setup();
+    render(<TeamPanel />);
+
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search members" }),
+      "OWN-BOB",
+    );
+
+    expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument();
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+    expect(screen.getByText("pending@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+  });
+
+  it("distinguishes an empty team from a search with no matches", async () => {
+    const { rerender } = render(<TeamPanel />);
+    expect(screen.getByText("No members yet")).toBeInTheDocument();
+
+    teamState.members = [
+      {
+        subject: "id-alice",
+        userId: "own-alice",
+        email: "alice@example.com",
+        role: "ADMIN",
+        createdAt: null,
+      },
+    ];
+    rerender(<TeamPanel />);
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search members" }),
+      "nobody",
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("No matching members");
+    expect(screen.queryByText("No members yet")).not.toBeInTheDocument();
+  });
+
   it("a confirmed remove calls removeMember (keyed by subject) and refetches on success", async () => {
     teamState.members = [
       {

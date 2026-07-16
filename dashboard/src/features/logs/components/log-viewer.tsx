@@ -18,11 +18,18 @@ import {
 } from "../types";
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
+import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
+import {
+  DEFAULT_RANGE_PRESET,
+  type RangePreset,
+} from "@/features/metrics/lib/range";
 
 interface LogViewerProps {
   resource: string;
   /** Injectable SSE factory — threaded through for tests. */
   createEventSource?: EventSourceFactory;
+  range?: RangePreset;
+  onRangeChange?: (range: RangePreset) => void;
 }
 
 /**
@@ -31,7 +38,12 @@ interface LogViewerProps {
  * (filter bar + line list). Owns the filter state; the data layer (history hook
  * + live hook) is presentation-free.
  */
-export function LogViewer({ resource, createEventSource }: LogViewerProps) {
+export function LogViewer({
+  resource,
+  createEventSource,
+  range = DEFAULT_RANGE_PRESET,
+  onRangeChange = () => undefined,
+}: LogViewerProps) {
   const { t } = useTranslations();
   const [filters, setFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
   const [live, setLive] = useState(true);
@@ -50,7 +62,8 @@ export function LogViewer({ resource, createEventSource }: LogViewerProps) {
   // it's a pod name). A store-only filter with live on just pauses the tail.
   const liveSupported = !usesStoreOnlyFilters(queryFilters);
 
-  const history = useLogHistory(resource, queryFilters);
+  const historyWindow = useLiveRange(range);
+  const history = useLogHistory(resource, queryFilters, historyWindow);
   const stream = useLiveLogs({
     resource,
     enabled: live && liveSupported,
@@ -135,7 +148,12 @@ export function LogViewer({ resource, createEventSource }: LogViewerProps) {
         live={live}
         onLiveChange={setLive}
         liveSupported={liveSupported}
+        range={range}
+        onRangeChange={onRangeChange}
       />
+      <p className="text-xs text-muted-foreground">
+        {t("logs.rangeHistoryNote")}
+      </p>
       {body}
     </div>
   );

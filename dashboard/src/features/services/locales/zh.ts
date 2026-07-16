@@ -420,6 +420,21 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "添加变量",
     description: "Environment tab button to open the add-variable form",
   },
+  "services.envExport": {
+    message: "导出",
+    description:
+      "Environment tab button that downloads all service variables as dotenv",
+  },
+  "services.envExportSuccess": {
+    message: "环境变量已导出",
+    description:
+      "Toast after every current environment value was safely exported",
+  },
+  "services.envExportError": {
+    message: "无法导出完整环境，未下载任何文件。",
+    description:
+      "Fail-closed toast when any environment value cannot be revealed",
+  },
   "services.envEdit": {
     message: "编辑",
     description: "Environment row button to edit a variable's value",

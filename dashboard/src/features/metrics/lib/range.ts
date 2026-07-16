@@ -20,6 +20,14 @@ export const RANGE_PRESETS: RangePreset[] = [
 
 export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[1]; // "1h", matches bex-api's own default span
 
+export type RangePresetID = RangePreset["id"];
+
+/** Returns the supported relative range named by a URL value, or null. */
+export function parseRangePreset(value: unknown): RangePreset | null {
+  if (typeof value !== "string") return null;
+  return RANGE_PRESETS.find((preset) => preset.id === value) ?? null;
+}
+
 /** Resolves a preset into the startTime/endTime/resolutionSeconds query args. */
 export function resolveRange(preset: RangePreset, now: Date) {
   const end = now.toISOString();

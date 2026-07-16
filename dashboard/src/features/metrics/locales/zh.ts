@@ -1,6 +1,51 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhMetrics: Record<string, TranslationEntry> = {
+  "metrics.eventsTitle": {
+    message: "事件时间线",
+    description:
+      "Metrics-page timeline of service events in the selected range",
+  },
+  "metrics.eventsFilterLabel": {
+    message: "筛选事件",
+    description: "Accessible label for the Metrics event category filter",
+  },
+  "metrics.eventsFilterAll": {
+    message: "全部事件",
+    description: "All event categories",
+  },
+  "metrics.eventsFilterDeploys": {
+    message: "部署",
+    description: "Deploy events category",
+  },
+  "metrics.eventsFilterLifecycle": {
+    message: "生命周期",
+    description: "Lifecycle events category",
+  },
+  "metrics.eventsFilterConfig": {
+    message: "配置",
+    description: "Configuration events category",
+  },
+  "metrics.eventsLoading": {
+    message: "正在加载事件…",
+    description: "Event timeline loading state",
+  },
+  "metrics.eventsError": {
+    message: "无法加载事件。",
+    description: "Event timeline error state",
+  },
+  "metrics.eventsEmptyTitle": {
+    message: "暂无事件",
+    description: "Event timeline empty-state title",
+  },
+  "metrics.eventsEmptyBody": {
+    message: "所选时间范围内没有事件。",
+    description: "Event timeline empty-state body",
+  },
+  "metrics.eventsChanged": {
+    message: "服务已更改",
+    description: "Fallback event timeline label",
+  },
   "metrics.subtitle": {
     message: "指标——来自 bex-api 的实时数据",
     description: "Subtitle on the service metrics page",
