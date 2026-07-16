@@ -82,10 +82,31 @@ func fakeKratos(t *testing.T) *httptest.Server {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"identity":{"id":"identity-1"}}`)
+		_, _ = fmt.Fprint(w, `{"identity":{"id":"identity-1","traits":{"email":"Ada@Example.com","name":"Ada Lovelace"}}}`)
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// TestAuthGateSessionTraits: the whoami traits land on core.Identity — email
+// lowercased (the invite-redemption key), name verbatim (w4/m25's display name).
+func TestAuthGateSessionTraits(t *testing.T) {
+	kratos := fakeKratos(t)
+	s := &Server{HydraAdminURL: fakeHydraURL(t), KratosURL: kratos.URL}
+	auth, err := s.authMiddleware()
+	if err != nil {
+		t.Fatalf("authMiddleware: %v", err)
+	}
+	r := httptest.NewRequest(http.MethodGet, "/probe", nil)
+	r.Header.Set("X-Session-Token", "live-session")
+	w := httptest.NewRecorder()
+	auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := core.IdentityFrom(r.Context())
+		_, _ = fmt.Fprintf(w, "%s/%s", id.Email, id.Name)
+	})).ServeHTTP(w, r)
+	if w.Code != http.StatusOK || w.Body.String() != "ada@example.com/Ada Lovelace" {
+		t.Fatalf("status %d body %q", w.Code, w.Body.String())
+	}
 }
 
 func brokenServer(t *testing.T) *httptest.Server {

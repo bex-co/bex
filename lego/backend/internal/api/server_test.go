@@ -1113,3 +1113,10 @@ func (f *fakeKeyStore) Touch(_ context.Context, id string, at time.Time) error {
 	}
 	return nil
 }
+
+func (f *fakeKeyStore) KeyOwner(_ context.Context, id string) (string, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	k, ok := f.keys[id]
+	return k.CreatedBy, ok && k.CreatedBy != ""
+}

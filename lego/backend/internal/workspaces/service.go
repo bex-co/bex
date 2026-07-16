@@ -67,10 +67,15 @@ type Service struct {
 	// OpenBao env-var secrets, its managed Databases). Each is best-effort and
 	// injected by the composition root; see WorkspacePurger.
 	Purgers []WorkspacePurger
-	// Identities looks up owner/member email + MFA from Kratos (the store carries
-	// only subjects). Nil => those fields omitted from the owners/members responses
-	// (honest subset; BEX_KRATOS_ADMIN_URL unset).
+	// Identities looks up owner/member email + name + MFA from Kratos (the store
+	// carries only subjects). Nil => those fields omitted from the owners/members
+	// responses (honest subset; BEX_KRATOS_ADMIN_URL unset).
 	Identities IdentityReader
+	// KeyOwners resolves an API-key caller to the identity subject that minted
+	// the key (w4/m25), so CurrentUser can answer with the owning human's
+	// email/name through the same Identities lookup. Nil => machine callers keep
+	// the earliest-admin-email fallback alone.
+	KeyOwners KeyOwnerReader
 	// Selections is the shared MCP per-session workspace selection (w6/m2/t005):
 	// select_workspace writes it, get_selected_workspace reads it, and the apps/
 	// postgres list tools read it as their default ownerId filter. Nil (should
@@ -155,20 +160,31 @@ type WorkspacePurger interface {
 // when the control-plane store isn't wired (bex-api running without BEX_CP_DB_URI).
 
 // IdentityReader looks up a subject's identity attributes from the identity
-// provider (Kratos admin API) — the email + MFA state the control-plane store
-// doesn't carry but Render's owner/member objects require. Nil (BEX_KRATOS_ADMIN_URL
-// unset) => attributes omitted (honest subset); the endpoints still answer 200.
-// bex's Kratos schema defines only an email trait (no name) — see
-// docs/render-artifacts/owners-api.md — so IdentityAttrs carries no Name.
+// provider (Kratos admin API) — the email + name + MFA state the control-plane
+// store doesn't carry but Render's owner/member objects require. Nil
+// (BEX_KRATOS_ADMIN_URL unset) => attributes omitted (honest subset); the
+// endpoints still answer 200.
 type IdentityReader interface {
 	Lookup(ctx context.Context, subject string) (IdentityAttrs, bool)
 }
 
 // IdentityAttrs are the IdP attributes a Render owner/member object needs that the
-// store/CRs don't hold. ok=false from Lookup => the caller omits the field.
+// store/CRs don't hold. ok=false from Lookup => the caller omits the field. Name
+// is the optional Kratos `name` trait (w4/m25); "" when the identity never set it.
 type IdentityAttrs struct {
 	Email      string
+	Name       string
 	MFAEnabled bool
+}
+
+// KeyOwnerReader resolves a machine caller's API key (Hydra client id) to the
+// identity subject that minted it — the key→identity binding stamped as the
+// client's bex.co/created-by metadata (w4/m13), read back here so a machine
+// caller's GET /v1/users can report its owning human's email/name (w4/m25).
+// ok=false for an unknown/non-API-key client or a key minted before the stamp
+// existed. Nil => machine callers fall back to the earliest-admin email alone.
+type KeyOwnerReader interface {
+	KeyOwner(ctx context.Context, clientID string) (subject string, ok bool)
 }
 
 // WorkspaceView is the neutral projection of a workspace — the tenant row plus
@@ -278,13 +294,16 @@ type UserView struct {
 }
 
 // CurrentUser answers GET /v1/users, Render's "who am I" endpoint (used by e.g.
-// the official Render CLI's `render whoami`). A session caller's email comes
-// straight off their Kratos identity (already resolved onto core.Identity by the
-// auth gate); a machine (API-key) caller carries no email of its own, so it
-// reports its bound workspace's earliest-admin email — the human who minted the
-// key, via the same ownerEmail lookup ListOwners uses. Name is not yet tracked
-// by bex's identity model (Kratos' default schema carries only email) and is
-// always "" — an honest subset, not a fabricated value. No GraphQL/MCP
+// the official Render CLI's `render whoami`). A session caller's email + name
+// come straight off their Kratos identity (already resolved onto core.Identity
+// by the auth gate). A machine (API-key/OAuth) caller carries no traits of its
+// own: a user-consented OAuth token's subject is a Kratos identity id, looked
+// up directly, while a client_credentials (API-key) token — recognized by the
+// gate's ClientID stamp, no probing — resolves through the key's created-by
+// binding (KeyOwners, w4/m25) to the human who minted it. A key with no
+// resolvable owning human (minted before the created-by stamp, or a
+// service-account-style key) degrades to the bound workspace's earliest-admin
+// email with no name — the documented honest subset. No GraphQL/MCP
 // equivalent: the dashboard authenticates with its Kratos session directly
 // rather than this REST-only endpoint, and no MCP tool needs "who am I".
 func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
@@ -292,13 +311,28 @@ func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
 		return UserView{}, err
 	}
 	id, _ := core.IdentityFrom(ctx)
-	email := id.Email
-	if email == "" {
-		if tenantID, ok := s.Tenant(ctx); ok {
-			email = s.ownerEmail(ctx, tenantID)
+	u := UserView{Email: id.Email, Name: id.Name}
+	if u.Email == "" && s.Identities != nil {
+		subject := id.Subject
+		if id.Subject == id.ClientID {
+			// The caller IS an API key — its subject can never be in Kratos.
+			subject = ""
+			if s.KeyOwners != nil {
+				subject, _ = s.KeyOwners.KeyOwner(ctx, id.Subject)
+			}
+		}
+		if subject != "" {
+			if attrs, ok := s.Identities.Lookup(ctx, subject); ok {
+				u.Email, u.Name = attrs.Email, attrs.Name
+			}
 		}
 	}
-	return UserView{Email: email}, nil
+	if u.Email == "" {
+		if tenantID, ok := s.Tenant(ctx); ok {
+			u.Email = s.ownerEmail(ctx, tenantID)
+		}
+	}
+	return u, nil
 }
 
 // OwnerFilter narrows ListOwners (GET /v1/owners): Names/Emails are OR'd within
@@ -411,6 +445,7 @@ type MemberView struct {
 	OwnerID    string
 	Role       string
 	Email      string
+	Name       string
 	MFAEnabled bool
 }
 
@@ -445,7 +480,7 @@ func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView
 		mv.OwnerID = ownID
 		if s.Identities != nil {
 			if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
-				mv.Email, mv.MFAEnabled = attrs.Email, attrs.MFAEnabled
+				mv.Email, mv.Name, mv.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled
 			}
 		}
 		out = append(out, mv)

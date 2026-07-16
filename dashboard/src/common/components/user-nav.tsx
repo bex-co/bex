@@ -68,9 +68,10 @@ const THEME_LABEL_KEYS = {
   system: "common.userMenuThemeSystem",
 } as const;
 
-// Kratos identity traits are schema-defined per project (`traits: any`); this
-// dashboard's default schema is `{ email, name: { first, last } }`.
-type IdentityTraits = { email?: string; name?: { first?: string } };
+// Kratos identity traits are schema-defined per project (`traits: any`); bex's
+// schema is `{ email, name? }` — name is the optional display-name trait
+// (w4/m25, deploy/gitops/base/values/kratos.values.yaml).
+type IdentityTraits = { email?: string; name?: string };
 
 /**
  * User navigation dropdown — shows the signed-in user's avatar and provides
@@ -101,7 +102,7 @@ export function UserNav() {
     void navigate({ to: "/settings" });
   };
 
-  const userInitial = traits?.email?.[0]?.toUpperCase() || "U";
+  const userInitial = (traits?.name || traits?.email)?.[0]?.toUpperCase() || "U";
 
   // On mobile, show a simple button that navigates to settings
   if (isMobile) {
@@ -120,7 +121,7 @@ export function UserNav() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {traits?.name?.first || "User"}
+              {traits?.name || "User"}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {traits?.email || "—"}

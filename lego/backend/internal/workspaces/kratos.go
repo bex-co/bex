@@ -49,20 +49,21 @@ func (k *KratosIdentities) client() *http.Client {
 	return http.DefaultClient
 }
 
-// kratosIdentity is the subset of Kratos' identity schema this reader needs.
-// bex's Kratos identity schema defines only an `email` trait (no name, hence
-// IdentityAttrs carries none either). Credentials are requested via
+// kratosIdentity is the subset of Kratos' identity schema this reader needs:
+// the `email` trait plus the optional `name` display-name trait (w4/m25; ""
+// for identities that never set it). Credentials are requested via
 // include_credential so mfaEnabled can be derived without a second call.
 type kratosIdentity struct {
 	Traits struct {
 		Email string `json:"email"`
+		Name  string `json:"name"`
 	} `json:"traits"`
 	Credentials map[string]struct {
 		Type string `json:"type"`
 	} `json:"credentials"`
 }
 
-// Lookup fetches one identity's email + MFA state. ok=false on any failure
+// Lookup fetches one identity's email + name + MFA state. ok=false on any failure
 // (not found, admin API unreachable, bad response) — the honest-omit contract
 // IdentityReader documents; a Kratos outage degrades the owners/members
 // responses (fields missing) rather than failing the request.
@@ -87,5 +88,5 @@ func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (Identity
 	}
 	_, totp := id.Credentials["totp"]
 	_, webauthn := id.Credentials["webauthn"]
-	return IdentityAttrs{Email: id.Traits.Email, MFAEnabled: totp || webauthn}, true
+	return IdentityAttrs{Email: id.Traits.Email, Name: id.Traits.Name, MFAEnabled: totp || webauthn}, true
 }

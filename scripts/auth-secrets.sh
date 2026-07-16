@@ -89,8 +89,11 @@ esac
 oidc_fragment() {
   if [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ]; then
     local mapper
+    # Maps email always and the display name when GitHub supplies one (w4/m25:
+    # the optional `name` identity trait) — social-login users get the same
+    # populated name as password registrations, from one ingestion point.
     mapper="$(printf '%s' \
-      'local claims = std.extVar('"'"'claims'"'"'); { identity: { traits: { email: claims.email } } }' \
+      'local claims = std.extVar('"'"'claims'"'"'); { identity: { traits: { email: claims.email } + (if std.objectHas(claims, '"'"'name'"'"') && claims.name != null then { name: claims.name } else {}) } }' \
       | base64 | tr -d '\n')"
     cat <<YAML
 selfservice:

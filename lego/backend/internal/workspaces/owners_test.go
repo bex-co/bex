@@ -147,7 +147,7 @@ func TestListOwners_NoIdentitiesOmitsEmail(t *testing.T) {
 
 func TestListMembers_RolesAndIdentities(t *testing.T) {
 	st := newFakeStore()
-	ids := fakeIdentities{"user-a": {Email: "a@example.com", MFAEnabled: true}}
+	ids := fakeIdentities{"user-a": {Email: "a@example.com", Name: "Ada Lovelace", MFAEnabled: true}}
 	svc := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}, Store: st, Identities: ids}
 	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	if err != nil {
@@ -159,7 +159,8 @@ func TestListMembers_RolesAndIdentities(t *testing.T) {
 		t.Fatalf("ListMembers: %+v %v", members, err)
 	}
 	m := members[0]
-	if m.Subject != "user-a" || m.Role != "admin" || m.Email != "a@example.com" || !m.MFAEnabled {
+	if m.Subject != "user-a" || m.Role != "admin" || m.Email != "a@example.com" ||
+		m.Name != "Ada Lovelace" || !m.MFAEnabled {
 		t.Fatalf("member = %+v", m)
 	}
 }
@@ -215,13 +216,26 @@ func TestRenderTeamMemberRole_UppercaseMapping(t *testing.T) {
 }
 
 func TestToRenderTeamMember_NoNameHonestOmission(t *testing.T) {
-	// userId is the opaque own- id (w6/m7), NOT the raw subject.
+	// userId is the opaque own- id (w6/m7), NOT the raw subject. An identity
+	// that never set the optional name trait renders name: "" (required key,
+	// honest empty value).
 	m := toRenderTeamMember(MemberView{
 		Subject: "user-a", OwnerID: "own-00000000000000000001",
 		Role: "admin", Email: "a@example.com", MFAEnabled: true,
 	})
 	if m.UserID != "own-00000000000000000001" || m.Name != "" || m.Email != "a@example.com" ||
 		m.Status != "active" || m.Role != "ADMIN" || !m.MFAEnabled {
+		t.Fatalf("renderTeamMember = %+v", m)
+	}
+}
+
+func TestToRenderTeamMember_NameTraitThreadsThrough(t *testing.T) {
+	// The name trait (w4/m25) lands in Render's required teamMember.name.
+	m := toRenderTeamMember(MemberView{
+		Subject: "user-a", OwnerID: "own-00000000000000000001",
+		Role: "admin", Email: "a@example.com", Name: "Ada Lovelace",
+	})
+	if m.Name != "Ada Lovelace" {
 		t.Fatalf("renderTeamMember = %+v", m)
 	}
 }

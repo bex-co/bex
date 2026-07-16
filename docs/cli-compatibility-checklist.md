@@ -73,7 +73,7 @@ The following commands were exercised against live bex environments with real Se
 | --- | --- | --- |
 | `login` (browser/device flow) | ◐ | The official CLI completed real Chrome → Kratos → consent login in dev-3 with `RENDER_API_KEY` unset. Production rollout evidence remains (`w4/m27`). |
 | `logout` | ◐ | Local E2E proves access-token rejection, refresh-chain revocation, shared-client preservation, and second-user continuity. Production rollout evidence remains. The machine override still requires dashboard key revocation. |
-| `whoami` | ✅ | Returns the key owner's email when the Kratos admin URL is configured. |
+| `whoami` | ✅ | Returns the key owner's real name and email (w4/m25). The key's `created-by` binding resolves to the minting user's Kratos identity, so an API-key caller sees the same `Name:`/`Email:` as a session caller; re-verified live 2026-07-15 against dev-4 (`render whoami` → `Name: Ada Lovelace / Email: ada@dev4.test` for both a session-derived token and a `client_credentials` API-key token). A key with no resolvable owning human degrades to the workspace's earliest-admin email with an empty name. Requires the Kratos admin URL. |
 | `workspace current`, `workspaces` | ✅ | Return the caller's real `tea-…` workspace. |
 | `workspace set` | ◐ | The interactive flow was not tested. `RENDER_WORKSPACE` is the supported deterministic override and is used by the production setup above. |
 | `projects`, `environments <project-id>` | ✅ | Lists projects and returns Render-compatible environment records. |
