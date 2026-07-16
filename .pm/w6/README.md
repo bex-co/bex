@@ -46,10 +46,11 @@ Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared 
 - [x] **m32** — Env groups, first-class: Render list envelope + pagination, purge on workspace delete, migration audit trail (8 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 — done 2026-07-15 (live `{envGroup,cursor}` REST paging despite Render's stale endpoint schema; GraphQL/MCP paging; workspace-delete purge including deterministic ownerless legacy handling; exactly-once system audit for lazy ownership migration; full backend build/tests + lint green), moved to `done/m32/`
 - [x] **m33** — Environments surface-parity chores: create ACL + list filters + field drift (8 tasks) ← from `/pm-brainstorm` round 14, 2026-07-15 — done 2026-07-15 (one shared ACL-aware create path across REST/GraphQL/MCP; Render-documented REST filters honored or named 400; exact REST field shape with GraphQL extensions documented; full backend build/tests/lint plus dashboard typecheck green), moved to `done/m33/`
 - [ ] **m34** — Docker-build `registryCredentialId`: private base images for repo-backed Docker services (8 tasks) ← promotes `017` (filed by m31's closeout parity check), `/pm-brainstorm` round 17, 2026-07-15; retires m31's named 400 for Render's `envSpecificDetails.registryCredentialId` context by riding the push-secret's buildkitd-only docker-config boundary
+- [ ] **m35** — Env-groups list filters: implement or explicitly reject (7 tasks) ← promotes `018` (filed by m32's closeout) via `/pm-brainstorm` round 18, 2026-07-15; `GET /v1/env-groups` reads only single `ownerId` + paging today — Render's repeated/comma `name`, repeated `ownerId`, `environmentId`, and the four timestamp filters are silently ignored; follows m33's environments precedent (implement or named 400, never silent)
 
 ## Inbox
 
-_(`012.md` promoted to **m18** 2026-07-13)_
+_(`012.md` promoted to **m18** 2026-07-13; `018.md` promoted to **m35** 2026-07-15)_
 
 _(`009.md`, `010.md`, `011.md` grouped into **m15** 2026-07-13; `013.md` promoted to **m17** 2026-07-13; `014.md` promoted to **w2/m28** 2026-07-13 — materialized under `w2`, not `w6`, per user direction; `016.md` promoted to **m28** 2026-07-15)_
 
