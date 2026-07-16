@@ -11,7 +11,8 @@
 | t003 | Core wiring: create/update via keyvalue service; validate/list/sync | 45m | t002       |
 | t004 | `fromService` → keyvalue connection env refs                       | 30m | t003       |
 | t005 | Checklist line 84 + ADR018 Blueprint row update                    | 15m | t004       |
-| t006 | Render parity                                                      | 30m | t005       |
+| t010 | Blueprint by-id read parity: REST GET /v1/blueprints/{id} + MCP get_blueprint (folds w2/014) | 45m | —          |
+| t006 | Render parity                                                      | 30m | t005, t010 |
 | t007 | Simplify                                                           | 30m | t006       |
 | t008 | Test coverage                                                      | 45m | t006       |
 | t009 | Closeout                                                           | 15m | t008       |
