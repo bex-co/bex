@@ -136,6 +136,31 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
+		"updateWebhookEndpoint": &graphql.Field{
+			Type: endpointGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId":     &graphql.ArgumentConfig{Type: graphql.String},
+				"name":        &graphql.ArgumentConfig{Type: graphql.String},
+				"url":         &graphql.ArgumentConfig{Type: graphql.String},
+				"eventTypes":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"eventFilter": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"enabled":     &graphql.ArgumentConfig{Type: graphql.Boolean},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				var enabledPtr *bool
+				if v, ok := p.Args["enabled"].(bool); ok {
+					enabledPtr = &v
+				}
+				types := resolveEventTypes(gqlutil.StringList(p.Args["eventFilter"]), gqlutil.StringList(p.Args["eventTypes"]))
+				return s.Update(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string), UpdateRequest{
+					Name:       gqlutil.Str(p.Args, "name"),
+					URL:        gqlutil.Str(p.Args, "url"),
+					EventTypes: types,
+					Enabled:    enabledPtr,
+				})
+			},
+		},
 		"setWebhookEndpointEnabled": &graphql.Field{
 			Type: endpointGQLType,
 			Args: graphql.FieldConfigArgument{

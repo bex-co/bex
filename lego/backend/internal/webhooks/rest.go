@@ -23,21 +23,28 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// rest.go is the REST fragment, under /v1/webhooks/endpoints — a bex-chosen
-// noun: Render's public docs manage outbound webhooks from the dashboard only
-// (checked live 2026-07-12, "see the API reference" without detail), so this
-// is bex filling the gap in its own API-first style (the api-keys precedent),
-// and /v1/webhooks alone already belongs to the inbound git-push webhook.
+// rest.go is the REST fragment. It serves Render's public route family
+// (POST/GET /v1/webhooks, GET/PATCH/DELETE /v1/webhooks/{id},
+// GET /v1/webhooks/{id}/events — per the live spec re-fetched w3/m27) and
+// keeps the original bex paths (/v1/webhooks/endpoints…) as aliases so
+// existing bex clients are unbroken. /v1/webhooks/git (the inbound push
+// webhook) is a sibling route registered by the webhooks-git package and is
+// unaffected by any pattern below.
 
 // endpointWire is the wire shape every surface renders. Secret is present on
 // the create response ONLY — the mint-once read; every other render omits it
 // (empty + omitempty, and no read query ever selects the column).
+// eventFilter is Render's field name for the same subscription list bex
+// historically called eventTypes — both are emitted in responses so
+// Render-SDK and bex clients can both parse. In requests, eventFilter takes
+// precedence when present (see resolveEventTypes).
 type endpointWire struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
 	URL            string   `json:"url"`
 	OwnerID        string   `json:"ownerId"`
 	EventTypes     []string `json:"eventTypes"`
+	EventFilter    []string `json:"eventFilter,omitempty"`
 	Enabled        bool     `json:"enabled"`
 	DisabledReason string   `json:"disabledReason,omitempty"`
 	Secret         string   `json:"secret,omitempty"`
@@ -48,10 +55,21 @@ type endpointWire struct {
 
 func toWire(v EndpointView) endpointWire {
 	return endpointWire{
-		ID: v.ID, Name: v.Name, URL: v.URL, OwnerID: v.OwnerID, EventTypes: v.EventTypes,
+		ID: v.ID, Name: v.Name, URL: v.URL, OwnerID: v.OwnerID,
+		EventTypes: v.EventTypes, EventFilter: v.EventTypes,
 		Enabled: v.Enabled, DisabledReason: v.DisabledReason, Secret: v.Secret,
 		CreatedBy: v.CreatedBy, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
+}
+
+// resolveEventTypes returns eventFilter when present, falling back to
+// eventTypes — so Render-SDK callers (which only send eventFilter) and
+// legacy bex callers (which only send eventTypes) both work.
+func resolveEventTypes(eventFilter, eventTypes []string) []string {
+	if len(eventFilter) > 0 {
+		return eventFilter
+	}
+	return eventTypes
 }
 
 func toWireList(views []EndpointView) []endpointWire {
@@ -101,63 +119,130 @@ func toDeliveryList(views []DeliveryView) []deliveryWithCursor {
 	return out
 }
 
-// createEndpointRequest is POST /v1/webhooks/endpoints' body.
+// createEndpointRequest is POST /v1/webhooks/endpoints' and POST /v1/webhooks'
+// body. eventFilter (Render's field name) takes precedence over eventTypes
+// when both are present.
 type createEndpointRequest struct {
-	OwnerID    string   `json:"ownerId"`
-	Name       string   `json:"name"`
-	URL        string   `json:"url"`
-	EventTypes []string `json:"eventTypes"`
+	OwnerID     string   `json:"ownerId"`
+	Name        string   `json:"name"`
+	URL         string   `json:"url"`
+	EventTypes  []string `json:"eventTypes"`
+	EventFilter []string `json:"eventFilter"`
 }
 
 // patchEndpointRequest is PATCH /v1/webhooks/endpoints/{id}'s body — enabled
-// only (URL/event edits are delete + recreate for v1, several resources'
-// own PATCH omission).
+// only (bex-original alias: kept for backward compatibility).
 type patchEndpointRequest struct {
 	Enabled *bool `json:"enabled"`
 }
 
-// RegisterREST mounts the webhook-endpoint CRUD + delivery-history surface.
+// updateEndpointRequest is PATCH /v1/webhooks/{id}'s body — Render's full-body
+// PATCH: any combination of name/url/enabled/eventFilter may be supplied;
+// omitted fields keep their current values.
+type updateEndpointRequest struct {
+	Name        string   `json:"name"`
+	URL         string   `json:"url"`
+	Enabled     *bool    `json:"enabled"`
+	EventFilter []string `json:"eventFilter"`
+	EventTypes  []string `json:"eventTypes"`
+}
+
+// RegisterREST mounts the webhook-endpoint CRUD + delivery-history surface on
+// both Render's public route family (/v1/webhooks/…) and bex's original
+// aliases (/v1/webhooks/endpoints/…). The two sets share the same handler
+// logic; the only difference is PATCH semantics: Render's PATCH is a
+// full-body update (name/url/enabled/eventFilter), the bex-alias PATCH is
+// enabled-only (backward compatibility for existing bex clients).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/webhooks/endpoints", func(w http.ResponseWriter, r *http.Request) {
+	listHandler := func(w http.ResponseWriter, r *http.Request) {
 		views, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toWireList(views))
-	})
-
-	mux.HandleFunc("POST /v1/webhooks/endpoints", func(w http.ResponseWriter, r *http.Request) {
+	}
+	createHandler := func(w http.ResponseWriter, r *http.Request) {
 		var req createEndpointRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
 		v, err := s.Create(r.Context(), CreateRequest{
-			OwnerID: req.OwnerID, Name: req.Name, URL: req.URL, EventTypes: req.EventTypes,
+			OwnerID:    req.OwnerID,
+			Name:       req.Name,
+			URL:        req.URL,
+			EventTypes: resolveEventTypes(req.EventFilter, req.EventTypes),
 		})
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusCreated, toWire(v))
-	})
-
-	// The subscribable vocabulary — what the dashboard's event-type picker
-	// lists, served rather than duplicated client-side.
-	mux.HandleFunc("GET /v1/webhooks/event-types", func(w http.ResponseWriter, r *http.Request) {
-		core.WriteJSON(w, http.StatusOK, EventTypes)
-	})
-
-	mux.HandleFunc("GET /v1/webhooks/endpoints/{id}", func(w http.ResponseWriter, r *http.Request) {
+	}
+	getHandler := func(w http.ResponseWriter, r *http.Request) {
 		v, err := s.Get(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toWire(v))
-	})
+	}
+	deleteHandler := func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Delete(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+	deliveriesHandler := func(w http.ResponseWriter, r *http.Request) {
+		cursor, limit := core.PageParams(r.URL.Query())
+		views, err := s.ListDeliveries(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), cursor, limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toDeliveryList(views))
+	}
 
+	// Render's public route family (w3/m27).
+	mux.HandleFunc("GET /v1/webhooks", listHandler)
+	mux.HandleFunc("POST /v1/webhooks", createHandler)
+	mux.HandleFunc("GET /v1/webhooks/{id}", getHandler)
+	mux.HandleFunc("PATCH /v1/webhooks/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var req updateEndpointRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		v, err := s.Update(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), UpdateRequest{
+			Name:       req.Name,
+			URL:        req.URL,
+			Enabled:    req.Enabled,
+			EventTypes: resolveEventTypes(req.EventFilter, req.EventTypes),
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toWire(v))
+	})
+	mux.HandleFunc("DELETE /v1/webhooks/{id}", deleteHandler)
+	// /events is Render's name for the delivery-history read.
+	mux.HandleFunc("GET /v1/webhooks/{id}/events", deliveriesHandler)
+
+	// bex-original aliases — kept for backward compatibility. The single-endpoint
+	// GET alias (/v1/webhooks/endpoints/{id}) is intentionally omitted: it
+	// conflicts with /v1/webhooks/{id}/events (both are 4-segment GET patterns
+	// that could match /v1/webhooks/endpoints/events); use /v1/webhooks/{id}
+	// instead (Render's canonical path, registered above).
+	mux.HandleFunc("GET /v1/webhooks/endpoints", listHandler)
+	mux.HandleFunc("POST /v1/webhooks/endpoints", createHandler)
+	// The subscribable vocabulary — what the dashboard's event-type picker
+	// lists, served rather than duplicated client-side.
+	mux.HandleFunc("GET /v1/webhooks/event-types", func(w http.ResponseWriter, r *http.Request) {
+		core.WriteJSON(w, http.StatusOK, EventTypes)
+	})
 	mux.HandleFunc("PATCH /v1/webhooks/endpoints/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchEndpointRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Enabled == nil {
@@ -171,22 +256,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toWire(v))
 	})
-
-	mux.HandleFunc("DELETE /v1/webhooks/endpoints/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Delete(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	mux.HandleFunc("GET /v1/webhooks/endpoints/{id}/deliveries", func(w http.ResponseWriter, r *http.Request) {
-		cursor, limit := core.PageParams(r.URL.Query())
-		views, err := s.ListDeliveries(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), cursor, limit)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toDeliveryList(views))
-	})
+	mux.HandleFunc("DELETE /v1/webhooks/endpoints/{id}", deleteHandler)
+	mux.HandleFunc("GET /v1/webhooks/endpoints/{id}/deliveries", deliveriesHandler)
 }

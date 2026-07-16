@@ -49,6 +49,15 @@ type createEndpointArgs struct {
 	EventTypes []string `json:"eventTypes" jsonschema:"the event types to subscribe to, e.g. deploy_started, deploy_ended, service_suspended — list_webhook_endpoints returns the full vocabulary"`
 }
 
+type updateEndpointArgs struct {
+	ID          string   `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
+	OwnerID     string   `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
+	Name        string   `json:"name,omitempty" jsonschema:"new display label; omit to keep the current value"`
+	URL         string   `json:"url,omitempty" jsonschema:"new destination URL (must be absolute https or http); omit to keep the current value"`
+	EventTypes  []string `json:"eventTypes,omitempty" jsonschema:"new subscription list (replaces current); omit to keep the current value"`
+	Enabled     *bool    `json:"enabled,omitempty" jsonschema:"enable or disable the endpoint; omit to keep the current state"`
+}
+
 type deleteEndpointArgs struct {
 	ID      string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
 	OwnerID string `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
@@ -78,6 +87,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		v, err := s.Create(ctx, CreateRequest{
 			OwnerID: core.SelectedWorkspace(s.Selections, req, in.OwnerID),
 			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes,
+		})
+		if err != nil {
+			return nil, endpointWire{}, err
+		}
+		return nil, toWire(v), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_webhook_endpoint",
+		Description: "Update an outbound webhook endpoint's name, destination URL, event subscription, or enabled state. Supply only the fields to change; omitted fields keep their current values.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
+		v, err := s.Update(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID), in.ID, UpdateRequest{
+			Name:       in.Name,
+			URL:        in.URL,
+			EventTypes: in.EventTypes,
+			Enabled:    in.Enabled,
 		})
 		if err != nil {
 			return nil, endpointWire{}, err

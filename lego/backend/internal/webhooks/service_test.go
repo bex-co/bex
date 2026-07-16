@@ -95,6 +95,23 @@ func (f *fakeEndpointStore) SetWebhookEndpointEnabled(_ context.Context, tenantI
 	return redact(e), nil
 }
 
+func (f *fakeEndpointStore) UpdateWebhookEndpoint(_ context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error) {
+	e, ok := f.rows[id]
+	if !ok || e.TenantID != tenantID {
+		return store.WebhookEndpoint{}, store.ErrNotFound
+	}
+	e.Name = name
+	e.URL = url
+	e.EventTypes = eventTypes
+	if enabled {
+		e.DisabledReason = ""
+	}
+	e.Enabled = enabled
+	e.UpdatedAt = time.Now().UTC()
+	f.rows[id] = e
+	return redact(e), nil
+}
+
 func (f *fakeEndpointStore) DeleteWebhookEndpoint(_ context.Context, tenantID, id string) error {
 	e, ok := f.rows[id]
 	if !ok || e.TenantID != tenantID {
