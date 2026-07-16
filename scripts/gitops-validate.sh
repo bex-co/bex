@@ -66,6 +66,12 @@ if [ "$egress_caps" != "BPF,NET_ADMIN,PERFMON,SYS_ADMIN,SYS_RESOURCE" ]; then
   echo "FAIL: egress-meter capabilities are '$egress_caps', want BPF,NET_ADMIN,PERFMON,SYS_ADMIN,SYS_RESOURCE" >&2
   fail=1
 fi
+egress_apparmor="$(yq -N '.spec.template.spec.securityContext.appArmorProfile.type' lego/operator/config/egress-meter/daemonset.yaml)"
+egress_seccomp="$(yq -N '.spec.template.spec.containers[] | select(.name == "egress-meter") | .securityContext.seccompProfile.type' lego/operator/config/egress-meter/daemonset.yaml)"
+if [ "$egress_apparmor" != "Unconfined" ] || [ "$egress_seccomp" != "RuntimeDefault" ]; then
+  echo "FAIL: egress-meter needs AppArmor Unconfined + seccomp RuntimeDefault for production BPF pinning; got $egress_apparmor + $egress_seccomp" >&2
+  fail=1
+fi
 
 # Platform CNPG drain-safety guard (w1/m38): the auth/control-plane databases
 # must have a standby on another platform node. CNPG performs a planned
