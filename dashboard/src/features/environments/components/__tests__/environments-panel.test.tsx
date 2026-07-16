@@ -18,6 +18,9 @@ const environmentsState: {
 vi.mock("@/features/environments/hooks/use-environments", () => ({
   useEnvironments: () => environmentsState,
 }));
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({ groups: [], loading: false, error: undefined }),
+}));
 
 // Stub the children so this test targets the panel's own states + wiring; the
 // card and dialog have their own tests and reach Apollo directly.

@@ -10,6 +10,30 @@ const zhTeam: Record<string, TranslationEntry> = {
       "此工作区中的成员及其权限。通过邮箱邀请队友并分配角色；角色会在所有资源上强制执行。",
     description: "Settings Team section card description",
   },
+  "team.searchLabel": {
+    message: "搜索成员",
+    description: "Accessible label for the accepted-member search field",
+  },
+  "team.searchPlaceholder": {
+    message: "搜索成员",
+    description: "Placeholder for the accepted-member search field",
+  },
+  "team.emptyTitle": {
+    message: "暂无成员",
+    description: "Accepted-member table empty-state title",
+  },
+  "team.emptyBody": {
+    message: "邀请成员加入此工作区开始协作。",
+    description: "Accepted-member table empty-state description",
+  },
+  "team.noMatchesTitle": {
+    message: "没有匹配的成员",
+    description: "Accepted-member search no-results title",
+  },
+  "team.noMatchesBody": {
+    message: "请尝试其他邮箱或身份信息。",
+    description: "Accepted-member search no-results description",
+  },
   "team.colMember": {
     message: "成员",
     description: "Team table column header — the member identity",

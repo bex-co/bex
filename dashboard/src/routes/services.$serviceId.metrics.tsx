@@ -9,6 +9,7 @@ import {
   DEFAULT_RANGE_PRESET,
   type RangePreset,
 } from "@/features/metrics/lib/range";
+import { EventTimeline } from "@/features/events/components/event-timeline";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   component: ServiceMetricsPage,
@@ -48,6 +49,12 @@ function ServiceMetricsPage() {
         statusCode={statusCode}
         onStatusCodeChange={setStatusCode}
         discoveredStatusCodes={discoveredStatusCodes}
+      />
+
+      <EventTimeline
+        serviceId={serviceId}
+        startTime={window.startTime}
+        endTime={window.endTime}
       />
 
       <ApplicationMetricsCard

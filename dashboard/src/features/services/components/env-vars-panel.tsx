@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
+  Download,
   Plus,
   KeyRound,
   ShieldAlert,
@@ -34,6 +36,10 @@ import {
 import { EnvVarRow } from "@/features/services/components/env-var-row";
 import { CenteredState } from "@/features/services/components/centered-state";
 import type { EnvVarKey } from "@/features/services/types";
+import {
+  downloadEnvFile,
+  formatEnvExport,
+} from "@/features/services/lib/env-export";
 
 // A C-locale env-var name: what bex-api (and a shell, and Kubernetes' Secret-key
 // validation) accepts — reject bad names client-side rather than round-tripping
@@ -58,6 +64,7 @@ export function EnvVarsPanel({ serviceId }: { serviceId: string }) {
       keys={keys}
       loading={loading}
       errorKind={errorKind}
+      serviceId={serviceId}
       reveal={reveal}
       setVar={setVar}
       deleteVar={deleteVar}
@@ -97,6 +104,7 @@ export interface EnvVarsEditorCopy {
 
 /** Shared keys-only env-var editor used by services and workspace env groups. */
 export function EnvVarsEditor({
+  serviceId,
   keys,
   loading,
   errorKind,
@@ -106,6 +114,7 @@ export function EnvVarsEditor({
   busy,
   copy,
 }: {
+  serviceId?: string;
   keys: EnvVarKey[];
   loading: boolean;
   errorKind: SensitiveEditorErrorKind | null;
@@ -129,7 +138,17 @@ export function EnvVarsEditor({
         <CardTitle>{copy.title}</CardTitle>
         <CardDescription>{copy.description}</CardDescription>
         <CardAction>
-          <AddVarButton setVar={setVar} disabled={gated || busy} />
+          <div className="flex items-center gap-2">
+            {serviceId ? (
+              <ExportEnvButton
+                serviceId={serviceId}
+                keys={keys}
+                reveal={reveal}
+                disabled={loading || errorKind != null}
+              />
+            ) : null}
+            <AddVarButton setVar={setVar} disabled={gated || busy} />
+          </div>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -173,6 +192,53 @@ export function EnvVarsEditor({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Fetches every value network-only through `reveal` before creating a file.
+ * Promise.all is deliberately fail-closed: one masked/unavailable value means
+ * no download, so the file can never look complete while silently omitting a
+ * secret or substituting a UI mask.
+ */
+export function ExportEnvButton({
+  serviceId,
+  keys,
+  reveal,
+  disabled,
+}: {
+  serviceId: string;
+  keys: EnvVarKey[];
+  reveal: (key: string) => Promise<string>;
+  disabled: boolean;
+}) {
+  const { t } = useTranslations();
+  const [exporting, setExporting] = useState(false);
+
+  async function exportEnvironment() {
+    setExporting(true);
+    try {
+      const values = await Promise.all(
+        keys.map(async ({ key }) => ({ key, value: await reveal(key) })),
+      );
+      downloadEnvFile(`${serviceId}.env`, formatEnvExport(values));
+      toast.success(t("services.envExportSuccess"));
+    } catch {
+      toast.error(t("services.envExportError"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={disabled || exporting}
+      onClick={() => void exportEnvironment()}
+    >
+      <Download /> {t("services.envExport")}
+    </Button>
   );
 }
 

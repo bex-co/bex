@@ -20,9 +20,14 @@ import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resou
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
+import {
+  parseProjectResourceSearch,
+  type ProjectResourceFilterState,
+} from "@/features/projects/lib/resource-filter";
 
 export const Route = createFileRoute("/project/$projectId/")({
   component: ProjectPage,
+  validateSearch: parseProjectResourceSearch,
   head: () => ({
     meta: [{ title: "Project · bex dashboard" }],
   }),
@@ -38,18 +43,38 @@ export const Route = createFileRoute("/project/$projectId/")({
  */
 export function ProjectPage() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { t } = useTranslations();
+  const resourceFilter: ProjectResourceFilterState = {
+    environmentId: search.env ?? null,
+    query: search.q ?? "",
+    kind: search.kind ?? "all",
+  };
+
+  function setResourceFilter(next: ProjectResourceFilterState) {
+    void navigate({
+      search: {
+        env: next.environmentId ?? undefined,
+        q: next.query || undefined,
+        kind: next.kind === "all" ? undefined : next.kind,
+      },
+      replace: true,
+    });
+  }
 
   const { services, refetch: refetchServices } = useServices();
-  const {
-    databases,
-    refetch: refetchDatabases,
-  } = useDatabases();
+  const { databases, refetch: refetchDatabases } = useDatabases();
   const { keyValues, refetch: refetchKeyValues } = useKeyValues();
   const { projects, loading, refetch: refetchProjects } = useProjects();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
 
-  const { groups } = useGroupedResources({ projects, services, databases, keyValues });
+  const { groups } = useGroupedResources({
+    projects,
+    services,
+    databases,
+    keyValues,
+  });
   const project = projects.find((p) => p.id === projectId);
   const group = groups.find((g) => g.id === projectId);
 
@@ -128,6 +153,8 @@ export function ProjectPage() {
                 onRunServiceAction={run}
                 onDatabaseDeleted={refetchAll}
                 onKeyValueDeleted={refetchAll}
+                resourceFilter={resourceFilter}
+                onResourceFilterChange={setResourceFilter}
               />
 
               <section className="space-y-4">

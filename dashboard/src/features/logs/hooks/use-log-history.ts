@@ -47,6 +47,7 @@ function list(value: string): string[] | undefined {
 export function useLogHistory(
   resource: string,
   filters: LogFilters,
+  window?: { startTime: string; endTime: string },
 ): UseLogHistoryResult {
   const { data, loading, error } = useQuery(LogsDocument, {
     variables: {
@@ -58,6 +59,8 @@ export function useLogHistory(
       statusCode: list(filters.statusCode),
       method: list(filters.method),
       path: list(filters.path),
+      startTime: window?.startTime,
+      endTime: window?.endTime,
       limit: HISTORY_LIMIT,
     },
     fetchPolicy: "cache-and-network",

@@ -426,6 +426,22 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Add variable",
     description: "Environment tab button to open the add-variable form",
   },
+  "services.envExport": {
+    message: "Export",
+    description:
+      "Environment tab button that downloads all service variables as dotenv",
+  },
+  "services.envExportSuccess": {
+    message: "Environment exported",
+    description:
+      "Toast after every current environment value was safely exported",
+  },
+  "services.envExportError": {
+    message:
+      "Couldn't export the complete environment. No file was downloaded.",
+    description:
+      "Fail-closed toast when any environment value cannot be revealed",
+  },
   "services.envEdit": {
     message: "Edit",
     description: "Environment row button to edit a variable's value",

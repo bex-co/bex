@@ -61,6 +61,13 @@ import type {
 } from "@/features/services/hooks/use-service-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import type { EnvGroupView } from "@/features/env-groups/types";
+import { Link } from "@tanstack/react-router";
+import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
+import {
+  filterProjectResources,
+  type ProjectResourceFilterState,
+} from "@/features/projects/lib/resource-filter";
 
 export interface EnvironmentCardProps {
   environment: EnvironmentView;
@@ -74,6 +81,9 @@ export interface EnvironmentCardProps {
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
+  envGroups?: EnvGroupView[];
+  resourceFilter?: ProjectResourceFilterState;
+  onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
 }
 
 /**
@@ -92,6 +102,13 @@ export function EnvironmentCard({
   onRunServiceAction,
   onDatabaseDeleted,
   onKeyValueDeleted,
+  envGroups = [],
+  resourceFilter = {
+    environmentId: environment.id,
+    query: "",
+    kind: "all",
+  },
+  onResourceFilterChange = () => undefined,
 }: EnvironmentCardProps) {
   const { t } = useTranslations();
 
@@ -130,6 +147,11 @@ export function EnvironmentCard({
     databases,
     keyValues,
   ]);
+  const linkedEnvGroups = envGroups.filter((group) =>
+    environment.envGroupIds.includes(group.id),
+  );
+  const visible = filterProjectResources(rows, linkedEnvGroups, resourceFilter);
+  const hasMembers = rows.length > 0 || linkedEnvGroups.length > 0;
 
   function openRename() {
     setRenameValue(environment.name);
@@ -165,7 +187,7 @@ export function EnvironmentCard({
           ) : null}
           <span className="text-xs font-normal text-muted-foreground">
             {t("environments.resourceCount", {
-              count: rows.length,
+              count: rows.length + linkedEnvGroups.length,
             })}
           </span>
         </CardTitle>
@@ -208,19 +230,58 @@ export function EnvironmentCard({
           </DropdownMenu>
         </CardAction>
       </CardHeader>
-      <CardContent>
-        {rows.length === 0 ? (
+      <CardContent className="space-y-4">
+        <ProjectResourceFilters
+          environmentName={environment.name}
+          filter={resourceFilter}
+          onChange={(next) =>
+            onResourceFilterChange({ ...next, environmentId: environment.id })
+          }
+        />
+        {!hasMembers ? (
           <p className="text-sm text-muted-foreground">
             {t("environments.cardEmpty")}
           </p>
+        ) : visible.rows.length === 0 && visible.envGroups.length === 0 ? (
+          <div className="py-6 text-center" role="status">
+            <p className="font-medium">{t("projects.noMatchesTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("projects.noMatchesBody")}
+            </p>
+          </div>
         ) : (
-          <ResourceTable
-            rows={rows}
-            servicePending={servicePending}
-            onRunServiceAction={onRunServiceAction}
-            onDatabaseDeleted={onDatabaseDeleted}
-            onKeyValueDeleted={onKeyValueDeleted}
-          />
+          <>
+            {visible.rows.length > 0 ? (
+              <ResourceTable
+                rows={visible.rows}
+                servicePending={servicePending}
+                onRunServiceAction={onRunServiceAction}
+                onDatabaseDeleted={onDatabaseDeleted}
+                onKeyValueDeleted={onKeyValueDeleted}
+              />
+            ) : null}
+            {visible.envGroups.length > 0 ? (
+              <ul
+                className="divide-y rounded-md border"
+                aria-label={t("projects.filterEnvGroups")}
+              >
+                {visible.envGroups.map((group) => (
+                  <li key={group.id}>
+                    <Link
+                      to="/env-groups/$groupId"
+                      params={{ groupId: group.id }}
+                      className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted/30"
+                    >
+                      <span className="font-medium">{group.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t("projects.filterEnvGroups")}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
         )}
       </CardContent>
 

@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@apollo/client/react";
 import {
   Activity,
   AlertCircle,
@@ -12,7 +11,6 @@ import {
   Scale,
   XCircle,
 } from "lucide-react";
-import { ServiceEventsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -35,6 +33,7 @@ import {
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
+import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
   component: ServiceEventsPage,
@@ -164,18 +163,11 @@ function eventIconClass(type: string, status: string): string {
 export function ServiceEventsPage() {
   const { serviceId } = Route.useParams();
   const { t } = useTranslations();
-  const { data, loading, error, refetch } = useQuery(ServiceEventsDocument, {
-    variables: { serviceId, limit: 20 },
-    fetchPolicy: "cache-and-network",
-  });
+  const { events, loading, error, refetch } = useServiceEvents(serviceId, 20);
 
   // A cron_job's first-class run history hangs off the same landing tab.
   const { service } = useServer(serviceId);
 
-  const events = (data?.serviceEvents ?? []).filter(
-    (event): event is NonNullable<typeof event> & { id: string } =>
-      event != null && !!event.id,
-  );
   const finishedDeployIds = new Set(
     events
       .filter((event) => event.type === "deploy_ended")

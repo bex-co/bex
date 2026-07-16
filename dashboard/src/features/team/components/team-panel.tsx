@@ -1,4 +1,5 @@
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Loader2, Search, Users } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -17,6 +18,7 @@ import {
 } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
@@ -49,6 +51,19 @@ export function TeamPanel() {
   const { members, invites, loading, error, canManage, refetch } = useTeam(workspaceId);
   const { changeRole, changing } = useChangeRole(workspaceId ?? "");
   const { removeMember, revokeInvite, removing } = useRemoveMember(workspaceId ?? "");
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filteredMembers = useMemo(
+    () =>
+      normalizedSearch
+        ? members.filter((member) =>
+            [member.email, member.userId, member.subject].some((identity) =>
+              identity.toLocaleLowerCase().includes(normalizedSearch),
+            ),
+          )
+        : members,
+    [members, normalizedSearch],
+  );
 
   const initialLoading =
     (workspaceLoading || loading) && members.length === 0 && !error;
@@ -88,28 +103,57 @@ export function TeamPanel() {
           <PanelTableSkeleton />
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("team.colMember")}</TableHead>
-                  <TableHead>{t("team.colRole")}</TableHead>
-                  <TableHead className="sr-only text-right">actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => (
-                  <MemberRow
-                    key={member.subject}
-                    member={member}
-                    canManage={canManage}
-                    changing={changing === member.subject}
-                    removing={removing === member.subject}
-                    onChangeRole={(subject, role) => void handleChangeRole(subject, role)}
-                    onRemove={(subject) => void handleRemove(subject)}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <div className="relative max-w-sm">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label={t("team.searchLabel")}
+                placeholder={t("team.searchPlaceholder")}
+                className="pl-8"
+              />
+            </div>
+
+            {members.length === 0 ? (
+              <PanelCenteredState
+                icon={<Users />}
+                title={t("team.emptyTitle")}
+                body={t("team.emptyBody")}
+              />
+            ) : filteredMembers.length === 0 ? (
+              <div className="py-8 text-center" role="status">
+                <p className="font-medium">{t("team.noMatchesTitle")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t("team.noMatchesBody")}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("team.colMember")}</TableHead>
+                    <TableHead>{t("team.colRole")}</TableHead>
+                    <TableHead className="sr-only text-right">actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMembers.map((member) => (
+                    <MemberRow
+                      key={member.subject}
+                      member={member}
+                      canManage={canManage}
+                      changing={changing === member.subject}
+                      removing={removing === member.subject}
+                      onChangeRole={(subject, role) =>
+                        void handleChangeRole(subject, role)
+                      }
+                      onRemove={(subject) => void handleRemove(subject)}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
 
             {canManage && invites.length > 0 ? (
               <div className="space-y-2">
@@ -156,4 +200,3 @@ export function TeamPanel() {
     </Card>
   );
 }
-

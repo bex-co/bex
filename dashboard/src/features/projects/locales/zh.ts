@@ -18,6 +18,46 @@ const zhProjects: Record<string, TranslationEntry> = {
     description:
       "Heading above a project page's full resource table, below the environments section",
   },
+  "projects.filterTypeLabel": {
+    message: "资源类型",
+    description: "Accessible label for project environment type filters",
+  },
+  "projects.filterAll": {
+    message: "全部",
+    description: "All project environment resource types",
+  },
+  "projects.filterServices": {
+    message: "服务",
+    description: "Service resource filter",
+  },
+  "projects.filterDatabases": {
+    message: "数据库",
+    description: "Database resource filter",
+  },
+  "projects.filterKeyValues": {
+    message: "键值存储",
+    description: "Key-value resource filter",
+  },
+  "projects.filterEnvGroups": {
+    message: "环境变量组",
+    description: "Environment-group resource filter",
+  },
+  "projects.searchLabel": {
+    message: "搜索 {environment} 中的资源",
+    description: "Accessible project environment resource-search label",
+  },
+  "projects.searchPlaceholder": {
+    message: "搜索 {environment} 中的资源",
+    description: "Project environment resource-search placeholder",
+  },
+  "projects.noMatchesTitle": {
+    message: "没有匹配的资源",
+    description: "Project environment filtered no-results title",
+  },
+  "projects.noMatchesBody": {
+    message: "请尝试其他搜索词或资源类型。",
+    description: "Project environment filtered no-results body",
+  },
   "projects.eyebrow": {
     message: "项目",
     description: "Small uppercase label above a project page's name heading",

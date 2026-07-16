@@ -18,6 +18,46 @@ const enProjects: Record<string, TranslationEntry> = {
     description:
       "Heading above a project page's full resource table, below the environments section",
   },
+  "projects.filterTypeLabel": {
+    message: "Resource type",
+    description: "Accessible label for project environment type filters",
+  },
+  "projects.filterAll": {
+    message: "All",
+    description: "All project environment resource types",
+  },
+  "projects.filterServices": {
+    message: "Services",
+    description: "Service resource filter",
+  },
+  "projects.filterDatabases": {
+    message: "Databases",
+    description: "Database resource filter",
+  },
+  "projects.filterKeyValues": {
+    message: "Key Values",
+    description: "Key-value resource filter",
+  },
+  "projects.filterEnvGroups": {
+    message: "Env Groups",
+    description: "Environment-group resource filter",
+  },
+  "projects.searchLabel": {
+    message: "Search resources in {environment}",
+    description: "Accessible project environment resource-search label",
+  },
+  "projects.searchPlaceholder": {
+    message: "Search resources in {environment}",
+    description: "Project environment resource-search placeholder",
+  },
+  "projects.noMatchesTitle": {
+    message: "No matching resources",
+    description: "Project environment filtered no-results title",
+  },
+  "projects.noMatchesBody": {
+    message: "Try a different search or resource type.",
+    description: "Project environment filtered no-results body",
+  },
   "projects.eyebrow": {
     message: "Project",
     description: "Small uppercase label above a project page's name heading",

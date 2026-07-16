@@ -152,10 +152,11 @@ describe("service-detail layout routing", () => {
     expect(scrollContainer).toContainElement(search);
   });
 
-  it("navigates the Render tab set, with Events first and no Overview tab", async () => {
+  it("keeps Events directly reachable in the Render tab set, with no Overview tab", async () => {
     renderAt("/services/app/logs");
 
-    // Events leads the nav (the service root redirects here — Render's shape)
+    // Events remains a direct sibling even though the service root now lands
+    // on Deploys (pinned by service-root-redirect.test.ts).
     const tabs = await screen.findAllByRole("link");
     const names = tabs.map((el) => el.textContent);
     expect(names).not.toContain("Overview");

@@ -11,6 +11,12 @@ import { Switch } from "@/common/components/ui/switch.tsx";
 import { Label } from "@/common/components/ui/label.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
+import { Button } from "@/common/components/ui/button";
+import {
+  DEFAULT_RANGE_PRESET,
+  RANGE_PRESETS,
+  type RangePreset,
+} from "@/features/metrics/lib/range";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
 import {
   LOG_LABEL_INSTANCE,
@@ -74,6 +80,8 @@ interface LogFilterBarProps {
    * so the toggle is disabled with a hint (docs/ADR010-observability.md).
    */
   liveSupported: boolean;
+  range?: RangePreset;
+  onRangeChange?: (range: RangePreset) => void;
 }
 
 export function LogFilterBar({
@@ -83,6 +91,8 @@ export function LogFilterBar({
   live,
   onLiveChange,
   liveSupported,
+  range = DEFAULT_RANGE_PRESET,
+  onRangeChange = () => undefined,
 }: LogFilterBarProps) {
   const { t } = useTranslations();
 
@@ -107,6 +117,18 @@ export function LogFilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap gap-1" aria-label={t("logs.rangeLabel")}>
+        {RANGE_PRESETS.map((preset) => (
+          <Button
+            key={preset.id}
+            size="sm"
+            variant={preset.id === range.id ? "default" : "outline"}
+            onClick={() => onRangeChange(preset)}
+          >
+            {preset.id}
+          </Button>
+        ))}
+      </div>
       <Select
         value={filters.type}
         onValueChange={(v) => onChange({ type: v as LogTypeFilter })}

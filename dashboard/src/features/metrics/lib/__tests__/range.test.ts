@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { RANGE_PRESETS, DEFAULT_RANGE_PRESET, resolveRange } from "../range";
+import {
+  RANGE_PRESETS,
+  DEFAULT_RANGE_PRESET,
+  parseRangePreset,
+  resolveRange,
+} from "../range";
 
 describe("RANGE_PRESETS", () => {
   it("offers Render's preset ladder in ascending span order", () => {
@@ -28,6 +33,12 @@ describe("RANGE_PRESETS", () => {
 
   it("defaults to the 1h preset", () => {
     expect(DEFAULT_RANGE_PRESET.id).toBe("1h");
+  });
+
+  it("parses supported URL values and rejects malformed ones", () => {
+    expect(parseRangePreset("6h")?.id).toBe("6h");
+    expect(parseRangePreset("30d")).toBeNull();
+    expect(parseRangePreset(["1h"])).toBeNull();
   });
 });
 

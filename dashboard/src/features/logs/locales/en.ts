@@ -1,6 +1,16 @@
 import type { TranslationEntry } from "@/i18n";
 
 const enLogs: Record<string, TranslationEntry> = {
+  "logs.rangeLabel": {
+    message: "Log history range",
+    description: "Accessible label for the relative log-history range controls",
+  },
+  "logs.rangeHistoryNote": {
+    message:
+      "The range limits history. Live mode appends new lines as they arrive.",
+    description:
+      "Explains how the bounded history window interacts with live tail",
+  },
   "logs.typeLabel": {
     message: "Log type",
     description: "Accessible label for the log-type filter dropdown",

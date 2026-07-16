@@ -24,6 +24,13 @@ vi.mock("@/features/environments/hooks/use-set-environment-acl", () => ({
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
   ManageResourcesDialog: () => null,
 }));
+vi.mock("@/features/projects/components/resource-table", () => ({
+  ResourceTable: ({ rows }: { rows: Array<{ id: string; name: string }> }) => (
+    <div data-testid="resource-table">
+      {rows.map((row) => row.name).join(",")}
+    </div>
+  ),
+}));
 
 // An environment with no resolvable resources renders the empty state instead
 // of the shared ResourceTable (which pulls in service row-actions + Apollo).
@@ -42,7 +49,9 @@ const env: EnvironmentView = {
   ipAllowList: [],
 };
 
-function renderCard() {
+function renderCard(
+  props: Partial<React.ComponentProps<typeof EnvironmentCard>> = {},
+) {
   return render(
     <EnvironmentCard
       environment={env}
@@ -53,6 +62,7 @@ function renderCard() {
       onRunServiceAction={vi.fn()}
       onDatabaseDeleted={vi.fn()}
       onKeyValueDeleted={vi.fn()}
+      {...props}
     />,
   );
 }
@@ -73,6 +83,76 @@ describe("EnvironmentCard", () => {
     expect(
       screen.getByText("No resources in this environment yet."),
     ).toBeInTheDocument();
+  });
+
+  it("keeps search and type state scoped to this environment", async () => {
+    const onResourceFilterChange = vi.fn();
+    const user = userEvent.setup();
+    renderCard({
+      services: [
+        {
+          id: "srv-api",
+          name: "Public API",
+          suspended: false,
+          phase: "Running",
+          url: "",
+          createdAt: null,
+          replicas: 1,
+          revision: "r1",
+        },
+      ],
+      environment: { ...env, serviceIds: ["srv-api"] },
+      resourceFilter: {
+        environmentId: "env-1",
+        query: "",
+        kind: "all",
+      },
+      onResourceFilterChange,
+    });
+
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search resources in staging" }),
+      "a",
+    );
+    expect(onResourceFilterChange).toHaveBeenLastCalledWith({
+      environmentId: "env-1",
+      query: "a",
+      kind: "all",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Env Groups" }));
+    expect(onResourceFilterChange).toHaveBeenLastCalledWith({
+      environmentId: "env-1",
+      query: "",
+      kind: "envgroups",
+    });
+  });
+
+  it("renders an accessible no-match state for a selected filter", () => {
+    renderCard({
+      services: [
+        {
+          id: "srv-api",
+          name: "Public API",
+          suspended: false,
+          phase: "Running",
+          url: "",
+          createdAt: null,
+          replicas: 1,
+          revision: "r1",
+        },
+      ],
+      environment: { ...env, serviceIds: ["srv-api"] },
+      resourceFilter: {
+        environmentId: "env-1",
+        query: "missing",
+        kind: "services",
+      },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "No matching resources",
+    );
   });
 
   it("renames via the overflow menu", async () => {
