@@ -43,6 +43,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [ ] **m26** — Audit-log Render-shape verification, evidence-first (7 tasks) ← from `/pm-brainstorm` round 13, 2026-07-15 (parity-ledger mining: ADR018:134 is the only substantive ◐ with no owner — "schema wasn't resolvable from public docs at authoring time"; the pinned OpenAPI, CLI source, and real-account capture workflows postdate that assessment)
 - [ ] **m27** — Official Render CLI browser login via Hydra device flow (9 tasks) ← user request 2026-07-15 + w9/m2 auth-gap investigation; needs m9 + m17
 - [ ] **m28** — Environment inbound-IP rules: real enforcement semantics (8 tasks) ← promotes `018` (filed by w5/m31's closeout), `/pm-brainstorm` round 14, 2026-07-15; Render applies environment rules to eligible public web services/static sites + datastores, composes workspace/env/service layers, and treats empty as deny-all (seeded `0.0.0.0/0`) — bex fans only to member datastores and treats empty as open; coordinate with m24
+- [ ] **m29** — Retire the ipAllowList legacy-string shim: one-shot CR normalization + schema tightening (7 tasks) ← promotes `019` (filed by w4/m24's simplify pass) via `/pm-brainstorm` round 15, 2026-07-15; normalize bare-CIDR strings to `{cidr}` (RC5 backfill precedent), verify the fleet clean, then restore the structural CRD schema and demote the union decoder — normalize first, tighten a deploy later
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
@@ -50,7 +51,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `018.md` — align Environment inbound-IP enforcement/default semantics with Render (eligible public services + datastores, layered rules, empty means deny-all) ← found during `w5/m31` parity closeout 2026-07-15
+_(`018.md` promoted to **m28** and `019.md` promoted to **m29** — notes moved to `done/` 2026-07-15.)_
 
 > `013.md` (audit-log `direction`), `014.md` (`suspenders` array), `015.md` (fallback-loop audit serialization), and `017.md` (Environment `ipAllowList` wire shape) were grouped into **m23** 2026-07-15 and the implementation shipped the same day (a parallel session worked the notes directly; the two closures merged — m23's t001–t005 + t007 are done, see each note's resolution in `done/`): `013` implemented Render's `backward`/`forward` enum end-to-end (mirrored keyset cursor, named 400 on unknown values, real-Postgres-verified); `014` emits `["user"]`/`[]` across REST/GraphQL/MCP via one derivation helper; `015` resolved as its shape 2 — per-candidate denied audits capped at `core.maxFallbackCandidateAudits` (3) + one aggregate denial row against the caller's workspace, bounding both worst-case latency and the one-request→N-inserts amplification while keeping recording synchronous; `017` gave the standard environments POST/PATCH Render's full body (`{cidrBlock, description}` objects + `protectedStatus`/`networkIsolationEnabled`, per-field-partial PATCH, no orphan row on a 400) — notes moved to `done/`.
 
