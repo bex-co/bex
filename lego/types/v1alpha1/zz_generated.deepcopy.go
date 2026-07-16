@@ -139,6 +139,13 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.HostRedirects != nil {
+		in, out := &in.HostRedirects, &out.HostRedirects
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.IPAllowList != nil {
 		in, out := &in.IPAllowList, &out.IPAllowList
 		*out = make([]string, len(*in))

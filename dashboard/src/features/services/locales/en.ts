@@ -1165,13 +1165,19 @@ const enServices: Record<string, TranslationEntry> = {
       "Create this record at your DNS provider to finish connecting your domain.",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
-  "services.domainPairedWith": {
-    message: "Paired with {sibling} — bex added it automatically",
+  "services.domainRedirectsTo": {
+    message: "Redirects to {canonical}",
     description:
-      "Note under a domain row's name when bex auto-added its www<->apex sibling (w6/m23)",
+      "Note under an auto-paired sibling domain showing its canonical redirect target",
+  },
+  "services.domainRedirectsHere": {
+    message: "{sibling} redirects here",
+    description:
+      "Note under a canonical domain showing which auto-paired sibling redirects to it",
   },
   "services.domainPairedDnsTitle": {
-    message: "{sibling} was added automatically — set up its DNS too",
+    message:
+      "{sibling} was added automatically and redirects to {canonical} — set up its DNS too",
     description:
       "Heading of the second DNS-record block in the add dialog when the add auto-paired a www<->apex sibling (w6/m23)",
   },

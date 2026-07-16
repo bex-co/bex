@@ -1,6 +1,50 @@
 # Capture — Render's www↔apex auto-pairing on custom-domain add/delete (w6/m23 t001)
 
-**Captured:** 2026-07-14 · **Method:** docs-fallback (no live Render login available; grounded in Render's public docs — `render.com/docs/custom-domains` — plus the Render community/discourse thread on domain redirects). Same method as `docs/render-artifacts/custom-domain-dns-instructions.md` (w5/m10), which already flagged this exact gap: "Adding a `www` subdomain auto-adds the corresponding root domain and redirects root → `www`. Adding a root domain auto-adds `www` and redirects `www` → root. (bex does **not** replicate this auto-redirect today — out of scope; noted so the parity ledger stays honest.)" This capture pins the behavior precisely enough to close that gap.
+**Captured:** 2026-07-14 (pairing semantics from Render's public docs), extended 2026-07-15 with live HTTPS probes against public Render-routed custom domains. The live probes pin the previously unresolved status/path/query/TLS behavior in both directions without requiring access to a tenant's Render account.
+
+## Live redirect evidence (2026-07-15)
+
+Both probes used a deliberately nonexistent path and a percent-encoded query so the edge redirect could not be confused with application routing. `curl` performed normal certificate verification (no `-k`).
+
+### Apex canonical: `www` redirects to apex
+
+`www.autocentriromanord.com` is a live CNAME to `base44.onrender.com`; the apex is the serving canonical host.
+
+```console
+$ dig +short CNAME www.autocentriromanord.com
+base44.onrender.com.
+
+$ curl -sS -o /dev/null -D - 'https://www.autocentriromanord.com/m30-probe/path?alpha=one%20two&beta=3'
+HTTP/2 301
+location: https://autocentriromanord.com/m30-probe/path?alpha=one%20two&beta=3
+server: cloudflare
+```
+
+The redirecting host's certificate was valid and hostname-specific: subject/SAN `www.autocentriromanord.com`, Google Trust Services `WE1`, valid 2026-06-18 through 2026-09-16.
+
+### `www` canonical: apex redirects to `www`
+
+`3sigma.it` and `www.3sigma.it` both resolve to Render's documented custom-domain load-balancer address `216.24.57.1`; the canonical response carries Render's `rndr-id` header.
+
+```console
+$ curl -sS -o /dev/null -D - 'https://3sigma.it/m30-probe/path?alpha=one%20two&beta=3'
+HTTP/2 301
+location: https://www.3sigma.it/m30-probe/path?alpha=one%20two&beta=3
+server: cloudflare
+
+$ curl -sS -o /dev/null -D - 'https://www.3sigma.it/m30-probe/path?alpha=one%20two&beta=3'
+HTTP/2 404
+rndr-id: a98c968b-b2e7-4535
+server: cloudflare
+```
+
+The canonical returned 404 only because the probe path was intentionally nonexistent. The redirecting apex's certificate was valid and hostname-specific: subject/SAN `3sigma.it`, Google Trust Services `WE1`, valid 2026-06-17 through 2026-09-15.
+
+### Pinned redirect contract
+
+- Status is **301 Moved Permanently** in both directions.
+- `Location` switches only the hostname, forces `https`, and preserves the path and query byte-for-byte (including percent encoding and parameter order).
+- The redirecting sibling terminates valid TLS before returning the 301; it therefore needs its own certificate just like the canonical host.
 
 ## What Render does
 
@@ -10,7 +54,7 @@ Render's docs: "If you add a root domain (e.g., `example.org`), Render automatic
 
 - `example.com` is added as given (serves the app).
 - `www.example.com` is **auto-added** as a second custom domain on the same service.
-- `www.example.com` **redirects to** `example.com` (301/308, not a second independently-serving host).
+- `www.example.com` **redirects to** `example.com` with 301, preserving path and query; it is not a second independently-serving host.
 
 ### Add www (`www.example.com`)
 
@@ -28,11 +72,11 @@ Render's public docs do not say what happens when a tenant deletes one half of a
 
 ### Non-www subdomains — no pairing
 
-The docs only ever describe www ⇄ apex pairing. A multi-label host like `app.example.com` gets no auto-added sibling and no redirect — it's a plain independent custom domain, same as any subdomain. This matches the existing PSL-adjacent framing in `lego/backend/internal/apps/domains.go`'s `domainType` heuristic (soon to be replaced by the real eTLD+1 check, t002).
+The docs only ever describe www ⇄ apex pairing. A multi-label host like `app.example.com` gets no auto-added sibling and no redirect — it's a plain independent custom domain, same as any subdomain. bex mirrors this using its public-suffix-based registrable-domain check.
 
 ### Public-suffix apexes (`example.co.uk`)
 
-Not explicitly demonstrated in Render's docs, but implied by the general behavior: Render must resolve the _registrable domain_ (eTLD+1), not just "the two-label form," to correctly pair `www.example.co.uk` ⇄ `example.co.uk` rather than misfiring on `co.uk` itself. This is the reason t002 exists — `strings.Count(host, ".") == 1` (bex's current `domainType` heuristic) gets `example.co.uk` wrong (3 labels, would classify as "subdomain," and would compute a bogus www-sibling of `www.example.co.uk`).
+Not explicitly demonstrated in Render's docs, but implied by the general behavior: Render must resolve the _registrable domain_ (eTLD+1), not just "the two-label form," to correctly pair `www.example.co.uk` ⇄ `example.co.uk` rather than misfiring on `co.uk` itself. bex's w6/m23 implementation uses `golang.org/x/net/publicsuffix` for the same reason.
 
 ## What bex will mirror vs. diverge on
 
@@ -40,9 +84,9 @@ Not explicitly demonstrated in Render's docs, but implied by the general behavio
 | --- | --- | --- |
 | Add apex → auto-add www | ✅ auto-added, redirects to apex | ✅ mirrored: auto-add `www.<host>` as a second entry in `spec.hosts[]` |
 | Add www → auto-add apex | ✅ auto-added, redirects to www | ✅ mirrored: auto-add the apex as a second entry in `spec.hosts[]` |
-| Sibling redirect (3xx) | ✅ Render's edge issues the redirect | ✖ **diverges**: bex has no per-host redirect mechanism today (no Ingress redirect rule engine) — the sibling is auto-added and **served identically** to the canonical host (both resolve to the same App), not redirected. Noted as a follow-up (a real redirect requires an Ingress-level rewrite bex doesn't have yet); the DoD's "auto-added domain or redirect — whichever the evidence shows" is satisfied by the auto-add half, honestly, without faking a redirect bex can't yet perform. |
-| Re-adding the already-auto-added sibling | (not documented; Render's UI shows it as already present) | idempotent no-op — same as any duplicate `AddDomain` (t003) |
-| Delete one half of a pair | undocumented | **bex-defined:** deleting either half removes only that host from `spec.hosts[]`; the sibling is left untouched (it was independently added to `spec.hosts[]` at pairing time, so it's a first-class host, not a synthetic derived record). A tenant who wants both gone deletes both. This is the simplest, most predictable rule available given Render gives no evidence either way — and matches bex's existing idempotent, no-hidden-state `DeleteDomain` (`lego/backend/internal/apps/domains.go`). |
+| Sibling redirect (3xx) | ✅ 301; HTTPS; path/query preserved | ✅ mirrored by w6/m30: a per-sibling Traefik `RedirectRegex` middleware + dedicated TLS-bearing Ingress redirects to the explicitly added canonical host |
+| Re-adding the already-auto-added sibling | (not documented; Render's UI shows it as already present) | makes the sibling explicit: clears its redirect so both hosts serve directly, without adding a duplicate |
+| Delete one half of a pair | undocumented | **bex-defined:** deletes only the named host; the sibling remains. If the deleted host was the redirect target, the surviving sibling becomes directly served so no redirect can dangle. |
 | Non-www subdomain pairing (`app.example.com`) | none | none — mirrored (no sibling, no redirect) |
 | Public-suffix apex (`example.co.uk`) | (inferred) correctly paired via eTLD+1 | mirrored via `golang.org/x/net/publicsuffix` (t002) |
 | Cross-app collision guard covers the sibling | (Render's collision guard is unspecified but the pairing implies the sibling is "claimed" the moment the pair is created) | ✅ mirrored: registering `www.foo.com` on app A reserves `foo.com` against app B too (t004) — closes the blind spot documented in `docs/ADR005-custom-domain.md` § www↔apex sibling pairing and the ADR018 domains row |

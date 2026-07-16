@@ -119,8 +119,8 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 		t.Fatalf("Ingress not created: %v", err)
 	}
 	wantAnnotation := fmt.Sprintf("default-ws-acl-ip-allow@kubernetescrd")
-	if got := ing.Annotations["traefik.io/router.middlewares"]; got != wantAnnotation {
-		t.Fatalf("Ingress annotation traefik.io/router.middlewares = %q, want %q", got, wantAnnotation)
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantAnnotation {
+		t.Fatalf("Ingress annotation %s = %q, want %q", traefikRouterMiddlewaresAnnotation, got, wantAnnotation)
 	}
 
 	// --- clear the allowlist ---
@@ -140,7 +140,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ingress must survive after allowlist is cleared: %v", err)
 	}
-	if _, has := ing.Annotations["traefik.io/router.middlewares"]; has {
+	if _, has := ing.Annotations[traefikRouterMiddlewaresAnnotation]; has {
 		t.Fatalf("Ingress must lose the middleware annotation after allowlist is cleared: %v", ing.Annotations)
 	}
 }

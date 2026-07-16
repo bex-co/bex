@@ -205,11 +205,12 @@ type Deploy struct {
 // Verification + cert status are the operator's/cert-manager's concern (read
 // from the cluster), not stored here.
 type Domain struct {
-	ID        string    `json:"id"`
-	AppID     string    `json:"appId"`
-	Host      string    `json:"host"`
-	Primary   bool      `json:"primary"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID              string    `json:"id"`
+	AppID           string    `json:"appId"`
+	Host            string    `json:"host"`
+	Primary         bool      `json:"primary"`
+	RedirectForName string    `json:"redirectForName,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
 
 // DesiredApp is an apps row joined with everything projection needs: the
@@ -217,8 +218,10 @@ type Domain struct {
 // primary first.
 type DesiredApp struct {
 	App
-	TenantName string
-	Hosts      []string
+	TenantName    string
+	PrimaryHost   string
+	Hosts         []string
+	HostRedirects map[string]string
 }
 
 // Store is the persistence boundary. The API writes through it, the reconciler
@@ -713,16 +716,29 @@ func (s *PGStore) DeleteDomain(ctx context.Context, appID, host string) error {
 	return nil
 }
 
-// AddDomain appends a non-primary domain row for apps.IntentStore. host is
-// globally UNIQUE, so a conflict is idempotent (silently ignored) only when THIS
-// app already owns the row; a conflict from a *different* app owning the host is
-// a real cross-app collision and surfaces as ErrConflict (Render's "already
-// exists on another site"), not swallowed.
-func (s *PGStore) AddDomain(ctx context.Context, appID, host string) error {
-	_, err := s.CreateDomain(ctx, appID, host, false)
-	if err != nil && errors.Is(err, ErrConflict) {
+// AddDomain appends or updates a non-primary domain row for apps.IntentStore.
+// Re-adding a host this app already owns updates redirect_for_name (used when an
+// auto-paired sibling becomes explicit); another app owning it is a real
+// cross-app conflict.
+func (s *PGStore) AddDomain(ctx context.Context, appID, host, redirectForName string) error {
+	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, RedirectForName: redirectForName}
+	var redirect any
+	if redirectForName != "" {
+		redirect = redirectForName
+	}
+	_, err := s.Pool.Exec(ctx,
+		`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name)
+		 VALUES ($1, $2, $3, false, $4)`, d.ID, appID, host, redirect)
+	if err == nil {
+		return nil
+	}
+	err = classify("domain", err)
+	if errors.Is(err, ErrConflict) {
 		if owner, ok, e := s.domainOwner(ctx, host); e == nil && ok && owner == appID {
-			return nil // this app already registered it — idempotent
+			_, e = s.Pool.Exec(ctx,
+				`UPDATE domains SET redirect_for_name = $3 WHERE app_id = $1 AND host = $2`,
+				appID, host, redirect)
+			return e
 		}
 		return ErrConflict
 	}
@@ -776,21 +792,33 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	// Attach domains, primary first (the ORDER BY makes the primary land at
-	// Hosts[0] — projection's spec.host).
+	// Attach the primary domain to PrimaryHost (projection's spec.host), keep
+	// non-primary domains in Hosts, and carry redirect metadata for either kind.
 	drows, err := s.Pool.Query(ctx,
-		`SELECT app_id, host FROM domains ORDER BY is_primary DESC, created_at`)
+		`SELECT app_id, host, is_primary, COALESCE(redirect_for_name, '')
+		 FROM domains ORDER BY is_primary DESC, created_at`)
 	if err != nil {
 		return nil, err
 	}
 	defer drows.Close()
 	for drows.Next() {
-		var appID, host string
-		if err := drows.Scan(&appID, &host); err != nil {
+		var appID, host, redirectForName string
+		var primary bool
+		if err := drows.Scan(&appID, &host, &primary, &redirectForName); err != nil {
 			return nil, err
 		}
 		if i, ok := index[appID]; ok {
-			out[i].Hosts = append(out[i].Hosts, host)
+			if primary {
+				out[i].PrimaryHost = host
+			} else {
+				out[i].Hosts = append(out[i].Hosts, host)
+			}
+			if redirectForName != "" {
+				if out[i].HostRedirects == nil {
+					out[i].HostRedirects = map[string]string{}
+				}
+				out[i].HostRedirects[host] = redirectForName
+			}
 		}
 	}
 	return out, drows.Err()

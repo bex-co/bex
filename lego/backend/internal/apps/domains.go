@@ -38,6 +38,7 @@ type DomainView struct {
 	DomainType         string // "apex" or "subdomain" (Render's enum)
 	VerificationStatus string // "pending" or "verified" (TLS cert issued?)
 	ServerStatus       string // "active" or "pending"
+	RedirectForName    string // canonical host for an auto-paired sibling; empty when served directly
 	// DNSRecord is the record the tenant must create at their registrar to point
 	// this domain at the service (Render's post-add DNS instructions, w5/m10).
 	DNSRecord DNSRecordView
@@ -202,6 +203,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		DomainType:         dtype,
 		VerificationStatus: vStatus,
 		ServerStatus:       sStatus,
+		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 	}
 }
@@ -316,26 +318,23 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 // Render's capture documents (docs/render-artifacts/custom-domain-pairing.md,
 // w6/m23 t001): adding `foo.com` also adds `www.foo.com`, and vice versa — one
 // hop only, so the sibling add never re-pairs. Pairing is attempted only when
-// the primary host was newly added (addOne's `added` result) — re-adding an
-// already-registered host is a pure no-op and never resurrects a sibling the
-// tenant deliberately deleted (docs/render-artifacts/custom-domain-pairing.md's
-// delete semantics: each half is independent once added). Idempotent — returns
-// the existing view if the hostname is already registered on this App (that
-// includes a host that was itself auto-added as someone else's sibling — it's a
-// first-class spec.hosts[] entry once added, indistinguishable from an
-// explicitly-added one). Rejects a hostname that is platform-reserved
+// the primary host was newly added (addOne's `added` result), so re-adding a
+// directly served host never resurrects a sibling the tenant deliberately
+// deleted. Re-adding an auto-created sibling explicitly clears its redirect and
+// makes both halves directly served without creating a duplicate. Rejects a
+// hostname that is platform-reserved
 // (core.ErrBadRequest) or already registered — directly or via its sibling —
 // on another App (core.ErrConflict, Render's "already in use"). The sibling add
 // is best-effort: a reserved or (defensively, given the symmetric guard in
 // hostClaimedElsewhere) elsewhere-claimed sibling is skipped silently rather
 // than failing the caller's own successful add.
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	view, added, err := s.addOne(ctx, appName, hostname)
+	view, added, err := s.addOne(ctx, appName, hostname, "")
 	if err != nil || !added {
 		return view, err
 	}
 	if sib := wwwSibling(hostname); sib != "" {
-		_, _, _ = s.addOne(ctx, appName, sib)
+		_, _, _ = s.addOne(ctx, appName, sib, strings.ToLower(hostname))
 	}
 	return view, nil
 }
@@ -346,7 +345,7 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 // for the idempotent already-present path), so AddDomain knows whether pairing
 // applies. For store-managed Apps the row is written first (same rationale as
 // Suspend).
-func (s *Service) addOne(ctx context.Context, appName, hostname string) (view DomainView, added bool, err error) {
+func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName string) (view DomainView, added bool, err error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, false, err
@@ -355,9 +354,26 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 		return DomainView{}, false, fmt.Errorf("%w: hostname is required", core.ErrBadRequest)
 	}
 	hostname = strings.ToLower(hostname)
+	redirectForName = strings.ToLower(redirectForName)
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
-			return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil // already present
+			if app.Spec.HostRedirects[hostname] == redirectForName {
+				return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
+			}
+			if s.Store != nil {
+				if id := managedAppID(app); id != "" {
+					if err := s.Store.AddDomain(ctx, id, hostname, redirectForName); err != nil {
+						return DomainView{}, false, fmt.Errorf("update source of truth: %w", err)
+					}
+				}
+			}
+			base := client.MergeFrom(app.DeepCopy())
+			setHostRedirect(app, hostname, redirectForName)
+			resourcemeta.Touch(app, s.Now())
+			if err := s.Client.Patch(ctx, app, base); err != nil {
+				return DomainView{}, false, err
+			}
+			return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
 		}
 	}
 	if s.reservedHost(appName, hostname) {
@@ -370,7 +386,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 	}
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
-			if err := s.Store.AddDomain(ctx, id, hostname); err != nil {
+			if err := s.Store.AddDomain(ctx, id, hostname, redirectForName); err != nil {
 				if errors.Is(err, store.ErrConflict) { // lost a race to another App's add
 					return DomainView{}, false, errDomainInUse()
 				}
@@ -380,6 +396,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = append(app.Spec.Hosts, hostname)
+	setHostRedirect(app, hostname, redirectForName)
 	resourcemeta.Touch(app, s.Now())
 	if err := s.Client.Patch(ctx, app, base); err != nil {
 		return DomainView{}, false, err
@@ -387,16 +404,32 @@ func (s *Service) addOne(ctx context.Context, appName, hostname string) (view Do
 	return s.domainView(ctx, app, hostname, s.platformHost(app)), true, nil
 }
 
+// setHostRedirect updates one source->canonical mapping and keeps the empty
+// representation nil. Returning to nil avoids leaving an empty object in the
+// CR after an auto-paired sibling is explicitly claimed or deleted.
+func setHostRedirect(app *appv1alpha1.App, host, target string) {
+	if target == "" {
+		delete(app.Spec.HostRedirects, host)
+		if len(app.Spec.HostRedirects) == 0 {
+			app.Spec.HostRedirects = nil
+		}
+		return
+	}
+	if app.Spec.HostRedirects == nil {
+		app.Spec.HostRedirects = map[string]string{}
+	}
+	app.Spec.HostRedirects[host] = target
+}
+
 // DeleteDomain removes hostname from App.spec.hosts[]. Idempotent — removing a
 // hostname not in spec.hosts[] is a no-op. For store-managed Apps the row is
 // deleted first (same row-first rationale as the other intent verbs).
 //
-// Deleting one half of an auto-paired www<->apex sibling (AddDomain) leaves the
-// other half untouched: Render's docs don't specify sibling-delete semantics
-// (docs/render-artifacts/custom-domain-pairing.md, w6/m23 t001), so bex defines
-// its own — a paired sibling became a first-class spec.hosts[] entry at add
-// time, indistinguishable from an explicitly-added one, and deletion only ever
-// acts on the single hostname named. A tenant who wants both gone deletes both.
+// Deleting one half of an auto-paired www<->apex sibling leaves the other half
+// in spec.hosts[]. If the deleted host was the canonical redirect target, the
+// surviving sibling's redirect is cleared so it serves directly rather than
+// dangling. Render does not document pair-delete semantics; this is bex's
+// explicit per-host rule.
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
 	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
 	if err != nil {
@@ -413,6 +446,13 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	}
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
+			for source, target := range app.Spec.HostRedirects {
+				if target == hostname {
+					if err := s.Store.AddDomain(ctx, id, source, ""); err != nil {
+						return fmt.Errorf("clear dependent redirect in source of truth: %w", err)
+					}
+				}
+			}
 			if err := s.Store.RemoveDomain(ctx, id, hostname); err != nil {
 				return fmt.Errorf("update source of truth: %w", err)
 			}
@@ -420,6 +460,12 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	}
 	base := client.MergeFrom(app.DeepCopy())
 	app.Spec.Hosts = updated
+	setHostRedirect(app, hostname, "")
+	for source, target := range app.Spec.HostRedirects {
+		if target == hostname {
+			setHostRedirect(app, source, "")
+		}
+	}
 	resourcemeta.Touch(app, s.Now())
 	return s.Client.Patch(ctx, app, base)
 }
@@ -427,18 +473,17 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 // --- Render wire types ---
 
 // renderCustomDomain mirrors components.schemas.customDomain from Render's
-// public OpenAPI spec (fields bex has real equivalents for). publicSuffix and
-// redirectForName are omitted rather than faked: bex now computes the same PSL
-// data internally (registrableDomain, w6/m23 t002) to drive sibling pairing, but
-// has no redirect mechanism to report a redirect target through, so exposing
-// these two Render-specific wire fields would still be dishonest — a safe
-// superset either way.
+// public OpenAPI spec (fields bex has real equivalents for). redirectForName is
+// Render's spelling for an auto-paired sibling's canonical target; omitempty
+// keeps directly served hosts byte-compatible. publicSuffix remains omitted:
+// bex computes it internally but has no tenant-facing need to duplicate it.
 type renderCustomDomain struct {
 	ID                 string `json:"id"`   // hostname used as opaque id (Render ids are opaque)
 	Name               string `json:"name"` // the FQDN
 	DomainType         string `json:"domainType"`
 	VerificationStatus string `json:"verificationStatus"`
 	ServerStatus       string `json:"serverStatus"`
+	RedirectForName    string `json:"redirectForName,omitempty"`
 	// DNSRecord is a bex extension (no Render REST equivalent — Render surfaces the
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
@@ -465,6 +510,7 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 		DomainType:         d.DomainType,
 		VerificationStatus: d.VerificationStatus,
 		ServerStatus:       d.ServerStatus,
+		RedirectForName:    d.RedirectForName,
 		DNSRecord: renderDNSRecord{
 			Type:  d.DNSRecord.Type,
 			Name:  d.DNSRecord.Name,

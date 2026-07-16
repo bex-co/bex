@@ -68,7 +68,9 @@ func TestListDomainsEmpty(t *testing.T) {
 }
 
 func TestListDomainsReturnsHosts(t *testing.T) {
-	svc, _ := newService(nil, appWithHosts("web", "www.example.com", "api.example.com"))
+	app := appWithHosts("web", "www.example.com", "api.example.com")
+	app.Spec.HostRedirects = map[string]string{"www.example.com": "example.com"}
+	svc, _ := newService(nil, app)
 	domains, err := svc.ListDomains(context.Background(), "web")
 	if err != nil {
 		t.Fatalf("ListDomains: %v", err)
@@ -78,6 +80,9 @@ func TestListDomainsReturnsHosts(t *testing.T) {
 	}
 	if domains[0].Name != "www.example.com" || domains[1].Name != "api.example.com" {
 		t.Errorf("domain names wrong: %v", domains)
+	}
+	if domains[0].RedirectForName != "example.com" || domains[1].RedirectForName != "" {
+		t.Errorf("redirect targets wrong: %v", domains)
 	}
 }
 
@@ -223,6 +228,9 @@ func TestAddDomainAutoPairsWwwSibling(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "foo.com" || got[1] != "www.foo.com" {
 		t.Errorf("spec.hosts = %v, want [foo.com www.foo.com]", got)
 	}
+	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 1 || got["www.foo.com"] != "foo.com" {
+		t.Errorf("spec.hostRedirects = %v, want www.foo.com -> foo.com", got)
+	}
 }
 
 // TestAddDomainNormalizesCaseBeforePairing: a mixed-case add is lowercased
@@ -248,12 +256,15 @@ func TestAddDomainAutoPairsApexSibling(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 || got[0] != "www.foo.com" || got[1] != "foo.com" {
 		t.Errorf("spec.hosts = %v, want [www.foo.com foo.com]", got)
 	}
+	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 1 || got["foo.com"] != "www.foo.com" {
+		t.Errorf("spec.hostRedirects = %v, want foo.com -> www.foo.com", got)
+	}
 }
 
-// TestAddDomainReAddingPairedSiblingIsIdempotent: once a pair exists, adding
-// either half again — including the auto-added one directly — is a no-op, not
-// a duplicate or a conflict against its own sibling.
-func TestAddDomainReAddingPairedSiblingIsIdempotent(t *testing.T) {
+// TestAddDomainReAddingPairedSiblingMakesBothExplicit: explicitly adding the
+// auto-created sibling clears its redirect and leaves both hosts served
+// directly, without creating duplicates.
+func TestAddDomainReAddingPairedSiblingMakesBothExplicit(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
 		t.Fatalf("first add: %v", err)
@@ -263,6 +274,9 @@ func TestAddDomainReAddingPairedSiblingIsIdempotent(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 {
 		t.Errorf("still just the pair, got %v", got)
+	}
+	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 0 {
+		t.Errorf("explicit-both must clear the sibling redirect, got %v", got)
 	}
 }
 
@@ -344,6 +358,9 @@ func TestDeleteDomainLeavesSiblingUntouched(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "www.foo.com" {
 		t.Errorf("spec.hosts = %v, want [www.foo.com] (sibling survives the delete)", got)
 	}
+	if got := getApp(t, cl, "web").Spec.HostRedirects; len(got) != 0 {
+		t.Errorf("surviving sibling must serve directly after its target is deleted, got redirects %v", got)
+	}
 }
 
 func TestDeleteDomainRemovesFromHosts(t *testing.T) {
@@ -401,7 +418,8 @@ func TestAddDomainPairedSiblingWritesStoreRowToo(t *testing.T) {
 	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	if len(rec.domainAdds) != 2 || rec.domainAdds[0].host != "foo.com" || rec.domainAdds[1].host != "www.foo.com" {
+	if len(rec.domainAdds) != 2 || rec.domainAdds[0].host != "foo.com" || rec.domainAdds[0].redirectForName != "" ||
+		rec.domainAdds[1].host != "www.foo.com" || rec.domainAdds[1].redirectForName != "foo.com" {
 		t.Fatalf("want row writes [foo.com www.foo.com], got %v", rec.domainAdds)
 	}
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 {
@@ -789,6 +807,9 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	if r := byName["www.foo.com"].DNSRecord; r.Type != "CNAME" || r.Name != "www" {
 		t.Errorf("www.foo.com dnsRecord = %+v, want CNAME/www", r)
 	}
+	if byName["foo.com"].RedirectForName != "" || byName["www.foo.com"].RedirectForName != "foo.com" {
+		t.Errorf("REST redirectForName mismatch: %+v", byName)
+	}
 }
 
 // TestRESTCustomDomainsSiblingConflict: registering www.foo.com on one service
@@ -923,7 +944,7 @@ func TestGraphQLCustomDomainsPairedAdd(t *testing.T) {
 	}
 
 	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ customDomains(id: "web") { name dnsRecord { type name } } }`})
+		RequestString: `{ customDomains(id: "web") { name redirectForName dnsRecord { type name } } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("customDomains: %v", res.Errors)
 	}
@@ -941,6 +962,9 @@ func TestGraphQLCustomDomainsPairedAdd(t *testing.T) {
 	}
 	if rec := byName["www.foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "CNAME" || rec["name"] != "www" {
 		t.Errorf("www.foo.com dnsRecord = %v, want CNAME/www", rec)
+	}
+	if byName["foo.com"]["redirectForName"] != nil || byName["www.foo.com"]["redirectForName"] != "foo.com" {
+		t.Errorf("GraphQL redirectForName mismatch: %v", byName)
 	}
 }
 
@@ -991,6 +1015,12 @@ func TestMCPCustomDomainsPairedAdd(t *testing.T) {
 	}
 	if rec, _ := byName["www.foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "CNAME" || rec["name"] != "www" {
 		t.Errorf("www.foo.com dnsRecord = %v, want CNAME/www", rec)
+	}
+	if _, present := byName["foo.com"]["redirectForName"]; present {
+		t.Errorf("direct canonical must omit redirectForName: %v", byName["foo.com"])
+	}
+	if byName["www.foo.com"]["redirectForName"] != "foo.com" {
+		t.Errorf("MCP sibling redirectForName = %v, want foo.com", byName["www.foo.com"]["redirectForName"])
 	}
 }
 

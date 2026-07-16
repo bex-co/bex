@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"slices"
 	"time"
 
@@ -491,10 +492,9 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		Expose:         true,
 		Subdomain:      d.Slug,
 	}
-	if len(d.Hosts) > 0 {
-		s.Host = d.Hosts[0]
-		s.Hosts = slices.Clone(d.Hosts[1:])
-	}
+	s.Host = d.PrimaryHost
+	s.Hosts = slices.Clone(d.Hosts)
+	s.HostRedirects = maps.Clone(d.HostRedirects)
 	return s
 }
 
@@ -533,6 +533,9 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	}
 	if !slices.Equal(dst.Hosts, want.Hosts) {
 		dst.Hosts, changed = slices.Clone(want.Hosts), true
+	}
+	if !maps.Equal(dst.HostRedirects, want.HostRedirects) {
+		dst.HostRedirects, changed = maps.Clone(want.HostRedirects), true
 	}
 	return changed
 }

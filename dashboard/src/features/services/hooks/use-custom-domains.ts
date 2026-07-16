@@ -24,6 +24,7 @@ type RawDomain = {
   domainType: string | null;
   verificationStatus: string | null;
   serverStatus: string | null;
+  redirectForName: string | null;
   dnsRecord: {
     type: string | null;
     name: string | null;
@@ -37,6 +38,7 @@ function mapDomain(d: RawDomain & { name: string }): CustomDomainView {
     domainType: d.domainType ?? "subdomain",
     verified: d.verificationStatus === "verified",
     active: d.serverStatus === "active",
+    redirectForName: d.redirectForName,
     dnsRecord: d.dnsRecord
       ? {
           type: d.dnsRecord.type ?? "",

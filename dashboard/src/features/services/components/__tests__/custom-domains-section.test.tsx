@@ -51,6 +51,7 @@ const verifiedDomain: CustomDomainView = {
   domainType: "subdomain",
   verified: true,
   active: true,
+  redirectForName: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
 };
 
@@ -59,6 +60,7 @@ const pendingDomain: CustomDomainView = {
   domainType: "subdomain",
   verified: false,
   active: false,
+  redirectForName: null,
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
 };
 
@@ -69,6 +71,7 @@ const apexDomain: CustomDomainView = {
   domainType: "apex",
   verified: false,
   active: false,
+  redirectForName: null,
   dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
 };
 
@@ -77,6 +80,7 @@ const wwwSiblingDomain: CustomDomainView = {
   domainType: "subdomain",
   verified: false,
   active: false,
+  redirectForName: "foo.com",
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
 };
 
@@ -255,7 +259,7 @@ describe("CustomDomainsSection", () => {
 
     expect(
       await within(dialog).findByText(
-        "www.foo.com was added automatically — set up its DNS too",
+        "www.foo.com was added automatically and redirects to foo.com — set up its DNS too",
       ),
     ).toBeInTheDocument();
     // Both records' host fields are shown: "@" for the apex, "www" for the sibling.
@@ -263,17 +267,17 @@ describe("CustomDomainsSection", () => {
     expect(within(dialog).getByText("www")).toBeInTheDocument();
   });
 
-  it("notes the auto-paired sibling on each row of a www<->apex pair (w6/m23)", () => {
+  it("marks the redirecting sibling and canonical rows (w6/m30)", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([apexDomain, wwwSiblingDomain]),
     );
     render(<CustomDomainsSection serviceId="web" />);
 
     expect(
-      screen.getByText("Paired with www.foo.com — bex added it automatically"),
+      screen.getByText("www.foo.com redirects here"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Paired with foo.com — bex added it automatically"),
+      screen.getByText("Redirects to foo.com"),
     ).toBeInTheDocument();
   });
 
