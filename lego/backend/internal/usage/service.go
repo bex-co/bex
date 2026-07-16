@@ -517,22 +517,46 @@ func (s *Service) catchUpAppMeterThrough(ctx context.Context, app store.App, kin
 		floor = created
 	}
 	start := latest.UTC().Truncate(time.Hour)
-	if start.IsZero() || start.Before(floor) {
+	initializing := start.IsZero() || start.Before(floor)
+	if initializing {
 		start = floor
 	} else {
 		start = start.Add(time.Hour)
 	}
 	for window := start; !window.After(last); window = window.Add(time.Hour) {
-		if !s.processAppMeterWindow(ctx, app, kind, window) {
-			return
+		result := s.processAppMeterWindowResult(ctx, app, kind, window)
+		if result == appMeterWindowSuccess {
+			initializing = false
+			continue
 		}
+		// A newly introduced egress composition has no meaningful cursor before
+		// all of its sources exist. Probe forward through source-unavailable
+		// history until the first measurable hour establishes the evidence
+		// origin. Once any row exists, every later failure still stops the cursor
+		// and is retried before a newer window. Store failures are never skipped.
+		if kind == store.UsageKindEgressBytes && initializing && result == appMeterWindowSourceUnavailable {
+			continue
+		}
+		return
 	}
 }
+
+type appMeterWindowResult uint8
+
+const (
+	appMeterWindowSuccess appMeterWindowResult = iota
+	appMeterWindowSourceUnavailable
+	appMeterWindowStoreFailure
+)
 
 // processAppMeterWindow persists a successful measurement even when it is
 // zero. Zero is real coverage evidence; source unavailability is represented
 // by no row so the per-meter cursor retries the window later.
 func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind string, window time.Time) bool {
+	return s.processAppMeterWindowResult(ctx, app, kind, window) == appMeterWindowSuccess
+}
+
+func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App, kind string, window time.Time) appMeterWindowResult {
 	end := window.Add(time.Hour)
 	var quantity int64
 	var ok bool
@@ -545,10 +569,10 @@ func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind
 		quantity, ok = s.queryBuildSeconds(ctx, app.Name, window, end)
 	default:
 		log.Printf("usage: unknown App meter %q for %s", kind, app.ID)
-		return false
+		return appMeterWindowSourceUnavailable
 	}
 	if !ok {
-		return false
+		return appMeterWindowSourceUnavailable
 	}
 	tier := ""
 	if kind == store.UsageKindInstanceSeconds {
@@ -564,9 +588,9 @@ func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind
 		Quantity:     quantity,
 	}); err != nil {
 		log.Printf("usage: upsert %s %s: %v", kind, app.ID, err)
-		return false
+		return appMeterWindowStoreFailure
 	}
-	return true
+	return appMeterWindowSuccess
 }
 
 // --- t002: Prometheus rollup queries ---
