@@ -17,6 +17,12 @@ spec:
         app.bex.co/component: egress-meter
     spec:
       serviceAccountName: egress-meter
+      # Ubuntu's runtime-default AppArmor profile denies BPF_OBJ_PIN even when
+      # the container has CAP_BPF/CAP_SYS_ADMIN. Keep seccomp at
+      # RuntimeDefault, but unconfine AppArmor for this BPF-only node agent.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
       # BPF netfilter links attach to the current network namespace. Enter the
       # node namespace so POST_ROUTING sees every local tenant pod after CNI
       # policy and before source NAT.
