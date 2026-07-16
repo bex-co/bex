@@ -19,8 +19,11 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -322,6 +325,30 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			w.WriteHeader(http.StatusNoContent)
 		})
 
+		// --- logs (w3/m28) ---
+		mux.HandleFunc("GET "+base+"/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
+			since, end, err := parsePGTimeWindow(q.Get("startTime"), q.Get("endTime"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			entries, err := s.QueryDatabaseLogs(r.Context(), r.PathValue("id"), DatabaseLogQuery{
+				Search:    q.Get("text"),
+				Since:     since,
+				End:       end,
+				Limit:     limit,
+				Direction: q.Get("direction"),
+				Instance:  q["instance"],
+			})
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			core.WriteJSON(w, http.StatusOK, entries)
+		})
+
 		// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
 		mux.HandleFunc("GET "+base+"/{id}/processes", func(w http.ResponseWriter, r *http.Request) {
 			out, err := s.Processes(r.Context(), r.PathValue("id"))
@@ -379,6 +406,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteJSON(w, http.StatusOK, s.renderOnePostgres(r.Context(), pg))
 		})
 	}
+}
+
+// parsePGTimeWindow parses optional startTime/endTime RFC3339 bounds for log
+// queries — the same contract as the app logs REST handler.
+func parsePGTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
+	if startTime != "" {
+		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	if endTime != "" {
+		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
 }
 
 // handleUpdatePostgres is PATCH /v1/postgres/{id} (+ /v1/databases alias) —

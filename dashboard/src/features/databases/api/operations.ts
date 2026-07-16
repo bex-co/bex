@@ -596,6 +596,54 @@ export const UpdateDatabaseVersionDocument = gql`
   UpdateDatabaseVersionVars
 >;
 
+// --- Postgres logs (w3/m28) ---
+// CNPG pods are NOT shipped to Loki; this is a live pod-log read.
+// No durable history — queries hit live pods only.
+
+export interface DatabaseLogEntry {
+  timestamp: string | null;
+  message: string | null;
+}
+
+export interface DatabaseLogsVars {
+  id: string;
+  text?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  limit?: number | null;
+  direction?: string | null;
+  instance?: string[] | null;
+}
+
+export interface DatabaseLogsQuery {
+  databaseLogs: DatabaseLogEntry[] | null;
+}
+
+export const DatabaseLogsDocument = gql`
+  query DatabaseLogs(
+    $id: String!
+    $text: String
+    $startTime: String
+    $endTime: String
+    $limit: Int
+    $direction: String
+    $instance: [String]
+  ) {
+    databaseLogs(
+      id: $id
+      text: $text
+      startTime: $startTime
+      endTime: $endTime
+      limit: $limit
+      direction: $direction
+      instance: $instance
+    ) {
+      timestamp
+      message
+    }
+  }
+` as unknown as TypedDocumentNode<DatabaseLogsQuery, DatabaseLogsVars>;
+
 // --- display-name update (w9/m3) ---
 
 export interface RenameDatabaseVars {

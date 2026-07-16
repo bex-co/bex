@@ -28,6 +28,22 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
+// parseGQLTimeWindow parses optional startTime/endTime RFC3339 string args from
+// a GraphQL resolver's args map, same contract as parsePGTimeWindow in rest.go.
+func parseGQLTimeWindow(args map[string]any) (since, end time.Time, err error) {
+	if s, _ := args["startTime"].(string); s != "" {
+		if since, err = time.Parse(time.RFC3339, s); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	if e, _ := args["endTime"].(string); e != "" {
+		if end, err = time.Parse(time.RFC3339, e); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
+}
+
 // Render's dashboard GraphQL calls a managed Postgres a "database" (query
 // database(id), databaseStatusQuery, ...) — captured live — even though its REST
 // noun is "postgres". bex mirrors that split: REST /v1/postgres, GraphQL
@@ -184,6 +200,16 @@ var parameterInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Fields: graphql.InputObjectConfigFieldMap{
 		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+// databaseLogGQLType is one CNPG log line — timestamp, message, and labels
+// (service/instance/type) — the same Render shape as app log entries.
+var databaseLogGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseLogEntry",
+	Fields: graphql.Fields{
+		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Timestamp })},
+		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Message })},
 	},
 })
 
@@ -446,6 +472,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ParameterOverrides(p.Context, p.Args["id"].(string))
+			},
+		},
+		// --- logs (w3/m28) ---
+		"databaseLogs": &graphql.Field{
+			Type: graphql.NewList(databaseLogGQLType),
+			Args: graphql.FieldConfigArgument{
+				"id":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"text":      &graphql.ArgumentConfig{Type: graphql.String},
+				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
+				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"direction": &graphql.ArgumentConfig{Type: graphql.String},
+				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				since, end, err := parseGQLTimeWindow(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				var limit int64
+				if v, ok := p.Args["limit"].(int); ok {
+					limit = int64(v)
+				}
+				return s.QueryDatabaseLogs(p.Context, p.Args["id"].(string), DatabaseLogQuery{
+					Search:    gqlutil.Str(p.Args, "text"),
+					Since:     since,
+					End:       end,
+					Limit:     limit,
+					Direction: gqlutil.Str(p.Args, "direction"),
+					Instance:  gqlutil.StringList(p.Args["instance"]),
+				})
 			},
 		},
 	}

@@ -855,6 +855,28 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
     description: "Database rename validation message",
   },
+  // --- Postgres logs panel (w3/m28) ---
+  "databases.logsTitle": {
+    message: "Logs",
+    description: "Database logs panel card title",
+  },
+  "databases.logsDescription": {
+    message:
+      "Live lines from the Postgres pod logs. CNPG pods aren't shipped to Loki — no durable history; reflects running pods only.",
+    description: "Database logs panel card description",
+  },
+  "databases.logsRefresh": {
+    message: "Refresh logs",
+    description: "Accessible label for the database logs refresh button",
+  },
+  "databases.logsUnavailable": {
+    message: "Logs unavailable — the database may still be provisioning.",
+    description: "Database logs panel error state",
+  },
+  "databases.logsEmpty": {
+    message: "No log lines found.",
+    description: "Database logs panel empty state",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "Insights",

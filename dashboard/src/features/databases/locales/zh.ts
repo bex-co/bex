@@ -842,6 +842,28 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Database rename validation message",
   },
+  // --- Postgres logs panel (w3/m28) ---
+  "databases.logsTitle": {
+    message: "日志",
+    description: "Database logs panel card title",
+  },
+  "databases.logsDescription": {
+    message:
+      "Postgres pod 的实时日志。CNPG pod 未接入 Loki——无持久历史，仅反映当前运行的 pod。",
+    description: "Database logs panel card description",
+  },
+  "databases.logsRefresh": {
+    message: "刷新日志",
+    description: "Accessible label for the database logs refresh button",
+  },
+  "databases.logsUnavailable": {
+    message: "日志不可用——数据库可能仍在创建中。",
+    description: "Database logs panel error state",
+  },
+  "databases.logsEmpty": {
+    message: "未找到日志行。",
+    description: "Database logs panel empty state",
+  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "洞察",

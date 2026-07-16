@@ -20,6 +20,7 @@ import { DatabaseVersionControl } from "@/features/databases/components/database
 import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
+import { DatabaseLogsPanel } from "@/features/databases/components/database-logs-panel";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
@@ -101,6 +102,7 @@ export function DatabaseDetailPage() {
                 database={database}
                 onChanged={() => void refetch()}
               />
+              <DatabaseLogsPanel id={database.id} />
               <InsightsPanel id={database.id} />
               <RecoveryPanel id={database.id} />
               <AccessControlPanel id={database.id} />

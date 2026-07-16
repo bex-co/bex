@@ -362,6 +362,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		MaxPostgres:  d.MaxPostgres,
 		Owners:       workspaceSvc,
 		Metadata:     resourceMetadata,
+		PodLogs:      d.PodLogs,
 	}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:

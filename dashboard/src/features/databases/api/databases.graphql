@@ -376,3 +376,12 @@ mutation ExecuteDatabaseQuery(
     truncated
   }
 }
+
+# Postgres pod logs (w3/m28): CNPG pods are not in Loki so this is a live
+# pod-log read; no durable history. limit defaults to 20, max 100.
+query DatabaseLogs($id: String!, $text: String, $startTime: String, $endTime: String, $limit: Int, $direction: String, $instance: [String]) {
+  databaseLogs(id: $id, text: $text, startTime: $startTime, endTime: $endTime, limit: $limit, direction: $direction, instance: $instance) {
+    timestamp
+    message
+  }
+}

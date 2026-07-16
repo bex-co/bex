@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -45,7 +46,20 @@ const (
 	// migration's output. Kept in sync by hand, like PodLabelApp above.
 	PodLabelPreDeploy  = "app.bex.co/predeploy"
 	PreDeployContainer = "predeploy"
+	// PodLabelCNPGCluster + CNPGPostgresContainer identify CNPG pods for a
+	// managed Postgres. CNPG stamps every cluster pod with cnpg.io/cluster=<cr-name>;
+	// the main postgres container is always named "postgres". The database logs
+	// feature (w3/m28) selects on these to read pod logs directly — CNPG pods
+	// are NOT shipped to Loki.
+	PodLabelCNPGCluster   = "cnpg.io/cluster"
+	CNPGPostgresContainer = "postgres"
 )
+
+// PodLogSource fetches the raw (timestamped) log stream for one pod container.
+// Defined in core (not the logs package) so the postgres feature can inject it
+// without importing logs — the cross-feature import rule (w3/m28). Production
+// wires it via logs.NewPodLogSource; nil => log verbs report ErrLogsUnavailable.
+type PodLogSource func(ctx context.Context, namespace, pod, container string, tail int64) (io.ReadCloser, error)
 
 // Checker is the feature services' seam to the authorization service
 // (docs/ADR012-auth.md): may `subject` act with `relation` on `object`? OpenFGA in
@@ -888,6 +902,20 @@ func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.P
 	if err := b.Client.List(ctx, &pods,
 		client.InNamespace(namespace),
 		client.MatchingLabels{PodLabelBuild: app}); err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
+// DatabasePods lists the CNPG pods for a managed Postgres cluster — selected by
+// the cnpg.io/cluster=<clusterName> label that CNPG stamps on every pod it owns.
+// Used by the postgres logs feature (w3/m28); clusterName is the Database CR's
+// metadata.name, which is also the CNPG Cluster CR name.
+func (b *Base) DatabasePods(ctx context.Context, clusterName string) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := b.Client.List(ctx, &pods,
+		client.InNamespace(b.Namespace),
+		client.MatchingLabels{PodLabelCNPGCluster: clusterName}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
