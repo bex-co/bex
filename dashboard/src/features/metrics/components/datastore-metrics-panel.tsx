@@ -35,9 +35,9 @@ interface DatastoreMetricsPanelProps {
   /** The Database or KeyValue name. */
   resource: string;
   /**
-   * Gates the replication-lag chart (w3/m10, w1/m22): omitted/false for every
-   * instance today (Postgres HA hasn't shipped), so the section renders a
-   * clear N/A state rather than a broken/empty chart. Ignored for keyvalue.
+   * Gates the replication-lag chart: omitted for a non-HA instance (no standby
+   * means CNPG's lag query returns 0, not absence — the chart renders a clear
+   * N/A state rather than a fabricated zero). Ignored for keyvalue.
    */
   highAvailabilityEnabled?: boolean;
   /** Database-only control rendered beside the disk chart heading. */
