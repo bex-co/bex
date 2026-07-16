@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchSession } from "../session";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fetchSession, invalidateSessionCache } from "../session";
 
 const toSession = vi.fn();
 vi.mock("@/common/lib/ory/frontend", () => ({
@@ -12,7 +12,10 @@ const refused = (status: number, body: unknown) => ({
 });
 
 describe("fetchSession", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateSessionCache();
+  });
 
   it("returns the live session", async () => {
     const session = { id: "session-1", identity: { id: "user-1" } };
@@ -59,5 +62,61 @@ describe("fetchSession", () => {
       session: null,
       aal2Required: false,
     });
+  });
+});
+
+describe("fetchSession browser memo", () => {
+  // No `cookie` argument = the browser path (in vitest's jsdom,
+  // import.meta.env.SSR is false), where whoami is memoized: the root
+  // route's beforeLoad runs on every navigation and hover-preload, and
+  // each run must not become its own /sessions/whoami request.
+  const session = { id: "session-1", identity: { id: "user-1" } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateSessionCache();
+    toSession.mockResolvedValue(session);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it("answers repeated calls from one whoami request", async () => {
+    // Concurrent (hover-preload burst) and sequential (tab navigation)
+    // callers alike share the single in-flight/settled request.
+    const [a, b] = await Promise.all([fetchSession(), fetchSession()]);
+    const c = await fetchSession();
+
+    expect(toSession).toHaveBeenCalledTimes(1);
+    expect(a.session).toEqual(session);
+    expect(b.session).toEqual(session);
+    expect(c.session).toEqual(session);
+  });
+
+  it("asks Kratos again once the TTL lapses", async () => {
+    vi.useFakeTimers();
+    await fetchSession();
+    vi.advanceTimersByTime(61_000);
+    await fetchSession();
+
+    expect(toSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks Kratos again after invalidateSessionCache", async () => {
+    // The login/register/logout pages call this before router.invalidate():
+    // the re-run of the root beforeLoad must see the new session, not the memo.
+    await fetchSession();
+    invalidateSessionCache();
+    await fetchSession();
+
+    expect(toSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("never serves the memo to an explicit-cookie caller", async () => {
+    // Explicit cookies come from server route handlers (hydra-consent.ts):
+    // per-request truth, never shared state.
+    await fetchSession();
+    await fetchSession("ory_session=other");
+
+    expect(toSession).toHaveBeenCalledTimes(2);
   });
 });
