@@ -46,8 +46,14 @@ export interface CreateServiceInput {
   secretFiles?: SecretFileEntry[];
 }
 
+export interface CreateServiceResult {
+  id: string;
+  /** First deploy id — only present for git-sourced services (w3/m14). */
+  deployId?: string;
+}
+
 export interface UseCreateServiceResult {
-  create: (input: CreateServiceInput) => Promise<string | null>;
+  create: (input: CreateServiceInput) => Promise<CreateServiceResult | null>;
   busy: boolean;
   /**
    * The workspace's service cap was hit. Carries the backend's exact message
@@ -117,9 +123,11 @@ export function useCreateService(): UseCreateServiceResult {
               : undefined,
           },
         });
-        const id = res.data?.createService?.id ?? input.name;
+        const svc = res.data?.createService;
+        const id = svc?.id ?? input.name;
+        const deployId = svc?.latestDeployId ?? undefined;
         toast.success(t("services.createSuccess", { name: input.name }));
-        return id;
+        return { id, deployId };
       } catch (err) {
         // "workspace is limited to N services" — surface inline with upgrade CTA
         // rather than a toast that leaves the user with nowhere to go (w7/m9).

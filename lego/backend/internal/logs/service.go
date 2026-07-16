@@ -231,11 +231,14 @@ func (q LogQuery) validate() error {
 			return fmt.Errorf("%w: unknown log type %q (want %s|%s|%s|%s)", core.ErrBadRequest, t, LogTypeApp, LogTypeRequest, LogTypeBuild, LogTypePreDeploy)
 		}
 	}
-	// Pre-deploy logs are a distinct live source (the migration Job's pod, w1/m33),
-	// not merged with app/request/build — so it must be requested alone rather than
+	// Pre-deploy and build logs are distinct live sources (Job pods, w1/m33 + w3/m14),
+	// not merged with app/request — so each must be requested alone rather than
 	// silently ignored inside a mixed query.
 	if slices.Contains(q.Types, LogTypePreDeploy) && len(q.Types) > 1 {
 		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypePreDeploy)
+	}
+	if slices.Contains(q.Types, LogTypeBuild) && len(q.Types) > 1 {
+		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypeBuild)
 	}
 	return nil
 }
@@ -288,9 +291,14 @@ func (q LogQuery) needsStore() bool {
 // the store, and are simply not present on a stream read straight off the kubelet.
 // So this is a permanent property of the transport, not a missing dependency: the
 // query API answers these, the tail says so, and neither silently ignores them.
+// Note: build logs CAN be tailed live (the build Job's pod stdout, w3/m14) — so
+// this check is more targeted than needsStore(), which still gates the QueryLogs
+// historical path (Job pods are ephemeral; history requires the store).
 func (q LogQuery) tailSupports() error {
-	if q.needsStore() {
-		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request or build logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
+	if slices.Contains(q.Types, LogTypeRequest) ||
+		len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
+		len(q.Method) > 0 || len(q.Path) > 0 {
+		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -516,26 +524,47 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := q.tailSupports(); err != nil {
 		return err
 	}
-	if !q.wants(LogTypeApp) {
+	wantsBuild := q.wants(LogTypeBuild)
+	wantsApp := q.wants(LogTypeApp)
+	if !wantsApp && !wantsBuild {
 		<-ctx.Done() // nothing to stream; hold until the client disconnects
 		return ctx.Err()
-	}
-
-	pods, err := s.appPodNames(ctx, q)
-	if err != nil {
-		return err
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ch := make(chan LogEntry, 64)
 	var wg sync.WaitGroup
-	for i := range pods {
-		wg.Add(1)
-		go func(pod string) {
-			defer wg.Done()
-			s.streamPodLogs(ctx, q.App, pod, ch)
-		}(pods[i])
+
+	if wantsBuild {
+		buildNS := s.BuildNamespace
+		if buildNS == "" {
+			buildNS = s.Namespace
+		}
+		buildPods, err := s.BuildPods(ctx, q.App, buildNS)
+		if err != nil {
+			return err
+		}
+		for i := range buildPods {
+			wg.Add(1)
+			go func(pod string) {
+				defer wg.Done()
+				s.streamBuildPodLog(ctx, q.App, buildNS, pod, ch)
+			}(buildPods[i].Name)
+		}
+	}
+	if wantsApp {
+		pods, err := s.appPodNames(ctx, q)
+		if err != nil {
+			return err
+		}
+		for i := range pods {
+			wg.Add(1)
+			go func(pod string) {
+				defer wg.Done()
+				s.streamPodLogs(ctx, q.App, pod, ch)
+			}(pods[i])
+		}
 	}
 	go func() { wg.Wait(); close(ch) }()
 
@@ -691,6 +720,47 @@ func (s *Service) streamPodLogs(ctx context.Context, service, pod string, ch cha
 			return
 		case ch <- parseLogLine(service, pod, sc.Text()):
 		}
+	}
+}
+
+// streamBuildPodLog follows one build Job pod's log (core.BuildContainer, w3/m14)
+// into ch until ctx ends or the stream closes. The build Job terminates when the
+// build completes, so the stream naturally drains and closes.
+func (s *Service) streamBuildPodLog(ctx context.Context, service, namespace, pod string, ch chan<- LogEntry) {
+	rc, err := s.PodLogsFollow(ctx, namespace, pod, core.BuildContainer)
+	if err != nil {
+		return
+	}
+	defer func() { _ = rc.Close() }()
+
+	sc := bufio.NewScanner(rc)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		select {
+		case <-ctx.Done():
+			return
+		case ch <- parseBuildLogLine(service, pod, sc.Text()):
+		}
+	}
+}
+
+func parseBuildLogLine(service, pod, line string) LogEntry {
+	ts, msg := "", line
+	if i := strings.IndexByte(line, ' '); i > 0 {
+		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
+			ts = t.UTC().Format(time.RFC3339Nano)
+			msg = line[i+1:]
+		}
+	}
+	return LogEntry{
+		Timestamp: ts,
+		Message:   msg,
+		Labels: map[string]string{
+			"service":   service,
+			"instance":  pod,
+			"container": core.BuildContainer,
+			LabelType:   LogTypeBuild,
+		},
 	}
 }
 

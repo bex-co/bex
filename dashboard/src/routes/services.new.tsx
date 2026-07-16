@@ -601,7 +601,7 @@ export function NewServicePage() {
     const validSecretFiles = secretFiles.filter((file) =>
       isValidSecretFileName(file.name.trim()),
     );
-    const id = await create({
+    const result = await create({
       name,
       type: serviceType,
       environmentId: environmentId || undefined,
@@ -643,8 +643,18 @@ export function NewServicePage() {
       envVars: validEnvVars.length ? validEnvVars : undefined,
       secretFiles: validSecretFiles.length ? validSecretFiles : undefined,
     });
-    if (id) {
-      void navigate({ to: "/services/$serviceId", params: { serviceId: id } });
+    if (result) {
+      if (result.deployId) {
+        void navigate({
+          to: "/services/$serviceId/deploys/$deployId",
+          params: { serviceId: result.id, deployId: result.deployId },
+        });
+      } else {
+        void navigate({
+          to: "/services/$serviceId",
+          params: { serviceId: result.id },
+        });
+      }
     }
   }
 

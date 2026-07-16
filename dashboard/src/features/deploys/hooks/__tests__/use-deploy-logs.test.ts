@@ -7,6 +7,13 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
+// useLiveLogs opens an EventSource connection — stub it to a no-op in tests.
+// The deploy-logs hook merges live lines below; integration of the two is covered
+// by use-live-logs.test.ts and the deploy-log-panel tests.
+vi.mock("@/features/logs/hooks/use-live-logs", () => ({
+  useLiveLogs: () => ({ lines: [], status: "idle" }),
+}));
+
 interface Call {
   type: string;
   skip?: boolean;
