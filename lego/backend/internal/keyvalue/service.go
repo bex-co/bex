@@ -401,6 +401,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return KeyValueView{}, err
 	}
+	s.RecordKeyValueCreated(ctx, kv)
 	return kvView(kv), nil
 }
 
