@@ -91,6 +91,42 @@ func TestSourceablePostgresWebhookEffectsRecordOnlyAfterSuccess(t *testing.T) {
 	}
 }
 
+// TestPostgresSetPlanAuditVerbAndPlanPair is w10/m5: SetPlan always records
+// the plan verb with the typed from/to pair — an idempotent same-plan set no
+// longer masquerades as UpdatePostgres (the pair is simply equal).
+func TestPostgresSetPlanAuditVerbAndPlanPair(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-test", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "free"},
+	}
+	svc, _ := newService(db)
+	sink := &webhookAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+
+	if _, err := svc.SetPlan(ctx, db.Name, "basic-256mb"); err != nil {
+		t.Fatalf("SetPlan: %v", err)
+	}
+	if _, err := svc.SetPlan(ctx, db.Name, "basic-256mb"); err != nil {
+		t.Fatalf("idempotent SetPlan: %v", err)
+	}
+	if len(sink.events) != 2 {
+		t.Fatalf("events = %d, want 2", len(sink.events))
+	}
+	change, noop := sink.events[0], sink.events[1]
+	if change.Verb != core.AuditVerbPostgresPlanChanged ||
+		change.PlanFrom == nil || *change.PlanFrom != "free" ||
+		change.PlanTo == nil || *change.PlanTo != "basic-256mb" {
+		t.Fatalf("plan change event = %+v", change)
+	}
+	if noop.Verb != core.AuditVerbPostgresPlanChanged ||
+		noop.PlanFrom == nil || *noop.PlanFrom != "basic-256mb" ||
+		noop.PlanTo == nil || *noop.PlanTo != "basic-256mb" {
+		t.Fatalf("idempotent set event = %+v (want SetPlan verb with equal pair, never %s)",
+			noop, core.AuditVerbPostgresUpdated)
+	}
+}
+
 func TestPostgresCreatedEffectCarriesMintedIDAndDisplayName(t *testing.T) {
 	svc, _ := newService()
 	sink := &webhookAuditSink{}

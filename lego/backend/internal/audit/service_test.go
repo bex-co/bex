@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -217,6 +219,45 @@ func TestRenderAuditLogShape(t *testing.T) {
 	}
 	if actorType("") != "system" || actorType("system") != "system" {
 		t.Errorf("unattributed/system callers should map to system")
+	}
+}
+
+// TestGraphQLTargetNameFallsBackToNull is w10/m5: the AuditLog type returns
+// the stored display name (migration 0038) and resolves a pre-0038 row's
+// stored "" to null, so the dashboard can fall back to the raw id instead of
+// rendering an empty cell.
+func TestGraphQLTargetNameFallsBackToNull(t *testing.T) {
+	fs := &fakeStore{listRows: []store.AuditRow{
+		{ID: "aud-named", WorkspaceID: "tea-owner", TargetName: "my-api"},
+		{ID: "aud-pre-0038", WorkspaceID: "tea-owner", TargetName: ""},
+	}}
+	svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ auditLogs(ownerId:"tea-owner") { id targetName } }`,
+		Context:       ctx,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	rows := res.Data.(map[string]any)["auditLogs"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(rows))
+	}
+	named := rows[0].(map[string]any)
+	if named["targetName"] != "my-api" {
+		t.Errorf("named row targetName = %v, want my-api", named["targetName"])
+	}
+	pre := rows[1].(map[string]any)
+	if pre["targetName"] != nil {
+		t.Errorf("pre-0038 row targetName = %v, want null", pre["targetName"])
 	}
 }
 

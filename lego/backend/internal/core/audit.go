@@ -318,38 +318,82 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 // effect for the outbound-webhook feed. Callers pair it with
 // WithDeferredAllowedWriteAudit so failed validation/writes never emit.
 func (b *Base) RecordDatabaseEffect(ctx context.Context, d *appv1alpha1.Database, effect DatabaseAuditEffect) {
+	ev, ok := b.databaseEffectEvent(ctx, d, effect)
+	if !ok {
+		return
+	}
+	b.recordAudit(ctx, ev)
+}
+
+// RecordDatabasePlanChanged records a successful managed-Postgres SetPlan with
+// the typed from/to plan pair, exactly like apps' RecordPlanChanged. Following
+// that precedent it is recorded even when fromPlan == toPlan: the verb names
+// the call the caller actually made, and the equal pair states truthfully that
+// nothing changed — never the generic Update* verb of a call they didn't make.
+func (b *Base) RecordDatabasePlanChanged(ctx context.Context, d *appv1alpha1.Database, fromPlan, toPlan string) {
+	ev, ok := b.databaseEffectEvent(ctx, d, DatabasePlanChanged)
+	if !ok {
+		return
+	}
+	ev.PlanFrom = &fromPlan
+	ev.PlanTo = &toPlan
+	b.recordAudit(ctx, ev)
+}
+
+func (b *Base) databaseEffectEvent(ctx context.Context, d *appv1alpha1.Database, effect DatabaseAuditEffect) (AuditEvent, bool) {
 	verb, ok := databaseAuditVerbs[effect]
 	if !ok {
 		log.Printf("audit: unknown database effect %d", effect)
-		return
+		return AuditEvent{}, false
 	}
 	resource, err := b.resourceWorkspace(ctx, d.Labels)
 	if err != nil {
 		log.Printf("audit: resolve database-effect resource: %v", err)
-		return
+		return AuditEvent{}, false
 	}
 	ev := b.verbAuditEvent(ctx, verb, resource, DatabaseTarget(d.Name))
 	ev.TargetName = d.DisplayName()
-	b.recordAudit(ctx, ev)
+	return ev, true
 }
 
 // RecordKeyValueEffect records a successful Key Value mutation. Plan changes
 // project to Render's plan_changed webhook; the generic update effect preserves
 // the ordinary audit row when a deferred PATCH changes other fields only.
 func (b *Base) RecordKeyValueEffect(ctx context.Context, kv *appv1alpha1.KeyValue, effect KeyValueAuditEffect) {
+	ev, ok := b.keyValueEffectEvent(ctx, kv, effect)
+	if !ok {
+		return
+	}
+	b.recordAudit(ctx, ev)
+}
+
+// RecordKeyValuePlanChanged records a successful Key Value SetPlan with the
+// typed from/to plan pair — the keyvalue mirror of RecordDatabasePlanChanged
+// (see there for the recorded-even-when-idempotent rationale).
+func (b *Base) RecordKeyValuePlanChanged(ctx context.Context, kv *appv1alpha1.KeyValue, fromPlan, toPlan string) {
+	ev, ok := b.keyValueEffectEvent(ctx, kv, KeyValuePlanChanged)
+	if !ok {
+		return
+	}
+	ev.PlanFrom = &fromPlan
+	ev.PlanTo = &toPlan
+	b.recordAudit(ctx, ev)
+}
+
+func (b *Base) keyValueEffectEvent(ctx context.Context, kv *appv1alpha1.KeyValue, effect KeyValueAuditEffect) (AuditEvent, bool) {
 	verb, ok := keyValueAuditVerbs[effect]
 	if !ok {
 		log.Printf("audit: unknown key-value effect %d", effect)
-		return
+		return AuditEvent{}, false
 	}
 	resource, err := b.resourceWorkspace(ctx, kv.Labels)
 	if err != nil {
 		log.Printf("audit: resolve key-value plan-change resource: %v", err)
-		return
+		return AuditEvent{}, false
 	}
 	ev := b.verbAuditEvent(ctx, verb, resource, KeyValueTarget(kv.Name))
 	ev.TargetName = kv.DisplayName()
-	b.recordAudit(ctx, ev)
+	return ev, true
 }
 
 // verbAuditEvent builds a pre-populated AuditEvent for a deferred allowed-write

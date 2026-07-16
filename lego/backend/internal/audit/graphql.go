@@ -31,9 +31,10 @@ import (
 // diverge (t007 asserts this).
 
 // auditMetadataGQLType stays deliberately closed to the maintenance `to`
-// flag: the dashboard's audit table shows verb + actor + resource and has no
-// target column, so REST's richer kind-keyed target metadata (w4/m26) is not
-// mirrored here until a consumer exists — a scope cut, not an oversight.
+// flag: REST's richer kind-keyed target metadata (w4/m26) is not mirrored
+// here — the dashboard's one target need, the display name, ships as the
+// flat `targetName` field on AuditLog below (w10/m5, the consumer the
+// original scope cut waited for).
 var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AuditLogMetadata",
 	Fields: graphql.Fields{
@@ -65,6 +66,15 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return "success"
 		})},
 		"resource": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Resource })},
+		// targetName is the target's stored display name (migration 0038);
+		// null for pre-0038 rows (stored "") so the dashboard falls back to
+		// the raw id rather than rendering an empty cell.
+		"targetName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any {
+			if e.TargetName == "" {
+				return nil
+			}
+			return e.TargetName
+		})},
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
 			if e.MaintenanceModeTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil

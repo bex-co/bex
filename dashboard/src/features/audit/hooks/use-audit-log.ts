@@ -19,6 +19,7 @@ function toEvents(raw: AuditLogsQuery["auditLogs"] | undefined): AuditEvent[] {
       action: e.action ?? "",
       status: e.status === "denied" ? "denied" : "success",
       resource: e.resource ?? "",
+      targetName: e.targetName ?? "",
     }));
 }
 

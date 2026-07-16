@@ -77,6 +77,7 @@ describe("AuditLogPanel", () => {
         action: "update",
         status: "success",
         resource: "workspace:tea-1",
+        targetName: "my-api",
       },
       {
         id: "ev-2",
@@ -86,6 +87,7 @@ describe("AuditLogPanel", () => {
         action: "delete",
         status: "denied",
         resource: "service:srv-1",
+        targetName: "",
       },
     ];
     auditState.hasMore = true;
@@ -96,6 +98,12 @@ describe("AuditLogPanel", () => {
     expect(rows[0]).toHaveTextContent("Allowed");
     expect(rows[1]).toHaveTextContent("Denied");
     expect(rows[1]).toHaveTextContent("Unknown"); // empty actor placeholder
+    // Friendly target name (w10/m5): shown alongside the raw id when the row
+    // carries one; a pre-0038 row (empty targetName) keeps the id-only cell.
+    expect(rows[0]).toHaveTextContent("my-api");
+    expect(rows[0]).toHaveTextContent("workspace:tea-1");
+    expect(rows[1]).not.toHaveTextContent("my-api");
+    expect(rows[1]).toHaveTextContent("service:srv-1");
 
     const loadMoreButton = screen.getByRole("button", { name: "Load more" });
     expect(loadMoreButton).toBeInTheDocument();
@@ -113,6 +121,7 @@ describe("AuditLogPanel", () => {
         action: "update",
         status: "success",
         resource: "workspace:tea-1",
+        targetName: "",
       },
     ];
     auditState.hasMore = false;
