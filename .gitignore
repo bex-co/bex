@@ -15,9 +15,12 @@ infra/local/*.kubeconfig
 
 projects-to-deploy
 .tmp
-.env
-# minted dev-harness API-key credentials (bootstrap-key.sh)
-.cli-key.env
+# no env file is ever committed (.env, .cli-key.env, …) — the checked-in
+# mirrors are .env.example/.env.template (different suffix, not matched).
+*.env
+# EXCEPT the dev-N harness port maps: documented non-secret config that
+# up.sh/down.sh/status.sh source (see .pm/wN/dev-N/ports.env headers).
+!ports.env
 .playwright-mcp
 
 cli
