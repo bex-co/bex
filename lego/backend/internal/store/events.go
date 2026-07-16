@@ -96,6 +96,24 @@ type ServiceEventRow struct {
 	AutoDeployEnabled  *bool
 }
 
+// AutoDeployFilter constrains the auto_deploy_enabled column on the audit arm.
+// It is used when the caller filters by an auto-deploy event type so that the
+// discrimination (enabled vs disabled vs legacy changed) runs in SQL before the
+// LIMIT rather than in Go after it. A Go-side drop after LIMIT would return
+// short (or empty) pages, which a cursor client reads as end-of-feed.
+type AutoDeployFilter int16
+
+const (
+	// AutoDeployFilterNone imposes no constraint — all auto_deploy_enabled values pass.
+	AutoDeployFilterNone AutoDeployFilter = 0
+	// AutoDeployFilterEnabled selects rows where auto_deploy_enabled = true.
+	AutoDeployFilterEnabled AutoDeployFilter = 1
+	// AutoDeployFilterDisabled selects rows where auto_deploy_enabled = false.
+	AutoDeployFilterDisabled AutoDeployFilter = 2
+	// AutoDeployFilterChanged selects rows where auto_deploy_enabled IS NULL (legacy rows).
+	AutoDeployFilterChanged AutoDeployFilter = 3
+)
+
 // ServiceEventFilter narrows ListServiceEvents.
 //
 // Verbs and Phases are how the caller's event-TYPE filter is pushed down into
@@ -120,6 +138,10 @@ type ServiceEventFilter struct {
 	// Phases are the deploy transitions the caller asked for (EventPhaseStarted
 	// and/or EventPhaseEnded).
 	Phases []string
+	// AutoDeploy pushes down the auto-deploy boolean discrimination into SQL when
+	// the Verbs set includes apps.SetAutoDeploy. AutoDeployFilterNone (zero value)
+	// means no additional constraint on auto_deploy_enabled.
+	AutoDeploy AutoDeployFilter
 	// Limit caps the page (<1 or >core.MaxPageLimit clamps to core.DefaultPageLimit).
 	Limit int
 }
@@ -213,6 +235,10 @@ WITH feed AS (
       AND a.outcome = 'allowed'
       AND a.workspace_id = ANY($3)
       AND a.verb = ANY($4)
+      AND ($11::smallint IS NULL
+           OR ($11 = 1 AND a.auto_deploy_enabled = true)
+           OR ($11 = 2 AND a.auto_deploy_enabled = false)
+           OR ($11 = 3 AND a.auto_deploy_enabled IS NULL))
 )
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
@@ -249,7 +275,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 	rows, err := s.Pool.Query(ctx, serviceEventsQuery,
 		appID, target, workspaces, f.Verbs, f.Phases,
 		nullTime(f.Since), nullTime(f.Until), nullTime(f.AfterAt), f.AfterKey,
-		limit)
+		limit, nullAutoDeployFilter(f.AutoDeploy))
 	if err != nil {
 		return nil, fmt.Errorf("list service events: %w", err)
 	}
@@ -263,6 +289,16 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $11
+// predicate in serviceEventsQuery is a no-op when no discrimination is needed.
+func nullAutoDeployFilter(f AutoDeployFilter) *int16 {
+	if f == AutoDeployFilterNone {
+		return nil
+	}
+	v := int16(f)
+	return &v
 }
 
 // nullTime maps a zero time.Time to a SQL NULL, so one query text serves the

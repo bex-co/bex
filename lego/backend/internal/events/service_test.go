@@ -348,3 +348,47 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		})
 	}
 }
+
+// TestAutoDeployTypeFilterIsPushedDown verifies that the three auto-deploy event
+// types push their SQL discrimination (auto_deploy_enabled = true/false/IS NULL)
+// down into store.ServiceEventFilter.AutoDeploy rather than filtering in Go
+// after the LIMIT — the same short-page hazard as the other type filters.
+func TestAutoDeployTypeFilterIsPushedDown(t *testing.T) {
+	cases := []struct {
+		eventType      string
+		wantAutoFilter store.AutoDeployFilter
+	}{
+		// Each type must push a distinct SQL predicate.
+		{TypeAutoDeployEnabled, store.AutoDeployFilterEnabled},
+		{TypeAutoDeployDisabled, store.AutoDeployFilterDisabled},
+		{TypeAutoDeployChanged, store.AutoDeployFilterChanged},
+	}
+	for _, tc := range cases {
+		t.Run(tc.eventType, func(t *testing.T) {
+			st := &fakeStore{}
+			svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+			if _, err := svc.List(context.Background(), "web", Filter{Type: tc.eventType}); err != nil {
+				t.Fatal(err)
+			}
+			// The verb must be SetAutoDeploy — all three discriminate within the same verb.
+			if !slices.Equal(st.got.Verbs, []string{"apps.SetAutoDeploy"}) {
+				t.Errorf("verbs pushed down = %v, want [apps.SetAutoDeploy]", st.got.Verbs)
+			}
+			if st.got.AutoDeploy != tc.wantAutoFilter {
+				t.Errorf("AutoDeploy filter = %v, want %v — filter runs in SQL before LIMIT, not in Go after", st.got.AutoDeploy, tc.wantAutoFilter)
+			}
+		})
+	}
+	// Unfiltered (type="") must carry AutoDeployFilterNone so all SetAutoDeploy
+	// rows appear in the feed regardless of their auto_deploy_enabled value.
+	t.Run("unfiltered passes all auto-deploy rows", func(t *testing.T) {
+		st := &fakeStore{}
+		svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+		if _, err := svc.List(context.Background(), "web", Filter{}); err != nil {
+			t.Fatal(err)
+		}
+		if st.got.AutoDeploy != store.AutoDeployFilterNone {
+			t.Errorf("unfiltered AutoDeploy = %v, want AutoDeployFilterNone (no constraint)", st.got.AutoDeploy)
+		}
+	})
+}
