@@ -412,6 +412,15 @@ type AppSpec struct {
 	// +optional
 	Hosts []string `json:"hosts,omitempty"`
 
+	// HostRedirects maps an additional host to the canonical host it redirects
+	// to. Both the source and target must also be present in the App's effective
+	// hosts so cert-manager can issue a certificate for the redirecting host and
+	// the target remains reachable. The operator renders each entry as its own
+	// Traefik redirect router; hosts absent from this map serve the App directly.
+	// Used for Render-compatible auto-paired www<->apex custom domains.
+	// +optional
+	HostRedirects map[string]string `json:"hostRedirects,omitempty"`
+
 	// SubdomainPolicy controls whether the platform subdomain
 	// "<subdomain>.<BEX_BASE_DOMAIN>" is active for this App (Render's
 	// renderSubdomainPolicy). "enabled" (default, or empty) keeps the platform

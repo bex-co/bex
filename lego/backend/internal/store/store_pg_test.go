@@ -1101,9 +1101,8 @@ func assertProjectionJoin(ctx context.Context, t *testing.T, s *PGStore, app App
 	if d.TenantName != "acme" || d.Image != "traefik/whoami" || d.Replicas != 2 {
 		t.Errorf("desired row = %+v", d)
 	}
-	// Primary domain must come first — it becomes spec.host.
-	if len(d.Hosts) != 2 || d.Hosts[0] != "web.example.com" || d.Hosts[1] != "extra.example.com" {
-		t.Errorf("hosts = %v", d.Hosts)
+	if d.PrimaryHost != "web.example.com" || len(d.Hosts) != 1 || d.Hosts[0] != "extra.example.com" {
+		t.Errorf("primaryHost=%q hosts=%v", d.PrimaryHost, d.Hosts)
 	}
 }
 
@@ -1125,17 +1124,25 @@ func assertDomainUniqueness(ctx context.Context, t *testing.T, s *PGStore, tenan
 	}
 	defer func() { _ = s.DeleteApp(ctx, a1.ID); _ = s.DeleteApp(ctx, a2.ID) }()
 
-	if err := s.AddDomain(ctx, a1.ID, "shared.example.com"); err != nil {
+	if err := s.AddDomain(ctx, a1.ID, "shared.example.com", ""); err != nil {
 		t.Fatalf("first AddDomain: %v", err)
 	}
-	// Same app, same host → idempotent no-op (the host UNIQUE conflict is this
-	// app's own row, so it is swallowed).
-	if err := s.AddDomain(ctx, a1.ID, "shared.example.com"); err != nil {
-		t.Errorf("same-app re-add must be idempotent, got %v", err)
+	// Same app, same host updates redirect metadata without adding a row.
+	if err := s.AddDomain(ctx, a1.ID, "shared.example.com", "canonical.example.com"); err != nil {
+		t.Errorf("same-app re-add must update redirect metadata, got %v", err)
+	}
+	var redirectForName string
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT COALESCE(redirect_for_name, '') FROM domains WHERE app_id = $1 AND host = $2`,
+		a1.ID, "shared.example.com").Scan(&redirectForName); err != nil {
+		t.Fatalf("read updated redirect_for_name: %v", err)
+	}
+	if redirectForName != "canonical.example.com" {
+		t.Fatalf("redirect_for_name = %q, want canonical.example.com", redirectForName)
 	}
 	// A different app claiming the same host → real cross-app collision, surfaced
 	// (Render's "already exists on another site"), not swallowed.
-	if err := s.AddDomain(ctx, a2.ID, "shared.example.com"); !errors.Is(err, ErrConflict) {
+	if err := s.AddDomain(ctx, a2.ID, "shared.example.com", ""); !errors.Is(err, ErrConflict) {
 		t.Errorf("cross-app AddDomain => ErrConflict, got %v", err)
 	}
 }

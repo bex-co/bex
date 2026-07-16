@@ -526,6 +526,12 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"domainType":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.DomainType })},
 		"verificationStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.VerificationStatus })},
 		"serverStatus":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.ServerStatus })},
+		"redirectForName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any {
+			if d.RedirectForName == "" {
+				return nil
+			}
+			return d.RedirectForName
+		})},
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": &graphql.Field{Type: dnsRecordGQLType, Resolve: gqlutil.Field(func(d DomainView) any { return d.DNSRecord })},

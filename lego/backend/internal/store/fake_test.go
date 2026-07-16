@@ -323,7 +323,17 @@ func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 			return x.CreatedAt.Compare(y.CreatedAt)
 		})
 		for _, dom := range hosts {
-			d.Hosts = append(d.Hosts, dom.Host)
+			if dom.Primary {
+				d.PrimaryHost = dom.Host
+			} else {
+				d.Hosts = append(d.Hosts, dom.Host)
+			}
+			if dom.RedirectForName != "" {
+				if d.HostRedirects == nil {
+					d.HostRedirects = map[string]string{}
+				}
+				d.HostRedirects[dom.Host] = dom.RedirectForName
+			}
 		}
 		out = append(out, d)
 	}

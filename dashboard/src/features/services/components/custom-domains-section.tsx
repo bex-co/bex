@@ -187,9 +187,16 @@ function CustomDomainRow({
             {domain.name}
             <ExternalLink className="text-muted-foreground size-3" />
           </a>
-          {sibling && (
+          {domain.redirectForName && (
             <p className="text-muted-foreground text-xs font-normal">
-              {t("services.domainPairedWith", { sibling: sibling.name })}
+              {t("services.domainRedirectsTo", {
+                canonical: domain.redirectForName,
+              })}
+            </p>
+          )}
+          {!domain.redirectForName && sibling?.redirectForName === domain.name && (
+            <p className="text-muted-foreground text-xs font-normal">
+              {t("services.domainRedirectsHere", { sibling: sibling.name })}
             </p>
           )}
         </TableCell>
@@ -481,6 +488,7 @@ function AddDomainButton({
                 <p className="text-sm font-medium">
                   {t("services.domainPairedDnsTitle", {
                     sibling: added.sibling.name,
+                    canonical: added.primary.name,
                   })}
                 </p>
                 <DnsRecordFields domain={added.sibling} />

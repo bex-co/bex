@@ -204,9 +204,10 @@ type IntentStore interface {
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
 	SetAppSource(ctx context.Context, id, repo, image, branch string) error
-	// AddDomain appends a custom domain row. Idempotent — conflict silently
-	// ignored. The projector carries it into spec.hosts[] on the next resync.
-	AddDomain(ctx context.Context, appID, host string) error
+	// AddDomain appends or updates a custom-domain row. redirectForName is empty
+	// for a directly-served host and names the canonical host for an auto-paired
+	// redirect. The projector carries both into the App spec on the next resync.
+	AddDomain(ctx context.Context, appID, host, redirectForName string) error
 	// RemoveDomain removes a custom domain row. Idempotent — not-found silently
 	// ignored.
 	RemoveDomain(ctx context.Context, appID, host string) error

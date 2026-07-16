@@ -17,6 +17,7 @@ query CustomDomains($id: String!) {
     domainType
     verificationStatus
     serverStatus
+    redirectForName
     dnsRecord {
       type
       name
@@ -32,6 +33,7 @@ mutation AddCustomDomain($id: String!, $name: String!) {
     domainType
     verificationStatus
     serverStatus
+    redirectForName
     dnsRecord {
       type
       name
@@ -51,6 +53,7 @@ mutation VerifyCustomDomain($id: String!, $name: String!) {
     domainType
     verificationStatus
     serverStatus
+    redirectForName
     dnsRecord {
       type
       name

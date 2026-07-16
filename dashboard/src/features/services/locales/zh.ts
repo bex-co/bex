@@ -1146,13 +1146,18 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请在你的 DNS 服务商处创建此记录，以完成域名连接。",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
-  "services.domainPairedWith": {
-    message: "已与 {sibling} 配对 — bex 已自动添加",
+  "services.domainRedirectsTo": {
+    message: "重定向到 {canonical}",
     description:
-      "Note under a domain row's name when bex auto-added its www<->apex sibling (w6/m23)",
+      "Note under an auto-paired sibling domain showing its canonical redirect target",
+  },
+  "services.domainRedirectsHere": {
+    message: "{sibling} 重定向到此域名",
+    description:
+      "Note under a canonical domain showing which auto-paired sibling redirects to it",
   },
   "services.domainPairedDnsTitle": {
-    message: "{sibling} 已自动添加 — 也请为它配置 DNS",
+    message: "{sibling} 已自动添加并重定向到 {canonical} — 也请为它配置 DNS",
     description:
       "Heading of the second DNS-record block in the add dialog when the add auto-paired a www<->apex sibling (w6/m23)",
   },

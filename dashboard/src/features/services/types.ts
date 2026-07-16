@@ -273,35 +273,25 @@ export interface CustomDomainView {
   domainType: string;
   verified: boolean;
   active: boolean;
+  /** Canonical host when this auto-paired sibling redirects; null when served directly. */
+  redirectForName: string | null;
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
 }
 
 /**
- * Finds domain's www<->apex auto-pairing sibling (w6/m23) within the same
- * domains list, if present — a display-only mirror of the backend's wwwSibling
- * (lego/backend/internal/apps/domains.go), built on the backend-computed
- * `domainType` (the real public-suffix list) rather than reimplementing PSL
- * client-side: an apex's sibling is "www."+name; a "www."+X domain's sibling is
- * X, but only when X is present AND itself marked "apex" (guards against
- * mis-pairing an unrelated "www.foo" whose "foo" happens to be someone else's
- * subdomain, not X's own registrable domain).
+ * Finds the other half of an active auto-pair redirect. The backend-projected
+ * redirectForName is authoritative: two explicitly claimed www/apex hosts are
+ * both served directly and therefore are not presented as an auto-pair.
  */
 export function pairedSibling(
   domain: CustomDomainView,
   domains: CustomDomainView[],
 ): CustomDomainView | null {
-  if (domain.domainType === "apex") {
-    return domains.find((d) => d.name === `www.${domain.name}`) ?? null;
+  if (domain.redirectForName) {
+    return domains.find((d) => d.name === domain.redirectForName) ?? null;
   }
-  if (domain.name.startsWith("www.")) {
-    const apexName = domain.name.slice(4);
-    return (
-      domains.find((d) => d.name === apexName && d.domainType === "apex") ??
-      null
-    );
-  }
-  return null;
+  return domains.find((d) => d.redirectForName === domain.name) ?? null;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

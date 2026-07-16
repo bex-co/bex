@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -80,6 +83,12 @@ const labelApp = "app.bex.co/app"
 // SSH target discovery uses it to exclude a still-Ready old ReplicaSet during
 // a rollout, including same-image restarts where image equality is insufficient.
 const labelRevision = "app.bex.co/revision"
+
+// labelHostRedirectOwner marks the per-App Traefik redirect middlewares so a
+// level-triggered reconcile can remove entries whose source host stopped being
+// an auto-paired sibling. The value is the App name (already a label-safe DNS
+// label); owner references still provide lifecycle garbage collection.
+const labelHostRedirectOwner = "app.bex.co/host-redirect-owner"
 
 // labelWorkspace carries the owning workspace (tenant) id on pod templates so
 // NetworkPolicy selectors can express "same-workspace" allow rules. Kept in
@@ -205,6 +214,8 @@ type AppReconciler struct {
 // traefikHTTPMiddlewareGVK is Traefik's HTTP middleware CRD (v3). Used to
 // gate the App Ingress with an ipAllowList (source-range) middleware.
 var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "Middleware"}
+
+const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
 
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
@@ -1036,6 +1047,10 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 // non-empty, wires a Traefik HTTP Middleware (e.g. an ipAllowList) via the
 // router.middlewares Ingress annotation.
 func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareName string) error {
+	redirectSources, err := r.reconcileHostRedirects(ctx, app, hosts, svc, port)
+	if err != nil {
+		return err
+	}
 	if len(hosts) == 0 {
 		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
@@ -1046,7 +1061,7 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 	ingressClass := "traefik"
 	pathType := networkingv1.PathTypePrefix
 	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
 		if ing.Annotations == nil {
 			ing.Annotations = map[string]string{}
 		}
@@ -1054,14 +1069,20 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
 		}
 		if middlewareName != "" {
-			ing.Annotations["traefik.io/router.middlewares"] = app.Namespace + "-" + middlewareName + "@kubernetescrd"
+			ing.Annotations[traefikRouterMiddlewaresAnnotation] = app.Namespace + "-" + middlewareName + "@kubernetescrd"
 		} else {
-			delete(ing.Annotations, "traefik.io/router.middlewares")
+			delete(ing.Annotations, traefikRouterMiddlewaresAnnotation)
 		}
+		// Remove the pre-m30 nonstandard key. Traefik's Kubernetes Ingress
+		// provider only reads the traefik.ingress.kubernetes.io namespace.
+		delete(ing.Annotations, "traefik.io/router.middlewares")
 		ing.Spec.IngressClassName = &ingressClass
 		ing.Spec.TLS = nil
 		ing.Spec.Rules = nil
 		for i, host := range hosts {
+			if redirectSources[host] {
+				continue
+			}
 			ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
 				Hosts:      []string{host},
 				SecretName: tlsSecretName(app.Name, i, host),
@@ -1087,6 +1108,159 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	})
 	return err
+}
+
+// effectiveHostRedirects returns only well-formed source->target entries whose
+// hosts both exist in the effective host set. Invalid or stale intent degrades
+// to direct serving instead of creating a redirect to an unreachable host.
+func effectiveHostRedirects(app *appv1alpha1.App, hosts []string) map[string]string {
+	present := make(map[string]bool, len(hosts))
+	for _, host := range hosts {
+		present[host] = true
+	}
+	out := map[string]string{}
+	for source, target := range app.Spec.HostRedirects {
+		if source != "" && target != "" && source != target && present[source] && present[target] {
+			out[source] = target
+		}
+	}
+	return out
+}
+
+// redirectRegexHTTPMiddlewareSpec builds the Traefik RedirectRegex that pins
+// Render's captured sibling behavior: permanent 301, HTTPS canonical target,
+// and the complete path/query suffix preserved by the single capture group.
+func redirectRegexHTTPMiddlewareSpec(source, target string) map[string]any {
+	return map[string]any{"redirectRegex": map[string]any{
+		"regex":       `^https?://` + regexp.QuoteMeta(source) + `/(.*)`,
+		"replacement": `https://` + target + `/${1}`,
+		"permanent":   true,
+	}}
+}
+
+func hostRedirectResourceName(appName, source string) string {
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(source)))[:10]
+	suffix := "-redirect-" + sum
+	if len(appName)+len(suffix) <= 63 {
+		return appName + suffix
+	}
+	return strings.TrimRight(appName[:63-len(suffix)], "-") + suffix
+}
+
+func hostRedirectIngressName(appName string) string {
+	const suffix = "-host-redirects"
+	if len(appName)+len(suffix) <= 63 {
+		return appName + suffix
+	}
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
+	return appName[:63-len(suffix)-len(sum)-1] + "-" + sum + suffix
+}
+
+// reconcileHostRedirects projects every valid auto-paired sibling into a
+// per-host RedirectRegex middleware and one dedicated Ingress. A dedicated
+// Ingress is necessary because middleware annotations apply to every rule in
+// an Ingress: the canonical hosts must stay on the plain serving router. Each
+// redirecting host retains its original per-host TLS secret.
+func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (map[string]bool, error) {
+	redirects := effectiveHostRedirects(app, hosts)
+	desiredMiddleware := make(map[string]bool, len(redirects))
+	middlewareNames := make([]string, 0, len(redirects))
+	sources := make([]string, 0, len(redirects))
+	for source := range redirects {
+		sources = append(sources, source)
+	}
+	sort.Strings(sources)
+
+	for _, source := range sources {
+		name := hostRedirectResourceName(app.Name, source)
+		desiredMiddleware[name] = true
+		middlewareNames = append(middlewareNames, app.Namespace+"-"+name+"@kubernetescrd")
+		o := &unstructured.Unstructured{}
+		o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+		o.SetName(name)
+		o.SetNamespace(app.Namespace)
+		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, o, func() error {
+			o.Object["spec"] = redirectRegexHTTPMiddlewareSpec(source, redirects[source])
+			labels := o.GetLabels()
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			labels[labelHostRedirectOwner] = app.Name
+			o.SetLabels(labels)
+			return controllerutil.SetControllerReference(app, o, r.Scheme)
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(schema.GroupVersionKind{Group: traefikHTTPMiddlewareGVK.Group, Version: traefikHTTPMiddlewareGVK.Version, Kind: "MiddlewareList"})
+	if err := r.List(ctx, list, client.InNamespace(app.Namespace), client.MatchingLabels{labelHostRedirectOwner: app.Name}); err != nil {
+		if !meta.IsNoMatchError(err) {
+			return nil, err
+		}
+	} else {
+		for i := range list.Items {
+			if !desiredMiddleware[list.Items[i].GetName()] {
+				if err := deleteOptionalObject(ctx, r.Client, &list.Items[i]); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	ingressName := hostRedirectIngressName(app.Name)
+	if len(redirects) == 0 {
+		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}
+		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		return map[string]bool{}, nil
+	}
+
+	ingressClass := "traefik"
+	pathType := networkingv1.PathTypePrefix
+	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+		if ing.Annotations == nil {
+			ing.Annotations = map[string]string{}
+		}
+		if r.ClusterIssuer != "" {
+			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
+		}
+		ing.Annotations[traefikRouterMiddlewaresAnnotation] = strings.Join(middlewareNames, ",")
+		delete(ing.Annotations, "traefik.io/router.middlewares")
+		ing.Labels = map[string]string{labelHostRedirectOwner: app.Name}
+		ing.Spec.IngressClassName = &ingressClass
+		ing.Spec.TLS = nil
+		ing.Spec.Rules = nil
+		for _, source := range sources {
+			index := slices.Index(hosts, source)
+			ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
+				Hosts: []string{source}, SecretName: tlsSecretName(app.Name, index, source),
+			})
+			ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
+				Host: source,
+				IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{{
+						Path: "/", PathType: &pathType,
+						Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{
+							Name: svc, Port: networkingv1.ServiceBackendPort{Number: port},
+						}},
+					}},
+				}},
+			})
+		}
+		return controllerutil.SetControllerReference(app, ing, r.Scheme)
+	}); err != nil {
+		return nil, err
+	}
+
+	redirectSources := make(map[string]bool, len(redirects))
+	for source := range redirects {
+		redirectSources[source] = true
+	}
+	return redirectSources, nil
 }
 
 // reconcileStaticSite materializes a static_site: build → object store (the

@@ -375,6 +375,17 @@ spec:
                   in-cluster only (ClusterIP). Host keeps first position in the effective host
                   list, so existing Apps keep their "<name>-tls" certificate secret untouched.
                 type: string
+              hostRedirects:
+                additionalProperties:
+                  type: string
+                description: |-
+                  HostRedirects maps an additional host to the canonical host it redirects
+                  to. Both the source and target must also be present in the App's effective
+                  hosts so cert-manager can issue a certificate for the redirecting host and
+                  the target remains reachable. The operator renders each entry as its own
+                  Traefik redirect router; hosts absent from this map serve the App directly.
+                  Used for Render-compatible auto-paired www<->apex custom domains.
+                type: object
               hosts:
                 description: |-
                   Hosts are additional external FQDNs to serve this App at — typically tenants'
