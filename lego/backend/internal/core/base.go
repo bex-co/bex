@@ -481,7 +481,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	if len(byID.Items) > 0 {
 		var lastErr error
 		for i := range byID.Items {
-			object, resolveErr := b.resourceWorkspace(ctx, byID.Items[i].Labels)
+			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, byID.Items[i].Labels)
 			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&byID.Items[i]), verb, resolveErr); err == nil {
 				return &byID.Items[i], nil
 			} else {
@@ -494,7 +494,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	for _, candidate := range appCandidateNames(acting, name) {
 		getErr := b.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: candidate}, &a)
 		if getErr == nil {
-			object, resolveErr := b.resourceWorkspace(ctx, a.Labels)
+			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, a.Labels)
 			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
 				return nil, err
 			}
@@ -521,10 +521,27 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		// caller's own workspace marks that the probe went past the cap. An
 		// allowed candidate always records per the normal relation rules
 		// regardless of position (authorizeAndRecord).
+		//
+		// BatchCheck assessment (w4/m30/t003, verify-first): NOT adopted. This
+		// loop's per-candidate cost was two round trips each — the
+		// Workspace.Tenant store query resourceWorkspaceFor now hoists above the
+		// loop (this milestone), and one OpenFGA checkAuthz call. Only the
+		// latter is a genuine per-candidate OpenFGA decision (distinct
+		// resource objects, not redundant), and core.Checker's single
+		// Check(ctx, relation, object) method is satisfied by fakes across
+		// every feature's test suite — widening it to a batch shape would
+		// ripple through the whole authz surface to save HTTP round trips on
+		// a denial-path-only, name-collision-only fallback that already
+		// short-circuits on the first ALLOWED candidate (the common case: a
+		// caller collides with exactly one workspace they belong to) and
+		// already bounds its audit-write amplification via
+		// maxFallbackCandidateAudits. Revisit only if collision-heavy tenants
+		// make this loop's OpenFGA round-trip count a measured latency
+		// problem — it is not one today.
 		var lastErr error
 		denied := 0
 		for i := range list.Items {
-			object, resolveErr := b.resourceWorkspace(ctx, list.Items[i].Labels)
+			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, list.Items[i].Labels)
 			record := denied < maxFallbackCandidateAudits
 			if err := b.authorizeAndRecord(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr, record); err == nil {
 				return &list.Items[i], nil
@@ -637,9 +654,22 @@ func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*a
 //     cannot operate B's resource by naming it.
 func (b *Base) resourceWorkspace(ctx context.Context, labels map[string]string) (string, error) {
 	acting, err := b.resolveWorkspace(ctx)
-	if err != nil {
+	return b.resourceWorkspaceFor(ctx, acting, err, labels)
+}
+
+// resourceWorkspaceFor is resourceWorkspace's body, taking the acting
+// workspace (and its resolution error) as already-computed inputs rather than
+// calling resolveWorkspace itself. resolveWorkspace is ctx-dependent only —
+// same ctx, same result — so a caller resolving it once (e.g. AuthorizeApp's
+// three candidate-collision loops, each evaluating a distinct App against the
+// SAME acting workspace) and passing it into every iteration avoids N
+// identical Workspace.Tenant store queries for N candidates (w4/m30).
+// resourceWorkspace above remains the single-shot entry point for call sites
+// with nothing to hoist (AuthorizeDatabase, AuthorizeKeyValue).
+func (b *Base) resourceWorkspaceFor(ctx context.Context, acting string, actingErr error, labels map[string]string) (string, error) {
+	if actingErr != nil {
 		named, _ := WorkspaceFrom(ctx)
-		return WorkspaceObject(named), err
+		return WorkspaceObject(named), actingErr
 	}
 	if acting == "" {
 		return DefaultWorkspace, nil

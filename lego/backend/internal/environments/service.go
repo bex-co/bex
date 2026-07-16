@@ -202,6 +202,24 @@ func (r CreateEnvironmentRequest) hasACL() bool {
 	return r.ProtectedStatus != "" || r.NetworkIsolationEnabled || r.IPAllowList != nil
 }
 
+// EnvironmentPatch is the neutral partial-update input shared by REST PATCH,
+// GraphQL updateEnvironment, and MCP update_environment (w4/m30) — pointer
+// fields distinguish "absent" (nil, leave unchanged) from a zero value
+// (networkIsolationEnabled: false must be appliable), mirroring
+// postgres.PostgresPatch. The ACL fields merge into the environment's current
+// triple rather than replacing it wholesale — SetACL/applyACL remain the
+// full-replace verb the bex-native /acl route uses.
+type EnvironmentPatch struct {
+	Name                    *string
+	ProtectedStatus         *string
+	NetworkIsolationEnabled *bool
+	IPAllowList             *[]core.IPAllowListEntry
+}
+
+func (p EnvironmentPatch) hasACL() bool {
+	return p.ProtectedStatus != nil || p.NetworkIsolationEnabled != nil || p.IPAllowList != nil
+}
+
 // databaseIDsByEnvironment lists workspaceID's Databases once and groups
 // their ids by current environment label — the single fetch List's loop
 // shares across every row instead of re-issuing a tenant-wide ListPostgres
@@ -356,8 +374,12 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
-	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || req.ProjectID == "" {
+	name, err := validateEnvironmentName(req.Name)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	req.Name = name
+	if req.ProjectID == "" {
 		return EnvironmentView{}, core.ErrBadRequest
 	}
 	hasACL := req.hasACL()
@@ -407,6 +429,62 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 	}
 	e.Name = name
 	return s.toFullView(ctx, e)
+}
+
+// Update applies a partial update (Render's PATCH /environments/{id}
+// semantics — only fields set in patch change; everything else is left
+// alone) in one authorize + one fetch, replacing the REST adapter's former
+// sequence of independently-authorized Rename/Get/SetACL calls. A rename and
+// an ACL merge in the same patch apply together against the one fetched row;
+// the ACL half reuses applyACL (SetACL's post-authorization body) so the
+// merge-then-full-replace semantics stay identical to the standalone /acl
+// route.
+func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch) (EnvironmentView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvironmentView{}, err
+	}
+	hasACL := patch.hasACL()
+	if patch.Name == nil && !hasACL {
+		return EnvironmentView{}, core.ErrBadRequest
+	}
+	name := ""
+	if patch.Name != nil {
+		trimmed, err := validateEnvironmentName(*patch.Name)
+		if err != nil {
+			return EnvironmentView{}, err
+		}
+		name = trimmed
+	}
+	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if patch.Name != nil {
+		if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
+			return EnvironmentView{}, mapStoreErr(err)
+		}
+		e.Name = name
+	}
+	if !hasACL {
+		return s.toFullView(ctx, e)
+	}
+	status, isolated, allowList := e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList
+	if status == "" { // pre-ACL-migration rows surface as empty
+		status = ProtectedStatusUnprotected
+	}
+	if patch.ProtectedStatus != nil {
+		status = *patch.ProtectedStatus
+	}
+	if patch.NetworkIsolationEnabled != nil {
+		isolated = *patch.NetworkIsolationEnabled
+	}
+	if patch.IPAllowList != nil {
+		allowList = *patch.IPAllowList
+	}
+	if err := validateACL(status, allowList); err != nil {
+		return EnvironmentView{}, err
+	}
+	return s.applyACL(ctx, toView(e, nil, nil, nil, nil), status, isolated, allowList)
 }
 
 // Delete removes an environment (its services' environment_id is set to NULL
@@ -734,6 +812,17 @@ func (s *Service) applyACL(ctx context.Context, view EnvironmentView, protectedS
 	}
 	view.ServiceIDs, view.DatabaseIDs, view.KeyValueIDs, view.EnvGroupIDs = sids, dids, kids, gidsByEnv[view.ID]
 	return view, nil
+}
+
+// validateEnvironmentName trims and rejects an empty environment name — the
+// one check CreateWithACL and Update (w4/m30) both need before writing,
+// factored out so the two verbs cannot drift on it.
+func validateEnvironmentName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", core.ErrBadRequest
+	}
+	return name, nil
 }
 
 // validateACL is SetACL's input check, factored out so the Render-shaped

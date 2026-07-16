@@ -71,6 +71,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
+// allowListPtr reads updateEnvironment's optional ipAllowList/ipAllowListEntries
+// pair as a *[]core.IPAllowListEntry — nil when neither arg key is present
+// (unchanged), non-nil (possibly empty, an explicit deny-all) otherwise.
+// graphql-go omits an unset optional arg from p.Args entirely, so the map-key
+// presence check (not the decoded value) is what distinguishes "absent" from
+// "explicit empty list".
+func allowListPtr(p graphql.ResolveParams) *[]core.IPAllowListEntry {
+	_, entriesOK := p.Args["ipAllowListEntries"]
+	_, cidrsOK := p.Args["ipAllowList"]
+	if !entriesOK && !cidrsOK {
+		return nil
+	}
+	entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
+	return &entries
+}
+
 // GraphQLMutation contributes the environment write verbs to the root Mutation.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
@@ -100,6 +116,30 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Rename(p.Context, p.Args["id"].(string), p.Args["name"].(string))
+			},
+		},
+		// updateEnvironment is the partial-update verb (w4/m30): every field
+		// optional, absent fields untouched, riding the core Update verb — the
+		// GraphQL/MCP counterpart to REST PATCH /v1/environments/{id}. The
+		// existing renameEnvironment/setEnvironmentACL verbs (bex-native,
+		// single-field/full-replace) keep working unchanged.
+		"updateEnvironment": &graphql.Field{
+			Type: environmentGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":                      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":                    &graphql.ArgumentConfig{Type: graphql.String},
+				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.String},
+				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+				"ipAllowListEntries":      &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Update(p.Context, p.Args["id"].(string), EnvironmentPatch{
+					Name:                    gqlutil.StrPtr(p.Args, "name"),
+					ProtectedStatus:         gqlutil.StrPtr(p.Args, "protectedStatus"),
+					NetworkIsolationEnabled: gqlutil.BoolPtr(p.Args, "networkIsolationEnabled"),
+					IPAllowList:             allowListPtr(p),
+				})
 			},
 		},
 		"deleteEnvironment": &graphql.Field{

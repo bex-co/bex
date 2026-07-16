@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -202,12 +201,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// PATCH /v1/environments/{id} takes Render's full update body (w4/017):
 	// every field optional, absent fields untouched — name renames; the ACL
-	// fields merge into the current triple (SetACL is full-replace by design,
-	// so the handler reads the current values first) and flow through the same
-	// SetACL verb the bex-native /acl route uses. ipAllowList arrives as
-	// Render's [{cidrBlock, description}] objects (both fields persist,
-	// w4/m24). Pointer fields distinguish "absent" from a zero value —
-	// networkIsolationEnabled:false must be appliable.
+	// fields merge into the current triple and flow through the core Update
+	// verb (w4/m30), which owns the merge + pre-migration default exactly
+	// once (environments/service.go) so REST/GraphQL/MCP cannot drift.
+	// ipAllowList arrives as Render's [{cidrBlock, description}] objects (both
+	// fields persist, w4/m24). Pointer fields distinguish "absent" from a zero
+	// value — networkIsolationEnabled:false must be appliable.
 	mux.HandleFunc("PATCH /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Name                    *string                  `json:"name"`
@@ -219,51 +218,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		hasACL := req.ProtectedStatus != nil || req.NetworkIsolationEnabled != nil || req.IPAllowList != nil
-		if req.Name == nil && !hasACL {
-			core.WriteErr(w, core.ErrBadRequest)
+		e, err := s.Update(r.Context(), r.PathValue("id"), EnvironmentPatch{
+			Name:                    req.Name,
+			ProtectedStatus:         req.ProtectedStatus,
+			NetworkIsolationEnabled: req.NetworkIsolationEnabled,
+			IPAllowList:             req.IPAllowList,
+		})
+		if err != nil {
+			writeErr(w, err)
 			return
-		}
-		if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		var e EnvironmentView
-		var err error
-		if req.Name != nil {
-			if e, err = s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(*req.Name)); err != nil {
-				writeErr(w, err)
-				return
-			}
-		}
-		if hasACL {
-			// Rename already returned the full view (ACL triple included), so a
-			// second Get — with its authorize + membership fetches — only runs
-			// when the name was untouched.
-			cur := e
-			if req.Name == nil {
-				if cur, err = s.Get(r.Context(), r.PathValue("id")); err != nil {
-					writeErr(w, err)
-					return
-				}
-			}
-			status, isolated, allowList := cur.ProtectedStatus, cur.NetworkIsolationEnabled, cur.IPAllowList
-			if status == "" { // pre-ACL-migration rows surface as empty
-				status = ProtectedStatusUnprotected
-			}
-			if req.ProtectedStatus != nil {
-				status = *req.ProtectedStatus
-			}
-			if req.NetworkIsolationEnabled != nil {
-				isolated = *req.NetworkIsolationEnabled
-			}
-			if req.IPAllowList != nil {
-				allowList = *req.IPAllowList
-			}
-			if e, err = s.SetACL(r.Context(), r.PathValue("id"), status, isolated, allowList); err != nil {
-				writeErr(w, err)
-				return
-			}
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
 	})

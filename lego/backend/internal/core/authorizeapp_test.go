@@ -211,6 +211,31 @@ func TestAuthorizeAppNamedWorkspaceNonMemberIsForbidden(t *testing.T) {
 	}
 }
 
+// collidingApps returns n Apps, each in its own workspace (tea-b, tea-c, …)
+// but sharing LabelServiceName "web" — the AuthorizeApp name-collision
+// fallback fixture shared by TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits
+// and TestAuthorizeAppCollisionFallbackResolvesActingWorkspaceOnce below.
+func collidingApps(n int) []*appv1alpha1.App {
+	apps := make([]*appv1alpha1.App, n)
+	for i := range apps {
+		a := sampleApp(fmt.Sprintf("tea-%c-web", 'b'+i), fmt.Sprintf("tea-%c", 'b'+i))
+		a.Labels[LabelServiceName] = "web"
+		apps[i] = a
+	}
+	return apps
+}
+
+// appObjects adapts a []*appv1alpha1.App to the []client.Object
+// fakeAppClient's builder wants — the conversion every collidingApps call
+// site otherwise repeats inline.
+func appObjects(apps []*appv1alpha1.App) []client.Object {
+	objs := make([]client.Object, len(apps))
+	for i := range apps {
+		objs[i] = apps[i]
+	}
+	return objs
+}
+
 // TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits is w4/015: the
 // LabelServiceName collision-fallback loop audits at most
 // maxFallbackCandidateAudits rejected candidates individually, then records
@@ -220,22 +245,9 @@ func TestAuthorizeAppNamedWorkspaceNonMemberIsForbidden(t *testing.T) {
 // one request into one insert per colliding tenant. Below the cap, behavior
 // is unchanged: one row per rejected candidate, no aggregate row.
 func TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits(t *testing.T) {
-	collidingApps := func(n int) []*appv1alpha1.App {
-		apps := make([]*appv1alpha1.App, n)
-		for i := range apps {
-			a := sampleApp(fmt.Sprintf("tea-%c-web", 'b'+i), fmt.Sprintf("tea-%c", 'b'+i))
-			a.Labels[LabelServiceName] = "web"
-			apps[i] = a
-		}
-		return apps
-	}
 	newBase := func(sink *recordingSink, apps []*appv1alpha1.App) *Base {
-		objs := make([]client.Object, len(apps))
-		for i := range apps {
-			objs[i] = apps[i]
-		}
 		return &Base{
-			Client: fakeAppClient(objs...), Namespace: "default",
+			Client: fakeAppClient(appObjects(apps)...), Namespace: "default",
 			Workspace: fakeWorkspace{"identity-a": "tea-a"},
 			Authz:     fakeDenyChecker{}, Audit: sink,
 		}
@@ -287,6 +299,73 @@ func TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits(t *testing.T) {
 		}
 		if got.Name != last.Name {
 			t.Fatalf("served %q, want %q", got.Name, last.Name)
+		}
+	})
+}
+
+// countingWorkspaceResolver wraps a WorkspaceResolver and counts Tenant()
+// calls — w4/m30's collision-fallback assertion that the acting workspace
+// resolves exactly once for N colliding candidates, not once per candidate
+// (resolveWorkspace calls Tenant on every invocation, so a call count directly
+// measures the store round trips resourceWorkspaceFor's hoist eliminates).
+type countingWorkspaceResolver struct {
+	WorkspaceResolver
+	tenantCalls *int
+}
+
+func (w countingWorkspaceResolver) Tenant(ctx context.Context, id Identity) (string, bool) {
+	*w.tenantCalls++
+	return w.WorkspaceResolver.Tenant(ctx, id)
+}
+
+// TestAuthorizeAppCollisionFallbackResolvesActingWorkspaceOnce is w4/m30/t003:
+// N candidates sharing LabelServiceName each used to trigger their own
+// resourceWorkspace call, which re-ran resolveWorkspace (and its
+// Workspace.Tenant store query) once per candidate even though the acting
+// workspace is ctx-invariant across the whole loop. AuthorizeApp now resolves
+// it once at the top and threads it through resourceWorkspaceFor, so N
+// colliding candidates must cost exactly one Tenant() call — asserted here
+// with a call-counting Workspace double, on both the denied (exhausts every
+// candidate) and allowed (short-circuits partway through) paths.
+func TestAuthorizeAppCollisionFallbackResolvesActingWorkspaceOnce(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+
+	t.Run("denied — every candidate checked", func(t *testing.T) {
+		apps := collidingApps(5)
+		calls := 0
+		b := &Base{
+			Client:    fakeAppClient(appObjects(apps)...),
+			Namespace: "default",
+			Workspace: countingWorkspaceResolver{fakeWorkspace{"identity-a": "tea-a"}, &calls},
+			Authz:     fakeDenyChecker{},
+		}
+		if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
+			t.Fatalf("got %v, want ErrForbidden", err)
+		}
+		if calls != 1 {
+			t.Errorf("Workspace.Tenant called %d times for %d colliding candidates, want exactly 1", calls, len(apps))
+		}
+	})
+
+	t.Run("allowed partway through — short-circuits, still exactly one resolution", func(t *testing.T) {
+		apps := collidingApps(5)
+		allowed := apps[2]
+		calls := 0
+		b := &Base{
+			Client:    fakeAppClient(appObjects(apps)...),
+			Namespace: "default",
+			Workspace: countingWorkspaceResolver{multiWorkspace{"identity-a": {"tea-a", allowed.Labels[LabelTenant]}}, &calls},
+			Authz:     denyAllButChecker{allowed: WorkspaceObject(allowed.Labels[LabelTenant])},
+		}
+		got, err := b.AuthorizeApp(ctx, RelCanView, "web")
+		if err != nil {
+			t.Fatalf("AuthorizeApp: %v", err)
+		}
+		if got.Name != allowed.Name {
+			t.Fatalf("served %q, want %q", got.Name, allowed.Name)
+		}
+		if calls != 1 {
+			t.Errorf("Workspace.Tenant called %d times, want exactly 1", calls)
 		}
 	})
 }

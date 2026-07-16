@@ -17,6 +17,7 @@ limitations under the License.
 package environments
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -29,6 +30,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -72,6 +74,26 @@ func restHarness(t *testing.T) (*Service, *http.ServeMux) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	return svc, mux
+}
+
+// newMCPClient stands up svc's MCP server over an in-memory transport and
+// returns a connected client session, closed automatically at test cleanup —
+// the connect-server/connect-client/register-cleanup boilerplate every MCP
+// subtest below otherwise repeats.
+func newMCPClient(t *testing.T, ctx context.Context, svc *Service) *mcp.ClientSession {
+	t.Helper()
+	server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	return client
 }
 
 func doREST(t *testing.T, mux *http.ServeMux, method, path, body string) *httptest.ResponseRecorder {
@@ -179,17 +201,7 @@ func TestCreateWithACLAcrossRESTGraphQLAndMCP(t *testing.T) {
 	t.Run("MCP", func(t *testing.T) {
 		svc, _ := restHarness(t)
 		ctx := ctxAs("user-a")
-		server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
-		svc.RegisterMCP(server)
-		serverTransport, clientTransport := mcp.NewInMemoryTransports()
-		if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
-			t.Fatal(err)
-		}
-		client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = client.Close() })
+		client := newMCPClient(t, ctx, svc)
 		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "create_environment", Arguments: map[string]any{
 			"name": "mcp", "projectId": "prj-1", "protectedStatus": "protected",
 			"networkIsolationEnabled": true,
@@ -226,15 +238,7 @@ func TestCreateWithACLInvalidCIDRLeavesNoOrphanAcrossMachineSurfaces(t *testing.
 	t.Run("MCP", func(t *testing.T) {
 		svc, _ := restHarness(t)
 		ctx := ctxAs("user-a")
-		server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
-		svc.RegisterMCP(server)
-		serverTransport, clientTransport := mcp.NewInMemoryTransports()
-		_, _ = server.Connect(ctx, serverTransport, nil)
-		client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = client.Close() })
+		client := newMCPClient(t, ctx, svc)
 		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "create_environment", Arguments: map[string]any{
 			"name": "bad", "projectId": "prj-1",
 			"ipAllowList": []any{map[string]any{"cidrBlock": "not-a-cidr"}},
@@ -377,4 +381,179 @@ func TestREST_PatchMergesRenderACLFields(t *testing.T) {
 	if rec := doREST(t, mux, "PATCH", "/v1/environments/"+e.ID, `{}`); rec.Code != http.StatusBadRequest {
 		t.Errorf("PATCH {} = %d, want 400", rec.Code)
 	}
+}
+
+// TestUpdateAcrossRESTGraphQLAndMCPProduceIdenticalMerges is w4/m30/t006: REST
+// PATCH, GraphQL updateEnvironment, and MCP update_environment all ride the
+// one core Update verb, so the same patch sequence — an ACL-only merge, an
+// explicit zero-value bool (networkIsolationEnabled:false, absent != false),
+// then a name-only rename — must land on byte-identical final state across
+// all three, and the pre-migration empty-protectedStatus default (w4/017)
+// must resolve the same way everywhere too.
+// newProtectedBaselineEnv creates an environment with a protected/isolated
+// ACL baseline (protectedStatus, networkIsolationEnabled, and one CIDR all
+// set) — the starting point every subtest of
+// TestUpdateAcrossRESTGraphQLAndMCPProduceIdenticalMerges patches from, to
+// prove the later merges preserve untouched siblings rather than resetting
+// them.
+func newProtectedBaselineEnv(t *testing.T) (*Service, *http.ServeMux, string) {
+	t.Helper()
+	svc, mux := restHarness(t)
+	e, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusProtected, true, []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}); err != nil {
+		t.Fatalf("SetACL: %v", err)
+	}
+	return svc, mux, e.ID
+}
+
+func TestUpdateAcrossRESTGraphQLAndMCPProduceIdenticalMerges(t *testing.T) {
+	assertMerged := func(t *testing.T, got EnvironmentView) {
+		t.Helper()
+		if got.Name != "production" {
+			t.Errorf("Name = %q, want production", got.Name)
+		}
+		if got.ProtectedStatus != ProtectedStatusProtected {
+			t.Errorf("ProtectedStatus = %q, want protected (untouched by the later patches)", got.ProtectedStatus)
+		}
+		if got.NetworkIsolationEnabled {
+			t.Errorf("NetworkIsolationEnabled = true, want false (the explicit zero-value patch)")
+		}
+		if len(got.IPAllowList) != 1 || got.IPAllowList[0].CIDRBlock != "192.168.0.0/16" || got.IPAllowList[0].Description != "vpn" {
+			t.Errorf("IPAllowList = %+v, want the merged replacement CIDR", got.IPAllowList)
+		}
+	}
+
+	t.Run("REST", func(t *testing.T) {
+		_, mux, id := newProtectedBaselineEnv(t)
+		var got renderEnvironment
+		for _, body := range []string{
+			`{"ipAllowList":[{"cidrBlock":"192.168.0.0/16","description":"vpn"}]}`,
+			`{"networkIsolationEnabled":false}`,
+			`{"name":"production"}`,
+		} {
+			rec := doREST(t, mux, "PATCH", "/v1/environments/"+id, body)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("PATCH %s = %d: %s", body, rec.Code, rec.Body.String())
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+		}
+		assertMerged(t, EnvironmentView{Name: got.Name, ProtectedStatus: got.ProtectedStatus, NetworkIsolationEnabled: got.NetworkIsolationEnabled, IPAllowList: got.IPAllowList})
+	})
+
+	t.Run("GraphQL", func(t *testing.T) {
+		svc, _, id := newProtectedBaselineEnv(t)
+		field := svc.GraphQLMutation()["updateEnvironment"]
+		var got EnvironmentView
+		for _, args := range []map[string]any{
+			{"id": id, "ipAllowListEntries": []any{map[string]any{"cidrBlock": "192.168.0.0/16", "description": "vpn"}}},
+			{"id": id, "networkIsolationEnabled": false},
+			{"id": id, "name": "production"},
+		} {
+			out, err := field.Resolve(graphql.ResolveParams{Context: ctxAs("user-a"), Args: args})
+			if err != nil {
+				t.Fatalf("updateEnvironment(%+v): %v", args, err)
+			}
+			got = out.(EnvironmentView)
+		}
+		assertMerged(t, got)
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		svc, _, id := newProtectedBaselineEnv(t)
+		ctx := ctxAs("user-a")
+		client := newMCPClient(t, ctx, svc)
+		var got EnvironmentView
+		for _, args := range []map[string]any{
+			{"id": id, "ipAllowList": []any{map[string]any{"cidrBlock": "192.168.0.0/16", "description": "vpn"}}},
+			{"id": id, "networkIsolationEnabled": false},
+			{"id": id, "name": "production"},
+		} {
+			res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_environment", Arguments: args})
+			if err != nil || res.IsError {
+				t.Fatalf("MCP update_environment(%+v): err=%v result=%+v", args, err, res)
+			}
+			raw, _ := json.Marshal(res.StructuredContent)
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatal(err)
+			}
+		}
+		assertMerged(t, got)
+	})
+}
+
+// TestUpdatePreMigrationEmptyProtectedStatusDefaultsAcrossSurfaces is w4/017's
+// pre-ACL-migration case (a row created before the ACL columns existed
+// surfaces protectedStatus ""): an ACL-only patch through Update must default
+// it to unprotected rather than persisting the empty string, identically on
+// every surface — mirroring REST's former inline check, now owned once by
+// core Update.
+func TestUpdatePreMigrationEmptyProtectedStatusDefaultsAcrossSurfaces(t *testing.T) {
+	newPreMigrationEnv := func(t *testing.T) (*Service, *http.ServeMux, store.Environment) {
+		t.Helper()
+		st := newFakeStore()
+		st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+		svc, _ := newServiceWithClient(st)
+		// fakeStore.CreateEnvironment seeds ProtectedStatus: unprotected (the
+		// post-migration default) — a real pre-ACL-migration row is inserted
+		// directly, ProtectedStatus intentionally left "" (empty column).
+		row := store.Environment{ID: id.New(id.Environment), ProjectID: "prj-1", TenantID: "tea-a", Name: "staging"}
+		st.envs[row.ID] = row
+		mux := http.NewServeMux()
+		svc.RegisterREST(mux)
+		return svc, mux, row
+	}
+
+	t.Run("REST", func(t *testing.T) {
+		_, mux, row := newPreMigrationEnv(t)
+		rec := doREST(t, mux, "PATCH", "/v1/environments/"+row.ID, `{"networkIsolationEnabled":true}`)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PATCH = %d: %s", rec.Code, rec.Body.String())
+		}
+		var got renderEnvironment
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.ProtectedStatus != ProtectedStatusUnprotected {
+			t.Errorf("ProtectedStatus = %q, want the unprotected default", got.ProtectedStatus)
+		}
+	})
+
+	t.Run("GraphQL", func(t *testing.T) {
+		svc, _, row := newPreMigrationEnv(t)
+		field := svc.GraphQLMutation()["updateEnvironment"]
+		out, err := field.Resolve(graphql.ResolveParams{Context: ctxAs("user-a"), Args: map[string]any{
+			"id": row.ID, "networkIsolationEnabled": true,
+		}})
+		if err != nil {
+			t.Fatalf("updateEnvironment: %v", err)
+		}
+		if got := out.(EnvironmentView); got.ProtectedStatus != ProtectedStatusUnprotected {
+			t.Errorf("ProtectedStatus = %q, want the unprotected default", got.ProtectedStatus)
+		}
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		svc, _, row := newPreMigrationEnv(t)
+		ctx := ctxAs("user-a")
+		client := newMCPClient(t, ctx, svc)
+		res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_environment", Arguments: map[string]any{
+			"id": row.ID, "networkIsolationEnabled": true,
+		}})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP update_environment: err=%v result=%+v", err, res)
+		}
+		raw, _ := json.Marshal(res.StructuredContent)
+		var got EnvironmentView
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.ProtectedStatus != ProtectedStatusUnprotected {
+			t.Errorf("ProtectedStatus = %q, want the unprotected default", got.ProtectedStatus)
+		}
+	})
 }

@@ -494,15 +494,6 @@ func gqlInt32Ptr(args map[string]any, key string) *int32 {
 	return &value
 }
 
-// gqlBoolPtr reads an optional Boolean arg as a tri-state *bool (absent => nil,
-// so the platform default applies).
-func gqlBoolPtr(args map[string]any, key string) *bool {
-	if v, ok := args[key].(bool); ok {
-		return &v
-	}
-	return nil
-}
-
 // customDomainGQLType renders a DomainView as Render's CustomDomain shape.
 // Field names match Render's dashboard operations for custom domains.
 // dnsRecordGQLType renders a DNSRecordView — the DNS record a tenant creates to
@@ -908,7 +899,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					DockerfilePath:          gqlutil.Str(p.Args, "dockerfilePath"),
 					Builder:                 gqlutil.Str(p.Args, "builder"),
 					Plan:                    gqlutil.Str(p.Args, "plan"),
-					AutoDeploy:              gqlBoolPtr(p.Args, "autoDeploy"),
+					AutoDeploy:              gqlutil.BoolPtr(p.Args, "autoDeploy"),
 					NotifyOnFail:            gqlutil.Str(p.Args, "notifyOnFail"),
 					Port:                    int32(gqlInt(p.Args, "port")),
 					Replicas:                int32(gqlInt(p.Args, "replicas")),
