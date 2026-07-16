@@ -8,17 +8,31 @@ on:
   pull_request:
     paths:
       - "deploy/gitops/**"
+      - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/lib/ssh-edge.sh"
       - "scripts/ssh-activate.sh"
       - "scripts/ssh-activate.test.sh"
+      - "scripts/ssh-dns-cloudflare.sh"
+      - "scripts/ssh-dns-cloudflare.test.sh"
+      - "scripts/ssh-verify.sh"
+      - "scripts/ssh-verify-openssh.sh"
+      - "scripts/ssh-verify.test.sh"
       - ".github/workflows/gitops.yml"
   push:
     branches: [main]
     paths:
       - "deploy/gitops/**"
+      - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/lib/ssh-edge.sh"
       - "scripts/ssh-activate.sh"
       - "scripts/ssh-activate.test.sh"
+      - "scripts/ssh-dns-cloudflare.sh"
+      - "scripts/ssh-dns-cloudflare.test.sh"
+      - "scripts/ssh-verify.sh"
+      - "scripts/ssh-verify-openssh.sh"
+      - "scripts/ssh-verify.test.sh"
       - ".github/workflows/gitops.yml"
 
 permissions:

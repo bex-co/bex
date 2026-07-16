@@ -26,6 +26,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -995,6 +996,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 
 // fakeKeyStore is the in-memory APIKeyStore for the root integration tests.
 type fakeKeyStore struct {
+	mu   sync.Mutex
 	keys map[string]apikeys.APIKey
 	n    int
 }
@@ -1002,6 +1004,8 @@ type fakeKeyStore struct {
 func newFakeKeyStore() *fakeKeyStore { return &fakeKeyStore{keys: map[string]apikeys.APIKey{}} }
 
 func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string) (apikeys.APIKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.n++
 	k := apikeys.APIKey{ID: fmt.Sprintf("key-%d", f.n), Name: name, Secret: "s3cret", CreatedBy: createdBy}
 	f.keys[k.ID] = apikeys.APIKey{ID: k.ID, Name: k.Name, CreatedBy: createdBy}
@@ -1009,6 +1013,8 @@ func (f *fakeKeyStore) Create(_ context.Context, name, createdBy string) (apikey
 }
 
 func (f *fakeKeyStore) List(context.Context) ([]apikeys.APIKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	out := make([]apikeys.APIKey, 0, len(f.keys))
 	for _, k := range f.keys {
 		out = append(out, k)
@@ -1017,6 +1023,8 @@ func (f *fakeKeyStore) List(context.Context) ([]apikeys.APIKey, error) {
 }
 
 func (f *fakeKeyStore) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if _, ok := f.keys[id]; !ok {
 		return core.ErrNotFound
 	}
@@ -1025,6 +1033,8 @@ func (f *fakeKeyStore) Delete(_ context.Context, id string) error {
 }
 
 func (f *fakeKeyStore) Touch(_ context.Context, id string, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if k, ok := f.keys[id]; ok {
 		k.LastUsedAt = at.UTC().Format(time.RFC3339)
 		f.keys[id] = k
