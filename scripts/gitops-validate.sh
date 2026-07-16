@@ -148,6 +148,11 @@ if yq -N '. | select(.kind == "Role" or .kind == "ClusterRole") | .rules[]? | .r
   echo "FAIL: SSH gateway RBAC must never grant Secret access" >&2
   fail=1
 fi
+bex_api_ingress_verbs="$(yq -N '. | select(.kind == "Role" and .metadata.name == "bex-api-apps") | .rules[] | select(.apiGroups[] == "networking.k8s.io" and .resources[] == "ingresses") | .verbs | sort | join(",")' deploy/gitops/base/bex-api-apps-rbac.yaml)"
+if [ "$bex_api_ingress_verbs" != "get,list" ]; then
+  echo "FAIL: bex-api tenant Role needs exactly get,list on Ingresses for exact-router egress accounting; got '$bex_api_ingress_verbs'" >&2
+  fail=1
+fi
 ssh_cluster_binding="$(kubectl kustomize lego/operator/config/default | yq -N '. | select(.kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-ssh-gateway") | .name')"
 if [ -n "$ssh_cluster_binding" ]; then
   echo "FAIL: SSH gateway must not have cluster-wide RBAC" >&2
