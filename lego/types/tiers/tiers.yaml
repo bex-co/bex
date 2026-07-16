@@ -61,6 +61,9 @@ postgres:
   # Unknown/empty Database plans resolve to free (the operator's prior
   # dbPlans fallback).
   default: free
+  # Render's normal product/API ceiling. The operator and backend consume this
+  # value directly; the dashboard carries a build-tested mirror.
+  diskAutoscalingCapGB: 16384
   tiers:
     - id: free
       cpu: 100m

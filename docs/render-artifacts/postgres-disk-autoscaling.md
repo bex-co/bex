@@ -22,12 +22,13 @@ The threshold comparison is inclusive (`used / capacity >= 0.90`). The step is c
 nextGB = min(16384, ceil((currentGB * 1.5) / 5) * 5)
 ```
 
-At the cap the loop holds steady. Missing or invalid usage data also holds steady; it never guesses.
+At the cap the loop holds steady. Missing or invalid usage data also holds steady; it never guesses. The machine-readable cap is `postgres.diskAutoscalingCapGB` in `lego/types/tiers/tiers.yaml`: the operator and backend MCP description consume it directly, while a dashboard test guards its TypeScript display mirror against that catalog value.
 
 ## bex implementation and explicit divergences
 
 - The operator reads the existing `kubelet_volume_stats_used_bytes` and `kubelet_volume_stats_capacity_bytes` series from Prometheus. This works with or without `BEX_CP_DB_URI`: Prometheus is cluster telemetry, not the optional control-plane store. For an HA database, the fullest CNPG instance PVC drives the decision because every replica has its own full copy.
 - Each automatic resize emits a Kubernetes `Normal` Event with reason `DiskAutoscaled` and appends a bounded entry to `Database.status.diskResizeHistory`. Render does not publish a notification contract; bex deliberately supplies an auditable operator/status trail instead of resizing silently.
+- A Ready database whose sample fails three consecutive times emits one Kubernetes `Warning` Event with reason `DiskAutoscalingSampleUnavailable`. The annotation-backed counter survives manager restarts, resets after a successful sample, and ignores the expected no-PVC window before the database first becomes Ready.
 - The last resize timestamp is persisted with the resize intent, so a stale kubelet sample or slow CNPG PVC expansion cannot cause another growth during the 12-hour cooldown.
 - CNPG remains the executor: the operator changes `Database.spec.storageGB`, projects the larger `Cluster.spec.storage.size`, and CNPG expands the PVC.
 

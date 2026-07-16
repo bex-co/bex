@@ -76,6 +76,9 @@ func TestComputeCatalogMatchesFormerOperatorLadder(t *testing.T) {
 }
 
 func TestPostgresCatalogMatchesFormerDBPlans(t *testing.T) {
+	if got := Postgres.DiskAutoscalingCapGB(); got != 16*1024 {
+		t.Fatalf("Postgres disk-autoscaling cap = %d GB, want catalog contract 16384 GB", got)
+	}
 	if got := len(Postgres.IDs()); got != len(wantPostgres) {
 		t.Fatalf("want %d postgres tiers, got %d", len(wantPostgres), got)
 	}
