@@ -9,7 +9,8 @@
 | t001 | Plumb `registryCredentialId` through the dashboard's create/patch GraphQL ops     | 30m | —          |
 | t002 | Credential selector on the image source tab of the create flow                    | 45m | t001       |
 | t003 | Attach/detach a credential in service settings' image section                     | 45m | t001       |
-| t004 | Render parity — compare against Render's private-image create + settings flows    | 30m | t002, t003 |
+| t008 | Show the bound registry credential on the service overview/detail page            | 30m | t001       |
+| t004 | Render parity — compare against Render's private-image create + settings flows    | 30m | t002, t003, t008 |
 | t005 | Simplify — `/simplify` over the milestone's diff                                  | 20m | t004       |
 | t006 | Test coverage — meaningful tests for the shipped behavior                         | 30m | t004       |
 | t007 | Closeout — verify DoD, sync status, move to `done/`                               | 15m | t006       |
