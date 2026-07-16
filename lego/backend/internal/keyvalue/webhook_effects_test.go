@@ -70,3 +70,39 @@ func TestKeyValuePlanEffectIsSuccessfulAndTyped(t *testing.T) {
 		t.Fatalf("unrelated update verb = %q", got)
 	}
 }
+
+// TestKeyValueSetPlanAuditVerbAndPlanPair is w10/m5: SetPlan always records
+// the plan verb with the typed from/to pair — an idempotent same-plan set no
+// longer masquerades as UpdateKeyValue (the pair is simply equal).
+func TestKeyValueSetPlanAuditVerbAndPlanPair(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-test", Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Name: "cache", Plan: "free"},
+	}
+	svc, _ := newService(kv)
+	sink := &webhookAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+
+	if _, err := svc.SetPlan(ctx, kv.Name, "starter"); err != nil {
+		t.Fatalf("SetPlan: %v", err)
+	}
+	if _, err := svc.SetPlan(ctx, kv.Name, "starter"); err != nil {
+		t.Fatalf("idempotent SetPlan: %v", err)
+	}
+	if len(sink.events) != 2 {
+		t.Fatalf("events = %d, want 2", len(sink.events))
+	}
+	change, noop := sink.events[0], sink.events[1]
+	if change.Verb != core.AuditVerbKeyValuePlanChanged ||
+		change.PlanFrom == nil || *change.PlanFrom != "free" ||
+		change.PlanTo == nil || *change.PlanTo != "starter" {
+		t.Fatalf("plan change event = %+v", change)
+	}
+	if noop.Verb != core.AuditVerbKeyValuePlanChanged ||
+		noop.PlanFrom == nil || *noop.PlanFrom != "starter" ||
+		noop.PlanTo == nil || *noop.PlanTo != "starter" {
+		t.Fatalf("idempotent set event = %+v (want SetPlan verb with equal pair, never %s)",
+			noop, core.AuditVerbKeyValueUpdated)
+	}
+}

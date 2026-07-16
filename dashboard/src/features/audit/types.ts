@@ -11,4 +11,7 @@ export interface AuditEvent {
   action: string;
   status: "success" | "denied";
   resource: string;
+  /** Target display name (backend migration 0038); "" on pre-0038 rows — the
+   *  row falls back to the raw resource id. */
+  targetName: string;
 }

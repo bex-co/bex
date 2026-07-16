@@ -573,11 +573,10 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if from != plan {
-		s.RecordDatabaseEffect(ctx, d, core.DatabasePlanChanged)
-	} else {
-		s.RecordDatabaseEffect(ctx, d, core.DatabaseUpdated)
-	}
+	// Recorded even when from == plan, matching apps' SetPlan precedent: the
+	// verb names the call the caller made and the equal pair shows nothing
+	// changed — never the Update* verb of a call they didn't make (w10/m5).
+	s.RecordDatabasePlanChanged(ctx, d, from, plan)
 	return view, nil
 }
 

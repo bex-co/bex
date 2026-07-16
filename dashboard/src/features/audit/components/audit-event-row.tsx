@@ -44,8 +44,17 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
           <Badge variant="success">{t("audit.statusAllowed")}</Badge>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground max-w-[16rem] truncate font-mono text-sm">
-        {event.resource}
+      <TableCell className="text-muted-foreground max-w-[16rem] truncate text-sm">
+        {event.targetName ? (
+          <>
+            {event.targetName}
+            <span className="block truncate font-mono text-xs">
+              {event.resource}
+            </span>
+          </>
+        ) : (
+          <span className="font-mono">{event.resource}</span>
+        )}
       </TableCell>
     </TableRow>
   );

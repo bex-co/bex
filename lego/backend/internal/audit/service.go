@@ -66,6 +66,7 @@ type Event struct {
 	Verb              string
 	Resource          string
 	Target            string // the resource acted ON ("service:my-api"); Render's metadata carries it
+	TargetName        string // the target's display name (migration 0038); "" on pre-0038 rows
 	Outcome           string
 	At                time.Time
 	MaintenanceModeTo *bool
@@ -79,6 +80,7 @@ func view(r store.AuditRow) Event {
 		Verb:              r.Verb,
 		Resource:          r.Resource,
 		Target:            r.Target,
+		TargetName:        r.TargetName,
 		Outcome:           r.Outcome,
 		At:                r.At,
 		MaintenanceModeTo: r.MaintenanceModeTo,

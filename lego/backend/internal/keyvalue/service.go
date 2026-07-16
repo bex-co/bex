@@ -557,11 +557,10 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	if err != nil {
 		return KeyValueView{}, err
 	}
-	if from != plan {
-		s.RecordKeyValueEffect(ctx, kv, core.KeyValuePlanChanged)
-	} else {
-		s.RecordKeyValueEffect(ctx, kv, core.KeyValueUpdated)
-	}
+	// Recorded even when from == plan, matching apps' SetPlan precedent: the
+	// verb names the call the caller made and the equal pair shows nothing
+	// changed — never the Update* verb of a call they didn't make (w10/m5).
+	s.RecordKeyValuePlanChanged(ctx, kv, from, plan)
 	return view, nil
 }
 
