@@ -24,6 +24,11 @@ import {
   SetDatabaseParameterOverridesDocument,
   type ParameterInput,
 } from "@/features/databases/api/operations";
+import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+
+export type SaveParametersResult =
+  | { ok: true }
+  | { ok: false; error: string | null };
 
 /**
  * Returns all five insight datasets for a managed-Postgres database.
@@ -56,18 +61,24 @@ export function useDatabaseInsights(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    // The operator applies postgresql.conf changes asynchronously. Keep the
+    // live pg_settings view moving until the saved setting/source appears.
+    pollInterval: 15_000,
   });
 
   const [setParameters, { loading: saving }] = useMutation(
     SetDatabaseParameterOverridesDocument,
   );
 
-  async function saveParameters(params: ParameterInput[]): Promise<boolean> {
+  async function saveParameters(
+    params: ParameterInput[],
+  ): Promise<SaveParametersResult> {
     try {
       await setParameters({ variables: { id, parameters: params } });
-      return true;
-    } catch {
-      return false;
+      void parameterOverrides.refetch();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: graphQLErrorMessage(err) };
     }
   }
 
@@ -88,7 +99,8 @@ export function useDatabaseInsights(id: string) {
     tableScansLoading: tableScans.loading,
     tableScansError: tableScans.error,
 
-    parameterOverrides: parameterOverrides.data?.databaseParameterOverrides ?? [],
+    parameterOverrides:
+      parameterOverrides.data?.databaseParameterOverrides ?? [],
     parameterOverridesLoading: parameterOverrides.loading,
     parameterOverridesError: parameterOverrides.error,
 

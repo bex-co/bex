@@ -53,6 +53,7 @@ import {
   type EstimatedCost,
 } from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
+import { WorkspaceResourceCaps } from "./resource-caps";
 
 // --- unit conversion helpers ---
 
@@ -627,6 +628,8 @@ export function UsagePage() {
               <AlertDescription>{error.message}</AlertDescription>
             </Alert>
           )}
+
+          <WorkspaceResourceCaps />
 
           <ComputeSection rows={computeRows} loading={loading} />
           <BandwidthSection rows={bandwidthRows} loading={loading} />

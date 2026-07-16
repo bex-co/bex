@@ -9,6 +9,34 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Month-to-date workspace consumption",
     description: "Usage page subtitle beneath the heading",
   },
+  "usage.resourceCapsTitle": {
+    message: "Resource limits",
+    description: "Workspace creation-cap card title on the Usage page",
+  },
+  "usage.resourceCapsDescription": {
+    message: "Current resource counts for this workspace",
+    description: "Workspace creation-cap card description",
+  },
+  "usage.resourceCapsServices": {
+    message: "Services",
+    description: "Service count label in the resource-cap card",
+  },
+  "usage.resourceCapsPostgres": {
+    message: "Postgres",
+    description: "Postgres count label in the resource-cap card",
+  },
+  "usage.resourceCapsKeyValues": {
+    message: "Key Value",
+    description: "Key Value count label in the resource-cap card",
+  },
+  "usage.resourceCapsValue": {
+    message: "{used} of {limit} used",
+    description: "Used-versus-limit resource count",
+  },
+  "usage.resourceCapsNearLimit": {
+    message: "Near limit",
+    description: "Warning shown once a resource count reaches 80 percent",
+  },
   "usage.computeTitle": {
     message: "Compute",
     description: "Compute section heading on the Usage page",
