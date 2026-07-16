@@ -68,6 +68,17 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return *d.Trigger
 		})},
+		// plan_changed from/to plan name strings.
+		"planFrom": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PlanFrom })},
+		"planTo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PlanTo })},
+		// instance_count_changed from/to instance counts.
+		"instanceCountFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceCountFrom })},
+		"instanceCountTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceCountTo })},
+		// autoscaling_config_changed before/after min+max.
+		"autoscalingMinFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMinFrom })},
+		"autoscalingMaxFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMaxFrom })},
+		"autoscalingMinTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMinTo })},
+		"autoscalingMaxTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMaxTo })},
 	},
 })
 

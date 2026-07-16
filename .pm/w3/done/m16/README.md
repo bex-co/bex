@@ -1,18 +1,18 @@
 # w3 · m16 — Events feed fidelity: required from/to details + auto_deploy discrimination
 
-**Worker:** worker3 **Goal:** Close the two closable ◐ divergences the ADR018 Service-events row records: `plan_changed`/`instance_count_changed`/`autoscaling_config_changed` gain the `from`/`to` details Render marks **required**, and `auto_deploy_changed` splits into Render's `auto_deploy_enabled`/`auto_deploy_disabled` — via the typed-nullable-field precedent maintenance mode established, never a generic verb-arguments object. **Status:** todo
+**Worker:** worker3 **Goal:** Close the two closable ◐ divergences the ADR018 Service-events row records: `plan_changed`/`instance_count_changed`/`autoscaling_config_changed` gain the `from`/`to` details Render marks **required**, and `auto_deploy_changed` splits into Render's `auto_deploy_enabled`/`auto_deploy_disabled` — via the typed-nullable-field precedent maintenance mode established, never a generic verb-arguments object. **Status:** done — **DONE**
 
 ## Tasks (in order)
 
 | id   | title                                                                                                     | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Audit seam: typed, per-verb non-secret detail fields (plan from/to · replica from/to · autoDeploy bool), the maintenance-boolean pattern | 60m | —          |
-| t002 | Projection: the three event types emit Render's required `from`/`to`; auto-deploy events discriminate by the recorded boolean | 30m | t001       |
-| t003 | Refresh the ledger row (divergences 1+2 closed; 3+4 stay with their recorded rationale) + `scripts/events-verify.sh` coverage | 30m | t002       |
-| t004 | Render parity — conformance suite validates the events route's new required fields; three-surface consistency  | 20m | t003       |
-| t005 | Simplify — `/simplify` over the code this milestone changed                                                   | 20m | t004       |
-| t006 | Test coverage — event-projection tests incl. legacy rows without recorded details (omit, don't fake)          | 30m | t004       |
-| t007 | Closeout — DoD met → move milestone to `done/`                                                                | 10m | t006       |
+| t001 | Audit seam: typed, per-verb non-secret detail fields (plan from/to · replica from/to · autoDeploy bool), the maintenance-boolean pattern | 60m | —          | — **DONE** |
+| t002 | Projection: the three event types emit Render's required `from`/`to`; auto-deploy events discriminate by the recorded boolean | 30m | t001       | — **DONE** |
+| t003 | Refresh the ledger row (divergences 1+2 closed; 3+4 stay with their recorded rationale) + `scripts/events-verify.sh` coverage | 30m | t002       | — **DONE** |
+| t004 | Render parity — conformance suite validates the events route's new required fields; three-surface consistency  | 20m | t003       | — **DONE** |
+| t005 | Simplify — `/simplify` over the code this milestone changed                                                   | 20m | t004       | — **DONE** |
+| t006 | Test coverage — event-projection tests incl. legacy rows without recorded details (omit, don't fake)          | 30m | t004       | — **DONE** |
+| t007 | Closeout — DoD met → move milestone to `done/`                                                                | 10m | t006       | — **DONE** |
 
 ## Definition of done
 

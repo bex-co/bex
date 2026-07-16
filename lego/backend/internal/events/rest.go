@@ -43,9 +43,6 @@ import (
 //
 // Diverging, deliberately:
 //
-//   - details omits the from/to fields Render marks required on plan_changed /
-//     instance_count_changed / autoscaling_config_changed — see the package doc's
-//     Redaction section. A missing field, never a fabricated one.
 //   - Render's `status` (deprecated integer) is not emitted on deploy_ended;
 //     deployStatus, its replacement, is.
 //   - Rejecting a malformed cursor with 400 (Render's behavior here is unspecified).
@@ -66,6 +63,10 @@ type renderEvent struct {
 // serializes exactly the members Render defines for it and a payload-less type
 // (service_resumed, maintenance_ended, and bex's config-change types) serializes
 // as `{}` — Render's own shape for those.
+//
+// from/to use `any` so the same JSON keys work for string (plan_changed) and
+// int (instance_count_changed): only one set is non-nil per event, omitempty
+// suppresses the other. autoscaling_config_changed uses previous/current objects.
 type renderDetails struct {
 	DeployID        string         `json:"deployId,omitempty"`
 	DeployStatus    string         `json:"deployStatus,omitempty"`
@@ -73,6 +74,21 @@ type renderDetails struct {
 	Trigger         *renderTrigger `json:"trigger,omitempty"`
 	Actor           string         `json:"actor,omitempty"`
 	TriggeredByUser string         `json:"triggeredByUser,omitempty"`
+	// plan_changed and instance_count_changed both use "from"/"to" — the value
+	// type (string vs int pointer) differs, so `any` is required for a flat struct.
+	From any `json:"from,omitempty"`
+	To   any `json:"to,omitempty"`
+	// autoscaling_config_changed uses nested previous/current objects.
+	Previous *autoscalingState `json:"previous,omitempty"`
+	Current  *autoscalingState `json:"current,omitempty"`
+}
+
+// autoscalingState is the per-config snapshot for autoscaling_config_changed
+// details — previous and current, matching Render's shape.
+type autoscalingState struct {
+	Enabled      bool   `json:"enabled"`
+	MinInstances *int32 `json:"minInstances,omitempty"`
+	MaxInstances *int32 `json:"maxInstances,omitempty"`
 }
 
 // renderTrigger is deploy_started's trigger object — all six booleans always
@@ -102,6 +118,25 @@ func toRenderEvent(e Event) renderEvent {
 			DeployedByRender: t.DeployedByRender,
 			ClearCache:       t.ClearCache,
 			Rollback:         t.Rollback,
+		}
+	}
+	switch e.Type {
+	case TypePlanChanged:
+		d.From = e.Details.PlanFrom
+		d.To = e.Details.PlanTo
+	case TypeInstanceCountChanged:
+		d.From = e.Details.InstanceCountFrom
+		d.To = e.Details.InstanceCountTo
+	case TypeAutoscalingConfigChanged:
+		if e.Details.AutoscalingMinFrom != nil || e.Details.AutoscalingMaxFrom != nil {
+			d.Previous = &autoscalingState{Enabled: true, MinInstances: e.Details.AutoscalingMinFrom, MaxInstances: e.Details.AutoscalingMaxFrom}
+		} else {
+			d.Previous = &autoscalingState{Enabled: false}
+		}
+		if e.Details.AutoscalingMinTo != nil || e.Details.AutoscalingMaxTo != nil {
+			d.Current = &autoscalingState{Enabled: true, MinInstances: e.Details.AutoscalingMinTo, MaxInstances: e.Details.AutoscalingMaxTo}
+		} else {
+			d.Current = &autoscalingState{Enabled: false}
 		}
 	}
 	return renderEvent{
