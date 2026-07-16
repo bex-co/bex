@@ -64,10 +64,13 @@ spec:
             capabilities:
               drop: [ALL]
               # CAP_BPF loads/maps programs, NET_ADMIN attaches netfilter BPF
-              # links, PERFMON permits the read-only skb dynptr kfunc, and
-              # SYS_RESOURCE raises memlock on
-              # kernels that have not made BPF map memory accounting memcg-based.
-              add: [BPF, NET_ADMIN, PERFMON, SYS_RESOURCE]
+              # links, PERFMON permits the read-only skb dynptr kfunc,
+              # SYS_RESOURCE raises memlock on kernels that have not made BPF
+              # map memory accounting memcg-based, and SYS_ADMIN is required
+              # to create the private pin directory on bpffs on the production
+              # kernel. The container still has no host PID/IPC/root mount and
+              # is not privileged.
+              add: [BPF, NET_ADMIN, PERFMON, SYS_ADMIN, SYS_RESOURCE]
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
