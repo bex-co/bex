@@ -40,7 +40,10 @@ import {
 } from "@/features/env-groups/hooks/use-env-groups";
 import { CenteredState } from "@/features/services/components/centered-state";
 import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
-import type { EnvGroupView } from "@/features/env-groups/types";
+import type {
+  CreateEnvGroupInput,
+  EnvGroupView,
+} from "@/features/env-groups/types";
 
 /**
  * The service Environment tab's Environment Groups section (Render dashboard
@@ -203,7 +206,7 @@ function CreateGroupButton({
   createGroup,
   disabled,
 }: {
-  createGroup: (name: string) => Promise<string | null>;
+  createGroup: (input: CreateEnvGroupInput) => Promise<string | null>;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
@@ -224,7 +227,12 @@ function CreateGroupButton({
       return;
     }
     setSaving(true);
-    const ok = await createGroup(name.trim());
+    const ok = await createGroup({
+      name: name.trim(),
+      envVars: [],
+      secretFiles: [],
+      serviceIds: [],
+    });
     setSaving(false);
     if (ok) reset();
   }

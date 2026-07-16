@@ -62,8 +62,17 @@ var envGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 var envGroupVarInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "EnvGroupVarInput",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"key":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"value": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"key":           &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value":         &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"generateValue": &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+	},
+})
+
+var envGroupFileInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "EnvGroupSecretFileInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":    &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"content": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 	},
 })
 
@@ -84,6 +93,35 @@ func varsFromArgs(raw []any) []EnvVarView {
 		vars = append(vars, ev)
 	}
 	return vars
+}
+
+func createVarsFromArgs(raw any) []CreateEnvVarInput {
+	items, _ := raw.([]any)
+	vars := make([]CreateEnvVarInput, 0, len(items))
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		generate, _ := m["generateValue"].(bool)
+		vars = append(vars, CreateEnvVarInput{
+			Key: gqlutil.Str(m, "key"), Value: gqlutil.Str(m, "value"), GenerateValue: generate,
+		})
+	}
+	return vars
+}
+
+func createFilesFromArgs(raw any) []SecretFileView {
+	items, _ := raw.([]any)
+	files := make([]SecretFileView, 0, len(items))
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		files = append(files, SecretFileView{Name: gqlutil.Str(m, "name"), Content: gqlutil.Str(m, "content")})
+	}
+	return files
 }
 
 // GraphQLQuery returns the env-group read fields. envGroups' ownerId (w6/m24)
@@ -143,9 +181,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"name":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
 				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
+				"envVars":       &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envGroupVarInputGQLType))},
+				"secretFiles":   &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envGroupFileInputGQLType))},
+				"serviceIds":    &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateEnvGroup(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["name"].(string), gqlutil.Str(p.Args, "environmentId"))
+				return s.CreateEnvGroup(p.Context, CreateEnvGroupRequest{
+					Name:          p.Args["name"].(string),
+					OwnerID:       gqlutil.Str(p.Args, "ownerId"),
+					EnvironmentID: gqlutil.Str(p.Args, "environmentId"),
+					EnvVars:       createVarsFromArgs(p.Args["envVars"]),
+					SecretFiles:   createFilesFromArgs(p.Args["secretFiles"]),
+					ServiceIDs:    gqlutil.StringList(p.Args["serviceIds"]),
+				})
 			},
 		},
 		"renameEnvGroup": &graphql.Field{

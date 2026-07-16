@@ -117,6 +117,9 @@ function group(overrides: Partial<EnvGroupView> = {}): EnvGroupView {
   return {
     id: "eg1",
     name: "shared",
+    ownerId: "tea-1",
+    createdAt: "2026-07-15T12:00:00Z",
+    updatedAt: "2026-07-15T13:00:00Z",
     serviceLinks: [],
     envVarKeys: [],
     secretFileNames: [],
@@ -207,6 +210,9 @@ describe("EnvGroupsPage", () => {
     expect(screen.getByText("2 variable(s)")).toBeInTheDocument();
     expect(screen.getByText("1 secret file(s)")).toBeInTheDocument();
     expect(screen.getByText("3 linked service(s)")).toBeInTheDocument();
+    expect(screen.getByText("tea-1")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-15T12:00:00Z")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-15T13:00:00Z")).toBeInTheDocument();
   });
 
   it("renders distinct empty and error states", async () => {
@@ -236,7 +242,12 @@ describe("EnvGroupsPage", () => {
       screen.getByRole("button", { name: "Create Environment Group" }),
     );
 
-    expect(createGroup).toHaveBeenCalledWith("Shared production");
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Shared production",
+      envVars: [],
+      secretFiles: [],
+      serviceIds: [],
+    });
     expect(
       await screen.findByText("Environment group destination"),
     ).toBeInTheDocument();
@@ -254,6 +265,10 @@ describe("EnvGroupDetailPage", () => {
         "This group isn't linked to any services yet. It is still fully editable.",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("Group Metadata")).toBeInTheDocument();
+    expect(screen.getByText("tea-1")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-15T12:00:00Z")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-15T13:00:00Z")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add variable" }));
     await user.type(screen.getByLabelText("Key"), "API_TOKEN");

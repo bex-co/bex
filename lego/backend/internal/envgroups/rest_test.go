@@ -143,3 +143,53 @@ func TestREST_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
 		t.Fatalf("environmentId = %q, want env-alpha", g.EnvironmentID)
 	}
 }
+
+func TestREST_CreateEnvGroupAcceptsInitialContentsAndLinks(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	w := serveREST(svc, "POST", "/v1/env-groups", `{
+		"name":"shared",
+		"envVars":[{"key":"LITERAL","value":"rest"},{"key":"GENERATED","generateValue":true}],
+		"secretFiles":[{"name":"rest.txt","content":"body"}],
+		"serviceIds":["web"]
+	}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST populated create: got %d: %s", w.Code, w.Body.String())
+	}
+	var g EnvGroupView
+	if err := json.Unmarshal(w.Body.Bytes(), &g); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(g.ServiceLinks, []string{"web"}) ||
+		!slices.Equal(g.EnvVars, []EnvVarView{{Key: "GENERATED"}, {Key: "LITERAL"}}) ||
+		!slices.Equal(g.SecretFiles, []SecretFileView{{Name: "rest.txt"}}) {
+		t.Fatalf("populated create response: %+v", g)
+	}
+	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "LITERAL"); err != nil || got.Value != "rest" {
+		t.Fatalf("literal round-trip: %+v err=%v", got, err)
+	}
+	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "GENERATED"); err != nil || len(got.Value) != 44 {
+		t.Fatalf("generated round-trip: len=%d err=%v", len(got.Value), err)
+	}
+}
+
+func TestREST_CreateEnvGroupInvalidServiceIsNamed404WithNoOrphan(t *testing.T) {
+	store := newFakeStore()
+	svc := newService(store)
+	w := serveREST(svc, "POST", "/v1/env-groups", `{
+		"name":"shared","envVars":[{"key":"TOKEN","value":"secret"}],"serviceIds":["srv-missing"]
+	}`)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("POST invalid serviceId: got %d: %s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	message, _ := body["message"].(string)
+	if body["id"] != "not_found" || !strings.Contains(message, `serviceId "srv-missing"`) {
+		t.Fatalf("named Render error envelope: %v", body)
+	}
+	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 {
+		t.Fatalf("invalid serviceId left orphan groups: %v", ids)
+	}
+}

@@ -7,7 +7,14 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { EnvGroupActions } from "@/features/env-groups/components/env-group-actions";
 import { EnvGroupEditors } from "@/features/env-groups/components/env-group-editors";
+import { EnvGroupMetadata } from "@/features/env-groups/components/env-group-metadata";
 import { LinkedServicesCard } from "@/features/env-groups/components/linked-services-card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/common/components/ui/card";
 import {
   classifyEnvGroupError,
   isEnvGroupNotFound,
@@ -104,6 +111,14 @@ export function EnvGroupDetailPage() {
             </div>
           ) : (
             <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t("envGroups.metadataTitle")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EnvGroupMetadata group={group} />
+                </CardContent>
+              </Card>
               <EnvGroupEditors
                 group={group}
                 loading={loading}

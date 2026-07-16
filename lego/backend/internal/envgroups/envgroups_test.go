@@ -129,6 +129,15 @@ func (f *fakeStore) List(_ context.Context, path string) ([]string, error) {
 	return out, nil
 }
 
+type failMetaStore struct{ *fakeStore }
+
+func (f *failMetaStore) Put(ctx context.Context, path string, data map[string]string) error {
+	if strings.HasSuffix(path, "/meta") {
+		return errors.New("meta write failed")
+	}
+	return f.fakeStore.Put(ctx, path, data)
+}
+
 type fakeChecker struct {
 	allow        bool
 	lastRelation string
@@ -154,7 +163,7 @@ func TestEnvGroup_CreateVarsAndView(t *testing.T) {
 	svc := newService(newFakeStore())
 	ctx := context.Background()
 
-	g, err := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatalf("CreateEnvGroup: %v", err)
 	}
@@ -193,12 +202,189 @@ func TestEnvGroup_CreateVarsAndView(t *testing.T) {
 	}
 }
 
+func TestCreateEnvGroupPopulatesAndLinksInOneVerb(t *testing.T) {
+	store := newFakeStore()
+	svc := newService(store, sampleApp("web"), sampleApp("worker"))
+	ctx := context.Background()
+
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "shared",
+		EnvVars: []CreateEnvVarInput{
+			{Key: "LOG_LEVEL", Value: "info"},
+			{Key: "SESSION_SECRET", GenerateValue: true},
+		},
+		SecretFiles: []SecretFileView{{Name: "ca.pem", Content: "CERT"}},
+		ServiceIDs:  []string{"web", "worker"},
+	})
+	if err != nil {
+		t.Fatalf("CreateEnvGroup populated: %v", err)
+	}
+	if g.Name != "shared" || !slices.Equal(g.ServiceLinks, []string{"web", "worker"}) {
+		t.Fatalf("created group shape: %+v", g)
+	}
+	if !slices.Equal(g.EnvVars, []EnvVarView{{Key: "LOG_LEVEL"}, {Key: "SESSION_SECRET"}}) {
+		t.Fatalf("created env-var keys: %+v", g.EnvVars)
+	}
+	if !slices.Equal(g.SecretFiles, []SecretFileView{{Name: "ca.pem"}}) {
+		t.Fatalf("created secret-file names: %+v", g.SecretFiles)
+	}
+	if value, err := svc.GetEnvGroupVar(ctx, g.ID, "LOG_LEVEL"); err != nil || value.Value != "info" {
+		t.Fatalf("literal round-trip: %+v err=%v", value, err)
+	}
+	generated, err := svc.GetEnvGroupVar(ctx, g.ID, "SESSION_SECRET")
+	if err != nil || len(generated.Value) != 44 {
+		t.Fatalf("generated value: len=%d err=%v", len(generated.Value), err)
+	}
+	if file, err := svc.GetEnvGroupFile(ctx, g.ID, "ca.pem"); err != nil || file.Content != "CERT" {
+		t.Fatalf("secret-file round-trip: %+v err=%v", file, err)
+	}
+	for _, serviceID := range []string{"web", "worker"} {
+		a := getApp(t, svc.Client, serviceID)
+		if !slices.Contains(a.Spec.EnvFromSecrets, envSecretName(g.ID)) ||
+			!slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(g.ID)) || a.Spec.RestartedAt == "" {
+			t.Errorf("service %s was not linked and rolled: %+v", serviceID, a.Spec)
+		}
+	}
+	if got := string(secret(t, svc.Client, envSecretName(g.ID)).Data["LOG_LEVEL"]); got != "info" {
+		t.Errorf("materialized env LOG_LEVEL = %q", got)
+	}
+	if got := string(secret(t, svc.Client, filesSecretName(g.ID)).Data["ca.pem"]); got != "CERT" {
+		t.Errorf("materialized file ca.pem = %q", got)
+	}
+}
+
+func TestCreateEnvGroupInvalidServiceLeavesZeroSideEffects(t *testing.T) {
+	store := newFakeStore()
+	svc := newService(store, sampleApp("web"))
+
+	_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{
+		Name:        "shared",
+		EnvVars:     []CreateEnvVarInput{{Key: "TOKEN", Value: "secret"}},
+		SecretFiles: []SecretFileView{{Name: "ca.pem", Content: "CERT"}},
+		ServiceIDs:  []string{"missing-service"},
+	})
+	if !errors.Is(err, core.ErrNotFound) || !strings.Contains(err.Error(), `serviceId "missing-service"`) {
+		t.Fatalf("invalid serviceId error = %v, want named ErrNotFound", err)
+	}
+	if ids, listErr := store.List(context.Background(), "env-groups"); listErr != nil || len(ids) != 0 {
+		t.Fatalf("validation failure left groups: ids=%v err=%v store=%v", ids, listErr, store.m)
+	}
+	web := getApp(t, svc.Client, "web")
+	if len(web.Spec.EnvFromSecrets) != 0 || len(web.Spec.FilesFromSecrets) != 0 || web.Spec.RestartedAt != "" {
+		t.Fatalf("validation failure mutated service: %+v", web.Spec)
+	}
+	var secrets corev1.SecretList
+	if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+		t.Fatal(err)
+	}
+	if len(secrets.Items) != 0 {
+		t.Fatalf("validation failure left projection Secrets: %+v", secrets.Items)
+	}
+}
+
+func TestCreateEnvGroupInvalidContentsLeaveZeroSideEffects(t *testing.T) {
+	tests := []struct {
+		name string
+		req  CreateEnvGroupRequest
+	}{
+		{
+			name: "invalid env-var key",
+			req: CreateEnvGroupRequest{
+				Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "NOT VALID", Value: "secret"}},
+			},
+		},
+		{
+			name: "invalid secret-file name",
+			req: CreateEnvGroupRequest{
+				Name: "shared", SecretFiles: []SecretFileView{{Name: "../ca.pem", Content: "CERT"}},
+			},
+		},
+		{
+			name: "value and generation requested together",
+			req: CreateEnvGroupRequest{
+				Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "secret", GenerateValue: true}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := newFakeStore()
+			svc := newService(store)
+
+			if _, err := svc.CreateEnvGroup(context.Background(), tt.req); !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("invalid contents error = %v, want ErrBadRequest", err)
+			}
+			if ids, err := store.List(context.Background(), "env-groups"); err != nil || len(ids) != 0 || len(store.m) != 0 {
+				t.Fatalf("invalid contents left state: ids=%v err=%v store=%v", ids, err, store.m)
+			}
+			var secrets corev1.SecretList
+			if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+				t.Fatal(err)
+			}
+			if len(secrets.Items) != 0 {
+				t.Fatalf("invalid contents left projection Secrets: %+v", secrets.Items)
+			}
+		})
+	}
+}
+
+func TestCreateEnvGroupRefusesCrossWorkspaceServiceWithoutOrphan(t *testing.T) {
+	store := newFakeStore()
+	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(ownedApp("bravo-web", "tea-b")), Namespace: "default", Workspace: resolver},
+		Store: store,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+
+	_, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "alpha-shared", OwnerID: "tea-a", ServiceIDs: []string{"bravo-web"},
+	})
+	if !errors.Is(err, core.ErrForbidden) || !strings.Contains(err.Error(), `serviceId "bravo-web"`) {
+		t.Fatalf("cross-workspace serviceId error = %v, want named ErrForbidden", err)
+	}
+	if ids, _ := store.List(ctx, "env-groups"); len(ids) != 0 {
+		t.Fatalf("cross-workspace refusal left groups: %v", ids)
+	}
+	if got := getApp(t, svc.Client, "bravo-web"); len(got.Spec.EnvFromSecrets) != 0 || got.Spec.RestartedAt != "" {
+		t.Fatalf("cross-workspace refusal mutated service: %+v", got.Spec)
+	}
+}
+
+func TestCreateEnvGroupWriteFailureCompensatesEverySurface(t *testing.T) {
+	store := &failMetaStore{fakeStore: newFakeStore()}
+	svc := newService(store, sampleApp("web"))
+
+	_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{
+		Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "secret"}},
+		SecretFiles: []SecretFileView{{Name: "ca.pem", Content: "CERT"}}, ServiceIDs: []string{"web"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "meta write failed") {
+		t.Fatalf("CreateEnvGroup write failure = %v", err)
+	}
+	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 || len(store.m) != 0 {
+		t.Fatalf("compensation left store state: ids=%v store=%v", ids, store.m)
+	}
+	web := getApp(t, svc.Client, "web")
+	if len(web.Spec.EnvFromSecrets) != 0 || len(web.Spec.FilesFromSecrets) != 0 || web.Spec.RestartedAt != "" {
+		t.Fatalf("compensation did not restore service: %+v", web.Spec)
+	}
+	var secrets corev1.SecretList
+	if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+		t.Fatal(err)
+	}
+	if len(secrets.Items) != 0 {
+		t.Fatalf("compensation left projection Secrets: %+v", secrets.Items)
+	}
+}
+
 func TestEnvGroup_RenamePreservesIdentityContentsAndLinks(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
 	ctx := context.Background()
 
-	g, _ := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	_, _ = svc.SetEnvGroupVar(ctx, g.ID, "TOKEN", "secret")
 	_ = svc.LinkService(ctx, g.ID, "web")
 	before := getApp(t, svc.Client, "web").Spec.RestartedAt
@@ -224,7 +410,7 @@ func TestEnvGroup_RenamePreservesIdentityContentsAndLinks(t *testing.T) {
 func TestEnvGroup_SetAndDeleteOneVarPreservesSiblings(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"))
 	ctx := context.Background()
-	g, _ := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	_, _ = svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "A", Value: "one"}, {Key: "B", Value: "two"}})
 	_ = svc.LinkService(ctx, g.ID, "web")
 
@@ -284,9 +470,24 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	}
 
 	var group EnvGroupView
-	call("create_env_group", map[string]any{"name": "shared", "environmentId": "env-alpha"}, &group)
+	call("create_env_group", map[string]any{
+		"name": "shared", "environmentId": "env-alpha",
+		"envVars":     []any{map[string]any{"key": "INITIAL", "value": "mcp"}},
+		"secretFiles": []any{map[string]any{"name": "mcp.txt", "content": "body"}},
+		"serviceIds":  []string{"web"},
+	}, &group)
 	if group.EnvironmentID != "env-alpha" {
 		t.Fatalf("create_env_group environmentId = %q, want env-alpha", group.EnvironmentID)
+	}
+	if !slices.Equal(group.ServiceLinks, []string{"web"}) ||
+		!slices.Equal(group.EnvVars, []EnvVarView{{Key: "INITIAL"}}) ||
+		!slices.Equal(group.SecretFiles, []SecretFileView{{Name: "mcp.txt"}}) {
+		t.Fatalf("create_env_group initial contents: %+v", group)
+	}
+	var initial EnvVarView
+	call("get_env_group_var", map[string]any{"id": group.ID, "key": "INITIAL"}, &initial)
+	if initial.Value != "mcp" {
+		t.Fatalf("create_env_group initial var: %+v", initial)
 	}
 	call("set_env_group_var", map[string]any{"id": group.ID, "key": "TOKEN", "value": "secret"}, nil)
 	var variable EnvVarView
@@ -311,8 +512,8 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	call("delete_env_group", map[string]any{"id": group.ID}, nil)
 }
 
-func TestGraphQL_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
-	svc := newService(newFakeStore())
+func TestGraphQL_CreateEnvGroupAcceptsInitialContents(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
 	svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
@@ -322,7 +523,12 @@ func TestGraphQL_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
 	field := svc.GraphQLMutation()["createEnvGroup"]
 	out, err := field.Resolve(graphql.ResolveParams{
 		Context: context.Background(),
-		Args:    map[string]any{"name": "shared", "environmentId": "env-alpha"},
+		Args: map[string]any{
+			"name": "shared", "environmentId": "env-alpha",
+			"envVars":     []any{map[string]any{"key": "INITIAL", "value": "graphql"}},
+			"secretFiles": []any{map[string]any{"name": "graphql.txt", "content": "body"}},
+			"serviceIds":  []any{"web"},
+		},
 	})
 	if err != nil {
 		t.Fatalf("createEnvGroup: %v", err)
@@ -331,13 +537,21 @@ func TestGraphQL_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
 	if group.EnvironmentID != "env-alpha" {
 		t.Fatalf("createEnvGroup environmentId = %q, want env-alpha", group.EnvironmentID)
 	}
+	if !slices.Equal(group.ServiceLinks, []string{"web"}) ||
+		!slices.Equal(group.EnvVars, []EnvVarView{{Key: "INITIAL"}}) ||
+		!slices.Equal(group.SecretFiles, []SecretFileView{{Name: "graphql.txt"}}) {
+		t.Fatalf("createEnvGroup initial contents: %+v", group)
+	}
+	if variable, err := svc.GetEnvGroupVar(context.Background(), group.ID, "INITIAL"); err != nil || variable.Value != "graphql" {
+		t.Fatalf("createEnvGroup initial var: %+v err=%v", variable, err)
+	}
 }
 
 func TestEnvGroup_LinkProjectsAndUnlink(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"), sampleApp("api"))
 	ctx := context.Background()
 
-	g, _ := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if _, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "DB_URL", Value: "postgres://x"}}); err != nil {
 		t.Fatalf("SetEnvGroupVars: %v", err)
 	}
@@ -401,7 +615,7 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 	svc := newService(store, sampleApp("web"))
 	ctx := context.Background()
 
-	g, _ := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
 		t.Fatalf("LinkService: %v", err)
 	}
@@ -432,10 +646,10 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 func TestEnvGroup_Validation(t *testing.T) {
 	svc := newService(newFakeStore())
 	ctx := context.Background()
-	if _, err := svc.CreateEnvGroup(ctx, "", "  ", ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "  "}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("blank name => ErrBadRequest, got %v", err)
 	}
-	g, _ := svc.CreateEnvGroup(ctx, "", "shared", "")
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	_, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "bad key", Value: "topsecret"}})
 	if !errors.Is(err, core.ErrBadRequest) || strings.Contains(err.Error(), "topsecret") {
 		t.Errorf("invalid key must be ErrBadRequest without the value: %v", err)
@@ -453,7 +667,7 @@ func TestEnvGroup_Authorization(t *testing.T) {
 	if chk.lastRelation != core.RelCanView {
 		t.Errorf("list checked %s, want can_view", chk.lastRelation)
 	}
-	if _, err := svc.CreateEnvGroup(ctx, "", "x", ""); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "x"}); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("create deny: %v", err)
 	}
 	if chk.lastRelation != core.RelCanCreate {
@@ -509,14 +723,14 @@ func TestEnvGroup_CreateStampsOwnerAndListScopesToTargetWorkspace(t *testing.T) 
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 
-	groupA, err := svc.CreateEnvGroup(ctx, "", "shared-a", "") // no ownerId => default, tea-a
+	groupA, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared-a"}) // no ownerId => default, tea-a
 	if err != nil {
 		t.Fatalf("create shared-a: %v", err)
 	}
 	if groupA.OwnerID != "tea-a" || groupA.CreatedAt == "" || groupA.UpdatedAt == "" {
 		t.Fatalf("shared-a shape: %+v", groupA)
 	}
-	groupB, err := svc.CreateEnvGroup(ctx, "tea-b", "shared-b", "")
+	groupB, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared-b", OwnerID: "tea-b"})
 	if err != nil {
 		t.Fatalf("create shared-b: %v", err)
 	}
@@ -552,7 +766,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 
-	g, err := svc.CreateEnvGroup(ctx, "tea-a", "shared", "env-alpha")
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", OwnerID: "tea-a", EnvironmentID: "env-alpha"})
 	if err != nil {
 		t.Fatalf("create with environmentId: %v", err)
 	}
@@ -595,7 +809,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 
 func TestEnvGroup_CreateWithEnvironmentRequiresEnvironmentService(t *testing.T) {
 	svc := newService(newFakeStore())
-	if _, err := svc.CreateEnvGroup(context.Background(), "", "shared", "env-alpha"); !errors.Is(err, core.ErrWorkspacesUnavailable) {
+	if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared", EnvironmentID: "env-alpha"}); !errors.Is(err, core.ErrWorkspacesUnavailable) {
 		t.Fatalf("create with environmentId and no environment service: want ErrWorkspacesUnavailable, got %v", err)
 	}
 }
@@ -609,7 +823,7 @@ func TestEnvGroup_GetAndRevealRefuseCrossWorkspace(t *testing.T) {
 	}
 
 	erinSvc, erinCtx := svcAs("erin")
-	group, err := erinSvc.CreateEnvGroup(erinCtx, "", "bravo-secrets", "")
+	group, err := erinSvc.CreateEnvGroup(erinCtx, CreateEnvGroupRequest{Name: "bravo-secrets"})
 	if err != nil {
 		t.Fatalf("erin create: %v", err)
 	}
@@ -642,7 +856,7 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 
-	groupB, err := svc.CreateEnvGroup(ctx, "tea-b", "bravo-secrets", "")
+	groupB, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
 	if err != nil {
 		t.Fatalf("create bravo group: %v", err)
 	}
@@ -653,7 +867,7 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 		t.Errorf("refused link must not record the service: %+v", got.ServiceLinks)
 	}
 
-	groupA, err := svc.CreateEnvGroup(ctx, "tea-a", "alpha-secrets", "")
+	groupA, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "alpha-secrets", OwnerID: "tea-a"})
 	if err != nil {
 		t.Fatalf("create alpha group: %v", err)
 	}
@@ -709,7 +923,7 @@ func TestEnvGroup_StoreOffOmitsOwnerID(t *testing.T) {
 	// groups aren't attributed to a distinct real workspace, so ownerId stays
 	// unset — never faked — matching AppView.OwnerID's own convention.
 	svc := newService(newFakeStore())
-	g, err := svc.CreateEnvGroup(context.Background(), "", "shared", "")
+	g, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -741,7 +955,7 @@ func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
 
 	// erin (tea-b) pre-creates a group named "shared" with a secret value.
 	erinSvc, erinCtx := svcAs("erin")
-	bravoGroup, err := erinSvc.CreateEnvGroup(erinCtx, "", "shared", "")
+	bravoGroup, err := erinSvc.CreateEnvGroup(erinCtx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatalf("erin create shared: %v", err)
 	}

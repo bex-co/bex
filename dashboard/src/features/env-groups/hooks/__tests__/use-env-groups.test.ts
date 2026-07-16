@@ -52,6 +52,9 @@ const wireGroup = {
   __typename: "EnvGroup" as const,
   id: "eg1",
   name: "shared",
+  ownerId: "tea-1",
+  createdAt: "2026-07-15T12:00:00Z",
+  updatedAt: "2026-07-15T13:00:00Z",
   serviceLinks: ["web", null, "worker"],
   envVars: [{ key: "FOO" }, null, { key: null }],
   secretFiles: [{ name: "cert.pem" }, null],
@@ -78,6 +81,9 @@ describe("environment-group queries", () => {
       {
         id: "eg1",
         name: "shared",
+        ownerId: "tea-1",
+        createdAt: "2026-07-15T12:00:00Z",
+        updatedAt: "2026-07-15T13:00:00Z",
         serviceLinks: ["web", "worker"],
         envVarKeys: ["FOO"],
         secretFileNames: ["cert.pem"],
@@ -163,12 +169,23 @@ describe("useEnvGroupMutations", () => {
     const { result } = renderHook(() => useEnvGroupMutations(refetch));
     let id: string | null = null;
     await act(async () => {
-      id = await result.current.createGroup("shared");
+      id = await result.current.createGroup({
+        name: "shared",
+        envVars: [{ key: "TOKEN", value: "secret" }],
+        secretFiles: [{ name: "ca.pem", content: "CERT" }],
+        serviceIds: ["web"],
+      });
     });
 
     expect(id).toBe("eg-new");
     expect(mutate).toHaveBeenCalledWith({
-      variables: { name: "shared", ownerId: "tea-1" },
+      variables: {
+        name: "shared",
+        ownerId: "tea-1",
+        envVars: [{ key: "TOKEN", value: "secret" }],
+        secretFiles: [{ name: "ca.pem", content: "CERT" }],
+        serviceIds: ["web"],
+      },
     });
     expect(refetch).toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalledWith("Created shared");
@@ -184,7 +201,12 @@ describe("useEnvGroupMutations", () => {
     );
     let id: string | null = "unset";
     await act(async () => {
-      id = await result.current.createGroup("shared");
+      id = await result.current.createGroup({
+        name: "shared",
+        envVars: [],
+        secretFiles: [],
+        serviceIds: [],
+      });
     });
 
     expect(id).toBeNull();
