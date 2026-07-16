@@ -56,12 +56,10 @@ const (
 
 // ServiceEventRow is one row of the composed feed — the raw projection, before
 // internal/events maps it onto Render's event vocabulary. Deploy rows fill
-// DeployID/Trigger/Status; audit rows fill Verb/Caller. No column here can carry
-// a value: deploy rows hold ids and a status enum, audit rows hold a verb name
-// and a caller subject. The audit table has no generic verb-arguments column;
-// its one typed maintenance-toggle boolean belongs to the workspace audit
-// projection and is intentionally absent here. That remains the structural
-// reason no env-var value can reach a feed.
+// DeployID/Trigger/Status; audit rows fill Verb/Caller and the typed per-verb
+// detail fields. No column here can carry a free-form value: deploy rows hold
+// ids and a status enum, audit rows hold a verb name, a caller subject, and
+// typed scalars mirroring audit_events' typed columns.
 type ServiceEventRow struct {
 	// Key is the row's stable identity within the feed: "<source row id>:<phase>"
 	// for a deploy ("dep-abc:started"), "<audit row id>:" for an audit event. It
@@ -86,6 +84,16 @@ type ServiceEventRow struct {
 	// Audit rows only.
 	Verb   string // e.g. "apps.Suspend"
 	Caller string // core.Identity.Subject
+	// Typed per-verb detail fields from audit_events — nil for every other verb.
+	PlanFrom           *string
+	PlanTo             *string
+	InstanceCountFrom  *int32
+	InstanceCountTo    *int32
+	AutoscalingMinFrom *int32
+	AutoscalingMaxFrom *int32
+	AutoscalingMinTo   *int32
+	AutoscalingMaxTo   *int32
+	AutoDeployEnabled  *bool
 }
 
 // ServiceEventFilter narrows ListServiceEvents.
@@ -146,7 +154,16 @@ WITH feed AS (
            ''::text                            AS status,
            ''::text                            AS pre_deploy_status,
            ''::text                            AS verb,
-           ''::text                            AS caller
+           ''::text                            AS caller,
+           NULL::text                          AS plan_from,
+           NULL::text                          AS plan_to,
+           NULL::integer                       AS instance_count_from,
+           NULL::integer                       AS instance_count_to,
+           NULL::integer                       AS autoscaling_min_from,
+           NULL::integer                       AS autoscaling_max_from,
+           NULL::integer                       AS autoscaling_min_to,
+           NULL::integer                       AS autoscaling_max_to,
+           NULL::boolean                       AS auto_deploy_enabled
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($5)
   UNION ALL
@@ -159,7 +176,16 @@ WITH feed AS (
            d.status,
            d.pre_deploy_status,
            ''::text,
-           ''::text
+           ''::text,
+           NULL::text,
+           NULL::text,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::integer,
+           NULL::boolean
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($5)
   UNION ALL
@@ -172,14 +198,26 @@ WITH feed AS (
            ''::text,
            ''::text,
            a.verb,
-           a.caller
+           a.caller,
+           a.plan_from,
+           a.plan_to,
+           a.instance_count_from,
+           a.instance_count_to,
+           a.autoscaling_min_from,
+           a.autoscaling_max_from,
+           a.autoscaling_min_to,
+           a.autoscaling_max_to,
+           a.auto_deploy_enabled
     FROM audit_events a
     WHERE a.target = $2
       AND a.outcome = 'allowed'
       AND a.workspace_id = ANY($3)
       AND a.verb = ANY($4)
 )
-SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller
+SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, verb, caller,
+       plan_from, plan_to, instance_count_from, instance_count_to,
+       autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to,
+       auto_deploy_enabled
 FROM feed
 WHERE ($6::timestamptz IS NULL OR at >= $6)
   AND ($7::timestamptz IS NULL OR at <= $7)
@@ -239,6 +277,9 @@ func nullTime(t time.Time) *time.Time {
 
 func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 	var r ServiceEventRow
-	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller)
+	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
+		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
+		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
+		&r.AutoDeployEnabled)
 	return r, err
 }

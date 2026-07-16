@@ -38,9 +38,9 @@ limitations under the License.
 //	suspender_added             apps.Suspend      (details.actor = the caller)
 //	suspender_removed           apps.Resume       (details.actor = the caller)
 //	server_restarted            apps.Restart      (details.triggeredByUser = the caller)
-//	plan_changed                apps.SetPlan
-//	instance_count_changed      apps.Scale
-//	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling
+//	plan_changed                apps.SetPlan      (details.from/to = plan name strings)
+//	instance_count_changed      apps.Scale        (details.from/to = instance counts)
+//	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling (details.previous/current min+max)
 //	cron_job_run_started        apps.TriggerCronRun
 //	cron_job_run_ended          apps.CancelCronRun / apps.CancelCurrentCronRun
 //
@@ -48,7 +48,9 @@ limitations under the License.
 //
 //	env_vars_changed            secrets.Set/DeleteEnvVar(s)     (KEYS and VALUES both absent — see Redaction)
 //	env_group_linked/unlinked   envgroups.Link/UnlinkService
-//	auto_deploy_changed         apps.SetAutoDeploy              (Render splits enabled/disabled; see Omissions)
+//	auto_deploy_enabled         apps.SetAutoDeploy(enabled=true)  — new rows only
+//	auto_deploy_disabled        apps.SetAutoDeploy(enabled=false) — new rows only
+//	auto_deploy_changed         apps.SetAutoDeploy — legacy rows without a recorded boolean
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
 //	dockerfile_path_changed     apps.SetDockerfilePath
@@ -72,24 +74,14 @@ limitations under the License.
 //
 // No arbitrary value can reach an event: an audit row carries a verb NAME, a
 // caller subject, and (since w3/m7) a target resource NAME — never a generic
-// verb-arguments object. The sole typed detail is maintenance_mode_to, a
-// non-secret boolean used only by the audit-log projection and intentionally
-// absent from this service-event feed. An env-var write is therefore visible
-// as "alice changed env vars at 03:12" and cannot be anything more, however the
-// feed is queried. That is the guarantee; the missing detail below is its price,
-// paid deliberately.
+// verb-arguments object. The typed detail fields (plan from/to, instance counts,
+// autoscaling min/max, auto_deploy_enabled) are non-secret scalars stored in
+// dedicated typed columns on audit_events — the same structural discipline as
+// maintenance_mode_to. An env-var write is therefore visible as "alice changed
+// env vars at 03:12" and cannot be anything more, however the feed is queried.
 //
 // # Omissions (honest, not faked)
 //
-//   - details.from/to on plan_changed, instance_count_changed,
-//     autoscaling_config_changed — Render marks them required; bex omits them.
-//     Carrying them would mean a free-form details column on audit_events, which
-//     is precisely the hole w4/m10 closed to make the guarantee above structural.
-//     The fact, the time, and the actor are truthful; the before/after values are
-//     not recoverable from what bex stores.
-//   - auto_deploy_enabled / auto_deploy_disabled — the two Render types are
-//     discriminated by the verb's ARGUMENT, which is not recorded; bex emits one
-//     honest auto_deploy_changed rather than guessing which happened.
 //   - Auto-sleep / wake and autoscaler-driven replica changes — the operator
 //     drives them and is DB-free by architecture (docs/ADR003-control-plane.md:
 //     mechanism never writes the control plane), and it records no Kubernetes
@@ -147,9 +139,17 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged            = "env_vars_changed"
-	TypeEnvGroupLinked            = "env_group_linked"
-	TypeEnvGroupUnlinked          = "env_group_unlinked"
+	TypeEnvVarsChanged  = "env_vars_changed"
+	TypeEnvGroupLinked  = "env_group_linked"
+	TypeEnvGroupUnlinked = "env_group_unlinked"
+	// TypeAutoDeployEnabled and TypeAutoDeployDisabled replace the bex-named
+	// TypeAutoDeployChanged for new rows that carry the auto_deploy_enabled boolean.
+	// Legacy rows without a recorded value still produce TypeAutoDeployChanged.
+	TypeAutoDeployEnabled  = "auto_deploy_enabled"
+	TypeAutoDeployDisabled = "auto_deploy_disabled"
+	// TypeAutoDeployChanged is the bex-named fallback for legacy audit rows without
+	// a recorded auto_deploy_enabled value. New rows always produce
+	// TypeAutoDeployEnabled or TypeAutoDeployDisabled.
 	TypeAutoDeployChanged         = "auto_deploy_changed"
 	TypeIdleTimeoutChanged        = "idle_timeout_changed"
 	TypeRootDirectoryChanged      = "root_directory_changed"
@@ -257,6 +257,8 @@ func pushDown(eventType string) (verbs, phases []string) {
 		return nil, []string{store.EventPhaseStarted}
 	case TypeDeployEnded:
 		return nil, []string{store.EventPhaseEnded}
+	case TypeAutoDeployEnabled, TypeAutoDeployDisabled:
+		return []string{core.AuditVerbSetAutoDeploy}, nil
 	}
 	for _, verb := range allVerbs {
 		if eventTypes[verb] == eventType {
@@ -303,6 +305,17 @@ type Details struct {
 	Actor string
 	// server_restarted
 	TriggeredByUser string
+	// plan_changed: Render's required from/to plan name strings
+	PlanFrom *string
+	PlanTo   *string
+	// instance_count_changed: Render's required from/to instance counts
+	InstanceCountFrom *int32
+	InstanceCountTo   *int32
+	// autoscaling_config_changed: before and after min/max; nil = disabled
+	AutoscalingMinFrom *int32
+	AutoscalingMaxFrom *int32
+	AutoscalingMinTo   *int32
+	AutoscalingMaxTo   *int32
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -470,6 +483,26 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.Actor = r.Caller
 		case TypeServerRestarted:
 			ev.Details.TriggeredByUser = r.Caller
+		case TypePlanChanged:
+			ev.Details.PlanFrom = r.PlanFrom
+			ev.Details.PlanTo = r.PlanTo
+		case TypeInstanceCountChanged:
+			ev.Details.InstanceCountFrom = r.InstanceCountFrom
+			ev.Details.InstanceCountTo = r.InstanceCountTo
+		case TypeAutoscalingConfigChanged:
+			ev.Details.AutoscalingMinFrom = r.AutoscalingMinFrom
+			ev.Details.AutoscalingMaxFrom = r.AutoscalingMaxFrom
+			ev.Details.AutoscalingMinTo = r.AutoscalingMinTo
+			ev.Details.AutoscalingMaxTo = r.AutoscalingMaxTo
+		case TypeAutoDeployChanged:
+			// Discriminate: new rows carry the boolean; legacy rows keep the bex name.
+			if r.AutoDeployEnabled != nil {
+				if *r.AutoDeployEnabled {
+					ev.Type = TypeAutoDeployEnabled
+				} else {
+					ev.Type = TypeAutoDeployDisabled
+				}
+			}
 		}
 	}
 	return ev

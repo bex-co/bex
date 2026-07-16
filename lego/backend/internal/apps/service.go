@@ -2278,7 +2278,7 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // Deployment rollout — the same restart-shaped cost as Render's own plan
 // changes.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -2290,9 +2290,18 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}
-	return s.writeThroughStoreFetched(ctx, a,
+	fromPlan := ""
+	if ft, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
+		fromPlan = ft.RenderPlan
+	}
+	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordPlanChanged(ctx, a, fromPlan, plan)
+	return result, nil
 }
 
 // PreviewSetPlan returns what SetPlan would produce — the same validation and
@@ -2329,16 +2338,22 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 // maps spec.replicas 0 to 1 (the default), so 0 is ambiguous — scale-to-zero
 // (m4) owns redefining that, and will keep this 1-based verb valid.
 func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if replicas < 1 || replicas > store.MaxReplicas {
 		return AppView{}, fmt.Errorf("%w: numInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
 	}
-	return s.writeThroughStoreFetched(ctx, a,
+	fromReplicas := a.Spec.Replicas
+	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
 		func(a *appv1alpha1.App) { a.Spec.Replicas = replicas })
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordScaleEffect(ctx, a, fromReplicas, replicas)
+	return result, nil
 }
 
 // MaxIdleTTLSeconds bounds the idle-timeout a caller may set (7 days). Free-tier
@@ -2678,9 +2693,18 @@ func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds 
 // not projection-owned (mirrors Builder/RootDir), and no restartedAt bump —
 // flipping the toggle changes future push behavior, it does not itself redeploy.
 func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) (AppView, error) {
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	result, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.AutoDeploy = enabled
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordAutoDeployChanged(ctx, a, enabled)
+	return result, nil
 }
 
 // SetNotifyOnFail changes an App's deploy-failure notification override
@@ -3103,7 +3127,7 @@ func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingV
 // The autoscaling config is written directly to the CR spec (not row-first,
 // like SetRootDir) — autoscaling is not a projection-owned field.
 func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutoscalingRequest) (AutoscalingView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}
@@ -3125,6 +3149,11 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
 		return AutoscalingView{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
 	}
+	var fromMin, fromMax *int32
+	if a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled {
+		fromMin = &a.Spec.Autoscaling.MinReplicas
+		fromMax = &a.Spec.Autoscaling.MaxReplicas
+	}
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
 			Enabled:             true,
@@ -3137,6 +3166,8 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
+	minTo, maxTo := req.MinInstances, req.MaxInstances
+	s.RecordAutoscalingChanged(ctx, a, fromMin, fromMax, &minTo, &maxTo)
 	return autoscalingView(a), nil
 }
 
@@ -3144,15 +3175,21 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 // .../autoscaling): clears spec.autoscaling so the service reverts to its
 // fixed spec.replicas count. Idempotent — already-disabled is a no-op.
 func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return err
 	}
 	if a.Spec.Autoscaling == nil || !a.Spec.Autoscaling.Enabled {
 		return nil // already disabled — idempotent
 	}
+	fromMin := a.Spec.Autoscaling.MinReplicas
+	fromMax := a.Spec.Autoscaling.MaxReplicas
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Autoscaling = nil
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	s.RecordAutoscalingChanged(ctx, a, &fromMin, &fromMax, nil, nil)
+	return nil
 }

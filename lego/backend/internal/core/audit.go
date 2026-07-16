@@ -39,9 +39,10 @@ const (
 // what, against which object, and whether it was allowed. Never carries
 // request bodies or arbitrary values — Verb/Resource/Target are derived from
 // the call site, the OpenFGA object string, and the verb's resource NAME. The
-// sole typed detail is MaintenanceModeTo, a non-secret boolean required by
-// Render's MaintenanceModeEnabledEvent contract; there is no free-form path
-// for a secret to reach an event.
+// typed detail fields (MaintenanceModeTo, PlanFrom/PlanTo,
+// InstanceCountFrom/InstanceCountTo, Autoscaling*From/*To, AutoDeployEnabled)
+// are non-secret scalars required by Render's event contracts; there is no
+// free-form path for a secret to reach an event.
 type AuditEvent struct {
 	Caller       string // core.Identity.Subject; empty for an unauthenticated caller
 	CallerMethod string // core.Identity.Method ("oauth2" | "session")
@@ -53,6 +54,17 @@ type AuditEvent struct {
 	// MaintenanceModeTo is Render's MaintenanceModeEnabledEvent metadata.to.
 	// Nil for every other verb; a pointer preserves an explicit false value.
 	MaintenanceModeTo *bool
+	// Per-verb typed detail fields — exactly as maintenance_mode_to, one column per
+	// value, no free-form object. Nil for every verb that does not define them.
+	PlanFrom          *string
+	PlanTo            *string
+	InstanceCountFrom *int32
+	InstanceCountTo   *int32
+	AutoscalingMinFrom *int32
+	AutoscalingMaxFrom *int32
+	AutoscalingMinTo   *int32
+	AutoscalingMaxTo   *int32
+	AutoDeployEnabled  *bool
 }
 
 type auditMaintenanceModeToKey struct{}
@@ -70,6 +82,15 @@ const (
 	// workspace. It is fixed vocabulary so migration code cannot inject an
 	// arbitrary action into the audit trail.
 	AuditVerbEnvGroupOwnershipMigrated = "envgroups.MigrateOwnership"
+	// AuditVerbSetPlan, AuditVerbScale, AuditVerbSetAutoscaling,
+	// AuditVerbDeleteAutoscaling, AuditVerbSetAutoDeploy are spelled exactly as
+	// callerVerb() would derive them — duplicated here as constants so the
+	// recording helpers can reference them without re-deriving via the call stack.
+	AuditVerbSetPlan           = "apps.SetPlan"
+	AuditVerbScale             = "apps.Scale"
+	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
+	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
+	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
 )
 
 // WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
@@ -170,6 +191,84 @@ func (b *Base) RecordEnvGroupOwnershipMigration(ctx context.Context, groupID, wo
 		Outcome:      AuditAllowed,
 		At:           b.Now(),
 	})
+}
+
+// RecordPlanChanged records the typed from/to detail for a successful SetPlan.
+// Called after the write path confirms success, paired with
+// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
+func (b *Base) RecordPlanChanged(ctx context.Context, app *appv1alpha1.App, fromPlan, toPlan string) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve plan-change resource: %v", err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, AuditVerbSetPlan, resource, canonicalAppTarget(app))
+	ev.PlanFrom = &fromPlan
+	ev.PlanTo = &toPlan
+	b.recordAudit(ctx, ev)
+}
+
+// RecordScaleEffect records the typed from/to detail for a successful Scale.
+// Called after the write path confirms success, paired with
+// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
+func (b *Base) RecordScaleEffect(ctx context.Context, app *appv1alpha1.App, fromCount, toCount int32) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve scale resource: %v", err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, AuditVerbScale, resource, canonicalAppTarget(app))
+	ev.InstanceCountFrom = &fromCount
+	ev.InstanceCountTo = &toCount
+	b.recordAudit(ctx, ev)
+}
+
+// RecordAutoscalingChanged records the typed from/to detail for a successful
+// SetAutoscaling or DeleteAutoscaling. fromMin/fromMax are nil when autoscaling
+// was previously disabled; toMin/toMax are nil when autoscaling was deleted.
+// Called after the write path confirms success, paired with
+// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
+func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.App, fromMin, fromMax, toMin, toMax *int32) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve autoscaling resource: %v", err)
+		return
+	}
+	verb := AuditVerbSetAutoscaling
+	if toMin == nil {
+		verb = AuditVerbDeleteAutoscaling
+	}
+	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
+	ev.AutoscalingMinFrom = fromMin
+	ev.AutoscalingMaxFrom = fromMax
+	ev.AutoscalingMinTo = toMin
+	ev.AutoscalingMaxTo = toMax
+	b.recordAudit(ctx, ev)
+}
+
+// RecordAutoDeployChanged records the typed enabled detail for a successful
+// SetAutoDeploy. Called after the write path confirms success, paired with
+// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
+func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App, enabled bool) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve auto-deploy resource: %v", err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
+	ev.AutoDeployEnabled = &enabled
+	b.recordAudit(ctx, ev)
+}
+
+// verbAuditEvent builds a pre-populated AuditEvent for a deferred allowed-write
+// record. The verb and resource come from the caller (they cannot be derived
+// from the call stack inside a recording helper); the identity comes from ctx.
+func (b *Base) verbAuditEvent(ctx context.Context, verb, resource, target string) AuditEvent {
+	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: AuditAllowed, At: b.Now()}
+	if id, ok := IdentityFrom(ctx); ok {
+		ev.Caller, ev.CallerMethod = id.Subject, id.Method
+	}
+	return ev
 }
 
 // AuditSink persists audit events. Base.emit bounds every call to
