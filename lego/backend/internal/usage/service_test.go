@@ -534,6 +534,76 @@ func TestAppMeterCatchUpStartsAtAppCreationHour(t *testing.T) {
 	}
 }
 
+func TestEgressCatchUpEstablishesFirstMeasurableOriginThenPreservesGaps(t *testing.T) {
+	created := time.Date(2026, 7, 16, 8, 0, 0, 0, time.UTC)
+	app := store.App{
+		ID: "srv-origin", TenantID: "tea-origin", Name: "origin", Tier: "starter", CreatedAt: created,
+	}
+	st := newMemUsageStore(app)
+	// Only the 10:00 and 12:00 windows are measurable (their instant-query
+	// timestamps are the following hour). Pre-instrumentation 08:00/09:00 must
+	// be probed past while the cursor is empty. After 10:00 establishes the
+	// origin, unavailable 11:00 must stop the cursor before otherwise-healthy
+	// 12:00, preserving the normal no-gap retry contract.
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		at, _ := strconv.ParseInt(r.URL.Query().Get("time"), 10, 64)
+		queryAt := time.Unix(at, 0).UTC()
+		healthy := queryAt.Equal(created.Add(3*time.Hour)) || queryAt.Equal(created.Add(5*time.Hour))
+		value := "0"
+		if strings.Contains(r.URL.Query().Get("query"), "healthy") || strings.Contains(r.URL.Query().Get("query"), `up{job=`) {
+			if healthy {
+				value = "1"
+			}
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer prom.Close()
+
+	cl := publicAppMeterClient(t, app, "tea-origin-app", "tea-origin-app", "origin.onbex.co")
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+
+	svc.catchUpAppMeterThrough(context.Background(), app, store.UsageKindEgressBytes, created.Add(2*time.Hour))
+	latest, err := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, store.UsageKindEgressBytes)
+	if err != nil || !latest.Equal(created.Add(2*time.Hour)) {
+		t.Fatalf("initial egress origin: want 10:00, got %v (err=%v)", latest, err)
+	}
+
+	svc.catchUpAppMeterThrough(context.Background(), app, store.UsageKindEgressBytes, created.Add(4*time.Hour))
+	latest, err = st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, store.UsageKindEgressBytes)
+	if err != nil || !latest.Equal(created.Add(2*time.Hour)) {
+		t.Fatalf("post-origin gap advanced cursor: want 10:00, got %v (err=%v)", latest, err)
+	}
+	st.mu.Lock()
+	_, skippedGap := st.rows[usageKey{store.ResourceKindService, app.ID, store.UsageKindEgressBytes, "", created.Add(4 * time.Hour)}]
+	st.mu.Unlock()
+	if skippedGap {
+		t.Fatal("12:00 egress row was written across unavailable 11:00 window")
+	}
+}
+
+func TestEgressCatchUpDoesNotSkipInitialStoreFailure(t *testing.T) {
+	created := time.Date(2026, 7, 16, 8, 0, 0, 0, time.UTC)
+	app := store.App{ID: "srv-store", TenantID: "tea-store", Name: "store", CreatedAt: created}
+	st := newMemUsageStore(app)
+	var attempted []time.Time
+	st.upsert = func(row store.HourlyRow) error {
+		if row.Kind == store.UsageKindEgressBytes {
+			attempted = append(attempted, row.WindowStart)
+			return errors.New("store unavailable")
+		}
+		return nil
+	}
+	prom := fakeProm(0)
+	defer prom.Close()
+	cl := appMeterClient(t, app)
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
+
+	svc.catchUpAppMeterThrough(context.Background(), app, store.UsageKindEgressBytes, created.Add(2*time.Hour))
+	if len(attempted) != 1 || !attempted[0].Equal(created) {
+		t.Fatalf("initial store failure was skipped: attempts=%v, want only %v", attempted, created)
+	}
+}
+
 func TestMonthToDateBoundary(t *testing.T) {
 	// Two rows: one in June, one in July. A query for July should only see the
 	// July row.
