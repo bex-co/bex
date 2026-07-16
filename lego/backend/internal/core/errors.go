@@ -108,6 +108,14 @@ var (
 	// and the delivery queue are control-plane tables, so there is nothing to
 	// degrade to.
 	ErrWebhooksUnavailable = errors.New("webhook store not configured")
+	// ErrLogoutUnavailable is returned by the CLI-logout revoke verb
+	// (POST /v1/oauth/revoke) when the Hydra admin endpoint that clears a human's
+	// consent chain is unwired (BEX_HYDRA_ADMIN_URL unset) or unreachable;
+	// adapters surface it as 503. It exists so /v1/oauth/revoke — a Render-shaped
+	// REST endpoint — speaks the one Render error dialect on every branch (w9/m38,
+	// w9/008), unlike the RFC 8628 device endpoints whose OAuth-shaped bodies the
+	// CLI parses as token responses.
+	ErrLogoutUnavailable = errors.New("logout revocation service unavailable")
 )
 
 // constErr is a comparable string error for fixed messages (config refusals,

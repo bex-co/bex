@@ -89,8 +89,12 @@ func (s *Service) RevokeHandler(invalidate func(string, core.Identity)) http.Han
 
 		switch {
 		case id.ClientID == RenderCLIClientID && id.Human:
+			// /v1/oauth/revoke is a Render-shaped REST endpoint, not a token
+			// endpoint — every failure branch speaks the one Render error dialect
+			// via core.WriteErr (w9/m38, w9/008), not the OAuth {"error"} body the
+			// RFC 8628 device endpoints use.
 			if s.adminURL == "" {
-				writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
+				core.WriteErr(w, core.ErrLogoutUnavailable)
 				return
 			}
 			q := url.Values{
@@ -100,7 +104,7 @@ func (s *Service) RevokeHandler(invalidate func(string, core.Identity)) http.Han
 			if err := core.DoJSON(r.Context(), s.client, http.MethodDelete,
 				s.adminURL+"/admin/oauth2/auth/sessions/consent?"+q.Encode(), "", nil,
 				http.StatusNoContent, nil); err != nil {
-				writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
+				core.WriteErr(w, core.ErrLogoutUnavailable)
 				return
 			}
 		case !id.Human && id.ClientID != "" && id.Subject == id.ClientID:
@@ -215,6 +219,12 @@ func (s *Service) proxyForm(w http.ResponseWriter, r *http.Request, path string,
 	_, _ = w.Write(body)
 }
 
+// writeOAuthError writes the OAuth-shaped {"error":"<code>"} body. This is a
+// deliberate survivor of the w9/m38 one-error-dialect sweep: the RFC 8628 device
+// endpoints (deviceGrant/deviceToken/refreshToken) and their proxyForm path must
+// stay OAuth-shaped because the unmodified official CLI parses their bodies as
+// OAuth token responses. It is NOT used by /v1/oauth/revoke, which speaks the
+// Render {"error","message","id"} dialect via core.WriteErr (w9/008).
 func writeOAuthError(w http.ResponseWriter, status int, code string) {
 	core.WriteJSON(w, status, map[string]string{"error": code})
 }
