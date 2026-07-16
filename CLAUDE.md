@@ -99,7 +99,7 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 | bex-api | `BEX_MAX_KEYVALUES` | per-workspace key-value creation cap; `0` = unlimited. Render Hobby anchor: 1 |
 | operator | `BEX_APP_RECONCILE_WORKERS` | concurrent App reconcile loops (default `1`); source builds currently wait synchronously inside a reconcile, so production uses `2` for two independently dispatched builds (ADR034) |
 | operator | `BEX_MAX_CONCURRENT_BUILDS` | max concurrent active build Jobs per workspace; `0` = unlimited. Newest-wins per App is always active (independent of this cap) |
-| dashboard (SSR) | `HYDRA_ADMIN_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent at `/auth/consent` (docs/ADR012-auth.md §7): Hydra's admin API + the allowlist of clients that skip the consent screen (headless auto-accept); every other client gets the user-facing consent page (w4/m16). Server-only (not `VITE_`); `HYDRA_ADMIN_URL` unset ⇒ consent 503 |
+| dashboard (SSR) | `HYDRA_ADMIN_URL`, `HYDRA_PUBLIC_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent + official Render CLI device verification at `/auth/consent` and `/auth/device` (docs/ADR012-auth.md §7/§8a): Hydra's admin API, its browser-reachable public issuer, and the allowlist of clients that skip the consent screen. Server-only (not `VITE_`); missing URLs make their corresponding routes answer 503. |
 
 ## Docs index
 

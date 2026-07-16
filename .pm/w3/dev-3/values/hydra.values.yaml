@@ -11,6 +11,22 @@ hydra:
   config:
     urls:
       self:
-        issuer: http://localhost:57030
+        issuer: http://localhost:58030
       login: http://localhost:50030/auth/login
       consent: http://localhost:50030/auth/consent
+      device:
+        verification: http://localhost:50030/auth/device
+        success: http://localhost:50030/auth/device/success
+
+# Constrain both independently scheduled Hydra workloads to the CAPD
+# control-plane node in addition to the inherited local platform label.
+deployment:
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+job:
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }

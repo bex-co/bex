@@ -8,7 +8,7 @@
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ----------------------- | ---------- |
 | t001 | Postgres lifecycle legs: create (with `--ip-allow-list`) · list/get-by-name · update flags (`--plan`/`--disk-size-gb`/`--high-availability`/`--ip-allow-list`/`--clear-ip-allow-list`) · rename · suspend/resume · delete | 45m | —                       | — **DONE** |
 | t002 | Services create/update/delete + deploys list/create/cancel + logs legs                                             | 45m | —                       | — **DONE** |
-| t003 | Environments + real device-token logout leg; update the checklist's Reproducing section to state exact coverage    | 30m | t001, t002, w4/m25/t005 | — **DONE** |
+| t003 | Environments + real device-token logout leg; update the checklist's Reproducing section to state exact coverage    | 30m | t001, t002, w4/m27/t005 | — **DONE** |
 | t004 | Simplify — `/simplify` over the verify-script diff                                                                 | 20m | t003                    | — **DONE** |
 | t005 | Test coverage — prove the legs fail loudly: mutation checks against a broken response shape                        | 30m | t003                    | — **DONE** |
 | t006 | Closeout — DoD met → move milestone to `done/`                                                                     | 10m | t005                    | — **DONE** |

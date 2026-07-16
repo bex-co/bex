@@ -42,6 +42,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
+	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -211,6 +212,77 @@ func TestAuth(t *testing.T) {
 	}
 	if got := do(t, h, "GET", "/v1/services", testToken, "").Code; got != 200 {
 		t.Errorf("valid token => 200, got %d", got)
+	}
+}
+
+func TestRenderCLIProtocolRoutesAreTheOnlyPublicV1AuthRoutes(t *testing.T) {
+	public := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/oauth2/device/auth" || r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"device_code": "device", "user_code": "ABCDEF",
+			"verification_uri":          "https://dashboard.bex.co/auth/device",
+			"verification_uri_complete": "https://dashboard.bex.co/auth/device?user_code=ABCDEF",
+			"expires_in":                600, "interval": 5,
+		})
+	}))
+	defer public.Close()
+
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	srv.OAuthIssuer = public.URL
+	h := buildHandler(t, srv)
+	body := `{"client_id":"` + cliauth.RenderCLIClientID + `"}`
+	if got := do(t, h, http.MethodPost, "/v1/device-grant", "", body); got.Code != http.StatusOK {
+		t.Fatalf("device grant = %d %s", got.Code, got.Body.String())
+	}
+	for _, path := range []string{"/v1/services", "/v1/oauth/revoke"} {
+		if got := do(t, h, http.MethodPost, path, "", ""); got.Code != http.StatusUnauthorized {
+			t.Fatalf("%s without auth = %d, want 401", path, got.Code)
+		}
+	}
+}
+
+func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
+	revoked := false
+	admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/admin/oauth2/introspect":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"active": !revoked,
+				"sub":    "human-a", "client_id": cliauth.RenderCLIClientID,
+			})
+		case r.Method == http.MethodDelete && r.URL.Path == "/admin/oauth2/auth/sessions/consent":
+			if r.URL.Query().Get("subject") != "human-a" || r.URL.Query().Get("client") != cliauth.RenderCLIClientID {
+				t.Fatalf("wrong revoke scope: %s", r.URL.RawQuery)
+			}
+			revoked = true
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer admin.Close()
+
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	srv.HydraAdminURL = admin.URL
+	srv.OAuthIssuer = "https://oauth.bex.co"
+	h := buildHandler(t, srv)
+	// The CLI refreshes in SetupCommands before executing logout. Seed the
+	// immediately previous access token in bex's positive cache; consent-chain
+	// revocation must evict it as well as the bearer used for logout.
+	if got := do(t, h, http.MethodGet, "/v1/services", "previous-token", ""); got.Code != http.StatusOK {
+		t.Fatalf("pre-cache previous token = %d %s", got.Code, got.Body.String())
+	}
+	if got := do(t, h, http.MethodPost, "/v1/oauth/revoke", testToken, ""); got.Code != http.StatusNoContent {
+		t.Fatalf("logout = %d %s", got.Code, got.Body.String())
+	}
+	for _, token := range []string{testToken, "previous-token"} {
+		if got := do(t, h, http.MethodGet, "/v1/services", token, ""); got.Code != http.StatusUnauthorized {
+			t.Fatalf("revoked cached token %q = %d, want 401; body=%s", token, got.Code, got.Body.String())
+		}
 	}
 }
 

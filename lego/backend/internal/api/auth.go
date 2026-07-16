@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -87,6 +88,11 @@ type oryAuth struct {
 	// writes the cache exactly once per upstream call.
 	cache *core.TTLCache[core.Identity]
 	group singleflight.Group
+	// revocationMu makes an upstream introspection + cache population atomic
+	// with local invalidation. Logout takes the write lock only after Hydra has
+	// revoked the credential; an older in-flight positive result must finish
+	// before its cache entry is deleted and therefore cannot resurrect it.
+	revocationMu sync.RWMutex
 
 	// touch records a key's last-used metadata after a successful API-key
 	// introspection (w4/m13). Fire-and-forget + self-throttling on the callee
@@ -110,6 +116,28 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:         core.NewTTLCache[core.Identity](),
 		touch:         touch,
+	}
+}
+
+// invalidate evicts a token whose upstream state changed. A human CLI logout
+// revokes the whole subject+client consent chain in Hydra, so evict every
+// positively cached access token in that chain too. The official CLI refreshes
+// before logout when its token expires within 24h; deleting only the bearer on
+// the revoke request would leave the immediately previous token usable until
+// PositiveTTL.
+func (a *oryAuth) invalidate(token string, identity core.Identity) {
+	a.revocationMu.Lock()
+	defer a.revocationMu.Unlock()
+	a.cache.Delete(token)
+	if identity.Method == "oauth2" {
+		a.cache.DeleteIf(func(cached core.Identity) bool {
+			if cached.Method != "oauth2" || cached.ClientID != identity.ClientID {
+				return false
+			}
+			// A machine client owns the whole client_id, while the shared Render
+			// client must evict only this human subject's consent chain.
+			return !identity.Human || (cached.Human && cached.Subject == identity.Subject)
+		})
 	}
 }
 
@@ -142,11 +170,12 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			a.unauthorized(w)
 		default:
 			// Tenant onboarding (w1/m9): a human's first authenticated call mints
-			// it a personal tenant. Only session callers mint — a machine caller
-			// (API key) resolves to its key's tenant binding downstream, never
-			// here. A broken store fails closed (503), like a broken Ory: a
+			// it a personal tenant. This includes Kratos sessions and OAuth tokens
+			// with a real `sub` (authorization/device flow); client_credentials API
+			// keys remain machine callers and resolve through their binding. A
+			// broken store fails closed (503), like a broken Ory: a
 			// request that can't be tenanted must not be served un-tenanted.
-			if a.onboard != nil && id.Method == "session" {
+			if a.onboard != nil && id.Human {
 				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email); err != nil {
 					http.Error(w, `{"error":"tenant onboarding unavailable"}`, http.StatusServiceUnavailable)
 					return
@@ -175,16 +204,25 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, 
 		return id, nil
 	}
 	// Coalesce concurrent misses for the same token into one Hydra call.
-	v, err, _ := a.group.Do(token, func() (any, error) {
+	_, err, _ := a.group.Do(token, func() (any, error) {
 		return a.introspectUpstream(ctx, token)
 	})
 	if err != nil {
 		return core.Identity{}, err
 	}
-	return v.(core.Identity), nil
+	// Read the cache instead of returning singleflight's shared value directly.
+	// A revocation may have completed between the upstream call and this waiter
+	// resuming; in that case invalidate deleted the entry and this request must
+	// observe the token as inactive.
+	if id, ok := a.cache.Get(token); ok {
+		return id, nil
+	}
+	return core.Identity{}, nil
 }
 
 func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Identity, error) {
+	a.revocationMu.RLock()
+	defer a.revocationMu.RUnlock()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		a.hydraAdminURL+"/admin/oauth2/introspect",
 		strings.NewReader(url.Values{"token": {token}}.Encode()))
@@ -228,7 +266,16 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 	if subject == "" {
 		subject = out.ClientID
 	}
-	id := core.Identity{Subject: subject, Method: "oauth2"}
+	// Hydra may return sub=client_id for client_credentials tokens. A human
+	// authorization/device token instead carries the end-user subject, distinct
+	// from the OAuth client that obtained it.
+	human := out.Sub != "" && out.Sub != out.ClientID
+	id := core.Identity{
+		Subject:  subject,
+		Method:   "oauth2",
+		ClientID: out.ClientID,
+		Human:    human,
+	}
 
 	// Record last-used on the key this token was minted for (w4/m13). Keyed on
 	// client_id (the API key's own id for client_credentials tokens), not the
@@ -291,6 +338,7 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	return core.Identity{
 		Subject: out.Identity.ID,
 		Method:  "session",
+		Human:   true,
 		Email:   strings.ToLower(out.Identity.Traits.Email),
 	}, nil
 }

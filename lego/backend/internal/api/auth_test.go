@@ -381,6 +381,140 @@ func TestIntrospectionCache(t *testing.T) {
 	}
 }
 
+func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"active": true, "sub": "human-a", "client_id": "shared-client",
+			})
+			return
+		}
+		_, _ = fmt.Fprint(w, `{"active":false}`)
+	}))
+	defer hydra.Close()
+
+	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	introspected := make(chan struct{})
+	go func() {
+		_, _ = auth.introspect(context.Background(), "old-access")
+		close(introspected)
+	}()
+	<-started
+
+	invalidated := make(chan struct{})
+	go func() {
+		auth.invalidate("logout-access", core.Identity{
+			Subject: "human-a", Method: "oauth2", ClientID: "shared-client", Human: true,
+		})
+		close(invalidated)
+	}()
+	close(release)
+	<-introspected
+	<-invalidated
+
+	if _, ok := auth.cache.Get("old-access"); ok {
+		t.Fatal("in-flight introspection repopulated the cache after logout")
+	}
+	id, err := auth.introspect(context.Background(), "old-access")
+	if err != nil || id != (core.Identity{}) {
+		t.Fatalf("old access after logout = %+v, %v", id, err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("introspection calls = %d, want 2", calls.Load())
+	}
+}
+
+func TestInvalidateEvictsOnlyTheRevokedOAuthCredential(t *testing.T) {
+	auth := newOryAuth("http://unused", "", "", "", "", nil, nil)
+	expires := time.Now().Add(time.Minute)
+	values := map[string]core.Identity{
+		"human-a-1": {Subject: "human-a", Method: "oauth2", ClientID: "shared", Human: true},
+		"human-a-2": {Subject: "human-a", Method: "oauth2", ClientID: "shared", Human: true},
+		"human-b":   {Subject: "human-b", Method: "oauth2", ClientID: "shared", Human: true},
+		"machine-1": {Subject: "key-1", Method: "oauth2", ClientID: "key-1"},
+		"machine-2": {Subject: "key-1", Method: "oauth2", ClientID: "key-1"},
+	}
+	for token, id := range values {
+		auth.cache.Put(token, id, expires)
+	}
+
+	auth.invalidate("human-a-1", values["human-a-1"])
+	for _, token := range []string{"human-a-1", "human-a-2"} {
+		if _, ok := auth.cache.Get(token); ok {
+			t.Fatalf("human token %q survived subject-scoped logout", token)
+		}
+	}
+	for _, token := range []string{"human-b", "machine-1", "machine-2"} {
+		if _, ok := auth.cache.Get(token); !ok {
+			t.Fatalf("unrelated token %q was evicted", token)
+		}
+	}
+
+	auth.invalidate("machine-1", values["machine-1"])
+	for _, token := range []string{"machine-1", "machine-2"} {
+		if _, ok := auth.cache.Get(token); ok {
+			t.Fatalf("machine token %q survived client self-revocation", token)
+		}
+	}
+	if _, ok := auth.cache.Get("human-b"); !ok {
+		t.Fatal("shared human client was evicted by an unrelated API key")
+	}
+}
+
+type recordingOnboard struct {
+	subject string
+	email   string
+	calls   int
+}
+
+func (o *recordingOnboard) EnsureTenant(_ context.Context, subject, email string) (string, error) {
+	o.subject, o.email = subject, email
+	o.calls++
+	return "tea-human", nil
+}
+
+func TestHumanOAuthTokenRunsTenantOnboarding(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		sub       string
+		clientID  string
+		wantCalls int
+	}{
+		{name: "device or authorization token", sub: "kratos-human", clientID: "oauth-client", wantCalls: 1},
+		{name: "client credentials without subject", clientID: "oauth-client", wantCalls: 0},
+		{name: "client credentials with client subject", sub: "oauth-client", clientID: "oauth-client", wantCalls: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"active": true, "sub": tc.sub, "client_id": tc.clientID,
+				})
+			}))
+			defer hydra.Close()
+			onboard := &recordingOnboard{}
+			mw := newOryAuth(hydra.URL, "", "", "", "", onboard, nil).middleware(echoIdentity)
+			r := httptest.NewRequest(http.MethodGet, "/probe", nil)
+			r.Header.Set("Authorization", "Bearer token")
+			rec := httptest.NewRecorder()
+			mw.ServeHTTP(rec, r)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+			}
+			if onboard.calls != tc.wantCalls {
+				t.Fatalf("onboarding calls = %d, want %d", onboard.calls, tc.wantCalls)
+			}
+			if tc.wantCalls == 1 && onboard.subject != tc.sub {
+				t.Fatalf("onboarded subject = %q", onboard.subject)
+			}
+		})
+	}
+}
+
 // TestIntrospectionTouchesKey asserts the gate calls its last-used recorder with
 // the token's client_id after a successful API-key introspection, and never for
 // an inactive token (w4/m13). The recorder itself is fire-and-forget; here it's a

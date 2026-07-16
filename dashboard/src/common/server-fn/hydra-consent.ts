@@ -78,9 +78,7 @@ function hydraAdmin(): OAuth2Api | null {
 /** What Kratos says about this request's cookies: the session, or why not. */
 async function sessionFor(request: Request): Promise<SessionState> {
   const cookie = request.headers.get("cookie");
-  return cookie
-    ? fetchSession(cookie)
-    : { session: null, aal2Required: false };
+  return cookie ? fetchSession(cookie) : { session: null, aal2Required: false };
 }
 
 /**
@@ -114,6 +112,10 @@ function csrfTokenMatches(
  */
 function missingPKCE(consent: OAuth2ConsentRequest): boolean {
   const requestUrl = consent.request_url ? new URL(consent.request_url) : null;
+  // RFC 8628 device authorization has no authorization-code redirect and no
+  // PKCE verifier. Hydra still routes it through the same consent provider;
+  // requiring code_challenge here would reject every legitimate CLI login.
+  if (requestUrl?.pathname === "/oauth2/device/verify") return false;
   return !requestUrl?.searchParams.get("code_challenge");
 }
 
@@ -170,7 +172,11 @@ async function rejectConsent(
  * first-factor flow (`session_already_available`), send the user back here, and
  * this would bounce them straight to login again.
  */
-function loginFirst(url: URL, challenge: string, aal2Required: boolean): Response {
+function loginFirst(
+  url: URL,
+  challenge: string,
+  aal2Required: boolean,
+): Response {
   const back = `/auth/consent?consent_challenge=${encodeURIComponent(challenge)}`;
   const login = new URL("/auth/login", url.origin);
   login.searchParams.set("next", back);

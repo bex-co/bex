@@ -1,6 +1,6 @@
 # w4 · m27 — Official Render CLI browser login via Hydra device flow
 
-**Worker:** worker4 **Goal:** Make the official, unmodified `render login` work against production bex with Render's fixed public client and wire protocol: one permanent platform OAuth client, short-lived access tokens, automatic refresh, human tenancy, and per-user logout that never deletes the shared client. **Status:** todo
+**Worker:** worker4 **Goal:** Make the official, unmodified `render login` work against production bex with Render's fixed public client and wire protocol: one permanent platform OAuth client, short-lived access tokens, automatic refresh, human tenancy, and per-user logout that never deletes the shared client. **Status:** todo (local implementation + E2E green; production rollout pending)
 
 ## Tasks (in order)
 
@@ -34,3 +34,7 @@ With `RENDER_API_KEY` unset and a clean isolated CLI config, the pinned official
 - This client is platform configuration, not a tenant-created "bex API key": no secret, no one-client-per-key behavior, and no listing in Settings → API Keys.
 - Reuse the Kratos-native login bridge and Hydra consent machinery from m9/m16/m17. Do not build a second identity provider or fork/patch the Render CLI.
 - `RENDER_API_KEY` remains a separate, non-refreshable machine-auth override. Redesigning API keys or making their access tokens unexpired is out of scope.
+
+## Evidence
+
+- [Local implementation, bootstrap, CLI E2E, regression suites, and production-gate audit — 2026-07-15](evidence/local-2026-07-15.md)

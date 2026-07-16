@@ -51,6 +51,10 @@ spec:
             # reads it; it must never reach the client bundle.
             - name: HYDRA_ADMIN_URL
               value: http://hydra-admin.auth.svc:4445
+            # Browser-reachable issuer used to start Hydra's device verification
+            # redirect. This cannot be the in-cluster admin Service URL.
+            - name: HYDRA_PUBLIC_URL
+              value: https://oauth.bex.co
             # Extra trusted client_ids beyond Hydra's own skip_consent flag;
             # empty by default — unknown clients are denied.
             - name: OAUTH_TRUSTED_CLIENTS

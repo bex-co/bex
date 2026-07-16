@@ -150,6 +150,18 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Consent page subtext when there is no live consent request to decide",
   },
+  "auth.deviceSuccessTitle": {
+    message: "Render CLI connected",
+    description: "Device authorization success page title",
+  },
+  "auth.deviceSuccessSubtitle": {
+    message: "Your browser authorization is complete.",
+    description: "Device authorization success page subtitle",
+  },
+  "auth.deviceSuccessHint": {
+    message: "Return to your terminal to continue.",
+    description: "Device authorization success page terminal hint",
+  },
 };
 
 export default enAuth;

@@ -1,6 +1,6 @@
 # Render CLI compatibility
 
-bex supports the official, unmodified [Render CLI](https://render.com/docs/cli) through its Render-compatible REST API. Most commands work today; interactive `render login` is the main authentication gap.
+bex supports the official, unmodified [Render CLI](https://render.com/docs/cli) through its Render-compatible REST API. Most commands work today; interactive login is locally verified and awaits production rollout evidence.
 
 Legend: ✅ supported · ◐ supported with a limitation · ✖ broken · — deliberate non-goal.
 
@@ -8,7 +8,7 @@ Legend: ✅ supported · ◐ supported with a limitation · ✖ broken · — de
 
 ## Set up the Render CLI with production bex
 
-Until browser login is implemented, install the official CLI using Render's [installation instructions](https://render.com/docs/cli#1-install-or-upgrade), then create an API key in the bex dashboard under **Settings → API Keys**. Save both values shown at creation:
+For automation, install the official CLI using Render's [installation instructions](https://render.com/docs/cli#1-install-or-upgrade), then create an API key in the bex dashboard under **Settings → API Keys**. Save both values shown at creation:
 
 - key ID (`client_id`)
 - key secret (`client_secret`), which is shown only once
@@ -16,7 +16,7 @@ Until browser login is implemented, install the official CLI using Render's [ins
 From a bex checkout, the setup helper prompts for those values, discovers the workspace, and exports the CLI configuration into the current shell:
 
 ```sh
-source ./scripts/setup-render-cli.sh
+source ./setup-render-cli.sh
 ```
 
 bex API keys are OAuth clients, not static bearer tokens. Exchange the key pair at the public Hydra endpoint, then give the resulting short-lived bearer token to the Render CLI:
@@ -63,7 +63,7 @@ export RENDER_API_KEY="$(
 render deploys create "$BEX_SERVICE_ID" --confirm
 ```
 
-`render login` is unnecessary for this CI flow. The CLI sees `RENDER_API_KEY` and treats the process as authenticated. `render logout` cannot revoke an environment variable; revoke or rotate the underlying key from the bex dashboard.
+`render login` is unnecessary for this CI flow. The CLI sees `RENDER_API_KEY` and treats the process as authenticated. `render logout` cannot revoke an environment variable; revoke or rotate the underlying key from the bex dashboard. Human browser login is a separate device flow: one permanent secretless platform client issues expiring access tokens and rotating refresh tokens.
 
 ## Compatibility summary
 
@@ -71,8 +71,8 @@ The following commands were exercised against live bex environments with real Se
 
 | Commands | Status | Notes |
 | --- | --- | --- |
-| `login` (browser/device flow) | ✖ | The official CLI uses a fixed public OAuth client, `/device-grant`, `/device-token`, refresh tokens, and `/token/refresh/`. bex does not yet provide that compatibility flow; `RENDER_API_KEY` only bypasses it. Tracked by `w4/m25`. |
-| `logout` | ◐ | Correctly explains that it cannot clear `RENDER_API_KEY`. Real device-token logout and refresh-chain revocation depend on the missing browser login flow. The OAuth-credential revoke path (`POST /v1/oauth/revoke`) is implemented and regression-guarded: `scripts/cli-compat.sh verify` mints a throwaway key, drives the unmodified CLI's real `render logout`, and proves the underlying Hydra client is deleted. |
+| `login` (browser/device flow) | ◐ | The official CLI completed real Chrome → Kratos → consent login in dev-3 with `RENDER_API_KEY` unset. Production rollout evidence remains (`w4/m27`). |
+| `logout` | ◐ | Local E2E proves access-token rejection, refresh-chain revocation, shared-client preservation, and second-user continuity. Production rollout evidence remains. The machine override still requires dashboard key revocation. |
 | `whoami` | ✅ | Returns the key owner's email when the Kratos admin URL is configured. |
 | `workspace current`, `workspaces` | ✅ | Return the caller's real `tea-…` workspace. |
 | `workspace set` | ◐ | The interactive flow was not tested. `RENDER_WORKSPACE` is the supported deterministic override and is used by the production setup above. |
@@ -110,6 +110,18 @@ scripts/cli-compat.sh verify
 ```
 
 [`scripts/cli-compat.sh`](../scripts/cli-compat.sh) exchanges the development key pair, sets `RENDER_HOST`, `RENDER_API_KEY`, and `RENDER_WORKSPACE`, then runs the unmodified CLI. Its `verify` mode covers the automated compatibility assertions — every census family that makes a bex-api call, with whole-shape (`checkFields`) assertions — and trap-cleans the resources it creates (one green run recorded 2026-07-15, bex-api `a4771886`). Its `mutation-check` mode proves those assertions are non-vacuous: a response-mutating proxy ([`.pm/w9/done/m4/mutation-proxy.py`](../.pm/w9/done/m4/mutation-proxy.py)) reintroduces one previously-fixed wire-shape regression per family and requires the matching leg to fail — either the official CLI's own decode errors nonzero, or `checkFields` reports the dropped field. Browser login is deliberately not counted as verified merely because `RENDER_API_KEY` makes `render login` short-circuit as already authenticated.
+
+The interactive-auth verifier uses two disposable users and a real Chrome process:
+
+```sh
+CREATE_TEST_IDENTITIES=1 \
+  KRATOS_ADMIN_URL=http://localhost:57030 \
+  BEX_API_URL=http://localhost:54030 \
+  HYDRA_ADMIN_URL=http://localhost:52030 \
+  scripts/render-cli-auth-e2e.sh
+```
+
+For production, omit `CREATE_TEST_IDENTITIES`, provide two existing disposable users through `CLI_USER_{A,B}_{EMAIL,PASSWORD}`, and point `HYDRA_ADMIN_URL` at a private admin port-forward. The script never prints credentials or tokens.
 
 Postgres rename has a focused smoke test in [`scripts/postgres-rename-cli-smoke.sh`](../scripts/postgres-rename-cli-smoke.sh). Run [`scripts/postgres-name-migrate.sh`](../scripts/postgres-name-migrate.sh) first for legacy records; [ADR009](ADR009-postgresql-management.md#rename-and-legacy-migration) documents the rollout and rollback order. Production used that sequence through deploy run `29406643202` and digest `ba32bf76ab6e`.
 

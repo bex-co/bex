@@ -11,6 +11,9 @@ hydra:
       # headless consent, on the local origin.
       login: http://localhost:5173/auth/login
       consent: http://localhost:5173/auth/consent
+      device:
+        verification: http://localhost:5173/auth/device
+        success: http://localhost:5173/auth/device/success
 
 ingress:
   public:

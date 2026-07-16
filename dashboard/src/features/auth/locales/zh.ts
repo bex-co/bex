@@ -148,6 +148,18 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Consent page subtext when there is no live consent request to decide",
   },
+  "auth.deviceSuccessTitle": {
+    message: "Render CLI 已连接",
+    description: "Device authorization success page title",
+  },
+  "auth.deviceSuccessSubtitle": {
+    message: "浏览器授权已完成。",
+    description: "Device authorization success page subtitle",
+  },
+  "auth.deviceSuccessHint": {
+    message: "请返回终端继续。",
+    description: "Device authorization success page terminal hint",
+  },
 };
 
 export default zhAuth;

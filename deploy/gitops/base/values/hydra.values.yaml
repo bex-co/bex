@@ -35,6 +35,13 @@ hydra:
       # headless acceptor route (auto-accepts trusted/skip clients, no UI).
       login: https://dashboard.bex.co/auth/login
       consent: https://dashboard.bex.co/auth/consent
+      # RFC 8628 (official Render CLI): the dashboard verifies Hydra's device
+      # challenge, then the ordinary Kratos login + Hydra consent flow above
+      # binds the request to the human. Success is a browser-only confirmation;
+      # the CLI receives its tokens by polling the token endpoint.
+      device:
+        verification: https://dashboard.bex.co/auth/device
+        success: https://dashboard.bex.co/auth/device/success
     oidc:
       subject_identifiers:
         supported_types: [public, pairwise]
