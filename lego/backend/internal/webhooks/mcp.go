@@ -50,12 +50,12 @@ type createEndpointArgs struct {
 }
 
 type updateEndpointArgs struct {
-	ID          string   `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
-	OwnerID     string   `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
-	Name        string   `json:"name,omitempty" jsonschema:"new display label; omit to keep the current value"`
-	URL         string   `json:"url,omitempty" jsonschema:"new destination URL (must be absolute https or http); omit to keep the current value"`
-	EventTypes  []string `json:"eventTypes,omitempty" jsonschema:"new subscription list (replaces current); omit to keep the current value"`
-	Enabled     *bool    `json:"enabled,omitempty" jsonschema:"enable or disable the endpoint; omit to keep the current state"`
+	ID         string   `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
+	OwnerID    string   `json:"ownerId,omitempty" jsonschema:"the workspace id (tea-…) the endpoint belongs to; omit to use the session's selected workspace, if any"`
+	Name       string   `json:"name,omitempty" jsonschema:"new display label; omit to keep the current value"`
+	URL        string   `json:"url,omitempty" jsonschema:"new destination URL (must be absolute https or http); omit to keep the current value"`
+	EventTypes []string `json:"eventTypes,omitempty" jsonschema:"new subscription list (replaces current); omit to keep the current value"`
+	Enabled    *bool    `json:"enabled,omitempty" jsonschema:"enable or disable the endpoint; omit to keep the current state"`
 }
 
 type deleteEndpointArgs struct {
@@ -82,7 +82,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_webhook_endpoint",
-		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, suspend/resume, restarts, scaling, cron runs). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
+		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
 		v, err := s.Create(ctx, CreateRequest{
 			OwnerID: core.SelectedWorkspace(s.Selections, req, in.OwnerID),

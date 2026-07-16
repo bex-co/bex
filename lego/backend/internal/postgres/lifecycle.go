@@ -63,9 +63,19 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 // Restart requests a rolling restart of the primary (spec.restartedAt = now);
 // the operator stamps CNPG's restart annotation and CNPG bounces the instance.
 func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error) {
-	return s.patchDatabase(ctx, core.RelCanOperate, name, func(d *appv1alpha1.Database) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
+	if err != nil {
+		return PostgresView{}, err
+	}
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseRestarted)
+	return view, nil
 }
 
 // Failover requests a CNPG planned switchover (spec.failoverAt = now). The

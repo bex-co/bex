@@ -233,6 +233,32 @@ func TestMaintenanceEventTypesAreSubscribableAndMapped(t *testing.T) {
 	}
 }
 
+func TestDatastoreEventTypesAreSubscribableAndMapped(t *testing.T) {
+	wantByVerb := map[string]string{
+		core.AuditVerbSetPlan:                    TypePlanChanged,
+		core.AuditVerbPostgresCreated:            TypePostgresCreated,
+		core.AuditVerbPostgresRestarted:          TypePostgresRestarted,
+		core.AuditVerbPostgresCredentialsCreated: TypePostgresCredentialsCreated,
+		core.AuditVerbPostgresCredentialsDeleted: TypePostgresCredentialsDeleted,
+		core.AuditVerbPostgresBackupStarted:      TypePostgresBackupStarted,
+		core.AuditVerbPostgresPlanChanged:        TypePlanChanged,
+		core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
+	}
+	for verb, want := range wantByVerb {
+		if got := verbEvents[verb]; got != want {
+			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, want)
+		}
+		if !slices.Contains(EventTypes, want) {
+			t.Errorf("EventTypes does not contain %q: %v", want, EventTypes)
+		}
+	}
+	for _, verb := range []string{core.AuditVerbPostgresUpdated, core.AuditVerbKeyValueUpdated} {
+		if got, ok := verbEvents[verb]; ok {
+			t.Errorf("unrelated datastore verb %q unexpectedly maps to %q", verb, got)
+		}
+	}
+}
+
 func TestCreateDeduplicatesEventTypesInCanonicalOrder(t *testing.T) {
 	s, _ := newTestService()
 	created, err := s.Create(context.Background(), CreateRequest{

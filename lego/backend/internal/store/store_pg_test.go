@@ -1256,43 +1256,59 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	fullTarget := core.ServiceTarget(core.CRName(ten.Name, app.Name))
 	bareTarget := core.ServiceTarget(app.Name)
 	at := time.Now().UTC().Add(-time.Minute)
-	recordAudit := func(atRow time.Time, verb, workspace, target string, outcome core.AuditOutcome) {
+	recordAudit := func(atRow time.Time, verb, workspace, target, targetName string, outcome core.AuditOutcome) {
 		t.Helper()
 		if err := s.Record(ctx, core.AuditEvent{
 			Caller: "user-x", Verb: verb, Resource: core.WorkspaceObject(workspace),
-			Target: target, Outcome: outcome, At: atRow,
+			Target: target, TargetName: targetName, Outcome: outcome, At: atRow,
 		}); err != nil {
 			t.Fatalf("record %s: %v", verb, err)
 		}
 	}
-	recordAudit(at, "apps.Restart", ten.ID, fullTarget, core.AuditAllowed)
-	recordAudit(at.Add(time.Second), "apps.Restart", ten.ID, bareTarget, core.AuditAllowed)
-	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, core.AuditDenied)                  // denied: excluded
-	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, core.AuditAllowed) // cross-tenant: excluded
-	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, core.AuditAllowed)               // verb not pushed down: excluded
+	recordAudit(at, "apps.Restart", ten.ID, fullTarget, "", core.AuditAllowed)
+	recordAudit(at.Add(time.Second), "apps.Restart", ten.ID, bareTarget, "", core.AuditAllowed)
+	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, "", core.AuditDenied)                  // denied: excluded
+	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, "", core.AuditAllowed) // cross-tenant: excluded
+	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, "", core.AuditAllowed)               // verb not pushed down: excluded
+	recordAudit(at.Add(5*time.Second), core.AuditVerbPostgresCreated, ten.ID, core.DatabaseTarget("dpg-orders"), "orders", core.AuditAllowed)
 
-	rows, err := s.ListWebhookEvents(ctx, at.Add(-time.Second), "", time.Now().UTC().Add(time.Hour), []string{"apps.Restart"}, []string{ten.ID}, 100)
+	rows, err := s.ListWebhookEvents(ctx, at.Add(-time.Second), "", time.Now().UTC().Add(time.Hour), []string{"apps.Restart", core.AuditVerbPostgresCreated}, []string{ten.ID}, 100)
 	if err != nil {
 		t.Fatalf("list webhook events: %v", err)
 	}
 	var restarts int
+	var postgresCreates int
 	for _, r := range rows {
-		if r.Source == EventSourceAudit {
-			if r.Verb != "apps.Restart" || r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.Name, app.Name) || r.ServiceName != app.Name {
+		if r.Source != EventSourceAudit {
+			continue
+		}
+		switch r.Verb {
+		case "apps.Restart":
+			if r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.Name, app.Name) || r.ServiceName != app.Name {
 				t.Errorf("unexpected audit row in feed: %+v", r)
 			}
 			restarts++
+		case core.AuditVerbPostgresCreated:
+			if r.TenantID != ten.ID || r.ServiceID != "dpg-orders" || r.ServiceName != "orders" {
+				t.Errorf("unexpected datastore audit row in feed: %+v", r)
+			}
+			postgresCreates++
+		default:
+			t.Errorf("unexpected audit verb in feed: %+v", r)
 		}
 	}
 	if restarts != 2 {
 		t.Errorf("feed carried %d apps.Restart events, want exactly 2 (both target spellings; denied/cross-tenant/unmapped excluded)\n%+v", restarts, rows)
+	}
+	if postgresCreates != 1 {
+		t.Errorf("feed carried %d postgres.CreatePostgres events, want exactly 1\n%+v", postgresCreates, rows)
 	}
 	// Ascending keyset: rows must come back oldest-first and resume exactly.
 	if len(rows) >= 2 {
 		if rows[0].At.After(rows[1].At) {
 			t.Errorf("feed not ascending: %v then %v", rows[0].At, rows[1].At)
 		}
-		resumed, err := s.ListWebhookEvents(ctx, rows[0].At, rows[0].Key, time.Now().UTC().Add(time.Hour), []string{"apps.Restart"}, []string{ten.ID}, 100)
+		resumed, err := s.ListWebhookEvents(ctx, rows[0].At, rows[0].Key, time.Now().UTC().Add(time.Hour), []string{"apps.Restart", core.AuditVerbPostgresCreated}, []string{ten.ID}, 100)
 		if err != nil || len(resumed) != len(rows)-1 {
 			t.Errorf("keyset resume = %d rows (err %v), want %d", len(resumed), err, len(rows)-1)
 		}

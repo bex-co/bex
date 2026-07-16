@@ -109,6 +109,7 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 // Database (spec.users), which the operator projects to CNPG's managed roles.
 // The password is returned once and never logged.
 func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUserResult, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return CreateUserResult{}, err
@@ -143,6 +144,7 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if err := s.Client.Patch(ctx, d, client.MergeFrom(orig)); err != nil {
 		return CreateUserResult{}, err
 	}
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseCredentialsCreated)
 	return CreateUserResult{Name: role, Password: pw}, nil
 }
 
@@ -151,6 +153,7 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 // role; dropping the role from Postgres outright would need an ensure:absent
 // tombstone, out of scope for basic CRUD.)
 func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
@@ -178,6 +181,7 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 			return err
 		}
 	}
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseCredentialsDeleted)
 	return nil
 }
 

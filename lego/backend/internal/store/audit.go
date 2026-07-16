@@ -48,9 +48,12 @@ type AuditRow struct {
 	// Target is the resource the verb acted ON ("service:my-api",
 	// core.ServiceTarget) — empty for a workspace-wide verb. Resource is what the
 	// verb was authorized AGAINST (the workspace); Target is what it changed.
-	Target  string
-	Outcome string
-	At      time.Time
+	Target string
+	// TargetName is the resource's display name when a typed datastore effect
+	// needs it for Render's thin webhook payload.
+	TargetName string
+	Outcome    string
+	At         time.Time
 	// MaintenanceModeTo is Render's MaintenanceModeEnabledEvent metadata.to.
 	// It is nil for every other audit verb.
 	MaintenanceModeTo *bool
@@ -90,11 +93,11 @@ func workspaceOf(resource string) string {
 // type needed.
 func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, outcome, at,
+		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at,
 		    maintenance_mode_to, plan_from, plan_to, instance_count_from, instance_count_to,
 		    autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to, auto_deploy_enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, string(ev.Outcome), ev.At,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+		ids.New(ids.Audit), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
 		ev.PlanFrom, ev.PlanTo,
 		ev.InstanceCountFrom, ev.InstanceCountTo,
@@ -103,11 +106,11 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 	return err
 }
 
-const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, outcome, at, maintenance_mode_to`
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.Outcome, &r.At, &r.MaintenanceModeTo)
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo)
 	return r, err
 }
 

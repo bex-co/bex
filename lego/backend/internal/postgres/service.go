@@ -382,6 +382,7 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 // projects to a CNPG Cluster).
 func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return PostgresView{}, err
 	}
@@ -463,7 +464,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		}
 		return PostgresView{}, err
 	}
-	s.RecordDatabaseCreated(ctx, d)
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
 	return pgView(d), nil
 }
 
@@ -546,6 +547,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 // CNPG Cluster's pod resources on the next operator reconcile — same cost as any
 // rolling update.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
@@ -553,9 +555,19 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+	from := d.Spec.Plan
+	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.Plan = plan
 	})
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if from != plan {
+		s.RecordDatabaseEffect(ctx, d, core.DatabasePlanChanged)
+	} else {
+		s.RecordDatabaseEffect(ctx, d, core.DatabaseUpdated)
+	}
+	return view, nil
 }
 
 // PreviewSetPlan returns what SetPlan would produce without writing — the same
@@ -643,6 +655,7 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 // is the general handler REST's PATCH route needs (rename, disk, HA,
 // ip-allow-list — not just plan).
 func (s *Service) UpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
@@ -660,7 +673,17 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 			return PostgresView{}, err
 		}
 	}
-	return s.patchDatabaseObj(ctx, d, patch.apply)
+	fromPlan := d.Spec.Plan
+	view, err := s.patchDatabaseObj(ctx, d, patch.apply)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	if patch.Plan != nil && fromPlan != d.Spec.Plan {
+		s.RecordDatabaseEffect(ctx, d, core.DatabasePlanChanged)
+	} else {
+		s.RecordDatabaseEffect(ctx, d, core.DatabaseUpdated)
+	}
+	return view, nil
 }
 
 // PreviewUpdatePostgres is UpdatePostgres's dry-run twin (w2/m29 pattern): same

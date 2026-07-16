@@ -309,6 +309,8 @@ type WebhookEventRow struct {
 //     with the same caveat: a default-workspace caller's write on a name two
 //     tenants share attributes to both, exactly as it appears in both their
 //     per-service feeds).
+//   - Datastore audit rows need no control-plane join: their typed target holds
+//     the immutable dpg-/red- id and target_name holds the display name.
 //   - the target matches EITHER of a service's two addressable spellings
 //     (w4/m19, core.appCandidateNames): an audit row records the raw name the
 //     caller passed (core.AuthorizeApp → ServiceTarget), which is normally the
@@ -375,33 +377,17 @@ WITH feed AS (
            e.at,
            e.workspace_id,
            split_part(e.target, ':', 2),
-           split_part(e.target, ':', 2),
+		   COALESCE(NULLIF(e.target_name, ''), split_part(e.target, ':', 2)),
            '` + EventSourceAudit + `'::text,
            ''::text,
            ''::text,
            ''::text,
            e.verb
     FROM audit_events e
-    WHERE e.outcome = 'allowed'
-      AND e.verb = ANY($4)
-      AND e.workspace_id = ANY($5)
-      AND e.target LIKE 'database:%'
-  UNION ALL
-    SELECT e.id || ':',
-           e.at,
-           e.workspace_id,
-           split_part(e.target, ':', 2),
-           split_part(e.target, ':', 2),
-           '` + EventSourceAudit + `'::text,
-           ''::text,
-           ''::text,
-           ''::text,
-           e.verb
-    FROM audit_events e
-    WHERE e.outcome = 'allowed'
-      AND e.verb = ANY($4)
-      AND e.workspace_id = ANY($5)
-      AND e.target LIKE 'keyvalue:%'
+	WHERE e.workspace_id = ANY($5)
+	  AND e.outcome = 'allowed'
+	  AND e.verb = ANY($4)
+	  AND (e.target LIKE 'database:%' OR e.target LIKE 'keyvalue:%')
 )
 SELECT key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb
 FROM feed
