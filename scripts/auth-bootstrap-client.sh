@@ -4,6 +4,11 @@
 # Render CLI. Neither is a tenant-created API key. Idempotent: re-running resets
 # both clients to their intended grants without minting a Render CLI secret.
 #
+# The Render CLI client is always upserted through the admin REST API (curl),
+# never the in-pod `hydra` CLI: it carries per-client token lifespans, which the
+# hydra CLI has no flags for — and `hydra update client` PUTs a full replacement,
+# so an exec-path upsert would silently wipe the lifespans on every re-run.
+#
 # The secret comes from BEX_BOOTSTRAP_CLIENT_SECRET in .env (gitignored) or the
 # environment (CI: GitHub Actions secret). Values are never printed.
 #
@@ -50,6 +55,32 @@ trap cleanup EXIT
 
 admin="${HYDRA_ADMIN_URL:-}"
 USE_EXEC=0
+REST_ADMIN="$admin"
+
+# start_port_forward: make the admin API REST-reachable at $REST_ADMIN via a
+# port-forward, with full diagnostic output captured. No-op when REST_ADMIN is
+# already set (HYDRA_ADMIN_URL given, or a forward is already up).
+start_port_forward() {
+  [ -n "$REST_ADMIN" ] && return 0
+  PF_LOG=$(mktemp)
+  kubectl -n "$NS" port-forward service/hydra-admin 34445:4445 > "$PF_LOG" 2>&1 &
+  PF_PID=$!
+  REST_ADMIN=http://127.0.0.1:34445
+  ready=0
+  for _ in $(seq 1 45); do
+    curl -sf -o /dev/null "$REST_ADMIN/health/ready" && ready=1 && break
+    sleep 2
+  done
+  if [ "$ready" != "1" ]; then
+    echo "error: hydra admin port-forward not ready after 90s — diagnostics:" >&2
+    cat "$PF_LOG" >&2
+    echo "--- hydra-admin service endpoints ---" >&2
+    kubectl -n "$NS" get endpoints hydra-admin >&2 || true
+    echo "--- hydra pod status ---" >&2
+    kubectl -n "$NS" get pods -l "app.kubernetes.io/name=hydra" >&2 || true
+    exit 1
+  fi
+}
 
 if [ -z "$admin" ]; then
   # Preferred path: kubectl exec into the Hydra pod and use the hydra CLI.
@@ -65,25 +96,8 @@ if [ -z "$admin" ]; then
     USE_EXEC=1
     echo "seeding client via kubectl exec into pod $HYDRA_POD"
   else
-    # Fallback: port-forward with full diagnostic output captured.
-    PF_LOG=$(mktemp)
-    kubectl -n "$NS" port-forward service/hydra-admin 34445:4445 > "$PF_LOG" 2>&1 &
-    PF_PID=$!
-    admin=http://127.0.0.1:34445
-    ready=0
-    for _ in $(seq 1 45); do
-      curl -sf -o /dev/null "$admin/health/ready" && ready=1 && break
-      sleep 2
-    done
-    if [ "$ready" != "1" ]; then
-      echo "error: hydra admin port-forward not ready after 90s — diagnostics:" >&2
-      cat "$PF_LOG" >&2
-      echo "--- hydra-admin service endpoints ---" >&2
-      kubectl -n "$NS" get endpoints hydra-admin >&2 || true
-      echo "--- hydra pod status ---" >&2
-      kubectl -n "$NS" get pods -l "app.kubernetes.io/name=hydra" >&2 || true
-      exit 1
-    fi
+    start_port_forward
+    admin="$REST_ADMIN"
   fi
 fi
 
@@ -109,27 +123,6 @@ if [ "$USE_EXEC" = "1" ]; then
     echo "created OAuth2 client $CLIENT_ID"
   fi
 
-  if exec_hydra update client "$RENDER_CLI_CLIENT_ID" \
-      --endpoint "$admin" \
-      --grant-type "$DEVICE_GRANT,refresh_token" \
-      --scope "openid,offline_access" \
-      --token-endpoint-auth-method none \
-      --subject-type public \
-      --metadata '{"bex.co/platform-client":true}' \
-      --name "Render CLI (bex platform)" > /dev/null 2>&1; then
-    echo "updated OAuth2 client $RENDER_CLI_CLIENT_ID"
-  else
-    exec_hydra create client \
-      --endpoint "$admin" \
-      --id "$RENDER_CLI_CLIENT_ID" \
-      --grant-type "$DEVICE_GRANT,refresh_token" \
-      --scope "openid,offline_access" \
-      --token-endpoint-auth-method none \
-      --subject-type public \
-      --metadata '{"bex.co/platform-client":true}' \
-      --name "Render CLI (bex platform)" > /dev/null
-    echo "created OAuth2 client $RENDER_CLI_CLIENT_ID"
-  fi
 else
   # Port-forward path: use curl.
   body="$(printf '{"client_id":"%s","client_name":"bex bootstrap (platform operator + CI)","client_secret":"%s","grant_types":["client_credentials"],"token_endpoint_auth_method":"client_secret_post"}' "$CLIENT_ID" "$secret")"
@@ -149,20 +142,47 @@ else
     exit 1
   fi
 
-  render_body="$(printf '{"client_id":"%s","client_name":"Render CLI (bex platform)","grant_types":["%s","refresh_token"],"scope":"openid offline_access","token_endpoint_auth_method":"none","subject_type":"public","metadata":{"bex.co/platform-client":true}}' "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT")"
-  render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
-    -H 'Content-Type: application/json' -d @- "$admin/admin/clients/$RENDER_CLI_CLIENT_ID")"
-  if [ "$render_code" = "404" ]; then
-    render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
-      -H 'Content-Type: application/json' -d @- "$admin/admin/clients")"
-    [ "$render_code" = "201" ] || { echo "error: creating $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2; exit 1; }
-    echo "created OAuth2 client $RENDER_CLI_CLIENT_ID"
-  elif [ "$render_code" = "200" ]; then
-    echo "updated OAuth2 client $RENDER_CLI_CLIENT_ID"
-  else
-    echo "error: upserting $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2
-    exit 1
-  fi
+fi
+
+# ---- Render CLI client: always via the admin REST API (see header comment) ----
+start_port_forward
+
+# Per-client access-token lifespan for BOTH grants that mint CLI tokens (device
+# code = first login, refresh_token = every rotation). The unmodified CLI
+# refreshes whenever a token is within 24h of expiry; with the global 15m TTL
+# that is every command, and the interactive TUI's two concurrent clients then
+# race the rotation and revoke each other's access token. 25h (> the CLI's 24h
+# threshold) is a deliberate trial value — bump toward 7d if it proves out.
+CLI_TOKEN_LIFESPAN=25h
+
+# skip_consent must ride every upsert: this is the operator-blessed trusted
+# client (docs/ADR012-auth.md §8a) — the dashboard consent route auto-accepts on
+# this flag, and the CLI device flow hard-depends on it. PUT is a full replace,
+# so omitting it here silently un-blesses the client and strands every
+# subsequent `render login` at a consent step that never completes.
+render_body="$(printf '{"client_id":"%s","client_name":"Render CLI (bex platform)","grant_types":["%s","refresh_token"],"scope":"openid offline_access","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true},"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
+  "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
+render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
+  -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")"
+if [ "$render_code" = "404" ]; then
+  render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients")"
+  [ "$render_code" = "201" ] || { echo "error: creating $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2; exit 1; }
+  echo "created OAuth2 client $RENDER_CLI_CLIENT_ID"
+elif [ "$render_code" = "200" ]; then
+  echo "updated OAuth2 client $RENDER_CLI_CLIENT_ID"
+else
+  echo "error: upserting $RENDER_CLI_CLIENT_ID failed (HTTP $render_code)" >&2
+  exit 1
+fi
+
+# Guard against silent field drops (a typo'd lifespan key would be ignored, not
+# rejected): assert the lifespans round-trip on the stored client. Prefix match,
+# not exact — Hydra may normalize the duration (25h vs 25h0m0s).
+if ! curl -sf "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID" \
+    | grep -q "\"refresh_token_grant_access_token_lifespan\":\"$CLI_TOKEN_LIFESPAN"; then
+  echo "error: $RENDER_CLI_CLIENT_ID lifespans did not round-trip (hydra too old for per-client lifespans?)" >&2
+  exit 1
 fi
 
 echo "token: POST <hydra-public>/oauth2/token  grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=***"
