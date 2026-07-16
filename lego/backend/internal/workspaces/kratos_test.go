@@ -57,3 +57,39 @@ func TestKratosIdentitiesLookup(t *testing.T) {
 		t.Fatalf("missing identity: want ok=false, got %+v", attrs)
 	}
 }
+
+// TestKratosIdentitiesMFADerivation pins mfaEnabled per credential shape
+// (w4/020): Kratos mints a stub webauthn entry (config.user_handle only, no
+// registered keys) at password registration, so webauthn counts only when
+// config.credentials is non-empty; totp stays presence-based.
+func TestKratosIdentitiesMFADerivation(t *testing.T) {
+	shapes := map[string]struct {
+		credentials string
+		want        bool
+	}{
+		"password-only":       {`{}`, false},
+		"webauthn-stub":       {`{"webauthn":{"type":"webauthn","config":{"user_handle":"dXNlcg=="}}}`, false},
+		"webauthn-empty-list": {`{"webauthn":{"type":"webauthn","config":{"credentials":[]}}}`, false},
+		"webauthn-enrolled":   {`{"webauthn":{"type":"webauthn","config":{"credentials":[{"id":"a2V5","display_name":"key"}]}}}`, true},
+		"totp":                {`{"totp":{"type":"totp"}}`, true},
+		"totp-plus-stub":      {`{"totp":{"type":"totp"},"webauthn":{"type":"webauthn","config":{"user_handle":"dXNlcg=="}}}`, true},
+		"totp-plus-enrolled":  {`{"totp":{"type":"totp"},"webauthn":{"type":"webauthn","config":{"credentials":[{"id":"a2V5"}]}}}`, true},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		shape, ok := shapes[r.URL.Path[len("/admin/identities/"):]]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		fmt.Fprintf(w, `{"traits":{"email":"c@example.com"},"credentials":%s}`, shape.credentials)
+	}))
+	t.Cleanup(srv.Close)
+	k := NewKratosIdentities(srv.URL)
+
+	for name, shape := range shapes {
+		attrs, ok := k.Lookup(context.Background(), name)
+		if !ok || attrs.MFAEnabled != shape.want {
+			t.Errorf("%s: mfaEnabled = %v (ok=%v), want %v", name, attrs.MFAEnabled, ok, shape.want)
+		}
+	}
+}

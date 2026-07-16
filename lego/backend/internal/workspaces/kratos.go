@@ -59,7 +59,10 @@ type kratosIdentity struct {
 		Name  string `json:"name"`
 	} `json:"traits"`
 	Credentials map[string]struct {
-		Type string `json:"type"`
+		Type   string `json:"type"`
+		Config struct {
+			Credentials []json.RawMessage `json:"credentials"`
+		} `json:"config"`
 	} `json:"credentials"`
 }
 
@@ -86,7 +89,13 @@ func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (Identity
 	if err := json.NewDecoder(resp.Body).Decode(&id); err != nil {
 		return IdentityAttrs{}, false
 	}
+	// totp is presence-based: Kratos only writes the entry on enrollment.
+	// webauthn needs its config inspected: Kratos mints a stub entry
+	// (config.user_handle only, no registered keys) at password registration
+	// because webauthn is an enabled method with identifier: true — so only a
+	// non-empty config.credentials list counts as an enrolled second factor
+	// (w4/020).
 	_, totp := id.Credentials["totp"]
-	_, webauthn := id.Credentials["webauthn"]
+	webauthn := len(id.Credentials["webauthn"].Config.Credentials) > 0
 	return IdentityAttrs{Email: id.Traits.Email, Name: id.Traits.Name, MFAEnabled: totp || webauthn}, true
 }
