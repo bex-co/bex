@@ -21,6 +21,9 @@ bash scripts/ssh-activate.test.sh || { echo "FAIL: SSH activation safety gates" 
 echo "==> SSH Cloudflare DNS reconciliation safety gates"
 bash scripts/ssh-dns-cloudflare.test.sh || { echo "FAIL: SSH Cloudflare DNS reconciliation safety gates" >&2; fail=1; }
 
+echo "==> SSH verifier CLI safety gates"
+bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" >&2; fail=1; }
+
 for dir in deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart
   echo "==> kustomize build $dir"

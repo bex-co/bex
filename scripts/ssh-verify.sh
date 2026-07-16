@@ -12,6 +12,11 @@ set -euo pipefail
 # intentionally out of band because the acceptance token must not be able to
 # manufacture its own weaker workspace role or foreign workspace.
 
+fail() {
+  echo "FAIL $*" >&2
+  exit 1
+}
+
 for command in curl go jq ssh ssh-keygen ssh-keyscan; do
   command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
 done
@@ -20,6 +25,15 @@ done
 : "${BEX_API_TOKEN:?set a bearer token without echoing it}"
 : "${BEX_SSH_VERIFY_PRIVATE_KEY_FILE:?set a disposable private-key file path}"
 : "${BEX_SSH_EXPECTED_HOST_FINGERPRINT:?set the published SHA256 host-key fingerprint}"
+
+render_cli="${BEX_RENDER_CLI_BIN:-render}"
+if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
+  if [[ "$render_cli" == */* ]]; then
+    [[ -x "$render_cli" ]] || fail "Render CLI is not executable: $render_cli"
+  else
+    command -v "$render_cli" >/dev/null || fail "missing Render CLI: $render_cli"
+  fi
+fi
 
 api="${BEX_API_URL%/}"
 private_key="$BEX_SSH_VERIFY_PRIVATE_KEY_FILE"
@@ -69,11 +83,6 @@ api_json() {
   else
     curl -fsS -X "$method" "${auth[@]}" "$api$path"
   fi
-}
-
-fail() {
-  echo "FAIL $*" >&2
-  exit 1
 }
 
 assert_rejected() {
@@ -173,16 +182,15 @@ echo "PASS interactive PTY and resize"
 
 # The official CLI is intentionally interactive. Current render-oss/cli accepts
 # a service name for any-instance SSH and a complete instance id for an exact
-# replica. Its service-id instance-menu callback currently drops the selected
-# id, so this verifier does not mistake that upstream defect for bex evidence:
+# replica. Both instance-menu callbacks currently drop the selected id, so this
+# verifier does not mistake that upstream defect for bex evidence:
 # it exercises the two working public arguments directly and records only the
 # destination the unmodified CLI gave OpenSSH.
 if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
-  command -v render >/dev/null || fail "missing render CLI"
   command -v ssh-agent >/dev/null || fail "missing ssh-agent"
   command -v ssh-add >/dev/null || fail "missing ssh-add"
   [[ -t 0 ]] || fail "official CLI verification requires a TTY"
-  cli_version="$(render --version 2>&1 | head -n 1)"
+  cli_version="$("$render_cli" --version 2>&1 | head -n 1)"
   [[ -n "$cli_version" ]] || fail "official Render CLI did not report its version"
   echo "official Render CLI $cli_version"
   ssh-agent -a "$tmp/agent.sock" >"$tmp/agent.env"
@@ -204,11 +212,11 @@ if [[ "${BEX_RENDER_CLI_VERIFY:-0}" == "1" ]]; then
   )
 
   echo 'CLI CHECK: resize the terminal, run `test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime" && exit`, and require a zero exit'
-  env "${cli_env[@]}" render ssh "$service_name"
+  env "${cli_env[@]}" "$render_cli" ssh "$service_name"
   [[ "$(<"$cli_target_log")" == "$ssh_address" ]] || fail "Render CLI service-name path selected an unexpected destination"
   echo "PASS official Render CLI by service name"
 
-  env "${cli_env[@]}" render ssh "$instance_id" -- 'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"' >/dev/null
+  env "${cli_env[@]}" "$render_cli" ssh "$instance_id" -- 'test "$BEX_SSH_SMOKE_VALUE" = "w2-m39-runtime"' >/dev/null
   [[ "$(<"$cli_target_log")" == "$specific_address" ]] || fail "Render CLI instance-id path selected an unexpected destination"
   echo "PASS official Render CLI exact instance and runtime environment"
 else

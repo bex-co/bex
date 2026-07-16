@@ -90,7 +90,8 @@ The following commands were exercised against live bex environments with real Se
 | `docs` | ✅ | Opens Render's documentation; it makes no bex API call. |
 | `skills` | ✖ | The tested CLI revision panics before making an HTTP request. This is an upstream CLI issue, not a bex API incompatibility. |
 | `workflows list` | — | Render Workflows is a deliberate bex non-goal. |
-| `ssh`, `kv-cli`, `pgcli` | — | Interactive hosted exec is a deliberate non-goal. The CLI also rejects these commands in non-interactive mode before contacting bex. |
+| `ssh` | ◐ | **Running-instance SSH is implemented by w2/m39:** the CLI-required `sshAddress`, live-deploy data, instances route, and raw OpenSSH gateway contract are present and protocol-tested. The CLI is interactive by design, so this remains ◐ until `scripts/ssh-verify.sh` records the public TCP/22 PTY run. The current official release, v2.21.0 at `c398207`, accepts a service name, service id, or full instance id, but both instance-picker callbacks assign the service id instead of the selected instance id (`cmd/ssh.go`); the verifier therefore proves name resolution and exact targeting through the supported direct-instance-id argument without patching the CLI or claiming that broken menu works. `--ephemeral` remains a deliberate non-goal. [ADR035](ADR035-ssh.md). |
+| `kv-cli`, `pgcli` | — | Interactive datastore clients remain outside the current compatibility target. |
 | `ea` (`objects`, `sandbox`, `sandbox-groups`) | — | These early-access surfaces are outside the current compatibility target. |
 
 ## Verification
