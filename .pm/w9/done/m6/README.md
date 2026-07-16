@@ -1,6 +1,6 @@
 # w9 · m6 — Key Value stable `red-` id + rename
 
-**Worker:** worker9 **Goal:** Key Value stores get a stable Render-shaped `red-…` id and a mutable display name, mirroring what w9/m3 shipped for Postgres — closing the last documented name-as-id datastore deviation. **Status:** code-complete — t001–t005, t007–t009 done; **t006 (live dev/prod official-CLI rollout) remains**, blocked on live cluster access; t010 closeout follows t006.
+**Worker:** worker9 **Goal:** Key Value stores get a stable Render-shaped `red-…` id and a mutable display name, mirroring what w9/m3 shipped for Postgres — closing the last documented name-as-id datastore deviation. **Status:** **DONE** — all tasks complete. t006 live-proven with the unmodified official CLI v2.21.0 in dev-9 (2026-07-15): `keyvalues create` → `red-d9c4qdpjg4raahi17kc0`, `keyvalues update --name` preserved the id + k8s object identity, `keyvalues get <new-name>` re-resolved to the same id. `cli-compatibility-checklist.md` (`keyvalues update --name`) and `ADR018` (name-as-id divergence) flipped to ✅.
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Store + projector: stable id column, mutable name                              | 30m | t002       | — **DONE** |
 | t004 | REST/GraphQL/MCP: route by `red-` id + rename verb                             | 45m | t003       | — **DONE** |
 | t005 | Dashboard: rename control + id display                                         | 30m | t004       | — **DONE** |
-| t006 | Roll dev-N + prod; official-CLI `red-` routing verify leg                      | 45m | t005       | todo (live infra) |
+| t006 | Roll dev-N + prod; official-CLI `red-` routing verify leg                      | 45m | t005       | — **DONE** |
 | t007 | Render parity                                                                  | 30m | t006       | — **DONE** |
 | t008 | Simplify                                                                       | 30m | t007       | — **DONE** |
 | t009 | Test coverage                                                                  | 45m | t007       | — **DONE** |
-| t010 | Closeout                                                                       | 15m | t009       | todo (after t006) |
+| t010 | Closeout                                                                       | 15m | t009       | — **DONE** |
 
 ## Definition of done
 
