@@ -35,11 +35,28 @@ export type SessionState = {
 };
 
 /**
- * The Kratos session behind the current request. Pass `cookie` explicitly from a
- * server route handler, which holds the `Request` itself (`hydra-consent.ts`);
- * omit it and the ambient request's Cookie header is used.
+ * How long a browser-side `whoami` answer is reused before asking Kratos
+ * again. The root route's `beforeLoad` calls `fetchSession()` on every
+ * navigation *and* every hover-triggered preload (`defaultPreload: "intent"`),
+ * so without this memo a mouse pass over the sidebar fires a burst of
+ * identical `/sessions/whoami` requests. Auth transitions don't wait out the
+ * TTL: login/register/logout call `invalidateSessionCache()` first.
  */
-export async function fetchSession(cookie?: string): Promise<SessionState> {
+const SESSION_CACHE_TTL_MS = 60_000;
+
+let sessionCache: { at: number; state: Promise<SessionState> } | null = null;
+
+/**
+ * Drop the memoized browser session so the next `fetchSession()` asks Kratos.
+ * Call before `router.invalidate()` whenever the session itself changed
+ * (sign-in, sign-up, sign-out) — invalidating the router re-runs the root
+ * `beforeLoad`, and that re-run must not be answered from the memo.
+ */
+export function invalidateSessionCache(): void {
+  sessionCache = null;
+}
+
+async function fetchSessionUncached(cookie?: string): Promise<SessionState> {
   try {
     const session = await createFrontendApi(
       cookie ?? (await getRequestCookie()),
@@ -49,4 +66,26 @@ export async function fetchSession(cookie?: string): Promise<SessionState> {
     const { id } = await oryErrorInfo(err);
     return { session: null, aal2Required: id === "session_aal2_required" };
   }
+}
+
+/**
+ * The Kratos session behind the current request. Pass `cookie` explicitly from a
+ * server route handler, which holds the `Request` itself (`hydra-consent.ts`);
+ * omit it and the ambient request's Cookie header is used.
+ *
+ * In the browser the answer is memoized for a short TTL (and concurrent calls
+ * share one in-flight request). Never on the server: module state there
+ * outlives a request, so a memo would leak one visitor's session into
+ * another's render — every SSR call consults Kratos with the request's own
+ * Cookie header.
+ */
+export async function fetchSession(cookie?: string): Promise<SessionState> {
+  if (import.meta.env.SSR || cookie !== undefined) {
+    return fetchSessionUncached(cookie);
+  }
+  const now = Date.now();
+  if (!sessionCache || now - sessionCache.at > SESSION_CACHE_TTL_MS) {
+    sessionCache = { at: now, state: fetchSessionUncached() };
+  }
+  return sessionCache.state;
 }

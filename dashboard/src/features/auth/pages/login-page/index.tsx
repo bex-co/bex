@@ -4,6 +4,7 @@ import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { invalidateSessionCache } from "@/common/server-fn/session";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
@@ -35,6 +36,7 @@ export default function LoginPage() {
             clearStoredOryFlow("login");
             // See register-page: root's beforeLoad cached the (unauthenticated)
             // session on first load — refetch it before navigating.
+            invalidateSessionCache();
             await router.invalidate();
             // `next` goes in `href`, not `to`: it is an arbitrary href and may
             // carry a query string (the OAuth consent bounce sends
