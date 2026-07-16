@@ -109,16 +109,16 @@ func (ev pushEvent) changedPaths() []string {
 // Apps, and redeploys each. An absent/mismatched signature is 401 with no action.
 func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.configured() {
-		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "git webhook not configured (BEX_WEBHOOK_SECRET / BEX_GITHUB_WEBHOOK_SECRET unset)"})
+		core.WriteErrStatus(w, http.StatusServiceUnavailable, "git webhook not configured (BEX_WEBHOOK_SECRET / BEX_GITHUB_WEBHOOK_SECRET unset)")
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBody))
 	if err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "cannot read body"})
+		core.WriteErrStatus(w, http.StatusBadRequest, "cannot read body")
 		return
 	}
 	if !h.verify(r.Header.Get("X-Hub-Signature-256"), body) {
-		core.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid or missing signature"})
+		core.WriteErrStatus(w, http.StatusUnauthorized, "invalid or missing signature")
 		return
 	}
 	// The GitHub App's one app-wide webhook also delivers lifecycle events
@@ -132,7 +132,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var ev pushEvent
 	if err := json.Unmarshal(body, &ev); err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "malformed push payload"})
+		core.WriteErrStatus(w, http.StatusBadRequest, "malformed push payload")
 		return
 	}
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")

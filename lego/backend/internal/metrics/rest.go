@@ -75,11 +75,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric string) {
 	resources, q, err := parseMetricParams(r)
 	if err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := checkQueryRange(s.MaxQueryHours, q.Start, q.End); err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	q.Metric = metric
@@ -104,11 +104,11 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 func (s *Service) datastoreMetricQuery(w http.ResponseWriter, r *http.Request, metric string) {
 	q, err := parseDatastoreMetricParams(r)
 	if err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := checkQueryRange(s.MaxQueryHours, q.Start, q.End); err != nil {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	q.Metric = metric

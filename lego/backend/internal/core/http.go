@@ -45,11 +45,9 @@ func WriteJSON(w http.ResponseWriter, status int, body any) {
 // REST fragment, so the surfaces answer identically.
 func WriteErr(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
-	id := "internal_error"
 	switch {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
-		id = "not_found"
 	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrLogStoreUnavailable),
 		errors.Is(err, ErrAPIKeysUnavailable), errors.Is(err, ErrSSHKeysUnavailable),
 		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
@@ -59,24 +57,58 @@ func WriteErr(w http.ResponseWriter, err error) {
 		errors.Is(err, ErrEventsUnavailable), errors.Is(err, ErrRegistryCredentialsUnavailable),
 		errors.Is(err, ErrWebhooksUnavailable):
 		code = http.StatusServiceUnavailable
-		id = "unavailable"
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest
-		id = "bad_request"
 	case errors.Is(err, ErrForbidden):
 		code = http.StatusForbidden
-		id = "forbidden"
 	case errors.Is(err, ErrConflict):
 		code = http.StatusConflict
-		id = "conflict"
 	}
 	msg := err.Error()
 	var ce *CodedError
 	if errors.As(err, &ce) {
-		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": id, "code": ce.Code, "params": ce.Params})
+		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": statusErrID(code), "code": ce.Code, "params": ce.Params})
 		return
 	}
-	WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": id})
+	// The plain path is exactly WriteErrStatus's envelope — delegate so the
+	// {"error","message","id"} literal lives in one place and can't drift.
+	WriteErrStatus(w, code, msg)
+}
+
+// WriteErrStatus writes an error response with an explicit status and message
+// in WriteErr's exact envelope ({"id","error","message"}, Content-Type
+// application/json). Use it for a failure that no domain-error sentinel carries
+// — the auth gate's 401/503, a handler's parameter-validation 400, a
+// method-not-allowed 405 — so every non-2xx path speaks the one Render-shaped
+// error dialect a Render client (the official CLI, any SDK) keys on (w9/m38).
+func WriteErrStatus(w http.ResponseWriter, status int, msg string) {
+	WriteJSON(w, status, map[string]any{"error": msg, "message": msg, "id": statusErrID(status)})
+}
+
+// statusErrID maps an HTTP status onto the stable error id WriteErr/
+// WriteErrStatus report in the "id" field, so both writers of the one dialect
+// label a status identically.
+func statusErrID(code int) string {
+	switch code {
+	case http.StatusBadRequest:
+		return "bad_request"
+	case http.StatusUnauthorized:
+		return "unauthorized"
+	case http.StatusForbidden:
+		return "forbidden"
+	case http.StatusNotFound:
+		return "not_found"
+	case http.StatusMethodNotAllowed:
+		return "method_not_allowed"
+	case http.StatusConflict:
+		return "conflict"
+	case http.StatusRequestEntityTooLarge:
+		return "payload_too_large"
+	case http.StatusServiceUnavailable:
+		return "unavailable"
+	default:
+		return "internal_error"
+	}
 }
 
 const (

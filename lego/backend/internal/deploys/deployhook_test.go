@@ -144,6 +144,33 @@ func TestDeployHookHandlerCollapsesInvalidAndRotatedTokensTo404(t *testing.T) {
 	}
 }
 
+// TestDeployHookHandlerMethodNotAllowedSpeaksTheOneErrorDialect pins w9/m38:
+// the 405 rejection is JSON with Content-Type application/json and Render's
+// `message` key, not a text/plain bare-`{"error"}` body.
+func TestDeployHookHandlerMethodNotAllowedSpeaksTheOneErrorDialect(t *testing.T) {
+	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
+	h := svc.DeployHookHandler()
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/v1/deploy-hooks/whatever", nil))
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("code = %d, want 405; body=%s", w.Code, w.Body.String())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	if allow := w.Header().Get("Allow"); allow != "GET, POST" {
+		t.Errorf("Allow = %q, want %q", allow, "GET, POST")
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("body not JSON: %v (%s)", err, w.Body.String())
+	}
+	if body["message"] != "method not allowed" {
+		t.Errorf("message = %v, want %q", body["message"], "method not allowed")
+	}
+}
+
 func TestDeployHookHandlerHasIndependentPerTokenRateLimit(t *testing.T) {
 	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
 	svc.DeployHookLimiter = NewDeployHookRateLimiter(0.01, 1)

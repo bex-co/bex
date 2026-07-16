@@ -173,7 +173,9 @@ func (s *Service) writeCallbackFailure(w http.ResponseWriter, r *http.Request, c
 		return
 	}
 	if code == "missing_state" || code == "invalid_state" || code == "expired_state" || code == "github_error" {
-		core.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error(), "code": code})
+		// The one error dialect (w9/m38), plus a `code` superset the dashboard's
+		// callback page keys on to render a fixed, non-sensitive reason.
+		core.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error(), "message": err.Error(), "id": "bad_request", "code": code})
 		return
 	}
 	core.WriteErr(w, err)

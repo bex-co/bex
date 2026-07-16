@@ -87,7 +87,7 @@ func toRenderEnvironment(e EnvironmentView) renderEnvironment {
 // core.WriteErr's default 500.
 func writeErr(w http.ResponseWriter, err error) {
 	if errors.Is(err, ErrEnvironmentsUnavailable) {
-		core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error(), "message": err.Error(), "id": "unavailable"})
+		core.WriteErrStatus(w, http.StatusServiceUnavailable, err.Error())
 		return
 	}
 	core.WriteErr(w, err)
