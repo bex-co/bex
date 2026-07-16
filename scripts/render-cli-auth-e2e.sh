@@ -193,9 +193,18 @@ env -u RENDER_API_KEY RENDER_HOST="${BEX_API_URL%/}/v1/" RENDER_CLI_CONFIG_PATH=
 grep -q 'Successfully logged out' "$TMP/logout-a.txt" || fail "CLI logout did not report success"
 [ ! -e "$CFG_A" ] || fail "CLI logout left the local config behind"
 
-status="$(curl -s -o "$TMP/old-access.json" -w '%{http_code}' \
-  -H "Authorization: Bearer $ACCESS_A" "${BEX_API_URL%/}/v1/services")"
-[ "$status" = 401 ] || fail "logged-out access token returned HTTP $status, want 401"
+# Hydra revokes the token immediately; each bex-api replica may serve its
+# cached positive introspection for up to core.PositiveTTL (30s), and only the
+# replica that handled the logout invalidates its cache entry synchronously —
+# so against a multi-replica deployment the 401 can lag by one cache window.
+status=""
+for _ in $(seq 1 40); do
+  status="$(curl -s -o "$TMP/old-access.json" -w '%{http_code}' \
+    -H "Authorization: Bearer $ACCESS_A" "${BEX_API_URL%/}/v1/services")"
+  [ "$status" = 401 ] && break
+  sleep 1
+done
+[ "$status" = 401 ] || fail "logged-out access token returned HTTP $status, want 401 (waited past the introspection-cache TTL)"
 
 refresh_body="$(jq -nc --arg token "$REFRESH_A" '{grant_type:"refresh_token",refresh_token:$token}')"
 status="$(curl -s -o "$TMP/old-refresh.json" -w '%{http_code}' -X POST \

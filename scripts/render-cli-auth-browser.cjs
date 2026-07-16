@@ -43,7 +43,10 @@ const executablePath =
     }
     await page.locator('input[name="identifier"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
-    await page.locator('button[type="submit"]').click();
+    // The password method button specifically — production's login page also
+    // renders social-login submit buttons (Sign in with GitHub), so a bare
+    // button[type="submit"] is ambiguous there.
+    await page.locator('button[name="method"][value="password"]').click();
 
     await page.waitForURL(/\/auth\/(?:consent|device\/success)(?:\?|$)/, {
       timeout: 30_000,

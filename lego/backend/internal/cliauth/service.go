@@ -54,17 +54,22 @@ type Service struct {
 	adminURL  string
 	client    *http.Client
 	apiKeys   APIKeyRevoker
+	// invalidate evicts the just-revoked access token from bex's positive
+	// introspection cache so logout takes effect immediately, not after its
+	// TTL. Injected by the composition root (the cache is the auth gate's).
+	invalidate func(string, core.Identity)
 }
 
 // New returns a Render CLI authentication adapter. Empty URLs leave the routes
 // mounted but honestly unavailable (503), which keeps server composition stable
-// in partial local environments.
-func New(publicURL, adminURL string, apiKeys APIKeyRevoker) *Service {
+// in partial local environments. invalidate may be nil (no cache to evict).
+func New(publicURL, adminURL string, apiKeys APIKeyRevoker, invalidate func(string, core.Identity)) *Service {
 	return &Service{
-		publicURL: strings.TrimSuffix(publicURL, "/"),
-		adminURL:  strings.TrimSuffix(adminURL, "/"),
-		client:    &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport},
-		apiKeys:   apiKeys,
+		publicURL:  strings.TrimSuffix(publicURL, "/"),
+		adminURL:   strings.TrimSuffix(adminURL, "/"),
+		client:     &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport},
+		apiKeys:    apiKeys,
+		invalidate: invalidate,
 	}
 }
 
@@ -76,56 +81,59 @@ func (s *Service) RegisterPublic(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/token/refresh/", s.refreshToken)
 }
 
-// RevokeHandler returns Render's authenticated POST /v1/oauth/revoke handler.
-// invalidate evicts the just-revoked access token from bex's positive
-// introspection cache so logout takes effect immediately, not after its TTL.
-func (s *Service) RevokeHandler(invalidate func(string, core.Identity)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, ok := core.IdentityFrom(r.Context())
-		if !ok || id.Method != "oauth2" {
-			core.WriteErr(w, fmt.Errorf("%w: no OAuth2 credential to revoke", core.ErrBadRequest))
+// RegisterREST contributes Render's authenticated POST /v1/oauth/revoke to the
+// single REST router (inside the auth gate + rate limiter like every other
+// /v1 resource route), so the composition root keeps one router and one
+// wrapping site.
+func (s *Service) RegisterREST(mux *http.ServeMux) {
+	mux.HandleFunc("POST /v1/oauth/revoke", s.revoke)
+}
+
+func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
+	id, ok := core.IdentityFrom(r.Context())
+	if !ok || id.Method != "oauth2" {
+		core.WriteErr(w, fmt.Errorf("%w: no OAuth2 credential to revoke", core.ErrBadRequest))
+		return
+	}
+
+	switch {
+	case id.ClientID == RenderCLIClientID && id.Human:
+		// /v1/oauth/revoke is a Render-shaped REST endpoint, not a token
+		// endpoint — every failure branch speaks the one Render error dialect
+		// via core.WriteErr (w9/m38, w9/008), not the OAuth {"error"} body the
+		// RFC 8628 device endpoints use.
+		if s.adminURL == "" {
+			core.WriteErr(w, core.ErrLogoutUnavailable)
 			return
 		}
-
-		switch {
-		case id.ClientID == RenderCLIClientID && id.Human:
-			// /v1/oauth/revoke is a Render-shaped REST endpoint, not a token
-			// endpoint — every failure branch speaks the one Render error dialect
-			// via core.WriteErr (w9/m38, w9/008), not the OAuth {"error"} body the
-			// RFC 8628 device endpoints use.
-			if s.adminURL == "" {
-				core.WriteErr(w, core.ErrLogoutUnavailable)
-				return
-			}
-			q := url.Values{
-				"subject": {id.Subject},
-				"client":  {RenderCLIClientID},
-			}
-			if err := core.DoJSON(r.Context(), s.client, http.MethodDelete,
-				s.adminURL+"/admin/oauth2/auth/sessions/consent?"+q.Encode(), "", nil,
-				http.StatusNoContent, nil); err != nil {
-				core.WriteErr(w, core.ErrLogoutUnavailable)
-				return
-			}
-		case !id.Human && id.ClientID != "" && id.Subject == id.ClientID:
-			if s.apiKeys == nil {
-				core.WriteErr(w, core.ErrAPIKeysUnavailable)
-				return
-			}
-			if err := s.apiKeys.RevokeAPIKey(r.Context(), "", id.Subject); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		default:
-			core.WriteErr(w, fmt.Errorf("%w: unsupported OAuth2 credential", core.ErrBadRequest))
+		q := url.Values{
+			"subject": {id.Subject},
+			"client":  {RenderCLIClientID},
+		}
+		if err := core.DoJSON(r.Context(), s.client, http.MethodDelete,
+			s.adminURL+"/admin/oauth2/auth/sessions/consent?"+q.Encode(), "", nil,
+			http.StatusNoContent, nil); err != nil {
+			core.WriteErr(w, core.ErrLogoutUnavailable)
 			return
 		}
-
-		if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && token != "" && invalidate != nil {
-			invalidate(token, id)
+	case !id.Human && id.ClientID != "" && id.Subject == id.ClientID:
+		if s.apiKeys == nil {
+			core.WriteErr(w, core.ErrAPIKeysUnavailable)
+			return
 		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+		if err := s.apiKeys.RevokeAPIKey(r.Context(), "", id.Subject); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+	default:
+		core.WriteErr(w, fmt.Errorf("%w: unsupported OAuth2 credential", core.ErrBadRequest))
+		return
+	}
+
+	if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && token != "" && s.invalidate != nil {
+		s.invalidate(token, id)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) deviceGrant(w http.ResponseWriter, r *http.Request) {
@@ -193,30 +201,38 @@ func decodeRenderJSON(w http.ResponseWriter, r *http.Request, out any) bool {
 }
 
 func (s *Service) proxyForm(w http.ResponseWriter, r *http.Request, path string, form url.Values) {
-	if s.publicURL == "" {
-		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
-		return
-	}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, s.publicURL+path, strings.NewReader(form.Encode()))
-	if err != nil {
-		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
-		return
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := s.client.Do(req)
-	if err != nil {
-		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
-		return
-	}
-	defer core.DrainClose(resp)
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamBody))
+	body, status, err := s.postForm(r.Context(), path, form)
 	if err != nil {
 		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
+	w.WriteHeader(status)
 	_, _ = w.Write(body)
+}
+
+// postForm performs the upstream Hydra form POST and returns its verbatim
+// body + status; any failure to reach or read Hydra is one error the caller
+// maps to the single OAuth-shaped 503.
+func (s *Service) postForm(ctx context.Context, path string, form url.Values) ([]byte, int, error) {
+	if s.publicURL == "" {
+		return nil, 0, fmt.Errorf("no public Hydra URL configured")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.publicURL+path, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer core.DrainClose(resp)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamBody))
+	if err != nil {
+		return nil, 0, err
+	}
+	return body, resp.StatusCode, nil
 }
 
 // writeOAuthError writes the OAuth-shaped {"error":"<code>"} body. This is a

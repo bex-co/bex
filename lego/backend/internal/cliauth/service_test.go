@@ -38,7 +38,6 @@ func renderRequest(method, path, body string) *http.Request {
 }
 
 func TestRenderProtocolAdapters(t *testing.T) {
-	t.Helper()
 	var calls []url.Values
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -69,7 +68,7 @@ func TestRenderProtocolAdapters(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc := New(upstream.URL, "", nil)
+	svc := New(upstream.URL, "", nil, nil)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux)
 
@@ -104,7 +103,7 @@ func TestRenderProtocolRejectsWrongClientBeforeHydra(t *testing.T) {
 	called := false
 	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
 	defer upstream.Close()
-	svc := New(upstream.URL, "", nil)
+	svc := New(upstream.URL, "", nil, nil)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux)
 	rec := httptest.NewRecorder()
@@ -135,13 +134,13 @@ func TestLogoutRevokesHumanConsentChainAndKeepsSharedClient(t *testing.T) {
 	}))
 	defer admin.Close()
 
-	svc := New("", admin.URL, nil)
 	invalidated := ""
 	var invalidatedIdentity core.Identity
-	h := svc.RevokeHandler(func(token string, identity core.Identity) {
+	svc := New("", admin.URL, nil, func(token string, identity core.Identity) {
 		invalidated = token
 		invalidatedIdentity = identity
 	})
+	h := http.HandlerFunc(svc.revoke)
 	id := core.Identity{Subject: "kratos-user-a", Method: "oauth2", ClientID: RenderCLIClientID, Human: true}
 	req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 	req.Header.Set("Authorization", "Bearer access-a")
@@ -159,8 +158,8 @@ func TestLogoutRevokesHumanConsentChainAndKeepsSharedClient(t *testing.T) {
 
 func TestLogoutRetainsAPIKeySelfRevoke(t *testing.T) {
 	revoker := &fakeRevoker{}
-	svc := New("", "", revoker)
-	h := svc.RevokeHandler(nil)
+	svc := New("", "", revoker, nil)
+	h := http.HandlerFunc(svc.revoke)
 	id := core.Identity{Subject: "api-key-1", Method: "oauth2", ClientID: "api-key-1"}
 	req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), id))
@@ -174,7 +173,7 @@ func TestLogoutRetainsAPIKeySelfRevoke(t *testing.T) {
 func TestLogoutFailsClosed(t *testing.T) {
 	t.Run("no identity", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		New("", "", nil).RevokeHandler(nil).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil))
+		http.HandlerFunc(New("", "", nil, nil).revoke).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("status = %d", rec.Code)
 		}
@@ -184,7 +183,7 @@ func TestLogoutFailsClosed(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 		id := core.Identity{Subject: "user", Method: "oauth2", ClientID: RenderCLIClientID, Human: true}
 		req = req.WithContext(core.WithIdentity(req.Context(), id))
-		New("", "", nil).RevokeHandler(nil).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", "", nil, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
 		}
@@ -203,7 +202,7 @@ func TestLogoutFailsClosed(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "key", Method: "oauth2", ClientID: "key"}))
-		New("", "", &fakeRevoker{err: errors.New("boom")}).RevokeHandler(nil).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", "", &fakeRevoker{err: errors.New("boom")}, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code == http.StatusNoContent {
 			t.Fatal("unexpected success")
 		}
@@ -215,7 +214,7 @@ func TestLogoutFailsClosed(t *testing.T) {
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{
 			Subject: "human", Method: "oauth2", ClientID: "other-public-client", Human: true,
 		}))
-		New("", "", revoker).RevokeHandler(nil).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", "", revoker, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest || revoker.id != "" {
 			t.Fatalf("status = %d revoked=%q body=%s", rec.Code, revoker.id, rec.Body.String())
 		}

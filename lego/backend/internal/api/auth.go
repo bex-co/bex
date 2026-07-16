@@ -205,7 +205,7 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, 
 	}
 	// Coalesce concurrent misses for the same token into one Hydra call.
 	_, err, _ := a.group.Do(token, func() (any, error) {
-		return a.introspectUpstream(ctx, token)
+		return nil, a.introspectUpstream(ctx, token)
 	})
 	if err != nil {
 		return core.Identity{}, err
@@ -220,23 +220,26 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, 
 	return core.Identity{}, nil
 }
 
-func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Identity, error) {
+// introspectUpstream performs the Hydra round trip and populates the cache;
+// its only output channel is the cache — introspect re-reads it afterward so
+// a concurrent revocation is always observed (see introspect's comment).
+func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	a.revocationMu.RLock()
 	defer a.revocationMu.RUnlock()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		a.hydraAdminURL+"/admin/oauth2/introspect",
 		strings.NewReader(url.Values{"token": {token}}.Encode()))
 	if err != nil {
-		return core.Identity{}, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return core.Identity{}, err
+		return err
 	}
 	defer core.DrainClose(resp)
 	if resp.StatusCode != http.StatusOK {
-		return core.Identity{}, core.Err("hydra introspection returned " + resp.Status)
+		return core.Err("hydra introspection returned " + resp.Status)
 	}
 	var out struct {
 		Active   bool     `json:"active"`
@@ -247,20 +250,20 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 		Aud      []string `json:"aud"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return core.Identity{}, err
+		return err
 	}
 	if !out.Active {
-		return core.Identity{}, nil
+		return nil
 	}
 	// Audience discipline (see the resource field): a token minted for another
 	// resource must not authorize this one. Empty aud stays accepted (API keys).
 	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
-		return core.Identity{}, nil
+		return nil
 	}
 	// Issuer discipline (see the issuer field): a token from a different issuer
 	// must not authorize this resource. Empty iss stays accepted.
 	if a.issuer != "" && out.Iss != "" && out.Iss != a.issuer {
-		return core.Identity{}, nil
+		return nil
 	}
 	subject := out.Sub
 	if subject == "" {
@@ -291,7 +294,7 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) (core.Id
 		expires = exp
 	}
 	a.cache.Put(token, id, expires)
-	return id, nil
+	return nil
 }
 
 // whoami validates an Ory session at Kratos' public API, forwarding the caller's
