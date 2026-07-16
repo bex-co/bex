@@ -77,11 +77,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createEnvironment": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"projectId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name":                    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"projectId":               &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.String},
+				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, p.Args["projectId"].(string), p.Args["name"].(string))
+				isolated, _ := p.Args["networkIsolationEnabled"].(bool)
+				return s.CreateWithACL(p.Context, CreateEnvironmentRequest{
+					Name: p.Args["name"].(string), ProjectID: p.Args["projectId"].(string),
+					ProtectedStatus: gqlutil.Str(p.Args, "protectedStatus"), NetworkIsolationEnabled: isolated,
+					IPAllowList: gqlutil.AllowList(p.Args["ipAllowList"]),
+				})
 			},
 		},
 		"renameEnvironment": &graphql.Field{

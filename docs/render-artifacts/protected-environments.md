@@ -39,6 +39,15 @@ Environment-level rules live under **Networking → Inbound IP Restrictions** on
 
 Evidence: `.playwright-mcp/render-environment-ip-rules.png` (current official dashboard image captured through the docs page).
 
+## Public API contract
+
+**Captured:** 2026-07-15 from Render's current [public OpenAPI](https://api-docs.render.com/openapi/render-public-api-1.json).
+
+- `POST /v1/environments` requires `name` and `projectId` and optionally accepts `protectedStatus`, `networkIsolationEnabled`, and `ipAllowList` as `{cidrBlock, description}` objects.
+- The Environment response object contains `id`, `name`, `projectId`, `databasesIds`, `redisIds`, `serviceIds`, `envGroupIds`, `protectedStatus`, `networkIsolationEnabled`, and optional `ipAllowList`. It does **not** contain `ownerId`, `createdAt`, or `updatedAt`; bex's GraphQL-only `ownerId`/`createdAt` fields are explicit product extensions.
+- `GET /v1/environments` returns `[{environment, cursor}]`. Its list parameters are `name`, required `projectId`, `createdBefore`, `createdAfter`, `updatedBefore`, `updatedAfter`, `ownerId`, `environmentId`, `cursor`, and `limit` (default 20, range 1–100). The list-valued filters use form/explode-false semantics, so comma-separated and repeated values are OR alternatives.
+- bex can evaluate `name`, `projectId`, created-time, `ownerId`, and `environmentId` from its current view. It cannot evaluate updated-time filters because the Environment view/store contract has no `updatedAt`; those parameters therefore return a named 400 instead of being silently ignored.
+
 ## bex implementation decisions and drift
 
 `w5/m31` mirrors the discoverability of Render's Environment card: **All settings** opens protection, cross-environment isolation, and a full-replace CIDR editor. It also exposes Environment-group membership in the existing **Manage resources** dialog and reuses one Project/Environment selector across service, Postgres, and Key Value creation.

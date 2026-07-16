@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -182,6 +183,21 @@ type EnvironmentView struct {
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 }
 
+// CreateEnvironmentRequest is the neutral create input shared by REST,
+// GraphQL, and MCP. The ACL triple is optional as a unit: omitted fields use
+// the store defaults (unprotected, unisolated, open).
+type CreateEnvironmentRequest struct {
+	Name                    string                  `json:"name"`
+	ProjectID               string                  `json:"projectId"`
+	ProtectedStatus         string                  `json:"protectedStatus,omitempty"`
+	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled,omitempty"`
+	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+}
+
+func (r CreateEnvironmentRequest) hasACL() bool {
+	return r.ProtectedStatus != "" || r.NetworkIsolationEnabled || len(r.IPAllowList) > 0
+}
+
 // databaseIDsByEnvironment lists workspaceID's Databases once and groups
 // their ids by current environment label — the single fetch List's loop
 // shares across every row instead of re-issuing a tenant-wide ListPostgres
@@ -326,6 +342,39 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
+	return s.create(ctx, projectID, name)
+}
+
+// CreateWithACL creates an environment and its optional protected-environment
+// ACL in one cross-surface verb. Validation happens before the row is written,
+// so malformed status/CIDR input cannot leave an orphan environment.
+func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentRequest) (EnvironmentView, error) {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvironmentView{}, err
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || req.ProjectID == "" {
+		return EnvironmentView{}, core.ErrBadRequest
+	}
+	hasACL := req.hasACL()
+	if req.ProtectedStatus == "" {
+		req.ProtectedStatus = ProtectedStatusUnprotected
+	}
+	if hasACL {
+		if err := validateACL(req.ProtectedStatus, req.IPAllowList); err != nil {
+			return EnvironmentView{}, err
+		}
+	}
+	e, err := s.create(ctx, req.ProjectID, req.Name)
+	if err != nil || !hasACL {
+		return e, err
+	}
+	return s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
+}
+
+// create is the post-authorization create body shared by Create and
+// CreateWithACL.
+func (s *Service) create(ctx context.Context, projectID, name string) (EnvironmentView, error) {
 	p, err := s.requireProject(ctx, core.RelCanCreate, projectID)
 	if err != nil {
 		return EnvironmentView{}, err
@@ -608,14 +657,21 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	return s.applyACL(ctx, toView(e, nil, nil, nil, nil), protectedStatus, networkIsolationEnabled, ipAllowList)
+}
+
+// applyACL is SetACL's post-authorization body and CreateWithACL's second
+// phase. The supplied view may be freshly created (no memberships) or loaded
+// from the store; membership is re-read below before projection/fan-out.
+func (s *Service) applyACL(ctx context.Context, view EnvironmentView, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
 	if ipAllowList == nil {
 		ipAllowList = []core.IPAllowListEntry{}
 	}
-	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
+	if err := s.Store.SetEnvironmentACL(ctx, view.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
 		return EnvironmentView{}, mapStoreErr(err)
 	}
-	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
-	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	view.ProtectedStatus, view.NetworkIsolationEnabled, view.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
+	sids, err := s.Store.ListEnvironmentServices(ctx, view.ID, view.ProjectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -624,25 +680,26 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	// already matches the target state, so this correctly (and cheaply)
 	// handles on->off, off->on, and unchanged alike without needing the
 	// pre-update value.
-	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
+	if err := s.applyAppEnvironmentLabels(ctx, sids, view.ID, view.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, ipAllowList); err != nil {
+	if err := s.propagateIPAllowList(ctx, view.OwnerID, view.ID, ipAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
+	dids, err := s.databaseIDsForEnvironment(ctx, view.OwnerID, view.ID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	kids, err := s.keyValueIDsForEnvironment(ctx, e.TenantID, e.ID)
+	kids, err := s.keyValueIDsForEnvironment(ctx, view.OwnerID, view.ID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, e.TenantID)
+	gidsByEnv, err := s.envGroupIDsByEnvironment(ctx, view.OwnerID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return toView(e, sids, dids, kids, gidsByEnv[e.ID]), nil
+	view.ServiceIDs, view.DatabaseIDs, view.KeyValueIDs, view.EnvGroupIDs = sids, dids, kids, gidsByEnv[view.ID]
+	return view, nil
 }
 
 // validateACL is SetACL's input check, factored out so the Render-shaped
