@@ -60,6 +60,39 @@ jobs:
       - name: validate
         run: terraform validate
 
+      # w1/m41: the production LB predates Terraform ownership. On the first
+      # main-branch run only, adopt the exact named object into remote state
+      # before apply can consider creating it. A fresh installation has no such
+      # object and falls through to the normal Terraform create path. PRs and
+      # scheduled drift checks remain read-only.
+      - name: adopt existing Traefik load balancer
+        if: github.event_name == 'push'
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          if terraform state show hcloud_load_balancer.traefik >/dev/null 2>&1; then
+            echo "bex-traefik is already Terraform-managed"
+            exit 0
+          fi
+
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${HCLOUD_TOKEN}" \
+            'https://api.hetzner.cloud/v1/load_balancers?name=bex-traefik')"
+          count="$(jq -r '.load_balancers | length' <<<"${response}")"
+          case "${count}" in
+            0)
+              echo "no existing bex-traefik load balancer; Terraform will create it"
+              ;;
+            1)
+              lb_id="$(jq -r '.load_balancers[0].id' <<<"${response}")"
+              terraform import hcloud_load_balancer.traefik "${lb_id}"
+              ;;
+            *)
+              echo "expected at most one bex-traefik load balancer, found ${count}" >&2
+              exit 1
+              ;;
+          esac
+
       # PRs, schedule (drift), manual: plan only — never mutate from a PR.
       - name: plan
         if: github.event_name != 'push'

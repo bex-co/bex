@@ -17,3 +17,18 @@ output "fetch_kubeconfig" {
   description = "One-liner to pull the bootstrap cluster kubeconfig (bring-up/DR only)."
   value       = var.bootstrap_enabled ? "ssh root@${one(hcloud_server.bootstrap[*].ipv4_address)} 'cat /etc/rancher/k3s/k3s.yaml' | sed 's#https://127.0.0.1:6443#https://${one(hcloud_server.bootstrap[*].ipv4_address)}:6443#' > bootstrap.kubeconfig" : "n/a — bootstrap disabled (self-managed; see scripts/fetch-app-kubeconfig.sh)"
 }
+
+output "traefik_load_balancer_id" {
+  description = "Stable Terraform-owned Hetzner Load Balancer adopted by the production Traefik Service."
+  value       = hcloud_load_balancer.traefik.id
+}
+
+output "traefik_load_balancer_ipv4" {
+  description = "Stable public IPv4 for the production edge; DNS origins point here."
+  value       = hcloud_load_balancer.traefik.ipv4
+}
+
+output "traefik_load_balancer_ipv6" {
+  description = "Stable public IPv6 for the production edge."
+  value       = hcloud_load_balancer.traefik.ipv6
+}

@@ -125,6 +125,27 @@ The shape the 2026-07 rebuild established (w1/m19 + m19.1). Everything below is 
 
 **Public surface** — a label-selector Hetzner firewall (auto-inherited by new machines): nodes expose only `:22` (key-only SSH) + ICMP; the LB fronts expose 80/443 (Traefik) and 6443 (kube-api, TLS/RBAC). Ports-only — never source-IP allowlists (see DO_NOT_DO).
 
+### Stable production edge Load Balancer
+
+The public-IP-bearing `bex-traefik` Hetzner Load Balancer belongs to Terraform, not to the app cluster. Terraform fixes its name, location, and type and enables both Hetzner API `delete_protection` and Terraform `prevent_destroy`. The hcloud CCM owns only the changing cluster projection: private-network attachment, node targets, listeners, and its `hcloud-ccm/service-uid` label. Those fields are intentionally omitted from Terraform so the two reconcilers do not fight.
+
+This split matches the deployed hcloud CCM v1.33.0 implementation. Its `EnsureLoadBalancer` path first looks up the Service UID, then falls back to `load-balancer.hetzner.cloud/name` specifically to import a Load Balancer made by another system. Its deletion path returns successfully without deletion when Hetzner delete protection is set. The annotated name also makes cluster identity irrelevant: after a rebuild, a new Service UID takes the same name-fallback path. Version-pinned evidence: [`EnsureLoadBalancer`](https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.33.0/hcloud/load_balancers.go#L103-L158), [`EnsureLoadBalancerDeleted`](https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.33.0/hcloud/load_balancers.go#L349-L377), and the [`load-balancer.hetzner.cloud/name` annotation](https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.33.0/docs/reference/load_balancer_annotations.md). Cloudflare Tunnel remains unnecessary here: the named, protected LB preserves the origin address while retaining the existing raw TCP surfaces on ports 22 and 5432.
+
+One pinned-version nuance is intentional in the runbook: v1.33.0 attempts to rotate `hcloud-ccm/service-uid` after name adoption, but its [`changeHCLBInfo`](https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.33.0/internal/hcops/load_balancer.go#L275-L310) copy order restores an old value when that label already exists. The replacement Service still receives the same LB status and the controller keeps reconciling by name; the label may remain stale until that upstream behavior changes. It remains a CCM-owned field—Terraform deliberately treats labels as computed.
+
+#### Existing-production adoption and rebuild proof
+
+The adoption is an in-place state operation, not a traffic cutover:
+
+1. The main-branch `infra (terraform)` workflow checks remote state. If `hcloud_load_balancer.traefik` is absent, it queries Hetzner for the exact `bex-traefik` name and imports the sole match. If there is no match, normal Terraform creation proceeds; multiple matches fail closed.
+2. Review the apply: an existing object may gain `delete_protection = true`, but its ID, IPv4, IPv6, type, location, private network, targets, and listeners must not be replaced. Confirm the workflow is green before exercising the Service.
+3. Record the Hetzner LB ID and public addresses, the Traefik Service UID, and a successful request through the origin. Confirm API delete protection is on.
+4. With the `traefik` Argo Application `Synced` and `Healthy`, delete only `Service/traefik` in namespace `traefik`. Argo self-heal recreates it. Wait for the new Service to receive a load-balancer address and become healthy.
+5. Confirm the Service UID changed while the Hetzner LB ID and both public addresses did not; confirm the origin request still succeeds. The UID change exercises the same name fallback used after a whole-cluster rebuild—the CCM code does not include cluster identity when the name annotation is present. On v1.33.0 the Hetzner `hcloud-ccm/service-uid` label may retain the old UID as described above; that is expected and makes the observed reattachment direct evidence of name fallback.
+6. On the next full rebuild/DR drill, repeat steps 3 and 5 around the cluster replacement. Do not disable either deletion guard. A destroy is an explicit two-key operation: first remove Terraform `prevent_destroy` in reviewed code, then disable the Hetzner API protection.
+
+Rollback before the Service proof is simply to stop: the original LB remains in service. If recreation stalls, sync the `traefik` Argo Application and reapply its rendered Service; do not delete or recreate the Hetzner object. Terraform state removal (`terraform state rm`) is reserved for relinquishing ownership and does not delete the LB.
+
 **Interim vs target** — under the current 5-server quota the cluster runs 1 CP + 2 platform + ≥1 tenant; two grep-able `TEMP (m19.1)` knobs in the overlay (KCP replicas, platform max) flip it to 3 CP + 3 platform when the quota lands (trigger + runbook: `.pm/FUTURE-MAYBE.md`).
 
 **The change rule** (the rebuild's lesson): the substrate accepts changes **only via declaration** — git → CI → controller. When the declaration layer refuses (immutable fields, webhook validation), the answer is to rebuild the correct declaration, never to bypass it and mutate reality out-of-band; one out-of-band "fix" is how the previous cluster ended up unmanageable-but-unfixable. Full diagnosis and execution trail: `.pm/w1/m19/` (op log) and the git history of `docs/rearchitecture.md`.

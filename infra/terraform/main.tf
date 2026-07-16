@@ -123,6 +123,28 @@ resource "hcloud_firewall" "app_nodes" {
   }
 }
 
+# Stable production edge (w1/m41). Terraform owns only the durable Load
+# Balancer object; the hcloud CCM owns its cluster-dependent private-network
+# attachment, node targets, listener services, and hcloud-ccm/service-uid label.
+# Omitting those computed fields here prevents Terraform and the CCM from
+# fighting over them.
+#
+# hcloud CCM v1.33.0 falls back from its Service UID lookup to this name, so a
+# replacement Service or cluster adopts this object. Its deletion path also
+# explicitly leaves a delete-protected Load Balancer in place. The lifecycle
+# rule independently prevents an accidental Terraform destroy. See the live
+# adoption/rebuild runbook in docs/ADR002-architecture.md.
+resource "hcloud_load_balancer" "traefik" {
+  name               = "bex-traefik"
+  load_balancer_type = "lb11"
+  location           = var.location
+  delete_protection  = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # w1 rename (2026-07-11): bex-infra -> bex-bootstrap ("infra" suggested permanence;
 # the node is disposable scaffolding — CAPI's own term is "bootstrap cluster").
 moved {
