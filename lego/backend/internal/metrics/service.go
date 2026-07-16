@@ -99,11 +99,14 @@ type MetricQuery struct {
 	Percentage bool          // cpu/memory as a fraction of the pod limit instead of absolute
 	StatusCode string        // request filter: "2xx" | "5xx" | "500" | ""
 	// Host/Path carry Render's host/path request filters only so Metrics can
-	// refuse them with ErrBadRequest: Traefik's service-level counters have no
-	// host/path labels to filter on, and answering with whole-service series
-	// would silently misrepresent the numbers as host/path-scoped (w3/m12).
-	Host    string // rejected request filter
-	Path    string // rejected request filter
+	// refuse them with ErrBadRequest: Traefik's Prometheus counters (service-
+	// and router-level) intentionally carry no host or path labels — adding
+	// them would be unbounded cardinality. Even with addRoutersLabels: true
+	// the router label is the router NAME, not the matched Host()/Path().
+	// Filtering by host/path would require log-based aggregation (Loki), not
+	// Prometheus — infeasible on this stack (w3/m12, w3/m18 verified).
+	Host    string // 400: infeasible via Traefik Prometheus metrics
+	Path    string // 400: infeasible via Traefik Prometheus metrics
 	GroupBy string // request group-by: "status" | "method" | "instance" | ""
 	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
 	// to one series holding the max value across instances — Render's dashboard
@@ -241,7 +244,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
 	if q.Host != "" || q.Path != "" {
-		return nil, fmt.Errorf("%w: host/path metrics filters are not supported (Traefik service-level metrics carry no host/path labels)", core.ErrBadRequest)
+		return nil, fmt.Errorf("%w: host/path metrics filters are not supported — Traefik's Prometheus counters carry no host or path labels (addRoutersLabels only adds a router-name label, not the matched Host()/Path() values); use the logs API for host/path-scoped request analysis", core.ErrBadRequest)
 	}
 	q = q.normalized(s.Now())
 	var series []MetricSeries

@@ -198,7 +198,10 @@ var monthToDateBandwidthGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // metricsFiltersQueryInputType mirrors Render's MetricsFiltersQueryInput. ownerId
-// is accepted (so a Render-shaped client's query validates) but ignored.
+// is accepted (so a Render-shaped client's query validates) but silently ignored:
+// the metric query is already scoped to the App's own workspace via AuthorizeApp,
+// so ownerId carries no additional filtering power and validating it would
+// duplicate that seam. Recorded decision: ignore (w3/m18).
 var metricsFiltersQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "MetricsFiltersQueryInput",
 	Fields: graphql.InputObjectConfigFieldMap{
@@ -430,9 +433,11 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	// naming the label to break the series out by (STATUS_CODE / METHOD, the
 	// captured filter-field vocabulary), mapped onto Core's GroupBy exactly
 	// like REST's `groupBy` param so the two surfaces stay parity-equal.
-	// Other values (Render also sends instance-flavored ones) keep today's
-	// behavior — ignored, since bex's request PromQL already always sums
-	// across instances.
+	// Instance-flavored values (Render also sends SERVICE_INSTANCE_ID) are
+	// silently ignored: bex's request PromQL already sums across instances at
+	// the Traefik service level, and per-instance request breakdowns would
+	// require per-pod Traefik metrics that aren't scraped. Recorded decision:
+	// instance aggregateBy is a no-op (w3/m18).
 	for _, v := range stringsFromAny(input["aggregateBy"]) {
 		switch strings.ToUpper(v) {
 		case "STATUS_CODE":
