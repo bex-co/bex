@@ -274,15 +274,20 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	ws = r.Data.(map[string]any)["createWorkspace"].(map[string]any)
 	dsID, _ := ws["id"].(string)
 
-	// mustCreateWithOwner runs a create mutation and asserts the returned
-	// object's ownerId, cutting the createDatabase/createKeyValue duplication.
-	mustCreateWithOwner := func(mutation, field string, args map[string]any, wantOwner string) {
+	// mustCreateWithOwner runs a create mutation, asserts the returned
+	// object's ownerId, and returns its id (the CR's metadata.name since the
+	// dpg-/red- identity split), cutting the createDatabase/createKeyValue
+	// duplication.
+	mustCreateWithOwner := func(mutation, field string, args map[string]any, wantOwner string) string {
 		t.Helper()
 		r := run("alice", mutation, args)
 		mustOK(t, r)
-		if got := r.Data.(map[string]any)[field].(map[string]any)["ownerId"]; got != wantOwner {
+		obj := r.Data.(map[string]any)[field].(map[string]any)
+		if got := obj["ownerId"]; got != wantOwner {
 			t.Fatalf("%s ownerId = %v, want %s", field, got, wantOwner)
 		}
+		id, _ := obj["id"].(string)
+		return id
 	}
 	// mustListCount runs an ownerId-scoped list query and asserts its length,
 	// cutting the databases/keyValues duplication.
@@ -323,15 +328,20 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 
 	mustCreateWithOwner(`mutation($n:String!){ createDatabase(name:$n){ id ownerId } }`,
 		"createDatabase", map[string]any{"n": "ds-pg"}, dsID)
-	mustCreateWithOwner(`mutation($n:String!){ createKeyValue(name:$n){ id ownerId } }`,
+	kvID := mustCreateWithOwner(`mutation($n:String!){ createKeyValue(name:$n){ id ownerId } }`,
 		"createKeyValue", map[string]any{"n": "ds-kv"}, dsID)
 
 	// The KeyValue CR itself carries the workspace label the same-workspace
 	// NetworkPolicy selector matches on (docs/ADR022-tenant-isolation.md) — the label
 	// t002 stamps is what lets dsID's own App reach its own Valkey instance.
+	// Since w9/m6 the CR is named by its immutable red- id; "ds-kv" is the
+	// mutable display name in spec.name.
 	var kv appv1alpha1.KeyValue
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ds-kv"}, &kv); err != nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: kvID}, &kv); err != nil {
 		t.Fatalf("get KeyValue CR: %v", err)
+	}
+	if kv.Spec.Name != "ds-kv" {
+		t.Fatalf("KeyValue CR spec.name = %q, want ds-kv", kv.Spec.Name)
 	}
 	if kv.Labels[core.LabelWorkspace] != dsID {
 		t.Fatalf("KeyValue CR workspace label = %q, want %s", kv.Labels[core.LabelWorkspace], dsID)

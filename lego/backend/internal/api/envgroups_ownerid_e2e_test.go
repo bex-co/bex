@@ -125,14 +125,15 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 
 	// --- list: no ownerId (default alpha) sees only shared-alpha; ownerId=bravo
 	// sees only shared-bravo — before this milestone List had NO tenant filter at
-	// all and returned every workspace's groups. ---
+	// all and returned every workspace's groups. The list rides Render's
+	// [{envGroup, cursor}] envelope (w6/m32). ---
 
-	alphaList := decodeJSON[[]envgroups.EnvGroupView](t, call(dana, "GET", "/v1/env-groups", ""))
+	alphaList := decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups", ""))
 	if !onlyContainsGroup(alphaList, groupA.ID) {
 		t.Errorf("GET /v1/env-groups (no ownerId) = %+v, want exactly [%s]", idsOfGroups(alphaList), groupA.ID)
 	}
 
-	bravoList := decodeJSON[[]envgroups.EnvGroupView](t, call(dana, "GET", "/v1/env-groups?ownerId="+wsB.ID, ""))
+	bravoList := decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups?ownerId="+wsB.ID, ""))
 	if !onlyContainsGroup(bravoList, groupB.ID) {
 		t.Errorf("GET /v1/env-groups?ownerId=bravo = %+v, want exactly [%s]", idsOfGroups(bravoList), groupB.ID)
 	}
@@ -177,17 +178,24 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 	}
 }
 
-func onlyContainsGroup(groups []envgroups.EnvGroupView, id string) bool {
+// envGroupCursorPage mirrors the envgroups REST fragment's unexported
+// envGroupWithCursor list envelope (Render's pagination contract, w6/m32).
+type envGroupCursorPage struct {
+	EnvGroup envgroups.EnvGroupView `json:"envGroup"`
+	Cursor   string                 `json:"cursor"`
+}
+
+func onlyContainsGroup(groups []envGroupCursorPage, id string) bool {
 	if len(groups) != 1 {
 		return false
 	}
-	return groups[0].ID == id
+	return groups[0].EnvGroup.ID == id
 }
 
-func idsOfGroups(groups []envgroups.EnvGroupView) []string {
+func idsOfGroups(groups []envGroupCursorPage) []string {
 	out := make([]string, len(groups))
 	for i, g := range groups {
-		out[i] = g.ID
+		out[i] = g.EnvGroup.ID
 	}
 	return out
 }
