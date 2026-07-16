@@ -230,7 +230,6 @@ export default defineConfig({
   },
   build: {
     assetsDir: "assets",
-    cssCodeSplit: false, // Bundle all CSS into one file for SSR
     sourcemap: true, // Enable source maps for better error debugging in production
     manifest: true, // Generate .vite/manifest.json for deterministic asset resolution
   },
