@@ -49,8 +49,8 @@ type keyValueOptionsView struct {
 // off KeyValueView) silently zero-valued or failed to decode client-side
 // because Render's real contract nests owner/options. The allow list is
 // core.IPAllowListEntry — already Render's {cidrBlock, description} shape.
-// Region/version are deliberately omitted rather than faked — bex doesn't
-// track either.
+// Region/dashboardUrl are populated via resourcemeta, matching postgres/apps.
+// Version is the one field genuinely omitted — bex doesn't track it.
 type renderKeyValue struct {
 	ID            string                  `json:"id"`
 	Name          string                  `json:"name"`

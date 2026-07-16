@@ -1,17 +1,17 @@
 # w9 · m41 — Datastore Render-metadata consistency: audit + hygiene
 
-**Worker:** worker9 **Goal:** Every datastore/service REST read path emits Render's `owner`/`region`/`dashboardUrl`/`updatedAt` identically (postgres, apps, keyvalue), and the one stale comment that misdescribes the shipped wire shape is corrected. **Status:** todo
+**Worker:** worker9 **Goal:** Every datastore/service REST read path emits Render's `owner`/`region`/`dashboardUrl`/`updatedAt` identically (postgres, apps, keyvalue), and the one stale comment that misdescribes the shipped wire shape is corrected. **Status:** done 2026-07-15
 
 ## Tasks (in order)
 
 | id   | title                                                                        | est | depends_on   |
 | ---- | ---------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Fix stale `renderKeyValue` comment + retire resolved `w6/016`                 | 20m | —            |
-| t002 | Field-by-field cross-sibling metadata parity audit (every read path)         | 45m | t001         |
-| t003 | Render parity                                                                | 30m | t002         |
-| t004 | Simplify                                                                     | 20m | t003         |
-| t005 | Test coverage                                                               | 30m | t003         |
-| t006 | Closeout                                                                     | 15m | t005         |
+| t001 | Fix stale `renderKeyValue` comment + retire resolved `w6/016`                 | 20m | —            | — **DONE**
+| t002 | Field-by-field cross-sibling metadata parity audit (every read path)         | 45m | t001         | — **DONE**
+| t003 | Render parity                                                                | 30m | t002         | — **DONE**
+| t004 | Simplify                                                                     | 20m | t003         | — **DONE**
+| t005 | Test coverage                                                               | 30m | t003         | — **DONE**
+| t006 | Closeout                                                                     | 15m | t005         | — **DONE**
 
 ## Definition of done
 
