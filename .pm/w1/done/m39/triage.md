@@ -70,9 +70,8 @@ Verification after the final bump set:
 
 ## Default-branch verification
 
-The local branch was fast-forwarded to GitHub's current default-branch commit,
-`fd3bfad47d16d87b17af8a36c8d8feab0d98e811`, before the final test run. The API
-still reports the same 31 alerts because these fixes are uncommitted. Repository
-policy forbids committing or pushing without `$ship`. Task t004 and milestone
-closeout therefore remain open until the dependency diff lands on `main` and the
-live Dependabot count is observed to fall to zero critical/high.
+Dependency commit `a2f1ae9ea8caacff2ff56124f48bf74177d52af6` is
+published on GitHub's default branch. At `2026-07-16T01:31:02Z`, the live
+Dependabot API returned zero open alerts across every severity (31 → 0). No
+security alert required dismissal or deferral; the non-security deprecations
+above remain documented with explicit revisit conditions.
