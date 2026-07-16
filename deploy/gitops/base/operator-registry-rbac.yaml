@@ -1,0 +1,43 @@
+# Operator's namespace-scoped Secrets access for the Zot registry namespace
+# (w7/m36, docs/ADR022-tenant-isolation.md). The manager-role ClusterRole
+# deliberately omits secrets — it only holds cluster-wide grants for resources
+# that genuinely span all namespaces. Scoping the registry-namespace grants here
+# means a compromised operator pod cannot read platform credentials (Kratos/Hydra,
+# OpenBao, CNPG creds in bex-system) via registry-namespace secrets.
+#
+# What the operator needs in bex-registry:
+#   app_controller.ensurePerAppRegistryCreds: get/list/watch/create/update/patch
+#     — reads and writes the zot-htpasswd Secret (per-App htpasswd entry) and
+#     creates/reads/updates the zot-config Secret (per-App Zot ACL entry).
+#   app_controller.handleAppDeletion (RevokeCreds): same — removes htpasswd+ACL
+#     on App delete so revoked credentials cannot authenticate after deletion.
+#
+# This file lives in deploy/gitops (not lego/operator/config/rbac) because
+# config/default's kustomize namePrefix+namespace transform would rewrite any
+# namespace field to "bex-system", breaking the Role's target namespace. Same
+# pattern as operator-apps-rbac.yaml and bex-api-apps-rbac.yaml.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-operator-registry
+  namespace: bex-registry
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-operator-registry
+  namespace: bex-registry
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-operator-registry
+subjects:
+  # The operator ServiceAccount lives in bex-system (rendered from config/rbac with
+  # the bex- namePrefix); a RoleBinding may reference a ServiceAccount in another ns.
+  - kind: ServiceAccount
+    name: bex-controller-manager
+    namespace: bex-system

@@ -33,64 +33,25 @@ spec:
           type: NodePort
           port: 5000
           nodePort: 30500
-        # mountConfig: ship our own config (below) so auth + accessControl are on,
-        # and GC + retention (w1/m26 t003) prevent a runaway rebuild loop from
-        # silently filling the 10Gi volume. The chart creates <release>-config and
-        # mounts it at /etc/zot.
-        mountConfig: true
+        # mountConfig: false — the operator (w7/m36) manages the Zot config via
+        # the "zot-config" Secret (operator-registry-rbac.yaml grants access).
+        # Per-App ACL entries are added/removed dynamically: each tenant's pull
+        # credential covers only its own repository (ADR022-tenant-isolation.md:204).
+        mountConfig: false
         persistence: true
         # kpack publishes its generated builder as Docker schema 2; Zot's
         # docker2s2 compatibility mode accepts that manifest format.
-        configFiles:
-          config.json: |-
-            {
-              "distSpecVersion": "1.1.0",
-              "storage": {
-                "rootDirectory": "/var/lib/registry",
-                "gc": true,
-                "gcDelay": "1h",
-                "gcInterval": "24h",
-                "retention": {
-                  "dryRun": false,
-                  "policies": [
-                    {
-                      "repositories": ["**"],
-                      "deleteUntagged": true,
-                      "keepTags": [
-                        {
-                          "patterns": [".*"],
-                          "mostRecentlyPushedCount": 5
-                        }
-                      ]
-                    }
-                  ]
-                }
-              },
-              "http": {
-                "address": "0.0.0.0",
-                "port": "5000",
-                "compat": ["docker2s2"],
-                "readTimeout": "60s",
-                "writeTimeout": "60s",
-                "auth": { "htpasswd": { "path": "/secret/htpasswd" } },
-                "accessControl": {
-                  "repositories": {
-                    "**": {
-                      "policies": [
-                        { "users": ["bex-builder"], "actions": ["read", "create", "update", "delete"] },
-                        { "users": ["bex-puller"],  "actions": ["read"] }
-                      ],
-                      "defaultPolicy": []
-                    }
-                  }
-                }
-              },
-              "log": { "level": "info" }
-            }
-        # Do NOT use the chart's secretFiles (it defaults to admin:admin). The
-        # htpasswd is mounted from the out-of-band zot-htpasswd Secret instead.
         mountSecret: false
         externalSecrets:
+          # config.json — full Zot config managed by the bex operator; the operator
+          # writes the base config on first access and patches it with per-App ACL
+          # entries as Apps are created/deleted. The zot-config Secret key is
+          # "config.json", which Zot reads at /etc/zot/config.json.
+          - secretName: zot-config
+            mountPath: /etc/zot
+          # htpasswd — bcrypt credentials for bex-builder (push) and per-App pull
+          # users (app-<name>); managed by the operator (w7/m36) with bex-builder
+          # seeded by scripts/registry-secrets.sh.
           - secretName: zot-htpasswd
             mountPath: /secret
         # w1/m19 t003: platform pool

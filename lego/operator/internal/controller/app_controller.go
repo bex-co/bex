@@ -51,6 +51,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -160,8 +161,13 @@ type AppReconciler struct {
 	// RegistryPullSecret names a docker-config Secret (in the apps namespace) the
 	// operator attaches as an imagePullSecret to tenant Deployments/CronJobs so
 	// kubelet pulls authenticate against an auth-enabled registry (w7/m8). Empty
-	// => no imagePullSecret attached.
+	// => no imagePullSecret attached. Superseded by PerAppRegistry when set.
 	RegistryPullSecret string
+	// PerAppRegistry, when non-nil, enables per-App Zot pull credentials (w7/m36,
+	// docs/ADR022-tenant-isolation.md §Read policy). Each App gets its own
+	// "app-<name>" htpasswd user scoped to its image repository, replacing the
+	// shared bex-puller credential. Nil => shared RegistryPullSecret path (w7/m8).
+	PerAppRegistry *registry.Creds
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -182,6 +188,10 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=apps/finalizers,verbs=update
+// Per-App registry credential access (w7/m36): secrets in bex-registry namespace
+// are granted via deploy/gitops/base/operator-registry-rbac.yaml (namespace-scoped
+// Role, not this ClusterRole, because the kustomize namePrefix transform would
+// rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -223,6 +233,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// older workload could retain an unauthenticated pod template forever and
 	// fail as soon as Kubernetes reschedules it onto a fresh node.
 	if r.Mode == ModeKubernetes {
+		// Per-App pull credentials (w7/m36): mint before the backfill so the
+		// "reg-pull-<name>" Secret exists by the time backfill patches workloads.
+		if err := r.ensurePerAppRegistryCreds(ctx, &app); err != nil {
+			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
+		}
 		if err := r.backfillWorkloadPullSecrets(ctx, &app); err != nil {
 			return r.fail(ctx, &app, "RegistryPullSecretFailed", err)
 		}
@@ -425,16 +440,24 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 // imagePullSecrets returns the imagePullSecrets a tenant pod carries so kubelet
 // pulls authenticate. Two independent sources, both additive (w2/m14 extends,
 // doesn't replace, w7/m8's internal-registry path):
-//   - the operator's own internal-registry secret (docs/ADR022-tenant-isolation.md
-//     § Registry access control) — included only when the image is actually
-//     hosted in that registry, so it's never sent to a foreign registry;
+//   - the internal-registry pull secret — per-App (w7/m36) when PerAppRegistry
+//     is set, otherwise the shared RegistryPullSecret (w7/m8); included only
+//     when the image is hosted in our registry, so the credential is never sent
+//     to a foreign registry (docs/ADR022-tenant-isolation.md § Registry access
+//     control);
 //   - app.Spec.ExternalRegistryPullSecret, when bex-api has materialized one for
 //     this App's image host (w2/m14) — the operator just references it by name,
 //     unaware of which registry or credential it corresponds to.
 func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []corev1.LocalObjectReference {
 	var out []corev1.LocalObjectReference
-	if r.RegistryPullSecret != "" && r.Registry != "" && strings.HasPrefix(image, r.Registry+"/") {
-		out = append(out, corev1.LocalObjectReference{Name: r.RegistryPullSecret})
+	if r.Registry != "" && strings.HasPrefix(image, r.Registry+"/") {
+		if r.PerAppRegistry != nil {
+			// Per-App pull secret (w7/m36): "reg-pull-<name>" in the app namespace.
+			out = append(out, corev1.LocalObjectReference{Name: registry.PullSecretName(app.Name)})
+		} else if r.RegistryPullSecret != "" {
+			// Shared pull secret (w7/m8, byte-identical when PerAppRegistry is nil).
+			out = append(out, corev1.LocalObjectReference{Name: r.RegistryPullSecret})
+		}
 	}
 	if app.Spec.ExternalRegistryPullSecret != "" {
 		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
@@ -450,7 +473,7 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 // newly generated manual/pre-deploy/static-publish Job already receives the
 // secret at construction time.
 func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *appv1alpha1.App) error {
-	if r.RegistryPullSecret == "" || r.Registry == "" {
+	if (r.RegistryPullSecret == "" && r.PerAppRegistry == nil) || r.Registry == "" {
 		return nil
 	}
 
@@ -490,6 +513,24 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 		return fmt.Errorf("get CronJob %s/%s for imagePullSecrets backfill: %w", app.Namespace, app.Name, err)
 	}
 	return nil
+}
+
+// ensurePerAppRegistryCreds mints per-App pull credentials (w7/m36) when
+// PerAppRegistry is configured and the App needs a registry-hosted image. It is
+// a no-op when PerAppRegistry is nil or the App is not registry-hosted.
+func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv1alpha1.App) error {
+	if r.PerAppRegistry == nil || r.Registry == "" {
+		return nil
+	}
+	// Mint credentials if the App will build+push to our registry (Repo-based)
+	// or already has a registry-hosted image in spec or status.
+	needsCred := app.Spec.Repo != "" ||
+		strings.HasPrefix(app.Spec.Image, r.Registry+"/") ||
+		strings.HasPrefix(app.Status.Image, r.Registry+"/")
+	if !needsCred {
+		return nil
+	}
+	return r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace)
 }
 
 func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
@@ -2079,6 +2120,19 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 			strings.HasPrefix(app.Status.Image, r.Registry+"/") {
 			if err := r.deleteRegistryRepo(ctx, app); err != nil {
 				log.Error(err, "delete registry images", "app", app.Name)
+			}
+		}
+		// Per-App pull credential revocation (w7/m36): remove "app-<name>" from
+		// zot-htpasswd and the per-repo ACL, then delete the pull Secret.
+		if r.PerAppRegistry != nil {
+			if err := r.PerAppRegistry.RevokeCreds(ctx, app.Name); err != nil {
+				log.Error(err, "revoke per-app registry credentials", "app", app.Name)
+			}
+			pullSec := &corev1.Secret{}
+			pullSec.Name = registry.PullSecretName(app.Name)
+			pullSec.Namespace = app.Namespace
+			if err := r.Delete(ctx, pullSec); err != nil && !apierrors.IsNotFound(err) {
+				log.Error(err, "delete per-app pull secret", "app", app.Name)
 			}
 		}
 		controllerutil.RemoveFinalizer(app, finalizer)

@@ -1,0 +1,521 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package registry manages per-App Zot pull credentials (w7/m36,
+// docs/ADR022-tenant-isolation.md). Each App that builds and pushes an image
+// to the in-cluster Zot registry receives its own htpasswd user ("app-<name>")
+// and a per-repo Zot ACL entry that restricts that user to pulling only its own
+// image repository. A shared kubernetes.io/dockerconfigjson Secret
+// ("reg-pull-<name>") is created in the App namespace and referenced as an
+// imagePullSecret on all tenant workloads.
+//
+// The operator manages two Secrets in the Zot namespace:
+//   - zot-htpasswd: htpasswd file (bcrypt) with bex-builder + per-App entries.
+//   - zot-config:   full Zot config.json with per-App repo ACL entries.
+//
+// Both are mounted as external Secrets by the Zot Helm chart
+// (deploy/gitops/base/zot.yaml). Kubernetes propagates Secret updates to the
+// Zot pod; Zot hot-reloads htpasswd on each auth request and reloads
+// config.json on SIGHUP or pod restart.
+package registry
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+// Creds manages per-App Zot pull credentials. A nil *Creds disables the
+// feature: the operator falls back to the shared RegistryPullSecret (w7/m8).
+type Creds struct {
+	Client        client.Client
+	ZotNamespace  string // namespace that holds the zot Secrets (e.g. "bex-registry")
+	HTPasswdName  string // Secret name for the Zot htpasswd (e.g. "zot-htpasswd")
+	ConfigName    string // Secret name for the Zot config JSON (e.g. "zot-config")
+	Registry      string // canonical registry host (e.g. "zot.bex-registry.svc:5000")
+	KpackRegistry string // optional alias used by containerd on nodes (e.g. "zot.local:5000")
+}
+
+// PullSecretName returns the deterministic name of the per-App pull-credential
+// Secret in the App namespace.
+func PullSecretName(appName string) string { return "reg-pull-" + appName }
+
+// ZotUsername returns the Zot htpasswd username for an App.
+func ZotUsername(appName string) string { return "app-" + appName }
+
+// EnsureCreds idempotently creates the per-App pull credential:
+//  1. Creates (or reads) a kubernetes.io/dockerconfigjson Secret "reg-pull-<appName>"
+//     in appNS with credentials for the per-App Zot user "app-<appName>".
+//  2. Adds "app-<appName>:bcrypt(password)" to the zot-htpasswd Secret.
+//  3. Adds a per-repo ACL entry for "<appName>" in the zot-config Secret so
+//     that "app-<appName>" can only pull from the "<appName>" repository.
+func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
+	log := logf.FromContext(ctx)
+	zotUser := ZotUsername(appName)
+	pullSecName := PullSecretName(appName)
+
+	// 1. Get or create the per-App docker-config pull Secret.
+	var pullSec corev1.Secret
+	err := c.Client.Get(ctx, client.ObjectKey{Namespace: appNS, Name: pullSecName}, &pullSec)
+	var password string
+	switch {
+	case apierrors.IsNotFound(err):
+		password, err = generatePassword()
+		if err != nil {
+			return fmt.Errorf("generate password: %w", err)
+		}
+		pullSec = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pullSecName,
+				Namespace: appNS,
+				Labels:    map[string]string{"app.bex.co/component": "registry-pull", "app.bex.co/app": appName},
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{
+				corev1.DockerConfigJsonKey: buildDockerConfig(zotUser, password, c.Registry, c.KpackRegistry),
+			},
+		}
+		if err := c.Client.Create(ctx, &pullSec); err != nil && !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("create pull secret: %w", err)
+		}
+		// Re-read in case we raced with another reconcile that already created it.
+		if err := c.Client.Get(ctx, client.ObjectKey{Namespace: appNS, Name: pullSecName}, &pullSec); err != nil {
+			return fmt.Errorf("read pull secret after create: %w", err)
+		}
+		log.Info("created per-app pull secret", "app", appName, "secret", pullSecName)
+	case err != nil:
+		return fmt.Errorf("get pull secret: %w", err)
+	}
+
+	// Extract plaintext password from the pull Secret so we can re-derive the bcrypt hash.
+	if password == "" {
+		password, err = extractPassword(pullSec.Data[corev1.DockerConfigJsonKey], c.Registry, zotUser)
+		if err != nil {
+			return fmt.Errorf("extract password from pull secret: %w", err)
+		}
+	}
+
+	// 2. Ensure htpasswd entry.
+	if err := c.ensureHTPasswdEntry(ctx, zotUser, password); err != nil {
+		return fmt.Errorf("htpasswd: %w", err)
+	}
+
+	// 3. Ensure Zot config per-repo ACL.
+	if err := c.ensureZotConfigEntry(ctx, appName, zotUser); err != nil {
+		return fmt.Errorf("zot config: %w", err)
+	}
+
+	return nil
+}
+
+// RevokeCreds removes the per-App credentials from the Zot htpasswd and config.
+// The per-App pull Secret is garbage-collected via owner references.
+func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
+	zotUser := ZotUsername(appName)
+	if err := c.removeHTPasswdEntry(ctx, zotUser); err != nil {
+		return fmt.Errorf("htpasswd revoke: %w", err)
+	}
+	if err := c.removeZotConfigEntry(ctx, appName); err != nil {
+		return fmt.Errorf("zot config revoke: %w", err)
+	}
+	return nil
+}
+
+// -- htpasswd helpers ---------------------------------------------------------
+
+// ensureHTPasswdEntry adds or refreshes the user entry in the zot-htpasswd
+// Secret. Uses optimistic locking (ResourceVersion) to handle concurrent
+// reconciles; retries up to 5 times on conflict.
+func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password string) error {
+	for range 5 {
+		var sec corev1.Secret
+		if err := c.Client.Get(ctx, client.ObjectKey{
+			Namespace: c.ZotNamespace, Name: c.HTPasswdName,
+		}, &sec); err != nil {
+			return err
+		}
+
+		existing := sec.Data["htpasswd"]
+		if htpasswdHasUser(existing, username) {
+			return nil
+		}
+
+		updated, err := addHTPasswdLine(existing, username, password)
+		if err != nil {
+			return err
+		}
+		patch := sec.DeepCopy()
+		if patch.Data == nil {
+			patch.Data = map[string][]byte{}
+		}
+		patch.Data["htpasswd"] = updated
+		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+			if apierrors.IsConflict(err) {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("too many conflicts updating htpasswd for %s", username)
+}
+
+// removeHTPasswdEntry removes the user entry from the zot-htpasswd Secret.
+func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) error {
+	for range 5 {
+		var sec corev1.Secret
+		if err := c.Client.Get(ctx, client.ObjectKey{
+			Namespace: c.ZotNamespace, Name: c.HTPasswdName,
+		}, &sec); apierrors.IsNotFound(err) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		existing := sec.Data["htpasswd"]
+		if !htpasswdHasUser(existing, username) {
+			return nil
+		}
+
+		patch := sec.DeepCopy()
+		patch.Data["htpasswd"] = removeHTPasswdLine(existing, username)
+		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+			if apierrors.IsConflict(err) {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("too many conflicts removing htpasswd entry for %s", username)
+}
+
+// -- Zot config helpers -------------------------------------------------------
+
+// ensureZotConfigEntry adds a per-repo ACL entry for the App to the zot-config
+// Secret. Creates the Secret with the base config if it does not exist.
+func (c *Creds) ensureZotConfigEntry(ctx context.Context, appName, zotUser string) error {
+	for range 5 {
+		var sec corev1.Secret
+		err := c.Client.Get(ctx, client.ObjectKey{
+			Namespace: c.ZotNamespace, Name: c.ConfigName,
+		}, &sec)
+		if apierrors.IsNotFound(err) {
+			// Bootstrap: create with base config + this entry.
+			cfg, err := addZotACLEntry(baseZotConfig(), appName, zotUser)
+			if err != nil {
+				return err
+			}
+			newSec := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      c.ConfigName,
+					Namespace: c.ZotNamespace,
+					Labels:    map[string]string{"app.bex.co/managed-by": "bex-operator"},
+				},
+				Data: map[string][]byte{"config.json": cfg},
+			}
+			if err := c.Client.Create(ctx, &newSec); err != nil && !apierrors.IsAlreadyExists(err) {
+				return err
+			}
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		existing := sec.Data["config.json"]
+		if zotConfigHasRepo(existing, appName) {
+			return nil
+		}
+
+		updated, err := addZotACLEntry(existing, appName, zotUser)
+		if err != nil {
+			return err
+		}
+		patch := sec.DeepCopy()
+		patch.Data["config.json"] = updated
+		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+			if apierrors.IsConflict(err) {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("too many conflicts updating zot config for repo %s", appName)
+}
+
+// removeZotConfigEntry removes the per-App ACL entry from the zot-config Secret.
+func (c *Creds) removeZotConfigEntry(ctx context.Context, appName string) error {
+	for range 5 {
+		var sec corev1.Secret
+		if err := c.Client.Get(ctx, client.ObjectKey{
+			Namespace: c.ZotNamespace, Name: c.ConfigName,
+		}, &sec); apierrors.IsNotFound(err) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		existing := sec.Data["config.json"]
+		if !zotConfigHasRepo(existing, appName) {
+			return nil
+		}
+
+		updated, err := removeZotACLEntry(existing, appName)
+		if err != nil {
+			return err
+		}
+		patch := sec.DeepCopy()
+		patch.Data["config.json"] = updated
+		if err := c.Client.Patch(ctx, patch, client.MergeFrom(&sec)); err != nil {
+			if apierrors.IsConflict(err) {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("too many conflicts removing zot config entry for repo %s", appName)
+}
+
+// -- low-level helpers --------------------------------------------------------
+
+func generatePassword() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// buildDockerConfig returns a docker-config JSON for the given user/password.
+// If kpackRegistry differs from registry, both are included.
+func buildDockerConfig(username, password, registry, kpackRegistry string) []byte {
+	type authEntry struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	auths := map[string]authEntry{
+		registry: {Username: username, Password: password},
+	}
+	if kpackRegistry != "" && kpackRegistry != registry {
+		auths[kpackRegistry] = authEntry{Username: username, Password: password}
+	}
+	data, _ := json.Marshal(map[string]interface{}{"auths": auths})
+	return data
+}
+
+// extractPassword reads the plaintext password for username from a docker-config JSON.
+func extractPassword(dockerConfigJSON []byte, registry, username string) (string, error) {
+	var cfg struct {
+		Auths map[string]struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		} `json:"auths"`
+	}
+	if err := json.Unmarshal(dockerConfigJSON, &cfg); err != nil {
+		return "", err
+	}
+	a, ok := cfg.Auths[registry]
+	if !ok {
+		return "", fmt.Errorf("no auth entry for %q", registry)
+	}
+	if a.Username != username {
+		return "", fmt.Errorf("auth entry for %q has user %q, want %q", registry, a.Username, username)
+	}
+	return a.Password, nil
+}
+
+// htpasswdHasUser reports whether username appears in an htpasswd byte slice.
+func htpasswdHasUser(htpasswd []byte, username string) bool {
+	prefix := username + ":"
+	for _, line := range strings.Split(string(htpasswd), "\n") {
+		if strings.HasPrefix(line, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// addHTPasswdLine appends "username:bcrypt(password)" to htpasswd content.
+// If the username already exists the entry is replaced.
+func addHTPasswdLine(htpasswd []byte, username, password string) ([]byte, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	newLine := username + ":" + string(hash)
+	prefix := username + ":"
+
+	var lines []string
+	for _, l := range strings.Split(strings.TrimRight(string(htpasswd), "\n"), "\n") {
+		if l == "" {
+			continue
+		}
+		if strings.HasPrefix(l, prefix) {
+			continue // replaced below
+		}
+		lines = append(lines, l)
+	}
+	lines = append(lines, newLine)
+	return []byte(strings.Join(lines, "\n") + "\n"), nil
+}
+
+// removeHTPasswdLine removes the entry for username from htpasswd content.
+func removeHTPasswdLine(htpasswd []byte, username string) []byte {
+	prefix := username + ":"
+	var lines []string
+	for _, l := range strings.Split(strings.TrimRight(string(htpasswd), "\n"), "\n") {
+		if l == "" || strings.HasPrefix(l, prefix) {
+			continue
+		}
+		lines = append(lines, l)
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return []byte(strings.Join(lines, "\n") + "\n")
+}
+
+// zotConfigHasRepo reports whether the Zot config JSON already has an ACL entry
+// for the named repository.
+func zotConfigHasRepo(configJSON []byte, repo string) bool {
+	repos := zotRepos(configJSON)
+	_, ok := repos[repo]
+	return ok
+}
+
+// addZotACLEntry adds a per-repo policy for zotUser in the Zot config JSON.
+func addZotACLEntry(configJSON []byte, repo, zotUser string) ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return nil, err
+	}
+	repos := zotReposMap(data)
+	repos[repo] = map[string]interface{}{
+		"policies": []interface{}{
+			map[string]interface{}{
+				"users":   []interface{}{zotUser},
+				"actions": []interface{}{"read"},
+			},
+		},
+	}
+	return json.Marshal(data)
+}
+
+// removeZotACLEntry removes the per-repo ACL entry for repo from the Zot config JSON.
+func removeZotACLEntry(configJSON []byte, repo string) ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal(configJSON, &data); err != nil {
+		return nil, err
+	}
+	repos := zotReposMap(data)
+	delete(repos, repo)
+	return json.Marshal(data)
+}
+
+// zotRepos parses and returns the accessControl.repositories map (read-only copy).
+func zotRepos(configJSON []byte) map[string]interface{} {
+	var data map[string]interface{}
+	_ = json.Unmarshal(configJSON, &data)
+	return zotReposMap(data)
+}
+
+// zotReposMap returns a reference to data["http"]["accessControl"]["repositories"],
+// creating intermediate maps as needed. Mutations to the returned map mutate data.
+func zotReposMap(data map[string]interface{}) map[string]interface{} {
+	if data == nil {
+		return map[string]interface{}{}
+	}
+	httpBlock, _ := data["http"].(map[string]interface{})
+	if httpBlock == nil {
+		httpBlock = map[string]interface{}{}
+		data["http"] = httpBlock
+	}
+	ac, _ := httpBlock["accessControl"].(map[string]interface{})
+	if ac == nil {
+		ac = map[string]interface{}{}
+		httpBlock["accessControl"] = ac
+	}
+	repos, _ := ac["repositories"].(map[string]interface{})
+	if repos == nil {
+		repos = map[string]interface{}{}
+		ac["repositories"] = repos
+	}
+	return repos
+}
+
+// -- base config --------------------------------------------------------------
+
+// baseZotConfig returns the operator-canonical Zot config JSON. It replaces the
+// Helm-embedded configFiles stanza (removed in w7/m36). The bex-puller shared
+// user is NOT present: per-App users ("app-<name>") are added dynamically.
+func baseZotConfig() []byte {
+	return []byte(`{
+  "distSpecVersion": "1.1.0",
+  "storage": {
+    "rootDirectory": "/var/lib/registry",
+    "gc": true,
+    "gcDelay": "1h",
+    "gcInterval": "24h",
+    "retention": {
+      "dryRun": false,
+      "policies": [
+        {
+          "repositories": ["**"],
+          "deleteUntagged": true,
+          "keepTags": [
+            {
+              "patterns": [".*"],
+              "mostRecentlyPushedCount": 5
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "http": {
+    "address": "0.0.0.0",
+    "port": "5000",
+    "compat": ["docker2s2"],
+    "readTimeout": "60s",
+    "writeTimeout": "60s",
+    "auth": { "htpasswd": { "path": "/secret/htpasswd" } },
+    "accessControl": {
+      "repositories": {
+        "**": {
+          "policies": [
+            { "users": ["bex-builder"], "actions": ["read", "create", "update", "delete"] }
+          ],
+          "defaultPolicy": []
+        }
+      }
+    }
+  },
+  "log": { "level": "info" }
+}`)
+}
