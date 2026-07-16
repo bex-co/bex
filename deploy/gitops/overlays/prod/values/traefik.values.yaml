@@ -1,7 +1,9 @@
 # Prod (Hetzner CAPH) Traefik overrides (w1/m7 t005, re-done as a live smoke test
 # 2026-07-08): swap the base single-node hostNetwork edge for a real Hetzner Cloud
-# LoadBalancer with a STABLE IP that survives node replacement. The Hetzner CCM
-# provisions the LB from the Service annotations below. Layered over
+# LoadBalancer with a STABLE IP that survives node and cluster replacement.
+# Terraform owns and delete-protects the durable `bex-traefik` object; hcloud CCM
+# v1.33.0 adopts it by the Service annotation below and owns its dynamic network,
+# targets, listeners, and Service UID label. Layered over
 # base/values/traefik.values.yaml by the prod overlay kustomization — Argo
 # deep-merges valueFiles in order, later wins.
 #
@@ -65,4 +67,4 @@ service:
     load-balancer.hetzner.cloud/use-private-ip: "true" # LB→node hop over the bex private net
     load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
   spec:
-    type: LoadBalancer # CCM provisions the Hetzner LB (stable IP)
+    type: LoadBalancer # CCM adopts the Terraform-owned LB by name (stable IP)

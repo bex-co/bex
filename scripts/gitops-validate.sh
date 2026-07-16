@@ -15,6 +15,32 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+# Stable-edge ownership guard (w1/m41): the API-level protection keeps hcloud
+# CCM's Service finalizer from deleting the adopted object, while prevent_destroy
+# independently blocks Terraform from planning its destruction. Keep both.
+echo "==> Terraform-owned Traefik load balancer has both deletion guards"
+terraform_lb_block="$(awk '
+  /^resource "hcloud_load_balancer" "traefik" \{/ { found=1 }
+  found { print }
+  found && /^  }$/ { exit }
+' infra/terraform/main.tf)"
+if [ -z "$terraform_lb_block" ]; then
+  echo "FAIL: infra/terraform/main.tf has no hcloud_load_balancer.traefik resource" >&2
+  fail=1
+fi
+if ! grep -Eq '^[[:space:]]*name[[:space:]]*=[[:space:]]*"bex-traefik"[[:space:]]*$' <<<"$terraform_lb_block"; then
+  echo "FAIL: Terraform Traefik load balancer must keep the stable bex-traefik name" >&2
+  fail=1
+fi
+if ! grep -Eq '^[[:space:]]*delete_protection[[:space:]]*=[[:space:]]*true[[:space:]]*$' <<<"$terraform_lb_block"; then
+  echo "FAIL: Terraform Traefik load balancer must enable Hetzner delete_protection" >&2
+  fail=1
+fi
+if ! grep -Eq '^[[:space:]]*prevent_destroy[[:space:]]*=[[:space:]]*true[[:space:]]*$' <<<"$terraform_lb_block"; then
+  echo "FAIL: Terraform Traefik load balancer must keep lifecycle.prevent_destroy" >&2
+  fail=1
+fi
+
 echo "==> SSH activation safety gates"
 bash scripts/ssh-activate.test.sh || { echo "FAIL: SSH activation safety gates" >&2; fail=1; }
 
@@ -263,6 +289,13 @@ helm template traefik "$tmp/traefik-$(yq '.spec.sources[0].targetRevision' deplo
   -f deploy/gitops/overlays/prod/values/traefik.values.yaml >"$tmp/traefik-prod.yaml"
 kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
 kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
+
+echo "==> production Traefik Service adopts the stable load balancer by name"
+traefik_lb_name="$(yq -N 'select(.kind == "Service" and .metadata.name == "traefik") | .metadata.annotations."load-balancer.hetzner.cloud/name"' "$tmp/traefik-prod.yaml" | tr -d '\n')"
+if [ "$traefik_lb_name" != "bex-traefik" ]; then
+  echo "FAIL: rendered production Traefik Service adopts '$traefik_lb_name', want 'bex-traefik'" >&2
+  fail=1
+fi
 
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"

@@ -1,6 +1,6 @@
 # infra/terraform — the infra-cluster base (idempotent IaC, run by CI)
 
-Day-0 substrate on Hetzner for the **infra (management) cluster** — the one CAPH lives in. Creates: SSH key + private network + firewall + **one small node running single-node k3s**. CAPH (and the app cluster it provisions) come _after_, on top of this k3s.
+Day-0 substrate on Hetzner for the disposable **bootstrap cluster** and the durable production edge. Creates: SSH key + bootstrap private network + firewalls + an optional small node running single-node k3s, plus the delete-protected `bex-traefik` Load Balancer whose public IP must outlive every app-cluster rebuild. CAPH (and the app cluster it provisions) come _after_, on top of this k3s.
 
 **Not a one-shot.** State lives in Hetzner Object Storage (remote S3), so `apply` is idempotent: PRs get a `plan`, merges `apply`, a daily schedule re-`plan`s for **drift detection**. Same mental model as Argo for the cluster, one layer lower. It runs in **CI (ephemeral runner), never on a laptop** — see [`.github/workflows/infra.yml`](../../.github/workflows/infra.yml). Locally you need none of this: the dev mock uses a `kind` infra cluster (`infra/local/`).
 
@@ -33,6 +33,8 @@ The only irreducible "bottom turtle" is the **remote-state bucket** + the CI run
 1. Create a Hetzner **Object Storage** bucket for state (e.g. `bex-tfstate`).
 2. Add the repo secrets listed at the top of `infra.yml`.
 3. Open a PR touching `infra/terraform/**` → review the `plan` → merge → CI applies.
+
+If a `bex-traefik` Load Balancer already exists, the first main-branch run imports it by exact name before apply. Terraform then enables API deletion protection in place; it does not replace the object or change its public IP. The adoption and rebuild proof procedure is in [`docs/ADR002-architecture.md`](../../docs/ADR002-architecture.md#stable-production-edge-load-balancer).
 
 ## Phase 2 — install CAPH and build the app cluster (next, also CI)
 

@@ -61,12 +61,9 @@ patches:
       - op: add
         path: /spec/sources/0/helm/valueFiles/-
         value: $values/deploy/gitops/overlays/prod/values/openbao.values.yaml
-  # Traefik: layer the prod values file — Hetzner LoadBalancer with a stable IP,
-  # public-IP targets (w1/m7 t005, re-done 2026-07-08 as the live smoke test the
-  # original deferred). The first attempt bundled use-private-ip + the private
-  # network and took prod down; this public-IP version needs no private network.
-  # Provision is one-way visible: after ship, watch the bex-traefik LB get an IP,
-  # curl it, THEN repoint Cloudflare — the switch has downtime until DNS moves.
+  # Traefik: layer the prod values file — the Service adopts the Terraform-owned,
+  # delete-protected bex-traefik LB by name. The CCM reconciles its private-IP
+  # targets and listeners without owning the stable public-IP-bearing object.
   - target:
       group: argoproj.io
       version: v1alpha1
