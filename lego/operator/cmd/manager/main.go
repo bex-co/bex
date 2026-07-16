@@ -276,13 +276,20 @@ func main() {
 	// Per-App registry pull credentials (w7/m36). Active when BEX_REGISTRY_NS is
 	// set (typically "bex-registry"). Supersedes the shared bex-puller path.
 	if zotNS := os.Getenv("BEX_REGISTRY_NS"); zotNS != "" {
+		rc := 0
+		if v := os.Getenv("BEX_ZOT_RETENTION_COUNT"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				rc = n
+			}
+		}
 		appReconciler.PerAppRegistry = &registry.Creds{
-			Client:        mgr.GetClient(),
-			ZotNamespace:  zotNS,
-			HTPasswdName:  envOr("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
-			ConfigName:    envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),
-			Registry:      envOr("BEX_REGISTRY", "127.0.0.1:5050"),
-			KpackRegistry: os.Getenv("BEX_KPACK_REGISTRY"),
+			Client:         mgr.GetClient(),
+			ZotNamespace:   zotNS,
+			HTPasswdName:   envOr("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
+			ConfigName:     envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),
+			Registry:       envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			KpackRegistry:  os.Getenv("BEX_KPACK_REGISTRY"),
+			RetentionCount: rc,
 		}
 	}
 	if cs != nil {

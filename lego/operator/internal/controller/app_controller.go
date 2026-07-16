@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -247,6 +248,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// Per-App pull credentials (w7/m36): mint before the backfill so the
 		// "reg-pull-<name>" Secret exists by the time backfill patches workloads.
 		if err := r.ensurePerAppRegistryCreds(ctx, &app); err != nil {
+			if errors.Is(err, registry.ErrConflictRequeue) {
+				return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+			}
 			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
 		}
 		if err := r.backfillWorkloadPullSecrets(ctx, &app); err != nil {
@@ -526,6 +530,11 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 	return nil
 }
 
+// annotRotateRegistryCreds is the annotation key that triggers per-App registry
+// credential rotation. Set to "true" on the App CR; the reconciler calls
+// RotateCreds then clears the annotation.
+const annotRotateRegistryCreds = "bex.co/rotate-registry-creds"
+
 // ensurePerAppRegistryCreds mints per-App pull credentials (w7/m36) when
 // PerAppRegistry is configured and the App needs a registry-hosted image. It is
 // a no-op when PerAppRegistry is nil or the App is not registry-hosted.
@@ -541,6 +550,22 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 	if !needsCred {
 		return nil
 	}
+
+	// Rotation: if the annotation is set, re-issue credentials first, then clear it.
+	if app.Annotations[annotRotateRegistryCreds] == "true" {
+		if err := r.PerAppRegistry.RotateCreds(ctx, app.Name, app.Namespace); err != nil {
+			return fmt.Errorf("rotate registry creds: %w", err)
+		}
+		patch := app.DeepCopy()
+		delete(patch.Annotations, annotRotateRegistryCreds)
+		if err := r.Patch(ctx, patch, client.MergeFrom(app)); err != nil {
+			return fmt.Errorf("clear rotate annotation: %w", err)
+		}
+		// Update in-memory copy so downstream logic sees cleared annotation.
+		delete(app.Annotations, annotRotateRegistryCreds)
+		logf.FromContext(ctx).Info("rotated per-app registry credentials", "app", app.Name)
+	}
+
 	return r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace)
 }
 
@@ -2302,6 +2327,11 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		// zot-htpasswd and the per-repo ACL, then delete the pull Secret.
 		if r.PerAppRegistry != nil {
 			if err := r.PerAppRegistry.RevokeCreds(ctx, app.Name); err != nil {
+				if errors.Is(err, registry.ErrConflictRequeue) {
+					// Write conflict: defer cleanup to next reconcile. The finalizer
+					// remains, so the App will be requeued automatically.
+					return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+				}
 				log.Error(err, "revoke per-app registry credentials", "app", app.Name)
 			}
 			pullSec := &corev1.Secret{}

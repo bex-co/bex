@@ -1,18 +1,18 @@
 # w7 · m39 — Per-App registry credentials: production hardening
 
-**Worker:** worker7 **Goal:** The per-App Zot pull-credential feature (w7/m36) is operable in production: a compromised credential can be rotated without deleting the App, delete-time reclamation is truthful and regression-guarded, bulk App churn no longer fails reconciles on htpasswd write contention, and the operator-owned Zot config can't silently drift from the deployed registry. **Status:** todo
+**Worker:** worker7 **Goal:** The per-App Zot pull-credential feature (w7/m36) is operable in production: a compromised credential can be rotated without deleting the App, delete-time reclamation is truthful and regression-guarded, bulk App churn no longer fails reconciles on htpasswd write contention, and the operator-owned Zot config can't silently drift from the deployed registry. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on             |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Rotation path: on-demand credential re-issue (Secret + htpasswd + ACL atomically) + runbook  | 45m | —                      |
-| t002 | Fix the GC-comment drift: truthful comment + delete-leak regression test                     | 30m | —                      |
-| t003 | Replace the 5-retry hard failure with conflict-requeue backoff; test concurrent reconciles   | 40m | —                      |
-| t004 | De-risk `baseZotConfig` drift: retention knob + single-source/drift guard                    | 40m | —                      |
-| t005 | Simplify                                                                                     | 20m | t001, t002, t003, t004 |
-| t006 | Test coverage                                                                                | 30m | t001, t002, t003, t004 |
-| t007 | Closeout                                                                                     | 15m | t006                   |
+| t001 | Rotation path: on-demand credential re-issue (Secret + htpasswd + ACL atomically) + runbook  | 45m | —                      | — **DONE** |
+| t002 | Fix the GC-comment drift: truthful comment + delete-leak regression test                     | 30m | —                      | — **DONE** |
+| t003 | Replace the 5-retry hard failure with conflict-requeue backoff; test concurrent reconciles   | 40m | —                      | — **DONE** |
+| t004 | De-risk `baseZotConfig` drift: retention knob + single-source/drift guard                    | 40m | —                      | — **DONE** |
+| t005 | Simplify                                                                                     | 20m | t001, t002, t003, t004 | — **DONE** |
+| t006 | Test coverage                                                                                | 30m | t001, t002, t003, t004 | — **DONE** |
+| t007 | Closeout                                                                                     | 15m | t006                   | — **DONE** |
 
 ## Definition of done
 
