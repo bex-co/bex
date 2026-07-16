@@ -162,6 +162,24 @@ func (s *PGStore) DeleteWebhookEndpoint(ctx context.Context, tenantID, id string
 	return nil
 }
 
+// UpdateWebhookEndpoint replaces an endpoint's mutable fields (name, url,
+// event_types, enabled) in one SQL round trip. Re-enabling an endpoint clears
+// any disabled_reason; disabling leaves it unchanged (use SetWebhookEndpointEnabled
+// for an explicit reason). Secret is immutable after creation.
+func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (WebhookEndpoint, error) {
+	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
+		`UPDATE webhook_endpoints
+		 SET name = $3, url = $4, event_types = $5, enabled = $6,
+		     disabled_reason = CASE WHEN $6 THEN '' ELSE disabled_reason END,
+		     updated_at = now()
+		 WHERE id = $1 AND tenant_id = $2
+		 RETURNING `+webhookEndpointColumns, id, tenantID, name, url, eventTypes, enabled))
+	if err != nil {
+		return WebhookEndpoint{}, classify("webhook endpoint", err)
+	}
+	return e, nil
+}
+
 // ListEnabledWebhookEndpoints returns every enabled endpoint platform-wide
 // (secrets omitted) — the dispatcher's subscription table, refreshed each
 // poll pass.

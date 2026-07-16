@@ -160,6 +160,7 @@ type EndpointStore interface {
 	ListWebhookEndpoints(ctx context.Context, tenantID string) ([]store.WebhookEndpoint, error)
 	GetWebhookEndpoint(ctx context.Context, tenantID, id string) (store.WebhookEndpoint, error)
 	SetWebhookEndpointEnabled(ctx context.Context, tenantID, id string, enabled bool, reason string) (store.WebhookEndpoint, error)
+	UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error)
 	DeleteWebhookEndpoint(ctx context.Context, tenantID, id string) error
 	ListWebhookDeliveries(ctx context.Context, endpointID string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookDelivery, error)
 }
@@ -424,6 +425,62 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 		out = append(out, toDeliveryView(d))
 	}
 	return out, nil
+}
+
+// UpdateRequest is Update's input — Render's full-body PATCH (w3/m27):
+// any zero-value field means "keep the current value". EventTypes may carry
+// the `eventFilter` alias from Render-shaped clients (the caller normalizes
+// before calling Update).
+type UpdateRequest struct {
+	Name       string
+	URL        string
+	EventTypes []string
+	Enabled    *bool
+}
+
+// Update applies a full-body update to an endpoint (Render's PATCH contract,
+// w3/m27). Non-zero fields replace the current value; zero fields keep it.
+// URL changes are re-validated; EventTypes changes are re-normalised.
+// Admin-only (RelCanManage), matching Create and SetEnabled.
+func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequest) (EndpointView, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return EndpointView{}, err
+	}
+	if s.Store == nil {
+		return EndpointView{}, core.ErrWebhooksUnavailable
+	}
+	// Fetch the current endpoint (workspace-scoped, so cross-workspace ids 404).
+	cur, err := s.Store.GetWebhookEndpoint(ctx, s.workspaceID(ctx), id)
+	if err != nil {
+		return EndpointView{}, mapStoreErr(err)
+	}
+	// Merge: keep current values for omitted fields.
+	name := cur.Name
+	if req.Name != "" {
+		name = strings.TrimSpace(req.Name)
+	}
+	dest := cur.URL
+	if req.URL != "" {
+		if dest, err = parseDestination(req.URL); err != nil {
+			return EndpointView{}, err
+		}
+	}
+	types := cur.EventTypes
+	if len(req.EventTypes) > 0 {
+		if types, err = normalizeEventTypes(req.EventTypes); err != nil {
+			return EndpointView{}, err
+		}
+	}
+	enabled := cur.Enabled
+	if req.Enabled != nil {
+		enabled = *req.Enabled
+	}
+	e, err := s.Store.UpdateWebhookEndpoint(ctx, s.workspaceID(ctx), id, name, dest, types, enabled)
+	if err != nil {
+		return EndpointView{}, mapStoreErr(err)
+	}
+	return toView(e), nil
 }
 
 // parseDestination validates a destination URL: absolute, http(s), with a
