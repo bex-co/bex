@@ -665,11 +665,11 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 
 // ---- DeleteAppArtifacts tests (w7/m12) ----
 
-func buildJob(name, appName, ns string) *batchv1.Job {
+func buildJob(name, appName string) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: ns,
+			Namespace: "build",
 			Labels:    map[string]string{"app.bex.co/build": appName},
 		},
 	}
@@ -698,13 +698,13 @@ func artifactPod(name, label, appName, ns string) *corev1.Pod {
 func TestDeleteAppArtifacts_DeletesBuildAndPredeployJobs(t *testing.T) {
 	ctx := context.Background()
 	cl := fakeClient(
-		buildJob("bld-hello-gen-1", "hello", "build"),
-		buildJob("bld-hello-gen-2", "hello", "build"),
+		buildJob("bld-hello-gen-1", "hello"),
+		buildJob("bld-hello-gen-2", "hello"),
 		predeployJob("pred-hello-gen-1", "hello", "build"),
 		artifactPod("bld-hello-gen-1-pod", "app.bex.co/build", "hello", "build"),
 		artifactPod("pred-hello-gen-1-pod", "app.bex.co/predeploy", "hello", "build"),
 		// another app's jobs — must NOT be deleted
-		buildJob("bld-other-gen-1", "other", "build"),
+		buildJob("bld-other-gen-1", "other"),
 		artifactPod("bld-other-gen-1-pod", "app.bex.co/build", "other", "build"),
 	)
 
@@ -778,7 +778,7 @@ func TestDeleteAppArtifacts_MissingKpackIsNotAnError(t *testing.T) {
 	// kpack CRD is not installed; the fake client returns "no matches for kind".
 	// DeleteAppArtifacts should tolerate that and return nil.
 	ctx := context.Background()
-	cl := fakeClient(buildJob("bld-hello-gen-1", "hello", "build"))
+	cl := fakeClient(buildJob("bld-hello-gen-1", "hello"))
 
 	// Even without kpack registered in the scheme the function should succeed
 	// (the build Job is deleted, the kpack list error is tolerated).

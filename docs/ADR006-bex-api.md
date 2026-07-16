@@ -157,7 +157,7 @@ Render's create-service JSON and Blueprint YAML are different contracts. `secret
 | `generateValue`, `sync: false` | ✅ | → seeded SEED-ONCE into the mutable env-vars store (w1/m35), never `spec.env`, so a dashboard edit wins and re-`sync` neither overwrites nor re-mints. `generateValue` = base64 256-bit (Render's shape). Needs OpenBao |
 | `fromService.envVarKey` | ✅ | → copies a sibling service's declared var by value (w1/m35, same-file resolution) |
 | keyvalue `fromService`, generated-value copy across services | ✖ | rejected — a keyvalue `fromService` connection and copying a not-yet-minted `generateValue`/reference across services need cross-service secret plumbing (documented omission) |
-| `maxShutdownDelaySeconds` | ✖ | Blueprint parser omission: the CRD/operator and interactive REST/GraphQL/MCP/UI surfaces support it (w6/m25), but `bex.yml` does not yet thread the field. Recorded drift; never silently claimed as complete. |
+| `maxShutdownDelaySeconds` | ✅ | (w10/m2) → `App.spec.maxShutdownDelaySeconds`, same 1–300 validation as REST/GraphQL/MCP (w6/m25); closes the Blueprint parser omission this row previously recorded |
 | `region`, `databaseName`, `user`, `disk`, `scaling`, `previews`, `renderSubdomainPolicy`, `initialDeployHook`, `registryCredential`, `buildCommand`, `startCommand` | — | ignored (bex has no equivalent; not honored, not faked). Blueprint `initialDeployHook` is Render's one-time post-first-deploy **shell command**, not the secret Deploy Hook URL described below. |
 | sync-delete of removed entries | ✖ | documented divergence — bex v1 does not delete resources absent from the file |
 | direct service `environmentId`, `secretFiles` | ✖ | rejected: these belong to Render's create-service body, not its Blueprint service schema; use `projects[].environments[]` for membership |
@@ -284,7 +284,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 curl -H "Authorization: Bearer $TOKEN" https://api.bex.co/v1/postgres/<returned-dpg-id>/connection-info
 ```
 
-**Lifecycle, recovery & access** (w1/m17): `suspend`/`resume` hibernate the CNPG cluster (`cnpg.io/hibernation` — compute stops, PVC kept), `restart` bounces the primary; backups (`spec.backup.barmanObjectStore` + a daily `ScheduledBackup` on backed-up plans) enable `recovery-info` (PITR window) and `recover`, which restores to a **new** `Database` via CNPG `bootstrap.recovery` — the source is never touched; `exports` trigger/list on-demand snapshots (bex's export is a physical base-backup snapshot, a documented divergence from Render's logical `pg_dump`); the external endpoint's `ip-allow-list` gates the public SNI route via a Traefik `ipAllowList` middleware (the internal `-rw` path is never gated); `users` provision additional CNPG managed login roles; and the pooler strings are backed by a PgBouncer `Pooler`. Still deferred: `failover`/HA + read replicas (→ `w1/013`), and Postgres runtime observability (`processes`/`top-queries`/`sizes`). See [ADR009-postgresql-management.md](ADR009-postgresql-management.md).
+**Lifecycle, recovery & access** (w1/m17): `suspend`/`resume` hibernate the CNPG cluster (`cnpg.io/hibernation` — compute stops, PVC kept), `restart` bounces the primary; backups (`spec.backup.barmanObjectStore` + a daily `ScheduledBackup` on backed-up plans) enable `recovery-info` (PITR window) and `recover`, which restores to a **new** `Database` via CNPG `bootstrap.recovery` — the source is never touched; `exports` trigger/list on-demand snapshots (bex's export is a physical base-backup snapshot, a documented divergence from Render's logical `pg_dump`); the external endpoint's `ip-allow-list` gates the public SNI route via a Traefik `ipAllowList` middleware (the internal `-rw` path is never gated); `users` provision additional CNPG managed login roles; and the pooler strings are backed by a PgBouncer `Pooler`. `failover`/HA + read replicas (shipped `w1/m22`) and Postgres runtime observability — `processes`/`top-queries`/`sizes`/`table-scans`/`parameter-overrides` (shipped `w2/m25`) — are both live. See [ADR009-postgresql-management.md](ADR009-postgresql-management.md).
 
 ## Managed Key Value (Render `/v1/key-value` compatible)
 
@@ -315,10 +315,12 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `get_service` | `{serviceId}` | `Get` | `service` |
 | `create_web_service` | `{name, type?, repo?, image?, branch?, runtime?, buildCommand?, startCommand?, dockerfilePath?, plan?, envVars?, port?, replicas?, maxShutdownDelaySeconds?}` | `Create` | created/updated `service` |
 | `create_cron_job` | `{name, schedule, command?, repo?, image?, branch?, plan?, envVars?}` | `Create` | created/updated `service` |
+| `create_static_site` (bex extension) | `{name, repo?, image?, branch?, rootDir?, publishPath, envVars?, secretFiles?, domains?, routes?, headers?}` | `Create` | created/updated `service` |
 | `run_cron_job` | `{serviceId}` | `TriggerCronRun` | pending `cronJobRun` |
 | `list_cron_job_runs` | `{serviceId, cursor?, limit?}` | `ListCronRuns` | `{cronJobRuns, cursor}` |
 | `get_cron_job_run` | `{serviceId, runId}` | `GetCronRun` | `cronJobRun` |
 | `cancel_cron_job_run` | `{serviceId, runId}` | `CancelCronRun` | canceled `cronJobRun` |
+| `update_cron_job` (bex extension — Render ships a non-functional stub) | `{serviceId, schedule, command?}` | `SetCronJob` | updated `service` |
 | `deploy` | `{repo?, branch?, bexYaml}` | `Deploy` | created/updated `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `delete_service` | `{serviceId}` | `Delete` | `{deleted: true}` |
@@ -328,10 +330,33 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `set_notifications_to_send` (w3/m15, [docs/render-artifacts/notify-on-fail.md](render-artifacts/notify-on-fail.md)) | `{serviceId, value}` | `SetNotificationsToSend` | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
 | `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
+| `set_root_directory` | `{serviceId, rootDir}` | `SetRootDir` | updated `service` |
 | `set_start_command` (bex extension) | `{serviceId, startCommand}` | `SetCommands` | updated `service` |
 | `set_dockerfile_path` (bex extension) | `{serviceId, dockerfilePath}` | `SetDockerfilePath` | updated `service` |
+| `set_build_filter` (bex extension) | `{serviceId, buildFilter: {paths?, ignoredPaths?}}` | `SetBuildFilter` | updated `service` |
 | `set_max_shutdown_delay` (bex extension) | `{serviceId, seconds}` | `SetMaxShutdownDelay` | updated `service` |
 | `set_maintenance_mode` (bex extension, w1/m37, [docs/render-artifacts/maintenance-mode.md](render-artifacts/maintenance-mode.md)) | `{serviceId, maintenanceMode: {enabled, uri?}}` | `SetMaintenanceMode` | updated `service` |
+| `get_autoscaling` (bex extension) | `{serviceId}` | `GetAutoscaling` | `autoscaling` |
+| `set_autoscaling` | `{serviceId, minInstances, maxInstances, targetCPUPercent?, targetMemoryPercent?}` | `SetAutoscaling` | `autoscaling` |
+| `disable_autoscaling` | `{serviceId}` | `DeleteAutoscaling` | `{deleted: true}` |
+| `set_auto_deploy` | `{serviceId, enabled}` | `SetAutoDeploy` | updated `service` |
+| `set_health_check_path` | `{serviceId, healthCheckPath}` | `SetHealthCheckPath` | updated `service` |
+| `set_pre_deploy_command` | `{serviceId, preDeployCommand}` | `SetPreDeployCommand` | updated `service` |
+| `set_subdomain_policy` | `{serviceId, policy}` | `SetSubdomainPolicy` | updated `service` |
+| `set_service_ip_allow_list` | `{serviceId, cidrs?}` | `SetIPAllowList` | updated `service` |
+| `list_custom_domains` | `{serviceId}` | `ListDomains` | `{customDomains: [customDomain, ...]}` |
+| `get_custom_domain` | `{serviceId, name}` | `GetDomain` | `customDomain` |
+| `add_custom_domain` | `{serviceId, name}` | `AddDomain` | created `customDomain` |
+| `delete_custom_domain` | `{serviceId, name}` | `DeleteDomain` | `{deleted: true}` |
+| `verify_custom_domain` | `{serviceId, name}` | `VerifyDomain` | `customDomain` |
+| `list_static_routes` (bex extension — Render's stub is non-functional) | `{serviceId}` | `ListRoutes` | `{routes: [route, ...]}` |
+| `update_static_routes` (bex extension) | `{serviceId, routes}` | `SetRoutes` | `{routes: [route, ...]}` |
+| `list_static_headers` (bex extension) | `{serviceId}` | `ListHeaders` | `{headers: [header, ...]}` |
+| `update_static_headers` (bex extension) | `{serviceId, headers}` | `SetHeaders` | `{headers: [header, ...]}` |
+| `update_publish_path` (bex extension) | `{serviceId, publishPath}` | `SetPublishPath` | updated `service` |
+| `validate_bex_yml` (w2/m15, bex extension) | `{bexYaml, ownerId?}` | `ValidateBlueprint` | `{valid, errors: [...], plan?}` |
+| `list_blueprints` (w2/m15, bex extension) | `{ownerId?}` | `ListBlueprints` | `{blueprints: [blueprint, ...]}` |
+| `sync_blueprint` (w2/m15, bex extension) | `{id, bexYaml?, ownerId?}` | `SyncBlueprint` | `{blueprint, stack: {services, databases}}` |
 | `list_deploys` | `{serviceId, status?, createdBefore?, createdAfter?, updatedBefore?, updatedAfter?, finishedBefore?, finishedAfter?, cursor?, limit?}` | `List` | `{deploys: [deploy, ...], cursor}` |
 | `get_deploy` | `{serviceId, deployId}` | `Get` | `deploy` |
 | `list_service_events` (bex extension) | `{serviceId, type?, startTime?, endTime?, cursor?, limit?}` | `events.List` | `{events: [{event, cursor}, ...]}` |
@@ -340,18 +365,27 @@ The third adapter (`mcp.go`) speaks the Model Context Protocol, so an agent oper
 | `get_metrics` | `{resource: [id, ...], metricTypes: [...], startTime?, endTime?, resolutionSeconds?, quantile?, percentage?}` | `Metrics` | `{series: [{labels, unit, points}, ...]}` |
 | `list_postgres_instances` | — | `ListPostgres` | `{postgres: [postgres, ...]}` |
 | `get_postgres` | `{postgresId}` | `GetPostgres` | `postgres` |
-| `create_postgres` | `{name, plan?, version?, diskSizeGB?, public?}` | `CreatePostgres` | created `postgres` |
+| `create_postgres` | `{name, plan?, version?, diskSizeGB?, public?, enableHighAvailability?}` | `CreatePostgres` | created `postgres` |
+| `query_render_postgres` | `{postgresId, sql}` | `Query` | `{columns, rows}` |
+| `update_postgres_plan` | `{postgresId, plan}` | `SetPlan` | updated `postgres` |
+| `update_postgres_version` | `{postgresId, version}` | `SetVersion` | updated `postgres` |
+| `rename_postgres` (bex extension) | `{postgresId, name}` | `UpdatePostgres` | updated `postgres` |
+| `failover_postgres` (w1/m22, mirrors Render's `POST /postgres/{id}/failover`) | `{postgresId}` | `Failover` | `{accepted: true}` |
 | `suspend_postgres` / `resume_postgres` / `restart_postgres` | `{postgresId}` | `Suspend`/`Resume`/`Restart` | updated `postgres` |
 | `get_postgres_recovery_info` | `{postgresId}` | `RecoveryInfo` | `{enabled, earliestRecoveryTime, latestRecoveryTime, backups}` |
 | `recover_postgres` | `{postgresId, name, targetTime?, plan?, version?}` | `Recover` | new `postgres` |
 | `list_postgres_exports` / `create_postgres_export` | `{postgresId}` | `ListExports`/`CreateExport` | `{exports}` / export |
 | `get_postgres_ip_allow_list` / `set_postgres_ip_allow_list` | `{postgresId, cidrs?}` | `GetIPAllowList`/`SetIPAllowList` | `{cidrs}` / updated `postgres` |
 | `list_postgres_users` / `create_postgres_user` / `delete_postgres_user` | `{postgresId, name?}` | `ListUsers`/`CreateUser`/`DeleteUser` | `{users}` / `{name, password}` / `{deleted}` |
+| `list_postgres_processes` (w2/m25) | `{postgresId}` | `Processes` | `{processes: [process, ...]}` |
+| `list_postgres_top_queries` (w2/m25) | `{postgresId}` | `TopQueries` | `{queries: [topQuery, ...]}` |
+| `get_postgres_sizes` (w2/m25) | `{postgresId}` | `Sizes` | `{database, tables: [tableSize, ...]}` |
+| `list_postgres_table_scans` (w2/m25) | `{postgresId}` | `TableScans` | `{tableScans: [tableScan, ...]}` |
+| `list_postgres_parameter_overrides` / `set_postgres_parameter_overrides` (w2/m25) | `{postgresId, parameters?}` | `ParameterOverrides`/`SetParameterOverrides` | `{overrides: [override, ...]}` / updated `postgres` |
 | `list_key_value` (`list_key_value_instances` deprecated alias) | — | `ListKeyValues` | `{keyValues: [keyValue, ...]}` |
 | `get_key_value` | `{keyValueId}` | `GetKeyValue` | `keyValue` |
 | `create_key_value` | `{name, plan?, version?, storageGB?, public?}` | `CreateKeyValue` | created `keyValue` |
-
-**Follow-up filed, not fixed here:** this table is also missing `set_auto_deploy`, `set_health_check_path`, `set_root_dir`, `set_build_filter`, and `set_pre_deploy_command` — all real, working tools in `apps/mcp.go` that earlier milestones never backfilled into this reference table. Out of this milestone's scope; `set_notify_on_fail` is added above since this milestone touches the table anyway.
+| `update_key_value_plan` (w2/m16) | `{keyValueId, plan}` | `SetPlan` | updated `keyValue` |
 
 `list_logs` takes Render's required `resource` array of service ids and reads each App's logs — application (`type=app`) and request (`type=request`, Traefik's access log) — aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`type`/`resource`/`instance`/`container`/`level`/`method`/`statusCode`, each present only where the line really has it). It honors **Render's full filter set** — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text`, `startTime`/`endTime`, `direction` — routed through the same `QueryLogs` the REST adapter uses (w3/m8; mapping and cardinality budget in [ADR010-observability.md](ADR010-observability.md#log-filters)). Its companion `list_log_label_values` mirrors Render's discovery tool exactly (same name, same `label` enum — `host`|`instance`|`level`|`method`|`statusCode`|`type` — same filter args), so an agent asks "which statuses does this service return?" instead of guessing; values are always scoped to the requested service's streams, never the whole store. Without the durable store (`BEX_LOKI_URL` unset) the store-only filters and `type=request` return 503 rather than being ignored — an agent is told, not misled. `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). Store-managed service ids are typed `srv-…` values in the Render-shaped REST/MCP projections; hand-applied Apps fall back to metadata names. The bex-native GraphQL `Service.id` remains the public App name for dashboard compatibility.
 
@@ -520,4 +554,4 @@ Resource caps default to `0` (unlimited), while the App worker count defaults to
 
 ## Scope
 
-Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger, read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [ADR003-control-plane.md](ADR003-control-plane.md)). Not yet: rollback, tenant scoping of credentials — those arrive (under Render's names, when applicable) as the control plane grows past this seed.
+Lifecycle verbs (including plan changes), service create-or-update + **delete** + deploy-from-chat + the push-to-deploy webhook, deploy history + trigger + **cancel** + **rollback** (shipped `w2/m10`), read-only logs and metrics, API keys, env vars, and managed Postgres. The Postgres source of truth exists as an opt-in in the same binary (`BEX_CP_DB_URI` — see [ADR003-control-plane.md](ADR003-control-plane.md)). Not yet: tenant scoping of credentials — that arrives (under Render's names, when applicable) as the control plane grows past this seed.

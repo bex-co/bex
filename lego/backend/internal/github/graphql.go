@@ -62,7 +62,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: gitConnectionGQLType,
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				connection, err := s.GetConnection(p.Context, gqlStr(p.Args, "ownerId"))
+				connection, err := s.GetConnection(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
 					return nil, err
 				}
@@ -73,7 +73,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: graphql.NewList(repoGQLType),
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				repos, err := s.ListRepos(p.Context, gqlStr(p.Args, "ownerId"))
+				repos, err := s.ListRepos(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
 					return nil, err
 				}
@@ -91,7 +91,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: gitConnectionGQLType,
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				connection, err := s.StartConnect(p.Context, gqlStr(p.Args, "ownerId"))
+				connection, err := s.StartConnect(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
 					return nil, err
 				}
@@ -102,18 +102,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: graphql.Boolean,
 			Args: ownerIDArg,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Disconnect(p.Context, gqlStr(p.Args, "ownerId"))
+				err := s.Disconnect(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				return err == nil, err
 			},
 		},
 	}
-}
-
-// gqlStr reads an optional string arg, "" when absent — package-local per
-// w6/m14's review (not worth a shared gqlutil helper for a one-line copy).
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
 }

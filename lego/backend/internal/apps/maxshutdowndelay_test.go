@@ -248,3 +248,49 @@ func TestMCPMaxShutdownDelayMirrorsSharedCreateSetAndRead(t *testing.T) {
 		t.Fatalf("MCP render serviceDetails = %+v", rendered.ServiceDetails)
 	}
 }
+
+// TestBlueprintMaxShutdownDelayRoundTripsAndValidates is w10/m2/t003+t006: the
+// bex.yml Blueprint parser threads maxShutdownDelaySeconds onto CreateRequest
+// (previously dropped — ADR006's recorded drift) and gets Create's ordinary
+// validation for free, so an out-of-range Blueprint value fails exactly like
+// REST/GraphQL/MCP (same named core.ErrBadRequest), not silently or differently.
+func TestBlueprintMaxShutdownDelayRoundTripsAndValidates(t *testing.T) {
+	stack, err := parseStack(DeployRequest{Manifest: `services:
+  - type: web
+    name: web
+    image: nginx:1
+    maxShutdownDelaySeconds: 75
+`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := stack.services[0].req
+	if req.MaxShutdownDelaySeconds == nil || *req.MaxShutdownDelaySeconds != 75 {
+		t.Fatalf("Blueprint request MaxShutdownDelaySeconds = %v, want 75", req.MaxShutdownDelaySeconds)
+	}
+
+	svc, cl := newService(nil)
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: `services:
+  - type: web
+    name: web
+    image: nginx:1
+    maxShutdownDelaySeconds: 75
+`}); err != nil {
+		t.Fatalf("deploy: %v", err)
+	}
+	app := getApp(t, cl, "web")
+	if app.Spec.MaxShutdownDelaySeconds == nil || *app.Spec.MaxShutdownDelaySeconds != 75 {
+		t.Fatalf("spec.maxShutdownDelaySeconds = %v, want 75", app.Spec.MaxShutdownDelaySeconds)
+	}
+
+	svc, _ = newService(nil)
+	_, err = svc.DeployStack(context.Background(), DeployRequest{Manifest: `services:
+  - type: web
+    name: web2
+    image: nginx:1
+    maxShutdownDelaySeconds: 301
+`})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "maxShutdownDelaySeconds") {
+		t.Fatalf("out-of-range Blueprint value should return the same named ErrBadRequest as REST, got %v", err)
+	}
+}

@@ -96,7 +96,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListEnvGroups(p.Context, gqlStr(p.Args, "ownerId"))
+				return s.ListEnvGroups(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		"envGroup": &graphql.Field{
@@ -145,7 +145,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateEnvGroup(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string), gqlStr(p.Args, "environmentId"))
+				return s.CreateEnvGroup(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["name"].(string), gqlutil.Str(p.Args, "environmentId"))
 			},
 		},
 		"renameEnvGroup": &graphql.Field{
@@ -243,14 +243,4 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
-}
-
-// gqlStr reads an optional string arg, "" when absent — package-local per
-// apikeys' own gqlStr precedent (not worth a shared gqlutil helper for a
-// one-line copy).
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
 }

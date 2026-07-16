@@ -47,7 +47,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListAPIKeys(p.Context, gqlStr(p.Args, "ownerId"))
+				return s.ListAPIKeys(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 	}
@@ -65,7 +65,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateAPIKey(p.Context, gqlStr(p.Args, "ownerId"), p.Args["name"].(string))
+				return s.CreateAPIKey(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["name"].(string))
 			},
 		},
 		"revokeApiKey": &graphql.Field{
@@ -75,18 +75,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.RevokeAPIKey(p.Context, gqlStr(p.Args, "ownerId"), p.Args["id"].(string))
+				err := s.RevokeAPIKey(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
 	}
-}
-
-// gqlStr reads an optional string arg, "" when absent — package-local per
-// w6/m14's review (not worth a shared gqlutil helper for a one-line copy).
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
 }

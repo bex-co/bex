@@ -95,18 +95,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				period, _ := p.Args["period"].(string)
 				now := resolvePeriodEnd(period, s.Now().UTC())
-				return s.monthToDateAt(p.Context, gqlStr(p.Args, "ownerId"), now)
+				return s.monthToDateAt(p.Context, gqlutil.Str(p.Args, "ownerId"), now)
 			},
 		},
 	}
-}
-
-// gqlStr reads an optional string arg, "" when absent (graphql-go omits unset
-// optional args from the map) — the local idiom (see apps/graphql.go's own
-// copy; kept package-local per w6/m14's review, not worth a shared helper).
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
 }

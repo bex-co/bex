@@ -217,26 +217,27 @@ type bexService struct {
 	RootDir   string    `json:"rootDir"`
 	// BuildFilter is render.yaml's Build Filters (paths/ignoredPaths globs) — the
 	// same {paths, ignoredPaths} shape every surface uses (BuildFilterView).
-	BuildFilter       *BuildFilterView    `json:"buildFilter"`
-	BuildCommand      string              `json:"buildCommand"`
-	StartCommand      string              `json:"startCommand"`
-	DockerfilePath    string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
-	NumInstances      int32               `json:"numInstances"`   // render.yaml; alias for replicas
-	Replicas          int32               `json:"replicas"`       // bex alias
-	Port              int32               `json:"port"`           // bex (Render infers PORT env)
-	HealthCheckPath   string              `json:"healthCheckPath"`
-	Domains           []string            `json:"domains"`
-	Schedule          string              `json:"schedule"`          // cron expression, required when type is cron
-	PreDeployCommand  string              `json:"preDeployCommand"`  // render.yaml Pre-Deploy Command (spec.preDeployCommand)
-	MaintenanceMode   *bexMaintenanceMode `json:"maintenanceMode"`   // Render: paid web services only; uri optional
-	AutoDeploy        *bool               `json:"autoDeploy"`        // deprecated render.yaml bool; nil => default
-	AutoDeployTrigger string              `json:"autoDeployTrigger"` // render.yaml: commit|checksPass|off
-	StaticPublishPath string              `json:"staticPublishPath"` // render.yaml static-site publish dir
-	PublishPath       string              `json:"publishPath"`       // bex alias
-	EnvVars           []bexEnvVar         `json:"envVars"`
-	IPAllowList       []bexIPEntry        `json:"ipAllowList"`
-	MaxmemoryPolicy   string              `json:"maxmemoryPolicy"`
-	PersistenceMode   string              `json:"persistenceMode"`
+	BuildFilter             *BuildFilterView    `json:"buildFilter"`
+	BuildCommand            string              `json:"buildCommand"`
+	StartCommand            string              `json:"startCommand"`
+	DockerfilePath          string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
+	NumInstances            int32               `json:"numInstances"`   // render.yaml; alias for replicas
+	Replicas                int32               `json:"replicas"`       // bex alias
+	Port                    int32               `json:"port"`           // bex (Render infers PORT env)
+	HealthCheckPath         string              `json:"healthCheckPath"`
+	Domains                 []string            `json:"domains"`
+	Schedule                string              `json:"schedule"`                // cron expression, required when type is cron
+	MaxShutdownDelaySeconds *int32              `json:"maxShutdownDelaySeconds"` // Render's graceful SIGTERM window (1-300; default 30)
+	PreDeployCommand        string              `json:"preDeployCommand"`        // render.yaml Pre-Deploy Command (spec.preDeployCommand)
+	MaintenanceMode         *bexMaintenanceMode `json:"maintenanceMode"`         // Render: paid web services only; uri optional
+	AutoDeploy              *bool               `json:"autoDeploy"`              // deprecated render.yaml bool; nil => default
+	AutoDeployTrigger       string              `json:"autoDeployTrigger"`       // render.yaml: commit|checksPass|off
+	StaticPublishPath       string              `json:"staticPublishPath"`       // render.yaml static-site publish dir
+	PublishPath             string              `json:"publishPath"`             // bex alias
+	EnvVars                 []bexEnvVar         `json:"envVars"`
+	IPAllowList             []bexIPEntry        `json:"ipAllowList"`
+	MaxmemoryPolicy         string              `json:"maxmemoryPolicy"`
+	PersistenceMode         string              `json:"persistenceMode"`
 	// Neither field exists in Render's Blueprint service schema. Keeping them
 	// explicit lets bex reject the common create-body/Blueprint mix-up by name
 	// instead of silently dropping it.
@@ -322,7 +323,8 @@ type bexEnvVar struct {
 
 // bexFromRef is the fromDatabase / fromService target. property is the
 // connectionString/host/port/... to pull; envVarKey references another env var
-// (fromService only, not yet wired).
+// (fromService only) — resolved by resolveRef, which copies the sibling
+// service's declared value at parse time.
 type bexFromRef struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`      // fromService: the referenced service's type
@@ -1045,29 +1047,30 @@ func parseService(dep DeployRequest, a bexService) (CreateRequest, serviceEnv, e
 	}
 
 	return CreateRequest{
-		Name:             a.Name,
-		Type:             svcType,
-		Schedule:         a.Schedule,
-		Repo:             repo,
-		Image:            image,
-		Branch:           branch,
-		Builder:          a.Builder,
-		Runtime:          runtime,
-		BuildCommand:     a.BuildCommand,
-		StartCommand:     a.StartCommand,
-		RootDir:          a.RootDir,
-		BuildFilter:      a.BuildFilter,
-		DockerfilePath:   a.DockerfilePath,
-		Port:             a.Port,
-		Replicas:         replicas,
-		Plan:             plan,
-		HealthCheckPath:  a.HealthCheckPath,
-		Env:              literal,
-		Hosts:            a.Domains,
-		AutoDeploy:       autoDeploy,
-		PreDeployCommand: a.PreDeployCommand,
-		MaintenanceMode:  maintenanceMode,
-		PublishPath:      publish,
+		Name:                    a.Name,
+		Type:                    svcType,
+		Schedule:                a.Schedule,
+		Repo:                    repo,
+		Image:                   image,
+		Branch:                  branch,
+		Builder:                 a.Builder,
+		Runtime:                 runtime,
+		BuildCommand:            a.BuildCommand,
+		StartCommand:            a.StartCommand,
+		RootDir:                 a.RootDir,
+		BuildFilter:             a.BuildFilter,
+		DockerfilePath:          a.DockerfilePath,
+		Port:                    a.Port,
+		Replicas:                replicas,
+		Plan:                    plan,
+		HealthCheckPath:         a.HealthCheckPath,
+		Env:                     literal,
+		Hosts:                   a.Domains,
+		AutoDeploy:              autoDeploy,
+		PreDeployCommand:        a.PreDeployCommand,
+		MaintenanceMode:         maintenanceMode,
+		PublishPath:             publish,
+		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,
 	}, se, nil
 }
 

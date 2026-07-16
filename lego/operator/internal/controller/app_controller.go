@@ -1373,11 +1373,16 @@ func (r *AppReconciler) staticServerPort() int {
 	return 8080
 }
 
+// defaultMaintenanceService is the wake-activator Service name assumed when
+// MaintenanceService is unset — the same default cmd/manager wires for
+// ActivatorService via BEX_ACTIVATOR_SERVICE.
+const defaultMaintenanceService = "bex-activator"
+
 func (r *AppReconciler) maintenanceService() string {
 	if r.MaintenanceService != "" {
 		return r.MaintenanceService
 	}
-	return "bex-activator"
+	return defaultMaintenanceService
 }
 
 func (r *AppReconciler) maintenanceNamespace() string {
@@ -2240,10 +2245,7 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})); err != nil {
 		return err
 	}
-	workers := r.MaxConcurrentReconciles
-	if workers < 1 {
-		workers = 1
-	}
+	workers := max(r.MaxConcurrentReconciles, 1)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.App{}).
 		Owns(&appsv1.Deployment{}).

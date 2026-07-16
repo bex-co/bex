@@ -194,17 +194,17 @@ func main() {
 		log.Error(err, "failed to listen", "addr", addr)
 		os.Exit(1)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	go func() {
 		select {
 		case <-ctx.Done():
-			ln.Close()
+			_ = ln.Close()
 		case err := <-mgrErrCh:
 			if err != nil {
 				log.Error(err, "manager exited")
 			}
-			ln.Close()
+			_ = ln.Close()
 		}
 	}()
 
@@ -230,10 +230,10 @@ func main() {
 //  4. Re-negotiates SSL with the backend (for preamble-mode clients).
 //  5. Splices the connection bidirectionally.
 func handleConn(conn net.Conn, router *dbRouter, log interface {
-	Info(msg string, keysAndValues ...interface{})
-	Error(err error, msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...any)
+	Error(err error, msg string, keysAndValues ...any)
 }) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Peek at the first 8 bytes to distinguish SSLRequest from direct TLS.
 	var peek [8]byte
@@ -287,7 +287,7 @@ func handleConn(conn net.Conn, router *dbRouter, log interface {
 		log.Error(err, "dial backend failed", "backend", backend)
 		return
 	}
-	defer back.Close()
+	defer func() { _ = back.Close() }()
 
 	if isSSLRequest {
 		// Replicate the SSLRequest/S handshake with the backend so it upgrades
@@ -314,8 +314,8 @@ func handleConn(conn net.Conn, router *dbRouter, log interface {
 	// Splice the two sides bidirectionally. The TLS session is end-to-end between
 	// the client and CNPG — the proxy never sees the plaintext.
 	done := make(chan struct{}, 2)
-	go func() { io.Copy(back, conn); done <- struct{}{} }()
-	go func() { io.Copy(conn, back); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(back, conn); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(conn, back); done <- struct{}{} }()
 	<-done
 }
 

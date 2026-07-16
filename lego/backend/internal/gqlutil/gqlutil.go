@@ -106,6 +106,31 @@ func AllowList(arg any) []core.IPAllowListEntry {
 	return out
 }
 
+// Str reads an optional string argument, "" when absent — graphql-go omits an
+// unset optional arg from the args map entirely, so a plain map index can't
+// distinguish "absent" from an explicit empty string; this can. The one
+// resolver-arg helper every feature's GraphQL fragment shared as a verbatim
+// copy before graduating here (w10/m2).
+func Str(args map[string]any, key string) string {
+	if v, ok := args[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+// StrPtr reads an optional string argument as a nil-able pointer — nil when
+// absent, distinct from an explicit empty string. The pointer-returning sibling
+// of Str, for verbs (like a rename or a PATCH-shaped update) that must tell
+// "omitted" apart from "clear it". Graduated alongside Str (w10/m2): both
+// apps/graphql.go and registrycreds/graphql.go carried an identical copy.
+func StrPtr(args map[string]any, key string) *string {
+	v, ok := args[key].(string)
+	if !ok {
+		return nil
+	}
+	return &v
+}
+
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,

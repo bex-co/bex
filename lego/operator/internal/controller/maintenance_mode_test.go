@@ -30,12 +30,29 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// mustGetInto fetches nn into obj or fails the test — shared by every phase of
+// TestMaintenanceModeOnlySwitchesPublicIngress to keep each phase's own
+// cyclomatic complexity low (gocyclo counts per func, not per t.Run closure).
+func mustGetInto(t *testing.T, cl client.Client, ctx context.Context, nn types.NamespacedName, obj client.Object) {
+	t.Helper()
+	if err := cl.Get(ctx, nn, obj); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestMaintenanceModeOnlySwitchesPublicIngress walks one App through enable →
+// suspend → resume → disable as four t.Run phases (split out to keep gocyclo
+// happy, see mustGetInto above) — but they are NOT independent cases: each
+// phase mutates the shared app/cl/nn and depends on the previous phase's
+// state, so they must run in this order (the default for non-parallel
+// subtests) and never in isolation via -run TestX/resume.
 func TestMaintenanceModeOnlySwitchesPublicIngress(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
@@ -66,102 +83,89 @@ func TestMaintenanceModeOnlySwitchesPublicIngress(t *testing.T) {
 
 	var beforeDep appsv1.Deployment
 	var beforeSvc corev1.Service
-	if err := cl.Get(ctx, nn, &beforeDep); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, nn, &beforeSvc); err != nil {
-		t.Fatal(err)
-	}
+	mustGetInto(t, cl, ctx, nn, &beforeDep)
+	mustGetInto(t, cl, ctx, nn, &beforeSvc)
 
-	if err := cl.Get(ctx, nn, app); err != nil {
-		t.Fatal(err)
-	}
-	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
-	if err := cl.Update(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	reconcileApp()
-
-	var ing networkingv1.Ingress
-	if err := cl.Get(ctx, nn, &ing); err != nil {
-		t.Fatal(err)
-	}
-	if len(ing.Spec.Rules) != 2 {
-		t.Fatalf("Ingress hosts = %d, want platform + custom", len(ing.Spec.Rules))
-	}
-	for _, rule := range ing.Spec.Rules {
-		backend := rule.HTTP.Paths[0].Backend.Service
-		if backend.Name != "bex-activator" || backend.Port.Number != 8888 {
-			t.Fatalf("maintenance backend = %+v", backend)
+	t.Run("enable switches the public Ingress without touching the workload", func(t *testing.T) {
+		mustGetInto(t, cl, ctx, nn, app)
+		app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+		if err := cl.Update(ctx, app); err != nil {
+			t.Fatal(err)
 		}
-	}
-	var afterDep appsv1.Deployment
-	var afterSvc corev1.Service
-	if err := cl.Get(ctx, nn, &afterDep); err != nil {
-		t.Fatal(err)
-	}
-	if err := cl.Get(ctx, nn, &afterSvc); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(beforeDep.Spec, afterDep.Spec) || !reflect.DeepEqual(beforeSvc.Spec, afterSvc.Spec) {
-		t.Fatal("maintenance mode changed the workload Deployment or private Service")
-	}
+		reconcileApp()
+
+		var ing networkingv1.Ingress
+		mustGetInto(t, cl, ctx, nn, &ing)
+		if len(ing.Spec.Rules) != 2 {
+			t.Fatalf("Ingress hosts = %d, want platform + custom", len(ing.Spec.Rules))
+		}
+		for _, rule := range ing.Spec.Rules {
+			backend := rule.HTTP.Paths[0].Backend.Service
+			if backend.Name != "bex-activator" || backend.Port.Number != 8888 {
+				t.Fatalf("maintenance backend = %+v", backend)
+			}
+		}
+		var afterDep appsv1.Deployment
+		var afterSvc corev1.Service
+		mustGetInto(t, cl, ctx, nn, &afterDep)
+		mustGetInto(t, cl, ctx, nn, &afterSvc)
+		if !reflect.DeepEqual(beforeDep.Spec, afterDep.Spec) || !reflect.DeepEqual(beforeSvc.Spec, afterSvc.Spec) {
+			t.Fatal("maintenance mode changed the workload Deployment or private Service")
+		}
+	})
 
 	// Suspension scales the workload independently but the maintenance responder
 	// keeps owning public traffic; resume restores replicas without clearing it.
-	if err := cl.Get(ctx, nn, app); err != nil {
-		t.Fatal(err)
-	}
-	app.Spec.Suspended = true
-	if err := cl.Update(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	reconcileApp()
-	if err := cl.Get(ctx, nn, &afterDep); err != nil {
-		t.Fatal(err)
-	}
-	if afterDep.Spec.Replicas == nil || *afterDep.Spec.Replicas != 0 {
-		t.Fatalf("suspended maintenance replicas = %v, want 0", afterDep.Spec.Replicas)
-	}
-	if err := cl.Get(ctx, nn, &ing); err != nil {
-		t.Fatal(err)
-	}
-	for _, rule := range ing.Spec.Rules {
-		if got := rule.HTTP.Paths[0].Backend.Service.Name; got != "bex-activator" {
-			t.Fatalf("suspended maintenance backend = %q", got)
+	t.Run("suspend keeps the maintenance backend but scales replicas to zero", func(t *testing.T) {
+		mustGetInto(t, cl, ctx, nn, app)
+		app.Spec.Suspended = true
+		if err := cl.Update(ctx, app); err != nil {
+			t.Fatal(err)
 		}
-	}
-	if err := cl.Get(ctx, nn, app); err != nil {
-		t.Fatal(err)
-	}
-	app.Spec.Suspended = false
-	if err := cl.Update(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	reconcileApp()
-	if err := cl.Get(ctx, nn, &afterDep); err != nil {
-		t.Fatal(err)
-	}
-	if afterDep.Spec.Replicas == nil || *afterDep.Spec.Replicas != 2 {
-		t.Fatalf("resumed maintenance replicas = %v, want 2", afterDep.Spec.Replicas)
-	}
+		reconcileApp()
+		var afterDep appsv1.Deployment
+		mustGetInto(t, cl, ctx, nn, &afterDep)
+		if afterDep.Spec.Replicas == nil || *afterDep.Spec.Replicas != 0 {
+			t.Fatalf("suspended maintenance replicas = %v, want 0", afterDep.Spec.Replicas)
+		}
+		var ing networkingv1.Ingress
+		mustGetInto(t, cl, ctx, nn, &ing)
+		for _, rule := range ing.Spec.Rules {
+			if got := rule.HTTP.Paths[0].Backend.Service.Name; got != "bex-activator" {
+				t.Fatalf("suspended maintenance backend = %q", got)
+			}
+		}
+	})
 
-	if err := cl.Get(ctx, nn, app); err != nil {
-		t.Fatal(err)
-	}
-	app.Spec.MaintenanceMode.Enabled = false
-	if err := cl.Update(ctx, app); err != nil {
-		t.Fatal(err)
-	}
-	reconcileApp()
-	if err := cl.Get(ctx, nn, &ing); err != nil {
-		t.Fatal(err)
-	}
-	for _, rule := range ing.Spec.Rules {
-		if got := rule.HTTP.Paths[0].Backend.Service.Name; got != "web" {
-			t.Fatalf("disabled backend = %q, want web", got)
+	t.Run("resume restores replicas without clearing maintenance", func(t *testing.T) {
+		mustGetInto(t, cl, ctx, nn, app)
+		app.Spec.Suspended = false
+		if err := cl.Update(ctx, app); err != nil {
+			t.Fatal(err)
 		}
-	}
+		reconcileApp()
+		var afterDep appsv1.Deployment
+		mustGetInto(t, cl, ctx, nn, &afterDep)
+		if afterDep.Spec.Replicas == nil || *afterDep.Spec.Replicas != 2 {
+			t.Fatalf("resumed maintenance replicas = %v, want 2", afterDep.Spec.Replicas)
+		}
+	})
+
+	t.Run("disable restores the app's own backend", func(t *testing.T) {
+		mustGetInto(t, cl, ctx, nn, app)
+		app.Spec.MaintenanceMode.Enabled = false
+		if err := cl.Update(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+		reconcileApp()
+		var ing networkingv1.Ingress
+		mustGetInto(t, cl, ctx, nn, &ing)
+		for _, rule := range ing.Spec.Rules {
+			if got := rule.HTTP.Paths[0].Backend.Service.Name; got != "web" {
+				t.Fatalf("disabled backend = %q, want web", got)
+			}
+		}
+	})
 }
 
 func TestMaintenanceModePrecedesAutoHibernate(t *testing.T) {
