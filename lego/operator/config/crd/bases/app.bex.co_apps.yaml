@@ -301,6 +301,21 @@ spec:
                 items:
                   type: string
                 type: array
+              environmentIPAllowList:
+                description: |-
+                  EnvironmentIPAllowList is the environment-layer inbound-IP rule set
+                  (w4/m28) — written only by the environment fan-out (never by the
+                  service's own allowlist verb), rendered as a SECOND Traefik Middleware
+                  chained with IPAllowList's on the same Ingress, so a source must pass
+                  both layers (Render's every-applicable-rule intersection). Empty means
+                  no environment layer (unassigned, or the environment allows all
+                  pre-migration); an environment with an explicitly empty rule list
+                  projects the unmatchable deny-all placeholder instead (the backend
+                  projects policy; this field is mechanism). Same eligibility as
+                  IPAllowList: web_service and static_site only.
+                items:
+                  type: string
+                type: array
               expose:
                 description: |-
                   Expose, when true and the controller's BEX_BASE_DOMAIN env is set, serves the

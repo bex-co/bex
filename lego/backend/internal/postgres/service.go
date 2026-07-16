@@ -23,6 +23,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -460,6 +461,8 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if environment.ID != "" {
 		d.Labels[core.LabelProject] = environment.ProjectID
 		d.Labels[core.LabelEnvironment] = environment.ID
+		// Newborn members inherit the environment's inbound-IP layer (w4/m28).
+		d.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(environment.IPAllowList)
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
@@ -863,6 +866,24 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 			d.Labels = map[string]string{}
 		}
 		d.Labels[core.LabelProject] = projectID
+	})
+	return err
+}
+
+// SetEnvironmentIPAllowList projects (or, with nil, clears) the environment
+// inbound-IP layer onto this Database (w4/m28) — the internal/environments
+// fan-out's write path. The Database's OWN IPAllowList is never touched: the
+// operator chains one middleware per layer, so a source must pass both.
+func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error {
+	d, err := s.AuthorizeDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if slices.Equal(d.Spec.EnvironmentIPAllowList, cidrs) {
+		return nil // unchanged layer: no Update, no resourceVersion churn
+	}
+	_, err = s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+		d.Spec.EnvironmentIPAllowList = cidrs
 	})
 	return err
 }

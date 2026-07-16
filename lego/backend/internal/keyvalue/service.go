@@ -389,6 +389,8 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if environment.ID != "" {
 		kv.Labels[core.LabelProject] = environment.ProjectID
 		kv.Labels[core.LabelEnvironment] = environment.ID
+		// Newborn members inherit the environment's inbound-IP layer (w4/m28).
+		kv.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(environment.IPAllowList)
 	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
@@ -460,6 +462,23 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 		}
 		kv.Labels[core.LabelProject] = projectID
 	}
+	resourcemeta.Touch(kv, s.Now())
+	return s.Client.Update(ctx, kv)
+}
+
+// SetEnvironmentIPAllowList projects (or, with nil, clears) the environment
+// inbound-IP layer onto this KeyValue (w4/m28) — the internal/environments
+// fan-out's write path, mirroring postgres.Service.SetEnvironmentIPAllowList.
+// The store's OWN IPAllowList is never touched.
+func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if slices.Equal(kv.Spec.EnvironmentIPAllowList, cidrs) {
+		return nil // unchanged layer: no Update, no resourceVersion churn
+	}
+	kv.Spec.EnvironmentIPAllowList = cidrs
 	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Update(ctx, kv)
 }

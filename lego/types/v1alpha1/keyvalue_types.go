@@ -106,6 +106,17 @@ type KeyValueSpec struct {
 	// entry is rejected at admission).
 	// +optional
 	IPAllowList []IPAllowEntry `json:"ipAllowList,omitempty"`
+
+	// EnvironmentIPAllowList is the environment-layer inbound-IP rule set
+	// (w4/m28) — written only by the environment fan-out, rendered as a
+	// SECOND MiddlewareTCP chained with IPAllowList's on the external SNI
+	// route, so a source must pass both layers (Render's intersection
+	// semantics; pre-m28 the fan-out full-replaced IPAllowList itself,
+	// clobbering the resource's own rules). CIDRs only — descriptions live on
+	// the environment row. Empty means no environment layer; an explicitly
+	// empty environment rule list projects the deny-all placeholder instead.
+	// +optional
+	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
 }
 
 // KeyValuePhase mirrors the provisioning lifecycle.

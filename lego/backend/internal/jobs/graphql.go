@@ -35,8 +35,18 @@ var jobGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"planId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.PlanID })},
 		"status":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.Status })},
 		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00") })},
-		"startedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { if v.StartedAt == nil { return "" }; return v.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00") })},
-		"finishedAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { if v.FinishedAt == nil { return "" }; return v.FinishedAt.UTC().Format("2006-01-02T15:04:05Z07:00") })},
+		"startedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any {
+			if v.StartedAt == nil {
+				return ""
+			}
+			return v.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+		})},
+		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any {
+			if v.FinishedAt == nil {
+				return ""
+			}
+			return v.FinishedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+		})},
 	},
 })
 

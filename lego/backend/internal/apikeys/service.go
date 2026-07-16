@@ -39,7 +39,7 @@ import (
 type APIKey struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	Secret     string `json:"secret,omitempty"`     // only on create; store it — it is not retrievable
+	Secret     string `json:"secret,omitempty"` // only on create; store it — it is not retrievable
 	CreatedAt  string `json:"createdAt"`
 	CreatedBy  string `json:"createdBy,omitempty"`  // minting caller's identity subject
 	LastUsedAt string `json:"lastUsedAt,omitempty"` // last introspection (RFC 3339); empty => never used

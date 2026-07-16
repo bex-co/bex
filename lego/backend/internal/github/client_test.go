@@ -233,7 +233,7 @@ func TestRepoAccessible(t *testing.T) {
 
 func TestNextLink(t *testing.T) {
 	cases := map[string]string{
-		"":                                "",
+		"":                                 "",
 		`<https://a/x?page=2>; rel="next"`: "https://a/x?page=2",
 		`<https://a/x?page=5>; rel="last"`: "",
 		`<https://a/x?page=2>; rel="next", <https://a/x?page=9>; rel="last"`: "https://a/x?page=2",

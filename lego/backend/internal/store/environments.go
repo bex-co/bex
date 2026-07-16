@@ -71,11 +71,20 @@ func scanEnvironment(row pgx.Row) (Environment, error) {
 	return e, nil
 }
 
+// CreateEnvironment inserts a new environment seeded with the allow-all
+// inbound rule pair (w4/m28): empty means deny-all now, so a fresh
+// environment must start explicitly open (Render's dashboard seeds
+// 0.0.0.0/0 the same way). CreateWithACL's explicit list — including an
+// explicit deny-all [] — overwrites the seed via SetEnvironmentACL.
 func (s *PGStore) CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (Environment, error) {
+	seed, err := json.Marshal(core.DefaultEnvironmentAllowList())
+	if err != nil {
+		return Environment{}, err
+	}
 	return scanEnvironment(s.Pool.QueryRow(ctx,
-		`INSERT INTO environments (id, project_id, tenant_id, name) VALUES ($1, $2, $3, $4)
+		`INSERT INTO environments (id, project_id, tenant_id, name, ip_allow_list) VALUES ($1, $2, $3, $4, $5)
 		 RETURNING `+environmentColumns,
-		ids.New(ids.Environment), projectID, tenantID, name,
+		ids.New(ids.Environment), projectID, tenantID, name, seed,
 	))
 }
 

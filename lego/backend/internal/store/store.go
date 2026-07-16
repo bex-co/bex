@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	mathrand "math/rand/v2"
@@ -230,6 +231,12 @@ type DesiredApp struct {
 	PrimaryHost   string
 	Hosts         []string
 	HostRedirects map[string]string
+	// EnvironmentIPAllowList is the member's environment inbound-IP layer
+	// (w4/m28), projected from the environments row at read time (the
+	// EnvironmentLayerCIDRs shape member CRs carry) so a projector-created CR
+	// starts consistent with the environments fan-out. Update-path syncs stay
+	// fan-out-owned: this field is deliberately NOT in applyOwnedSpec.
+	EnvironmentIPAllowList []string
 }
 
 // Store is the persistence boundary. The API writes through it, the reconciler
@@ -781,8 +788,13 @@ func (s *PGStore) RemoveDomain(ctx context.Context, appID, host string) error {
 }
 
 func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
+	// LEFT JOIN environments so a member row carries its environment's rule
+	// list (w4/m28): projectSpec projects the inbound-IP layer onto a CR the
+	// projector (re)creates, keeping the fallback-create path consistent with
+	// the environments fan-out.
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+`, t.name FROM apps a JOIN tenants t ON t.id = a.tenant_id ORDER BY a.created_at`)
+		`SELECT `+appColumns+`, t.name, e.ip_allow_list FROM apps a JOIN tenants t ON t.id = a.tenant_id
+		 LEFT JOIN environments e ON e.id = a.environment_id ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -791,11 +803,19 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	index := map[string]int{}
 	for rows.Next() {
 		var d DesiredApp
+		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.TenantName)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.TenantName, &envRules)
 		if err != nil {
 			return nil, err
+		}
+		if d.EnvironmentID != "" && envRules != nil {
+			var entries []core.IPAllowListEntry
+			if err := json.Unmarshal(envRules, &entries); err != nil {
+				return nil, err
+			}
+			d.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(entries)
 		}
 		index[d.ID] = len(out)
 		out = append(out, d)

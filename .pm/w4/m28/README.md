@@ -1,18 +1,18 @@
 # w4 · m28 — Environment inbound-IP rules: real enforcement semantics
 
-**Worker:** worker4 **Goal:** Environment-level IP rules mean what Render's docs say: they apply to all eligible public services (web/static), compose with workspace/service-level rules (a source must pass every layer), and an empty list means deny-all — with existing bex environments migrated safely (seeded open, no lockout). **Status:** todo
+**Worker:** worker4 **Goal:** Environment-level IP rules mean what Render's docs say: they apply to all eligible public services (web/static), compose with workspace/service-level rules (a source must pass every layer), and an empty list means deny-all — with existing bex environments migrated safely (seeded open, no lockout). **Status:** in progress — t001–t007 done 2026-07-15 (design + full enforcement implementation + tests + docs shipped; five consistency-review gaps fixed pre-ship, cross-feature edges filed as `w4/025.md`); t008 closeout pending the DoD's LIVE verification — the local CAPD cluster is unrecoverable this session (stale docker networking), so the live check runs against production once CI deploys this commit (the m27 pattern): a disposable environment + web service, out-of-range source blocked at the public URL, in-range passes
 
 ## Tasks (in order)
 
 | id   | title                                                                                                | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Design decision (verify-first): eligible-target set, layer composition, empty-list migration          | 60m | —                |
-| t002 | Core + store: composed rule evaluation across workspace/environment/service layers                    | 60m | t001             |
-| t003 | Enforcement fan-out to eligible public web services/static sites (App CR projection → operator/Traefik) | 90m | t002             |
-| t004 | Surfaces: REST/GraphQL/MCP semantics + dashboard copy for seeded default and deny-all                 | 45m | t002             |
-| t005 | Render parity                                                                                          | 30m | t003, t004       |
-| t006 | Simplify                                                                                               | 20m | t005             |
-| t007 | Test coverage                                                                                          | 45m | t005             |
+| t001 | Design decision (verify-first): eligible-target set, layer composition, empty-list migration — **DONE** | 60m | —                |
+| t002 | Core + store: composed rule evaluation across workspace/environment/service layers — **DONE** | 60m | t001             |
+| t003 | Enforcement fan-out to eligible public web services/static sites (App CR projection → operator/Traefik) — **DONE** | 90m | t002             |
+| t004 | Surfaces: REST/GraphQL/MCP semantics + dashboard copy for seeded default and deny-all — **DONE** | 45m | t002             |
+| t005 | Render parity — **DONE** | 30m | t003, t004       |
+| t006 | Simplify — **DONE** | 20m | t005             |
+| t007 | Test coverage — **DONE** | 45m | t005             |
 | t008 | Closeout                                                                                               | 15m | t007             |
 
 ## Definition of done

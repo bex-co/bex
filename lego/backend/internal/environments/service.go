@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -62,11 +63,11 @@ type EnvironmentStore interface {
 // Postgres to group Database CRs into an environment (w6/m20 extension) —
 // mirroring internal/projects.DatabaseIndex. Unlike services, Databases have
 // no control-plane row, so membership is a label (core.LabelEnvironment),
-// read via ListPostgres and written via SetEnvironmentID. SetIPAllowList
-// (w6/m19) is the same feature's protected-environment ACL fan-out target —
-// environments needs it too since a member Database's ipAllowList follows its
-// environment's (SetACL's propagateIPAllowList). *postgres.Service satisfies
-// this structurally.
+// read via ListPostgres and written via SetEnvironmentID.
+// SetEnvironmentIPAllowList (w4/m28) is the ACL fan-out target: it projects
+// the ENVIRONMENT rule layer onto a member, never touching the Database's own
+// ipAllowList (the pre-m28 fan-out full-replaced it — that clobber is
+// retired). *postgres.Service satisfies this structurally.
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
@@ -74,7 +75,7 @@ type DatabaseIndex interface {
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (postgres.PostgresView, error)
+	SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -83,7 +84,7 @@ type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (keyvalue.KeyValueView, error)
+	SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error
 }
 
 // EnvGroupIndex is the narrow cross-feature contract environments needs to
@@ -195,7 +196,10 @@ type CreateEnvironmentRequest struct {
 }
 
 func (r CreateEnvironmentRequest) hasACL() bool {
-	return r.ProtectedStatus != "" || r.NetworkIsolationEnabled || len(r.IPAllowList) > 0
+	// A non-nil empty IPAllowList is an EXPLICIT deny-all (w4/m28) — it must
+	// reach applyACL to overwrite the store's seeded allow-all default; only
+	// an absent (nil) list keeps the seed.
+	return r.ProtectedStatus != "" || r.NetworkIsolationEnabled || r.IPAllowList != nil
 }
 
 // databaseIDsByEnvironment lists workspaceID's Databases once and groups
@@ -432,6 +436,11 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.applyAppEnvironmentLabels(ctx, names, "", false); err != nil {
 		return err
 	}
+	// Clear the inbound-IP layer on every member (w4/m28) — a deleted
+	// environment must not leave its rules enforced on orphaned members.
+	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, nil); err != nil {
+		return err
+	}
 	if s.EnvGroups != nil {
 		workspaceCtx := core.WithWorkspace(ctx, e.TenantID)
 		groups, err := s.EnvGroups.ListEnvironmentMemberships(workspaceCtx, e.TenantID)
@@ -476,10 +485,19 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceNames []str
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.applyAppEnvironmentLabels(ctx, namesLeaving(before, sids), "", false); err != nil {
+	leaving := namesLeaving(before, sids)
+	if err := s.applyAppEnvironmentLabels(ctx, leaving, "", false); err != nil {
 		return EnvironmentView{}, err
 	}
 	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
+		return EnvironmentView{}, err
+	}
+	// Inbound-IP layer sync (w4/m28): leavers lose the environment layer,
+	// members carry the environment's current rules.
+	if err := s.applyAppAllowLists(ctx, leaving, nil); err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.applyAppAllowLists(ctx, sids, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
 		return EnvironmentView{}, err
 	}
 	dids, err := s.databaseIDsForEnvironment(ctx, e.TenantID, e.ID)
@@ -528,10 +546,14 @@ func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []str
 	for _, did := range databaseIDs {
 		want[did] = true
 	}
+	layer := core.EnvironmentLayerCIDRs(e.IPAllowList)
 	for _, d := range existing {
 		switch {
 		case d.EnvironmentID == e.ID && !want[d.ID]:
 			if err := s.Databases.SetEnvironmentID(ctx, d.ID, ""); err != nil {
+				return EnvironmentView{}, err
+			}
+			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, nil); err != nil {
 				return EnvironmentView{}, err
 			}
 		case d.EnvironmentID != e.ID && want[d.ID]:
@@ -539,6 +561,10 @@ func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []str
 				return EnvironmentView{}, err
 			}
 			if err := s.Databases.SetProjectID(ctx, d.ID, e.ProjectID); err != nil {
+				return EnvironmentView{}, err
+			}
+			// Joiners inherit the environment's inbound-IP layer (w4/m28).
+			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, layer); err != nil {
 				return EnvironmentView{}, err
 			}
 		}
@@ -566,10 +592,14 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 	for _, kid := range keyValueIDs {
 		want[kid] = true
 	}
+	layer := core.EnvironmentLayerCIDRs(e.IPAllowList)
 	for _, kv := range existing {
 		switch {
 		case kv.EnvironmentID == e.ID && !want[kv.ID]:
 			if err := s.KeyValues.SetEnvironmentID(ctx, kv.ID, ""); err != nil {
+				return EnvironmentView{}, err
+			}
+			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, nil); err != nil {
 				return EnvironmentView{}, err
 			}
 		case kv.EnvironmentID != e.ID && want[kv.ID]:
@@ -577,6 +607,10 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 				return EnvironmentView{}, err
 			}
 			if err := s.KeyValues.SetProjectID(ctx, kv.ID, e.ProjectID); err != nil {
+				return EnvironmentView{}, err
+			}
+			// Joiners inherit the environment's inbound-IP layer (w4/m28).
+			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, layer); err != nil {
 				return EnvironmentView{}, err
 			}
 		}
@@ -683,7 +717,7 @@ func (s *Service) applyACL(ctx context.Context, view EnvironmentView, protectedS
 	if err := s.applyAppEnvironmentLabels(ctx, sids, view.ID, view.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.propagateIPAllowList(ctx, view.OwnerID, view.ID, ipAllowList); err != nil {
+	if err := s.propagateIPAllowList(ctx, view.OwnerID, view.ID, sids, core.EnvironmentLayerCIDRs(ipAllowList)); err != nil {
 		return EnvironmentView{}, err
 	}
 	dids, err := s.databaseIDsForEnvironment(ctx, view.OwnerID, view.ID)
@@ -881,12 +915,21 @@ func (s *Service) setAppEnvironmentLabel(ctx context.Context, name, envID string
 	return s.Client.Patch(ctx, a, client.MergeFrom(before))
 }
 
-// propagateIPAllowList fans an environment's ipAllowList out to every
-// Database/KeyValue whose core.LabelEnvironment (w6/m20) names this
-// environment — the same membership SetDatabases/SetKeyValues manage.
-// Databases/KeyValues nil (unwired) => no-op, matching internal/projects' own
-// degrade.
-func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, entries []core.IPAllowListEntry) error {
+// propagateIPAllowList fans an environment's inbound-IP layer out to every
+// member: Databases/KeyValues whose core.LabelEnvironment (w6/m20) names this
+// environment, and (w4/m28) the member Apps' spec.environmentIPAllowList —
+// each member keeps its OWN spec.ipAllowList untouched (pre-m28 this verb
+// full-replaced the datastores' own lists, clobbering service-level rules);
+// the operator chains one middleware per layer so a source must pass both.
+// cidrs is the projected layer (core.EnvironmentLayerCIDRs — allow-list, or
+// the deny-all placeholder for an explicitly empty rule set), or nil to CLEAR
+// the layer (environment deleted / member leaving). serviceNames are the
+// member Apps. Databases/KeyValues nil (unwired) => datastore half no-ops,
+// matching internal/projects' own degrade.
+func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, serviceNames, cidrs []string) error {
+	if err := s.applyAppAllowLists(ctx, serviceNames, cidrs); err != nil {
+		return err
+	}
 	if s.Databases != nil {
 		dbs, err := s.Databases.ListPostgres(ctx, tenantID)
 		if err != nil {
@@ -896,7 +939,7 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if d.EnvironmentID != environmentID {
 				continue
 			}
-			if _, err := s.Databases.SetIPAllowList(ctx, d.ID, entries); err != nil {
+			if err := s.Databases.SetEnvironmentIPAllowList(ctx, d.ID, cidrs); err != nil {
 				return err
 			}
 		}
@@ -910,12 +953,47 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if kv.EnvironmentID != environmentID {
 				continue
 			}
-			if _, err := s.KeyValues.SetIPAllowList(ctx, kv.ID, entries); err != nil {
+			if err := s.KeyValues.SetEnvironmentIPAllowList(ctx, kv.ID, cidrs); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// applyAppAllowLists fans one projected layer over a set of member Apps —
+// applyAppEnvironmentLabels' inbound-IP sibling, shared by SetServices and
+// propagateIPAllowList so the per-App loop exists once.
+func (s *Service) applyAppAllowLists(ctx context.Context, names []string, cidrs []string) error {
+	for _, name := range names {
+		if err := s.setAppEnvironmentAllowList(ctx, name, cidrs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setAppEnvironmentAllowList is setAppEnvironmentLabel's inbound-IP sibling
+// (w4/m28): the same individually-authorized AuthorizeApp seam, patching
+// spec.environmentIPAllowList to the projected layer (nil clears it). The
+// same nil-Client and stale-name degrades apply.
+func (s *Service) setAppEnvironmentAllowList(ctx context.Context, name string, cidrs []string) error {
+	if s.Client == nil {
+		return nil
+	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
+	if err != nil {
+		if errors.Is(err, core.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	if slices.Equal(a.Spec.EnvironmentIPAllowList, cidrs) {
+		return nil
+	}
+	before := a.DeepCopy()
+	a.Spec.EnvironmentIPAllowList = cidrs
+	return s.Client.Patch(ctx, a, client.MergeFrom(before))
 }
 
 func mapStoreErr(err error) error {

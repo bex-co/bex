@@ -277,7 +277,9 @@ func idsOf(keys []apikeys.APIKey) []string {
 // by the read verbs under test.
 type fakeGitHubAPIClient struct{}
 
-func (f *fakeGitHubAPIClient) InstallURL() string { return "https://github.com/apps/bex/installations/new" }
+func (f *fakeGitHubAPIClient) InstallURL() string {
+	return "https://github.com/apps/bex/installations/new"
+}
 func (f *fakeGitHubAPIClient) GetInstallation(context.Context, int64) (github.Installation, error) {
 	return github.Installation{}, nil
 }

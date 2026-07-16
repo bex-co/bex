@@ -312,6 +312,12 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if len(env.ID) != 24 || env.ID[:4] != "env-" {
 		t.Errorf("environment id not Render-style: %q", env.ID)
 	}
+	// w4/m28 no-lockout invariant: empty means deny-all now, so a fresh
+	// environment must start explicitly seeded allow-all (0.0.0.0/0 + ::/0)
+	// — never an empty list a member would enforce as deny-everything.
+	if len(env.IPAllowList) != 2 || env.IPAllowList[0].CIDRBlock != "0.0.0.0/0" || env.IPAllowList[1].CIDRBlock != "::/0" {
+		t.Errorf("new environment ip_allow_list = %+v, want the seeded allow-all pair", env.IPAllowList)
+	}
 	prod, err := s.CreateEnvironment(ctx, proj.ID, ten.ID, "production")
 	if err != nil {
 		t.Fatalf("create second environment: %v", err)

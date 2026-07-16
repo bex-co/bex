@@ -212,16 +212,43 @@ func TestSetACL_PropagatesIPAllowListToEnvironmentMembers(t *testing.T) {
 	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, entries); err != nil {
 		t.Fatalf("SetACL: %v", err)
 	}
-	if got := dbs.dbs["indb"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" || got[0].Description != "office" {
-		t.Errorf("indb (member of this environment) should get the environment's ipAllowList (with its description), got %v", got)
+	// w4/m28: the fan-out projects the ENVIRONMENT layer (CIDRs only) —
+	// the member's own IPAllowList is never touched (pre-m28 it was
+	// full-replaced, clobbering service-level rules).
+	if got := dbs.envLayers["indb"]; len(got) != 1 || got[0] != "10.0.0.0/24" {
+		t.Errorf("indb (member of this environment) should get the projected environment layer, got %v", got)
 	}
-	if got := dbs.dbs["outdb"].IPAllowList; got != nil {
-		t.Errorf("outdb (member of a different environment) must not be touched, got %v", got)
+	if got := dbs.dbs["indb"].IPAllowList; got != nil {
+		t.Errorf("indb's own IPAllowList must stay untouched (the pre-m28 clobber is retired), got %v", got)
 	}
-	if got := kvs.kvs["inkv"].IPAllowList; len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/24" || got[0].Description != "office" {
-		t.Errorf("inkv (member of this environment) should get the environment's ipAllowList (with its description), got %v", got)
+	if _, touched := dbs.envLayers["outdb"]; touched {
+		t.Errorf("outdb (member of a different environment) must not be touched")
 	}
-	if got := kvs.kvs["outkv"].IPAllowList; got != nil {
-		t.Errorf("outkv (member of a different environment) must not be touched, got %v", got)
+	if got := kvs.envLayers["inkv"]; len(got) != 1 || got[0] != "10.0.0.0/24" {
+		t.Errorf("inkv (member of this environment) should get the projected environment layer, got %v", got)
+	}
+	if _, touched := kvs.envLayers["outkv"]; touched {
+		t.Errorf("outkv (member of a different environment) must not be touched")
+	}
+}
+
+// TestSetACL_EmptyListProjectsDenyAll pins w4/m28's empty-means-deny-all: an
+// explicitly empty rule set reaches members as the unmatchable placeholder,
+// never as a cleared (open) layer.
+func TestSetACL_EmptyListProjectsDenyAll(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st)
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID})
+	svc.Databases = dbs
+
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, []core.IPAllowListEntry{}); err != nil {
+		t.Fatalf("SetACL: %v", err)
+	}
+	if got := dbs.envLayers["indb"]; len(got) != 1 || got[0] != core.DenyAllCIDR {
+		t.Errorf("empty rule set should project the deny-all placeholder, got %v", got)
 	}
 }

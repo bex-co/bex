@@ -450,6 +450,19 @@ type AppSpec struct {
 	// +optional
 	IPAllowList []string `json:"ipAllowList,omitempty"`
 
+	// EnvironmentIPAllowList is the environment-layer inbound-IP rule set
+	// (w4/m28) — written only by the environment fan-out (never by the
+	// service's own allowlist verb), rendered as a SECOND Traefik Middleware
+	// chained with IPAllowList's on the same Ingress, so a source must pass
+	// both layers (Render's every-applicable-rule intersection). Empty means
+	// no environment layer (unassigned, or the environment allows all
+	// pre-migration); an environment with an explicitly empty rule list
+	// projects the unmatchable deny-all placeholder instead (the backend
+	// projects policy; this field is mechanism). Same eligibility as
+	// IPAllowList: web_service and static_site only.
+	// +optional
+	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
+
 	// MaintenanceMode takes the service intentionally offline behind an
 	// interstitial page without suspending it — pods keep running, only the
 	// Ingress routing changes. Render's maintenanceMode (web_service only;
