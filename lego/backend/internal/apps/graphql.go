@@ -415,6 +415,13 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewNonNull(maintenanceModeGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.MaintenanceMode }),
 		},
+		// latestDeployId is the id of the first deploy row, populated on Create
+		// only (w3/m14). The dashboard uses it to navigate straight to the
+		// in-flight deploy page after a git-sourced service is created.
+		"latestDeployId": &graphql.Field{
+			Type:    graphql.String,
+			Resolve: gqlutil.Field(func(a AppView) any { return a.LatestDeployID }),
+		},
 	},
 })
 

@@ -1,19 +1,19 @@
 # w3 · m14 — Live deploy following: land on the deploy, watch it build
 
-**Worker:** worker3 **Goal:** Render's live deploy loop: creating a service or triggering a Manual Deploy lands the browser on the in-flight deploy's page, where build-log lines stream live and the status flips without a refresh. **Status:** todo
+**Worker:** worker3 **Goal:** Render's live deploy loop: creating a service or triggering a Manual Deploy lands the browser on the in-flight deploy's page, where build-log lines stream live and the status flips without a refresh. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                              | est | depends_on             |
 | ---- | ---------------------------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Capture Render's live deploy-following behavior → `docs/render-artifacts/`                            | 30m | —                      |
-| t002 | Backend: extend `FollowLogs`/SSE to `type=build` — stream the `bld-<name>-gen-<N>` Job pod live       | 45m | —                      |
-| t003 | Deploy detail page: in-flight auto-refresh + build pane switches to the live tail                     | 45m | t002                   |
-| t004 | Create wizard + Manual Deploy land on the in-flight deploy's detail page                              | 30m | —                      |
-| t005 | Render parity — same tail semantics across REST SSE/GraphQL/MCP where exposed; compare Render; refresh ADR018 | 20m | t003, t004             |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                           | 20m | t005                   |
-| t007 | Test coverage — tail routing/honesty + dashboard in-flight behavior                                   | 30m | t005                   |
-| t008 | Closeout — DoD met → move milestone to `done/`                                                        | 10m | t007                   |
+| t001 | Capture Render's live deploy-following behavior → `docs/render-artifacts/`                            | 30m | —                      | — **DONE** |
+| t002 | Backend: extend `FollowLogs`/SSE to `type=build` — stream the `bld-<name>-gen-<N>` Job pod live       | 45m | —                      | — **DONE** |
+| t003 | Deploy detail page: in-flight auto-refresh + build pane switches to the live tail                     | 45m | t002                   | — **DONE** |
+| t004 | Create wizard + Manual Deploy land on the in-flight deploy's detail page                              | 30m | —                      | — **DONE** |
+| t005 | Render parity — same tail semantics across REST SSE/GraphQL/MCP where exposed; compare Render; refresh ADR018 | 20m | t003, t004             | — **DONE** |
+| t006 | Simplify — `/simplify` over the code this milestone changed                                           | 20m | t005                   | — **DONE** |
+| t007 | Test coverage — tail routing/honesty + dashboard in-flight behavior                                   | 30m | t005                   | — **DONE** |
+| t008 | Closeout — DoD met → move milestone to `done/`                                                        | 10m | t007                   | — **DONE** |
 
 ## Definition of done
 

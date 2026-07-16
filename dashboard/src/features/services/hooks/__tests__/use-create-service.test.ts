@@ -22,7 +22,10 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId }),
 }));
 
-import { useCreateService } from "@/features/services/hooks/use-create-service";
+import {
+  useCreateService,
+  type CreateServiceResult,
+} from "@/features/services/hooks/use-create-service";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
@@ -39,7 +42,7 @@ describe("useCreateService", () => {
     mockUseMutation.mockReturnValue([mutate, { loading: false }]);
 
     const { result } = renderHook(() => useCreateService());
-    let id: string | null | undefined;
+    let id: CreateServiceResult | null | undefined;
     await act(async () => {
       id = await result.current.create({
         name: "web",
@@ -54,7 +57,7 @@ describe("useCreateService", () => {
       });
     });
 
-    expect(id).toBe("srv-1");
+    expect(id).toEqual({ id: "srv-1", deployId: undefined });
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
@@ -126,7 +129,7 @@ describe("useCreateService", () => {
     currentWorkspaceId = null;
 
     const { result } = renderHook(() => useCreateService());
-    let id: string | null | undefined;
+    let id: CreateServiceResult | null | undefined;
     await act(async () => {
       id = await result.current.create({ name: "web" });
     });

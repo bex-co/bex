@@ -398,6 +398,10 @@ type AppView struct {
 	// value. The Settings → Maintenance Mode section reads it and writes it via
 	// SetMaintenanceMode. See docs/render-artifacts/maintenance-mode.md.
 	MaintenanceMode MaintenanceModeView `json:"maintenanceMode"`
+	// LatestDeployID is the id of the first deploy row, populated by Create only
+	// (w3/m14). The dashboard uses it to navigate to the in-flight deploy page
+	// immediately after a git-sourced service is created. Empty on Get/List.
+	LatestDeployID string `json:"latestDeployId,omitempty"`
 }
 
 // StaticRouteView is the neutral projection of one static_site redirect/rewrite
@@ -1392,6 +1396,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// UNIQUE(tenant_id, name) constraint is the race-safe backstop behind the
 	// GetApp pre-check above: a concurrent duplicate create that slips past it
 	// still surfaces as ErrConflict here, never an unclassified 500.
+	var firstDeployID string
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
 			TenantID:             tenantID,
@@ -1429,6 +1434,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// (operator effectiveHosts) — never req.Name, which is only
 		// workspace-unique and can collide across tenants.
 		a.Spec.Subdomain = row.Slug
+		firstDeployID = row.FirstDeployID
 	}
 	// The control-plane row already supplied its canonical id above. A direct
 	// API create has no row, so persist an equally Render-shaped service id on
@@ -1461,7 +1467,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if s.Kick != nil {
 		s.Kick()
 	}
-	return s.view(a), nil
+	v := s.view(a)
+	v.LatestDeployID = firstDeployID
+	return v, nil
 }
 
 // nameTaken reports whether name is already claimed in the exactly-one
@@ -1537,6 +1545,7 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11).
+	var firstDeployID string
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
 			TenantID:             tenantID,
@@ -1579,6 +1588,7 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		// effectiveHosts) — never req.Name, which is only workspace-unique and
 		// can collide across tenants.
 		a.Spec.Subdomain = row.Slug
+		firstDeployID = row.FirstDeployID
 	}
 	if a.Labels == nil {
 		a.Labels = map[string]string{}
@@ -1608,7 +1618,9 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	if s.Kick != nil {
 		s.Kick()
 	}
-	return s.view(a), nil
+	v := s.view(a)
+	v.LatestDeployID = firstDeployID
+	return v, nil
 }
 
 // writeNewApp makes create-time secret files visible to the very first pod.

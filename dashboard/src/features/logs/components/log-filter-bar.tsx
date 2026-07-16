@@ -30,7 +30,12 @@ import {
 // instance dropdowns fed by `logLabelValues`, a request-path text filter, a wide
 // search box, and a live toggle. Every value bex-api honors (w3/m8); the
 // dropdowns discover real observed values rather than guessing.
-const TYPE_LABEL_KEYS: Record<LogTypeFilter, keyof typeof en> = {
+// LOG_TYPE_BUILD is not a user-selectable filter in the Logs tab — it is only
+// used by the deploy detail page's build pane — so it is excluded from this map.
+const TYPE_LABEL_KEYS: Record<
+  Exclude<LogTypeFilter, "build">,
+  keyof typeof en
+> = {
   [LOG_TYPE_ALL]: "logs.typeAll",
   [LOG_TYPE_APP]: "logs.typeApplication",
   [LOG_TYPE_REQUEST]: "logs.typeRequest",

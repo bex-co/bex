@@ -23,20 +23,26 @@ export interface LogLine {
 // lines; without it (local dev) it 503s — an honest state the viewer renders as
 // "request logs need the log store" (docs/ADR010-observability.md). `all` is the
 // no-filter sentinel — sent as an absent `type` arg.
+// `build` streams the in-flight build Job's pod stdout via SSE (w3/m14) — only
+// used by the deploy detail page's live build pane, not the Logs tab filter UI.
 export const LOG_TYPE_ALL = "all";
 export const LOG_TYPE_APP = "app";
 export const LOG_TYPE_REQUEST = "request";
+export const LOG_TYPE_BUILD = "build";
 
 export type LogTypeFilter =
   | typeof LOG_TYPE_ALL
   | typeof LOG_TYPE_APP
-  | typeof LOG_TYPE_REQUEST;
+  | typeof LOG_TYPE_REQUEST
+  | typeof LOG_TYPE_BUILD;
 
-export const LOG_TYPE_FILTERS: LogTypeFilter[] = [
+// LOG_TYPE_BUILD is intentionally absent — it is not a user-selectable type in
+// the Logs filter bar; it is only used by the deploy page's live build pane.
+export const LOG_TYPE_FILTERS = [
   LOG_TYPE_ALL,
   LOG_TYPE_APP,
   LOG_TYPE_REQUEST,
-];
+] as const satisfies LogTypeFilter[];
 
 // The discoverable log labels the filter dropdowns query values for
 // (`logLabelValues`) — Render's filter vocabulary. `host` is answered from the

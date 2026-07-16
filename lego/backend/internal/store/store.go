@@ -94,6 +94,10 @@ type App struct {
 	// commit metadata (image-backed app, or no GitHub connection to resolve
 	// the branch through).
 	FirstDeployCommit CommitInfo `json:"-"`
+	// FirstDeployID is CreateApp OUTPUT only (w3/m14): the id minted for the
+	// first deploy row. Callers use it to navigate straight to the deploy page.
+	// Not stored on the app row — only populated by CreateApp, never read back.
+	FirstDeployID string `json:"-"`
 }
 
 // Deploy status vocabulary — Render's complete eleven-state enum. The backend
@@ -596,6 +600,7 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	a.ID = ids.New(ids.Service)
 	a.Slug = a.Name
 	for attempt := 0; ; attempt++ {
+		deployID := ids.New(ids.Deploy)
 		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
@@ -610,10 +615,11 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			// starts at metadata.generation 1.
 			_, err := tx.Exec(ctx,
 				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status) VALUES ($1, $2, $3, $4, 1, $5, $6, $7)`,
-				ids.New(ids.Deploy), a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
+				deployID, a.ID, TriggerCreate, a.Image, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated)
 			return err
 		})
 		if err == nil {
+			a.FirstDeployID = deployID
 			return a, nil
 		}
 		if isSlugConflict(err) && attempt < maxSlugMintAttempts {
