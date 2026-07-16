@@ -355,6 +355,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if base != nil {
 		exportSigner = postgres.NewS3ExportSigner(base.Client)
 	}
+	logSvc := &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace}
 	pg := &postgres.Service{
 		Base:         base,
 		ExportSigner: exportSigner,
@@ -363,6 +364,29 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Owners:       workspaceSvc,
 		Metadata:     resourceMetadata,
 		PodLogs:      d.PodLogs,
+	}
+	pg.DatabaseLogs = func(ctx context.Context, name string, q postgres.DatabaseLogQuery) ([]postgres.DatabaseLogEntry, error) {
+		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
+			App:       name,
+			Search:    q.Search,
+			Since:     q.Since,
+			End:       q.End,
+			Limit:     q.Limit,
+			Direction: q.Direction,
+			Instance:  q.Instance,
+		})
+		if err != nil {
+			return nil, err
+		}
+		out := make([]postgres.DatabaseLogEntry, len(entries))
+		for i := range entries {
+			out[i] = postgres.DatabaseLogEntry{
+				Timestamp: entries[i].Timestamp,
+				Message:   entries[i].Message,
+				Labels:    entries[i].Labels,
+			}
+		}
+		return out, nil
 	}
 	kv := &keyvalue.Service{Base: base, Selections: selections, MaxKeyValues: d.MaxKeyValues, Owners: workspaceSvc, Metadata: resourceMetadata}
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:
@@ -433,7 +457,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	}
 	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, Selections: selections, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), MaxServices: d.MaxServices, Blueprints: d.BlueprintsStore, BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
-		Logs: &logs.Service{Base: base, PodLogs: d.PodLogs, PodLogsFollow: d.PodLogsFollow, History: d.LogHistory, LabelValues: d.LogLabelValues, BuildNamespace: d.DeployBuildNamespace},
+		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,
 			ResourceMetrics:            d.ResourceMetrics,

@@ -518,13 +518,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			highAvailability: db.Spec.HighAvailability,
 			parameters:       db.Spec.Parameters,
 		})
-		// Propagate the workspace label to CNPG-managed pods via inheritedMetadata
-		// so same-workspace NetworkPolicy selectors can reach the database.
+		// Mark CNPG-managed pods as tenant databases so the node log shipper can
+		// exclude platform/auth CNPG clusters. Propagate workspace identity through
+		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
+		inheritedLabels := map[string]any{"app.bex.co/component": "database"}
 		if ws := db.Labels[labelWorkspace]; ws != "" {
-			spec["inheritedMetadata"] = map[string]any{
-				"labels": map[string]any{labelWorkspace: ws},
-			}
+			inheritedLabels[labelWorkspace] = ws
 		}
+		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
 		cluster.Object["spec"] = spec
 		setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
 		return controllerutil.SetControllerReference(&db, cluster, r.Scheme)

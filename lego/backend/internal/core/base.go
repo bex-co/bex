@@ -49,8 +49,8 @@ const (
 	// PodLabelCNPGCluster + CNPGPostgresContainer identify CNPG pods for a
 	// managed Postgres. CNPG stamps every cluster pod with cnpg.io/cluster=<cr-name>;
 	// the main postgres container is always named "postgres". The database logs
-	// feature (w3/m28) selects on these to read pod logs directly — CNPG pods
-	// are NOT shipped to Loki.
+	// feature (w3/m28) uses the label for exact pod fallback and durable-log
+	// instance discovery.
 	PodLabelCNPGCluster   = "cnpg.io/cluster"
 	CNPGPostgresContainer = "postgres"
 )

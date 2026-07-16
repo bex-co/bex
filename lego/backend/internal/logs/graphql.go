@@ -41,9 +41,10 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // logFilterArgs are the filter arguments logs() and logLabelValues() share — the
-// same vocabulary as REST/MCP. `type` and `text` stay single-valued strings (the
-// shape the dashboard's query already sends); the request filters are lists, since
-// Render's are.
+// same vocabulary as REST/MCP. `resource` may name an App or managed Postgres;
+// the datastore path accepts its documented range/text/instance subset and
+// refuses service-only filters. `type` and `text` stay single-valued strings
+// (the shape the dashboard's query already sends); request filters are lists.
 func logFilterArgs() graphql.FieldConfigArgument {
 	list := &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))}
 	return graphql.FieldConfigArgument{

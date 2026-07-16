@@ -188,12 +188,16 @@ func lokiDirection(q LogQuery) string {
 // a service name or filter value can never break out of a matcher and inject a
 // selector or a line filter — the label-injection guard, covered in tests.
 func lokiSelectorFor(namespace string, q LogQuery) string {
-	matchers := []string{
-		fmt.Sprintf("namespace=%q", namespace),
-		fmt.Sprintf("app=%q", q.App),
+	matchers := []string{fmt.Sprintf("namespace=%q", namespace)}
+	if q.Database != "" {
+		matchers = append(matchers, fmt.Sprintf("database=%q", q.Database))
+	} else {
+		matchers = append(matchers, fmt.Sprintf("app=%q", q.App))
 	}
-	if m := lokiTypeMatcher(q); m != "" {
-		matchers = append(matchers, m)
+	if q.Database == "" {
+		if m := lokiTypeMatcher(q); m != "" {
+			matchers = append(matchers, m)
+		}
 	}
 	// The labels the shipper attaches; `path`/`host` are deliberately absent —
 	// they are line-only (see the cardinality budget in log-shipper.yaml) and are

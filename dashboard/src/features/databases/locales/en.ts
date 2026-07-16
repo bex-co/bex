@@ -855,28 +855,6 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
     description: "Database rename validation message",
   },
-  // --- Postgres logs panel (w3/m28) ---
-  "databases.logsTitle": {
-    message: "Logs",
-    description: "Database logs panel card title",
-  },
-  "databases.logsDescription": {
-    message:
-      "Live lines from the Postgres pod logs. CNPG pods aren't shipped to Loki — no durable history; reflects running pods only.",
-    description: "Database logs panel card description",
-  },
-  "databases.logsRefresh": {
-    message: "Refresh logs",
-    description: "Accessible label for the database logs refresh button",
-  },
-  "databases.logsUnavailable": {
-    message: "Logs unavailable — the database may still be provisioning.",
-    description: "Database logs panel error state",
-  },
-  "databases.logsEmpty": {
-    message: "No log lines found.",
-    description: "Database logs panel empty state",
-  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "Insights",
@@ -1148,6 +1126,83 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.sqlConfirmRun": {
     message: "Run statement",
     description: "SQL console confirmed write action",
+  },
+  "databases.detailNavLabel": {
+    message: "Database details",
+    description: "Accessible label for the managed Postgres detail tabs",
+  },
+  "databases.overviewTab": {
+    message: "Overview",
+    description: "Managed Postgres overview tab",
+  },
+  "databases.logsTab": {
+    message: "Logs",
+    description: "Managed Postgres logs tab",
+  },
+  "databases.logsRangeLabel": {
+    message: "Time range",
+    description: "Managed Postgres log range filter label",
+  },
+  "databases.logsRange1h": {
+    message: "Last hour",
+    description: "Managed Postgres one-hour log range",
+  },
+  "databases.logsRange6h": {
+    message: "Last 6 hours",
+    description: "Managed Postgres six-hour log range",
+  },
+  "databases.logsRange24h": {
+    message: "Last 24 hours",
+    description: "Managed Postgres 24-hour log range",
+  },
+  "databases.logsInstanceLabel": {
+    message: "Database instance",
+    description: "Managed Postgres log instance filter label",
+  },
+  "databases.logsAllInstances": {
+    message: "All instances",
+    description: "Managed Postgres log instance filter all option",
+  },
+  "databases.logsSearchPlaceholder": {
+    message: "Search database logs",
+    description: "Managed Postgres log search placeholder",
+  },
+  "databases.logsLoading": {
+    message: "Loading database logs…",
+    description: "Managed Postgres logs loading state",
+  },
+  "databases.logsEmptyTitle": {
+    message: "No database logs yet",
+    description: "Managed Postgres logs empty-state title",
+  },
+  "databases.logsEmptyBody": {
+    message: "Postgres output in this time range will appear here.",
+    description: "Managed Postgres logs empty-state body",
+  },
+  "databases.logsEmptyFilteredBody": {
+    message: "No database logs match the current filters.",
+    description: "Managed Postgres logs filtered empty-state body",
+  },
+  "databases.logsUnavailableTitle": {
+    message: "Database logs aren't configured",
+    description: "Managed Postgres logs unavailable-state title",
+  },
+  "databases.logsUnavailableBody": {
+    message:
+      "This installation has neither durable log history nor a live CNPG pod-log source configured.",
+    description: "Managed Postgres logs unavailable-state body",
+  },
+  "databases.logsUnauthorizedTitle": {
+    message: "You can't view these logs",
+    description: "Managed Postgres logs unauthorized-state title",
+  },
+  "databases.logsUnauthorizedBody": {
+    message: "Database logs require contributor access in this workspace.",
+    description: "Managed Postgres logs unauthorized-state body",
+  },
+  "databases.logsErrorTitle": {
+    message: "Couldn't load database logs",
+    description: "Managed Postgres logs generic error title",
   },
 };
 

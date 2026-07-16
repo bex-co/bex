@@ -397,6 +397,33 @@ func TestQueryLogsRoutesToHistory(t *testing.T) {
 	}
 }
 
+func TestManagedPostgresHistoryIsDatabaseScoped(t *testing.T) {
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"database":"` + postgresID + `","pod":"` + postgresID + `-1","container":"postgres","type":"postgres"}`,
+		"values": `[["1751673601000000000","duration: 2100 ms statement: select 1"]]`,
+	}))
+	defer f.srv.Close()
+
+	svc := newService(nil, sampleDatabase(postgresID))
+	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: postgresID, Search: "select"})
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("Postgres history = %+v, err=%v", entries, err)
+	}
+	if got := f.lastValues.Get("query"); got != `{namespace="default", database="`+postgresID+`"} |~ "(?i)select"` {
+		t.Fatalf("Postgres selector = %q", got)
+	}
+	if entries[0].Labels["service"] != postgresID || entries[0].Labels[LabelType] != "postgres" {
+		t.Fatalf("Postgres entry attribution = %+v", entries[0].Labels)
+	}
+
+	// Service/request-only filters are rejected rather than ignored or allowed
+	// to widen the datastore selector.
+	if _, err := svc.QueryLogs(context.Background(), LogQuery{App: postgresID, Method: []string{"GET"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("Postgres method filter => ErrBadRequest, got %v", err)
+	}
+}
+
 // w7/m28: type=build with the store routes to Loki with type="build" selector;
 // without the store it returns ErrLogStoreUnavailable (not a silent empty).
 func TestQueryLogsBuildType(t *testing.T) {

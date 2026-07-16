@@ -632,7 +632,7 @@ function makeDatabase(over = {}) {
   const dbn = name.toLowerCase().replaceAll("-", "_");
   return {
     __typename: "Database",
-    id: name,
+    id: "dpg-c185th5c2rvvnhbfiltg",
     name,
     plan: "basic-1gb",
     version: "16",
@@ -1139,7 +1139,24 @@ function resolveGraphQL({ operationName, variables = {} }) {
         };
       }
       if (type && type !== "app" && type !== "application") return { logs: [] };
-      let logs = history(60, resource).filter((l) => inWindow(l.timestamp));
+      const isDatabase = DATABASES.some((database) => database.id === resource);
+      let logs = history(60, resource)
+        .map((entry, index) =>
+          isDatabase
+            ? {
+                ...entry,
+                message: [
+                  "checkpoint complete: wrote 128 buffers",
+                  "duration: 2451.813 ms  statement: SELECT * FROM orders",
+                  "automatic vacuum of table orders: index scans: 1",
+                  "connection authorized: user=orders_db_user database=orders_db",
+                ][index % 4],
+                type: "postgres",
+                level: null,
+              }
+            : entry,
+        )
+        .filter((l) => inWindow(l.timestamp));
       if (variables.text) {
         const q = String(variables.text).toLowerCase();
         logs = logs.filter((l) => l.message.toLowerCase().includes(q));

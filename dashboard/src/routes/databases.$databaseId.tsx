@@ -20,13 +20,15 @@ import { DatabaseVersionControl } from "@/features/databases/components/database
 import { DatabaseNameSection } from "@/features/databases/components/database-name-section";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
-import { DatabaseLogsPanel } from "@/features/databases/components/database-logs-panel";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
+import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 export const Route = createFileRoute("/databases/$databaseId")({
   component: DatabaseDetailPage,
   beforeLoad: requireAuth("/databases/$databaseId"),
+  validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
+    search.tab === "logs" ? { tab: "logs" } : {},
   head: ({ params }) => ({
     meta: [{ title: `${params.databaseId} · Databases · bex dashboard` }],
   }),
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/databases/$databaseId")({
 
 export function DatabaseDetailPage() {
   const { databaseId } = Route.useParams();
+  const { tab } = Route.useSearch();
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { database, loading, refetch } = useDatabase(databaseId);
@@ -64,6 +67,36 @@ export function DatabaseDetailPage() {
         ) : null}
       </div>
 
+      <nav
+        aria-label={t("databases.detailNavLabel")}
+        className="flex gap-1 border-b px-4 sm:px-6"
+      >
+        <button
+          type="button"
+          className={cn(
+            "border-b-2 px-3 py-2 text-sm",
+            tab !== "logs"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground",
+          )}
+          onClick={() => void navigate({ to: ".", search: {} })}
+        >
+          {t("databases.overviewTab")}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "border-b-2 px-3 py-2 text-sm",
+            tab === "logs"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground",
+          )}
+          onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
+        >
+          {t("databases.logsTab")}
+        </button>
+      </nav>
+
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-4xl space-y-6">
           {showNotFound ? (
@@ -73,6 +106,8 @@ export function DatabaseDetailPage() {
                 {t("databases.notFoundBody", { name: databaseId })}
               </p>
             </div>
+          ) : database && tab === "logs" ? (
+            <PostgresLogViewer resource={database.id} />
           ) : database ? (
             <>
               <MetadataCard
@@ -102,7 +137,6 @@ export function DatabaseDetailPage() {
                 database={database}
                 onChanged={() => void refetch()}
               />
-              <DatabaseLogsPanel id={database.id} />
               <InsightsPanel id={database.id} />
               <RecoveryPanel id={database.id} />
               <AccessControlPanel id={database.id} />

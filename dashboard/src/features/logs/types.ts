@@ -9,7 +9,7 @@ export interface LogLine {
   time: string; // `timestamp` formatted as Render's line clock, computed once
   instance: string; // replica id (Render's `[bv612]`), or ""
   message: string;
-  type: string; // Render's `type` label value: `app`, `request`, or `build`
+  type: string; // Render log type: `app`, `request`, `build`, or `postgres`
   // Request/HTTP-line labels (populated for `type=request`; empty for app
   // lines). The Logs viewer renders a request line as method/status chips
   // instead of the raw Traefik JSON (w5/008, docs/ADR010-observability.md).

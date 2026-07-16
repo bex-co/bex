@@ -397,6 +397,23 @@ if [ -f "$LOGSHIP" ]; then
   vals="$(yq '.spec.source.helm.values' "$LOGSHIP")"
   echo "$vals" | grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' \
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
+
+  # Managed-Postgres attribution guard (w3/m28): only operator-marked tenant
+  # Database pods may enter the pipeline, only PostgreSQL's own container is
+  # public, and CNPG's immutable cluster id must become the `database` label.
+  # Losing any one of these either ingests platform DBs or mixes/unscopes tenant
+  # reads, so pin the four River source invariants alongside node scoping.
+  echo "==> $LOGSHIP managed-Postgres attribution"
+  for required in \
+    '__meta_kubernetes_pod_label_app_bex_co_component' \
+    'regex         = "database"' \
+    '__meta_kubernetes_pod_label_cnpg_io_cluster' \
+    'target_label  = "database"' \
+    'regex         = "postgres"' \
+    'values = { type = "postgres" }'; do
+    echo "$vals" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml managed-Postgres pipeline lost required attribution rule: $required" >&2; fail=1; }
+  done
 fi
 
 # Operator day-to-day RBAC guard (w7/m37, docs/ADR019-infra-credentials.md): the
