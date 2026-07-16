@@ -496,6 +496,11 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	s.Host = d.PrimaryHost
 	s.Hosts = slices.Clone(d.Hosts)
 	s.HostRedirects = maps.Clone(d.HostRedirects)
+	// The environment inbound-IP layer (w4/m28): stamped on CREATE so a
+	// projector-recreated member CR never rejoins its environment without
+	// enforcement; deliberately absent from applyOwnedSpec (updates belong to
+	// the environments fan-out, which also handles the deny-all projection).
+	s.EnvironmentIPAllowList = slices.Clone(d.EnvironmentIPAllowList)
 	if d.RegistryCredentialID != nil && *d.RegistryCredentialID != "" {
 		// Explicit credentials materialize to a deterministic Secret name. Keep
 		// this in the desired spec (not only projectApp) so every later resync

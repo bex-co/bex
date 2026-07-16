@@ -333,17 +333,28 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	route.SetName(kv.Name + "-kv")
 	route.SetNamespace(kv.Namespace)
 	mwName := kv.Name + "-kv-allow"
+	envMwName := kv.Name + "-kv-env-allow"
 	if kv.Spec.Public && r.KvDomain != "" {
-		// IP allowlist: a middleware referenced by the SNI route when CIDRs are
-		// set (the same gate the Database external route uses). Empty list =>
-		// no middleware, open route; internal access is never gated.
+		// IP allowlist layers, CHAINED so a source must pass every present one
+		// (w4/m28): the store's own list and the environment-projected list
+		// each render their own middleware on the SNI route (the same gates
+		// the Database external route uses). No layers => open route;
+		// internal access is never gated.
 		var middlewares []any
 		if len(kv.Spec.IPAllowList) > 0 {
 			if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(kv.Spec.IPAllowList)); err != nil {
 				return r.kvFail(ctx, &kv, "RouteFailed", err)
 			}
-			middlewares = []any{map[string]any{"name": mwName, "namespace": kv.Namespace}}
+			middlewares = append(middlewares, map[string]any{"name": mwName, "namespace": kv.Namespace})
 		} else if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
+			return r.kvFail(ctx, &kv, "RouteFailed", err)
+		}
+		if len(kv.Spec.EnvironmentIPAllowList) > 0 {
+			if err := upsertOwned(ctx, r.Client, r.Scheme, &kv, traefikMiddlewareTCPGVK, envMwName, cidrMiddlewareSpec(kv.Spec.EnvironmentIPAllowList)); err != nil {
+				return r.kvFail(ctx, &kv, "RouteFailed", err)
+			}
+			middlewares = append(middlewares, map[string]any{"name": envMwName, "namespace": kv.Namespace})
+		} else if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, envMwName); err != nil {
 			return r.kvFail(ctx, &kv, "RouteFailed", err)
 		}
 		externalHost := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
@@ -361,6 +372,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
 		}
 		if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, mwName); err != nil {
+			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
+		}
+		if err := deleteOwned(ctx, r.Client, &kv, traefikMiddlewareTCPGVK, envMwName); err != nil {
 			return r.kvFail(ctx, &kv, "RouteCleanupFailed", err)
 		}
 		kv.Status.ExternalHost = ""

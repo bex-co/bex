@@ -75,7 +75,7 @@ func TestHostRedirectProjectionMatrix(t *testing.T) {
 			}
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
 			r := &AppReconciler{Client: cl, Scheme: scheme, ClusterIssuer: "letsencrypt-prod"}
-			if err := r.reconcileIngress(context.Background(), app, tc.hosts, "app", 3000, ""); err != nil {
+			if err := r.reconcileIngress(context.Background(), app, tc.hosts, "app", 3000, nil); err != nil {
 				t.Fatalf("reconcileIngress: %v", err)
 			}
 
@@ -129,14 +129,14 @@ func TestHostRedirectRemovalAndExplicitBothServeDirectly(t *testing.T) {
 	r := &AppReconciler{Client: cl, Scheme: scheme}
 	ctx := context.Background()
 	hosts := []string{"example.com", "www.example.com"}
-	if err := r.reconcileIngress(ctx, app, hosts, "app", 3000, ""); err != nil {
+	if err := r.reconcileIngress(ctx, app, hosts, "app", 3000, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	// Explicitly claiming the auto-added sibling clears HostRedirects. Both
 	// hosts move onto the plain serving Ingress and redirect artifacts disappear.
 	app.Spec.HostRedirects = nil
-	if err := r.reconcileIngress(ctx, app, hosts, "app", 3000, ""); err != nil {
+	if err := r.reconcileIngress(ctx, app, hosts, "app", 3000, nil); err != nil {
 		t.Fatal(err)
 	}
 	main := &networkingv1.Ingress{}
@@ -159,7 +159,7 @@ func TestHostRedirectRemovalAndExplicitBothServeDirectly(t *testing.T) {
 	// A stale mapping whose target was deleted is also ignored and cleaned: the
 	// surviving source serves directly instead of redirecting to a dead host.
 	app.Spec.HostRedirects = map[string]string{"www.example.com": "example.com"}
-	if err := r.reconcileIngress(ctx, app, []string{"www.example.com"}, "app", 3000, ""); err != nil {
+	if err := r.reconcileIngress(ctx, app, []string{"www.example.com"}, "app", 3000, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Get(ctx, types.NamespacedName{Name: "app", Namespace: "default"}, main); err != nil {

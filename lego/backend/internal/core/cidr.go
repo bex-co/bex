@@ -138,6 +138,41 @@ func AllowListOrCIDRs(entries []IPAllowListEntry, cidrs []string) []IPAllowListE
 	return AllowListFromCIDRs(cidrs)
 }
 
+// DenyAllCIDR is the unmatchable placeholder the environment fan-out projects
+// for an explicitly empty environment rule list (w4/m28, Render's
+// empty-means-deny-all): Traefik rejects an ipAllowList middleware with an
+// empty sourceRange, so deny-all must be a real range no source matches.
+const DenyAllCIDR = "255.255.255.255/32"
+
+// DefaultEnvironmentAllowList is the seeded allow-all rule pair a new (or
+// migrated pre-m28) environment starts with — Render's dashboard seeds
+// 0.0.0.0/0; the ::/0 twin is bex's IPv6 extension so the semantic flip to
+// empty-means-deny-all never cut off IPv6 sources that an absent middleware
+// previously admitted.
+func DefaultEnvironmentAllowList() []IPAllowListEntry {
+	return []IPAllowListEntry{
+		{CIDRBlock: "0.0.0.0/0", Description: "Allow all (default)"},
+		{CIDRBlock: "::/0", Description: "Allow all (default)"},
+	}
+}
+
+// EnvironmentLayerCIDRs projects an environment's rule entries onto the flat
+// CIDR list member CRs carry (spec.environmentIPAllowList, w4/m28): CIDRs
+// only — descriptions stay on the environment row — with an explicitly empty
+// rule set projected as the DenyAllCIDR placeholder. A nil result never comes
+// from here; clearing the layer (leaving the environment) is the caller
+// passing nil through, not this projection.
+func EnvironmentLayerCIDRs(entries []IPAllowListEntry) []string {
+	if len(entries) == 0 {
+		return []string{DenyAllCIDR}
+	}
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = e.CIDRBlock
+	}
+	return out
+}
+
 // ValidateAllowList is ValidateCIDRs over entry CIDRs — descriptions are never
 // validated (free text) and never influence enforcement.
 func ValidateAllowList(entries []IPAllowListEntry) error {

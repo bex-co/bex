@@ -99,6 +99,17 @@ type DatabaseSpec struct {
 	// +optional
 	IPAllowList []IPAllowEntry `json:"ipAllowList,omitempty"`
 
+	// EnvironmentIPAllowList is the environment-layer inbound-IP rule set
+	// (w4/m28) — written only by the environment fan-out, rendered as a
+	// SECOND MiddlewareTCP chained with IPAllowList's on the external SNI
+	// route, so a source must pass both layers (Render's intersection
+	// semantics; pre-m28 the fan-out full-replaced IPAllowList itself,
+	// clobbering the resource's own rules). CIDRs only — descriptions live on
+	// the environment row. Empty means no environment layer; an explicitly
+	// empty environment rule list projects the deny-all placeholder instead.
+	// +optional
+	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
+
 	// Pooler, when true, provisions a PgBouncer connection pooler (a CNPG Pooler
 	// in transaction mode) for this database; the connection info then surfaces
 	// pooled connection strings. Render's connection pooling.

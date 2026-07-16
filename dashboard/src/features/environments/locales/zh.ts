@@ -232,11 +232,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Environment inbound-IP allowlist heading",
   },
   "environments.ipAllowListHint": {
-    message: "仅允许列出的 IPv4 CIDR 范围访问此环境中的公共数据存储。",
+    message: "只有列出的 CIDR 网段才能访问该环境的公开服务、静态站点和数据存储。来源还必须通过每个资源自身的 IP 规则。",
     description: "Environment inbound-IP allowlist explanation",
   },
   "environments.ipAllowListOpen": {
-    message: "无限制——向所有来源 IP 开放。",
+    message: "没有规则 — 该环境的公开成员将拒绝所有流量。添加 0.0.0.0/0 和 ::/0 可允许全部来源。",
     description: "Empty environment inbound-IP allowlist state",
   },
   "environments.ipAllowListRemove": {

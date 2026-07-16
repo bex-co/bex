@@ -199,8 +199,8 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	q := MetricQuery{
 		StatusCode: v.Get("statusCode"),
 		// host/path are parsed only so Metrics can refuse them (see MetricQuery.Host).
-		Host: v.Get("host"),
-		Path: v.Get("path"),
+		Host:       v.Get("host"),
+		Path:       v.Get("path"),
 		GroupBy:    v.Get("groupBy"),
 		Percentage: v.Get("percentage") == "true",
 	}

@@ -611,7 +611,12 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 				return nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
 			}
 		}
-		if err := s.BlueprintGroups.SetEnvironmentACL(ctx, environment.ID, grouping.protectedStatus, grouping.networkIsolationEnabled, nil); err != nil {
+		// Render's Blueprint schema declares protection/isolation but no
+		// environment IP rules, so the ACL write PRESERVES the row's current
+		// ipAllowList (the fresh-create seed, or the rules an operator set) —
+		// passing nil would full-replace to empty, which is deny-all since
+		// w4/m28 and would silently cut every blueprint-grouped service off.
+		if err := s.BlueprintGroups.SetEnvironmentACL(ctx, environment.ID, grouping.protectedStatus, grouping.networkIsolationEnabled, environment.IPAllowList); err != nil {
 			return nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 		}
 		out[blueprintGroupingKey(grouping.projectName, grouping.environmentName)] = core.EnvironmentAssignment{
@@ -619,6 +624,7 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 			ProjectID:               project.ID,
 			WorkspaceID:             tenantID,
 			NetworkIsolationEnabled: grouping.networkIsolationEnabled,
+			IPAllowList:             environment.IPAllowList,
 		}
 	}
 	return out, nil
@@ -1409,9 +1415,14 @@ func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, 
 			delete(existing.Labels, core.LabelProject)
 			delete(existing.Labels, core.LabelEnvironment)
 			delete(existing.Labels, core.LabelNetworkIsolation)
+			// Leaving the environment sheds its inbound-IP layer (w4/m28).
+			existing.Spec.EnvironmentIPAllowList = nil
 		} else {
 			existing.Labels[core.LabelProject] = assignment.ProjectID
 			existing.Labels[core.LabelEnvironment] = assignment.ID
+			// Joining (or switching) inherits the environment's inbound-IP
+			// layer (w4/m28).
+			existing.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(assignment.IPAllowList)
 			if assignment.NetworkIsolationEnabled {
 				existing.Labels[core.LabelNetworkIsolation] = assignment.ID
 			} else {
@@ -1541,6 +1552,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 				existing.Labels = map[string]string{}
 			}
 			applyGroupingLabels(existing.Labels, assignment)
+			existing.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -1560,12 +1572,23 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			d.Labels = map[string]string{}
 		}
 		applyGroupingLabels(d.Labels, assignment)
+		d.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
 	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		return StackDatabaseView{}, err
 	}
 	return stackDatabaseView(d), nil
+}
+
+// groupingEnvironmentLayer is applyGroupingLabels' inbound-IP sibling
+// (w4/m28): a grouped resource inherits the environment's projected rule
+// layer; an ungrouped one sheds it.
+func groupingEnvironmentLayer(assignment core.EnvironmentAssignment) []string {
+	if assignment.ID == "" {
+		return nil
+	}
+	return core.EnvironmentLayerCIDRs(assignment.IPAllowList)
 }
 
 func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAssignment) {
@@ -1618,6 +1641,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 				existing.Labels = map[string]string{}
 			}
 			applyGroupingLabels(existing.Labels, assignment)
+			existing.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -1637,6 +1661,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			resource.Labels = map[string]string{}
 		}
 		applyGroupingLabels(resource.Labels, assignment)
+		resource.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
 	}
 	resourcemeta.Touch(resource, s.Now())
 	if err := s.Client.Create(ctx, resource); err != nil {

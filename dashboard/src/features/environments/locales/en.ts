@@ -239,12 +239,13 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.ipAllowListHint": {
     message:
-      "Only the listed IPv4 CIDR ranges can reach public datastores in this environment.",
+      "Only the listed CIDR ranges can reach this environment's public services, static sites, and datastores. A source must also pass each resource's own IP rules.",
     description: "Environment inbound-IP allowlist explanation",
   },
   "environments.ipAllowListOpen": {
-    message: "No restrictions — open to all source IPs.",
-    description: "Empty environment inbound-IP allowlist state",
+    message:
+      "No rules — public members of this environment will DENY all traffic. Add 0.0.0.0/0 and ::/0 to allow everything.",
+    description: "Empty environment inbound-IP allowlist state (deny-all)",
   },
   "environments.ipAllowListRemove": {
     message: "Remove {cidr}",

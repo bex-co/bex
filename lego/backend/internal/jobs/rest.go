@@ -167,4 +167,3 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 	}
 }
-

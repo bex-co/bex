@@ -871,11 +871,11 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		ingressPort = int32(r.ActivatorPort)
 	}
 
-	mwName, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
-	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort, mwName); err != nil {
+	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort, mwNames); err != nil {
 		return r.fail(ctx, app, "IngressFailed", err)
 	}
 
@@ -1040,32 +1040,35 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	return ctrl.Result{}, nil
 }
 
-// ipAllowListHTTPMiddlewareSpec builds the Traefik HTTP Middleware spec for an
-// ipAllowList (same structure as the TCP variant in database_controller.go but
-// using the HTTP Middleware CRD, wired to the Ingress via annotation).
-func ipAllowListHTTPMiddlewareSpec(cidrs []string) map[string]any {
-	ranges := make([]any, len(cidrs))
-	for i, c := range cidrs {
-		ranges[i] = c
-	}
-	return map[string]any{"ipAllowList": map[string]any{"sourceRange": ranges}}
-}
-
-// reconcileIPAllowListMiddleware creates or removes the Traefik HTTP Middleware
-// for the App's ipAllowList. Returns the middleware name to wire into the
-// Ingress annotation, or "" when no middleware is needed (empty list).
-func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app *appv1alpha1.App) (string, error) {
-	mwName := app.Name + "-ip-allow"
-	if len(app.Spec.IPAllowList) > 0 {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, mwName, ipAllowListHTTPMiddlewareSpec(app.Spec.IPAllowList)); err != nil {
-			return "", err
+// reconcileIPAllowListMiddleware creates or removes the Traefik HTTP
+// Middlewares for the App's inbound-IP layers: its own ipAllowList
+// ("<app>-ip-allow") and the environment-projected environmentIPAllowList
+// ("<app>-env-ip-allow", w4/m28). Returns the middleware names to CHAIN on
+// the Ingress annotation — Traefik ANDs chained middlewares, so a source must
+// pass every present layer (Render's every-applicable-rule intersection) —
+// or nil when no layer is set.
+func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app *appv1alpha1.App) ([]string, error) {
+	var names []string
+	for _, layer := range []struct {
+		suffix string
+		cidrs  []string
+	}{
+		{"-ip-allow", app.Spec.IPAllowList},
+		{"-env-ip-allow", app.Spec.EnvironmentIPAllowList},
+	} {
+		mwName := app.Name + layer.suffix
+		if len(layer.cidrs) > 0 {
+			if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, mwName, cidrMiddlewareSpec(layer.cidrs)); err != nil {
+				return nil, err
+			}
+			names = append(names, mwName)
+			continue
 		}
-		return mwName, nil
+		if err := deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, mwName); err != nil {
+			return nil, err
+		}
 	}
-	if err := deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, mwName); err != nil {
-		return "", err
-	}
-	return "", nil
+	return names, nil
 }
 
 // reconcileIngress applies one networking.k8s.io Ingress fronting the App's
@@ -1074,10 +1077,11 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 // turned off). The backend is parameterized so a web/private service points at
 // its own Service, an auto-hibernating app at the activator, and a static_site
 // at the shared static-server — all through the same emitted Ingress shape, so
-// the ingress controller (traefik today) stays swappable. middlewareName, when
-// non-empty, wires a Traefik HTTP Middleware (e.g. an ipAllowList) via the
-// router.middlewares Ingress annotation.
-func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareName string) error {
+// the ingress controller (traefik today) stays swappable. middlewareNames,
+// when non-empty, wire Traefik HTTP Middlewares (the ipAllowList layers) via
+// the router.middlewares Ingress annotation — comma-joined, which Traefik
+// applies as an AND chain.
+func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareNames []string) error {
 	redirectSources, err := r.reconcileHostRedirects(ctx, app, hosts, svc, port)
 	if err != nil {
 		return err
@@ -1099,8 +1103,12 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		if r.ClusterIssuer != "" {
 			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
 		}
-		if middlewareName != "" {
-			ing.Annotations[traefikRouterMiddlewaresAnnotation] = app.Namespace + "-" + middlewareName + "@kubernetescrd"
+		if len(middlewareNames) > 0 {
+			refs := make([]string, len(middlewareNames))
+			for i, name := range middlewareNames {
+				refs[i] = app.Namespace + "-" + name + "@kubernetescrd"
+			}
+			ing.Annotations[traefikRouterMiddlewaresAnnotation] = strings.Join(refs, ",")
 		} else {
 			delete(ing.Annotations, traefikRouterMiddlewaresAnnotation)
 		}
@@ -1351,7 +1359,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// Suspended: stop serving by removing the Ingress; the published content stays
 	// in the object store, so resume just recreates the Ingress.
 	if app.Spec.Suspended {
-		if err := r.reconcileIngress(ctx, app, nil, "", 0, ""); err != nil {
+		if err := r.reconcileIngress(ctx, app, nil, "", 0, nil); err != nil {
 			return r.fail(ctx, app, "IngressCleanupFailed", err)
 		}
 		app.Status.Phase = appv1alpha1.PhaseHibernated
@@ -1368,11 +1376,11 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, nil
 	}
 
-	staticMWName, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
-	if err := r.reconcileIngress(ctx, app, hosts, r.StaticServerService, int32(r.staticServerPort()), staticMWName); err != nil {
+	if err := r.reconcileIngress(ctx, app, hosts, r.StaticServerService, int32(r.staticServerPort()), staticMWNames); err != nil {
 		return r.fail(ctx, app, "IngressFailed", err)
 	}
 

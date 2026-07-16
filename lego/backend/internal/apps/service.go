@@ -1221,6 +1221,25 @@ type CreateRequest struct {
 	DryRun bool
 }
 
+// stampEnvironmentMembership applies an environment assignment onto a newborn
+// App CR: project/environment labels, the inherited inbound-IP layer
+// (w4/m28), and the isolation label when the environment demands it — one
+// helper for every create path so a new environment-derived field can't be
+// stamped in some paths and forgotten in others. Callers initialize Labels
+// before calling; a zero assignment is a no-op.
+func stampEnvironmentMembership(a *appv1alpha1.App, environment core.EnvironmentAssignment) {
+	if environment.ID == "" {
+		return
+	}
+	a.Labels[core.LabelProject] = environment.ProjectID
+	a.Labels[core.LabelEnvironment] = environment.ID
+	// Newborn members inherit the environment's inbound-IP layer.
+	a.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(environment.IPAllowList)
+	if environment.NetworkIsolationEnabled {
+		a.Labels[core.LabelNetworkIsolation] = environment.ID
+	}
+}
+
 // Create writes the App CR for a new service, or updates it in place when one
 // of the same name already exists — the same verb "deploy this" rides (Deploy
 // maps a repo + bex.yml onto a CreateRequest, docs/ADR006-bex-api.md). Repeating the
@@ -1309,13 +1328,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if tenantID != "" {
 			a.Labels = map[string]string{core.LabelTenant: tenantID}
 		}
-		if environment.ID != "" {
-			a.Labels[core.LabelProject] = environment.ProjectID
-			a.Labels[core.LabelEnvironment] = environment.ID
-			if environment.NetworkIsolationEnabled {
-				a.Labels[core.LabelNetworkIsolation] = environment.ID
-			}
-		}
+		stampEnvironmentMembership(a, environment)
 		return s.view(a), nil
 	}
 
@@ -1384,13 +1397,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// alone no longer serves that purpose once it's tenant-prefixed.
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
-	if environment.ID != "" {
-		a.Labels[core.LabelProject] = environment.ProjectID
-		a.Labels[core.LabelEnvironment] = environment.ID
-		if environment.NetworkIsolationEnabled {
-			a.Labels[core.LabelNetworkIsolation] = environment.ID
-		}
-	}
+	stampEnvironmentMembership(a, environment)
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11). The store's own
@@ -1536,13 +1543,7 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	if err != nil {
 		return AppView{}, err
 	}
-	if environment.ID != "" {
-		a.Labels[core.LabelProject] = environment.ProjectID
-		a.Labels[core.LabelEnvironment] = environment.ID
-		if environment.NetworkIsolationEnabled {
-			a.Labels[core.LabelNetworkIsolation] = environment.ID
-		}
-	}
+	stampEnvironmentMembership(a, environment)
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11).

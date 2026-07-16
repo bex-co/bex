@@ -76,10 +76,16 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// target is. The environment-level action itself has no events feed
 		// of its own to join (environments is a grouping feature, like
 		// projects, neither of which has one yet).
-		"environments.Delete":        "fans AuthorizeApp out over member Apps to clear core.LabelNetworkIsolation; not itself a per-App verb",
-		"environments.SetServices":   "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
-		"environments.SetACL":        "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
-		"environments.CreateWithACL": "may fan AuthorizeApp out over member Apps while applying the initial ACL; not itself a per-App verb",
+		"environments.Delete":      "fans AuthorizeApp out over member Apps to clear core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.SetServices": "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.SetACL":      "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
+		// w4/m28: the environment inbound-IP fan-out's member write paths —
+		// projection plumbing for an environment-level action (like the
+		// SetACL/SetServices fan-outs above); datastores have no events feed,
+		// and the environment-level ACL change is already audited once.
+		"postgres.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; postgres has no events feed integration",
+		"keyvalue.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; keyvalue has no events feed integration",
+		"environments.CreateWithACL":         "may fan AuthorizeApp out over member Apps while applying the initial ACL; not itself a per-App verb",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

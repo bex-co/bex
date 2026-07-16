@@ -354,9 +354,20 @@ func poolerSpec(clusterName string) map[string]any {
 // Only the CIDRs reach the rendered object: an entry's description is
 // operator-facing metadata and never influences enforcement.
 func ipAllowListMiddlewareSpec(entries []appv1alpha1.IPAllowEntry) map[string]any {
-	ranges := make([]any, len(entries))
+	cidrs := make([]string, len(entries))
 	for i, e := range entries {
-		ranges[i] = e.CIDR
+		cidrs[i] = e.CIDR
+	}
+	return cidrMiddlewareSpec(cidrs)
+}
+
+// cidrMiddlewareSpec is the flat-CIDR variant shared by the environment layer
+// (spec.environmentIPAllowList, w4/m28) on both datastore kinds — the same
+// {ipAllowList: {sourceRange}} body, TCP or HTTP.
+func cidrMiddlewareSpec(cidrs []string) map[string]any {
+	ranges := make([]any, len(cidrs))
+	for i, c := range cidrs {
+		ranges[i] = c
 	}
 	return map[string]any{"ipAllowList": map[string]any{"sourceRange": ranges}}
 }
@@ -834,6 +845,7 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 // Removes routes for replicas no longer in spec, and all routes when private.
 func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *appv1alpha1.Database) error {
 	mwName := db.Name + "-allow"
+	envMwName := db.Name + "-env-allow"
 	public := db.Spec.Public && r.DBDomain != ""
 
 	// Collect replica names currently in spec for cleanup diff.
@@ -868,17 +880,30 @@ func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *ap
 				return err
 			}
 		}
+		if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
+			return err
+		}
 		return deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName)
 	}
 
-	// IP allowlist: a middleware referenced by all routes when CIDRs are set.
+	// IP allowlist layers, CHAINED so a source must pass every present one
+	// (w4/m28): the Database's own list and the environment-projected list
+	// each render their own middleware referenced by all routes.
 	var middlewares []any
 	if len(db.Spec.IPAllowList) > 0 {
 		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(db.Spec.IPAllowList)); err != nil {
 			return err
 		}
-		middlewares = []any{map[string]any{"name": mwName, "namespace": db.Namespace}}
+		middlewares = append(middlewares, map[string]any{"name": mwName, "namespace": db.Namespace})
 	} else if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName); err != nil {
+		return err
+	}
+	if len(db.Spec.EnvironmentIPAllowList) > 0 {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, envMwName, cidrMiddlewareSpec(db.Spec.EnvironmentIPAllowList)); err != nil {
+			return err
+		}
+		middlewares = append(middlewares, map[string]any{"name": envMwName, "namespace": db.Namespace})
+	} else if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
 		return err
 	}
 

@@ -139,8 +139,8 @@ const (
 // bex-named types — real writes Render's vocabulary has no name for. Named in
 // Render's snake_case house style so they read as one vocabulary.
 const (
-	TypeEnvVarsChanged  = "env_vars_changed"
-	TypeEnvGroupLinked  = "env_group_linked"
+	TypeEnvVarsChanged   = "env_vars_changed"
+	TypeEnvGroupLinked   = "env_group_linked"
 	TypeEnvGroupUnlinked = "env_group_unlinked"
 	// TypeAutoDeployEnabled and TypeAutoDeployDisabled replace the bex-named
 	// TypeAutoDeployChanged for new rows that carry the auto_deploy_enabled boolean.

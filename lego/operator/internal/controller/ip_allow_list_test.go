@@ -171,12 +171,12 @@ func TestStaticSiteIPAllowListMiddlewareProjection(t *testing.T) {
 	}
 
 	// Phase 1: allowlist set → middleware created.
-	mwName, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
 		t.Fatalf("reconcileIPAllowListMiddleware: %v", err)
 	}
-	if mwName != "site-acl-ip-allow" {
-		t.Fatalf("mwName = %q, want site-acl-ip-allow", mwName)
+	if len(mwNames) != 1 || mwNames[0] != "site-acl-ip-allow" {
+		t.Fatalf("mwNames = %v, want [site-acl-ip-allow]", mwNames)
 	}
 	mw, err := getMW()
 	if err != nil {
@@ -187,14 +187,14 @@ func TestStaticSiteIPAllowListMiddlewareProjection(t *testing.T) {
 		t.Fatalf("Middleware.spec.ipAllowList.sourceRange = %v, want [203.0.113.0/24]", ranges)
 	}
 
-	// Phase 2: clear → middleware removed and mwName is empty.
+	// Phase 2: clear → middleware removed and no names remain.
 	app.Spec.IPAllowList = nil
-	mwName, err = r.reconcileIPAllowListMiddleware(ctx, app)
+	mwNames, err = r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
 		t.Fatalf("reconcileIPAllowListMiddleware(clear): %v", err)
 	}
-	if mwName != "" {
-		t.Fatalf("cleared mwName = %q, want empty", mwName)
+	if len(mwNames) != 0 {
+		t.Fatalf("cleared mwNames = %v, want empty", mwNames)
 	}
 	if _, err := getMW(); !apierrors.IsNotFound(err) {
 		t.Fatalf("Middleware must be deleted when allowlist is empty for static_site, got %v", err)
@@ -236,5 +236,99 @@ func TestNonIngressTypesGetNoIPAllowListMiddleware(t *testing.T) {
 				t.Fatalf("%s with ipAllowList must not create an HTTP Middleware (no public Ingress): got %v", typ, err)
 			}
 		})
+	}
+}
+
+// TestEnvironmentIPAllowListChaining pins w4/m28's layered composition: an App
+// carrying BOTH its own ipAllowList and an environment-projected
+// environmentIPAllowList renders two middlewares, and the Ingress annotation
+// chains them (comma-joined — Traefik ANDs a chain, so a source must pass
+// every layer: Render's every-applicable-rule intersection). Table-driven over
+// the layer combinations.
+func TestEnvironmentIPAllowListChaining(t *testing.T) {
+	cases := []struct {
+		name      string
+		own, env  []string
+		wantAnnot string
+		wantOwnMW bool
+		wantEnvMW bool
+	}{
+		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd", true, true},
+		{"own only", []string{"10.0.0.0/8"}, nil,
+			"default-chain-acl-ip-allow@kubernetescrd", true, false},
+		{"env only", nil, []string{"203.0.113.0/24"},
+			"default-chain-acl-env-ip-allow@kubernetescrd", false, true},
+		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"},
+			"default-chain-acl-env-ip-allow@kubernetescrd", false, true},
+		{"no layers", nil, nil, "", false, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := newIPAllowListScheme()
+			app := appWithAllowList("chain-acl", tc.own, appv1alpha1.TypeWebService)
+			app.Spec.EnvironmentIPAllowList = tc.env
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+				WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{
+				Client: cl, Scheme: scheme, Mode: ModeKubernetes,
+				BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod",
+			}
+			ctx := context.Background()
+			// Pass 1 adds the finalizer; pass 2 reconciles the workloads.
+			for range 2 {
+				if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "chain-acl", Namespace: "default"}}); err != nil {
+					t.Fatalf("Reconcile: %v", err)
+				}
+			}
+
+			getMW := func(name string) error {
+				o := &unstructured.Unstructured{}
+				o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+				return cl.Get(ctx, types.NamespacedName{Name: name, Namespace: "default"}, o)
+			}
+			if err := getMW("chain-acl-ip-allow"); (err == nil) != tc.wantOwnMW {
+				t.Errorf("own middleware present=%v, want %v (err %v)", err == nil, tc.wantOwnMW, err)
+			}
+			if err := getMW("chain-acl-env-ip-allow"); (err == nil) != tc.wantEnvMW {
+				t.Errorf("env middleware present=%v, want %v (err %v)", err == nil, tc.wantEnvMW, err)
+			}
+			ing := &networkingv1.Ingress{}
+			if err := cl.Get(ctx, types.NamespacedName{Name: "chain-acl", Namespace: "default"}, ing); err != nil {
+				t.Fatalf("Ingress: %v", err)
+			}
+			if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != tc.wantAnnot {
+				t.Errorf("annotation = %q, want %q", got, tc.wantAnnot)
+			}
+		})
+	}
+}
+
+// TestDatastoreEnvironmentLayerChaining pins the TCP side of w4/m28: a
+// KeyValue with both its own entry list and an environment layer renders two
+// MiddlewareTCPs, both referenced by the SNI route.
+func TestDatastoreEnvironmentLayerChaining(t *testing.T) {
+	spec := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8", Description: "office"}})
+	ranges, _, _ := unstructured.NestedStringSlice(map[string]any{"spec": spec}, "spec", "ipAllowList", "sourceRange")
+	if len(ranges) != 1 || ranges[0] != "10.0.0.0/8" {
+		t.Fatalf("entries spec = %v", spec)
+	}
+	envSpec := cidrMiddlewareSpec([]string{"255.255.255.255/32"})
+	envRanges, _, _ := unstructured.NestedStringSlice(map[string]any{"spec": envSpec}, "spec", "ipAllowList", "sourceRange")
+	if len(envRanges) != 1 || envRanges[0] != "255.255.255.255/32" {
+		t.Fatalf("env spec = %v", envSpec)
+	}
+	// Route-level chaining: both middlewares referenced.
+	route := ingressRouteTCPSpec("postgres", "db.example.com", "db-rw", 5432, []any{
+		map[string]any{"name": "db-allow", "namespace": "ns"},
+		map[string]any{"name": "db-env-allow", "namespace": "ns"},
+	})
+	routes, _ := route["routes"].([]any)
+	if len(routes) != 1 {
+		t.Fatalf("routes = %v", routes)
+	}
+	mws, _ := routes[0].(map[string]any)["middlewares"].([]any)
+	if len(mws) != 2 {
+		t.Fatalf("route middlewares = %v, want both layers chained", mws)
 	}
 }
