@@ -1,6 +1,6 @@
 # infra/terraform — the infra-cluster base (idempotent IaC, run by CI)
 
-Day-0 substrate on Hetzner for the disposable **bootstrap cluster** and the durable production edge. Creates: SSH key + bootstrap private network + firewalls + an optional small node running single-node k3s, plus the delete-protected `bex-traefik` Load Balancer whose public IP must outlive every app-cluster rebuild. CAPH (and the app cluster it provisions) come _after_, on top of this k3s.
+Day-0 substrate on Hetzner for the disposable **bootstrap cluster** and the durable production edge. Creates: SSH key + bootstrap private network + firewalls + an optional small node running single-node k3s, plus the delete-protected `bex-traefik` Load Balancer whose public IP must outlive every app-cluster rebuild. After CAPH creates the app network, the same module owns the LB's private attachment, dynamic worker target, and five public listeners.
 
 **Not a one-shot.** State lives in Hetzner Object Storage (remote S3), so `apply` is idempotent: PRs get a `plan`, merges `apply`, a daily schedule re-`plan`s for **drift detection**. Same mental model as Argo for the cluster, one layer lower. It runs in **CI (ephemeral runner), never on a laptop** — see [`.github/workflows/infra.yml`](../../.github/workflows/infra.yml). Locally you need none of this: the dev mock uses a `kind` infra cluster (`infra/local/`).
 
@@ -27,6 +27,8 @@ The only irreducible "bottom turtle" is the **remote-state bucket** + the CI run
 | `location` | `fsn1` | match the CAPH overlay's region |
 | `bootstrap_server_type` | `cx33` | Intel cx line (3.5x cheaper than cpx for same specs); only CAPI controllers run here |
 | `allowed_ssh_cidrs` | `0.0.0.0/0` | **tighten in prod** (CI egress + admin IPs) |
+| `app_network_id` | `0` | CI discovers CAPH's network named `bex`; zero defers the edge projection during day 0 |
+| `traefik_private_ip` | `10.10.0.7` | stable edge address on the CAPH app network |
 
 ## First-run setup (one-time, out-of-band — the bottom turtle)
 
@@ -34,7 +36,7 @@ The only irreducible "bottom turtle" is the **remote-state bucket** + the CI run
 2. Add the repo secrets listed at the top of `infra.yml`.
 3. Open a PR touching `infra/terraform/**` → review the `plan` → merge → CI applies.
 
-If a `bex-traefik` Load Balancer already exists, the first main-branch run imports it by exact name before apply. Terraform then enables API deletion protection in place; it does not replace the object or change its public IP. The adoption and rebuild proof procedure is in [`docs/ADR002-architecture.md`](../../docs/ADR002-architecture.md#stable-production-edge-load-balancer).
+If a `bex-traefik` Load Balancer already exists, the first main-branch run imports it by exact name before apply. Once CAPH's `bex` network exists, the workflow also imports the attachment, target selector, and five listeners, then replaces only legacy per-server targets with the equivalent dynamic selector. Terraform enables API deletion protection in place; it does not replace the object or change its public IP. The adoption and rebuild proof procedure is in [`docs/ADR002-architecture.md`](../../docs/ADR002-architecture.md#stable-production-edge-load-balancer).
 
 ## Phase 2 — install CAPH and build the app cluster (next, also CI)
 

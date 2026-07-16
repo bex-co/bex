@@ -9,24 +9,24 @@ trap 'rm -rf "$tmp"' EXIT
 ssh-keygen -q -t ed25519 -N '' -f "$tmp/host" >/dev/null
 export BEX_SSH_HOST=ssh.example.test
 export BEX_SSH_HOST_KEY_FILE="$tmp/host"
+export HCLOUD_TOKEN=test-hcloud-token-must-not-appear-in-output
 export TEST_PUBLIC_KEY_FILE="$tmp/host.pub"
 export TEST_TRACE="$tmp/kubectl.trace"
 export TEST_SCAN_TRACE="$tmp/keyscan.trace"
-# Hetzner also reports the LB's private-network ingress. It must not become a
-# public-DNS requirement or appear in the activation mutation path.
-export TEST_EDGE_ADDRESSES=$'192.0.2.10\n2001:db8::10\n10.10.0.7\nfd00::7'
 export TEST_A_ADDRESSES=192.0.2.10
 export TEST_AAAA_ADDRESSES=2001:db8::10
 
 kubectl() {
   printf '%s\n' "$*" >>"$TEST_TRACE"
-  if [[ "$*" == *"get service traefik"* ]]; then
-    printf '%s\n' "$TEST_EDGE_ADDRESSES"
-  elif [[ "$*" == *"create configmap bex-ssh"* ]]; then
+  if [[ "$*" == *"create configmap bex-ssh"* ]]; then
     printf '%s\n' 'apiVersion: v1' 'kind: ConfigMap' 'metadata:' '  name: bex-ssh'
   elif [[ "$*" == *"apply -f -"* ]]; then
     command cat >/dev/null
   fi
+}
+
+curl() {
+  jq -cn '{load_balancers: [{name: "bex-traefik", public_net: {enabled: true, ipv4: {ip: "192.0.2.10"}, ipv6: {ip: "2001:db8::10"}}}]}'
 }
 
 dig() {
@@ -42,7 +42,7 @@ ssh-keyscan() {
   printf '[%s]:22 %s\n' "$BEX_SSH_HOST" "$(<"$TEST_PUBLIC_KEY_FILE")"
 }
 
-export -f kubectl dig ssh-keyscan
+export -f curl kubectl dig ssh-keyscan
 
 assert_contains() {
   local needle="$1"
@@ -57,8 +57,7 @@ assert_contains() {
 : >"$TEST_SCAN_TRACE"
 output="$(bash "$activate" --check)"
 [[ "$output" == PASS\ app\ SSH\ activation\ preflight* ]]
-[[ "$(wc -l <"$TEST_TRACE" | tr -d ' ')" == 1 ]]
-assert_contains 'get service traefik' "$TEST_TRACE"
+[[ ! -s "$TEST_TRACE" ]]
 [[ "$(wc -l <"$TEST_SCAN_TRACE" | tr -d ' ')" == 1 ]]
 [[ "$output" != *'10.10.0.7'* && "$output" != *'fd00::7'* ]]
 
@@ -71,7 +70,7 @@ if bash "$activate" --check >"$tmp/mismatch.out" 2>&1; then
 fi
 assert_contains 'public A/AAAA records must equal' "$tmp/mismatch.out"
 [[ ! -s "$TEST_SCAN_TRACE" ]]
-[[ "$(wc -l <"$TEST_TRACE" | tr -d ' ')" == 1 ]]
+[[ ! -s "$TEST_TRACE" ]]
 
 : >"$TEST_TRACE"
 : >"$TEST_SCAN_TRACE"

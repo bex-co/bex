@@ -58,30 +58,28 @@ The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `D
 
 **Dev (single-node, hostNetwork edge):** the DaemonSet's `hostPort: 5432` binds `:5432` directly on the node. `*.db.bex.co` is a DNS A record to the node IP.
 
-**Prod (Hetzner LoadBalancer):** port `5432` is absent from Traefik's Service and the prod kustomization creates a `LoadBalancer` Service selecting the proxy DaemonSet pods:
+**Prod (Hetzner LoadBalancer):** port `5432` is absent from Traefik's Service. The prod kustomization creates a fixed, source-preserving NodePort selecting the proxy DaemonSet; Terraform owns the shared edge LB's `5432 → 31056` listener and TCP health check:
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: bex-pg-sni-proxy-lb
+  name: bex-pg-sni-proxy-public
   namespace: bex-system
-  annotations:
-    load-balancer.hetzner.cloud/name: bex-traefik # share the existing LB
-    load-balancer.hetzner.cloud/location: fsn1
-    load-balancer.hetzner.cloud/use-private-ip: "true"
 spec:
-  type: LoadBalancer
+  type: NodePort
+  externalTrafficPolicy: Local
   selector:
     app.bex.co/component: pg-sni-proxy
   ports:
     - name: postgres
       port: 5432
       targetPort: 5432
+      nodePort: 31056
       protocol: TCP
 ```
 
-The kustomization applies this object with the rest of the operator; it is not a manual post-deploy step.
+The kustomization applies this object with the rest of the operator; it is not a manual post-deploy step. `Local` preserves the public client's source IP for the proxy allowlist and ensures the Hetzner health check sends traffic only to platform workers with a local proxy pod.
 
 ### 4. Naming convention (copy Render's reasoning, not its strings)
 

@@ -123,17 +123,17 @@ resource "hcloud_firewall" "app_nodes" {
   }
 }
 
-# Stable production edge (w1/m41). Terraform owns only the durable Load
-# Balancer object; the hcloud CCM owns its cluster-dependent private-network
-# attachment, node targets, listener services, and hcloud-ccm/service-uid label.
-# Omitting those computed fields here prevents Terraform and the CCM from
-# fighting over them.
+# Stable production edge (w1/m41). Terraform is the sole owner of the durable
+# Load Balancer and, once CAPH has created the app network, its attachment,
+# worker target selector, and every public listener. Kubernetes exposes fixed
+# NodePorts only; no LoadBalancer Service may adopt this object. A previous
+# split-owner design let each hcloud CCM Service replace the shared LB's entire
+# listener set, intermittently taking HTTP, PostgreSQL, or Valkey offline.
 #
-# hcloud CCM v1.33.0 falls back from its Service UID lookup to this name, so a
-# replacement Service or cluster adopts this object. Its deletion path also
-# explicitly leaves a delete-protected Load Balancer in place. The lifecycle
-# rule independently prevents an accidental Terraform destroy. See the live
-# adoption/rebuild runbook in docs/ADR002-architecture.md.
+# The lifecycle rule prevents an accidental Terraform destroy. CI discovers
+# the CAPH-managed `bex` network and imports an existing edge projection before
+# apply, so adopting this ownership model keeps the public and private IPs.
+# See the live adoption/rebuild runbook in docs/ADR002-architecture.md.
 resource "hcloud_load_balancer" "traefik" {
   name               = "bex-traefik"
   load_balancer_type = "lb11"
@@ -142,9 +142,121 @@ resource "hcloud_load_balancer" "traefik" {
 
   lifecycle {
     prevent_destroy = true
-    # labels belong to the CCM (hcloud-ccm/service-uid, above) — without this,
-    # every apply plans to strip them back to Terraform's empty map (w10/m6).
+    # Preserve any historical hcloud-ccm/service-uid label while the edge is
+    # adopted; Kubernetes no longer uses it after the Services become NodePort.
     ignore_changes = [labels]
+  }
+}
+
+resource "hcloud_load_balancer_network" "traefik" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  network_id       = var.app_network_id
+  ip               = var.traefik_private_ip
+}
+
+# CAPH labels every app-cluster worker, including future autoscaled machines.
+# Per-listener TCP health checks plus externalTrafficPolicy=Local on the fixed
+# NodePort Services ensure traffic reaches only workers with a local endpoint.
+resource "hcloud_load_balancer_target" "traefik_workers" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  type             = "label_selector"
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  label_selector   = "caph-cluster-bex=owned,machine_type=worker"
+  use_private_ip   = true
+
+  depends_on = [hcloud_load_balancer_network.traefik]
+}
+
+resource "hcloud_load_balancer_service" "ssh" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 22
+  destination_port = 32207
+  proxyprotocol    = false
+
+  health_check {
+    protocol = "tcp"
+    port     = 32207
+    interval = 15
+    timeout  = 10
+    retries  = 3
+  }
+}
+
+resource "hcloud_load_balancer_service" "http" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 80
+  destination_port = 31218
+  proxyprotocol    = false
+
+  health_check {
+    protocol = "tcp"
+    port     = 31218
+    interval = 15
+    timeout  = 10
+    retries  = 3
+  }
+}
+
+resource "hcloud_load_balancer_service" "https" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 443
+  destination_port = 31976
+  proxyprotocol    = false
+
+  health_check {
+    protocol = "tcp"
+    port     = 31976
+    interval = 15
+    timeout  = 10
+    retries  = 3
+  }
+}
+
+resource "hcloud_load_balancer_service" "postgres" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 5432
+  destination_port = 31056
+  proxyprotocol    = false
+
+  health_check {
+    protocol = "tcp"
+    port     = 31056
+    interval = 15
+    timeout  = 10
+    retries  = 3
+  }
+}
+
+resource "hcloud_load_balancer_service" "valkey" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 6379
+  destination_port = 31892
+  proxyprotocol    = false
+
+  health_check {
+    protocol = "tcp"
+    port     = 31892
+    interval = 15
+    timeout  = 10
+    retries  = 3
   }
 }
 
