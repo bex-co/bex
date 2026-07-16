@@ -91,6 +91,24 @@ const (
 	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
 	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
 	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
+	// AuditVerbCreate/Delete/Suspend/ResumePostgres and the KeyValue equivalents
+	// are explicit constants rather than derived verbs because the create path
+	// uses a workspace-level s.Authorize (no resource target), so the normal
+	// callerVerb emit carries no DatabaseTarget/KeyValueTarget. The explicit
+	// RecordDatabaseCreated/RecordKeyValueCreated helpers emit a second event
+	// after a successful create with the correct target, which the webhook
+	// worker's new database/keyvalue UNION ALL arms pick up (w3/m26).
+	// Delete/Suspend/Resume already emit via AuthorizeDatabase/AuthorizeKeyValue
+	// with a target; the constants keep the verbEvents map in internal/webhooks
+	// from hand-spelling the verb strings.
+	AuditVerbCreatePostgres  = "postgres.CreatePostgres"
+	AuditVerbDeletePostgres  = "postgres.DeletePostgres"
+	AuditVerbSuspendPostgres = "postgres.Suspend"
+	AuditVerbResumePostgres  = "postgres.Resume"
+	AuditVerbCreateKeyValue  = "keyvalue.CreateKeyValue"
+	AuditVerbDeleteKeyValue  = "keyvalue.DeleteKeyValue"
+	AuditVerbSuspendKeyValue = "keyvalue.Suspend"
+	AuditVerbResumeKeyValue  = "keyvalue.Resume"
 )
 
 // WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
@@ -258,6 +276,32 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
 	ev.AutoDeployEnabled = &enabled
 	b.recordAudit(ctx, ev)
+}
+
+// RecordDatabaseCreated emits an explicit post-create audit event for a
+// managed Postgres with a DatabaseTarget so the webhook worker's database arm
+// can pick it up (w3/m26). The workspace-level s.Authorize call in
+// CreatePostgres already emits one event with no target; this second event
+// carries the target and is the one the webhook feed joins against.
+func (b *Base) RecordDatabaseCreated(ctx context.Context, d *appv1alpha1.Database) {
+	resource, err := b.resourceWorkspace(ctx, d.Labels)
+	if err != nil {
+		log.Printf("audit: resolve database-created resource: %v", err)
+		return
+	}
+	b.recordAudit(ctx, b.verbAuditEvent(ctx, AuditVerbCreatePostgres, resource, DatabaseTarget(d.Name)))
+}
+
+// RecordKeyValueCreated emits an explicit post-create audit event for a
+// managed KeyValue with a KeyValueTarget — the same pattern as
+// RecordDatabaseCreated (w3/m26).
+func (b *Base) RecordKeyValueCreated(ctx context.Context, kv *appv1alpha1.KeyValue) {
+	resource, err := b.resourceWorkspace(ctx, kv.Labels)
+	if err != nil {
+		log.Printf("audit: resolve keyvalue-created resource: %v", err)
+		return
+	}
+	b.recordAudit(ctx, b.verbAuditEvent(ctx, AuditVerbCreateKeyValue, resource, KeyValueTarget(kv.Name)))
 }
 
 // verbAuditEvent builds a pre-populated AuditEvent for a deferred allowed-write

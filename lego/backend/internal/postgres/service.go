@@ -463,6 +463,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		}
 		return PostgresView{}, err
 	}
+	s.RecordDatabaseCreated(ctx, d)
 	return pgView(d), nil
 }
 

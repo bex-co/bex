@@ -94,6 +94,18 @@ const (
 	TypeCronJobRunEnded           = "cron_job_run_ended"
 	TypeMaintenanceModeEnabled    = "maintenance_mode_enabled"
 	TypeMaintenanceModeURIUpdated = "maintenance_mode_uri_updated"
+	// Managed datastore events (w3/m26): Render's webhook vocabulary extended to
+	// Postgres and Key Value lifecycle transitions. Render does not document these
+	// publicly — bex defines them following the service_* naming convention so a
+	// Render-shaped receiver can extend its handler without a schema break.
+	TypePostgresCreated   = "postgres_created"
+	TypePostgresDeleted   = "postgres_deleted"
+	TypePostgresSuspended = "postgres_suspended"
+	TypePostgresResumed   = "postgres_resumed"
+	TypeKeyValueCreated   = "key_value_created"
+	TypeKeyValueDeleted   = "key_value_deleted"
+	TypeKeyValueSuspended = "key_value_suspended"
+	TypeKeyValueResumed   = "key_value_resumed"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -114,6 +126,16 @@ var verbEvents = map[string]string{
 	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
 	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
 	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
+	// Managed datastore lifecycle verbs (w3/m26) — picked up by the
+	// database/keyvalue UNION ALL arms in store.webhookEventsQuery.
+	core.AuditVerbCreatePostgres:  TypePostgresCreated,
+	core.AuditVerbDeletePostgres:  TypePostgresDeleted,
+	core.AuditVerbSuspendPostgres: TypePostgresSuspended,
+	core.AuditVerbResumePostgres:  TypePostgresResumed,
+	core.AuditVerbCreateKeyValue:  TypeKeyValueCreated,
+	core.AuditVerbDeleteKeyValue:  TypeKeyValueDeleted,
+	core.AuditVerbSuspendKeyValue: TypeKeyValueSuspended,
+	core.AuditVerbResumeKeyValue:  TypeKeyValueResumed,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

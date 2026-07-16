@@ -352,6 +352,38 @@ WITH feed AS (
     JOIN tenants t ON t.id = a.tenant_id
      AND e.target IN ('service:' || t.name || '-' || a.name, 'service:' || a.name)
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4)
+  UNION ALL
+    SELECT e.id || ':',
+           e.at,
+           e.workspace_id,
+           split_part(e.target, ':', 2),
+           split_part(e.target, ':', 2),
+           '` + EventSourceAudit + `'::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           e.verb
+    FROM audit_events e
+    WHERE e.outcome = 'allowed'
+      AND e.verb = ANY($4)
+      AND e.workspace_id = ANY($5)
+      AND e.target LIKE 'database:%'
+  UNION ALL
+    SELECT e.id || ':',
+           e.at,
+           e.workspace_id,
+           split_part(e.target, ':', 2),
+           split_part(e.target, ':', 2),
+           '` + EventSourceAudit + `'::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           e.verb
+    FROM audit_events e
+    WHERE e.outcome = 'allowed'
+      AND e.verb = ANY($4)
+      AND e.workspace_id = ANY($5)
+      AND e.target LIKE 'keyvalue:%'
 )
 SELECT key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb
 FROM feed
