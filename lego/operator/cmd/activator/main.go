@@ -25,10 +25,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -145,15 +147,49 @@ func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host st
 
 func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Retry-After", "5")
-	if strings.Contains(r.Header.Get("Accept"), "text/html") {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = fmt.Fprint(w, loadingPage)
+	w.Header().Set("Cache-Control", "no-store")
+	if acceptsHTML(r.Header.Values("Accept")) {
+		writeHTMLPage(w, r, http.StatusServiceUnavailable, wakePage)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
-	_, _ = fmt.Fprint(w, `{"error":"service hibernated","retryAfter":5}`)
+	if r.Method != http.MethodHead {
+		_, _ = io.WriteString(w, `{"error":"service hibernated","retryAfter":5}`)
+	}
+}
+
+// acceptsHTML requires an explicit, non-zero text/html media range. Browsers
+// send one; API clients that omit Accept or send only */* keep the historical
+// JSON response instead of unexpectedly receiving a document.
+func acceptsHTML(values []string) bool {
+	for _, value := range values {
+		for _, item := range strings.Split(value, ",") {
+			mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(item))
+			if err != nil || !strings.EqualFold(mediaType, "text/html") {
+				continue
+			}
+			if rawQ, ok := params["q"]; ok {
+				q, err := strconv.ParseFloat(rawQ, 64)
+				if err != nil || q <= 0 {
+					continue
+				}
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// writeHTMLPage is the shared default-page seam for the maintenance and wake
+// responders. Custom maintenance pages keep their bounded origin response.
+func writeHTMLPage(w http.ResponseWriter, r *http.Request, status int, page string) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if r.Method != http.MethodHead {
+		_, _ = io.WriteString(w, page)
+	}
 }
 
 func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App) {
@@ -168,11 +204,7 @@ func serveMaintenanceWithFetcher(
 ) {
 	w.Header().Set("Cache-Control", "no-store")
 	if app.Spec.MaintenanceMode.URI == "" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		if r.Method != http.MethodHead {
-			_, _ = io.WriteString(w, maintenancePage)
-		}
+		writeHTMLPage(w, r, http.StatusServiceUnavailable, maintenancePage)
 		return
 	}
 
@@ -314,25 +346,42 @@ const maintenancePage = `<!DOCTYPE html>
 <p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
 </html>`
 
-const loadingPage = `<!DOCTYPE html>
+const wakePage = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="5">
-  <title>Waking up&hellip;</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bex &mdash; Application loading</title>
   <style>
-    body{font-family:system-ui,sans-serif;max-width:480px;margin:120px auto;text-align:center;color:#333}
-    h1{font-size:1.5rem;margin-bottom:.5rem}
-    p{color:#666}
-    .s{display:inline-block;width:24px;height:24px;border:3px solid #ddd;border-top-color:#555;
-       border-radius:50%;animation:spin 1s linear infinite}
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
+    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
+    p{color:#d1d5db;line-height:1.6}.s{display:inline-block;width:24px;height:24px;
+      border:3px solid #4b5563;border-top-color:#f9fafb;border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
-<body>
-  <div class="s"></div>
-  <h1>Waking up your app&hellip;</h1>
-  <p>This free-tier app was sleeping. It will be ready in a few seconds.</p>
-  <p><small>Auto-refreshing in 5&nbsp;seconds&hellip;</small></p>
-</body>
+<body><main><div class="s" aria-hidden="true"></div><h1>Application loading</h1>
+<p>Incoming HTTP request detected. This service is waking up and will be ready shortly.</p>
+<p><small>Checking again every 5 seconds&hellip;</small></p></main>
+<script>
+  const probeIntervalMs = 5000;
+  const fallbackReloadMs = 45000;
+  async function testIfServerIsUp() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch(window.location.href, {
+        method: "HEAD", cache: "no-store", signal: controller.signal
+      });
+      if (response.status !== 503) window.location.replace(window.location.href);
+    } catch (_) {
+      // A cold workload can remain unreachable between probes.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  setInterval(testIfServerIsUp, probeIntervalMs);
+  setTimeout(() => window.location.reload(), fallbackReloadMs);
+</script></body>
 </html>`
