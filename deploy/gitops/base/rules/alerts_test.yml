@@ -27,6 +27,26 @@ tests:
               summary: "Not every tenant node has a scrapeable egress meter"
               description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the untainted tenant-node count. Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes --show-labels"
 
+  - name: platform and control-plane nodes do not require egress meters
+    interval: 1m
+    input_series:
+      - series: 'kube_node_info{node="tenant-a"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="platform-a"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="control-plane-a"}'
+        values: "1x10"
+      - series: 'kube_node_spec_taint{node="platform-a", key="bex.co/platform", value="true", effect="NoSchedule"}'
+        values: "1x10"
+      - series: 'kube_node_role{node="control-plane-a", role="control-plane"}'
+        values: "1x10"
+      - series: 'up{job="bex-egress-meter", node="tenant-a"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EgressMeterTargetMissing
+        exp_alerts: []
+
   - name: egress meter unhealthy is per tenant node
     interval: 1m
     input_series:
