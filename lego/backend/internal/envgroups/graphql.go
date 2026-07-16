@@ -126,6 +126,8 @@ func createFilesFromArgs(raw any) []SecretFileView {
 
 // GraphQLQuery returns the env-group read fields. envGroups' ownerId (w6/m24)
 // names the workspace to list; omitted means the caller's default workspace.
+// Render's name/environment/timestamp list filters stay REST-only, matching the
+// Environments dialect; GraphQL retains its native owner + paging contract.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"envGroups": &graphql.Field{

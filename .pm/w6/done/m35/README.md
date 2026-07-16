@@ -1,18 +1,18 @@
 # w6 · m35 — Env-groups list filters: implement or explicitly reject
 
-**Worker:** worker6 **Goal:** every filter param Render documents on `GET /v1/env-groups` either works or returns an explicit 400 — none silently ignored. **Status:** todo
+**Worker:** worker6 **Goal:** every filter param Render documents on `GET /v1/env-groups` either works or returns an explicit 400 — none silently ignored. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                            | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Pin Render's env-groups list-filter semantics from the OpenAPI snapshot; decide implement-vs-explicit-reject per param | 30m | —          |
-| t002 | Implement the accepted filters in `ListEnvGroups` + REST (repeated/comma `name`, repeated `ownerId`, `environmentId`, timestamps) | 45m | t001       |
-| t003 | GraphQL/MCP list dialect decision + wiring or documented divergence (environments-list precedent)                 | 30m | t002       |
-| t004 | Render parity — filter semantics/error shapes vs Render across all touched surfaces                               | 30m | t003       |
-| t005 | Simplify — `/simplify` over the changed code                                                                       | 20m | t004       |
-| t006 | Test coverage — each filter narrows the page; any rejected param 400s explicitly                                   | 40m | t004       |
-| t007 | Closeout — verify DoD, sync status, move to done                                                                   | 15m | t006       |
+| t001 | Pin Render's env-groups list-filter semantics from the OpenAPI snapshot; decide implement-vs-explicit-reject per param — **DONE** | 30m | —    |
+| t002 | Implement the accepted filters in `ListEnvGroups` + REST (repeated/comma `name`, repeated `ownerId`, `environmentId`, timestamps) — **DONE** | 45m | t001 |
+| t003 | GraphQL/MCP list dialect decision + wiring or documented divergence (environments-list precedent) — **DONE** | 30m | t002 |
+| t004 | Render parity — filter semantics/error shapes vs Render across all touched surfaces — **DONE** | 30m | t003 |
+| t005 | Simplify — `/simplify` over the changed code — **DONE** | 20m | t004 |
+| t006 | Test coverage — each filter narrows the page; any rejected param 400s explicitly — **DONE** | 40m | t004 |
+| t007 | Closeout — verify DoD, sync status, move to done — **DONE** | 15m | t006 |
 
 ## Definition of done
 
@@ -24,3 +24,10 @@ For every filter param Render's public OpenAPI documents on `GET /v1/env-groups`
 - **Goal linkage:** Render REST parity (`docs/ADR006-bex-api.md`) and the standing filter-contract invariant — nothing accepted may be silently ignored (the same class the projects/custom-domains/environments milestones eliminated).
 - **Expected outcome:** Render clients filtering env-group lists get correct subsets or an honest error; the env-groups list matches the environments-list precedent shipped in w6/m33 (implemented filters + explicit 400 for unsupported ones).
 - **Why now:** w6/m32 shipped the paging half and filed this as the known remainder; w6's queue is down to one open milestone (m34), making this its natural refill. Render parity task included: REST change, with a GraphQL/MCP dialect decision in scope.
+
+## Closeout evidence
+
+- Every documented filter is implemented; env-group metadata already carries all required fields, so no parameter needed an unsupported 400.
+- Repeated and comma-separated arrays are OR alternatives; filter dimensions compose with AND. All timestamps use strict RFC3339 before/after boundaries and malformed input returns Render's named bad-request envelope.
+- Filtering runs on non-secret metadata before content loads and pagination. Multiple owners reuse the existing membership-checked workspace seam.
+- GraphQL/MCP remain owner+paging-only bex dialects, matching Environments. Full backend build/tests and backend lint passed.

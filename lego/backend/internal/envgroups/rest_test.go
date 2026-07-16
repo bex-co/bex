@@ -31,6 +31,10 @@ import (
 )
 
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
+	return serveRESTContext(context.Background(), svc, method, path, body)
+}
+
+func serveRESTContext(ctx context.Context, svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	var r *http.Request
@@ -39,6 +43,7 @@ func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecord
 	} else {
 		r = httptest.NewRequest(method, path, strings.NewReader(body))
 	}
+	r = r.WithContext(ctx)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, r)
 	return rec
@@ -177,6 +182,108 @@ func TestREST_EnvGroupsAbsentLimitUsesRenderDefault(t *testing.T) {
 	}
 	if len(page) != core.DefaultPageLimit {
 		t.Fatalf("absent limit returned %d groups, want Render default %d", len(page), core.DefaultPageLimit)
+	}
+}
+
+func filterTestService(t *testing.T) *Service {
+	t.Helper()
+	store := newFakeStore()
+	for _, group := range []struct {
+		id, name, owner, environment, created, updated string
+	}{
+		{"evg-01", "alpha", "tea-a", "env-one", "2026-07-15T10:00:00Z", "2026-07-15T11:00:00Z"},
+		{"evg-02", "bravo", "tea-a", "env-two", "2026-07-15T12:00:00Z", "2026-07-15T13:00:00Z"},
+		{"evg-03", "charlie", "tea-b", "env-one", "2026-07-15T14:00:00Z", "2026-07-15T15:00:00Z"},
+	} {
+		if err := store.Put(context.Background(), metaPath(group.id), map[string]string{
+			"name": group.name, "workspace": group.owner, "environment": group.environment,
+			"createdAt": group.created, "updatedAt": group.updated,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"filter-user": {"tea-a", "tea-b"}}},
+		Store: store,
+	}
+}
+
+func serveFilterREST(svc *Service, path string) *httptest.ResponseRecorder {
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "filter-user", Method: "session"})
+	return serveRESTContext(ctx, svc, http.MethodGet, path, "")
+}
+
+func envGroupListNames(t *testing.T, response *httptest.ResponseRecorder) []string {
+	t.Helper()
+	if response.Code != http.StatusOK {
+		t.Fatalf("GET = %d: %s", response.Code, response.Body.String())
+	}
+	var page []envGroupWithCursor
+	if err := json.Unmarshal(response.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(page))
+	for _, item := range page {
+		names = append(names, item.EnvGroup.Name)
+	}
+	return names
+}
+
+func TestREST_EnvGroupListFilters(t *testing.T) {
+	tests := []struct {
+		name, query string
+		want        []string
+	}{
+		{"name repeated and comma OR", "name=alpha,missing&name=bravo", []string{"alpha", "bravo"}},
+		{"ownerId narrows", "ownerId=tea-b", []string{"charlie"}},
+		{"ownerId repeated OR", "ownerId=tea-a&ownerId=tea-b", []string{"alpha", "bravo", "charlie"}},
+		{"environmentId repeated and comma OR", "ownerId=tea-a,tea-b&environmentId=env-one,missing&environmentId=also-missing", []string{"alpha", "charlie"}},
+		{"createdBefore", "createdBefore=2026-07-15T11:00:00Z", []string{"alpha"}},
+		{"createdAfter", "createdAfter=2026-07-15T11:00:00Z", []string{"bravo"}},
+		{"updatedBefore", "updatedBefore=2026-07-15T12:00:00Z", []string{"alpha"}},
+		{"updatedAfter", "updatedAfter=2026-07-15T12:00:00Z", []string{"bravo"}},
+		{"different params compose with AND", "ownerId=tea-a,tea-b&name=alpha,charlie&environmentId=env-one&createdAfter=2026-07-15T09:00:00Z", []string{"alpha", "charlie"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := envGroupListNames(t, serveFilterREST(filterTestService(t), "/v1/env-groups?"+tc.query))
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("names = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestREST_EnvGroupListRejectsInvalidTimestampsByName(t *testing.T) {
+	for _, key := range []string{"createdBefore", "createdAfter", "updatedBefore", "updatedAfter"} {
+		t.Run(key, func(t *testing.T) {
+			response := serveFilterREST(filterTestService(t), "/v1/env-groups?"+key+"=yesterday")
+			var body map[string]any
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			message, _ := body["message"].(string)
+			if response.Code != http.StatusBadRequest || body["id"] != "bad_request" || !strings.Contains(message, key) {
+				t.Fatalf("%s = %d: %s; want named 400", key, response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestREST_EnvGroupFiltersBeforePagination(t *testing.T) {
+	svc := filterTestService(t)
+	store := svc.Store.(*fakeStore)
+	for i, name := range []string{"delta", "echo", "foxtrot"} {
+		id := fmt.Sprintf("evg-%02d", i+4)
+		if err := store.Put(context.Background(), metaPath(id), map[string]string{
+			"name": name, "workspace": "tea-a", "createdAt": "2026-07-15T16:00:00Z", "updatedAt": "2026-07-15T16:00:00Z",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?name=delta,echo,foxtrot&limit=2"))
+	if !slices.Equal(got, []string{"delta", "echo"}) {
+		t.Fatalf("filtered page = %v, want a full two-item page", got)
 	}
 }
 

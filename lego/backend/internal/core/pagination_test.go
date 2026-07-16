@@ -17,11 +17,32 @@ limitations under the License.
 package core
 
 import (
+	"errors"
 	"net/url"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestQueryListAcceptsCommaAndRepeatedForms(t *testing.T) {
+	q := url.Values{"name": {" alpha,bravo ", "bravo", "", "charlie"}}
+	if got := QueryList(q, "name"); !slices.Equal(got, []string{"alpha", "bravo", "charlie"}) {
+		t.Fatalf("QueryList = %v", got)
+	}
+}
+
+func TestQueryTime(t *testing.T) {
+	want := time.Date(2026, 7, 15, 10, 11, 12, 0, time.UTC)
+	got, err := QueryTime(url.Values{"createdBefore": {want.Format(time.RFC3339)}}, "createdBefore")
+	if err != nil || !got.Equal(want) {
+		t.Fatalf("QueryTime = %v, %v", got, err)
+	}
+	_, err = QueryTime(url.Values{"createdBefore": {"yesterday"}}, "createdBefore")
+	if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "createdBefore") {
+		t.Fatalf("invalid QueryTime = %v", err)
+	}
+}
 
 func TestPageParams(t *testing.T) {
 	q := func(s string) url.Values { v, _ := url.ParseQuery(s); return v }
