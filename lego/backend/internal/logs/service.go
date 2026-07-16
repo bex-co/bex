@@ -160,9 +160,11 @@ type Service struct {
 // Query directions — Render's `direction`: which end of the time window the
 // `limit` lines are taken from. Backward (the default) keeps the most recent;
 // forward keeps the oldest. Either way the returned slice stays oldest-first.
+// The vocabulary itself is core's (shared with the audit log), aliased here
+// for the adapters' convenience.
 const (
-	DirectionBackward = "backward"
-	DirectionForward  = "forward"
+	DirectionBackward = core.DirectionBackward
+	DirectionForward  = core.DirectionForward
 )
 
 // LogQuery is the resolved filter set for QueryLogs / FollowLogs — Render's logs
@@ -221,8 +223,8 @@ func parseTimeWindow(startTime, endTime string) (since, end time.Time, err error
 // cannot forget it, and all three surfaces refuse identically. core.ErrBadRequest
 // maps to 400 (adapters name the offending value in the message).
 func (q LogQuery) validate() error {
-	if q.Direction != "" && q.Direction != DirectionBackward && q.Direction != DirectionForward {
-		return fmt.Errorf("%w: unknown direction %q (want %s|%s)", core.ErrBadRequest, q.Direction, DirectionBackward, DirectionForward)
+	if _, err := core.ParseDirection(q.Direction); err != nil {
+		return err
 	}
 	for _, t := range q.Types {
 		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild && t != LogTypePreDeploy {

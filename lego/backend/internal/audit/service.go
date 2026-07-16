@@ -27,7 +27,6 @@ package audit
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -84,12 +83,12 @@ func view(r store.AuditRow) Event {
 	}
 }
 
-// Render's direction vocabulary (api-docs.render.com list-owner-audit-logs,
-// the same enum the logs feature honors): backward is newest-first (the
-// default), forward starts with the oldest event in the window.
+// Render's direction vocabulary (api-docs.render.com list-owner-audit-logs) —
+// the shared enum core.ParseDirection validates for every list surface that
+// honors it, aliased here for the adapters' convenience.
 const (
-	DirectionBackward = "backward"
-	DirectionForward  = "forward"
+	DirectionBackward = core.DirectionBackward
+	DirectionForward  = core.DirectionForward
 )
 
 // Filter narrows List — the neutral shape the REST/GraphQL adapters translate
@@ -118,16 +117,16 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(ownerID)); err != nil {
 		return nil, err
 	}
-	if filter.Direction != "" && filter.Direction != DirectionBackward && filter.Direction != DirectionForward {
-		return nil, fmt.Errorf("%w: unknown direction %q (want %s|%s)",
-			core.ErrBadRequest, filter.Direction, DirectionBackward, DirectionForward)
+	oldestFirst, err := core.ParseDirection(filter.Direction)
+	if err != nil {
+		return nil, err
 	}
 	if s.Store == nil {
 		return nil, core.ErrAuditUnavailable
 	}
 	rows, err := s.Store.ListAuditEvents(ctx, ownerID, store.AuditFilter{
 		Since: filter.Since, Until: filter.Until, Cursor: filter.Cursor, Limit: filter.Limit,
-		OldestFirst: filter.Direction == DirectionForward,
+		OldestFirst: oldestFirst,
 	})
 	if err != nil {
 		return nil, err

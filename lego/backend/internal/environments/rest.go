@@ -222,10 +222,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 		}
 		if hasACL {
-			cur, err := s.Get(r.Context(), r.PathValue("id"))
-			if err != nil {
-				writeErr(w, err)
-				return
+			// Rename already returned the full view (ACL triple included), so a
+			// second Get — with its authorize + membership fetches — only runs
+			// when the name was untouched.
+			cur := e
+			if req.Name == nil {
+				if cur, err = s.Get(r.Context(), r.PathValue("id")); err != nil {
+					writeErr(w, err)
+					return
+				}
 			}
 			status, isolated, allowList := cur.ProtectedStatus, cur.NetworkIsolationEnabled, cur.IPAllowList
 			if status == "" { // pre-ACL-migration rows surface as empty

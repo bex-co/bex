@@ -225,6 +225,14 @@ var readRelations = map[string]bool{
 	RelCanViewSensitive: true,
 }
 
+// auditsDenial reports whether a DENIED check of relation records an audit
+// event — the one predicate authorizeAndRecord and AuthorizeApp's aggregate
+// fallback row both consult, so the aggregate row can't silently drift from
+// the per-candidate rows when a relation class changes.
+func auditsDenial(relation string) bool {
+	return writeRelations[relation] || readRelations[relation]
+}
+
 // receiverRE strips a method's pointer-receiver type (e.g. "(*Service).") out
 // of its runtime-reported name, so "apps.(*Service).Suspend" reads as
 // "apps.Suspend" — a short, greppable verb.

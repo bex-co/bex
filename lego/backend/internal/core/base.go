@@ -363,7 +363,7 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 		if writeRelations[relation] && !defersAllowedWriteAudit(ctx) {
 			b.emit(ctx, verb, object, target, nil)
 		}
-	case recordDenial && (writeRelations[relation] || readRelations[relation]):
+	case recordDenial && auditsDenial(relation):
 		b.emit(ctx, verb, object, target, err)
 	}
 	return err
@@ -516,9 +516,11 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			}
 		}
 		if lastErr != nil {
-			if denied > maxFallbackCandidateAudits && (writeRelations[relation] || readRelations[relation]) {
-				object, _ := b.callerWorkspace(ctx)
-				b.emit(ctx, verb, object, ServiceTarget(name), lastErr)
+			if denied > maxFallbackCandidateAudits && auditsDenial(relation) {
+				// acting was already resolved above (and is non-empty in this
+				// branch) — no need for callerWorkspace's second store round-trip
+				// on what is already the worst-case-latency path.
+				b.emit(ctx, verb, WorkspaceObject(acting), ServiceTarget(name), lastErr)
 			}
 			return nil, lastErr
 		}
