@@ -217,9 +217,12 @@ func main() {
 	if csErr != nil {
 		setupLog.Info("metrics-server reader unavailable; autoscaling disabled", "reason", csErr)
 	}
-	buildClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
+	// Secrets outside BEX_APPS_NAMESPACE are deliberately absent from the
+	// manager cache. Keep one direct client for build-plane resources and other
+	// explicitly RBAC-scoped namespaces such as the Zot registry namespace.
+	uncachedClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
 	if err != nil {
-		setupLog.Error(err, "Failed to create uncached build client")
+		setupLog.Error(err, "Failed to create uncached client")
 		os.Exit(1)
 	}
 
@@ -243,7 +246,7 @@ func main() {
 	}
 	appReconciler := &controller.AppReconciler{
 		Client:                  mgr.GetClient(),
-		BuildClient:             buildClient,
+		BuildClient:             uncachedClient,
 		Scheme:                  mgr.GetScheme(),
 		Mode:                    envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
 		Registry:                envOr("BEX_REGISTRY", "127.0.0.1:5050"),
@@ -283,7 +286,10 @@ func main() {
 			}
 		}
 		appReconciler.PerAppRegistry = &registry.Creds{
-			Client:         mgr.GetClient(),
+			// Zot Secrets live outside the manager's namespaced Secret cache.
+			// A cached client fails these reads with "unknown namespace for the
+			// cache" before any build can start.
+			Client:         uncachedClient,
 			ZotNamespace:   zotNS,
 			HTPasswdName:   envOr("BEX_ZOT_HTPASSWD_SECRET", "zot-htpasswd"),
 			ConfigName:     envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),

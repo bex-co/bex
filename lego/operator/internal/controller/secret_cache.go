@@ -29,8 +29,9 @@ import (
 // this per-kind scope, an Owns(Secret) watch asks for a cluster-wide list and
 // prevents the entire shared cache (including the App controller) from starting.
 //
-// Build-plane and admission-webhook Secret reads use uncached clients, so their
-// separately scoped build/platform Roles are unaffected by this cache boundary.
+// Build-plane, per-App registry, and admission-webhook Secret reads use uncached
+// clients, so their separately scoped build/platform Roles are unaffected by
+// this cache boundary.
 func NamespacedSecretCacheOptions(namespace string) cache.Options {
 	return cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
