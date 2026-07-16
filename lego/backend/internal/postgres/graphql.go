@@ -518,13 +518,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the databases list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
-				"ownerId":                &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId":          &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":                   &graphql.ArgumentConfig{Type: graphql.String},
-				"version":                &graphql.ArgumentConfig{Type: graphql.String},
-				"diskSizeGB":             &graphql.ArgumentConfig{Type: graphql.Int},
-				"enableDiskAutoscaling":  &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"public":                 &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ownerId":               &graphql.ArgumentConfig{Type: graphql.String},
+				"environmentId":         &graphql.ArgumentConfig{Type: graphql.String},
+				"plan":                  &graphql.ArgumentConfig{Type: graphql.String},
+				"version":               &graphql.ArgumentConfig{Type: graphql.String},
+				"diskSizeGB":            &graphql.ArgumentConfig{Type: graphql.Int},
+				"enableDiskAutoscaling": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"public":                &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowList":           &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				// ipAllowListEntries is the description-carrying form (w4/m24);
+				// when present it wins over ipAllowList.
+				"ipAllowListEntries":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
 				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
@@ -548,6 +552,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["public"].(bool); ok {
 					req.Public = v
 				}
+				req.IPAllowList = core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
 				if v, ok := p.Args["enableHighAvailability"].(bool); ok {
 					req.EnableHighAvailability = v
 				}

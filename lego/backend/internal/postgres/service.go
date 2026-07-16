@@ -607,6 +607,7 @@ type PostgresPatch struct {
 	EnableDiskAutoscaling  *bool
 	EnableHighAvailability *bool
 	IPAllowList            *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
+	ParameterOverrides     *map[string]string       // nil = unchanged; non-nil empty map clears it
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
@@ -656,6 +657,25 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	if patch.IPAllowList != nil {
 		d.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
 	}
+	if patch.ParameterOverrides != nil {
+		d.Spec.Parameters = normalizeParameterOverrides(*patch.ParameterOverrides)
+	}
+}
+
+func normalizeParameterOverrides(params map[string]string) map[string]string {
+	if len(params) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(params))
+	for name, value := range params {
+		if name != "shared_preload_libraries" {
+			out[name] = value
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}

@@ -1,23 +1,30 @@
 # w8 · m16 — Managed-datastore polish chores: create ipAllowList parity + pg_stat_statements backfill + KV version assessment
 
-**Worker:** worker8 **Goal:** Three datastore polish items land as one chores round (the w7/m37 pattern): a GraphQL/MCP-created Postgres carries its create-time IP allow-list like its keyvalue sibling, pre-m25 databases gain the query insights they currently degrade out of forever, and the KV version-upgrade parity question gets an evidenced answer. **Status:** todo
+**Worker:** worker8 **Goal:** Three datastore polish items land as one chores round (the w7/m37 pattern): a GraphQL/MCP-created Postgres carries its create-time IP allow-list like its keyvalue sibling, pre-m25 databases gain the query insights they currently degrade out of forever, and the KV version-upgrade parity question gets an evidenced answer. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | `ipAllowList` on GraphQL `createDatabase` + MCP `create_postgres`, mirroring keyvalue      | 40m | —          |
-| t002 | Backfill `pg_stat_statements` onto pre-m25 CNPG clusters via the parameter-override seam   | 45m | —          |
-| t003 | KV version-change parity assessment (either-outcome acceptance)                            | 30m | —          |
-| t008 | Accept Render's inline `parameterOverrides` on PATCH /v1/postgres/{id}                     | 30m | —          |
-| t004 | Render parity                                                                               | 20m | t001, t008 |
-| t005 | Simplify                                                                                    | 15m | t004       |
-| t006 | Test coverage                                                                               | 30m | t004       |
-| t007 | Closeout                                                                                    | 15m | t006       |
+| t001 | `ipAllowList` on GraphQL `createDatabase` + MCP `create_postgres`, mirroring keyvalue — **DONE**      | 40m | —          |
+| t002 | Backfill `pg_stat_statements` onto pre-m25 CNPG clusters via the parameter-override seam — **DONE**   | 45m | —          |
+| t003 | KV version-change parity assessment (either-outcome acceptance) — **DONE**                            | 30m | —          |
+| t008 | Accept Render's inline `parameterOverrides` on PATCH /v1/postgres/{id} — **DONE**                     | 30m | —          |
+| t004 | Render parity — **DONE**                                                                               | 20m | t001, t008 |
+| t005 | Simplify — **DONE**                                                                                    | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                               | 30m | t004       |
+| t007 | Closeout — **DONE**                                                                                    | 15m | t005, t006 |
 
 ## Definition of done
 
 A Postgres created via GraphQL or MCP with an `ipAllowList` carries it (cross-surface test) and the stale `postgres/mcp.go:42-43` comment is fixed; a database provisioned before w2/m25 returns real Top Queries rows after the operator reconcile (verified on a dev-N or prod pre-m25 cluster); the KV version question has a recorded answer with spec/docs evidence (mirror-milestone filed if yes, parity-by-absence recorded if no); a Render-shaped `PATCH /v1/postgres/{id}` with inline `parameterOverrides` applies them via the existing override seam (no silent ignore) and `docs/ADR018-render-parity.md:88`'s note is updated; source notes `w8/003` + `w8/006` closed.
+
+## Validation evidence
+
+- `cd lego/backend && go test ./...` passed, including the REST/GraphQL/MCP create equivalence, invalid-CIDR failure, inline parameter-override replace, omission, and protected-preload cases.
+- `cd lego/operator && make test` passed, including a legacy CNPG-spec convergence test that adds the managed extension settings and proves the second projection is byte-identical.
+- Production-equivalent proof on 2026-07-16 created a disposable old-spec `dev-8-m16/m16-pgstat-proof` cluster. It reported zero extension rows before the matching bex Database existed; ordinary reconcile added `track=all` and the preload library, CNPG returned `Ready`, installed the extension, and exposed 30 `pg_stat_statements` rows. The Database and namespace were deleted afterward.
+- Render's official OpenAPI `keyValuePATCHInput`/`redisPATCHInput` had exactly `name`, `plan`, `maxmemoryPolicy`, `persistenceMode`, and `ipAllowList` on 2026-07-16—no version field—matching the public Key Value documentation's no-upgrade behavior.
 
 ## Source + Goal linkage
 

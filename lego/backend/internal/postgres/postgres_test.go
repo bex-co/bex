@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -269,6 +270,86 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 		`{"name":"pg-ipal-bad","plan":"free","ipAllowList":[{"cidrBlock":"nonsense"}]}`)
 	if w.Code != 400 {
 		t.Errorf("create with a bad CIDR => 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
+	want := core.IPAllowListEntry{CIDRBlock: "203.0.113.0/24", Description: "office"}
+
+	restService, _ := newService()
+	rest := serveREST(restService, "POST", "/v1/postgres",
+		`{"name":"acl-rest","ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`)
+	if rest.Code != http.StatusCreated {
+		t.Fatalf("REST create = %d: %s", rest.Code, rest.Body.String())
+	}
+	var restView PostgresView
+	if err := json.Unmarshal(rest.Body.Bytes(), &restView); err != nil {
+		t.Fatal(err)
+	}
+
+	gqlService, _ := newService()
+	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: gqlService.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: gqlService.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gqlResult := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `
+		mutation { createDatabase(name:"acl-gql", ipAllowListEntries:[{cidrBlock:"203.0.113.0/24", description:"office"}]) {
+			ipAllowListEntries { cidrBlock description }
+		} }`})
+	if len(gqlResult.Errors) != 0 {
+		t.Fatalf("GraphQL create: %v", gqlResult.Errors)
+	}
+	gqlEntries := gqlResult.Data.(map[string]any)["createDatabase"].(map[string]any)["ipAllowListEntries"].([]any)
+	gqlEntry := gqlEntries[0].(map[string]any)
+
+	mcpService, _ := newService()
+	mcpCall, cleanup := pgMCPClient(t, mcpService)
+	defer cleanup()
+	mcpView := mcpCall("create_postgres", map[string]any{
+		"name":               "acl-mcp",
+		"ipAllowListEntries": []any{map[string]any{"cidrBlock": "203.0.113.0/24", "description": "office"}},
+	})
+	mcpEntries := mcpView["ipAllowList"].([]any)
+	mcpEntry := mcpEntries[0].(map[string]any)
+
+	if len(restView.IPAllowList) != 1 || restView.IPAllowList[0] != want ||
+		gqlEntry["cidrBlock"] != want.CIDRBlock || gqlEntry["description"] != want.Description ||
+		mcpEntry["cidrBlock"] != want.CIDRBlock || mcpEntry["description"] != want.Description {
+		t.Fatalf("create allowlist drift: REST=%+v GraphQL=%v MCP=%v", restView.IPAllowList, gqlEntry, mcpEntry)
+	}
+
+	badREST := serveREST(restService, "POST", "/v1/postgres", `{"name":"bad-rest","ipAllowList":[{"cidrBlock":"not-a-cidr"}]}`)
+	badGQL := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `mutation { createDatabase(name:"bad-gql", ipAllowList:["not-a-cidr"]) { id } }`})
+	badMCPService, _ := newService()
+	badServer := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	badMCPService.RegisterMCP(badServer)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := badServer.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	badClient, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer badClient.Close()
+	badMCP, err := badClient.CallTool(ctx, &mcp.CallToolParams{Name: "create_postgres", Arguments: map[string]any{"name": "bad-mcp", "ipAllowList": []string{"not-a-cidr"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpErrorText := ""
+	if len(badMCP.Content) > 0 {
+		if text, ok := badMCP.Content[0].(*mcp.TextContent); ok {
+			mcpErrorText = text.Text
+		}
+	}
+	if badREST.Code != http.StatusBadRequest || len(badGQL.Errors) != 1 || !badMCP.IsError ||
+		!strings.Contains(badREST.Body.String(), "CIDR") ||
+		!strings.Contains(badGQL.Errors[0].Message, "CIDR") || !strings.Contains(mcpErrorText, "CIDR") {
+		t.Fatalf("invalid CIDR mismatch: REST=%d %s GraphQL=%v MCP=%+v", badREST.Code, badREST.Body.String(), badGQL.Errors, badMCP)
 	}
 }
 
@@ -593,6 +674,23 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
 	if !got.Spec.HighAvailability {
 		t.Error("spec.highAvailability should be true after an HA-only update")
+	}
+
+	// Render accepts parameterOverrides inline on PATCH. It reaches the same
+	// replace-style spec.parameters seam as PUT /parameter-overrides.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"parameterOverrides":{"work_mem":"16MB","shared_preload_libraries":"badlib"}}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("inline parameterOverrides PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if !reflect.DeepEqual(got.Spec.Parameters, map[string]string{"work_mem": "16MB"}) {
+		t.Fatalf("inline parameterOverrides = %v, want guarded replace map", got.Spec.Parameters)
+	}
+	// Omission leaves overrides untouched.
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":21}`)
+	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
+	if w.Code != http.StatusOK || !reflect.DeepEqual(got.Spec.Parameters, map[string]string{"work_mem": "16MB"}) {
+		t.Fatalf("PATCH without parameterOverrides changed them: status=%d params=%v", w.Code, got.Spec.Parameters)
 	}
 
 	// ip-allow-list alone, Render's {cidrBlock,description} wire shape, no

@@ -385,6 +385,76 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 }
 
+// TestLegacyDatabaseGainsPgStatStatements proves a pre-insights CNPG Cluster
+// converges through an ordinary Database reconcile. CloudNativePG treats a
+// pg_stat_statements.* parameter as the managed-extension switch: it adds the
+// preload library, rolls PostgreSQL when required, and runs CREATE EXTENSION
+// IF NOT EXISTS in every connectable database. A second reconcile must retain
+// the same spec so the backfill cannot cause restart churn.
+func TestLegacyDatabaseGainsPgStatStatements(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	for _, gvk := range []schema.GroupVersionKind{
+		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
+		traefikIngressRouteTCPGVK, traefikMiddlewareTCPGVK,
+	} {
+		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+	}
+
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "legacy-insights", Namespace: "default", Finalizers: []string{dbFinalizer}},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "free"},
+	}
+	legacy := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "postgresql.cnpg.io/v1",
+		"kind":       "Cluster",
+		"metadata": map[string]any{
+			"name": "legacy-insights", "namespace": "default",
+		},
+		"spec": map[string]any{
+			"instances": int64(1),
+			"postgresql": map[string]any{
+				"parameters": map[string]any{"work_mem": "4MB"},
+			},
+		},
+	}}
+	legacy.SetGroupVersionKind(cnpgClusterGVK)
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, legacy).
+		WithStatusSubresource(&appv1alpha1.Database{}).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+
+	got := &unstructured.Unstructured{}
+	got.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(context.Background(), req.NamespacedName, got); err != nil {
+		t.Fatal(err)
+	}
+	params, _, _ := unstructured.NestedStringMap(got.Object, "spec", "postgresql", "parameters")
+	preload, _, _ := unstructured.NestedStringSlice(got.Object, "spec", "postgresql", "shared_preload_libraries")
+	if params["pg_stat_statements.track"] != "all" || !reflect.DeepEqual(preload, []string{"pg_stat_statements"}) {
+		t.Fatalf("legacy cluster did not gain managed pg_stat_statements config: params=%v preload=%v", params, preload)
+	}
+	firstSpec, _, _ := unstructured.NestedMap(got.Object, "spec")
+
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	again := &unstructured.Unstructured{}
+	again.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(context.Background(), req.NamespacedName, again); err != nil {
+		t.Fatal(err)
+	}
+	secondSpec, _, _ := unstructured.NestedMap(again.Object, "spec")
+	if !reflect.DeepEqual(firstSpec, secondSpec) {
+		t.Fatalf("pg_stat_statements backfill is not idempotent:\nfirst=%v\nsecond=%v", firstSpec, secondSpec)
+	}
+}
+
 func TestDatabasePublicFrontDoorMigration(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)

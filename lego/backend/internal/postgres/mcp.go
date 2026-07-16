@@ -59,16 +59,20 @@ type postgresArgs struct {
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
-	OwnerID                string `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
-	EnvironmentID          string `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name                   string `json:"name" jsonschema:"the database name"`
-	Plan                   string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
-	Version                string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
-	DiskSizeGB             int32  `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
-	EnableDiskAutoscaling  bool   `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full"`
-	Public                 bool   `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
-	EnableHighAvailability bool   `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
-	DryRun                 bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID               string   `json:"ownerId,omitempty" jsonschema:"the workspace to create in (an owner id, tea-...); omit to use the workspace selected with select_workspace, else your default workspace"`
+	EnvironmentID         string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name                  string   `json:"name" jsonschema:"the database name"`
+	Plan                  string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
+	Version               string   `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
+	DiskSizeGB            int32    `json:"diskSizeGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
+	EnableDiskAutoscaling bool     `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full"`
+	Public                bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	IPAllowList           []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	// IPAllowListEntries is the description-carrying form (w4/m24); when
+	// present it wins over ipAllowList.
+	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
+	EnableHighAvailability bool                    `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
+	DryRun                 bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 // listPostgresResult wraps the array — MCP tool outputs must be JSON objects.
@@ -141,7 +145,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed Postgres database. name is required; plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.SelectedWorkspace(s.Selections, req, in.OwnerID),
@@ -152,6 +156,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DiskSizeGB:             in.DiskSizeGB,
 			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
 			Public:                 in.Public,
+			IPAllowList:            core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList),
 			EnableHighAvailability: in.EnableHighAvailability,
 			DryRun:                 in.DryRun,
 		})

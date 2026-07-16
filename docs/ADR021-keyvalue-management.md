@@ -81,6 +81,7 @@ Ship only what fits the current single node — single-instance plans differing 
 
 - Deferred to post-MVP: HA/replication (a Valkey replica/sentinel needs a ≥3-node worker pool), eviction/scale-to-zero for free-tier stores, and overage billing. Public TLS and outbound response metering are implemented.
 - The REST/GraphQL/MCP surface (`list_key_value` / `get_key_value` / `create_key_value` + `/v1/key-value` CRUD/connection-info/suspend/resume + GraphQL `keyValue*`) shipped in w2/m7 on top of this mechanism; `list_key_value_instances` remains a deprecated compatibility alias, and the dashboard shipped in w5/m12.
+- **Version-change parity assessment (2026-07-16, w8/m16): no upgrade verb.** Render's official `keyValuePATCHInput` and legacy `redisPATCHInput` schemas list only `name`, `plan`, `maxmemoryPolicy`, `persistenceMode`, and `ipAllowList`; neither accepts `version`. Render's Key Value documentation likewise documents plan upgrades and states that new instances run Valkey 8 while legacy instances remain on Redis 6 without version updates. Therefore bex's create-time-only `spec.version` matches the absence of a Render version-change contract; no mirror milestone is warranted. Reassess only if Render adds a version field or explicit upgrade flow.
 
 ## Verification
 

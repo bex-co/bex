@@ -444,6 +444,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		EnableDiskAutoscaling  *bool                    `json:"enableDiskAutoscaling,omitempty"`
 		EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty"`
 		IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+		ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty"`
 		DryRun                 bool                     `json:"dryRun,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -454,7 +455,8 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	patch := PostgresPatch{
 		Name: req.Name, Plan: req.Plan, Version: req.Version, DiskSizeGB: req.DiskSizeGB,
 		EnableDiskAutoscaling: req.EnableDiskAutoscaling, EnableHighAvailability: req.EnableHighAvailability,
-		IPAllowList: req.IPAllowList,
+		IPAllowList:        req.IPAllowList,
+		ParameterOverrides: req.ParameterOverrides,
 	}
 	dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
 	if dryRun {
