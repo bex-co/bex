@@ -121,6 +121,35 @@ vi.mock("@/features/services/hooks/use-display-name", () => ({
   }),
 }));
 
+vi.mock("@/features/services/hooks/use-registry-credential", () => ({
+  useRegistryCredential: () => ({
+    setRegistryCredential: vi.fn(async () => true),
+    busy: false,
+  }),
+}));
+
+vi.mock(
+  "@/features/registry-credentials/hooks/use-registry-credentials",
+  () => ({
+    useRegistryCredentials: () => ({
+      credentials: [
+        {
+          id: "rgc-private",
+          name: "Private GHCR",
+          host: "ghcr.io",
+          username: "robot",
+          expiresAt: null,
+          status: "active",
+          createdAt: null,
+        },
+      ],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    }),
+  }),
+);
+
 vi.mock("@/features/services/hooks/use-subdomain-policy", () => ({
   useSubdomainPolicy: () => ({
     setSubdomainPolicy: vi.fn(async () => true),
@@ -228,6 +257,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     runs: [],
     healthCheckPath: null,
     maxShutdownDelaySeconds: 30,
+    registryCredentialId: null,
     ...overrides,
   };
 }
@@ -375,5 +405,47 @@ describe("ServiceSettingsPage", () => {
     expect(await screen.findByText("Deploy")).toBeInTheDocument();
     expect(screen.queryByText("Build & Deploy")).not.toBeInTheDocument();
     expect(screen.queryByText("Auto-Deploy")).not.toBeInTheDocument();
+  });
+
+  it("offers registry credential attach for an image-backed service", async () => {
+    serverState.service = svc({
+      repo: null,
+      registryCredentialId: "rgc-private",
+    });
+    renderSettings();
+
+    expect(
+      await screen.findByText("Image registry credential"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Registry credential" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers registry credential attach for a repository Docker build", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/private-base",
+      runtime: "docker",
+      builder: "dockerfile",
+    });
+    renderSettings();
+
+    expect(
+      await screen.findByText("Image registry credential"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides registry credential attach for a native repository build", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/native",
+      runtime: "node",
+      builder: "native",
+    });
+    renderSettings();
+
+    await screen.findByText("Build & Deploy");
+    expect(
+      screen.queryByText("Image registry credential"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -41,6 +41,9 @@ query Server($id: String!) {
     builder
     startCommand
     dockerfilePath
+    # Explicit private-registry binding for prebuilt images and repository
+    # Docker builds. Empty/null means no stored credential is attached.
+    registryCredentialId
     # buildFilter is Render's Build Filters (w1/m34) — the glob patterns gating
     # git-push auto-deploys, read by the Build & Deploy section. Null when unset.
     buildFilter {

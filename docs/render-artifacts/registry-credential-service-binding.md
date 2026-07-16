@@ -18,7 +18,7 @@ The official CLI's `BuildCreateRequest` puts `--registry-credential` in `image.r
 | REST | Prebuilt images use `image.registryCredentialId`; repository Docker builds use Render's `serviceDetails.envSpecificDetails.registryCredentialId` | `PATCH /v1/services/{id}` accepts the matching source-specific object; empty clears. Reads echo the Docker-build id under `envSpecificDetails` and include Render's `registryCredential: {id,name}` summary plus bex's top-level id extension |
 | GraphQL | `createService(registryCredentialId:)` for either source context | `setRegistryCredential(id:, registryCredentialId:)` |
 | MCP | `create_web_service` / `create_cron_job` argument for either source context | `set_registry_credential` |
-| Dashboard | Credential picker for Existing Image and Git-backed Docker runtime | “None” sends explicit empty/no-auth rather than omission/legacy host matching. Settings still manages credential records |
+| Dashboard | Shared credential picker for Existing Image and Git-backed Docker runtime, including a credential-settings link when the workspace list is empty | Eligible existing-image and repository-Docker service settings show the current binding and can change or clear it; the service header resolves the bound credential's human name and links back to credential settings. “No credential — public image” sends explicit empty/no-auth rather than omission/legacy host matching |
 
 Every adapter reaches the same App verb. Unknown id is 404; an existing credential in another workspace is 403; image-host mismatch is 400. Native/buildpack/static repository sources reject the field with a named 400. The exact id is persisted in Postgres and `App.spec.registryCredentialId`, while `App.spec.externalRegistryPullSecret` points at the materialized `kubernetes.io/dockerconfigjson` Secret.
 
@@ -29,6 +29,10 @@ This closes the repository-Docker divergence recorded by w6/m31. bex still accep
 ## Docker-build live proof
 
 The final 2026-07-15 CAPD app-cluster run used an authenticated `registry:2` fixture and a repository whose first Dockerfile line referenced a private base image in that registry. With the bound credential, BuildKit logged credential sharing, resolved the private manifest, pushed `m34-positive:gen-4`, and the generated workload reached `Running`. The same source with an intentionally wrong bound credential failed its manifest `HEAD` with `401 Unauthorized`. The generated Job referenced only `bld-m34-positive-registry-auth` at `/docker-config`; its daemon config also selected the platform's already-declared plain-HTTP development registry for source resolution. The Apps, Secrets, registry namespace, host processes, and local image tag were removed after the check.
+
+## Dashboard live proof
+
+The 2026-07-15 dev-5 run exercised the shipped dashboard against the live GraphQL and OpenBao-backed credential services. An Existing Image create selected credential A, and a fresh `server(id)` query returned A. Service Settings then changed the binding to credential B; another fresh query returned B, and the read-only service header resolved B's human name. Selecting “No credential — public image” produced the clear-success state, a fresh query returned the explicit empty string, and the header fact disappeared. The temporary service, both credential records, their OpenBao secrets, and the Kratos identity were removed after the check. The authenticated private-image pull itself remains covered by the official-CLI leg below, while the repository-Docker private-base path is covered by the BuildKit proof above.
 
 ## Reproducible official-CLI leg
 

@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown, Github, Terminal } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Github,
+  KeyRound,
+  Terminal,
+} from "lucide-react";
 import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   Alert,
@@ -31,6 +37,7 @@ import {
 import { isSleeping } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { RunServiceAction } from "@/features/services/hooks/use-service-lifecycle";
+import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
 
 export interface ServiceDetailHeaderProps {
   service: ServiceView;
@@ -44,7 +51,7 @@ export interface ServiceDetailHeaderProps {
  * live from dashboard.render.com): an uppercase service-type eyebrow, the name
  * with its instance-type chip, Manual Deploy + the lifecycle actions, and a
  * metadata stack of Service ID / source repo / live URL. bex has no Overview tab
- * (neither does Render — the service root lands on Events), so this header is
+ * (neither does Render — the service root lands on Deploys), so this header is
  * where the identity facts live: it also carries the bex-native ones the retired
  * Overview panel showed — instances, revision, age.
  *
@@ -138,6 +145,10 @@ export function ServiceDetailHeader({
           </div>
         ) : null}
 
+        {service.registryCredentialId ? (
+          <RegistryCredentialFact id={service.registryCredentialId} />
+        ) : null}
+
         {isCron(service) ? (
           <div className="text-muted-foreground flex items-center gap-1.5">
             <span>{t("services.headerSchedule")}</span>
@@ -182,6 +193,26 @@ export function ServiceDetailHeader({
           </AlertDescription>
         </Alert>
       ) : null}
+    </div>
+  );
+}
+
+function RegistryCredentialFact({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { credentials } = useRegistryCredentials();
+  const credential = credentials.find((item) => item.id === id);
+
+  return (
+    <div className="text-muted-foreground flex min-w-0 items-center gap-1.5">
+      <KeyRound className="size-3.5 shrink-0" />
+      <span>{t("services.headerRegistryCredential")}</span>
+      <Link
+        to="/settings"
+        hash="registry-credentials"
+        className="text-foreground truncate hover:underline"
+      >
+        {credential?.name || id}
+      </Link>
     </div>
   );
 }

@@ -56,10 +56,12 @@ export function RegistryCredentialsPanel() {
   }
 
   return (
-    <Card>
+    <Card id="registry-credentials" className="scroll-mt-4">
       <CardHeader>
         <CardTitle>{t("registryCredentials.title")}</CardTitle>
-        <CardDescription>{t("registryCredentials.description")}</CardDescription>
+        <CardDescription>
+          {t("registryCredentials.description")}
+        </CardDescription>
         <CardAction>
           <CreateRegistryCredentialDialog onCreated={() => void refetch()} />
         </CardAction>

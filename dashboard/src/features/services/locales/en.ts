@@ -2152,13 +2152,54 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard registry credential picker placeholder",
   },
   "services.createRegistryCredentialNone": {
-    message: "None (public registry)",
+    message: "No credential — public image",
     description: "Create-wizard registry credential picker empty option",
   },
   "services.createRegistryCredentialDescription": {
     message:
       "Choose a stored workspace credential when the image or Dockerfile base image is private.",
     description: "Create-wizard registry credential picker help text",
+  },
+  "services.registryCredentialEmpty": {
+    message: "No stored registry credentials are available.",
+    description: "Registry credential selector empty state",
+  },
+  "services.registryCredentialListError": {
+    message: "Registry credentials couldn't be loaded.",
+    description: "Registry credential selector load error",
+  },
+  "services.registryCredentialManage": {
+    message: "Manage registry credentials",
+    description: "Link from a service credential selector to account settings",
+  },
+  "services.registryCredentialSettingsTitle": {
+    message: "Image registry credential",
+    description: "Service Settings private-image credential card title",
+  },
+  "services.registryCredentialSettingsDescription": {
+    message:
+      "Choose the stored credential used to pull this private image or Dockerfile base image.",
+    description: "Service Settings private-image credential card description",
+  },
+  "services.registryCredentialSave": {
+    message: "Save credential",
+    description: "Service Settings registry credential save action",
+  },
+  "services.registryCredentialSaved": {
+    message: "Registry credential updated.",
+    description: "Toast after attaching or changing a registry credential",
+  },
+  "services.registryCredentialCleared": {
+    message: "Registry credential cleared.",
+    description: "Toast after clearing a registry credential",
+  },
+  "services.registryCredentialError": {
+    message: "Couldn't update the registry credential.",
+    description: "Toast after a registry credential update fails",
+  },
+  "services.headerRegistryCredential": {
+    message: "Registry credential:",
+    description: "Service detail header label for a bound registry credential",
   },
   "services.createSettingsTitle": {
     message: "Settings",

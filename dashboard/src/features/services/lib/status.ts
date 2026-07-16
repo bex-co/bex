@@ -58,6 +58,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     builder: "builder" in s ? (s.builder ?? null) : null,
     startCommand: "startCommand" in s ? (s.startCommand ?? null) : null,
     dockerfilePath: "dockerfilePath" in s ? (s.dockerfilePath ?? null) : null,
+    registryCredentialId:
+      "registryCredentialId" in s ? (s.registryCredentialId ?? null) : null,
     buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
