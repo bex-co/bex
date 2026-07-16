@@ -53,10 +53,9 @@ const (
 	// count (CNPG's cnpg_backends_total, summed across states).
 	MetricDBConnections = "db_connections"
 	// MetricReplicationLag is a managed Postgres instance's replication lag in
-	// seconds behind its primary (CNPG's cnpg_pg_replication_lag). Omitted
-	// (not a fake zero) for every instance until w1/m22 (Postgres HA) ships —
-	// gated on Database.status.highAvailabilityEnabled, which today is always
-	// false, so the field is present in the API contract and inert until then.
+	// seconds behind its primary (CNPG's cnpg_pg_replication_lag). Gated on
+	// Database.status.highAvailabilityEnabled — omitted (not a fake zero) for
+	// a non-HA instance, since CNPG's own query returns 0 from a lone primary.
 	MetricReplicationLag = "replication_lag"
 	// MetricKVMemory/MetricKVConnections are a managed Key Value (Valkey)
 	// instance's used-memory bytes and connected-client count (w5/011, the
@@ -108,8 +107,7 @@ type ReplicationLagRequest struct {
 
 // ReplicationLagSource reads a Postgres instance's replication-lag history
 // (CNPG's cnpg_pg_replication_lag). nil => replication_lag reports
-// core.ErrMetricsUnavailable once HA makes it reachable (today the verb never
-// calls it — see MetricReplicationLag).
+// core.ErrMetricsUnavailable (only called when HighAvailabilityEnabled is true).
 type ReplicationLagSource func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error)
 
 // KeyValueStatsRequest is the backend-neutral memory/connections ask for one
@@ -221,11 +219,10 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			Namespace: s.Namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricReplicationLag:
-		// Gated on HighAvailabilityEnabled, not on ReplicationLag being wired:
-		// pre-w1/m22 there is no standby, and CNPG's own lag query reports 0 (not
-		// absence) from a lone primary — querying it would be the fake-zero this
-		// field is explicitly required to avoid. Once HA ships this reaches the
-		// real source below, unconditionally, no second milestone needed.
+		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
+		// CNPG's own lag query reports 0 (not absence) from a lone primary —
+		// querying it would be the fake-zero this field is explicitly required to
+		// avoid. An HA Postgres (w1/m22) reaches the real Prometheus source below.
 		if !isHA {
 			return nil, nil
 		}
