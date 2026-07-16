@@ -28,7 +28,6 @@ import (
 	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // ProcessView is one row from pg_stat_activity (live backend process).
@@ -373,18 +372,7 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 // shared_preload_libraries cannot be overridden (the operator always sets it
 // to include pg_stat_statements); any entry with that key is silently dropped.
 func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params map[string]string) (PostgresView, error) {
-	if params == nil {
-		params = map[string]string{}
-	}
-	// Guard the required extension.
-	delete(params, "shared_preload_libraries")
-	return s.patchDatabase(ctx, core.RelCanOperate, dbID, func(d *appv1alpha1.Database) {
-		if len(params) == 0 {
-			d.Spec.Parameters = nil
-		} else {
-			d.Spec.Parameters = params
-		}
-	})
+	return s.UpdatePostgres(ctx, dbID, PostgresPatch{ParameterOverrides: &params})
 }
 
 // GetParameterSpec returns the currently stored parameter overrides from the
