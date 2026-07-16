@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
@@ -277,6 +278,7 @@ func main() {
 		// pruned (delete of an already-gone object is a no-op).
 		deps.WorkspacePurgers = []workspaces.WorkspacePurger{
 			&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
+			&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
 			&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 			&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 			&apps.WorkspacePurger{Service: &apps.Service{Base: base}},

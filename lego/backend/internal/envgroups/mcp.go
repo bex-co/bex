@@ -37,6 +37,8 @@ type envGroupArgs struct {
 
 type listEnvGroupsArgs struct {
 	OwnerID string `json:"ownerId,omitempty" jsonschema:"workspace id to list; defaults to the selected or caller's default workspace"`
+	Cursor  string `json:"cursor,omitempty" jsonschema:"opaque cursor from the last group in the previous page"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"maximum groups to return (1-100); omitted returns the complete list for compatibility"`
 }
 
 type createEnvGroupArgs struct {
@@ -100,6 +102,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List one workspace's environment groups (names, linked services, and env-var keys / secret-file names — no values).",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
 		groups, err := s.ListEnvGroups(ctx, core.SelectedWorkspace(s.Selections, req, in.OwnerID))
+		if err == nil {
+			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
+		}
 		return nil, listEnvGroupsResult{EnvGroups: groups}, err
 	})
 

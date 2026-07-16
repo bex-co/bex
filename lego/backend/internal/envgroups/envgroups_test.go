@@ -143,6 +143,15 @@ type fakeChecker struct {
 	lastRelation string
 }
 
+type recordingAuditSink struct {
+	events []core.AuditEvent
+}
+
+func (s *recordingAuditSink) Record(_ context.Context, event core.AuditEvent) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
 func (c *fakeChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
 	c.lastRelation = relation
 	return c.allow, nil
@@ -505,11 +514,49 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	if group.Name != "Shared production" {
 		t.Fatalf("rename_env_group: %+v", group)
 	}
+	call("create_env_group", map[string]any{"name": "second"}, nil)
+	call("create_env_group", map[string]any{"name": "third"}, nil)
+	var firstPage listEnvGroupsResult
+	call("list_env_groups", map[string]any{"limit": 2}, &firstPage)
+	if len(firstPage.EnvGroups) != 2 {
+		t.Fatalf("list_env_groups first page = %d groups, want 2", len(firstPage.EnvGroups))
+	}
+	var secondPage listEnvGroupsResult
+	call("list_env_groups", map[string]any{"limit": 2, "cursor": firstPage.EnvGroups[1].ID}, &secondPage)
+	if len(secondPage.EnvGroups) != 1 || slices.ContainsFunc(firstPage.EnvGroups, func(g EnvGroupView) bool { return g.ID == secondPage.EnvGroups[0].ID }) {
+		t.Fatalf("list_env_groups paging overlapped or lost a group: first=%+v second=%+v", firstPage, secondPage)
+	}
 	call("link_env_group", map[string]any{"id": group.ID, "serviceId": "web"}, nil)
 	call("unlink_env_group", map[string]any{"id": group.ID, "serviceId": "web"}, nil)
 	call("delete_env_group_var", map[string]any{"id": group.ID, "key": "TOKEN"}, nil)
 	call("delete_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem"}, nil)
 	call("delete_env_group", map[string]any{"id": group.ID}, nil)
+}
+
+func TestGraphQL_EnvGroupsPagination(t *testing.T) {
+	svc := newService(newFakeStore())
+	for _, name := range []string{"one", "two", "three"} {
+		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: name}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	field := svc.GraphQLQuery()["envGroups"]
+	firstRaw, err := field.Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{"limit": 2}})
+	if err != nil {
+		t.Fatalf("first page: %v", err)
+	}
+	first := firstRaw.([]EnvGroupView)
+	if len(first) != 2 {
+		t.Fatalf("first page length = %d, want 2", len(first))
+	}
+	secondRaw, err := field.Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{"limit": 2, "cursor": first[1].ID}})
+	if err != nil {
+		t.Fatalf("second page: %v", err)
+	}
+	second := secondRaw.([]EnvGroupView)
+	if len(second) != 1 || slices.ContainsFunc(first, func(g EnvGroupView) bool { return g.ID == second[0].ID }) {
+		t.Fatalf("GraphQL paging overlapped or lost a group: first=%+v second=%+v", first, second)
+	}
 }
 
 func TestGraphQL_CreateEnvGroupAcceptsInitialContents(t *testing.T) {
@@ -878,6 +925,7 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 
 func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	store := newFakeStore()
+	audit := &recordingAuditSink{}
 	legacy := id.New(id.EnvGroup)
 	// A group created before workspace attribution existed: meta with no
 	// "workspace" key at all, written directly to bypass CreateEnvGroup.
@@ -890,7 +938,7 @@ func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	// A caller in the platform's default (bootstrap) workspace can reach it —
 	// the deterministic migration target — and the store now records it.
 	defaultSvc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"boot": {core.DefaultTenant}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"boot": {core.DefaultTenant}}, Audit: audit},
 		Store: store,
 	}
 	defaultCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "boot", Method: "session"})
@@ -904,6 +952,22 @@ func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	raw, _ := store.Get(context.Background(), metaPath(legacy))
 	if raw["workspace"] != core.DefaultTenant {
 		t.Errorf("migration should persist the assigned owner, got meta %+v", raw)
+	}
+	if len(audit.events) != 1 {
+		t.Fatalf("migration audit events = %d, want exactly 1: %+v", len(audit.events), audit.events)
+	}
+	event := audit.events[0]
+	if event.Caller != "system" || event.CallerMethod != "system" ||
+		event.Verb != core.AuditVerbEnvGroupOwnershipMigrated ||
+		event.Resource != core.WorkspaceObject(core.DefaultTenant) ||
+		event.Target != core.EnvGroupTarget(legacy) || event.Outcome != core.AuditAllowed {
+		t.Fatalf("migration audit event = %+v", event)
+	}
+	if _, err := defaultSvc.GetEnvGroup(defaultCtx, legacy); err != nil {
+		t.Fatalf("second read: %v", err)
+	}
+	if len(audit.events) != 1 {
+		t.Fatalf("second read emitted another migration event: %+v", audit.events)
 	}
 
 	// A caller in an unrelated real workspace still can't reach it — the

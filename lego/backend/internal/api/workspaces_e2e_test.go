@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -346,6 +347,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	// purge assertion needs a real KV v2 store, hermetic-by-default like DB/FGA
 	// above.
 	var secretsStore core.SecretKV
+	var envGroupID string
 	if baoURL := os.Getenv("BEX_TEST_OPENBAO_URL"); baoURL != "" {
 		secretsStore = secrets.NewOpenBaoStore(baoURL)
 		secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
@@ -353,6 +355,11 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
 			t.Fatalf("seed secret: %v", err)
 		}
+		group, err := (&envgroups.Service{Base: base, Store: secretsStore}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{Name: "workspace-delete"})
+		if err != nil {
+			t.Fatalf("seed env group: %v", err)
+		}
+		envGroupID = group.ID
 	}
 
 	// Wire the purgers exactly as cmd/api/main.go does (t005) — mutating the
@@ -360,6 +367,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	// schema's resolvers read s.Purgers at call time through the same pointer.
 	srv.Workspaces.Purgers = []workspaces.WorkspacePurger{
 		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: secretsStore}},
+		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: secretsStore}},
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 	}
@@ -386,6 +394,13 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 		}
 		if len(env) != 0 {
 			t.Fatalf("secret not purged on workspace delete: %+v", env)
+		}
+		meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta")
+		if err != nil {
+			t.Fatalf("read purged env-group meta: %v", err)
+		}
+		if len(meta) != 0 {
+			t.Fatalf("env group not purged on workspace delete: %+v", meta)
 		}
 	}
 }

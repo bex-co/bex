@@ -132,9 +132,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: graphql.NewList(envGroupGQLType),
 			Args: graphql.FieldConfigArgument{
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"cursor":  &graphql.ArgumentConfig{Type: graphql.String},
+				"limit":   &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListEnvGroups(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				groups, err := s.ListEnvGroups(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				cursor, cursorSet := p.Args["cursor"].(string)
+				limit, limitSet := p.Args["limit"].(int)
+				return pageEnvGroups(groups, cursor, limit, cursorSet || limitSet), nil
 			},
 		},
 		"envGroup": &graphql.Field{

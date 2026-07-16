@@ -165,6 +165,18 @@ func (s *Service) ListEnvGroups(ctx context.Context, ownerID string) ([]EnvGroup
 	return out, nil
 }
 
+// pageEnvGroups is the shared GraphQL/MCP/REST paging rule. Callers pass
+// requested=false when neither cursor nor limit was supplied, preserving the
+// historical complete-list behavior; an explicit page is stable by group id.
+func pageEnvGroups(groups []EnvGroupView, cursor string, limit int, requested bool) []EnvGroupView {
+	if limit == 0 {
+		limit = core.DefaultPageLimit
+	} else {
+		limit = core.PageLimit(limit)
+	}
+	return core.StablePage(groups, cursor, limit, requested, func(group EnvGroupView) string { return group.ID })
+}
+
 // EnvironmentMembership is the non-secret, narrow projection the Environments
 // feature needs to assemble Environment.envGroupIds without reading every
 // group's env-var and secret-file maps.
@@ -1128,6 +1140,7 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 		if err := s.writeMeta(ctx, gid, m); err != nil {
 			return meta{}, err
 		}
+		s.RecordEnvGroupOwnershipMigration(ctx, gid, m.workspace)
 	}
 	return m, nil
 }
