@@ -111,11 +111,12 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 	}
 
 	// Fake Prometheus: 2 pods present (→ 2×3600 = 7200 instance-seconds per
-	// window); also drives egress_bytes to 1024 bytes per window.
+	// window); the projected private App drives direct egress to 2 bytes/window.
 	prom := fakeProm(2.0)
 	defer prom.Close()
 
-	svc := NewService(&core.Base{}, st, prom.URL, nil)
+	cl := appMeterClient(t, app)
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, nil)
 
 	// Two consecutive closed windows ending ≥2 h before now (safely in the past
 	// so catch-up logic would pick them up on a restart).
@@ -222,7 +223,7 @@ func TestAcceptance_UsageHourlyAccrues(t *testing.T) {
 
 	// --- catch-up idempotency: a fresh service sees the already-written windows
 	//     and fills any gap up to now; a second catchUp must be a no-op. ---
-	svc2 := NewService(&core.Base{}, st, prom.URL, nil)
+	svc2 := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, nil)
 
 	// First catchUp: fills any windows between LatestUsageWindow and now.
 	svc2.catchUp(ctx)

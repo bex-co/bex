@@ -19,12 +19,18 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"net/netip"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // buildClientHello constructs a minimal TLS 1.3-shaped ClientHello record
 // containing a single SNI extension for the given hostname. Used to exercise
-// the extractSNI and readTLSRecord paths.
+// the shared SNI parser and TLS record reader paths.
 func buildClientHello(sni string) []byte {
 	// SNI extension data: list_len(2) + name_type(1) + name_len(2) + name
 	sniData := make([]byte, 0, 3+len(sni))
@@ -82,29 +88,40 @@ func TestExtractSNI(t *testing.T) {
 	for _, sni := range tests {
 		t.Run(sni, func(t *testing.T) {
 			record := buildClientHello(sni)
-			got, err := extractSNI(record)
+			got, err := sniproxy.ExtractSNI(record)
 			if err != nil {
-				t.Fatalf("extractSNI() error: %v", err)
+				t.Fatalf("ExtractSNI() error: %v", err)
 			}
 			if got != sni {
-				t.Errorf("extractSNI() = %q, want %q", got, sni)
+				t.Errorf("ExtractSNI() = %q, want %q", got, sni)
 			}
 		})
 	}
 }
 
 func TestExtractSNI_InvalidInputs(t *testing.T) {
-	if sni, _ := extractSNI([]byte{0x15, 0, 0, 0, 0}); sni != "" {
+	if sni, _ := sniproxy.ExtractSNI([]byte{0x15, 0, 0, 0, 0}); sni != "" {
 		t.Error("expected empty SNI for non-handshake record")
 	}
-	if sni, err := extractSNI(nil); err == nil || sni != "" {
+	if sni, err := sniproxy.ExtractSNI(nil); err == nil || sni != "" {
 		t.Error("expected error for nil record")
 	}
 }
 
 func TestRouterResolve(t *testing.T) {
 	r := newRouter("db.bex.co")
-	r.set("mydb", "tenant-ns")
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public: true, Pooler: true,
+			ReadReplicas:           []appv1alpha1.DatabaseReadReplica{{Name: "east"}, {Name: "reader-a"}},
+			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
+			EnvironmentIPAllowList: []string{"203.0.113.0/28"},
+		},
+	}
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		sni    string
@@ -121,20 +138,50 @@ func TestRouterResolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.sni, func(t *testing.T) {
-			got, ok := r.resolve(tt.sni)
+			got, ok := r.resolve(tt.sni, netip.MustParseAddr("203.0.113.9"))
 			if ok != tt.wantOk {
 				t.Fatalf("resolve(%q) ok = %v, want %v", tt.sni, ok, tt.wantOk)
 			}
-			if got != tt.want {
-				t.Errorf("resolve(%q) = %q, want %q", tt.sni, got, tt.want)
+			if got.Backend != tt.want {
+				t.Errorf("resolve(%q) backend = %q, want %q", tt.sni, got.Backend, tt.want)
+			}
+			if ok && got.Database != "mydb" {
+				t.Errorf("resolve(%q) Database = %q, want parent mydb", tt.sni, got.Database)
 			}
 		})
 	}
 
 	// Deletion removes the entry.
 	r.delete("mydb")
-	if _, ok := r.resolve("mydb.db.bex.co"); ok {
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.9")); ok {
 		t.Error("expected resolve to fail after delete")
+	}
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("198.51.100.9")); ok {
+		t.Error("non-allowlisted source resolved")
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.20")); ok {
+		t.Error("source outside the environment allowlist resolved")
+	}
+	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "broken"}}
+	if err := r.set(db); err == nil {
+		t.Error("invalid allowlist must fail source health")
+	}
+	valid := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "valid", Namespace: "ns"},
+		Spec:       appv1alpha1.DatabaseSpec{Public: true},
+	}
+	if err := r.set(valid); err != nil {
+		t.Fatal(err)
+	}
+	if r.healthy() {
+		t.Error("a later valid reconcile masked another Database's invalid route")
+	}
+	r.delete(db.Name)
+	if !r.healthy() {
+		t.Error("deleting the invalid Database did not restore source health")
 	}
 }
 
@@ -144,17 +191,17 @@ func TestReadTLSRecord_DirectTLS(t *testing.T) {
 	initial := record[:8]
 	rest := record[8:]
 
-	got, err := readTLSRecord(bytes.NewReader(rest), initial)
+	got, err := sniproxy.ReadTLSRecord(bytes.NewReader(rest), initial)
 	if err != nil {
-		t.Fatalf("readTLSRecord() error: %v", err)
+		t.Fatalf("ReadTLSRecord() error: %v", err)
 	}
 	if !bytes.Equal(got, record) {
-		t.Errorf("readTLSRecord() = %d bytes, want %d", len(got), len(record))
+		t.Errorf("ReadTLSRecord() = %d bytes, want %d", len(got), len(record))
 	}
 
-	sni, err := extractSNI(got)
+	sni, err := sniproxy.ExtractSNI(got)
 	if err != nil {
-		t.Fatalf("extractSNI() after readTLSRecord: %v", err)
+		t.Fatalf("ExtractSNI() after ReadTLSRecord: %v", err)
 	}
 	if sni != "test.db.bex.co" {
 		t.Errorf("SNI from reassembled record = %q, want %q", sni, "test.db.bex.co")
@@ -165,19 +212,25 @@ func TestReadTLSRecord_FreshStart(t *testing.T) {
 	// Simulate the SSLRequest path: no bytes pre-peeked, read from scratch.
 	record := buildClientHello("fresh.db.bex.co")
 
-	got, err := readTLSRecord(bytes.NewReader(record), nil)
+	got, err := sniproxy.ReadTLSRecord(bytes.NewReader(record), nil)
 	if err != nil {
-		t.Fatalf("readTLSRecord() error: %v", err)
+		t.Fatalf("ReadTLSRecord() error: %v", err)
 	}
 	if !bytes.Equal(got, record) {
-		t.Errorf("readTLSRecord() bytes mismatch: got %d, want %d", len(got), len(record))
+		t.Errorf("ReadTLSRecord() bytes mismatch: got %d, want %d", len(got), len(record))
 	}
 }
 
 func TestRouterResolve_EmptyDomain(t *testing.T) {
 	r := newRouter("")
-	r.set("mydb", "ns")
-	if _, ok := r.resolve("mydb.db.bex.co"); ok {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "ns"},
+		Spec:       appv1alpha1.DatabaseSpec{Public: true},
+	}
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
 		t.Error("resolve should fail when domain is empty")
 	}
 }

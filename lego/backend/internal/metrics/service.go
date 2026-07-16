@@ -168,6 +168,8 @@ type ResourceMetricsRangeSource func(ctx context.Context, req ResourceMetricsRan
 type RequestMetricsRequest struct {
 	Namespace string
 	App       string
+	AppID     string
+	Direct    bool
 	// Routers are the exact Traefik router metric labels for bandwidth. The
 	// service resolves them from the authorized App's actual Ingress; request
 	// count and latency retain their existing service-level selector.
@@ -184,10 +186,15 @@ type RequestMetricsRequest struct {
 // metrics backend. nil => request metrics report core.ErrMetricsUnavailable.
 type RequestMetricsSource func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error)
 
-// MonthToDateBandwidthSource returns an App's cumulative HTTP egress in bytes
-// since the given time. nil => MonthToDateBandwidth reports
-// core.ErrMetricsUnavailable.
-type MonthToDateBandwidthSource func(ctx context.Context, routers []string, since time.Time) (bytesTotal float64, err error)
+// BandwidthBytes is the source-level byte breakdown shared by the expanded
+// total and Render-shaped month-to-date category fields.
+type BandwidthBytes struct {
+	HTTP, NAT, WebSocket float64
+}
+
+// MonthToDateBandwidthSource returns all applicable App egress categories in
+// bytes since the given time. Any required-source failure rejects the result.
+type MonthToDateBandwidthSource func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, error)
 
 // MetricsFilterValuesSource discovers a Prometheus label's observed values (e.g.
 // the `code` label backing STATUS_CODE) for an App's request metrics. nil =>
@@ -209,7 +216,7 @@ type Service struct {
 	// RequestMetrics reads request time-series (Traefik via Prometheus); nil =>
 	// http_requests/http_latency/bandwidth report core.ErrMetricsUnavailable.
 	RequestMetrics RequestMetricsSource
-	// MonthToDateBandwidthSource reads cumulative HTTP egress since a given time.
+	// MonthToDateBandwidthSource reads cumulative composed egress since a given time.
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
 	MetricsFilterValuesSource MetricsFilterValuesSource
@@ -509,6 +516,8 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	series, err := s.RequestMetrics(ctx, RequestMetricsRequest{
 		Namespace:  s.Namespace,
 		App:        q.App,
+		AppID:      appResourceID(app, q.App),
+		Direct:     app.Spec.Type != appv1alpha1.TypeStaticSite,
 		Routers:    routers,
 		Metric:     q.Metric,
 		Start:      q.Start,
@@ -580,8 +589,8 @@ func podResourceLimits(pods []corev1.Pod, metric string) map[string]float64 {
 // --- monthToDateBandwidth (Render's dashboard GraphQL, captured live) ---
 
 // MonthToDateBandwidth is bex's answer to Render's monthToDateBandwidth query —
-// a cumulative bandwidth figure for the current calendar month. Only the HTTP
-// figure is real (Traefik-scraped); the others are always 0, a documented subset.
+// a cumulative bandwidth figure for the current calendar month. HTTP, direct
+// public (Render's NAT-shaped category), and WebSocket bytes are all real.
 type MonthToDateBandwidth struct {
 	EgressBandwidthMB            float64
 	HTTPEgressBandwidthMB        float64
@@ -607,12 +616,30 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	}
 	now := s.Now().UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	bytesTotal, err := s.MonthToDateBandwidthSource(ctx, routers, monthStart)
+	bytesByCategory, err := s.MonthToDateBandwidthSource(
+		ctx, appResourceID(resolved, app), routers,
+		resolved.Spec.Type != appv1alpha1.TypeStaticSite, monthStart, now,
+	)
 	if err != nil {
 		return MonthToDateBandwidth{}, err
 	}
-	mb := bytesTotal / (1 << 20)
-	return MonthToDateBandwidth{EgressBandwidthMB: mb, HTTPEgressBandwidthMB: mb}, nil
+	const bytesPerMiB = 1 << 20
+	httpMB := bytesByCategory.HTTP / bytesPerMiB
+	natMB := bytesByCategory.NAT / bytesPerMiB
+	wsMB := bytesByCategory.WebSocket / bytesPerMiB
+	return MonthToDateBandwidth{
+		EgressBandwidthMB:          httpMB + natMB + wsMB,
+		HTTPEgressBandwidthMB:      httpMB,
+		NATEgressBandwidthMB:       natMB,
+		WebsocketEgressBandwidthMB: wsMB,
+	}, nil
+}
+
+func appResourceID(app *appv1alpha1.App, fallback string) string {
+	if app != nil && app.Labels[core.LabelAppID] != "" {
+		return app.Labels[core.LabelAppID]
+	}
+	return fallback
 }
 
 // --- metricsFilters (Status Code/Host/Path filter-dropdown population) ---

@@ -7,6 +7,10 @@
 !**/*.go
 **/*_test.go
 
+# bpf2go embeds the precompiled, architecture-independent eBPF objects from
+# generated Go. The C source and toolchain are development-only.
+!**/*.o
+
 # Re-include per-module Go module files
 !**/go.mod
 !**/go.sum

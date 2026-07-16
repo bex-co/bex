@@ -67,11 +67,12 @@ func newIPAllowListScheme() *runtime.Scheme {
 
 // TestWebServiceIPAllowListMiddlewareProjection drives the full reconcile for a
 // web_service App with an ipAllowList: middleware is created with the correct
-// sourceRange, the Ingress carries the middleware annotation, clearing the list
-// removes the middleware and the annotation.
+// sourceRange, the Ingress carries both independent middlewares, and clearing
+// the list removes only the allowlist while WebSocket accounting remains.
 func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	scheme := newIPAllowListScheme()
 	app := appWithAllowList("ws-acl", []string{"203.0.113.0/24", "10.0.0.0/8"}, appv1alpha1.TypeWebService)
+	app.Labels = map[string]string{labelAppID: "srv-ws-acl"}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 		WithStatusSubresource(&appv1alpha1.App{}).Build()
 	r := &AppReconciler{
@@ -81,6 +82,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: "ws-acl", Namespace: "default"}
 	mwNN := types.NamespacedName{Name: "ws-acl-ip-allow", Namespace: "default"}
+	wsMWNN := types.NamespacedName{Name: "ws-acl-ws-egress", Namespace: "default"}
 	ingressNN := types.NamespacedName{Name: "ws-acl", Namespace: "default"}
 
 	reconcile1 := func() {
@@ -112,12 +114,24 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" || ranges[1] != "10.0.0.0/8" {
 		t.Fatalf("Middleware.spec.ipAllowList.sourceRange = %v, want [203.0.113.0/24 10.0.0.0/8]", ranges)
 	}
+	wsMW := &unstructured.Unstructured{}
+	wsMW.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+	if err := cl.Get(ctx, wsMWNN, wsMW); err != nil {
+		t.Fatalf("WebSocket meter Middleware not created: %v", err)
+	}
+	plugin, found, err := unstructured.NestedMap(wsMW.Object, "spec", "plugin", "bexWebsocketEgress")
+	if err != nil || !found {
+		t.Fatalf("WebSocket meter plugin spec missing: found=%v err=%v object=%v", found, err, wsMW.Object)
+	}
+	if plugin["appId"] != "srv-ws-acl" || plugin["metricsAddr"] != ":9101" {
+		t.Fatalf("WebSocket meter plugin = %#v, want stable app id and :9101", plugin)
+	}
 
 	ing, err := getIngress()
 	if err != nil {
 		t.Fatalf("Ingress not created: %v", err)
 	}
-	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd"
+	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd"
 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantAnnotation {
 		t.Fatalf("Ingress annotation %s = %q, want %q", traefikRouterMiddlewaresAnnotation, got, wantAnnotation)
 	}
@@ -139,8 +153,8 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ingress must survive after allowlist is cleared: %v", err)
 	}
-	if _, has := ing.Annotations[traefikRouterMiddlewaresAnnotation]; has {
-		t.Fatalf("Ingress must lose the middleware annotation after allowlist is cleared: %v", ing.Annotations)
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != "default-ws-acl-ws-egress@kubernetescrd" {
+		t.Fatalf("Ingress must retain only WebSocket accounting after allowlist clear: %v", ing.Annotations)
 	}
 }
 
@@ -254,14 +268,14 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
 		wantEnvMW bool
 	}{
 		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"},
-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd", true, true},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, true},
 		{"own only", []string{"10.0.0.0/8"}, nil,
-			"default-chain-acl-ip-allow@kubernetescrd", true, false},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, false},
 		{"env only", nil, []string{"203.0.113.0/24"},
-			"default-chain-acl-env-ip-allow@kubernetescrd", false, true},
+			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
 		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"},
-			"default-chain-acl-env-ip-allow@kubernetescrd", false, true},
-		{"no layers", nil, nil, "", false, false},
+			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
+		{"no layers", nil, nil, "default-chain-acl-ws-egress@kubernetescrd", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -301,34 +315,5 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
 				t.Errorf("annotation = %q, want %q", got, tc.wantAnnot)
 			}
 		})
-	}
-}
-
-// TestDatastoreEnvironmentLayerChaining pins the TCP side of w4/m28: a
-// KeyValue with both its own entry list and an environment layer renders two
-// MiddlewareTCPs, both referenced by the SNI route.
-func TestDatastoreEnvironmentLayerChaining(t *testing.T) {
-	spec := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8", Description: "office"}})
-	ranges, _, _ := unstructured.NestedStringSlice(map[string]any{"spec": spec}, "spec", "ipAllowList", "sourceRange")
-	if len(ranges) != 1 || ranges[0] != "10.0.0.0/8" {
-		t.Fatalf("entries spec = %v", spec)
-	}
-	envSpec := cidrMiddlewareSpec([]string{"255.255.255.255/32"})
-	envRanges, _, _ := unstructured.NestedStringSlice(map[string]any{"spec": envSpec}, "spec", "ipAllowList", "sourceRange")
-	if len(envRanges) != 1 || envRanges[0] != "255.255.255.255/32" {
-		t.Fatalf("env spec = %v", envSpec)
-	}
-	// Route-level chaining: both middlewares referenced.
-	route := ingressRouteTCPSpec("postgres", "db.example.com", "db-rw", 5432, []any{
-		map[string]any{"name": "db-allow", "namespace": "ns"},
-		map[string]any{"name": "db-env-allow", "namespace": "ns"},
-	})
-	routes, _ := route["routes"].([]any)
-	if len(routes) != 1 {
-		t.Fatalf("routes = %v", routes)
-	}
-	mws, _ := routes[0].(map[string]any)["middlewares"].([]any)
-	if len(mws) != 2 {
-		t.Fatalf("route middlewares = %v, want both layers chained", mws)
 	}
 }

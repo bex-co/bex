@@ -84,7 +84,7 @@ type KeyValueSpec struct {
 	PersistenceMode string `json:"persistenceMode,omitempty"`
 
 	// Public, when true and the controller's BEX_KV_DOMAIN is set, exposes the
-	// store at "<name>.<BEX_KV_DOMAIN>" via a Traefik TCP/SNI route (TLS
+	// store at "<name>.<BEX_KV_DOMAIN>" through the shared metered SNI proxy (TLS
 	// passthrough — Valkey terminates its own TLS for direct-TLS clients). Default:
 	// in-cluster only. See docs/ADR021-keyvalue-management.md.
 	// +optional
@@ -97,9 +97,9 @@ type KeyValueSpec struct {
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
 
-	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
-	// Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
-	// route is open to all source IPs. The internal path is never affected.
+	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs in the
+	// shared SNI proxy. Empty => the external endpoint is open to all source IPs.
+	// The internal path is never affected.
 	// Render's ipAllowList; only meaningful when Public. Each entry carries the
 	// CIDR enforcement reads plus an optional description that rides along
 	// untouched (see IPAllowEntry; the schema is structural — a malformed

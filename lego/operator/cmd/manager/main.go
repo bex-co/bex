@@ -322,9 +322,10 @@ func main() {
 	}
 
 	if err := (&controller.KeyValueReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		KvDomain: envOr("BEX_KV_DOMAIN", ""),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		KvDomain:      envOr("BEX_KV_DOMAIN", ""),
+		ClusterIssuer: envOr("BEX_CLUSTER_ISSUER", ""),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")
 		os.Exit(1)

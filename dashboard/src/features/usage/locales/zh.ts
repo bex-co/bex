@@ -50,7 +50,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Bandwidth section heading on the Usage page",
   },
   "usage.bandwidthDescription": {
-    message: "Traefik 计量的出站流量",
+    message: "HTTP、WebSocket、直连公网及公共数据存储响应的出站流量",
     description: "Bandwidth section description",
   },
   "usage.buildTitle": {

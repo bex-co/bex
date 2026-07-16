@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: egress-meter
+rules:
+  # Kubernetes cannot RBAC-filter pods by spec.nodeName; the process itself
+  # applies that field selector and reads only labels/UID/lifecycle state.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Node IPs are exclusion destinations, so tenant traffic to kubelet/NodePort
+  # never becomes billable public egress after autoscaler churn.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]

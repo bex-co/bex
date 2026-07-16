@@ -69,8 +69,8 @@ type DatabaseSpec struct {
 	DiskAutoscaling bool `json:"diskAutoscaling,omitempty"`
 
 	// Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
-	// database at "<name>.<BEX_DB_DOMAIN>" via a Traefik TCP/SNI route (TLS
-	// passthrough — Postgres terminates its own TLS). Default: in-cluster only.
+	// database at "<name>.<BEX_DB_DOMAIN>" through the shared Postgres-aware SNI
+	// proxy (TLS passthrough — Postgres terminates its own TLS). Default: in-cluster only.
 	// External connections use sslmode=require. See docs/ADR009-postgresql-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
@@ -89,9 +89,9 @@ type DatabaseSpec struct {
 	// +optional
 	RestartedAt string `json:"restartedAt,omitempty"`
 
-	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs via a
-	// Traefik TCP ipAllowList middleware on the SNI route. Empty => the external
-	// route is open to all source IPs. The internal "-rw" path is never affected.
+	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs in the
+	// shared SNI proxy. Empty => the external endpoint is open to all source IPs.
+	// The internal "-rw" path is never affected.
 	// Render's ipAllowList; only meaningful when Public. Each entry carries the
 	// CIDR enforcement reads plus an optional description that rides along
 	// untouched (see IPAllowEntry; the schema is structural — a malformed

@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - ../default
   - api-pdb.yaml
+  - pg-sni-proxy-lb.yaml
+  - kv-sni-proxy-lb.yaml
 patches:
   - target:
       group: apps

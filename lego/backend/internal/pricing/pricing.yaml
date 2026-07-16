@@ -16,7 +16,7 @@
 # "estimate only" policy: these numbers are purely informational cost estimates;
 # bex has no billing system (docs/ADR030-pricing.md § no-payment boundary).
 
-version: "2"
+version: "3"
 
 # instance_seconds rates for App (web-service / worker / cron) services
 compute:
@@ -53,9 +53,11 @@ keyvalue:
   - tier: standard
     usdPerSecond: 0.000007990948   # $21.00/mo (Render $30.00 × 0.70)
 
-# egress_bytes rate: $0.01/GB (Render $0.10/GB × 0.10 = 90% off)
+# Composed public outbound egress_bytes rate: $0.015/GiB
+# (Render's current $0.15/GB × 0.10 = 90% off; bex's transparent meter uses
+# binary GiB, preserving its existing byte basis).
 bandwidth:
-  usdPerByte: 0.000000000009313226   # $0.01 / 1,073,741,824 bytes
+  usdPerByte: 0.000000000013969839   # $0.015 / 1,073,741,824 bytes
 
 # build_seconds rate: $0.0035/min (Render $0.005/min × 0.70 = 30% off)
 build:

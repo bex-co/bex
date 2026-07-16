@@ -31,9 +31,9 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 | Key Value        | per instance-month | Render × 0.70  | 30% off  |
 | Build minutes    | $0.005/min         | $0.0035/min    | 30% off  |
 | Postgres storage | $0.30/GB-month     | $0.21/GB-month | 30% off  |
-| Bandwidth        | $0.10/GB           | $0.01/GB       | 90% off  |
+| Bandwidth        | $0.15/GB           | $0.015/GiB     | 90% off  |
 
-Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13).
+Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13; bandwidth re-verified 2026-07-15 after Render's new workspace-plan rollout).
 
 The storage estimate prices `storage_gb_seconds`, using a 730-hour pricing month. Render bills provisioned Postgres capacity; bex's collector measures actual used PVC bytes. Render does not list a separate Key Value storage charge, so applying this same used-storage rate to Valkey is a deliberate bex extension rather than a claim of exact Render shape.
 

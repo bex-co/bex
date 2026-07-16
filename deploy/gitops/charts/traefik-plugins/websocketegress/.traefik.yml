@@ -1,0 +1,7 @@
+displayName: bex WebSocket egress meter
+type: middleware
+import: github.com/bex-co/bex-websocket-egress
+summary: Counts downstream WebSocket frame bytes by exact bex App id.
+testData:
+  appId: srv-test
+  metricsAddr: ":19101"

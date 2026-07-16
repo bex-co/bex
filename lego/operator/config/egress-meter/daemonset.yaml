@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: egress-meter
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.bex.co/component: egress-meter
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: egress-meter
+    spec:
+      serviceAccountName: egress-meter
+      # BPF netfilter links attach to the current network namespace. Enter the
+      # node namespace so POST_ROUTING sees every local tenant pod after CNI
+      # policy and before source NAT.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # No tolerations: production tenant nodes are the only untainted pool.
+      # Platform/control-plane nodes cannot run tenant Apps and need no meter.
+      priorityClassName: system-node-critical
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: egress-meter
+          image: controller:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/egress-meter"]
+          ports:
+            - name: metrics
+              containerPort: 9091
+              protocol: TCP
+          env:
+            - name: BEX_EGRESS_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: BEX_APPS_NAMESPACE
+              value: default
+            - name: BEX_EGRESS_EXCLUDED_CIDRS
+              # Production pod + Service ranges. Built-in exclusions also cover
+              # RFC1918/ULA, link-local, loopback, multicast, and node IPs.
+              value: 10.244.0.0/16,10.96.0.0/12
+          resources:
+            requests: { cpu: 20m, memory: 48Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: metrics }
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+            periodSeconds: 10
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              # CAP_BPF loads/maps programs, NET_ADMIN attaches netfilter BPF
+              # links, PERFMON permits the read-only skb dynptr kfunc, and
+              # SYS_RESOURCE raises memlock on
+              # kernels that have not made BPF map memory accounting memcg-based.
+              add: [BPF, NET_ADMIN, PERFMON, SYS_RESOURCE]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: bpffs
+              mountPath: /sys/fs/bpf
+              # Cilium may remount bpffs after this Pod is created during a
+              # node boot. Propagate that host mount so Load's retry loop sees
+              # the live filesystem instead of a stale pre-Cilium directory.
+              mountPropagation: HostToContainer
+            - name: state
+              mountPath: /var/lib/bex-egress-meter
+      volumes:
+        - name: bpffs
+          hostPath:
+            path: /sys/fs/bpf
+            type: Directory
+        - name: state
+          hostPath:
+            path: /var/lib/bex-egress-meter
+            type: DirectoryOrCreate

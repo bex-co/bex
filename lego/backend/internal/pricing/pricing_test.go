@@ -112,7 +112,7 @@ func TestEstimateFreeTierIsZero(t *testing.T) {
 // --- rounding ---
 
 func TestEstimateSubCentBandwidthRoundsToZero(t *testing.T) {
-	// 1 byte of egress at $0.01/GB ≈ 9.31e-12 → rounds to $0.00
+	// 1 byte of egress at $0.015/GiB rounds to $0.00.
 	rows := []store.UsageSummaryRow{
 		{Kind: store.UsageKindEgressBytes, Tier: "", ResourceKind: store.ResourceKindService, Total: 1},
 	}
@@ -159,14 +159,14 @@ func TestEstimateStarterOneMonth(t *testing.T) {
 }
 
 func TestEstimateOneBandwidthGigabyte(t *testing.T) {
-	// 1 GB (1,073,741,824 bytes) at $0.01/GB → $0.01
+	// 1 GiB at $0.015/GiB rounds to $0.02.
 	rows := []store.UsageSummaryRow{
 		{Kind: store.UsageKindEgressBytes, Tier: "", ResourceKind: store.ResourceKindService, Total: 1073741824},
 	}
 	est := Default.Estimate(rows)
 	got := parseUSD(t, est.TotalUSD)
-	if math.Abs(got-0.01) > 0.001 {
-		t.Errorf("1 GB bandwidth: want ~$0.01, got %s", est.TotalUSD)
+	if math.Abs(got-0.02) > 0.001 {
+		t.Errorf("1 GiB bandwidth: want rounded $0.02, got %s", est.TotalUSD)
 	}
 }
 
@@ -241,8 +241,8 @@ func TestEstimateStorageOnlyForDatastores(t *testing.T) {
 }
 
 func TestEstimateMixedMeters(t *testing.T) {
-	// compute starter + 1 GB bandwidth + 17 min build
-	// ≈ $4.90 + $0.01 + $0.06 = $4.97
+	// compute starter + 1 GiB bandwidth + 17 min build
+	// ≈ $4.90 + $0.02 + $0.06 = $4.98
 	rows := []store.UsageSummaryRow{
 		{Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 2628000},
 		{Kind: store.UsageKindEgressBytes, Tier: "", ResourceKind: store.ResourceKindService, Total: 1073741824},
@@ -250,8 +250,8 @@ func TestEstimateMixedMeters(t *testing.T) {
 	}
 	est := Default.Estimate(rows)
 	got := parseUSD(t, est.TotalUSD)
-	if math.Abs(got-4.97) > 0.05 {
-		t.Errorf("mixed meters: want ~$4.97, got %s", est.TotalUSD)
+	if math.Abs(got-4.98) > 0.05 {
+		t.Errorf("mixed meters: want ~$4.98, got %s", est.TotalUSD)
 	}
 	// All three meters should appear (each ≥ $0.01 when rounded)
 	if len(est.Meters) != 3 {

@@ -8,6 +8,118 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: missing tenant-node egress meter target
+    interval: 1m
+    input_series:
+      - series: 'kube_node_info{node="tenant-a"}'
+        values: "1x10"
+      - series: 'kube_node_info{node="tenant-b"}'
+        values: "1x10"
+      - series: 'up{job="bex-egress-meter", node="tenant-a"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EgressMeterTargetMissing
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Not every tenant node has a scrapeable egress meter"
+              description: "Outbound accounting is incomplete: the Ready egress-meter target count differs from the untainted tenant-node count. Do not collect affected hourly egress windows. Debug: kubectl -n bex-system get pods -l app.bex.co/component=egress-meter -o wide; kubectl get nodes --show-labels"
+
+  - name: egress meter unhealthy is per tenant node
+    interval: 1m
+    input_series:
+      - series: 'bex_egress_meter_healthy{node="tenant-a", source_instance="boot-a"}'
+        values: "0x10"
+      - series: 'bex_egress_meter_healthy{node="tenant-b", source_instance="boot-b"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EgressMeterUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              node: tenant-a
+            exp_annotations:
+              summary: "Egress meter on tenant-a is incomplete"
+              description: "At least one App Pod IP lacks stable attribution, or the meter reported a map/checkpoint error. The affected hourly source must fail rather than become zero. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+
+  - name: egress meter map pressure threshold
+    interval: 1m
+    input_series:
+      - series: 'bex_egress_meter_resource_map_pressure_ratio{node="tenant-a", source_instance="boot-a"}'
+        values: "0.90x20"
+      - series: 'bex_egress_meter_resource_map_pressure_ratio{node="tenant-b", source_instance="boot-b"}'
+        values: "0.50x20"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: EgressMeterMapPressure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: tenant-a
+            exp_annotations:
+              summary: "Egress meter resource map on tenant-a is 90% full"
+              description: "The bounded App counter map is above 80%; reaching capacity makes new attribution fail closed. Debug: kubectl -n bex-system logs -l app.bex.co/component=egress-meter --prefix"
+
+  - name: egress meter counter loss is visible
+    interval: 1m
+    input_series:
+      - series: 'bex_egress_meter_last_counter_loss_time_seconds{node="tenant-a", source_instance="boot-a"}'
+        values: "60x10"
+      - series: 'bex_egress_meter_last_counter_loss_time_seconds{node="tenant-b", source_instance="boot-b"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: EgressMeterCounterLoss
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              node: tenant-a
+            exp_annotations:
+              summary: "Egress meter on tenant-a detected counter loss"
+              description: "The meter restored a node checkpoint or observed a counter decrease within the last hour. Its durable event timestamp rejects every overlapping direct-egress window automatically; inspect the node and pinned maps."
+
+  - name: websocket egress meter missing
+    interval: 1m
+    input_series:
+      - series: 'up{job="traefik"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: WebSocketEgressMeterUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "WebSocket outbound accounting is unavailable"
+              description: "The Traefik hijack-path byte meter is missing or unhealthy. Public WebSocket usage windows must fail rather than omit frames. Debug: kubectl -n traefik logs -l app.kubernetes.io/name=traefik; kubectl -n traefik get pods -o wide"
+
+  - name: datastore proxy accounting health
+    interval: 1m
+    input_series:
+      - series: 'up{job="bex-pg-proxy"}'
+        values: "1x10"
+      - series: 'bex_pg_proxy_healthy{resource_kind="postgres"}'
+        values: "1x10"
+      - series: 'up{job="bex-kv-proxy"}'
+        values: "1x10"
+      - series: 'bex_kv_proxy_healthy{resource_kind="key_value"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PostgresEgressProxyUnavailable
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: KeyValueEgressProxyUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Key Value outbound accounting is unavailable"
+              description: "The public Key Value proxy meter is missing or unhealthy. Public Key Value usage windows must fail rather than undercount. Debug: kubectl -n bex-system get pods -l app.bex.co/component=kv-sni-proxy -o wide"
+
   # BexDbBackupStale: WAL archiver age math — fires at >26h, not at 25h.
   # cnpg_pg_stat_archiver_last_archived_time is a Unix timestamp (seconds);
   # at eval_time=30m time()=1800, so series value encodes the last-archived epoch.

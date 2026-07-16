@@ -27,14 +27,11 @@ package usage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"net/http"
-	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -282,6 +280,7 @@ type datastoreEntry struct {
 	TenantID string // from core.LabelTenant
 	Plan     string // Spec.Plan (== tier in usage rows)
 	Kind     string // store.ResourceKindPostgres or store.ResourceKindKeyValue
+	Public   bool   // whether the public proxy source applies
 }
 
 // listDatastores returns all tenant-owned Database and KeyValue CRs in the
@@ -307,6 +306,7 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 			TenantID: tenantID,
 			Plan:     d.Spec.Plan,
 			Kind:     store.ResourceKindPostgres,
+			Public:   d.Spec.Public,
 		})
 	}
 	var kvs appv1alpha1.KeyValueList
@@ -324,74 +324,90 @@ func (s *Service) listDatastores(ctx context.Context) ([]datastoreEntry, error) 
 			TenantID: tenantID,
 			Plan:     kv.Spec.Plan,
 			Kind:     store.ResourceKindKeyValue,
+			Public:   kv.Spec.Public,
 		})
 	}
 	return out, nil
 }
 
-// processDatastoreWindow measures compute and used-storage time for one
-// (datastore, window) pair and upserts both rows. The independent meter keys
-// make reprocessing idempotent. egress_bytes is N/A (Traefik TCP/SNI doesn't
-// emit the HTTP frontend metric) and build_seconds is N/A (no build Jobs).
-func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) bool {
-	end := window.Add(time.Hour)
-	var (
-		instanceSecs int64
-		storageSecs  int64
-		storageOK    bool
-		wg           sync.WaitGroup
-	)
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		instanceSecs = s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
-	}()
-	go func() {
-		defer wg.Done()
-		storageSecs, storageOK = s.queryStorageGBSeconds(ctx, ds, window, end)
-	}()
-	wg.Wait()
-
-	if instanceSecs > 0 || ds.Plan != "" {
-		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID:  ds.TenantID,
-			ServiceID:    ds.ID,
-			ResourceKind: ds.Kind,
-			Kind:         store.UsageKindInstanceSeconds,
-			Tier:         ds.Plan,
-			WindowStart:  window,
-			Quantity:     instanceSecs,
-		}); err != nil {
-			log.Printf("usage: upsert instance_seconds datastore %s: %v", ds.ID, err)
-		}
-	}
-	// A successful empty query is a real zero and is persisted. A failed query
-	// is not written, so the per-meter catch-up cursor can retry it later.
-	if storageOK {
-		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
-			WorkspaceID:  ds.TenantID,
-			ServiceID:    ds.ID,
-			ResourceKind: ds.Kind,
-			Kind:         store.UsageKindStorageGBSeconds,
-			Tier:         "",
-			WindowStart:  window,
-			Quantity:     storageSecs,
-		}); err != nil {
-			log.Printf("usage: upsert storage_gb_seconds datastore %s: %v", ds.ID, err)
-			return false
-		}
-	}
-	return storageOK
+var datastoreMeterKinds = [...]string{
+	store.UsageKindInstanceSeconds,
+	store.UsageKindStorageGBSeconds,
+	store.UsageKindEgressBytes,
 }
 
-// catchUpDatastoreThrough fills every missing storage window through last.
-// It stops at the first failed storage query, preserving a contiguous cursor;
-// the next collector run retries that window before advancing, so a transient
-// Prometheus failure cannot leave a permanent hole hidden by newer rows.
+// processDatastoreWindow measures every applicable meter for one datastore.
+// The live loop gives each meter an independent cursor; this seam runs them
+// together for tests and explicit one-window processing.
+func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) bool {
+	var wg sync.WaitGroup
+	results := make(chan bool, len(datastoreMeterKinds))
+	for _, kind := range datastoreMeterKinds {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- s.processDatastoreMeterWindow(ctx, ds, kind, window)
+		}()
+	}
+	wg.Wait()
+	close(results)
+	ok := true
+	for result := range results {
+		ok = ok && result
+	}
+	return ok
+}
+
+func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreEntry, kind string, window time.Time) bool {
+	end := window.Add(time.Hour)
+	var quantity int64
+	var ok bool
+	switch kind {
+	case store.UsageKindInstanceSeconds:
+		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds.Name, s.Namespace, window, end)
+	case store.UsageKindStorageGBSeconds:
+		quantity, ok = s.queryStorageGBSeconds(ctx, ds, window, end)
+	case store.UsageKindEgressBytes:
+		quantity, ok = s.queryDatastoreEgressBytes(ctx, ds, window, end)
+	default:
+		return false
+	}
+	if !ok {
+		return false
+	}
+	tier := ""
+	if kind == store.UsageKindInstanceSeconds {
+		tier = ds.Plan
+	}
+	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
+		WorkspaceID: ds.TenantID, ServiceID: ds.ID, ResourceKind: ds.Kind,
+		Kind: kind, Tier: tier, WindowStart: window, Quantity: quantity,
+	}); err != nil {
+		log.Printf("usage: upsert %s datastore %s: %v", kind, ds.ID, err)
+		return false
+	}
+	return true
+}
+
+// catchUpDatastoreThrough advances every datastore meter independently. A
+// proxy outage can hold egress back without blocking compute or storage, and
+// each meter retries its oldest gap before writing a newer window.
 func (s *Service) catchUpDatastoreThrough(ctx context.Context, ds datastoreEntry, last time.Time) {
-	latest, err := s.Store.LatestUsageWindow(ctx, ds.Kind, ds.ID, store.UsageKindStorageGBSeconds)
+	var wg sync.WaitGroup
+	for _, kind := range datastoreMeterKinds {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.catchUpDatastoreMeterThrough(ctx, ds, kind, last)
+		}()
+	}
+	wg.Wait()
+}
+
+func (s *Service) catchUpDatastoreMeterThrough(ctx context.Context, ds datastoreEntry, kind string, last time.Time) {
+	latest, err := s.Store.LatestUsageWindow(ctx, ds.Kind, ds.ID, kind)
 	if err != nil {
-		log.Printf("usage: catch-up: latest storage window for datastore %s: %v", ds.ID, err)
+		log.Printf("usage: catch-up: latest %s window for datastore %s: %v", kind, ds.ID, err)
 		return
 	}
 	floor := last.Add(time.Hour - catchupLimit)
@@ -402,7 +418,7 @@ func (s *Service) catchUpDatastoreThrough(ctx context.Context, ds datastoreEntry
 		start = start.Add(time.Hour)
 	}
 	for w := start; !w.After(last); w = w.Add(time.Hour) {
-		if !s.processDatastoreWindow(ctx, ds, w) {
+		if !s.processDatastoreMeterWindow(ctx, ds, kind, w) {
 			return
 		}
 	}
@@ -564,7 +580,7 @@ func (s *Service) processAppMeterWindow(ctx context.Context, app store.App, kind
 func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace string, start, end time.Time) (int64, bool) {
 	matchers := fmt.Sprintf(
 		`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
-		namespace, promEscape(appName))
+		namespace, egressquery.RegexEscape(appName))
 	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, appName)
 }
 
@@ -572,12 +588,11 @@ func (s *Service) queryInstanceSeconds(ctx context.Context, appName, namespace s
 // workload (CNPG Cluster pods <dbName>-1, <dbName>-2 or Valkey StatefulSet pods
 // <kvName>-0). The pod pattern is <name>-[0-9]+ (ordinal suffix), distinct from
 // App ReplicaSet pods which use two random-char segments.
-func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namespace string, start, end time.Time) int64 {
+func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namespace string, start, end time.Time) (int64, bool) {
 	matchers := fmt.Sprintf(
 		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
-		namespace, promEscape(name))
-	value, _ := s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
-	return value
+		namespace, egressquery.RegexEscape(name))
+	return s.queryInstanceSecondsByMatcher(ctx, matchers, start, end, name)
 }
 
 const bytesPerDecimalGB = 1_000_000_000
@@ -594,15 +609,15 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 	if s.PromBase == "" {
 		return 0, false
 	}
-	pattern := fmt.Sprintf(`^%s-[0-9]+$`, promEscape(ds.Name))
+	pattern := fmt.Sprintf(`^%s-[0-9]+$`, egressquery.RegexEscape(ds.Name))
 	if ds.Kind == store.ResourceKindKeyValue {
-		pattern = fmt.Sprintf(`^data-%s-[0-9]+$`, promEscape(ds.Name))
+		pattern = fmt.Sprintf(`^data-%s-[0-9]+$`, egressquery.RegexEscape(ds.Name))
 	}
 	windowSecs := int64(end.Sub(start) / time.Second)
 	q := fmt.Sprintf(
 		`sum(avg_over_time(kubelet_volume_stats_used_bytes{namespace=%q,persistentvolumeclaim=~%q}[%ds]))`,
 		s.Namespace, pattern, windowSecs)
-	usedBytes, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
+	usedBytes, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
 		log.Printf("usage: storage_gb_seconds for %s: %v", ds.Name, err)
 		return 0, false
@@ -627,7 +642,7 @@ func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers st
 	q := fmt.Sprintf(
 		`count(avg_over_time(container_memory_working_set_bytes{%s}[%ds]))`,
 		matchers, windowSecs)
-	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
+	v, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, q, end)
 	if err != nil {
 		log.Printf("usage: instance_seconds for %s: %v", logName, err)
 		return 0, false
@@ -635,11 +650,10 @@ func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers st
 	return int64(math.Round(v * float64(windowSecs))), true
 }
 
-// queryEgressBytes returns HTTP response bytes for the exact App Ingress
-// routers in [start, end) via Traefik's increase() instant query at the window
-// end, mirroring the monthToDateBandwidth source in internal/metrics but
-// window-bounded and returning bytes (not MB). Other outbound classes are
-// composed by w8/m14 after their independently attributable sources land.
+// queryEgressBytes composes the applicable App sources atomically: exact-router
+// HTTP responses, downstream WebSocket frames, and App-pod direct public L3
+// bytes. Static sites have no tenant pod, so direct is explicit N/A. A failed
+// required source or health signal rejects the whole sum.
 func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, end time.Time) (int64, bool) {
 	if s.PromBase == "" || s.Client == nil {
 		return 0, false
@@ -661,20 +675,48 @@ func (s *Service) queryEgressBytes(ctx context.Context, app store.App, start, en
 		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
 		return 0, false
 	}
-	matcher := core.TraefikRouterMatcher(routers)
-	if matcher == "" {
+	direct := projected.Items[0].Spec.Type != appv1alpha1.TypeStaticSite
+	return s.queryEgressSources(ctx, app.ID, egressquery.App(app.ID, routers, direct), start, end)
+}
+
+func (s *Service) queryDatastoreEgressBytes(ctx context.Context, ds datastoreEntry, start, end time.Time) (int64, bool) {
+	return s.queryEgressSources(ctx, ds.ID, egressquery.Datastore(ds.ID, ds.Kind, ds.Public), start, end)
+}
+
+func (s *Service) queryEgressSources(ctx context.Context, resourceID string, specs []egressquery.Spec, start, end time.Time) (int64, bool) {
+	if len(specs) == 0 {
 		return 0, true
 	}
-	elapsed := end.Sub(start)
-	q := fmt.Sprintf(
-		`sum(increase(traefik_router_responses_bytes_total{router=~%q}[%ds]))`,
-		matcher, int64(elapsed/time.Second))
-	v, err := promInstantScalar(ctx, s.promHTTP, s.PromBase, q, end)
-	if err != nil {
-		log.Printf("usage: egress_bytes for %s: %v", app.ID, err)
-		return 0, false
+	seconds := int64(end.Sub(start) / time.Second)
+	type result struct {
+		value float64
+		err   error
 	}
-	return int64(math.Round(v)), true
+	results := make(chan result, len(specs))
+	for _, spec := range specs {
+		go func() {
+			health, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Health(spec, seconds), end)
+			if err != nil || health < 1 {
+				if err == nil {
+					err = fmt.Errorf("source %s unhealthy", spec.Source)
+				}
+				results <- result{err: err}
+				return
+			}
+			value, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, egressquery.Increase(spec, seconds), end)
+			results <- result{value: value, err: err}
+		}()
+	}
+	var total float64
+	for range specs {
+		result := <-results
+		if result.err != nil {
+			log.Printf("usage: egress_bytes source for %s: %v", resourceID, result.err)
+			return 0, false
+		}
+		total += result.value
+	}
+	return int64(math.Round(total)), true
 }
 
 // --- t004: build-Job duration metering ---
@@ -716,78 +758,4 @@ func (s *Service) queryBuildSeconds(ctx context.Context, appName string, window,
 		}
 	}
 	return total, true
-}
-
-// --- Prometheus instant query helper (shared by t002 queries) ---
-
-// promInstantScalar evaluates a PromQL expression as an instant query at the
-// given time and returns the scalar sum of all returned vector elements.
-// Returns (0, nil) for empty results (no running containers = 0 instance-seconds).
-func promInstantScalar(ctx context.Context, hc *http.Client, base, query string, at time.Time) (float64, error) {
-	if hc == nil {
-		hc = http.DefaultClient
-	}
-	u := fmt.Sprintf("%s/api/v1/query?%s", base, url.Values{
-		"query": {query},
-		"time":  {strconv.FormatInt(at.Unix(), 10)},
-	}.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("prometheus: status %d", resp.StatusCode)
-	}
-	var pr promInstantResponse
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
-		return 0, fmt.Errorf("decode prometheus: %w", err)
-	}
-	if pr.Status != "" && pr.Status != "success" {
-		return 0, fmt.Errorf("prometheus status %q", pr.Status)
-	}
-	var total float64
-	for _, res := range pr.Data.Result {
-		if len(res.Value) != 2 {
-			continue
-		}
-		s, ok := res.Value[1].(string)
-		if !ok {
-			continue
-		}
-		v, err := strconv.ParseFloat(s, 64)
-		if err != nil || math.IsNaN(v) {
-			continue
-		}
-		total += v
-	}
-	return total, nil
-}
-
-// promInstantResponse is the Prometheus /api/v1/query result subset we parse.
-type promInstantResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		Result []struct {
-			Value []any `json:"value"` // [unixSeconds(float), "value"(string)]
-		} `json:"result"`
-	} `json:"data"`
-}
-
-// promEscape escapes PromQL regex metacharacters in an app name — identical to
-// the helper in internal/metrics/source.go; duplicated rather than exported
-// from that package to keep feature packages independent.
-func promEscape(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if strings.ContainsRune(`.+*?()|[]{}^$\`, r) {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
 }

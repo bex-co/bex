@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -171,26 +172,6 @@ func TestCnpgClusterSpec(t *testing.T) {
 	}
 }
 
-func TestIngressRouteTCPSpec(t *testing.T) {
-	spec := ingressRouteTCPSpec(pgEntryPoint, "smoke-db.db.bex.co", "smoke-db-rw", 5432, nil)
-
-	if ep := spec["entryPoints"].([]any); len(ep) != 1 || ep[0] != pgEntryPoint {
-		t.Errorf("entryPoints = %v, want [%s]", ep, pgEntryPoint)
-	}
-	// TLS passthrough: Postgres terminates its own TLS.
-	if pt := spec["tls"].(map[string]any)["passthrough"]; pt != true {
-		t.Errorf("tls.passthrough = %v, want true", pt)
-	}
-	route := spec["routes"].([]any)[0].(map[string]any)
-	if route["match"] != "HostSNI(`smoke-db.db.bex.co`)" {
-		t.Errorf("match = %v", route["match"])
-	}
-	svc := route["services"].([]any)[0].(map[string]any)
-	if svc["name"] != "smoke-db-rw" || svc["port"] != int64(5432) {
-		t.Errorf("service = %v, want smoke-db-rw:5432", svc)
-	}
-}
-
 func TestCnpgClusterSpecBackup(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
 
@@ -300,26 +281,6 @@ func TestPoolerSpec(t *testing.T) {
 	}
 }
 
-func TestIPAllowListMiddlewareSpec(t *testing.T) {
-	mw := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
-		{CIDR: "203.0.113.0/24", Description: "office"},
-		{CIDR: "10.0.0.0/8"},
-	})
-	ranges := mw["ipAllowList"].(map[string]any)["sourceRange"].([]any)
-	if len(ranges) != 2 || ranges[0] != "203.0.113.0/24" {
-		t.Errorf("sourceRange = %v", ranges)
-	}
-	// Descriptions are operator-facing metadata: the rendered middleware must be
-	// byte-identical to a description-free list (enforcement reads CIDRs only).
-	bare := ipAllowListMiddlewareSpec([]appv1alpha1.IPAllowEntry{
-		{CIDR: "203.0.113.0/24"},
-		{CIDR: "10.0.0.0/8"},
-	})
-	if !reflect.DeepEqual(mw, bare) {
-		t.Errorf("description changed the rendered middleware: %v != %v", mw, bare)
-	}
-}
-
 func TestCnpgClusterSpecHA(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
 
@@ -421,5 +382,64 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 	if got := meta["app.bex.co/component"]; got != "database" {
 		t.Errorf("inheritedMetadata.labels[app.bex.co/component] = %q, want database — the log shipper must distinguish tenant databases from platform CNPG clusters", got)
+	}
+}
+
+func TestDatabasePublicFrontDoorMigration(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	scheme.AddKnownTypeWithName(traefikIngressRouteTCPGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(traefikMiddlewareTCPGVK, &unstructured.Unstructured{})
+
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "orders", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public: true, Pooler: true,
+			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}},
+		},
+		Status: appv1alpha1.DatabaseStatus{
+			ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{{Name: "retired"}},
+		},
+	}
+	type legacyObject struct {
+		gvk  schema.GroupVersionKind
+		name string
+	}
+	legacy := []legacyObject{
+		{traefikIngressRouteTCPGVK, "orders-pg"},
+		{traefikIngressRouteTCPGVK, "orders-pool"},
+		{traefikIngressRouteTCPGVK, "orders-ro-analytics"},
+		{traefikIngressRouteTCPGVK, "orders-ro-retired"},
+		{traefikMiddlewareTCPGVK, "orders-allow"},
+	}
+	objects := make([]client.Object, 0, 1+len(legacy))
+	objects = append(objects, db)
+	for _, item := range legacy {
+		object := &unstructured.Unstructured{}
+		object.SetGroupVersionKind(item.gvk)
+		object.SetName(item.name)
+		object.SetNamespace("default")
+		objects = append(objects, object)
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme, DBDomain: "db.example.test"}
+	if err := r.reconcileExternalRoutes(context.Background(), db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" {
+		t.Fatalf("public status hosts = %q / %q", db.Status.ExternalHost, db.Status.PoolerExternalHost)
+	}
+	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0].ExternalHost != "orders-ro-analytics.db.example.test" {
+		t.Fatalf("read replica status = %#v", got)
+	}
+	for _, item := range legacy {
+		current := &unstructured.Unstructured{}
+		current.SetGroupVersionKind(item.gvk)
+		key := types.NamespacedName{Name: item.name, Namespace: "default"}
+		if err := cl.Get(context.Background(), key, current); err == nil {
+			t.Fatalf("legacy public object %s was not deleted", key.Name)
+		}
 	}
 }

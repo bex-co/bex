@@ -48,12 +48,11 @@ import (
 // from its version).
 var cnpgClusterGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Cluster"}
 
-// traefikIngressRouteTCPGVK is Traefik's TCP router CRD (v3). Used for the
-// external SNI endpoint.
+// traefikIngressRouteTCPGVK identifies legacy public routes removed during the
+// migration to the metered SNI proxies.
 var traefikIngressRouteTCPGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "IngressRouteTCP"}
 
-// traefikMiddlewareTCPGVK is Traefik's TCP middleware CRD (v3). Used to gate the
-// external SNI endpoint with an ipAllowList (source-range) middleware.
+// traefikMiddlewareTCPGVK identifies the corresponding legacy allowlist.
 var traefikMiddlewareTCPGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "MiddlewareTCP"}
 
 // cnpgScheduledBackupGVK / cnpgPoolerGVK are the CloudNativePG resources the
@@ -65,8 +64,6 @@ var cnpgPoolerGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version
 
 const (
 	dbStorageClass = "hcloud-volumes"
-	// pgEntryPoint is the Traefik TCP entrypoint bound to :5432 (traefik values).
-	pgEntryPoint = "postgres"
 	// pgPort is the Postgres listen + Service port.
 	pgPort = 5432
 	// hibernationAnnotation / restartAnnotation are the CNPG cluster annotations
@@ -348,51 +345,14 @@ func poolerSpec(clusterName string) map[string]any {
 	}
 }
 
-// ipAllowListMiddlewareSpec builds a Traefik MiddlewareTCP .spec restricting the
-// source IP range — attached to the external SNI route so only listed CIDRs
-// reach the public Postgres endpoint (the internal -rw path is never gated).
-// Only the CIDRs reach the rendered object: an entry's description is
-// operator-facing metadata and never influences enforcement.
-func ipAllowListMiddlewareSpec(entries []appv1alpha1.IPAllowEntry) map[string]any {
-	cidrs := make([]string, len(entries))
-	for i, e := range entries {
-		cidrs[i] = e.CIDR
-	}
-	return cidrMiddlewareSpec(cidrs)
-}
-
 // cidrMiddlewareSpec is the flat-CIDR variant shared by the environment layer
-// (spec.environmentIPAllowList, w4/m28) on both datastore kinds — the same
-// {ipAllowList: {sourceRange}} body, TCP or HTTP.
+// (spec.environmentIPAllowList, w4/m28) on App HTTP ingress.
 func cidrMiddlewareSpec(cidrs []string) map[string]any {
 	ranges := make([]any, len(cidrs))
 	for i, c := range cidrs {
 		ranges[i] = c
 	}
 	return map[string]any{"ipAllowList": map[string]any{"sourceRange": ranges}}
-}
-
-// ingressRouteTCPSpec builds a Traefik IngressRouteTCP .spec routing an SNI
-// hostname to a backend Service with TLS passthrough (the backend terminates its
-// own TLS), optionally gated by TCP middlewares (an ipAllowList). Shared by the
-// Database (postgres :5432) and KeyValue (valkey :6379) public routes; pass nil
-// middlewares for an ungated route. Pure so the projection is unit-testable.
-func ingressRouteTCPSpec(entryPoint, host, serviceName string, port int64, middlewares []any) map[string]any {
-	route := map[string]any{
-		"match": fmt.Sprintf("HostSNI(`%s`)", host),
-		"services": []any{map[string]any{
-			"name": serviceName,
-			"port": port,
-		}},
-	}
-	if len(middlewares) > 0 {
-		route["middlewares"] = middlewares
-	}
-	return map[string]any{
-		"entryPoints": []any{entryPoint},
-		"routes":      []any{route},
-		"tls":         map[string]any{"passthrough": true},
-	}
 }
 
 // deleteOptionalObject best-effort deletes an optional owned object (a Traefik
@@ -475,8 +435,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Deletion: the CNPG Cluster (and the ScheduledBackup, Pooler, routes and
-	// middleware) is owned by the Database and garbage-collected via owner refs.
+	// Deletion: the CNPG Cluster, ScheduledBackup, and Pooler are owned by the
+	// Database and garbage-collected via owner refs.
 	// The finalizer waits for the Cluster to be fully gone before purging S3
 	// backups so we don't race with in-flight WAL archiving (w7/m12).
 	if !db.DeletionTimestamp.IsZero() {
@@ -836,111 +796,62 @@ func (r *DatabaseReconciler) triggerCNPGSwitchover(ctx context.Context, cluster 
 	}
 }
 
-// reconcileExternalRoutes projects the public SNI endpoints when the Database is
-// Public and a DBDomain is set: the read-write route (<name>.<domain>), an
-// optional pooled route (<name>-pool.<domain>), and one per-replica route
-// (<name>-ro-<replicaName>.<domain>) per spec.readReplicas entry. All routes are
-// gated by an ipAllowList middleware when spec.ipAllowList is non-empty.
-// The internal -rw path is never gated. InternalHost for replicas is always set.
-// Removes routes for replicas no longer in spec, and all routes when private.
+// reconcileExternalRoutes publishes status hostnames for the metered Postgres
+// SNI proxy. It also deletes the pre-m15 Traefik TCP objects so there is exactly
+// one public accounting/enforcement path. The proxy watches the same Database
+// CR and owns exact endpoint/allowlist routing; internal CNPG Services are never
+// gated. InternalHost for replicas is always set.
 func (r *DatabaseReconciler) reconcileExternalRoutes(ctx context.Context, db *appv1alpha1.Database) error {
 	mwName := db.Name + "-allow"
 	envMwName := db.Name + "-env-allow"
 	public := db.Spec.Public && r.DBDomain != ""
 
-	// Collect replica names currently in spec for cleanup diff.
-	specReplicaNames := make(map[string]bool, len(db.Spec.ReadReplicas))
-	for _, rep := range db.Spec.ReadReplicas {
-		specReplicaNames[rep.Name] = true
-	}
-
-	// Delete routes for replicas that have been removed from spec.
+	// Remove every legacy route name known from either the previous status or
+	// current spec. Reconciliation is idempotent and upgrades clean themselves.
+	legacyRoutes := map[string]bool{db.Name + "-pg": true, db.Name + "-pool": true}
 	for _, prev := range db.Status.ReadReplicaStatuses {
-		if !specReplicaNames[prev.Name] {
-			if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, db.Name+"-ro-"+prev.Name); err != nil {
-				return err
-			}
+		legacyRoutes[db.Name+"-ro-"+prev.Name] = true
+	}
+	for _, rep := range db.Spec.ReadReplicas {
+		legacyRoutes[db.Name+"-ro-"+rep.Name] = true
+	}
+	for name := range legacyRoutes {
+		if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, name); err != nil {
+			return err
 		}
 	}
+	if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName); err != nil {
+		return err
+	}
+	if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
+		return err
+	}
 
+	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
+	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
 	if !public {
 		db.Status.ExternalHost = ""
 		db.Status.PoolerExternalHost = ""
-		// Clear external hosts from replica statuses; keep internal hosts.
-		roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
-		newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
 		for _, rep := range db.Spec.ReadReplicas {
 			newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
 				Name: rep.Name, InternalHost: roInternal,
 			})
 		}
 		db.Status.ReadReplicaStatuses = newStatuses
-		for _, name := range []string{db.Name + "-pg", db.Name + "-pool"} {
-			if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, name); err != nil {
-				return err
-			}
-		}
-		if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
-			return err
-		}
-		return deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName)
-	}
-
-	// IP allowlist layers, CHAINED so a source must pass every present one
-	// (w4/m28): the Database's own list and the environment-projected list
-	// each render their own middleware referenced by all routes.
-	var middlewares []any
-	if len(db.Spec.IPAllowList) > 0 {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, mwName, ipAllowListMiddlewareSpec(db.Spec.IPAllowList)); err != nil {
-			return err
-		}
-		middlewares = append(middlewares, map[string]any{"name": mwName, "namespace": db.Namespace})
-	} else if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, mwName); err != nil {
-		return err
-	}
-	if len(db.Spec.EnvironmentIPAllowList) > 0 {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikMiddlewareTCPGVK, envMwName, cidrMiddlewareSpec(db.Spec.EnvironmentIPAllowList)); err != nil {
-			return err
-		}
-		middlewares = append(middlewares, map[string]any{"name": envMwName, "namespace": db.Namespace})
-	} else if err := deleteOwned(ctx, r.Client, db, traefikMiddlewareTCPGVK, envMwName); err != nil {
-		return err
-	}
-
-	routeSpec := func(host, service string) map[string]any {
-		return ingressRouteTCPSpec(pgEntryPoint, host, service, pgPort, middlewares)
+		return nil
 	}
 
 	rwHost := fmt.Sprintf("%s.%s", db.Name, r.DBDomain)
-	if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, db.Name+"-pg", routeSpec(rwHost, db.Name+"-rw")); err != nil {
-		return err
-	}
 	db.Status.ExternalHost = rwHost
 
-	// Pooled external endpoint (only when pooling is on).
 	if db.Spec.Pooler {
-		poolHost := fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
-		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, db.Name+"-pool", routeSpec(poolHost, db.Name+"-pooler")); err != nil {
-			return err
-		}
-		db.Status.PoolerExternalHost = poolHost
+		db.Status.PoolerExternalHost = fmt.Sprintf("%s-pool.%s", db.Name, r.DBDomain)
 	} else {
-		if err := deleteOwned(ctx, r.Client, db, traefikIngressRouteTCPGVK, db.Name+"-pool"); err != nil {
-			return err
-		}
 		db.Status.PoolerExternalHost = ""
 	}
 
-	// Per-named-replica public routes: <name>-ro-<replicaName>.<domain> → CNPG -ro service.
-	// InternalHost is the shared CNPG -ro service (load-balances across standbys).
-	roInternal := fmt.Sprintf("%s-ro.%s.svc", db.Name, db.Namespace)
-	newStatuses := make([]appv1alpha1.DatabaseReadReplicaStatus, 0, len(db.Spec.ReadReplicas))
 	for _, rep := range db.Spec.ReadReplicas {
 		roHost := fmt.Sprintf("%s-ro-%s.%s", db.Name, rep.Name, r.DBDomain)
-		routeName := db.Name + "-ro-" + rep.Name
-		if err := upsertOwned(ctx, r.Client, r.Scheme, db, traefikIngressRouteTCPGVK, routeName, routeSpec(roHost, db.Name+"-ro")); err != nil {
-			return err
-		}
 		newStatuses = append(newStatuses, appv1alpha1.DatabaseReadReplicaStatus{
 			Name: rep.Name, InternalHost: roInternal, ExternalHost: roHost,
 		})

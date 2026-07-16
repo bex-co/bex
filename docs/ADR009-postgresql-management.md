@@ -36,7 +36,7 @@ flowchart LR
   cnpg --> svc["cluster-rw Service<br/>(ClusterIP, in-cluster)"]
   cnpg --> sec["Secret<br/>(user + password)"]
   svc --> appx["tenant App<br/>uses INTERNAL url"]
-  svc --> tcp["Traefik TCP router<br/>SNI + TLS · id.db.bex.co:5432"]
+  svc --> tcp["Postgres-aware SNI proxy<br/>TLS passthrough + response meter · :5432"]
   tcp --> ext["external client<br/>uses EXTERNAL url · sslmode=require"]
 ```
 
@@ -58,7 +58,7 @@ The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `D
 
 **Dev (single-node, hostNetwork edge):** the DaemonSet's `hostPort: 5432` binds `:5432` directly on the node. `*.db.bex.co` is a DNS A record to the node IP.
 
-**Prod (Hetzner LoadBalancer):** the Hetzner LB currently routes `:5432` to Traefik. After this change, port `5432` must be removed from Traefik's LB service and added to a new `LoadBalancer` Service selecting the proxy DaemonSet pods:
+**Prod (Hetzner LoadBalancer):** port `5432` is absent from Traefik's Service and the prod kustomization creates a `LoadBalancer` Service selecting the proxy DaemonSet pods:
 
 ```yaml
 apiVersion: v1
@@ -81,7 +81,7 @@ spec:
       protocol: TCP
 ```
 
-Apply this with `kubectl -n bex-system apply -f pg-sni-proxy-lb.yaml` after deploying the operator.
+The kustomization applies this object with the rest of the operator; it is not a manual post-deploy step.
 
 ### 4. Naming convention (copy Render's reasoning, not its strings)
 
@@ -141,14 +141,14 @@ Ship only what fits the current single `cx33` (8 GB) node — single-instance pl
 - **basic-256mb** — 256Mi/0.1CPU, `instances:1`, daily `ScheduledBackup`.
 - **basic-1gb** — 1Gi/0.5CPU, `instances:1`, daily backup.
 
-Smallest possible first cut: internal-URL-only (connect from an in-cluster App), then add the Traefik-SNI external route as step 2 — but since the external URL _is_ the Render experience, the MVP should include its basic form.
+The first cut included the external URL because it is central to the Render experience; the original Traefik TCP route was later replaced by the protocol-aware metered proxy in §3.
 
 ## Alternatives considered
 
 - **Operators** — Zalando (older Patroni/StatefulSet architecture), Crunchy PGO (pgBackRest, heavier, only wins at extreme backup scale), StackGres (AGPL + heavy), KubeDB (freemium). CNPG chosen; see §1.
 - **Isolation model** — shared cluster + row-level (weakest; that's how the _control plane_ stores its own tenants, not tenant DBs) and database-per-tenant on a shared cluster (noisy neighbor, shared blast radius) both rejected in favor of **instance-per-tenant-DB** (matches the namespace compute model).
 - **Attach DB to App (`App.spec.database`)** — rejected; a DB shouldn't die with one app or be un-shareable. Standalone `Database` is Render-faithful.
-- **Per-DB LoadBalancer for the external endpoint** — rejected; a Hetzner LB per DB is costly and doesn't scale. **Traefik TCP + SNI** on one wildcard endpoint is how Render does it (region proxy routes by SNI hostname).
+- **Per-DB LoadBalancer for the external endpoint** — rejected; a Hetzner LB per DB is costly and doesn't scale. One protocol-aware SNI proxy on a wildcard endpoint preserves the region-proxy shape while handling PostgreSQL's preamble and per-resource metering.
 
 ## Advanced: data protection, lifecycle, access (w1/m17)
 
@@ -190,8 +190,8 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 
 ### Access & connection
 
-- **IP allowlist** (`spec.ipAllowList`) gates the **external** SNI route only: the controller projects a Traefik `ipAllowList` `MiddlewareTCP` (source-range) referenced by the route, so only listed CIDRs reach the public endpoint. Empty ⇒ open to all source IPs; the internal `-rw` path is never gated. This closes the "public was an on/off toggle with no source restriction" gap (§7). Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never reaches the rendered middleware; pre-m24 CRs serialized bare CIDR strings — normalized fleet-wide to `{cidr}` objects and rejected at admission since w4/m29 (`scripts/ipallowlist-normalize.sh`; the REST wire still accepts bare strings via `core.IPAllowListEntry`, unchanged).
-- **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<id>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, via an `<id>-pool.<domain>` SNI route). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
+- **IP allowlist** (`spec.ipAllowList`) gates the **external** SNI endpoint only: every metered proxy replica watches the Database CR and checks the connection's source address before dialing a backend. The environment-projected allowlist is an additional AND layer. Empty layers ⇒ open to all source IPs; the internal `-rw` path is never gated. Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never affects enforcement; pre-m24 CRs serialized bare CIDR strings — normalized fleet-wide to `{cidr}` objects and rejected at admission since w4/m29 (`scripts/ipallowlist-normalize.sh`; the REST wire still accepts bare strings via `core.IPAllowListEntry`, unchanged).
+- **PgBouncer pooler** (`spec.pooler`) projects a CNPG `Pooler` (transaction mode) whose `<id>-pooler` Service backs the pooled connection strings `connection-info` now returns (internal always; external when `public`, resolved by the proxy from `<id>-pool.<domain>`). This fills the previously-stubbed `internalConnectionPoolString`/`externalConnectionPoolString`.
 - **Postgres users** (`spec.users`) are additional managed PostgreSQL login roles projected to CNPG `spec.managed.roles`; bex-api generates each role's password into a per-user basic-auth Secret (`<id>-user-<role>`, referenced by CNPG's `passwordSecret`) and reveals it once on creation — never logged. The owner role (`<id>_user`, with hyphens normalized to underscores) stays CNPG-managed.
 
 ## HA · failover · read replicas (w1/m22)
@@ -212,15 +212,15 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 ### Named read replicas
 
-- `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. Each entry gets its own Traefik `IngressRouteTCP` routing to the CNPG `-ro` service (which load-balances across standbys). Naming is `<id>-ro-<name>.<BEX_DB_DOMAIN>` for the external SNI hostname; the internal host is the shared CNPG `-ro` service.
-- `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. Route cleanup: when a replica is removed from spec, the operator finds it in the previous `status.readReplicaStatuses` and deletes its Traefik route.
+- `spec.readReplicas: [{name}]` (Render's `readReplicas` create field) declares named read-only replica endpoints. The proxy resolves each exact `<id>-ro-<name>.<BEX_DB_DOMAIN>` hostname to the CNPG `-ro` service (which load-balances across standbys); the internal host is that same shared service.
+- `status.readReplicaStatuses: [{name, internalHost, externalHost}]` tracks the resolved hosts. The proxy rebuilds its exact route table from current CR intent; the operator removes any pre-m15 Traefik routes during reconciliation.
 - Connection strings (with password) are in `connection-info` as `readReplicaConnectionStrings: [{name, internalConnectionString, externalConnectionString}]` — host-only info (without password) is also in the view.
 
 ## Consequences
 
 - Deferred: the Accelerated tier and payment collection. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**; disk autoscaling in **w8/m14**.
 - **`bex-db` (the control plane's own DB) runs two cross-node instances plus continuous WAL archiving and nightly backups** — required pod anti-affinity and CNPG switchover cover one platform-node drain (w1/m38); the off-cluster backup/PITR path covers correlated loss (w2/m27, [ADR031-platform-data-backup.md](ADR031-platform-data-backup.md)).
-- The external-endpoint IP allowlist and pooler routes ride the same `*.db.bex.co` wildcard SNI entrypoint (§3) — no per-DB LoadBalancer; the pooled endpoint adds an `<id>-pool.<domain>` SNI hostname.
+- The external-endpoint IP allowlist, pooler, and read-replica names ride the same metered `*.db.bex.co` SNI proxy (§3) — no per-DB LoadBalancer; every backend→client byte rolls up to the parent Database.
 
 ## Verification
 

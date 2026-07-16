@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kv-sni-proxy
+rules:
+  - apiGroups: ["app.bex.co"]
+    resources: ["keyvalues"]
+    verbs: ["get", "list", "watch"]

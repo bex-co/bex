@@ -79,6 +79,11 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// labelAppID is the immutable Render-shaped service id propagated from the App
+// CR onto workload pods for node-local egress attribution. Kept in sync with
+// backend/core.LabelAppID without importing the backend.
+const labelAppID = "bex.co/app-id"
+
 // labelRevision ties a pod to the App revision it was created for. The backend
 // keeps the same string as core.PodLabelRevision without importing backend;
 // SSH target discovery uses it to exclude a still-Ready old ReplicaSet during
@@ -730,12 +735,17 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	labels := map[string]string{labelApp: app.Name}
+	appID := app.Labels[labelAppID]
+	if appID == "" {
+		appID = app.Name
+	}
 	// Propagate the workspace label to pod templates so NetworkPolicy selectors
 	// can express "allow same-workspace" rules. The selector stays stable
 	// (labelApp only) — adding labelWorkspace here would make it immutable and
 	// break existing Deployments when the label is added later.
 	podLabels := map[string]string{
 		labelApp:      app.Name,
+		labelAppID:    appID,
 		labelRevision: fmt.Sprintf("rev-%d", app.Generation),
 	}
 	if ws := app.Labels[labelWorkspace]; ws != "" {
@@ -875,7 +885,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
-	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort, mwNames); err != nil {
+	wsMeter, err := r.reconcileWebsocketMeterMiddleware(ctx, app, len(hosts) > 0)
+	if err != nil {
+		return r.fail(ctx, app, "MiddlewareFailed", err)
+	}
+	middlewareNames := mwNames
+	if wsMeter != "" {
+		middlewareNames = append(middlewareNames, wsMeter)
+	}
+	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort, middlewareNames); err != nil {
 		return r.fail(ctx, app, "IngressFailed", err)
 	}
 
@@ -1071,6 +1089,27 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 	return names, nil
 }
 
+func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, app *appv1alpha1.App, enabled bool) (string, error) {
+	middlewareName := app.Name + "-ws-egress"
+	if !enabled {
+		if err := deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, middlewareName); err != nil {
+			return "", err
+		}
+		return "", nil
+	}
+	appID := app.Labels[labelAppID]
+	if appID == "" {
+		appID = app.Name
+	}
+	spec := map[string]any{"plugin": map[string]any{
+		"bexWebsocketEgress": map[string]any{"appId": appID, "metricsAddr": ":9101"},
+	}}
+	if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, middlewareName, spec); err != nil {
+		return "", err
+	}
+	return middlewareName, nil
+}
+
 // reconcileIngress applies one networking.k8s.io Ingress fronting the App's
 // hosts, each with a rule + cert-manager TLS certificate, routed to backend
 // svc:port. With no hosts it removes any Ingress previously created (exposure
@@ -1078,7 +1117,8 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 // its own Service, an auto-hibernating app at the activator, and a static_site
 // at the shared static-server — all through the same emitted Ingress shape, so
 // the ingress controller (traefik today) stays swappable. middlewareNames,
-// when non-empty, wire Traefik HTTP Middlewares (the ipAllowList layers) via
+// when non-empty, wire Traefik HTTP Middlewares (the ipAllowList layers and
+// WebSocket egress meter) via
 // the router.middlewares Ingress annotation — comma-joined, which Traefik
 // applies as an AND chain.
 func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareNames []string) error {
@@ -1359,6 +1399,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// Suspended: stop serving by removing the Ingress; the published content stays
 	// in the object store, so resume just recreates the Ingress.
 	if app.Spec.Suspended {
+		if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
+			return r.fail(ctx, app, "MiddlewareCleanupFailed", err)
+		}
 		if err := r.reconcileIngress(ctx, app, nil, "", 0, nil); err != nil {
 			return r.fail(ctx, app, "IngressCleanupFailed", err)
 		}
@@ -1378,6 +1421,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
+		return r.fail(ctx, app, "MiddlewareFailed", err)
+	}
+	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
 	if err := r.reconcileIngress(ctx, app, hosts, r.StaticServerService, int32(r.staticServerPort()), staticMWNames); err != nil {
@@ -1484,6 +1530,11 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	}
 	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	labels := map[string]string{labelApp: app.Name}
+	if appID := app.Labels[labelAppID]; appID != "" {
+		labels[labelAppID] = appID
+	} else {
+		labels[labelAppID] = app.Name
+	}
 	suspended := app.Spec.Suspended
 
 	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
