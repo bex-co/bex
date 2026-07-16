@@ -9,14 +9,15 @@
 | t001 | `ipAllowList` on GraphQL `createDatabase` + MCP `create_postgres`, mirroring keyvalue      | 40m | —          |
 | t002 | Backfill `pg_stat_statements` onto pre-m25 CNPG clusters via the parameter-override seam   | 45m | —          |
 | t003 | KV version-change parity assessment (either-outcome acceptance)                            | 30m | —          |
-| t004 | Render parity                                                                               | 20m | t001       |
+| t008 | Accept Render's inline `parameterOverrides` on PATCH /v1/postgres/{id}                     | 30m | —          |
+| t004 | Render parity                                                                               | 20m | t001, t008 |
 | t005 | Simplify                                                                                    | 15m | t004       |
 | t006 | Test coverage                                                                               | 30m | t004       |
 | t007 | Closeout                                                                                    | 15m | t006       |
 
 ## Definition of done
 
-A Postgres created via GraphQL or MCP with an `ipAllowList` carries it (cross-surface test) and the stale `postgres/mcp.go:42-43` comment is fixed; a database provisioned before w2/m25 returns real Top Queries rows after the operator reconcile (verified on a dev-N or prod pre-m25 cluster); the KV version question has a recorded answer with spec/docs evidence (mirror-milestone filed if yes, parity-by-absence recorded if no); source notes `w8/003` + `w8/006` closed.
+A Postgres created via GraphQL or MCP with an `ipAllowList` carries it (cross-surface test) and the stale `postgres/mcp.go:42-43` comment is fixed; a database provisioned before w2/m25 returns real Top Queries rows after the operator reconcile (verified on a dev-N or prod pre-m25 cluster); the KV version question has a recorded answer with spec/docs evidence (mirror-milestone filed if yes, parity-by-absence recorded if no); a Render-shaped `PATCH /v1/postgres/{id}` with inline `parameterOverrides` applies them via the existing override seam (no silent ignore) and `docs/ADR018-render-parity.md:88`'s note is updated; source notes `w8/003` + `w8/006` closed.
 
 ## Source + Goal linkage
 
@@ -25,4 +26,5 @@ A Postgres created via GraphQL or MCP with an `ipAllowList` carries it (cross-su
 - **Expected outcome:** the datastore create surface is symmetric across REST/GraphQL/MCP; old databases get the insights feature they already pay reconcile cost for; two aging inbox notes cleared.
 - **Why now:** keyvalue just got the same create-parity treatment, so the postgres asymmetry is fresh drift; grouping clears the notes while the datastore code is warm. w8 was honestly dry in round 13 — this is its real backlog.
 - **Render parity:** included — t001 is a GraphQL/MCP surface change (Render's own POST /postgres accepts `ipAllowList`).
+- **t008 source:** `/pm-brainstorm` round 19, 2026-07-15 — dashboard-gap mine: `PostgresPatch` (`postgres/service.go:579`) silently drops Render's documented inline `parameterOverrides` (ADR018:88 documents the subresource preference; the silent-ignore half is the defect).
 - **Coordinate with — never duplicate:** `w4/m24` (descriptions on the same lists), `w9/m38` (owns the postgres bad-request error-body sweep — out of scope here).
