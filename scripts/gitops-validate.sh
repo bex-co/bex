@@ -366,6 +366,22 @@ check_fixed_edge_nodeport Traefik-HTTPS "$tmp/traefik-prod.yaml" traefik websecu
 check_fixed_edge_nodeport PostgreSQL-proxy "$tmp/bex-operator-prod.yaml" bex-pg-sni-proxy-public postgres 31056
 check_fixed_edge_nodeport Valkey-proxy "$tmp/bex-operator-prod.yaml" bex-kv-sni-proxy-public valkey 31892
 
+echo "==> production raw-TCP edge proxies are admitted through default-deny"
+for proxy in pg-sni-proxy kv-sni-proxy; do
+  selected="$(yq -N "select(.kind == \"NetworkPolicy\" and .metadata.name == \"allow-production-edge-proxies\") | .spec.podSelector.matchExpressions[] | select(.key == \"app.bex.co/component\" and .operator == \"In\") | .values[] | select(. == \"$proxy\")" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  if [ "$selected" != "$proxy" ]; then
+    echo "FAIL: production edge NetworkPolicy does not select $proxy" >&2
+    fail=1
+  fi
+done
+for port in 5432 6379; do
+  admitted="$(yq -N "select(.kind == \"NetworkPolicy\" and .metadata.name == \"allow-production-edge-proxies\") | .spec.ingress[] | select(.from == null) | .ports[] | select(.protocol == \"TCP\" and .port == $port) | .port" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  if [ "$admitted" != "$port" ]; then
+    echo "FAIL: production edge NetworkPolicy does not publicly admit TCP/$port" >&2
+    fail=1
+  fi
+done
+
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"
   local replicas required min_available

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-production-edge-proxies
+  namespace: bex-system
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.bex.co/component
+        operator: In
+        values:
+          - pg-sni-proxy
+          - kv-sni-proxy
+  policyTypes:
+    - Ingress
+  ingress:
+    # These two pods are the deliberate public raw-TCP front doors. The proxy
+    # itself performs SNI routing and resource IP-allowlist enforcement; keep
+    # every other bex-system pod under the namespace default-deny policy.
+    - ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
