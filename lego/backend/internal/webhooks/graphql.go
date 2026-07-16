@@ -66,14 +66,6 @@ var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// gqlStr reads an optional string argument (absent => "").
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
 // gqlInt reads an optional int argument (absent => 0).
 func gqlInt(args map[string]any, key string) int {
 	if v, ok := args[key].(int); ok {
@@ -92,7 +84,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.List(p.Context, gqlStr(p.Args, "ownerId"))
+				return s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		"webhookEndpoint": &graphql.Field{
@@ -102,7 +94,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(p.Context, gqlStr(p.Args, "ownerId"), p.Args["id"].(string))
+				return s.Get(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))
 			},
 		},
 		"webhookDeliveries": &graphql.Field{
@@ -114,7 +106,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":      &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListDeliveries(p.Context, gqlStr(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlStr(p.Args, "cursor"), gqlInt(p.Args, "limit"))
+				return s.ListDeliveries(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlutil.Str(p.Args, "cursor"), gqlInt(p.Args, "limit"))
 			},
 		},
 		"webhookEventTypes": &graphql.Field{
@@ -139,7 +131,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
-					OwnerID: gqlStr(p.Args, "ownerId"), Name: gqlStr(p.Args, "name"),
+					OwnerID: gqlutil.Str(p.Args, "ownerId"), Name: gqlutil.Str(p.Args, "name"),
 					URL: p.Args["url"].(string), EventTypes: gqlutil.StringList(p.Args["eventTypes"]),
 				})
 			},
@@ -152,7 +144,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetEnabled(p.Context, gqlStr(p.Args, "ownerId"), p.Args["id"].(string), p.Args["enabled"].(bool))
+				return s.SetEnabled(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string), p.Args["enabled"].(bool))
 			},
 		},
 		"deleteWebhookEndpoint": &graphql.Field{
@@ -162,7 +154,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Delete(p.Context, gqlStr(p.Args, "ownerId"), p.Args["id"].(string))
+				err := s.Delete(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},

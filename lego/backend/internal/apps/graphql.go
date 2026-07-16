@@ -142,7 +142,7 @@ func gqlMaintenanceModeInput(args map[string]any, key string) *MaintenanceModeVi
 		return nil
 	}
 	enabled, _ := m["enabled"].(bool)
-	return &MaintenanceModeView{Enabled: enabled, URI: gqlStr(m, "uri")}
+	return &MaintenanceModeView{Enabled: enabled, URI: gqlutil.Str(m, "uri")}
 }
 
 // gqlBuildFilterInput parses a BuildFilterInput argument into the neutral view
@@ -174,9 +174,9 @@ func gqlRouteInputs(args map[string]any, key string) []StaticRouteView {
 			continue
 		}
 		out = append(out, StaticRouteView{
-			Type:        gqlStr(m, "type"),
-			Source:      gqlStr(m, "source"),
-			Destination: gqlStr(m, "destination"),
+			Type:        gqlutil.Str(m, "type"),
+			Source:      gqlutil.Str(m, "source"),
+			Destination: gqlutil.Str(m, "destination"),
 		})
 	}
 	return out
@@ -194,9 +194,9 @@ func gqlHeaderInputs(args map[string]any, key string) []StaticHeaderView {
 			continue
 		}
 		out = append(out, StaticHeaderView{
-			Path:  gqlStr(m, "path"),
-			Name:  gqlStr(m, "name"),
-			Value: gqlStr(m, "value"),
+			Path:  gqlutil.Str(m, "path"),
+			Name:  gqlutil.Str(m, "name"),
+			Value: gqlutil.Str(m, "value"),
 		})
 	}
 	return out
@@ -213,7 +213,7 @@ func gqlSecretFileInputs(args map[string]any, key string) []core.SecretFile {
 		if !ok {
 			continue
 		}
-		out = append(out, core.SecretFile{Name: gqlStr(m, "name"), Content: gqlStr(m, "content")})
+		out = append(out, core.SecretFile{Name: gqlutil.Str(m, "name"), Content: gqlutil.Str(m, "content")})
 	}
 	return out
 }
@@ -229,8 +229,8 @@ func gqlEnvVarInputs(args map[string]any, key string) ([]appv1alpha1.EnvVar, err
 		if !ok {
 			continue
 		}
-		name := gqlStr(m, "key")
-		value := gqlStr(m, "value")
+		name := gqlutil.Str(m, "key")
+		value := gqlutil.Str(m, "value")
 		generate, _ := m["generateValue"].(bool)
 		if generate && value != "" {
 			return nil, fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, name)
@@ -462,24 +462,9 @@ var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// gqlStr / gqlInt read an optional argument, tolerating absence (graphql-go
-// omits unset optional args from the map) — the create mutation's scalar args
-// are all optional except name.
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
-func gqlStrPtr(args map[string]any, key string) *string {
-	v, ok := args[key].(string)
-	if !ok {
-		return nil
-	}
-	return &v
-}
-
+// gqlInt reads an optional argument, tolerating absence (graphql-go omits
+// unset optional args from the map) — the create mutation's scalar args are
+// all optional except name.
 func gqlInt(args map[string]any, key string) int {
 	if v, ok := args[key].(int); ok {
 		return v
@@ -697,7 +682,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				// ownerId mirrors Render's REST/MCP services list filter (w6/m2/t004).
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context, gqlStr(p.Args, "ownerId")) },
+			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context, gqlutil.Str(p.Args, "ownerId")) },
 		},
 		"server": &graphql.Field{ // Render's dashboard query name
 			Type: serviceGQLType,
@@ -724,7 +709,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlStr(p.Args, "cursor"), gqlInt(p.Args, "limit"))
+				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlutil.Str(p.Args, "cursor"), gqlInt(p.Args, "limit"))
 			},
 		},
 		"cronJobRun": &graphql.Field{
@@ -778,7 +763,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListBlueprints(p.Context, gqlStr(p.Args, "ownerId"))
+				return s.ListBlueprints(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		// blueprint: fetch a single blueprint by id (w7/m27 — dashboard detail page).
@@ -789,7 +774,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlStr(p.Args, "ownerId"))
+				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		// validateBlueprint: dry-run parse a bex.yml — per-entry errors, no apply (w2/m15).
@@ -800,7 +785,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ValidateBlueprint(p.Context, gqlStr(p.Args, "ownerId"), p.Args["bexYaml"].(string))
+				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
 			},
 		},
 	}
@@ -891,35 +876,35 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return nil, err
 				}
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:                 gqlStr(p.Args, "ownerId"),
-					EnvironmentID:           gqlStr(p.Args, "environmentId"),
+					OwnerID:                 gqlutil.Str(p.Args, "ownerId"),
+					EnvironmentID:           gqlutil.Str(p.Args, "environmentId"),
 					Name:                    p.Args["name"].(string),
-					Type:                    gqlStr(p.Args, "type"),
-					Schedule:                gqlStr(p.Args, "schedule"),
-					Command:                 gqlStr(p.Args, "command"),
-					Repo:                    gqlStr(p.Args, "repo"),
-					Image:                   gqlStr(p.Args, "image"),
-					Branch:                  gqlStr(p.Args, "branch"),
-					RootDir:                 gqlStr(p.Args, "rootDir"),
+					Type:                    gqlutil.Str(p.Args, "type"),
+					Schedule:                gqlutil.Str(p.Args, "schedule"),
+					Command:                 gqlutil.Str(p.Args, "command"),
+					Repo:                    gqlutil.Str(p.Args, "repo"),
+					Image:                   gqlutil.Str(p.Args, "image"),
+					Branch:                  gqlutil.Str(p.Args, "branch"),
+					RootDir:                 gqlutil.Str(p.Args, "rootDir"),
 					BuildFilter:             gqlBuildFilterInput(p.Args, "buildFilter"),
-					Runtime:                 gqlStr(p.Args, "runtime"),
-					BuildCommand:            gqlStr(p.Args, "buildCommand"),
-					StartCommand:            gqlStr(p.Args, "startCommand"),
-					DockerfilePath:          gqlStr(p.Args, "dockerfilePath"),
-					Builder:                 gqlStr(p.Args, "builder"),
-					Plan:                    gqlStr(p.Args, "plan"),
+					Runtime:                 gqlutil.Str(p.Args, "runtime"),
+					BuildCommand:            gqlutil.Str(p.Args, "buildCommand"),
+					StartCommand:            gqlutil.Str(p.Args, "startCommand"),
+					DockerfilePath:          gqlutil.Str(p.Args, "dockerfilePath"),
+					Builder:                 gqlutil.Str(p.Args, "builder"),
+					Plan:                    gqlutil.Str(p.Args, "plan"),
 					AutoDeploy:              gqlBoolPtr(p.Args, "autoDeploy"),
-					NotifyOnFail:            gqlStr(p.Args, "notifyOnFail"),
+					NotifyOnFail:            gqlutil.Str(p.Args, "notifyOnFail"),
 					Port:                    int32(gqlInt(p.Args, "port")),
 					Replicas:                int32(gqlInt(p.Args, "replicas")),
 					Env:                     env,
 					SecretFiles:             gqlSecretFileInputs(p.Args, "secretFiles"),
-					PublishPath:             gqlStr(p.Args, "publishPath"),
+					PublishPath:             gqlutil.Str(p.Args, "publishPath"),
 					Routes:                  gqlRouteInputs(p.Args, "routes"),
 					Headers:                 gqlHeaderInputs(p.Args, "headers"),
-					HealthCheckPath:         gqlStr(p.Args, "healthCheckPath"),
+					HealthCheckPath:         gqlutil.Str(p.Args, "healthCheckPath"),
 					MaxShutdownDelaySeconds: gqlInt32Ptr(p.Args, "maxShutdownDelaySeconds"),
-					PreDeployCommand:        gqlStr(p.Args, "preDeployCommand"),
+					PreDeployCommand:        gqlutil.Str(p.Args, "preDeployCommand"),
 					MaintenanceMode:         gqlMaintenanceModeInput(p.Args, "maintenanceMode"),
 					DryRun:                  dryRun,
 				})
@@ -952,7 +937,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				sched := p.Args["schedule"].(string)
-				return s.SetCronJob(p.Context, p.Args["id"].(string), &sched, gqlStrPtr(p.Args, "command"))
+				return s.SetCronJob(p.Context, p.Args["id"].(string), &sched, gqlutil.StrPtr(p.Args, "command"))
 			},
 		},
 		// runCronJob returns the deterministic pending run, matching REST's
@@ -1334,7 +1319,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
-					gqlStr(p.Args, "ownerId"), gqlStr(p.Args, "bexYaml"), gqlStr(p.Args, "confirm"))
+					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "bexYaml"), gqlutil.Str(p.Args, "confirm"))
 			},
 		},
 	}

@@ -43,14 +43,20 @@ func maintenanceApp(uri string) *appv1alpha1.App {
 			MaintenanceMode: &appv1alpha1.MaintenanceModeSpec{Enabled: true, URI: uri},
 			Hosts:           []string{"custom.example.com"},
 		},
-		Status: appv1alpha1.AppStatus{URL: "https://web.onbex.co", URLs: []string{"https://web.onbex.co", "https://custom.example.com"}},
+		Status: appv1alpha1.AppStatus{
+			URL:  "https://web.onbex.co",
+			URLs: []string{"https://web.onbex.co", "https://custom.example.com"},
+		},
 	}
 }
 
 func TestMaintenanceHandlerDoesNotWakeOrMutateWorkload(t *testing.T) {
 	app := maintenanceApp("")
 	zero := int32(0)
-	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"}, Spec: appsv1.DeploymentSpec{Replicas: &zero}}
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "bex-system"},
+		Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
 
 	rr := httptest.NewRecorder()
@@ -153,13 +159,16 @@ func TestCustomMaintenancePageHeadAndSizeLimit(t *testing.T) {
 	}
 
 	head := httptest.NewRecorder()
-	serveMaintenanceWithFetcher(head, httptest.NewRequest(http.MethodHead, "/any", nil), app, fetchBody("must not be written"))
+	headReq := httptest.NewRequest(http.MethodHead, "/any", nil)
+	serveMaintenanceWithFetcher(head, headReq, app, fetchBody("must not be written"))
 	if head.Code != http.StatusServiceUnavailable || head.Body.Len() != 0 {
 		t.Fatalf("HEAD response = %d %q", head.Code, head.Body.String())
 	}
 
 	oversized := httptest.NewRecorder()
-	serveMaintenanceWithFetcher(oversized, httptest.NewRequest(http.MethodGet, "/", nil), app, fetchBody(strings.Repeat("x", customPageMaxSize+1)))
+	oversizedReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	oversizedBody := fetchBody(strings.Repeat("x", customPageMaxSize+1))
+	serveMaintenanceWithFetcher(oversized, oversizedReq, app, oversizedBody)
 	if oversized.Code != http.StatusBadGateway || !strings.Contains(oversized.Body.String(), "unavailable") {
 		t.Fatalf("oversized response = %d %q", oversized.Code, oversized.Body.String())
 	}
@@ -189,7 +198,8 @@ func TestMaintenanceURLSafety(t *testing.T) {
 		}
 	}
 	dial := netutil.SafeDialContext(customPageTimeout)
-	if _, err := dial(context.Background(), "tcp", "127.0.0.1:80"); err == nil || !strings.Contains(err.Error(), "private address") {
+	_, err := dial(context.Background(), "tcp", "127.0.0.1:80")
+	if err == nil || !strings.Contains(err.Error(), "private address") {
 		t.Fatalf("netutil.SafeDialContext(loopback) error = %v", err)
 	}
 }
@@ -198,7 +208,8 @@ func TestMaintenanceRedirectPolicyRejectsSelfAndLongChains(t *testing.T) {
 	app := maintenanceApp("")
 	policy := customPageRedirectPolicy(app)
 	self := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/redirected", nil)
-	if err := policy(self, []*http.Request{httptest.NewRequest(http.MethodGet, "https://status.example.com", nil)}); err == nil || !strings.Contains(err.Error(), "this service") {
+	selfVia := []*http.Request{httptest.NewRequest(http.MethodGet, "https://status.example.com", nil)}
+	if err := policy(self, selfVia); err == nil || !strings.Contains(err.Error(), "this service") {
 		t.Fatalf("redirect-to-self error = %v", err)
 	}
 

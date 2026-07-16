@@ -27,24 +27,28 @@ import (
 // the extractSNI and readTLSRecord paths.
 func buildClientHello(sni string) []byte {
 	// SNI extension data: list_len(2) + name_type(1) + name_len(2) + name
-	sniData := []byte{0x00, byte(len(sni) >> 8), byte(len(sni))}
+	sniData := make([]byte, 0, 3+len(sni))
+	sniData = append(sniData, 0x00, byte(len(sni)>>8), byte(len(sni)))
 	sniData = append(sniData, []byte(sni)...)
 	listLen := len(sniData)
-	sniExt := []byte{byte(listLen >> 8), byte(listLen)}
+	sniExt := make([]byte, 0, 2+len(sniData))
+	sniExt = append(sniExt, byte(listLen>>8), byte(listLen))
 	sniExt = append(sniExt, sniData...)
 	extLen := len(sniExt)
 	// Extension: type(2) + len(2) + data
-	ext := []byte{0x00, 0x00, byte(extLen >> 8), byte(extLen)}
+	ext := make([]byte, 0, 4+len(sniExt))
+	ext = append(ext, 0x00, 0x00, byte(extLen>>8), byte(extLen))
 	ext = append(ext, sniExt...)
 
 	// Extensions block: total_len(2) + extensions
-	exts := []byte{byte(len(ext) >> 8), byte(len(ext))}
+	exts := make([]byte, 0, 2+len(ext))
+	exts = append(exts, byte(len(ext)>>8), byte(len(ext)))
 	exts = append(exts, ext...)
 
 	// Minimal ClientHello body:
 	// legacy_version(2) + random(32) + session_id_len(1) +
 	// cipher_suites_len(2) + cipher_suite(2) + comp_methods_len(1) + comp_method(1) + extensions
-	chBody := make([]byte, 34) // version + random
+	chBody := make([]byte, 34, 41+len(exts)) // version + random
 	chBody[0] = 0x03
 	chBody[1] = 0x03
 	chBody = append(chBody, 0x00)       // session_id_len = 0
@@ -55,7 +59,8 @@ func buildClientHello(sni string) []byte {
 
 	// Handshake header: type(1) + length(3)
 	hsLen := len(chBody)
-	hs := []byte{0x01, byte(hsLen >> 16), byte(hsLen >> 8), byte(hsLen)}
+	hs := make([]byte, 0, 4+len(chBody))
+	hs = append(hs, 0x01, byte(hsLen>>16), byte(hsLen>>8), byte(hsLen))
 	hs = append(hs, chBody...)
 
 	// TLS record header: content_type(1) + version(2) + length(2)

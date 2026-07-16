@@ -25,7 +25,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -118,7 +117,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ingress not created: %v", err)
 	}
-	wantAnnotation := fmt.Sprintf("default-ws-acl-ip-allow@kubernetescrd")
+	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd"
 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantAnnotation {
 		t.Fatalf("Ingress annotation %s = %q, want %q", traefikRouterMiddlewaresAnnotation, got, wantAnnotation)
 	}
@@ -211,7 +210,7 @@ func TestNonIngressTypesGetNoIPAllowListMiddleware(t *testing.T) {
 		appv1alpha1.TypeBackgroundWorker,
 		appv1alpha1.TypeCronJob,
 	} {
-		t.Run(string(typ), func(t *testing.T) {
+		t.Run(typ, func(t *testing.T) {
 			scheme := newIPAllowListScheme()
 			app := appWithAllowList("no-ingress", []string{"203.0.113.0/24"}, typ)
 			if typ == appv1alpha1.TypeCronJob {

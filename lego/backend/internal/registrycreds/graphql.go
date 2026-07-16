@@ -41,24 +41,6 @@ var credentialGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// gqlStr / gqlStrPtr read an optional string argument (mirrors apps/graphql.go's
-// helpers — graphql-go omits an unset optional arg from the map, so ok=false
-// distinguishes "absent" from an explicit, possibly-empty value).
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
-func gqlStrPtr(args map[string]any, key string) *string {
-	v, ok := args[key].(string)
-	if !ok {
-		return nil
-	}
-	return &v
-}
-
 // GraphQLQuery returns registryCredentials(ownerId) + registryCredential(id).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
@@ -68,7 +50,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.List(p.Context, gqlStr(p.Args, "ownerId"))
+				return s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		"registryCredential": &graphql.Field{
@@ -95,12 +77,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"expiresAt": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				expiresAt, err := parseExpiresAt(gqlStr(p.Args, "expiresAt"))
+				expiresAt, err := parseExpiresAt(gqlutil.Str(p.Args, "expiresAt"))
 				if err != nil {
 					return nil, err
 				}
 				return s.Create(p.Context, CreateRequest{
-					OwnerID: gqlStr(p.Args, "ownerId"), Name: gqlStr(p.Args, "name"),
+					OwnerID: gqlutil.Str(p.Args, "ownerId"), Name: gqlutil.Str(p.Args, "name"),
 					Host: p.Args["host"].(string), Username: p.Args["username"].(string),
 					Secret: p.Args["authToken"].(string), ExpiresAt: expiresAt,
 				})
@@ -117,8 +99,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				req := UpdateRequest{
-					Name: gqlStrPtr(p.Args, "name"), Username: gqlStrPtr(p.Args, "username"),
-					Secret: gqlStrPtr(p.Args, "authToken"),
+					Name: gqlutil.StrPtr(p.Args, "name"), Username: gqlutil.StrPtr(p.Args, "username"),
+					Secret: gqlutil.StrPtr(p.Args, "authToken"),
 				}
 				if raw, ok := p.Args["expiresAt"]; ok {
 					expiresAt, err := parseExpiresAt(raw.(string))

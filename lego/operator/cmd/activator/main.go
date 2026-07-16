@@ -39,6 +39,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/bex-co/bex/lego/types/netutil"
@@ -112,12 +113,13 @@ func newHandler(c client.Client, log logr.Logger) http.Handler {
 			return
 		}
 
-		wakeApp(ctx, c, log, app, host)
+		wakeApp(logf.IntoContext(ctx, log), c, app, host)
 		writeWakeResponse(w, r)
 	})
 }
 
-func wakeApp(ctx context.Context, c client.Client, log logr.Logger, app *appv1alpha1.App, host string) {
+func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host string) {
+	log := logf.FromContext(ctx)
 	// Touch last-active so the operator's shouldAutoHibernate returns false on
 	// the next reconcile, allowing the Ingress to switch back to the app.
 	base := app.DeepCopy()
@@ -179,7 +181,7 @@ func serveMaintenanceWithFetcher(
 		http.Error(w, "custom maintenance page unavailable", http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, customPageMaxSize+1))
 	if err != nil || len(body) > customPageMaxSize {
@@ -303,11 +305,13 @@ const maintenancePage = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Under maintenance</title>
   <style>
-    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#111827;color:#f9fafb}
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
     main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem}p{color:#d1d5db;line-height:1.6}
   </style>
 </head>
-<body><main><h1>This site is currently under maintenance.</h1><p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
+<body><main><h1>This site is currently under maintenance.</h1>
+<p>The owner will restore service as soon as possible. Please try again later.</p></main></body>
 </html>`
 
 const loadingPage = `<!DOCTYPE html>
