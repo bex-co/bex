@@ -142,6 +142,9 @@ resource "hcloud_load_balancer" "traefik" {
 
   lifecycle {
     prevent_destroy = true
+    # labels belong to the CCM (hcloud-ccm/service-uid, above) — without this,
+    # every apply plans to strip them back to Terraform's empty map (w10/m6).
+    ignore_changes = [labels]
   }
 }
 
