@@ -138,6 +138,8 @@ All Go is a workspace under `lego/` (`lego/go.work` over `types/` `operator/` `b
 - [docs/ADR032-environments.md](docs/ADR032-environments.md) — Environments: named subsets of a Project's services (staging/production), layered on `internal/projects` (w1/m31); assignment auto-joins the project, REST/GraphQL/MCP surface, MVP scope (no protected-environment ACLs, no dashboard UX).
 - [docs/ADR034-scalable-build-pipeline.md](docs/ADR034-scalable-build-pipeline.md) — scalable in-cluster builds: ephemeral BuildKit workers, reconcile/admission concurrency, Pod-versus-machine capacity, and the non-blocking evolution path.
 - [docs/ADR035-ssh.md](docs/ADR035-ssh.md) — running-instance SSH: identity keys, Render-compatible instance targeting, isolated gateway, Kubernetes exec bridge, and production activation gates.
+- [docs/ADR036-ca-rotation-runbook.md](docs/ADR036-ca-rotation-runbook.md) — Kubernetes CA rotation and admin-cert renewal: annual cert renewal (non-disruptive) and full CA rotation (emergency, disruptive); AdminCertExpiringSoon alert response.
+- [docs/ADR037-openbao-rekey-runbook.md](docs/ADR037-openbao-rekey-runbook.md) — OpenBao root-token rotation (`bao operator generate-root`) and Shamir re-key (`bao operator rekey`): when to use each, exact commands, `.env` + GitHub Actions update.
 
 ## Rules
 

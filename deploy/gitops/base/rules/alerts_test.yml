@@ -152,6 +152,40 @@ tests:
               summary: "Zot registry PVC zot-data is 72% full"
               description: "The Zot OCI registry PVC is >70% full — a runaway rebuild loop can fill it and silently 500 on pushes. Retention policy keeps 5 generations per repo; check for stale repos or resize. Debug: kubectl -n bex-registry get pvc zot-data; kubectl -n bex-registry exec deploy/zot -- du -sh /var/lib/registry/*"
 
+  # AdminCertExpiringSoon: fires when (creation + 1yr - now) < 30d.
+  # Uses the bex-kubeconfig Secret creation timestamp as a proxy for cert issue time.
+  # At eval_time 62m, time() = 3720s.
+  # For the expression (created + 31536000 - time()) < 2592000 to be true from t=0:
+  #   created + 31536000 - 0 < 2592000  →  created < -28944000
+  # Use created = -29000000 (always-firing for the full for: 1h window).
+  - name: AdminCertExpiringSoon fires within 30d window
+    interval: 1m
+    input_series:
+      - series: 'kube_secret_created{namespace="default", secret="bex-kubeconfig"}'
+        values: "-29000000x70"
+    alert_rule_test:
+      - eval_time: 62m
+        alertname: AdminCertExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: default
+              secret: bex-kubeconfig
+            exp_annotations:
+              summary: "App cluster admin cert (bex-kubeconfig) expires within 30d"
+              description: "The bex-kubeconfig Secret (holds CN=kubernetes-admin, O=system:masters cert, 1-year validity from CAPI mint) is estimated to expire within 30 days. Renew: sudo kubeadm certs renew all (on each CP node), then re-fetch: scripts/fetch-app-kubeconfig.sh. Scoped kubeconfig: scripts/operator-kubeconfig.sh. Break-glass check: sudo kubeadm certs check-expiration. Runbook: docs/ADR036-ca-rotation-runbook.md"
+
+  - name: AdminCertExpiringSoon does not fire with >30d remaining
+    interval: 1m
+    input_series:
+      # created = 0 → remaining = 0 + 31536000 - 3720 = 31532280s ≈ 365d >> 30d → no fire
+      - series: 'kube_secret_created{namespace="default", secret="bex-kubeconfig"}'
+        values: "0x70"
+    alert_rule_test:
+      - eval_time: 62m
+        alertname: AdminCertExpiringSoon
+        exp_alerts: []
+
   # OpenBaoSealed: per-member — a sealed follower (gauge 0) fires even while the
   # leader is unsealed (gauge 1). Proves the alert is NOT masked by a healthy
   # member (the reason it reads per-pod telemetry, not the round-robin Service).

@@ -34,5 +34,6 @@ resources:
   - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
   - bex-api-apps-rbac.yaml       # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)
   - bex-ssh-apps-rbac.yaml       # SSH gateway's namespace-scoped pod read + exec grant
-  - operator-apps-rbac.yaml     # operator's apps-namespace-scoped secrets grants (w7/m7)
-  - operator-registry-rbac.yaml # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
+  - operator-apps-rbac.yaml       # operator's apps-namespace-scoped secrets grants (w7/m7)
+  - operator-registry-rbac.yaml  # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
+  - operator-daytoday-rbac.yaml  # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)

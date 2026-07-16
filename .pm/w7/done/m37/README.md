@@ -1,18 +1,18 @@
 # w7 · m37 — Credential lifecycle hardening chores
 
-**Worker:** worker7 **Goal:** the four documented-but-unowned credential-lifecycle follow-ups from ADR019/ADR013 land: a scoped (non-`system:masters`) operator kubeconfig, alerting before the admin cert expires, and written runbooks for CA rotation and OpenBao root-token/Shamir rekey. **Status:** todo
+**Worker:** worker7 **Goal:** the four documented-but-unowned credential-lifecycle follow-ups from ADR019/ADR013 land: a scoped (non-`system:masters`) operator kubeconfig, alerting before the admin cert expires, and written runbooks for CA rotation and OpenBao root-token/Shamir rekey. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                    | est | depends_on               |
 | ---- | -------------------------------------------------------- | --- | ------------------------ |
-| t001 | Narrowed non-`system:masters` operator kubeconfig        | 60m | —                        |
-| t002 | Admin-cert expiry alert rule (firing-tested)             | 45m | —                        |
-| t003 | CA-rotation runbook                                      | 45m | —                        |
-| t004 | OpenBao root-token / Shamir-rekey runbook                | 45m | —                        |
-| t005 | Simplify                                                 | 30m | t001, t002, t003, t004   |
-| t006 | Test coverage                                            | 45m | t001, t002, t003, t004   |
-| t007 | Closeout                                                 | 15m | t006                     |
+| t001 | Narrowed non-`system:masters` operator kubeconfig        | 60m | —                        | — **DONE** |
+| t002 | Admin-cert expiry alert rule (firing-tested)             | 45m | —                        | — **DONE** |
+| t003 | CA-rotation runbook                                      | 45m | —                        | — **DONE** |
+| t004 | OpenBao root-token / Shamir-rekey runbook                | 45m | —                        | — **DONE** |
+| t005 | Simplify                                                 | 30m | t001, t002, t003, t004   | — **DONE** |
+| t006 | Test coverage                                            | 45m | t001, t002, t003, t004   | — **DONE** |
+| t007 | Closeout                                                 | 15m | t006                     | — **DONE** |
 
 ## Definition of done
 
