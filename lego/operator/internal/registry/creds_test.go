@@ -53,9 +53,9 @@ func TestHTPasswdRoundTrip(t *testing.T) {
 
 	// Verify the hash is valid bcrypt for the password.
 	var fooHash string
-	for _, line := range strings.Split(string(updated), "\n") {
-		if strings.HasPrefix(line, "app-foo:") {
-			fooHash = strings.TrimPrefix(line, "app-foo:")
+	for line := range strings.SplitSeq(string(updated), "\n") {
+		if hash, ok := strings.CutPrefix(line, "app-foo:"); ok {
+			fooHash = hash
 		}
 	}
 	if fooHash == "" {
@@ -88,7 +88,7 @@ func TestHTPasswdUpdateReplaces(t *testing.T) {
 	second, _ := addHTPasswdLine(first, "app-bar", "pass2")
 
 	var count int
-	for _, line := range strings.Split(string(second), "\n") {
+	for line := range strings.SplitSeq(string(second), "\n") {
 		if strings.HasPrefix(line, "app-bar:") {
 			count++
 		}
@@ -121,17 +121,17 @@ func TestZotConfigACLRoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatal("myapp not in parsed repos")
 	}
-	myappMap, _ := myappRaw.(map[string]interface{})
-	policies, _ := myappMap["policies"].([]interface{})
+	myappMap, _ := myappRaw.(map[string]any)
+	policies, _ := myappMap["policies"].([]any)
 	if len(policies) != 1 {
 		t.Fatalf("expected 1 policy for myapp, got %d", len(policies))
 	}
-	pol, _ := policies[0].(map[string]interface{})
-	users, _ := pol["users"].([]interface{})
+	pol, _ := policies[0].(map[string]any)
+	users, _ := pol["users"].([]any)
 	if len(users) != 1 || users[0] != "app-myapp" {
 		t.Errorf("unexpected users %v, want [app-myapp]", users)
 	}
-	actions, _ := pol["actions"].([]interface{})
+	actions, _ := pol["actions"].([]any)
 	if len(actions) != 1 || actions[0] != "read" {
 		t.Errorf("unexpected actions %v, want [read]", actions)
 	}
@@ -162,7 +162,7 @@ func TestZotConfigIsolation(t *testing.T) {
 	}
 
 	// Parse the resulting config.
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(cfg, &data); err != nil {
 		t.Fatal(err)
 	}
@@ -173,11 +173,11 @@ func TestZotConfigIsolation(t *testing.T) {
 	if !ok {
 		t.Fatal("** wildcard missing")
 	}
-	wm, _ := wildcardRaw.(map[string]interface{})
-	policies, _ := wm["policies"].([]interface{})
+	wm, _ := wildcardRaw.(map[string]any)
+	policies, _ := wm["policies"].([]any)
 	for _, p := range policies {
-		pm, _ := p.(map[string]interface{})
-		users, _ := pm["users"].([]interface{})
+		pm, _ := p.(map[string]any)
+		users, _ := pm["users"].([]any)
 		for _, u := range users {
 			if u == "app-alpha" || u == "app-beta" {
 				t.Errorf("per-app user %v must not appear in ** wildcard policy", u)
@@ -196,11 +196,11 @@ func TestZotConfigIsolation(t *testing.T) {
 			t.Errorf("%s repo missing", app)
 			continue
 		}
-		rm, _ := repoRaw.(map[string]interface{})
-		rpolicies, _ := rm["policies"].([]interface{})
+		rm, _ := repoRaw.(map[string]any)
+		rpolicies, _ := rm["policies"].([]any)
 		for _, p := range rpolicies {
-			pm, _ := p.(map[string]interface{})
-			users, _ := pm["users"].([]interface{})
+			pm, _ := p.(map[string]any)
+			users, _ := pm["users"].([]any)
 			for _, u := range users {
 				if u == ZotUsername(other) {
 					t.Errorf("%s's user appears in %s's ACL — cross-tenant leak", other, app)
@@ -254,11 +254,11 @@ func TestBaseZotConfigNoBexPuller(t *testing.T) {
 	if !ok {
 		t.Fatal("** wildcard missing from base config")
 	}
-	wm, _ := wildcardRaw.(map[string]interface{})
-	policies, _ := wm["policies"].([]interface{})
+	wm, _ := wildcardRaw.(map[string]any)
+	policies, _ := wm["policies"].([]any)
 	for _, p := range policies {
-		pm, _ := p.(map[string]interface{})
-		users, _ := pm["users"].([]interface{})
+		pm, _ := p.(map[string]any)
+		users, _ := pm["users"].([]any)
 		for _, u := range users {
 			if u == "bex-puller" {
 				t.Error("bex-puller shared user must not appear in base config ** wildcard (w7/m36 closes ADR022:204)")
@@ -273,37 +273,37 @@ func TestBaseZotConfigContractValues(t *testing.T) {
 	c := &Creds{RetentionCount: 0} // default path
 	cfg := c.baseZotConfig()
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(cfg, &data); err != nil {
 		t.Fatalf("unmarshal base config: %v", err)
 	}
 
 	// Port must match the Zot Helm chart's service port.
-	httpBlock, _ := data["http"].(map[string]interface{})
+	httpBlock, _ := data["http"].(map[string]any)
 	if port, _ := httpBlock["port"].(string); port != zotHTTPPort {
 		t.Errorf("http.port = %q; want %q (contract with Helm chart)", port, zotHTTPPort)
 	}
 
 	// htpasswd path must match the Helm chart's mounted Secret path.
-	auth, _ := httpBlock["auth"].(map[string]interface{})
-	htpasswd, _ := auth["htpasswd"].(map[string]interface{})
+	auth, _ := httpBlock["auth"].(map[string]any)
+	htpasswd, _ := auth["htpasswd"].(map[string]any)
 	if path, _ := htpasswd["path"].(string); path != zotHTPasswdPath {
 		t.Errorf("http.auth.htpasswd.path = %q; want %q (contract with Helm chart)", path, zotHTPasswdPath)
 	}
 
 	// Default retention count must be 5.
-	storage, _ := data["storage"].(map[string]interface{})
-	retention, _ := storage["retention"].(map[string]interface{})
-	policies, _ := retention["policies"].([]interface{})
+	storage, _ := data["storage"].(map[string]any)
+	retention, _ := storage["retention"].(map[string]any)
+	policies, _ := retention["policies"].([]any)
 	if len(policies) == 0 {
 		t.Fatal("storage.retention.policies is empty")
 	}
-	pol, _ := policies[0].(map[string]interface{})
-	keepTags, _ := pol["keepTags"].([]interface{})
+	pol, _ := policies[0].(map[string]any)
+	keepTags, _ := pol["keepTags"].([]any)
 	if len(keepTags) == 0 {
 		t.Fatal("keepTags is empty")
 	}
-	kt, _ := keepTags[0].(map[string]interface{})
+	kt, _ := keepTags[0].(map[string]any)
 	count, _ := kt["mostRecentlyPushedCount"].(float64)
 	if int(count) != 5 {
 		t.Errorf("default mostRecentlyPushedCount = %d; want 5", int(count))
@@ -316,16 +316,16 @@ func TestBaseZotConfigRetentionCountOverride(t *testing.T) {
 	c := &Creds{RetentionCount: 10}
 	cfg := c.baseZotConfig()
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(cfg, &data); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	storage, _ := data["storage"].(map[string]interface{})
-	retention, _ := storage["retention"].(map[string]interface{})
-	policies, _ := retention["policies"].([]interface{})
-	pol, _ := policies[0].(map[string]interface{})
-	keepTags, _ := pol["keepTags"].([]interface{})
-	kt, _ := keepTags[0].(map[string]interface{})
+	storage, _ := data["storage"].(map[string]any)
+	retention, _ := storage["retention"].(map[string]any)
+	policies, _ := retention["policies"].([]any)
+	pol, _ := policies[0].(map[string]any)
+	keepTags, _ := pol["keepTags"].([]any)
+	kt, _ := keepTags[0].(map[string]any)
 	count, _ := kt["mostRecentlyPushedCount"].(float64)
 	if int(count) != 10 {
 		t.Errorf("mostRecentlyPushedCount = %d; want 10", int(count))
@@ -354,9 +354,9 @@ func TestRotateCredsPasswordChange(t *testing.T) {
 
 	// Extract the new hash.
 	var newHash string
-	for _, line := range strings.Split(string(rotated), "\n") {
-		if strings.HasPrefix(line, user+":") {
-			newHash = strings.TrimPrefix(line, user+":")
+	for line := range strings.SplitSeq(string(rotated), "\n") {
+		if hash, ok := strings.CutPrefix(line, user+":"); ok {
+			newHash = hash
 		}
 	}
 	if newHash == "" {
@@ -375,7 +375,7 @@ func TestRotateCredsPasswordChange(t *testing.T) {
 
 	// Only one entry for the user (no duplicate).
 	count := 0
-	for _, line := range strings.Split(string(rotated), "\n") {
+	for line := range strings.SplitSeq(string(rotated), "\n") {
 		if strings.HasPrefix(line, user+":") {
 			count++
 		}

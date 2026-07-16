@@ -150,6 +150,11 @@ type Options struct {
 	// also enabled, cosign gets the same mount so its signature push authenticates.
 	// Empty = unauthenticated push (the dev default; byte-identical).
 	PushSecret string
+	// RegistryConfig makes buildkitd consume buildkitd.toml from PushSecret.
+	// The operator sets it only for the derived Docker-build credential Secret,
+	// where the config marks the platform's cluster-local output registry as
+	// plain HTTP for private base-image resolution too.
+	RegistryConfig bool
 }
 
 // Result is a successful build.
@@ -269,7 +274,11 @@ func BuildJob(o Options, image string) *batchv1.Job {
 
 	// Rootless buildkitd needs a writable state dir under the unprivileged
 	// user's home.
-	env := []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"}}
+	buildkitdFlags := "--oci-worker-no-process-sandbox"
+	if o.RegistryConfig {
+		buildkitdFlags += " --config " + dockerConfigMount + "/buildkitd.toml"
+	}
+	env := []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: buildkitdFlags}}
 
 	// Private-repo clone: hand BuildKit the token from the App's clone Secret as
 	// its standard GIT_AUTH_TOKEN build secret (from env, so no volume). BuildKit's

@@ -210,6 +210,9 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 			"dockerContext":  a.RootDir,
 			"dockerfilePath": a.DockerfilePath,
 		}
+		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
+			dockerDetails["registryCredentialId"] = *a.RegistryCredentialID
+		}
 		if a.PreDeployCommand != "" {
 			dockerDetails["preDeployCommand"] = a.PreDeployCommand
 		}

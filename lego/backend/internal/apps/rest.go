@@ -388,10 +388,10 @@ func (r createServiceRequest) toCreateRequest() (CreateRequest, error) {
 		if r.ServiceDetails.EnvSpecificDetails != nil {
 			buildCommand = r.ServiceDetails.EnvSpecificDetails.BuildCommand
 			startCommand = r.ServiceDetails.EnvSpecificDetails.StartCommand
+			nestedRegistryCredentialID = r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID
 			if strings.EqualFold(runtime, "docker") {
 				startCommand = r.ServiceDetails.EnvSpecificDetails.DockerCommand
 				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
-				nestedRegistryCredentialID = r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID
 				if rootDir == "" {
 					rootDir = r.ServiceDetails.EnvSpecificDetails.DockerContext
 				}

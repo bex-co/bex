@@ -197,6 +197,8 @@ This is the load-bearing invariant. BuildKit runs a build's `RUN` steps in a **s
 
 A unit test (`lego/operator/internal/build/build_test.go`) asserts the credential name never appears in `buildctl` args or the build container's env.
 
+Repository-backed Docker services may also bind a workspace registry credential for a private `FROM` (w6/m34). The operator merges that explicit docker config with the platform push config into one deterministic Secret in the build namespace; the platform push entry wins a same-host collision. The same boundary above applies: buildkitd and optional cosign mount the derived config, while tenant Dockerfile steps receive no build arg, BuildKit secret, environment value, or mount. Native, buildpack, and static-site repository sources reject the field. The App finalizer deletes the derived Secret. On the HTTP-only development Zot path, the derived Secret also carries buildkitd's resolver config for the already-insecure platform registry; production external base registries continue to use their normal TLS resolution.
+
 ### Read policy (decision)
 
 **Authenticated read** (`defaultPolicy: []`, anonymous denied). Pulls authenticate via per-App pull credentials (w7/m36, see below). The earlier shared `bex-puller` credential (w7/m8) has been superseded; the shared-credential residual recorded at line 204 is now closed.
@@ -219,6 +221,7 @@ Each App that builds and pushes an image to Zot receives its own Zot user `app-<
 
 - **Live (auth)** — `scripts/verify-registry-auth.sh` asserts anonymous `GET /v2/_catalog` and push are both refused (`401`), and that a credentialed build-from-git App round-trips.
 - **Live (per-App isolation)** — `scripts/verify-per-app-registry-isolation.sh` asserts App A's credential cannot pull App B's image (expected `401`), proves App A can pull its own image, and verifies credential revocation on App delete (htpasswd + config entries removed).
+- **Live (private Docker base)** — the w6/m34 CAPD run built and deployed a repository Docker service from an authenticated private `FROM`, then observed `401 Unauthorized` with an intentionally wrong bound credential; all fixture resources were removed.
 - **CI** — `scripts/gitops-validate.sh` asserts `deploy/gitops/base/zot.yaml` carries the auth stanza (`auth.htpasswd`, `accessControl` with `defaultPolicy: []`) and a pinned chart; a regression that removes auth fails CI before Argo applies it.
 
 ## Rejected options

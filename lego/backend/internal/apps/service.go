@@ -1142,7 +1142,8 @@ type CreateRequest struct {
 	// RegistryCredentialID follows Render's registryCredentialId semantics.
 	// nil means omitted (preserve bex's host auto-resolution); a pointer to an
 	// empty string explicitly selects no credential; any other value binds that
-	// exact credential after workspace and image-host validation.
+	// exact credential after workspace validation and, for image-backed sources,
+	// image-host validation. Dockerfile builds use the stored credential host.
 	RegistryCredentialID *string
 	Branch               string
 	Builder              string
@@ -2516,8 +2517,9 @@ func (s *Service) SetSource(ctx context.Context, name string, repo, image, branc
 	return s.SetSourceAndRegistryCredential(ctx, name, repo, image, branch, nil)
 }
 
-// SetRegistryCredential sets, changes, or clears an image-backed service's
-// explicit registry credential. An empty id is the explicit-clear operation.
+// SetRegistryCredential sets, changes, or clears an image-backed service's or
+// Dockerfile build's explicit registry credential. An empty id is the
+// explicit-clear operation.
 // All adapters call this same verb so membership, host validation, Secret
 // materialization, and error classification cannot drift.
 func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID string) (AppView, error) {
@@ -2530,8 +2532,7 @@ func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID 
 // against the proposed image host before either source field reaches the App.
 // A nil credential pointer preserves the current binding; pointer-to-empty
 // clears it. Switching to a repo clears an old image credential unless the
-// request explicitly supplied one, in which case the unsupported repo-build
-// use is rejected honestly by ensureExternalRegistryPullSecret.
+// request explicitly supplies one for a Dockerfile build.
 func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID *string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {

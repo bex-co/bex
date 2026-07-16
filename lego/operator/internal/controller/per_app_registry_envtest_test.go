@@ -136,18 +136,18 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		// zot-config must have per-App ACL entry.
 		cfgSec := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "zot-config", Namespace: zotNamespace}, cfgSec)).To(Succeed())
-		var zotCfg map[string]interface{}
+		var zotCfg map[string]any
 		Expect(json.Unmarshal(cfgSec.Data["config.json"], &zotCfg)).To(Succeed())
-		http, _ := zotCfg["http"].(map[string]interface{})
-		ac, _ := http["accessControl"].(map[string]interface{})
-		repos, _ := ac["repositories"].(map[string]interface{})
+		http, _ := zotCfg["http"].(map[string]any)
+		ac, _ := http["accessControl"].(map[string]any)
+		repos, _ := ac["repositories"].(map[string]any)
 		Expect(repos).To(HaveKey(name))
 		// bex-puller must NOT be in ** wildcard.
-		wildcard, _ := repos["**"].(map[string]interface{})
-		policies, _ := wildcard["policies"].([]interface{})
+		wildcard, _ := repos["**"].(map[string]any)
+		policies, _ := wildcard["policies"].([]any)
 		for _, p := range policies {
-			pm, _ := p.(map[string]interface{})
-			users, _ := pm["users"].([]interface{})
+			pm, _ := p.(map[string]any)
+			users, _ := pm["users"].([]any)
 			for _, u := range users {
 				Expect(u).NotTo(Equal("bex-puller"), "bex-puller must not appear in ** wildcard (w7/m36)")
 			}
@@ -196,11 +196,11 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		// zot-config ACL entry must be removed.
 		cfgSec := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "zot-config", Namespace: zotNamespace}, cfgSec)).To(Succeed())
-		var zotCfg map[string]interface{}
+		var zotCfg map[string]any
 		Expect(json.Unmarshal(cfgSec.Data["config.json"], &zotCfg)).To(Succeed())
-		http, _ := zotCfg["http"].(map[string]interface{})
-		ac, _ := http["accessControl"].(map[string]interface{})
-		repos, _ := ac["repositories"].(map[string]interface{})
+		http, _ := zotCfg["http"].(map[string]any)
+		ac, _ := http["accessControl"].(map[string]any)
+		repos, _ := ac["repositories"].(map[string]any)
 		Expect(repos).NotTo(HaveKey(name), "per-App ACL entry must be removed on delete")
 	})
 

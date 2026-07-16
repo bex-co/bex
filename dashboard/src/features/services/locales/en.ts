@@ -2136,11 +2136,12 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard registry credential picker placeholder",
   },
   "services.createRegistryCredentialNone": {
-    message: "None (public image)",
+    message: "None (public registry)",
     description: "Create-wizard registry credential picker empty option",
   },
   "services.createRegistryCredentialDescription": {
-    message: "Choose a stored workspace credential when this image is private.",
+    message:
+      "Choose a stored workspace credential when the image or Dockerfile base image is private.",
     description: "Create-wizard registry credential picker help text",
   },
   "services.createSettingsTitle": {

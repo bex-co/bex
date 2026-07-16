@@ -224,7 +224,7 @@ type createWebServiceArgs struct {
 	Type                    string              `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo                    string              `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                   string              `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	RegistryCredentialID    *string             `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image; omit for automatic host matching, empty to explicitly use none"`
+	RegistryCredentialID    *string             `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
 	Branch                  string              `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	RootDir                 string              `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildFilter             *buildFilterArg     `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
@@ -319,7 +319,7 @@ type createCronJobArgs struct {
 	Command              string          `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
 	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image; omit for automatic host matching, empty to explicitly use none"`
+	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
 	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	RootDir              string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	Runtime              string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
@@ -798,7 +798,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_registry_credential",
-		Description: "Bind an image-backed service to a stored private-registry credential. The credential must belong to the service workspace and match the image registry host. Pass an empty registryCredentialId to clear the binding.",
+		Description: "Bind an image-backed service or Dockerfile build to a stored private-registry credential. The credential must belong to the service workspace; image-backed bindings must also match the image registry host. Pass an empty registryCredentialId to clear the binding.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in registryCredentialArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetRegistryCredential(ctx, in.ServiceID, in.RegistryCredentialID)
 		if err != nil {

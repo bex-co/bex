@@ -301,9 +301,11 @@ func main() {
 	}
 
 	databaseReconciler := &controller.DatabaseReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("database-controller"),
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		// DatabaseReconciler still consumes client-go's record.EventRecorder;
+		// controller-runtime's replacement uses the incompatible events API.
+		Recorder: mgr.GetEventRecorderFor("database-controller"), //nolint:staticcheck
 		DBDomain: envOr("BEX_DB_DOMAIN", ""),
 		Backup: controller.BackupStore{
 			DestinationPath: envOr("BEX_DB_BACKUP_DESTINATION", ""),

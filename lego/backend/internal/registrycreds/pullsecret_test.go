@@ -171,6 +171,9 @@ func TestMaterializePullSecretExplicitIDClassifiesAndValidates(t *testing.T) {
 	if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &valid.ID); err != nil || !ok || name == "" {
 		t.Fatalf("valid explicit id = name %q ok %v err %v", name, ok, err)
 	}
+	if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "", &valid.ID); err != nil || !ok || name == "" {
+		t.Fatalf("Docker-build explicit id = name %q ok %v err %v", name, ok, err)
+	}
 
 	foreign, err := st.CreateRegistryCredential(ctx, "tea-other", "", "ghcr.io", "mallory", "", nil)
 	if err != nil {

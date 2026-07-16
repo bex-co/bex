@@ -91,10 +91,9 @@ func TestCreateImageWithNoMatchingCredentialLeavesFieldEmpty(t *testing.T) {
 	}
 }
 
-func TestCreateRepoBackedAppNeverCallsMaterialize(t *testing.T) {
-	// A build-from-git App's image lands in the internal Zot registry, not an
-	// external host — ensureExternalRegistryPullSecret must not even call the
-	// seam (there's no Spec.Image to resolve a host from at create time).
+func TestCreateRepoBackedAppWithoutCredentialNeverCallsMaterialize(t *testing.T) {
+	// A build-from-git App without an explicit credential has no external host
+	// to infer from its source, so it must not auto-match an unrelated registry.
 	rc := &fakePullSecrets{name: "should-not-be-set", ok: true}
 	svc, cl := rcService(rc)
 
@@ -107,6 +106,41 @@ func TestCreateRepoBackedAppNeverCallsMaterialize(t *testing.T) {
 	app := getApp(t, cl, "web")
 	if app.Spec.ExternalRegistryPullSecret != "" {
 		t.Errorf("repo-backed App must not get an external pull secret, got %q", app.Spec.ExternalRegistryPullSecret)
+	}
+}
+
+func TestCreateDockerRepoWithCredentialMaterializesBuildConfig(t *testing.T) {
+	id := "rgc-private-base"
+	rc := &fakePullSecrets{name: "web-registry-pull", ok: true}
+	svc, cl := rcService(rc)
+
+	created, err := svc.Create(context.Background(), CreateRequest{
+		Name: "web", Repo: "https://github.com/octo/app", Runtime: "docker", RegistryCredentialID: &id,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rc.calls != 1 || rc.lastImage != "" || rc.lastID == nil || *rc.lastID != id {
+		t.Fatalf("materialize calls=%d image=%q id=%v", rc.calls, rc.lastImage, rc.lastID)
+	}
+	if created.RegistryCredentialID == nil || *created.RegistryCredentialID != id {
+		t.Fatalf("created binding = %#v", created.RegistryCredentialID)
+	}
+	if got := getApp(t, cl, "web"); got.Spec.ExternalRegistryPullSecret != "web-registry-pull" {
+		t.Fatalf("Docker-build Secret = %q", got.Spec.ExternalRegistryPullSecret)
+	}
+}
+
+func TestCreateStaticRepoWithCredentialRejectsNonDockerBuild(t *testing.T) {
+	id := "rgc-private-base"
+	rc := &fakePullSecrets{name: "should-not-materialize", ok: true}
+	svc, _ := rcService(rc)
+
+	_, err := svc.Create(context.Background(), CreateRequest{
+		Name: "site", Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/octo/site", RegistryCredentialID: &id,
+	})
+	if !errors.Is(err, core.ErrBadRequest) || rc.calls != 0 {
+		t.Fatalf("static-site credential = err %v materialize calls %d; want named rejection", err, rc.calls)
 	}
 }
 

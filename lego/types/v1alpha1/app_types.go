@@ -197,12 +197,11 @@ type AppSpec struct {
 
 	// ExternalRegistryPullSecret names a `kubernetes.io/dockerconfigjson` Secret
 	// in the App's namespace, materialized by bex-api from a workspace's stored
-	// registry credential (w2/m14) whose host matches Image's registry. Added to
-	// the pod's imagePullSecrets alongside (not instead of) the operator's own
-	// internal-registry pull secret. Empty means no external-registry credential
-	// applies — today's behavior, unchanged. The operator is registry-unaware:
-	// it only references the Secret; bex-api resolves which credential (if any)
-	// matches and keeps the Secret's contents current.
+	// registry credential. For image-backed Apps its host matches Image and the
+	// Secret is added to imagePullSecrets (w2/m14). For repo-backed Docker builds
+	// the operator merges it into BuildKit's daemon-only Docker config (w6/m34).
+	// Empty means no external-registry credential applies. The operator never
+	// resolves which credential to use; it only wires the materialized Secret.
 	// +optional
 	ExternalRegistryPullSecret string `json:"externalRegistryPullSecret,omitempty"`
 
@@ -210,9 +209,10 @@ type AppSpec struct {
 	// A non-nil, non-empty value pins this App to that workspace credential; a
 	// non-nil empty value explicitly disables registry authentication. nil keeps
 	// the legacy bex behavior of resolving the newest workspace credential whose
-	// host matches Image. ExternalRegistryPullSecret is the derived Kubernetes
-	// Secret name; this field is the durable user intent used to re-materialize
-	// that Secret on later deploys.
+	// host matches Image. For a Dockerfile build, a non-empty id explicitly names
+	// the credential BuildKit uses for private FROM resolution (there is no image
+	// reference from which to infer a host). ExternalRegistryPullSecret is the
+	// derived Kubernetes Secret name; this field is the durable user intent.
 	// +optional
 	RegistryCredentialID *string `json:"registryCredentialId,omitempty"`
 

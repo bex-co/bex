@@ -608,7 +608,8 @@ export function NewServicePage() {
       repo,
       image,
       registryCredentialId:
-        tab === "image"
+        tab === "image" ||
+        (isGitSource && !isStaticType && runtime === "docker")
           ? registryCredentialId === "none"
             ? ""
             : registryCredentialId
@@ -660,6 +661,36 @@ export function NewServicePage() {
 
   const gitHubDisconnected =
     !connectionLoading && connection?.connected !== true;
+
+  const registryCredentialField = (id: string) => (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{t("services.createRegistryCredentialLabel")}</Label>
+      <Select
+        value={registryCredentialId}
+        onValueChange={setRegistryCredentialId}
+        disabled={registryCredentialsLoading}
+      >
+        <SelectTrigger id={id}>
+          <SelectValue
+            placeholder={t("services.createRegistryCredentialPlaceholder")}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">
+            {t("services.createRegistryCredentialNone")}
+          </SelectItem>
+          {registryCredentials.map((credential) => (
+            <SelectItem key={credential.id} value={credential.id}>
+              {credential.name} ({credential.host})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">
+        {t("services.createRegistryCredentialDescription")}
+      </p>
+    </div>
+  );
 
   return (
     <DashboardLayout>
@@ -845,40 +876,7 @@ export function NewServicePage() {
                           autoComplete="off"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="svc-registry-credential">
-                          {t("services.createRegistryCredentialLabel")}
-                        </Label>
-                        <Select
-                          value={registryCredentialId}
-                          onValueChange={setRegistryCredentialId}
-                          disabled={registryCredentialsLoading}
-                        >
-                          <SelectTrigger id="svc-registry-credential">
-                            <SelectValue
-                              placeholder={t(
-                                "services.createRegistryCredentialPlaceholder",
-                              )}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              {t("services.createRegistryCredentialNone")}
-                            </SelectItem>
-                            {registryCredentials.map((credential) => (
-                              <SelectItem
-                                key={credential.id}
-                                value={credential.id}
-                              >
-                                {credential.name} ({credential.host})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          {t("services.createRegistryCredentialDescription")}
-                        </p>
-                      </div>
+                      {registryCredentialField("svc-registry-credential-image")}
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -1069,6 +1067,9 @@ export function NewServicePage() {
                                 {t("services.createFieldDockerfilePathHint")}
                               </p>
                             </div>
+                            {registryCredentialField(
+                              "svc-registry-credential-docker",
+                            )}
                             {!isCronType ? (
                               <div className="space-y-2">
                                 <Label htmlFor="svc-docker-command">
