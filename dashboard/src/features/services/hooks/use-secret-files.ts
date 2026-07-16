@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useApolloClient } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -11,17 +11,42 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { SecretFileName } from "@/features/services/types";
 
 // bex-api's secret-files GraphQL mirrors the env-vars shape (docs/ADR006-bex-api.md):
-// secret files nest under the service, `secretFileNames` lists names only (a
-// file's content is fetched per name via `secretFile(name)`, "Show"), and every
-// write rolls the pods — there is no separate deploy step, so the toast says the
-// service is redeploying.
+// the paged `secretFiles` query lists names only (a file's content is fetched
+// per name via `secretFile(name)`, "Show"), and every write rolls the pods —
+// there is no separate deploy step, so the toast says the service is
+// redeploying. This hook walks every page exactly like useEnvVarKeys.
 
-type RawName = { id: string | null; name: string | null } | null;
+const PAGE_SIZE = 100;
 
-function mapNames(raw: Array<RawName> | null | undefined): SecretFileName[] {
-  return (raw ?? [])
-    .filter((f): f is { id: string | null; name: string } => f?.name != null)
-    .map((f) => ({ id: f.id ?? f.name, name: f.name }));
+type RawPageItem = {
+  secretFile: { id: string | null; name: string | null } | null;
+  cursor: string | null;
+} | null;
+
+function mapPage(raw: Array<RawPageItem> | null | undefined) {
+  const items = (raw ?? []).filter(
+    (item): item is NonNullable<RawPageItem> =>
+      Boolean(item?.secretFile?.name),
+  );
+  const names = items
+    .map((item) => item.secretFile)
+    .filter(
+      (file): file is { id: string | null; name: string } =>
+        file?.name != null,
+    )
+    .map((file) => ({ id: file.id ?? file.name, name: file.name }));
+  return { items, names };
+}
+
+function uniqueNames(names: SecretFileName[]): SecretFileName[] {
+  return [...new Map(names.map((name) => [name.id, name])).values()];
+}
+
+function pageIdentity(
+  serviceId: string,
+  items: Array<NonNullable<RawPageItem>>,
+) {
+  return `${serviceId}\0${items.map((item) => item.cursor).join("\0")}`;
 }
 
 export interface UseSecretFileNamesResult {
@@ -33,27 +58,91 @@ export interface UseSecretFileNamesResult {
 }
 
 /**
- * Reads a service's secret-file names (`service(id){ secretFileNames{ id name }
- * }`). Names only — no file content is returned in the list.
+ * Reads every page of a service's secret-file names (`secretFiles(serviceId,
+ * cursor, limit)`). Names only — no file content is returned in the list. The
+ * page walk is identical to useEnvVarKeys: fetch the first page, then follow the
+ * trailing cursor until a short page ends the list.
  */
 export function useSecretFileNames(
   serviceId: string,
 ): UseSecretFileNamesResult {
+  const client = useApolloClient();
   const { data, loading, error, refetch } = useQuery(SecretFileNamesDocument, {
-    variables: { id: serviceId },
+    variables: { serviceId, limit: PAGE_SIZE },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
+  const first = useMemo(() => mapPage(data?.secretFiles), [data?.secretFiles]);
+  const firstPageID = pageIdentity(serviceId, first.items);
+  const [tail, setTail] = useState<{
+    pageID: string;
+    names: SecretFileName[];
+    error?: Error;
+  }>({ pageID: "", names: [] });
+
+  const fetchTail = useCallback(
+    async (items: Array<NonNullable<RawPageItem>>) => {
+      const tail: SecretFileName[] = [];
+      let page = items;
+      let priorCursor = "";
+      while (page.length === PAGE_SIZE) {
+        const cursor = page.at(-1)?.cursor ?? "";
+        if (!cursor || cursor === priorCursor) break;
+        priorCursor = cursor;
+        const result = await client.query({
+          query: SecretFileNamesDocument,
+          variables: { serviceId, cursor, limit: PAGE_SIZE },
+          fetchPolicy: "network-only",
+          errorPolicy: "none",
+        });
+        const mapped = mapPage(result.data?.secretFiles);
+        tail.push(...mapped.names);
+        page = mapped.items;
+      }
+      return tail;
+    },
+    [client, serviceId],
+  );
+
+  useEffect(() => {
+    let active = true;
+    if (first.items.length < PAGE_SIZE) return () => undefined;
+    void fetchTail(first.items)
+      .then((names) => {
+        if (active) setTail({ pageID: firstPageID, names });
+      })
+      .catch((err: unknown) => {
+        if (active)
+          setTail({
+            pageID: firstPageID,
+            names: [],
+            error: err instanceof Error ? err : new Error(String(err)),
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [fetchTail, first.items, firstPageID]);
 
   const refetchNames = useCallback(async () => {
-    const res = await refetch();
-    return mapNames(res.data?.service?.secretFileNames);
-  }, [refetch]);
+    const res = await refetch({
+      serviceId,
+      cursor: undefined,
+      limit: PAGE_SIZE,
+    });
+    const fresh = mapPage(res.data?.secretFiles);
+    const names = await fetchTail(fresh.items);
+    setTail({ pageID: pageIdentity(serviceId, fresh.items), names });
+    return uniqueNames([...fresh.names, ...names]);
+  }, [fetchTail, refetch, serviceId]);
+
+  const currentTail = tail.pageID === firstPageID ? tail : undefined;
+  const paging = first.items.length === PAGE_SIZE && currentTail == null;
 
   return {
-    names: mapNames(data?.service?.secretFileNames),
-    loading,
-    error,
+    names: uniqueNames([...first.names, ...(currentTail?.names ?? [])]),
+    loading: loading || paging,
+    error: error ?? currentTail?.error,
     refetch: refetchNames,
   };
 }

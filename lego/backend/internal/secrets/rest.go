@@ -133,7 +133,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// Secret files (Render's /v1/services/{id}/secret-files) — names in the
 		// list, contents on a single GET, same store + roll mechanism as env vars.
 		mux.HandleFunc("GET "+base+"/{id}/secret-files", func(w http.ResponseWriter, r *http.Request) {
-			files, err := s.ListSecretFiles(r.Context(), r.PathValue("id"))
+			q := r.URL.Query()
+			var files []SecretFileView
+			var err error
+			if q.Has("cursor") || q.Has("limit") {
+				after, limit := core.PageParams(q)
+				files, err = s.ListSecretFilesPage(r.Context(), r.PathValue("id"), after, limit)
+			} else {
+				// Compatibility with the pre-pagination endpoint: callers that omit
+				// both parameters still receive the complete list.
+				files, err = s.ListSecretFiles(r.Context(), r.PathValue("id"))
+			}
 			if err != nil {
 				core.WriteErr(w, err)
 				return

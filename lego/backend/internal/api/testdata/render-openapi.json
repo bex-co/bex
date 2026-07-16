@@ -156,6 +156,24 @@
         }
       }
     },
+    "/services/{serviceId}/secret-files": {
+      "get": {
+        "operationId": "list-secret-files-for-service",
+        "responses": {
+          "200": {
+            "description": "A list of secret files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/secretFileWithCursor" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/services/{serviceId}/custom-domains": {
       "get": {
         "operationId": "list-custom-domains",
@@ -297,6 +315,21 @@
         "properties": {
           "envVar": { "$ref": "#/components/schemas/envVar" },
           "cursor": { "type": "string" }
+        }
+      },
+      "secretFile": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" }
+        }
+      },
+      "secretFileWithCursor": {
+        "type": "object",
+        "required": ["secretFile", "cursor"],
+        "properties": {
+          "secretFile": { "$ref": "#/components/schemas/secretFile" },
+          "cursor":     { "type": "string" }
         }
       },
       "customDomain": {

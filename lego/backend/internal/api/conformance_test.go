@@ -181,9 +181,10 @@ func TestRenderConformance(t *testing.T) {
 		customFQN = "api.example.com"
 	)
 
-	// Seed a secret KV store (used for env-vars conformance).
+	// Seed a secret KV store (used for env-vars + secret-files conformance).
 	secretStore := &fakeAuditKV{m: map[string]map[string]string{
-		"services/" + appName + "/env": {"API_KEY": "val1", "DB_URL": "val2"},
+		"services/" + appName + "/env":   {"API_KEY": "val1", "DB_URL": "val2"},
+		"services/" + appName + "/files": {"ca.pem": "cert", "db.pem": "cert2"},
 	}}
 	deployStore := &conformDeployStore{byApp: map[string][]store.Deploy{
 		appID: {conformDeploy(deployID, appID)},
@@ -277,6 +278,12 @@ func TestRenderConformance(t *testing.T) {
 
 	t.Run("env-vars/list", func(t *testing.T) {
 		check(t, "/v1/services/"+appName+"/env-vars", "retrieve-env-vars-for-service")
+	})
+
+	t.Run("secret-files/list", func(t *testing.T) {
+		// The paged secret-files list (w9/m5) is Render's env-vars twin: names
+		// only, {secretFile,cursor} envelope — validated with no allowlist entry.
+		check(t, "/v1/services/"+appName+"/secret-files", "list-secret-files-for-service")
 	})
 
 	t.Run("custom-domains/list", func(t *testing.T) {

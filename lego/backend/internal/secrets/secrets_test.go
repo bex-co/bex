@@ -547,6 +547,50 @@ func TestMCP_EnvVars(t *testing.T) {
 	}
 }
 
+func TestMCP_SecretFiles(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	cs := mcpSession(t, svc)
+	call := func(name string, args map[string]any, out any) {
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("call %s: err=%v isErr=%v", name, err, res != nil && res.IsError)
+		}
+		if out != nil {
+			b, _ := json.Marshal(res.StructuredContent)
+			_ = json.Unmarshal(b, out)
+		}
+	}
+
+	// Seed three files, then exercise the same list/page/cursor contract as env vars.
+	var file SecretFileView
+	for _, name := range []string{"c.pem", "a.pem", "b.pem"} {
+		call("set_secret_file", map[string]any{"serviceId": "web", "name": name, "content": "x"}, &file)
+	}
+	var res secretFilesResult
+	call("list_secret_files", map[string]any{"serviceId": "web"}, &res)
+	if len(res.SecretFiles) != 3 || res.Cursor != "" {
+		t.Fatalf("unpaged list_secret_files: %+v", res)
+	}
+	call("list_secret_files", map[string]any{"serviceId": "web", "limit": 1}, &res)
+	if len(res.SecretFiles) != 1 || res.Cursor == "" {
+		t.Fatalf("paged list_secret_files: %+v", res)
+	}
+	var next secretFilesResult
+	call("list_secret_files", map[string]any{"serviceId": "web", "limit": 1, "cursor": res.Cursor}, &next)
+	if len(next.SecretFiles) != 1 || next.SecretFiles[0].Name == res.SecretFiles[0].Name {
+		t.Fatalf("next list_secret_files page: first=%+v next=%+v", res, next)
+	}
+	// The list never carries content — that stays a per-name get_secret_file read.
+	if res.SecretFiles[0].Content != "" {
+		t.Fatalf("list must be names-only: %+v", res.SecretFiles[0])
+	}
+	call("get_secret_file", map[string]any{"serviceId": "web", "name": "a.pem"}, &file)
+	if file.Content != "x" {
+		t.Fatalf("get_secret_file content: %+v", file)
+	}
+}
+
 // --- OpenBao KV v2 client (httptest stub) --------------------------------------
 
 // baoStub emulates OpenBao's k8s login + KV v2 data read/write + metadata delete,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -35,19 +35,36 @@ beforeEach(() => {
 });
 
 describe("useSecretFileNames", () => {
-  it("maps the nested secretFileNames to a names-only list, dropping nulls; id falls back to name", () => {
+  it("maps the paged secret-file envelope to a names-only list, dropping nulls; id falls back to name", () => {
     mockUseQuery.mockReturnValue({
       data: {
-        service: {
-          __typename: "Service",
-          id: "web",
-          secretFileNames: [
-            { __typename: "SecretFile", id: "cert.pem", name: "cert.pem" },
-            { __typename: "SecretFile", id: null, name: "key.pem" },
-            null,
-            { __typename: "SecretFile", id: "x", name: null },
-          ],
-        },
+        secretFiles: [
+          {
+            secretFile: {
+              __typename: "SecretFileListValue",
+              id: "cert.pem",
+              name: "cert.pem",
+            },
+            cursor: "cert.pem",
+          },
+          {
+            secretFile: {
+              __typename: "SecretFileListValue",
+              id: null,
+              name: "key.pem",
+            },
+            cursor: "key.pem",
+          },
+          null,
+          {
+            secretFile: {
+              __typename: "SecretFileListValue",
+              id: "x",
+              name: null,
+            },
+            cursor: "x",
+          },
+        ],
       },
       loading: false,
       error: undefined,
@@ -61,15 +78,45 @@ describe("useSecretFileNames", () => {
     ]);
   });
 
-  it("returns an empty list (not a crash) when the service is null", () => {
+  it("returns an empty list (not a crash) when the list is null", () => {
     mockUseQuery.mockReturnValue({
-      data: { service: null },
+      data: { secretFiles: null },
       loading: true,
       error: undefined,
       refetch: vi.fn(),
     });
     const { result } = renderHook(() => useSecretFileNames("web"));
     expect(result.current.names).toEqual([]);
+  });
+
+  it("walks every cursor page and appends each name once", async () => {
+    const first = Array.from({ length: 100 }, (_, i) => {
+      const name = `file_${String(i).padStart(3, "0")}`;
+      return { secretFile: { id: name, name }, cursor: name };
+    });
+    mockUseQuery.mockReturnValue({
+      data: { secretFiles: first },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    mockClientQuery.mockResolvedValue({
+      data: {
+        secretFiles: [
+          { secretFile: { id: "file_100", name: "file_100" }, cursor: "file_100" },
+          { secretFile: { id: "file_101", name: "file_101" }, cursor: "file_101" },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useSecretFileNames("web"));
+    await waitFor(() => expect(result.current.names).toHaveLength(102));
+    expect(new Set(result.current.names.map((n) => n.id)).size).toBe(102);
+    expect(mockClientQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { serviceId: "web", cursor: "file_099", limit: 100 },
+      }),
+    );
   });
 });
 

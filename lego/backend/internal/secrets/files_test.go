@@ -187,6 +187,136 @@ func TestSecretFiles_Authorization(t *testing.T) {
 	}
 }
 
+// seedSecretFiles adds the given files (empty content) to a service in one loop,
+// so a paging test has a stable name-sorted set to walk.
+func seedSecretFiles(t *testing.T, svc *Service, service string, names ...string) {
+	t.Helper()
+	for _, name := range names {
+		if _, err := svc.SetSecretFile(context.Background(), service, name, "x"); err != nil {
+			t.Fatalf("seed %s: %v", name, err)
+		}
+	}
+}
+
+func TestListSecretFilesPageVisitsEveryNameExactlyOnce(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	ctx := context.Background()
+	// Insert out of order; the store is name-sorted so the cursor is stable.
+	seedSecretFiles(t, svc, "web", "e.pem", "a.pem", "d.pem", "b.pem", "c.pem")
+
+	var got []string
+	cursor := ""
+	for {
+		page, err := svc.ListSecretFilesPage(ctx, "web", cursor, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		if len(page) > 2 {
+			t.Fatalf("page of %d exceeds the requested limit", len(page))
+		}
+		for _, f := range page {
+			got = append(got, f.Name)
+		}
+		cursor = page[len(page)-1].Name
+	}
+	if want := []string{"a.pem", "b.pem", "c.pem", "d.pem", "e.pem"}; !slices.Equal(got, want) {
+		t.Fatalf("paged names = %v, want %v", got, want)
+	}
+	// Omitting both params keeps the pre-pagination full-list behavior.
+	all, err := svc.ListSecretFilesPage(ctx, "web", "", 0)
+	if err != nil || len(all) != 5 {
+		t.Fatalf("omitted pagination = %d files, %v; want all 5", len(all), err)
+	}
+}
+
+// TestListSecretFilesPageStableUnderInterleavedWrites is the m10 stable-name
+// property applied to secret files: because the cursor is the file NAME (not an
+// index) over a name-sorted list, writes that land between two page fetches
+// never re-emit an already-seen file nor skip a not-yet-seen one. A new file
+// sorting *before* the cursor is correctly not re-returned; one sorting *after*
+// is picked up; a delete of an unreached file is respected — all without
+// duplicates.
+func TestListSecretFilesPageStableUnderInterleavedWrites(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	ctx := context.Background()
+	seedSecretFiles(t, svc, "web", "a.pem", "b.pem", "c.pem", "d.pem", "e.pem")
+
+	// Page 1 (limit 2) => a.pem, b.pem; resume cursor is b.pem.
+	page1, err := svc.ListSecretFilesPage(ctx, "web", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page1) != 2 || page1[0].Name != "a.pem" || page1[1].Name != "b.pem" {
+		t.Fatalf("page1 = %+v, want [a.pem b.pem]", page1)
+	}
+	cursor := page1[len(page1)-1].Name
+
+	// Interleave writes before resuming: one insert in the already-passed range
+	// (< cursor), one in the unseen range (> cursor), and a delete of an unseen
+	// file. None of these must corrupt the resume.
+	seedSecretFiles(t, svc, "web", "aa.pem") // sorts before the cursor
+	seedSecretFiles(t, svc, "web", "cc.pem") // sorts after the cursor, unseen
+	if err := svc.DeleteSecretFile(ctx, "web", "d.pem"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Resume to completion; collect every name the tail yields.
+	var tail []string
+	for {
+		page, err := svc.ListSecretFilesPage(ctx, "web", cursor, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		for _, f := range page {
+			tail = append(tail, f.Name)
+		}
+		cursor = page[len(page)-1].Name
+	}
+
+	// c.pem, the freshly-inserted cc.pem, and e.pem — d.pem deleted; the
+	// before-cursor aa.pem must never resurface; no duplicates.
+	if want := []string{"c.pem", "cc.pem", "e.pem"}; !slices.Equal(tail, want) {
+		t.Fatalf("resumed tail = %v, want %v (stable-name property violated)", tail, want)
+	}
+	if slices.Contains(tail, "aa.pem") {
+		t.Fatal("a file inserted before the cursor was wrongly re-emitted")
+	}
+}
+
+func TestListSecretFilesPageBoundaries(t *testing.T) {
+	svc := newService(newFakeSecretStore(), sampleApp("web"))
+	ctx := context.Background()
+	seedSecretFiles(t, svc, "web", "a.pem", "b.pem", "c.pem")
+
+	// A negative limit is a bad request (mirrors ListEnvVarsPage).
+	if _, err := svc.ListSecretFilesPage(ctx, "web", "", -1); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("negative limit err = %v, want ErrBadRequest", err)
+	}
+	// An over-limit request is clamped to the API maximum, not rejected.
+	big, err := svc.ListSecretFilesPage(ctx, "web", "", core.MaxPageLimit+50)
+	if err != nil || len(big) != 3 {
+		t.Fatalf("over-limit clamp = %d files, %v; want the whole 3-file set", len(big), err)
+	}
+	// An unknown/expired cursor yields an empty tail, never a wraparound.
+	if tail, err := svc.ListSecretFilesPage(ctx, "web", "zzz.pem", 10); err != nil || len(tail) != 0 {
+		t.Fatalf("unknown cursor = %d files, %v; want empty tail", len(tail), err)
+	}
+	// A cursor with no explicit limit falls back to Render's default page size.
+	if page, err := svc.ListSecretFilesPage(ctx, "web", "", 0); err != nil || len(page) != 3 {
+		t.Fatalf("cursor default page unexpected: %d, %v", len(page), err)
+	}
+	// The last item's cursor pages past the end to an empty tail.
+	if tail, err := svc.ListSecretFilesPage(ctx, "web", "c.pem", 2); err != nil || len(tail) != 0 {
+		t.Fatalf("last cursor = %d files, %v; want empty tail", len(tail), err)
+	}
+}
+
 func TestREST_SecretFiles(t *testing.T) {
 	store := newFakeSecretStore()
 	svc := newService(store, sampleApp("web"))
@@ -211,6 +341,26 @@ func TestREST_SecretFiles(t *testing.T) {
 	if serveREST(svc, "GET", "/v1/services/web/secret-files/nope", "").Code != 404 {
 		t.Error("unknown file => 404")
 	}
+
+	// Add a second file so the cursor/limit contract has something to page.
+	seedSecretFiles(t, svc, "web", "db.pem")
+	// Requested pagination is cursor-exclusive; omitting both params remains the
+	// pre-pagination full-list behavior (the env-vars route's exact semantics).
+	var firstPage, secondPage []secretFileWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files?limit=1", "").Body.Bytes(), &firstPage)
+	if len(firstPage) != 1 {
+		t.Fatalf("first page = %+v, want one item", firstPage)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files?limit=1&cursor="+firstPage[0].Cursor, "").Body.Bytes(), &secondPage)
+	if len(secondPage) != 1 || secondPage[0].SecretFile.Name == firstPage[0].SecretFile.Name {
+		t.Fatalf("second page = %+v after %+v", secondPage, firstPage)
+	}
+	var unpaged []secretFileWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes(), &unpaged)
+	if len(unpaged) != 2 {
+		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)
+	}
+
 	// DELETE => 204; /v1/apps alias works.
 	if serveREST(svc, "DELETE", "/v1/apps/web/secret-files/ca.pem", "").Code != 204 {
 		t.Error("delete via /v1/apps alias => 204")

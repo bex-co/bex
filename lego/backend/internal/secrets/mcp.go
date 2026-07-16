@@ -77,6 +77,7 @@ type setSecretFileArgs struct {
 
 type secretFilesResult struct {
 	SecretFiles []SecretFileView `json:"secretFiles"`
+	Cursor      string           `json:"cursor,omitempty"`
 }
 
 type deleteSecretFileResult struct {
@@ -137,8 +138,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_secret_files",
 		Description: "List a service's secret files (names only), sorted by name. Files are mounted read-only at /etc/secrets/<name>.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, secretFilesResult, error) {
-		files, err := s.ListSecretFiles(ctx, in.ServiceID)
-		return nil, secretFilesResult{SecretFiles: files}, err
+		files, err := s.ListSecretFilesPage(ctx, in.ServiceID, in.Cursor, in.Limit)
+		result := secretFilesResult{SecretFiles: files}
+		if (in.Limit > 0 || in.Cursor != "") && len(files) > 0 {
+			result.Cursor = files[len(files)-1].Name
+		}
+		return nil, result, err
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
