@@ -15,36 +15,34 @@ tab. **Status:** DONE 2026-07-15
 | t004 | Dashboard Postgres Logs tab and viewer                         | 45m | done   |
 | t005 | Render parity ledger update                                    | 30m | done   |
 | t006 | Simplify (no regressions found)                                | 30m | done   |
-| t007 | Test coverage (6 unit tests in postgres/logs_test.go)          | 45m | done   |
+| t007 | Cross-adapter, attribution, authz, and fallback test coverage | 45m | done   |
 | t008 | Closeout                                                       | 15m | done   |
 
 ## What shipped
 
-- **`lego/backend/internal/core/base.go`** — `PodLogSource` type, `PodLabelCNPGCluster` /
-  `CNPGPostgresContainer` constants, `DatabasePods` method.
-- **`lego/backend/internal/logs/service.go`** — `PodLogSource` changed to a type alias of
-  `core.PodLogSource` (100% backward compatible).
-- **`lego/backend/internal/postgres/service.go`** — `PodLogs core.PodLogSource` field.
-- **`lego/backend/internal/postgres/logs.go`** (NEW) — `DatabaseLogQuery`, `DatabaseLogEntry`,
-  `QueryDatabaseLogs`, `readDBPodLogs`, `parseDBLogLine`.
-- **`lego/backend/internal/postgres/rest.go`** — `GET {base}/{id}/logs` + `parsePGTimeWindow`.
-- **`lego/backend/internal/postgres/graphql.go`** — `databaseLogs` query + `databaseLogGQLType`.
-- **`lego/backend/internal/postgres/mcp.go`** — `get_postgres_logs` tool + `registerLogsMCP`.
-- **`lego/backend/internal/api/server.go`** — `PodLogs: d.PodLogs` wired into postgres service.
-- **`lego/backend/internal/postgres/logs_test.go`** (NEW) — 6 unit tests.
-- **`dashboard/src/features/databases/api/databases.graphql`** — `DatabaseLogs` query.
-- **`dashboard/src/features/databases/api/operations.ts`** — `DatabaseLogEntry`, `DatabaseLogsDocument`.
-- **`dashboard/src/features/databases/hooks/use-database-logs.ts`** (NEW).
-- **`dashboard/src/features/databases/components/database-logs-panel.tsx`** (NEW).
-- **`dashboard/src/routes/databases.$databaseId.tsx`** — `<DatabaseLogsPanel>` wired in.
-- **`dashboard/src/features/databases/locales/{en,zh}.ts`** — 5 i18n keys each.
-- **`docs/ADR018-render-parity.md`** — row updated ✖→◐, gap backlog marked done.
+- Render's generic `resource=dpg-…` contract now dispatches through the logs
+  service's `AuthorizeDatabase(can_view_logs)` path across REST, GraphQL, and MCP.
+- The dedicated Postgres REST, GraphQL, and MCP compatibility adapters remain;
+  typed ids delegate to that same production core, while legacy name-shaped CRs
+  retain the direct CNPG pod fallback.
+- Alloy ingests only operator-marked tenant Database pods, retains the immutable
+  CNPG cluster id as the Loki `database` label, and records `type=postgres`; the
+  exact CNPG pod/container fallback remains available when Loki is not configured.
+- The Database detail route has a directly linkable `?tab=logs` view with time
+  range, text search, and instance filters plus distinct empty, unauthorized,
+  unavailable, and generic error states.
+- Tests cover REST/GraphQL/MCP parity, exact Loki and pod attribution,
+  cross-workspace refusal before source access, label discovery, delegation,
+  fallback behavior, operator labels, and GitOps pipeline invariants.
+- ADR010, ADR018, the dashboard walk, and the captured Render contract document
+  the durable path and the deliberately smaller database filter vocabulary.
 
-## Honest degraded ◐
+## Durable history and fallback
 
-CNPG pods are not shipped to Loki — `QueryDatabaseLogs` is a direct pod-log read,
-live only. Full durable history requires routing CNPG logs to Loki (platform-ops task,
-out of m28 scope). The dashboard panel and parity ledger both call this out explicitly.
+With `BEX_LOKI_URL`, managed Postgres history survives pod restarts and is scoped
+by `{namespace,database=<immutable dpg-id>}`. Without Loki, the same query reads
+only the matching CNPG pods' `postgres` container and reports that limitation
+honestly when no live source is configured.
 
 ## Definition of done
 

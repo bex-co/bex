@@ -1,9 +1,11 @@
-# log-shipper — the DaemonSet that tails the two log streams bex serves into Loki
+# log-shipper — the DaemonSet that tails the log streams bex serves into Loki
 # (loki.yaml). One replica per node discovers pods via the Kubernetes API and
 # ships:
 #
 #   type=app     — tenant App pod logs (label app.bex.co/app), labelled
 #                  namespace/app/pod/container + `level` (parsed from JSON lines).
+#   type=postgres — managed tenant CNPG logs, labelled by the immutable Database
+#                   CR id as namespace/database/pod/container.
 #   type=request — Traefik's access log (traefik.values.yaml `logs.access`),
 #                  attributed back to the App via the access line's ServiceName
 #                  and labelled method/status.
@@ -13,7 +15,8 @@
 #
 # CARDINALITY BUDGET (docs/ADR010-observability.md § Log labels) — a label is a
 # Loki stream, so only BOUNDED fields become labels:
-#   labels:    namespace, app, type, pod, container, level (≤5), method (≤8), status (≤~15)
+#   labels:    namespace, app or database, type, pod, container, level (≤5),
+#              method (≤8), status (≤~15)
 #   line-only: path, host  — unbounded per request; filtered at query time with
 #              LogQL's `| json` over the access line, never promoted to a label.
 # Worst case ≈ replicas×levels + methods×statuses streams per App (low hundreds);
@@ -46,7 +49,7 @@
 # scheduled on its own node — filtered server-side at the apiserver, not by a
 # client-side relabel `keep` (cheaper: no wasted List/Watch bandwidth on other
 # nodes' pods). This is the ONLY discovery.kubernetes block in this config —
-# app_pods/build_pods/traefik discovery.relabel all read discovery.kubernetes.pods.targets,
+# app_pods/database_pods/build_pods/traefik discovery.relabel all read discovery.kubernetes.pods.targets,
 # so scoping it once scopes every pipeline.
 #
 # HELM TPL ESCAPING (w3/m13, pre-existing since w3/m8): the whole
@@ -100,8 +103,8 @@ spec:
           tolerations:
             - operator: Exists
         alloy:
-          # Static River config: discover pods -> two pipelines (App logs, Traefik
-          # access logs) -> label -> push.
+          # Static River config: discover pods -> bounded tenant/platform log
+          # pipelines -> label -> push.
           configMap:
             content: |-
               // Node-scoped: see the NODE SCOPING note at the top of this file.
@@ -195,6 +198,61 @@ spec:
                   values = { level = "level" }
                 }
 
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // --- type=postgres: managed tenant CNPG logs ---
+
+              discovery.relabel "database_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                // The Database reconciler stamps this bounded inherited label.
+                // Platform/auth CNPG clusters do not carry it and are excluded.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_bex_co_component"]
+                  regex         = "database"
+                  action        = "keep"
+                }
+                // CNPG pods include an instance-manager sidecar. PostgreSQL's
+                // own stdout is the public datastore log source.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  regex         = "postgres"
+                  action        = "keep"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                // CNPG's cluster label equals the immutable Database CR dpg- id.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_cnpg_io_cluster"]
+                  target_label  = "database"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+              }
+
+              loki.source.kubernetes "database_pods" {
+                targets    = discovery.relabel.database_pods.output
+                forward_to = [loki.process.database_logs.receiver]
+              }
+
+              loki.process "database_logs" {
+                stage.drop {
+                  source              = "database"
+                  expression          = "^$"
+                  drop_counter_reason = "missing_database_id"
+                }
+                stage.static_labels {
+                  values = { type = "postgres" }
+                }
                 forward_to = [loki.write.default.receiver]
               }
 

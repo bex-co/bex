@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -65,6 +66,28 @@ func TestQueryDatabaseLogsNoSource(t *testing.T) {
 	_, err := svc.QueryDatabaseLogs(context.Background(), "my-pg", DatabaseLogQuery{})
 	if !errors.Is(err, core.ErrLogsUnavailable) {
 		t.Errorf("QueryDatabaseLogs without PodLogs = %v, want ErrLogsUnavailable", err)
+	}
+}
+
+func TestQueryDatabaseLogsDelegatesTypedResource(t *testing.T) {
+	id := ids.New(ids.Postgres)
+	want := DatabaseLogEntry{Message: "durable", Labels: map[string]string{"service": id}}
+	var gotName string
+	var gotQuery DatabaseLogQuery
+	svc := &Service{DatabaseLogs: func(_ context.Context, name string, q DatabaseLogQuery) ([]DatabaseLogEntry, error) {
+		gotName, gotQuery = name, q
+		return []DatabaseLogEntry{want}, nil
+	}}
+	query := DatabaseLogQuery{Search: "checkpoint", Limit: 7, Instance: []string{"db-1"}}
+	entries, err := svc.QueryDatabaseLogs(context.Background(), id, query)
+	if err != nil {
+		t.Fatalf("QueryDatabaseLogs: %v", err)
+	}
+	if gotName != id || gotQuery.Search != query.Search || gotQuery.Limit != query.Limit || gotQuery.Instance[0] != query.Instance[0] {
+		t.Fatalf("delegate got name=%q query=%+v, want name=%q query=%+v", gotName, gotQuery, id, query)
+	}
+	if len(entries) != 1 || entries[0].Message != want.Message || entries[0].Labels["service"] != id {
+		t.Fatalf("delegate entries = %+v, want %+v", entries, want)
 	}
 }
 

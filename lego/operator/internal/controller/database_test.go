@@ -419,4 +419,7 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	if got := meta[labelWorkspace]; got != ws {
 		t.Errorf("inheritedMetadata.labels[%q] = %q, want %q — workspace label must be propagated to CNPG pods so same-workspace NetworkPolicy selectors work", labelWorkspace, got, ws)
 	}
+	if got := meta["app.bex.co/component"]; got != "database" {
+		t.Errorf("inheritedMetadata.labels[app.bex.co/component] = %q, want database — the log shipper must distinguish tenant databases from platform CNPG clusters", got)
+	}
 }

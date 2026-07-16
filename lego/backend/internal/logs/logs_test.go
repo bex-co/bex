@@ -75,6 +75,18 @@ func sampleApp(name string) *appv1alpha1.App {
 	}
 }
 
+const postgresID = "dpg-c185th5c2rvvnhbfiltg"
+
+func sampleDatabase(name string) *appv1alpha1.Database {
+	return &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}}
+}
+
+func databasePod(database, name string) *corev1.Pod {
+	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelCNPGCluster: database},
+	}}
+}
+
 func podFor(app, name string) *corev1.Pod {
 	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelApp: app},
@@ -125,6 +137,22 @@ func newService(logs map[string][]string, objs ...client.Object) *Service {
 // shared seam under newService and the Loki-source tests.
 func fakeClientWith(objs ...client.Object) client.Client {
 	return fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
+}
+
+type homeWorkspaceOnly struct{}
+
+func (homeWorkspaceOnly) Tenant(context.Context, core.Identity) (string, bool) {
+	return "tea-home", true
+}
+
+func (homeWorkspaceOnly) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
+	return tenantID == "tea-home", nil
+}
+
+type denyLogChecker struct{}
+
+func (denyLogChecker) Check(context.Context, string, string, string) (bool, error) {
+	return false, nil
 }
 
 // decodeJSON is a thin json.Unmarshal over a string, for the Loki-response tests.
@@ -254,6 +282,117 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/logs?resource=web&limit=1").Body.Bytes(), &env)
 	if len(env.Logs) != 1 || !env.HasMore {
 		t.Errorf("limit=1 => newest line + hasMore: %+v", env)
+	}
+}
+
+func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
+	pod := postgresID + "-1"
+	otherPod := "dpg-d185th5c2rvvnhbfiltg-1"
+	svc := newService(map[string][]string{
+		pod:      {"2026-07-05T00:00:01Z checkpoint complete"},
+		otherPod: {"2026-07-05T00:00:02Z must not leak"},
+	}, sampleDatabase(postgresID), databasePod(postgresID, pod), databasePod("dpg-d185th5c2rvvnhbfiltg", otherPod))
+
+	// REST keeps Render's generic resource filter and returns the immutable dpg-
+	// id, the Postgres type, and the CNPG instance without a database-only route.
+	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&text=checkpoint&instance="+pod)
+	var env renderLogList
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 1 {
+		t.Fatalf("REST Postgres logs => %d %s", rec.Code, rec.Body.String())
+	}
+	labels := map[string]string{}
+	for _, label := range env.Logs[0].Labels {
+		labels[label.Name] = label.Value
+	}
+	if labels["resource"] != postgresID || labels[LabelType] != "postgres" || labels[LabelInstance] != pod {
+		t.Fatalf("REST Postgres labels = %+v", labels)
+	}
+	if strings.Contains(rec.Body.String(), "must not leak") {
+		t.Fatal("REST Postgres query mixed another database's pod logs")
+	}
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", instance:["`+pod+`"]) { message type instance } }`)
+	rows := data["logs"].([]any)
+	if len(rows) != 1 || rows[0].(map[string]any)["type"] != "postgres" {
+		t.Fatalf("GraphQL Postgres logs = %+v", rows)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
+		"resource": []string{postgresID}, "text": []string{"checkpoint"}, "instance": []string{pod},
+	}})
+	if err != nil || result.IsError || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint complete") {
+		t.Fatalf("MCP Postgres logs = %+v, err=%v", result, err)
+	}
+}
+
+func TestManagedPostgresLogsRejectAnotherWorkspaceOnEveryAdapter(t *testing.T) {
+	database := sampleDatabase(postgresID)
+	database.Labels = map[string]string{core.LabelTenant: "tea-other", core.LabelWorkspace: "tea-other"}
+	svc := newService(nil, database)
+	svc.Base.Workspace = homeWorkspaceOnly{}
+	called := false
+	svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) {
+		called = true
+		return nil, nil
+	}
+
+	requestContext := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs?resource="+postgresID, nil).WithContext(requestContext)
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("REST cross-workspace Postgres logs => %d, want 403", rec.Code)
+	}
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	result := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ logs(resource:"` + postgresID + `") { message } }`, Context: requestContext})
+	if len(result.Errors) == 0 || !strings.Contains(strings.ToLower(result.Errors[0].Message), "forbidden") {
+		t.Fatalf("GraphQL cross-workspace Postgres logs = %+v", result.Errors)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	// The in-memory MCP transport does not carry auth middleware context, so pin
+	// the same fail-closed adapter property with a relation denial here. The
+	// membership denial above already proves the cross-workspace resource gate.
+	svc.Base.Authz = denyLogChecker{}
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	mcpResult, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{"resource": []string{postgresID}}})
+	if err != nil || !mcpResult.IsError {
+		t.Fatalf("MCP cross-workspace Postgres logs = %+v, err=%v", mcpResult, err)
+	}
+	if called {
+		t.Fatal("cross-workspace denial happened after the log source was queried")
 	}
 }
 

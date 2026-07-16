@@ -842,28 +842,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
     description: "Database rename validation message",
   },
-  // --- Postgres logs panel (w3/m28) ---
-  "databases.logsTitle": {
-    message: "日志",
-    description: "Database logs panel card title",
-  },
-  "databases.logsDescription": {
-    message:
-      "Postgres pod 的实时日志。CNPG pod 未接入 Loki——无持久历史，仅反映当前运行的 pod。",
-    description: "Database logs panel card description",
-  },
-  "databases.logsRefresh": {
-    message: "刷新日志",
-    description: "Accessible label for the database logs refresh button",
-  },
-  "databases.logsUnavailable": {
-    message: "日志不可用——数据库可能仍在创建中。",
-    description: "Database logs panel error state",
-  },
-  "databases.logsEmpty": {
-    message: "未找到日志行。",
-    description: "Database logs panel empty state",
-  },
   // --- Insights panel (w2/m25) ---
   "databases.insightsTitle": {
     message: "洞察",
@@ -1131,6 +1109,82 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.sqlConfirmRun": {
     message: "运行语句",
     description: "SQL console confirmed write action",
+  },
+  "databases.detailNavLabel": {
+    message: "数据库详情",
+    description: "Accessible label for the managed Postgres detail tabs",
+  },
+  "databases.overviewTab": {
+    message: "概览",
+    description: "Managed Postgres overview tab",
+  },
+  "databases.logsTab": {
+    message: "日志",
+    description: "Managed Postgres logs tab",
+  },
+  "databases.logsRangeLabel": {
+    message: "时间范围",
+    description: "Managed Postgres log range filter label",
+  },
+  "databases.logsRange1h": {
+    message: "最近 1 小时",
+    description: "Managed Postgres one-hour log range",
+  },
+  "databases.logsRange6h": {
+    message: "最近 6 小时",
+    description: "Managed Postgres six-hour log range",
+  },
+  "databases.logsRange24h": {
+    message: "最近 24 小时",
+    description: "Managed Postgres 24-hour log range",
+  },
+  "databases.logsInstanceLabel": {
+    message: "数据库实例",
+    description: "Managed Postgres log instance filter label",
+  },
+  "databases.logsAllInstances": {
+    message: "所有实例",
+    description: "Managed Postgres log instance filter all option",
+  },
+  "databases.logsSearchPlaceholder": {
+    message: "搜索数据库日志",
+    description: "Managed Postgres log search placeholder",
+  },
+  "databases.logsLoading": {
+    message: "正在加载数据库日志…",
+    description: "Managed Postgres logs loading state",
+  },
+  "databases.logsEmptyTitle": {
+    message: "暂无数据库日志",
+    description: "Managed Postgres logs empty-state title",
+  },
+  "databases.logsEmptyBody": {
+    message: "此时间范围内的 Postgres 输出将显示在这里。",
+    description: "Managed Postgres logs empty-state body",
+  },
+  "databases.logsEmptyFilteredBody": {
+    message: "没有数据库日志符合当前筛选条件。",
+    description: "Managed Postgres logs filtered empty-state body",
+  },
+  "databases.logsUnavailableTitle": {
+    message: "尚未配置数据库日志",
+    description: "Managed Postgres logs unavailable-state title",
+  },
+  "databases.logsUnavailableBody": {
+    message: "此安装未配置持久日志历史或实时 CNPG Pod 日志源。",
+    description: "Managed Postgres logs unavailable-state body",
+  },
+  "databases.logsUnauthorizedTitle": {
+    message: "你无权查看这些日志",
+    description: "Managed Postgres logs unauthorized-state title",
+  },
+  "databases.logsUnauthorizedBody": {
+    message: "数据库日志需要此工作区的贡献者权限。",
+    description: "Managed Postgres logs unauthorized-state body",
+  },
+  "databases.logsErrorTitle": {
+    message: "无法加载数据库日志",
+    description: "Managed Postgres logs generic error title",
   },
 };
 

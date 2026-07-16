@@ -43,7 +43,7 @@ import (
 // logFilters is the filter set both tools share, in Render's shape (repeatable
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
-	Resource   []string `json:"resource" jsonschema:"service ids (bex App names) to read logs for; all must belong to the same owner"`
+	Resource   []string `json:"resource" jsonschema:"service or managed Postgres ids to read logs for; all must belong to the same owner"`
 	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards supported"`
 	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
 	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
@@ -130,8 +130,8 @@ func (f logFilters) query() (LogQuery, error) {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "list_logs",
-		Description: "List log lines for one or more services (Render's `resource` array), filtered by type (app | request), level, instance, host, statusCode, method, path, text and time range. " +
-			"Timestamp-sorted and aggregated across instances. Use list_log_label_values to discover which filter values exist for a service.",
+		Description: "List log lines for one or more services or managed Postgres databases (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
+			"Timestamp-sorted and aggregated across instances. Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, listLogsResult, error) {
 		q, err := in.query()
 		if err != nil {

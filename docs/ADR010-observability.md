@@ -23,13 +23,13 @@ flowchart LR
 ```
 
 - **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; the unfiltered convenience read. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
-- **`Core.QueryLogs(LogQuery)`** — adds Render's filters (type/text/time) and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through.
+- **`Core.QueryLogs(LogQuery)`** — adds Render's filters and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through. A `dpg-…` resource dispatches to the Database-authorized Postgres path while preserving the same public operation (w3/m28).
 - **`Core.FollowLogs(LogQuery, emit)`** — live tail; the SSE stream.
 
 Two backends sit behind the read verbs, each an injected source so the domain stays clientset/HTTP-free (like `PodLogSource`, both are faked in tests with no cluster):
 
-- **`LogHistorySource`** (`NewLokiSource`, gated by `BEX_LOKI_URL`) — the **durable** backend `Core.QueryLogs`/`Logs` prefer when wired. It translates the resolved `LogQuery` (namespace/app label selector, text, time range, limit) into a LogQL `query_range` against Loki, which the log-shipper DaemonSet feeds from every App pod. This is what makes logs **survive a pod restart**: a crash-looping App's pre-restart lines are still in Loki when someone queries them, and the time-range filter is now a real bounded search rather than best-effort over a live stream.
-- **`PodLogSource`** (`NewPodLogSource`) — the **live fallback** for `QueryLogs`/`Logs` when `BEX_LOKI_URL` is unset: reads the kubelet's `pods/log` ring buffer directly (the one subresource controller-runtime's client can't serve). No history — a restart loses the buffer — but zero extra infrastructure. **With Loki unset the read path is byte-identical to the pre-Loki behavior** (same shapes, same limit semantics, same labels).
+- **`LogHistorySource`** (`NewLokiSource`, gated by `BEX_LOKI_URL`) — the **durable** backend `Core.QueryLogs`/`Logs` prefer when wired. It translates the authorized `LogQuery` into a LogQL `query_range`: `{namespace, app}` for services or `{namespace, database}` for managed Postgres, plus text, time, instance, and limit. Alloy feeds both sources. This is what makes logs **survive a pod restart**: pre-restart App and CNPG lines remain searchable.
+- **`PodLogSource`** (`NewPodLogSource`) — the **live fallback** for `QueryLogs`/`Logs` when `BEX_LOKI_URL` is unset: reads the kubelet's `pods/log` ring buffer directly (the one subresource controller-runtime's client can't serve). Apps select `app.bex.co/app` and container `app`; Postgres selects exact `cnpg.io/cluster=<dpg-id>` and container `postgres`. No history — a restart loses the buffer — but zero extra infrastructure.
 
 `PodLogSource`/`PodLogStream` live in `podlogs.go`; `LogHistorySource` in `loki.go`. All three are injected in `cmd/api/main.go`.
 
@@ -43,7 +43,7 @@ Loki keeps **7 days** of searchable history (`limits_config.retention_period: 16
 
 ### Cluster enablement
 
-`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that ships **both** log streams into it — the App pods' own output (`type=app`) and Traefik's access log (`type=request`) — labelling each stream with what `lokiSelectorFor`'s LogQL selects on. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips `QueryLogs`/`Logs` from pod logs to durable history. Unset ⇒ the pod-log fallback: app logs still work, request logs and the structured filters are refused with a 503 (see [Log filters](#log-filters)). (Alloy, not Promtail: Promtail is end-of-life; Alloy is Grafana's supported successor, and its API-based `loki.source.kubernetes` is the simplest static config — no host-path/file-glob templating.)
+`deploy/gitops/base/loki.yaml` runs the one Loki (single-binary, filesystem PVC, 7-day retention) and `deploy/gitops/base/log-shipper.yaml` runs the Grafana **Alloy** DaemonSet that ships App (`type=app`), request (`type=request`), build, and managed-Postgres (`type=postgres`) streams. The Postgres pipeline requires the operator-stamped `app.bex.co/component=database` marker, keeps only the `postgres` container, and labels the stream with the immutable CNPG cluster/Database id; platform CNPG clusters are excluded. `BEX_LOKI_URL=http://loki.monitoring.svc:3100` points bex-api at it and flips historical reads from pod buffers to durable history.
 
 ### Log labels (and the cardinality budget)
 
@@ -51,8 +51,8 @@ A Loki **label is a stream**, so only bounded fields become labels; unbounded on
 
 | field | where it lives | why |
 | --- | --- | --- |
-| `namespace`, `app` | label | the scope of every query — an equality matcher the service resolves, never the caller |
-| `type` (`app`/`request`) | label | 2 values; the Application/Request split itself |
+| `namespace`, `app` or `database` | label | the scope of every query — equality matchers resolved after App/Database authorization, never caller-controlled selectors |
+| `type` (`app`/`request`/`build`/`postgres`) | label | bounded source vocabulary |
 | `pod`, `container` | label (app logs) | bounded by replica count; `pod` is Render's `instance` |
 | `level` | label (app logs) | 5 values, hard-capped by the shipper's normalizer (below) |
 | `method` | label (request logs) | the HTTP verb set (≤8) |
@@ -82,6 +82,8 @@ Every filter Render's logs API documents is honored, and each maps to exactly on
 | `direction` | `backward` (default) / `forward` | which end of the window `limit` keeps; the returned slice stays oldest-first either way |
 | `limit` | line cap | default 20, max 100 (Render's paging range) |
 
+Managed Postgres uses the shared time/text/direction/limit behavior plus `instance`; service/request-only filters are named 400s. Instance discovery is scoped to `{namespace, database}` in Loki and falls back to the already authorized Database's exact CNPG pod set. See the [captured contract and attribution rules](render-artifacts/postgres-logs.md).
+
 Multiple values for one filter OR together (Render's arrays); different filters AND. A `*` wildcard is supported per value; everything else is a literal (Render also documents full regex — **bex honors the wildcard subset**, a stated divergence rather than a silent one). Every interpolated value is escaped (`%q` + `regexp.QuoteMeta`), so no service name or filter value can break out of a matcher and inject a selector — the label-injection guard, unit-tested.
 
 **Nothing is accepted and ignored.** A filter bex cannot honor is refused where it is asked for:
@@ -102,7 +104,7 @@ Multiple values for one filter OR together (Render's arrays); different filters 
 | MCP `list_logs` | agent read (Core.QueryLogs), `resource` array + the full filter set |
 | MCP `list_log_label_values` | agent discovery (Core.LogLabelValues), `label` + `resource` + the same filters |
 
-Query params (Render vocabulary): `resource` (App id, repeatable), plus the [filters](#log-filters) above — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text` (all repeatable), `startTime`/`endTime` (RFC3339), `direction`, `limit`. `/v1/logs/values` takes the same set plus a required `label` (`host`|`instance`|`level`|`method`|`statusCode`|`type` — the enum Render's tool uses). One `Core` verb per read (`QueryLogs`, `LogLabelValues`) backs all three surfaces, so a filter means the same thing on every one.
+Query params (Render vocabulary): `resource` (repeatable App or managed-Postgres id), plus the [filters](#log-filters) above — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text` (all repeatable), `startTime`/`endTime` (RFC3339), `direction`, `limit`. `/v1/logs/values` takes the same set plus a required label; Postgres supports instance discovery. One `Core` verb per read (`QueryLogs`, `LogLabelValues`) backs all three surfaces, so a filter means the same thing on every one.
 
 **Discovery is scoped to the App**, always: the label-values call goes to Loki with the requested service's stream selector, so no caller can enumerate another tenant's pods, hostnames or statuses. `host` is the exception that proves the taxonomy — it is not a stream label, so its values come from the App's own `status.urls` (`core.HostsFromURLs`), which is why it resolves even with no store wired. (Logs-only: the metrics feature's discovery deliberately offers no `HOST` values — its query verb rejects the filter, w3/m12.)
 

@@ -102,7 +102,8 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, slices.Compact(all))
 }
 
-// logsQuery serves GET /v1/logs — a historical query across an App's replicas.
+// logsQuery serves GET /v1/logs — a historical query across App or managed
+// Postgres instances, matching Render's generic resource-array contract.
 func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 	resources, q, err := parseLogParams(r)
 	if err != nil {
@@ -114,7 +115,7 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Render's `resource` is an array; merge each App's lines, then sort + cap.
+	// Render's `resource` is an array; merge each resource's lines, then sort + cap.
 	// QueryLogs gets the query as parsed — normalizing here first would coerce an
 	// invalid `direction` to the default before the verb could refuse it.
 	var all []LogEntry

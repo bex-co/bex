@@ -76,9 +76,13 @@ type Service struct {
 	// may own. 0 = unlimited (the default; byte-identical to before). Only
 	// enforced when the caller's tenant is resolvable (w7/m9).
 	MaxPostgres int
-	// PodLogs fetches live pod log streams for QueryDatabaseLogs (w3/m28).
-	// CNPG pods are NOT shipped to Loki, so direct pod-log read is the only
-	// available source. nil => QueryDatabaseLogs reports ErrLogsUnavailable.
+	// DatabaseLogs is the production query seam for typed dpg- resources. The
+	// API composition root wires it to the generic durable logs service so the
+	// dedicated compatibility endpoints and Render's /logs surface share one
+	// authorization/filtering engine. nil keeps the direct-pod legacy fallback.
+	DatabaseLogs DatabaseLogQuerySource
+	// PodLogs backs the direct-pod fallback for legacy, name-shaped Database CRs
+	// and isolated tests. nil with no DatabaseLogs source => ErrLogsUnavailable.
 	PodLogs core.PodLogSource
 	// queryExecutor is the SQL transport seam used by Query and ExecuteQuery.
 	// Production leaves it nil and uses pgx; tests replace it so the REST and

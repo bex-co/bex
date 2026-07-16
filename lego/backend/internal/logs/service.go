@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -180,12 +181,16 @@ const (
 // is honored; a filter bex cannot honor is refused at the adapter or with
 // core.ErrLogStoreUnavailable, never silently dropped.
 type LogQuery struct {
-	App    string
-	Types  []string  // empty == all types; values: app | request | build
-	Search string    // case-insensitive substring on the message (Render's `text`)
-	Since  time.Time // zero == no lower bound
-	End    time.Time // zero == no upper bound
-	Limit  int64     // max lines
+	App string
+	// Database is resolved internally after a dpg- resource has passed
+	// AuthorizeDatabase. Adapters continue to use Render's single `resource`
+	// field (stored in App on input); callers cannot set this selector directly.
+	Database string
+	Types    []string  // empty == all types; values: app | request | build
+	Search   string    // case-insensitive substring on the message (Render's `text`)
+	Since    time.Time // zero == no lower bound
+	End      time.Time // zero == no upper bound
+	Limit    int64     // max lines
 	// Direction picks which end of the window Limit keeps: DirectionBackward
 	// (default, newest) or DirectionForward (oldest).
 	Direction string
@@ -411,6 +416,9 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 // rather than returning unfiltered lines. `type=build` without the store is a
 // 503, not a silent empty — the same honesty rule as request logs.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	if isPostgresResource(q.App) {
+		return s.queryPostgresLogs(ctx, q)
+	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
@@ -452,6 +460,55 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	return setLogResource(q.filterAndCap(entries), resource), nil
 }
 
+// queryPostgresLogs is the one datastore-scoped core read behind the existing
+// REST, GraphQL, and MCP log adapters. Render addresses every log-producing
+// resource through the generic `resource` filter, so no parallel public API is
+// needed. The Database authorization gate runs before either a Loki selector or
+// a pod selector is constructed.
+func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	requested := q.App
+	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, requested)
+	if err != nil {
+		return nil, err
+	}
+	q.App = ""
+	q.Database = database.Name
+	if err := q.validatePostgres(); err != nil {
+		return nil, err
+	}
+	if s.History == nil && s.PodLogs == nil {
+		return nil, core.ErrLogsUnavailable
+	}
+	q = q.normalized()
+	if s.History != nil {
+		entries, err := s.History(ctx, s.Namespace, q)
+		return setLogResource(entries, requested), err
+	}
+	entries, err := s.collectDatabasePodLogs(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return setLogResource(q.filterAndCap(entries), requested), nil
+}
+
+func isPostgresResource(resource string) bool {
+	kind, ok := ids.KindOf(resource)
+	return ok && kind == ids.Postgres
+}
+
+// validatePostgres pins the supported managed-Postgres contract: time range,
+// direction, text search, limit, and instance. HTTP request/build filters are
+// service concepts; refusing them is safer than silently dropping them.
+func (q LogQuery) validatePostgres() error {
+	if err := q.validate(); err != nil {
+		return err
+	}
+	if len(q.Types) > 0 || len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
+		return fmt.Errorf("%w: managed Postgres logs support text, time range, direction, limit, and instance filters", core.ErrBadRequest)
+	}
+	return nil
+}
+
 // filterAndCap applies the line-level search/time filters (in place — skipping
 // the pass entirely on the common no-filter query) and clamps to q.Limit. The
 // pod-log path's shared tail, used by both the app and pre-deploy reads.
@@ -476,6 +533,9 @@ func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
 // stream label — the cardinality budget keeps it in the line), so it resolves even
 // without the store.
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	if isPostgresResource(q.App) {
+		return s.postgresLogLabelValues(ctx, label, q)
+	}
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, q.App)
 	if err != nil {
 		return nil, err
@@ -505,6 +565,37 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
+func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App)
+	if err != nil {
+		return nil, err
+	}
+	q.App = ""
+	q.Database = database.Name
+	if err := q.validatePostgres(); err != nil {
+		return nil, err
+	}
+	if label != LabelInstance {
+		return nil, fmt.Errorf("%w: managed Postgres log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
+	}
+	if s.LabelValues != nil {
+		values, err := s.LabelValues(ctx, s.Namespace, label, q.normalized())
+		if err != nil {
+			return nil, err
+		}
+		return slices.Compact(slices.Sorted(slices.Values(values))), nil
+	}
+	pods, err := s.DatabasePods(ctx, database.Name)
+	if err != nil {
+		return nil, err
+	}
+	values := make([]string, 0, len(pods))
+	for i := range pods {
+		values = append(values, pods[i].Name)
+	}
+	return slices.Compact(slices.Sorted(slices.Values(values))), nil
+}
+
 // FollowLogs streams an App's new log lines to emit until ctx is cancelled or
 // emit errors. The tail always reads live pod logs (never the store — real-time,
 // zero ingest lag). It serves app logs from App pods and type=build from the
@@ -512,6 +603,12 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 // refuses store-only filters. Requires a PodLogStream (nil =>
 // core.ErrLogsUnavailable).
 func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error) error {
+	if isPostgresResource(q.App) {
+		if _, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: managed Postgres live log subscription is not supported; use the historical logs query", core.ErrBadRequest)
+	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
 	if err != nil {
@@ -701,6 +798,29 @@ func (s *Service) collectPodLogs(ctx context.Context, q LogQuery, tail int64) ([
 		entries, err := s.readPodLogs(ctx, q.App, pod, tail)
 		if err != nil {
 			return nil, err
+		}
+		out = append(out, entries...)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	return out, nil
+}
+
+func (s *Service) collectDatabasePodLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	pods, err := s.DatabasePods(ctx, q.Database)
+	if err != nil {
+		return nil, err
+	}
+	var out []LogEntry
+	for i := range pods {
+		if !q.keepPod(pods[i].Name) {
+			continue
+		}
+		entries, err := s.readContainerLogs(ctx, s.Namespace, q.Database, pods[i].Name, core.CNPGPostgresContainer, q.Limit)
+		if err != nil {
+			return nil, err
+		}
+		for j := range entries {
+			entries[j].Labels[LabelType] = "postgres"
 		}
 		out = append(out, entries...)
 	}

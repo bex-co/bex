@@ -24,12 +24,12 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// DatabaseLogQuery is the filter set for QueryDatabaseLogs. Mirrors the relevant
-// subset of logs.LogQuery: CNPG pods are not shipped to Loki, so the only source
-// is direct pod-log read — structured store-only filters (level, method, …) are
-// permanently unavailable for managed Postgres.
+// DatabaseLogQuery is the filter set for QueryDatabaseLogs. It mirrors the
+// managed-Postgres subset of logs.LogQuery; HTTP request-log filters do not
+// apply to a database process stream.
 type DatabaseLogQuery struct {
 	Search    string
 	Since     time.Time
@@ -46,18 +46,26 @@ type DatabaseLogEntry struct {
 	Labels    map[string]string `json:"labels,omitempty"`
 }
 
+// DatabaseLogQuerySource is the narrow cross-feature seam that lets the
+// dedicated Postgres compatibility adapters reuse the generic logs core
+// without importing the logs package here.
+type DatabaseLogQuerySource func(context.Context, string, DatabaseLogQuery) ([]DatabaseLogEntry, error)
+
 const (
 	defaultDBLogLimit = 20
 	maxDBLogLimit     = 100
 )
 
-// QueryDatabaseLogs returns recent log lines from the CNPG pods backing a
-// managed Postgres instance, oldest-first and capped at q.Limit. CNPG pods
-// are NOT shipped to Loki, so this is a direct pod-log read; store-backed
-// history and structured filters are permanently unavailable (ErrLogsUnavailable
-// is not returned — an empty list is the honest answer when no pods are running).
-// ErrLogsUnavailable when PodLogs is not wired; ErrNotFound for unknown instances.
+// QueryDatabaseLogs is the dedicated Postgres adapters' compatibility verb.
+// Typed dpg- ids delegate to the generic durable logs core in production;
+// legacy name-shaped CRs and isolated tests retain the direct CNPG pod path.
+// Results are oldest-first and capped at q.Limit. ErrLogsUnavailable is
+// returned when the selected path has no source; unknown instances return
+// ErrNotFound.
 func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q DatabaseLogQuery) ([]DatabaseLogEntry, error) {
+	if kind, ok := ids.KindOf(name); ok && kind == ids.Postgres && s.DatabaseLogs != nil {
+		return s.DatabaseLogs(ctx, name, q)
+	}
 	d, err := s.fetchDatabase(ctx, core.RelCanViewLogs, name)
 	if err != nil {
 		return nil, err
