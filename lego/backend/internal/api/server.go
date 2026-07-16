@@ -314,12 +314,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// transport in use, it simply never gets a Get/Set call.
 	selections := core.NewWorkspaceSelections()
 	workspaceSvc := &workspaces.Service{
-		Base:         base,
-		Store:        d.WorkspaceStore,
-		Granter:      d.WorkspaceGranter,
-		Revoker:      d.WorkspaceRevoker,
-		Kick:         d.WorkspaceKick,
-		Purgers:      d.WorkspacePurgers,
+		Base:       base,
+		Store:      d.WorkspaceStore,
+		Granter:    d.WorkspaceGranter,
+		Revoker:    d.WorkspaceRevoker,
+		Kick:       d.WorkspaceKick,
+		Purgers:    d.WorkspacePurgers,
 		Identities: d.Identities,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
@@ -511,6 +511,7 @@ func (a identityEmailLookup) LookupEmail(ctx context.Context, subject string) (s
 	attrs, ok := a.Identities.Lookup(ctx, subject)
 	return attrs.Email, ok
 }
+
 // Feature registration contracts. A feature implements the fragments it has; the
 // root type-asserts each service against these when assembling the surfaces, so a
 // feature with no mutations (logs, metrics) simply omits GraphQLMutation.
@@ -623,7 +624,9 @@ func (s *Server) Handler() (http.Handler, error) {
 	// endpoints rather than Hydra's RFC 8628 paths directly. Mount only those
 	// exact protocol routes outside the gate; they can mint tokens but cannot
 	// reach a bex resource without completing Hydra's browser authorization.
-	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys)
+	// Its authenticated revoke route registers into the one REST router below;
+	// authGate.invalidate lets logout evict this pod's introspection cache.
+	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
 	cliAuth.RegisterPublic(mux)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
@@ -645,8 +648,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// gate itself recognizes github's one exact signed-state callback exception;
 	// keeping the mount here ensures every other /v1 route stays covered.
 	rl := s.rateLimitMiddleware()
-	mux.Handle("POST /v1/oauth/revoke", auth(rl(cliAuth.RevokeHandler(authGate.invalidate))))
-	mux.Handle("/v1/", auth(rl(s.restHandler())))
+	mux.Handle("/v1/", auth(rl(s.restHandler(cliAuth))))
 	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))
 	mux.Handle("/mcp", auth(rl(s.mcpHTTPHandler())))
 
@@ -675,16 +677,6 @@ func (s *Server) rateLimitMiddleware() func(http.Handler) http.Handler {
 		return func(h http.Handler) http.Handler { return h }
 	}
 	return s.RateLimiter.Middleware
-}
-
-// authMiddleware builds the auth gate, validating its configuration up front so a
-// misconfigured binary refuses to start.
-func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
-	auth, err := s.newAuthGate()
-	if err != nil {
-		return nil, err
-	}
-	return auth.middleware, nil
 }
 
 func (s *Server) newAuthGate() (*oryAuth, error) {
@@ -717,12 +709,19 @@ func (s *Server) resourceMetadataURL() string {
 
 // restHandler mounts every feature's REST fragment on one mux — the single REST
 // router (Render-public-API compatible), served under /v1.
-func (s *Server) restHandler() http.Handler {
+// restHandler assembles the single REST router from every feature's fragment.
+// extra carries registrars constructed inside Handler() itself (cliauth's
+// authenticated revoke route needs the auth gate's cache hook), so even those
+// stay inside the one router rather than becoming parallel root mounts.
+func (s *Server) restHandler(extra ...restRegistrar) http.Handler {
 	mux := http.NewServeMux()
 	for _, f := range s.features() {
 		if r, ok := f.(restRegistrar); ok {
 			r.RegisterREST(mux)
 		}
+	}
+	for _, r := range extra {
+		r.RegisterREST(mux)
 	}
 	// Render supports "workflows" as a resource type; the official CLI probes
 	// GET /v1/workflows when resolving --resources for multi-resource log queries.

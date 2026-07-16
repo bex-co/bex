@@ -1,6 +1,6 @@
 # Render CLI compatibility
 
-bex supports the official, unmodified [Render CLI](https://render.com/docs/cli) through its Render-compatible REST API. Most commands work today; interactive login is locally verified and awaits production rollout evidence.
+bex supports the official, unmodified [Render CLI](https://render.com/docs/cli) through its Render-compatible REST API. Most commands work today, including interactive browser login, verified live against production 2026-07-15.
 
 Legend: ✅ supported · ◐ supported with a limitation · ✖ broken · — deliberate non-goal.
 
@@ -71,8 +71,8 @@ The following commands were exercised against live bex environments with real Se
 
 | Commands | Status | Notes |
 | --- | --- | --- |
-| `login` (browser/device flow) | ◐ | The official CLI completed real Chrome → Kratos → consent login in dev-3 with `RENDER_API_KEY` unset. Production rollout evidence remains (`w4/m27`). |
-| `logout` | ◐ | Local E2E proves access-token rejection, refresh-chain revocation, shared-client preservation, and second-user continuity. Production rollout evidence remains. The machine override still requires dashboard key revocation. |
+| `login` (browser/device flow) | ✅ | The official CLI (pinned `c23438e`) completed real Chrome → Kratos → consent device login against **production** (`api.bex.co`) with `RENDER_API_KEY` unset, 2026-07-15 (`w4/m27`, `scripts/render-cli-auth-e2e.sh`; deployed image `sha256:d1681b2b…238dc19`): human personal workspace resolved, forced `api.expires_at` expiry rotated both the access and refresh tokens on the next unmodified command. |
+| `logout` | ✅ | Production E2E (2026-07-15) proves access-token rejection (within the documented ≤30s per-replica introspection-cache window — Hydra-side revocation is immediate), refresh-chain `invalid_grant`, shared-client preservation, and second-user continuity. The machine override still requires dashboard key revocation. |
 | `whoami` | ✅ | Returns the key owner's real name and email (w4/m25). The key's `created-by` binding resolves to the minting user's Kratos identity, so an API-key caller sees the same `Name:`/`Email:` as a session caller; re-verified live 2026-07-15 against dev-4 (`render whoami` → `Name: Ada Lovelace / Email: ada@dev4.test` for both a session-derived token and a `client_credentials` API-key token). A key with no resolvable owning human degrades to the workspace's earliest-admin email with an empty name. Requires the Kratos admin URL. |
 | `workspace current`, `workspaces` | ✅ | Return the caller's real `tea-…` workspace. |
 | `workspace set` | ◐ | The interactive flow was not tested. `RENDER_WORKSPACE` is the supported deterministic override and is used by the production setup above. |

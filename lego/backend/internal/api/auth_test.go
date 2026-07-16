@@ -93,10 +93,11 @@ func fakeKratos(t *testing.T) *httptest.Server {
 func TestAuthGateSessionTraits(t *testing.T) {
 	kratos := fakeKratos(t)
 	s := &Server{HydraAdminURL: fakeHydraURL(t), KratosURL: kratos.URL}
-	auth, err := s.authMiddleware()
+	gate, err := s.newAuthGate()
 	if err != nil {
-		t.Fatalf("authMiddleware: %v", err)
+		t.Fatalf("newAuthGate: %v", err)
 	}
+	auth := gate.middleware
 	r := httptest.NewRequest(http.MethodGet, "/probe", nil)
 	r.Header.Set("X-Session-Token", "live-session")
 	w := httptest.NewRecorder()
@@ -233,10 +234,11 @@ func TestAuthGate(t *testing.T) {
 				HydraAdminURL: upstream(t, tc.hydraURL, hydra.URL),
 				KratosURL:     upstream(t, tc.kratosURL, kratos.URL),
 			}
-			auth, err := s.authMiddleware()
+			gate, err := s.newAuthGate()
 			if err != nil {
-				t.Fatalf("authMiddleware: %v", err)
+				t.Fatalf("newAuthGate: %v", err)
 			}
+			auth := gate.middleware
 			r := httptest.NewRequest(http.MethodGet, "/probe", nil)
 			if tc.bearer != "" {
 				r.Header.Set("Authorization", "Bearer "+tc.bearer)
