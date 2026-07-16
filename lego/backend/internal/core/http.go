@@ -187,6 +187,19 @@ func (c *TTLCache[V]) Delete(key string) {
 	delete(c.m, key)
 }
 
+// DeleteIf evicts every entry whose value matches. It is intentionally a
+// cache-sized linear scan: callers use it for rare upstream revocations where
+// all cached aliases of one logical credential must disappear atomically.
+func (c *TTLCache[V]) DeleteIf(match func(V) bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for key, entry := range c.m {
+		if match(entry.v) {
+			delete(c.m, key)
+		}
+	}
+}
+
 // Put caches v until the given expiry (callers may clamp below PositiveTTL, e.g.
 // to a token's own exp).
 func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {

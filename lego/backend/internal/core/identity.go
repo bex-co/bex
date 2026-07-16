@@ -24,6 +24,15 @@ import "context"
 type Identity struct {
 	Subject string
 	Method  string // "oauth2" | "session"
+	// ClientID is Hydra's OAuth2 client_id. It stays empty for Kratos-session
+	// callers. Human OAuth tokens keep Subject as their Kratos identity while
+	// ClientID identifies the public app that minted the token; machine tokens
+	// usually have Subject == ClientID.
+	ClientID string
+	// Human distinguishes an OAuth authorization/device token carrying an end-user
+	// `sub` (distinct from client_id) from a client_credentials machine token. It
+	// lets onboarding and revocation use explicit human semantics.
+	Human bool
 	// Email is the caller's verified email, populated for session (human)
 	// callers from their Kratos identity traits; empty for machine (API-key)
 	// callers, which have no email. It is the key a pending workspace invite is

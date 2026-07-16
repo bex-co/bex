@@ -2,3 +2,4 @@
 .pids/
 logs/
 bin/
+cli-*.yaml

@@ -82,6 +82,10 @@ kratos:
       # without these, Kratos redirects flows back to its own domain instead.
       allowed_return_urls:
         - https://dashboard.bex.co
+        # Hydra's device flow returns the browser to its public verifier after
+        # Kratos accepts the login challenge. Without this issuer origin,
+        # `render login` fails with self_service_flow_return_to_forbidden.
+        - https://oauth.bex.co
         # Local dashboard dev against this prod Kratos (dashboard/README.md
         # "Local dev against prod" — the Vite /kratos proxy). Only a return-URL
         # allowlist entry: redirecting a user to their own localhost is

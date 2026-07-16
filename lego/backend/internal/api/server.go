@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
+	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -599,10 +600,11 @@ func (s *Server) features() []any {
 //	POST /graphql                              (auth)   GraphQL
 //	     /mcp                                  (auth)   MCP (streamable-http)
 func (s *Server) Handler() (http.Handler, error) {
-	auth, err := s.authMiddleware()
+	authGate, err := s.newAuthGate()
 	if err != nil {
 		return nil, err
 	}
+	auth := authGate.middleware
 	schema, err := s.newSchema()
 	if err != nil {
 		return nil, err
@@ -614,6 +616,12 @@ func (s *Server) Handler() (http.Handler, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	// The official Render CLI starts unauthenticated and speaks Render's wrapper
+	// endpoints rather than Hydra's RFC 8628 paths directly. Mount only those
+	// exact protocol routes outside the gate; they can mint tokens but cannot
+	// reach a bex resource without completing Hydra's browser authorization.
+	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys)
+	cliAuth.RegisterPublic(mux)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
 	// wins in net/http's mux). A git host can't present a bearer token.
@@ -634,6 +642,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// gate itself recognizes github's one exact signed-state callback exception;
 	// keeping the mount here ensures every other /v1 route stays covered.
 	rl := s.rateLimitMiddleware()
+	mux.Handle("POST /v1/oauth/revoke", auth(rl(cliAuth.RevokeHandler(authGate.invalidate))))
 	mux.Handle("/v1/", auth(rl(s.restHandler())))
 	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))
 	mux.Handle("/mcp", auth(rl(s.mcpHTTPHandler())))
@@ -668,6 +677,14 @@ func (s *Server) rateLimitMiddleware() func(http.Handler) http.Handler {
 // authMiddleware builds the auth gate, validating its configuration up front so a
 // misconfigured binary refuses to start.
 func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
+	auth, err := s.newAuthGate()
+	if err != nil {
+		return nil, err
+	}
+	return auth.middleware, nil
+}
+
+func (s *Server) newAuthGate() (*oryAuth, error) {
 	if s.HydraAdminURL == "" {
 		return nil, core.Err(errNoHydraURL)
 	}
@@ -677,7 +694,7 @@ func (s *Server) authMiddleware() (func(http.Handler) http.Handler, error) {
 	if s.APIKeys != nil {
 		touch = s.APIKeys.TouchAPIKey
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.Onboard, touch).middleware, nil
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.Onboard, touch), nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata

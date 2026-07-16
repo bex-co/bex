@@ -298,12 +298,11 @@ jobs:
       # --- 4c. bootstrap API key --------------------------------------------
       # bex-api has no shared static token (docs/ADR006-bex-api.md#auth): seed the
       # `bex-bootstrap` OAuth2 client once Hydra is Ready. Idempotent.
-      # continue-on-error: the client was seeded in a prior deploy; if the
-      # kubelet TLS cert on a cluster node is expired (exec/port-forward both
-      # route through the kubelet), this step fails safely — re-seeding is only
-      # needed if the client secret rotates. Fix: renew kubelet certs on the node.
+      # This is a rollout gate: both the confidential bootstrap client and the
+      # fixed secretless Render CLI client are required platform configuration.
+      # A kubelet TLS failure must be repaired rather than silently shipping a
+      # production API whose interactive login route cannot exchange tokens.
       - name: seed bootstrap client
-        continue-on-error: true
         timeout-minutes: 5
         env:
           BEX_BOOTSTRAP_CLIENT_SECRET: ${{ secrets.BEX_BOOTSTRAP_CLIENT_SECRET }}

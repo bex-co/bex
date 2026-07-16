@@ -18,7 +18,6 @@ package apikeys
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -28,32 +27,6 @@ import (
 // manages API keys only via its dashboard; naming follows Render's kebab-case
 // noun style). The secret appears once, in the create response.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	// POST /v1/oauth/revoke is Render's own REST endpoint (docs/render-artifacts
-	// aren't the source here — this one is only reachable by reading the
-	// official CLI's source, pkg/client/oauth/oauth.go: `render logout` calls
-	// it with the caller's OWN access token as the Bearer credential, expects
-	// 204 No Content, and its contract is exactly "invalidate the credential
-	// that's calling this"). bex has no client_secret-authenticated revocation
-	// (Hydra's public /oauth2/revoke needs it, and this caller only ever holds
-	// the bearer token, never the secret), so self-revoke is implemented as
-	// deleting the caller's OWN underlying Hydra client — the same effect
-	// RevokeAPIKey gives a dashboard user revoking their own key, just aimed at
-	// the caller instead of a named id. A session (Kratos) caller has no Hydra
-	// client to delete, so it 400s rather than silently no-op'ing; the official
-	// CLI never sends a session credential here (it revokes a device-flow OAuth
-	// access token, always an oauth2-method identity in bex's model).
-	mux.HandleFunc("POST /v1/oauth/revoke", func(w http.ResponseWriter, r *http.Request) {
-		id, ok := core.IdentityFrom(r.Context())
-		if !ok || id.Method != "oauth2" {
-			core.WriteErr(w, fmt.Errorf("%w: no OAuth2 credential to revoke", core.ErrBadRequest))
-			return
-		}
-		if err := s.RevokeAPIKey(r.Context(), "", id.Subject); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
 	mux.HandleFunc("POST /v1/api-keys", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Name    string `json:"name"`

@@ -224,9 +224,8 @@ describe("handleConsent (GET)", () => {
       sessionBody: { error: { id: "session_aal2_required" } },
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    const search = new URL(
-      (res as Response).headers.get("Location")!,
-    ).searchParams;
+    const search = new URL((res as Response).headers.get("Location")!)
+      .searchParams;
     expect(search.get("aal")).toBe("aal2");
     expect(search.get("next")).toBe(
       `/auth/consent?consent_challenge=${CHALLENGE}`,
@@ -252,6 +251,18 @@ describe("handleConsent (GET)", () => {
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
     expect((res as Response).status).toBe(400);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("allows Hydra's device flow through consent without inventing PKCE", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        request_url:
+          "https://oauth.bex.co/oauth2/device/verify?device_verifier=v&client_id=429024F5E608930E2A65EF92591A25CC",
+      }),
+    });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).not.toBeInstanceOf(Response);
     expect(accepts(calls)).toHaveLength(0);
   });
 

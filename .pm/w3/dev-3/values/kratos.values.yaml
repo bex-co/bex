@@ -27,6 +27,7 @@ kratos:
       default_browser_return_url: http://localhost:50030/
       allowed_return_urls:
         - http://localhost:50030
+        - http://localhost:58030
       methods:
         webauthn:
           config:
@@ -54,3 +55,22 @@ kratos:
       cookie:
         domain: ""
         same_site: Lax
+
+# CAPD/OrbStack cannot route worker pods to the apiserver or control-plane DB
+# services reliably. Constrain every independently scheduled Kratos workload
+# to the control-plane node in addition to the inherited local platform label.
+deployment:
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+job:
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+statefulSet:
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
