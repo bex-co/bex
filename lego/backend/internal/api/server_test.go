@@ -440,6 +440,7 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 	for _, want := range []string{
 		"list_services", "get_service", "create_web_service", "deploy", "list_logs", "get_metrics",
 		"restart_service", "suspend_service", "resume_service", "scale_service", "delete_service",
+		"set_registry_credential",
 		"run_cron_job", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run",
 		"create_api_key", "list_api_keys", "revoke_api_key",
 		"list_postgres_instances", "get_postgres", "create_postgres",

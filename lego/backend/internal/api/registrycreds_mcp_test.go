@@ -73,6 +73,14 @@ func (f *fakeRCStore) GetRegistryCredential(_ context.Context, workspaceID, id s
 	return c, nil
 }
 
+func (f *fakeRCStore) GetRegistryCredentialByID(_ context.Context, id string) (store.RegistryCredential, error) {
+	c, ok := f.rows[id]
+	if !ok {
+		return store.RegistryCredential{}, store.ErrNotFound
+	}
+	return c, nil
+}
+
 func (f *fakeRCStore) GetRegistryCredentialByHost(_ context.Context, workspaceID, host string) (store.RegistryCredential, error) {
 	for _, c := range f.rows {
 		if c.WorkspaceID == workspaceID && c.Host == host {
@@ -174,6 +182,39 @@ func TestMCP_RegistryCredentialsCRUDNeverLeaksSecret(t *testing.T) {
 	}
 
 	callToolError(t, cs, "get_registry_credential", map[string]any{"id": created.ID})
+}
+
+func TestMCP_ServiceRegistryCredentialCreateAndClear(t *testing.T) {
+	st := newFakeRCStore()
+	secrets := newFakeRCSecretKV()
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{
+		RegistryCredsStore: st,
+		Secrets:            secrets,
+	})
+	cs := mcpSession(t, srv)
+
+	credential := callTool[struct{ ID string }](t, cs, "create_registry_credential", map[string]any{
+		"host": "ghcr.io", "username": "alice", "authToken": "hunter2",
+	})
+	created := callTool[struct {
+		ID                   string `json:"id"`
+		RegistryCredentialID string `json:"registryCredentialId"`
+	}](t, cs, "create_web_service", map[string]any{
+		"name": "web", "image": "ghcr.io/acme/private:1", "runtime": "image",
+		"buildCommand": "", "startCommand": "", "registryCredentialId": credential.ID,
+	})
+	if created.RegistryCredentialID != credential.ID {
+		t.Fatalf("create_web_service binding = %+v, want %s", created, credential.ID)
+	}
+
+	cleared := callTool[struct {
+		RegistryCredentialID string `json:"registryCredentialId"`
+	}](t, cs, "set_registry_credential", map[string]any{
+		"serviceId": created.ID, "registryCredentialId": "",
+	})
+	if cleared.RegistryCredentialID != "" {
+		t.Fatalf("set_registry_credential clear = %+v", cleared)
+	}
 }
 
 // assertNoSecretLeak re-lists and marshals the raw structured content to

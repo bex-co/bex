@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +66,7 @@ func TestMaterializePullSecretNoCredentialIsOkFalseNoError(t *testing.T) {
 	}
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
 
-	name, ok, err := s.materializePullSecret(context.Background(), core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0")
+	name, ok, err := s.materializePullSecret(context.Background(), core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil)
 	if err != nil || ok || name != "" {
 		t.Fatalf("no credential = name=%q ok=%v err=%v, want ok=false nil-err", name, ok, err)
 	}
@@ -81,7 +82,7 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0")
+	name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil)
 	if err != nil || !ok || name != "web-registry-pull" {
 		t.Fatalf("materializePullSecret = name=%q ok=%v err=%v", name, ok, err)
 	}
@@ -120,7 +121,7 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	// A second call with the same credential is idempotent (upsert, not a
 	// duplicate object), and re-materializing after a username/secret rotation
 	// picks up the new value.
-	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0"); err != nil {
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil); err != nil {
 		t.Fatalf("second materialize: %v", err)
 	}
 }
@@ -138,7 +139,7 @@ func TestMaterializePullSecretMissingOpenBaoValueErrors(t *testing.T) {
 	}
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
 
-	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0"); err == nil {
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil); err == nil {
 		t.Fatal("want an error when the credential's OpenBao secret is missing")
 	}
 }
@@ -147,8 +148,46 @@ func TestMaterializePullSecretUnconfiguredIsOkFalseNoError(t *testing.T) {
 	s := &Service{Base: &core.Base{Client: fakeK8sClient(), Namespace: "default"}} // Store/Secret nil
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
 
-	name, ok, err := s.materializePullSecret(context.Background(), core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0")
+	name, ok, err := s.materializePullSecret(context.Background(), core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil)
 	if err != nil || ok || name != "" {
 		t.Fatalf("unconfigured = name=%q ok=%v err=%v, want ok=false nil-err", name, ok, err)
+	}
+}
+
+func TestMaterializePullSecretExplicitIDClassifiesAndValidates(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeStore()
+	kv := newFakeSecretKV()
+	s := &Service{Base: &core.Base{Client: fakeK8sClient(), Namespace: "default"}, Store: st, Secret: kv}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
+
+	valid, err := st.CreateRegistryCredential(ctx, core.DefaultTenant, "", "ghcr.io", "alice", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := kv.Put(ctx, secretPath(core.DefaultTenant, valid.ID), map[string]string{"password": "hunter2"}); err != nil {
+		t.Fatal(err)
+	}
+	if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &valid.ID); err != nil || !ok || name == "" {
+		t.Fatalf("valid explicit id = name %q ok %v err %v", name, ok, err)
+	}
+
+	foreign, err := st.CreateRegistryCredential(ctx, "tea-other", "", "ghcr.io", "mallory", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &foreign.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("foreign id error = %v, want forbidden", err)
+	}
+	missing := "rgc-missing"
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &missing); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("missing id error = %v, want not found", err)
+	}
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "docker.io/library/nginx:1", &valid.ID); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("host mismatch error = %v, want bad request", err)
+	}
+	empty := ""
+	if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &empty); err != nil || ok || name != "" {
+		t.Fatalf("explicit clear = name %q ok %v err %v", name, ok, err)
 	}
 }

@@ -71,6 +71,7 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
+import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
 
 // A C-locale env-var name — kept in sync with backend/internal/secrets validEnvKey.
 const VALID_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -444,6 +445,10 @@ export function NewServicePage() {
     useCreateService();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
+  const {
+    credentials: registryCredentials,
+    loading: registryCredentialsLoading,
+  } = useRegistryCredentials();
 
   const [serviceType, setServiceType] = useState<ServiceType>("web_service");
   const [tab, setTab] = useState<SourceTab>("github");
@@ -451,6 +456,7 @@ export function NewServicePage() {
   const [repoSearch, setRepoSearch] = useState("");
   const [gitUrl, setGitUrl] = useState("");
   const [imageVal, setImageVal] = useState("");
+  const [registryCredentialId, setRegistryCredentialId] = useState("none");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
@@ -601,6 +607,12 @@ export function NewServicePage() {
       environmentId: environmentId || undefined,
       repo,
       image,
+      registryCredentialId:
+        tab === "image"
+          ? registryCredentialId === "none"
+            ? ""
+            : registryCredentialId
+          : undefined,
       branch: branchVal,
       rootDir: rootDir || undefined,
       runtime:
@@ -810,17 +822,53 @@ export function NewServicePage() {
 
                   {/* Existing Image tab */}
                   <TabsContent value="image" className="mt-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-image">
-                        {t("services.createImageLabel")}
-                      </Label>
-                      <Input
-                        id="svc-image"
-                        value={imageVal}
-                        onChange={(e) => setImageVal(e.target.value)}
-                        placeholder={t("services.createImagePlaceholder")}
-                        autoComplete="off"
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="svc-image">
+                          {t("services.createImageLabel")}
+                        </Label>
+                        <Input
+                          id="svc-image"
+                          value={imageVal}
+                          onChange={(e) => setImageVal(e.target.value)}
+                          placeholder={t("services.createImagePlaceholder")}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="svc-registry-credential">
+                          {t("services.createRegistryCredentialLabel")}
+                        </Label>
+                        <Select
+                          value={registryCredentialId}
+                          onValueChange={setRegistryCredentialId}
+                          disabled={registryCredentialsLoading}
+                        >
+                          <SelectTrigger id="svc-registry-credential">
+                            <SelectValue
+                              placeholder={t(
+                                "services.createRegistryCredentialPlaceholder",
+                              )}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              {t("services.createRegistryCredentialNone")}
+                            </SelectItem>
+                            {registryCredentials.map((credential) => (
+                              <SelectItem
+                                key={credential.id}
+                                value={credential.id}
+                              >
+                                {credential.name} ({credential.host})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {t("services.createRegistryCredentialDescription")}
+                        </p>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>

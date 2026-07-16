@@ -206,6 +206,16 @@ type AppSpec struct {
 	// +optional
 	ExternalRegistryPullSecret string `json:"externalRegistryPullSecret,omitempty"`
 
+	// RegistryCredentialID is Render's explicit registryCredentialId binding.
+	// A non-nil, non-empty value pins this App to that workspace credential; a
+	// non-nil empty value explicitly disables registry authentication. nil keeps
+	// the legacy bex behavior of resolving the newest workspace credential whose
+	// host matches Image. ExternalRegistryPullSecret is the derived Kubernetes
+	// Secret name; this field is the durable user intent used to re-materialize
+	// that Secret on later deploys.
+	// +optional
+	RegistryCredentialID *string `json:"registryCredentialId,omitempty"`
+
 	// Runtime is Render's source-build runtime. Native language values use the
 	// command-preserving native builder; docker uses the repository Dockerfile.
 	// Empty retains the legacy Builder behavior for hand-applied Apps.

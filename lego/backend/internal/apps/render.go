@@ -35,19 +35,24 @@ const renderWebService = "web_service"
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
 type renderService struct {
-	ID             string         `json:"id"` // stable Render-shaped srv- id; legacy hand-applied CRs fall back to their name
-	Name           string         `json:"name"`
-	Slug           string         `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
-	DisplayName    string         `json:"displayName"`
-	Type           string         `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
-	Suspended      string         `json:"suspended"`
-	DashboardURL   string         `json:"dashboardUrl,omitempty"`
-	CreatedAt      string         `json:"createdAt,omitempty"`
-	UpdatedAt      string         `json:"updatedAt,omitempty"`
-	Owner          *renderOwner   `json:"owner,omitempty"` // safe Render superset; official Service clients still use ownerId
-	ServiceDetails map[string]any `json:"serviceDetails,omitempty"`
-	ImagePath      string         `json:"imagePath,omitempty"`
-	Suspenders     []string       `json:"suspenders"` // who suspended it: ["user"] while suspended (bex's only suspend path), [] otherwise (w4/014)
+	ID                 string                           `json:"id"` // stable Render-shaped srv- id; legacy hand-applied CRs fall back to their name
+	Name               string                           `json:"name"`
+	Slug               string                           `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
+	DisplayName        string                           `json:"displayName"`
+	Type               string                           `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
+	Suspended          string                           `json:"suspended"`
+	DashboardURL       string                           `json:"dashboardUrl,omitempty"`
+	CreatedAt          string                           `json:"createdAt,omitempty"`
+	UpdatedAt          string                           `json:"updatedAt,omitempty"`
+	Owner              *renderOwner                     `json:"owner,omitempty"` // safe Render superset; official Service clients still use ownerId
+	ServiceDetails     map[string]any                   `json:"serviceDetails,omitempty"`
+	ImagePath          string                           `json:"imagePath,omitempty"`
+	RegistryCredential *renderRegistryCredentialSummary `json:"registryCredential,omitempty"`
+	// RegistryCredentialID is a bex convenience extension. Render reports the
+	// canonical {id,name} summary above; retaining the id keeps GraphQL/MCP and
+	// existing bex clients symmetric.
+	RegistryCredentialID string   `json:"registryCredentialId,omitempty"`
+	Suspenders           []string `json:"suspenders"` // who suspended it: ["user"] while suspended (bex's only suspend path), [] otherwise (w4/014)
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
 	// Apps the control-plane projector never labeled (see AppView.OwnerID).
@@ -106,6 +111,11 @@ type renderService struct {
 	// static_site: each entry is {cidrBlock, description}. Nil/omitted when
 	// the allowlist is empty (open to all source IPs, Render's default).
 	IPAllowList []ipAllowEntry `json:"ipAllowList,omitempty"`
+}
+
+type renderRegistryCredentialSummary struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type renderOwner struct {
@@ -269,6 +279,10 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if dashboardURL == "" {
 		dashboardURL = a.DashboardURL
 	}
+	registryCredentialID := ""
+	if a.RegistryCredentialID != nil {
+		registryCredentialID = *a.RegistryCredentialID
+	}
 	return renderService{
 		ID:                    publicID,
 		Name:                  renderServiceName(a),
@@ -281,6 +295,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		UpdatedAt:             a.UpdatedAt,
 		ServiceDetails:        details,
 		ImagePath:             a.SourceImage,
+		RegistryCredentialID:  registryCredentialID,
 		Suspenders:            suspenders(a.Suspended),
 		OwnerID:               a.OwnerID,
 		ProjectID:             a.ProjectID,
@@ -333,6 +348,15 @@ func (s *Service) restServices(ctx context.Context, apps []AppView) []renderServ
 		rendered := s.renderService(app)
 		if owner, ok := owners[app.OwnerID]; ok {
 			rendered.Owner = ownerToRender(owner)
+		}
+		if app.RegistryCredentialID != nil && *app.RegistryCredentialID != "" && s.RegistryCreds != nil {
+			workspaceID := app.OwnerID
+			if workspaceID == "" {
+				workspaceID, _ = s.Tenant(ctx)
+			}
+			if name, ok := s.RegistryCreds.RegistryCredentialName(ctx, workspaceID, *app.RegistryCredentialID); ok {
+				rendered.RegistryCredential = &renderRegistryCredentialSummary{ID: *app.RegistryCredentialID, Name: name}
+			}
 		}
 		out = append(out, rendered)
 	}

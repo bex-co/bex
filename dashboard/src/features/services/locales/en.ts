@@ -2127,6 +2127,22 @@ const enServices: Record<string, TranslationEntry> = {
     message: "docker.io/library/nginx:latest",
     description: "Create-wizard Existing Image tab input placeholder",
   },
+  "services.createRegistryCredentialLabel": {
+    message: "Registry credential",
+    description: "Create-wizard private-image registry credential label",
+  },
+  "services.createRegistryCredentialPlaceholder": {
+    message: "Select a registry credential",
+    description: "Create-wizard registry credential picker placeholder",
+  },
+  "services.createRegistryCredentialNone": {
+    message: "None (public image)",
+    description: "Create-wizard registry credential picker empty option",
+  },
+  "services.createRegistryCredentialDescription": {
+    message: "Choose a stored workspace credential when this image is private.",
+    description: "Create-wizard registry credential picker help text",
+  },
   "services.createSettingsTitle": {
     message: "Settings",
     description: "Create-wizard settings section heading",

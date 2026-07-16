@@ -87,6 +87,32 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 
+const registryCredentialsState = {
+  credentials: [
+    {
+      id: "rgc-private",
+      name: "Private GHCR",
+      host: "ghcr.io",
+      username: "robot",
+      expiresAt: null,
+      status: "active",
+      createdAt: null,
+    },
+  ],
+  loading: false,
+};
+
+vi.mock(
+  "@/features/registry-credentials/hooks/use-registry-credentials",
+  () => ({
+    useRegistryCredentials: () => ({
+      ...registryCredentialsState,
+      error: undefined,
+      refetch: vi.fn(),
+    }),
+  }),
+);
+
 const projectsState = {
   projects: [
     {
@@ -505,6 +531,54 @@ describe("NewServicePage", () => {
       expect(
         screen.getByPlaceholderText("docker.io/library/nginx:latest"),
       ).toBeInTheDocument();
+    });
+
+    it("submits the selected registry credential with an existing image", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      await user.type(screen.getByLabelText("Name"), "private-web");
+      await user.type(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+        "ghcr.io/acme/private-web:latest",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /Registry credential/i }),
+      );
+      await user.click(
+        screen.getByRole("option", { name: /Private GHCR \(ghcr.io\)/i }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: "ghcr.io/acme/private-web:latest",
+          registryCredentialId: "rgc-private",
+        }),
+      );
+    });
+
+    it("submits an explicit no-credential choice for a public image", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      await user.type(screen.getByLabelText("Name"), "public-web");
+      await user.type(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+        "docker.io/library/nginx:latest",
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: "docker.io/library/nginx:latest",
+          registryCredentialId: "",
+        }),
+      );
     });
   });
 

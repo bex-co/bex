@@ -23,6 +23,7 @@
 # Usage:
 #   scripts/cli-compat.sh <render-cli-args...>
 #   scripts/cli-compat.sh verify        # re-run the ✅ rows, exit non-zero on regression (t006)
+#   scripts/cli-compat.sh registry-credential-verify
 #
 # Env (all have dev-9 defaults so this runs with zero setup once dev-9 is up):
 #   BEX_API_URL       bex-api base, default http://localhost:54090
@@ -63,6 +64,10 @@ if [ "${1:-}" = "mutation-check" ]; then
   # w9/m4/t005: prove the verify legs fail loudly against a broken wire shape.
   exec env BEX_API_URL="$BEX_API_URL" HYDRA_PUBLIC_URL="$HYDRA_PUBLIC_URL" \
     bash .pm/w9/done/m4/mutation-check.sh
+fi
+
+if [ "${1:-}" = "registry-credential-verify" ]; then
+  exec bash scripts/registry-credential-cli-verify.sh
 fi
 
 exec "$RENDER_BIN" "$@"

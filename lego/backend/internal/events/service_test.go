@@ -324,7 +324,7 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		{TypeSuspenderAdded, []string{"apps.Suspend"}, nil},
 		{TypeCommandsChanged, []string{"apps.SetCommands"}, nil},
 		{TypeDockerfilePathChanged, []string{"apps.SetDockerfilePath"}, nil},
-		{TypeSourceChanged, []string{"apps.SetSource"}, nil},
+		{TypeSourceChanged, []string{"apps.SetRegistryCredential", "apps.SetSource", "apps.SetSourceAndRegistryCredential"}, nil},
 		// One type, four verbs — all must reach the query, or an env-var delete (or
 		// a blueprint seed) would silently vanish from an env_vars_changed filter.
 		{TypeEnvVarsChanged, []string{"secrets.DeleteEnvVar", "secrets.SeedEnvVars", "secrets.SetEnvVar", "secrets.SetEnvVars"}, nil},

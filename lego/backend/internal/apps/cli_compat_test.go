@@ -219,8 +219,7 @@ func TestRESTCreateRejectsSecretFilesBeforeWriteWhenUnavailable(t *testing.T) {
 
 func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t *testing.T) {
 	createBodies := map[string]string{
-		"previews":            `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"previews":{"generation":"manual"}}}`,
-		"registry credential": `{"name":"new","type":"web_service","image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
+		"previews": `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"previews":{"generation":"manual"}}}`,
 	}
 	for name, body := range createBodies {
 		t.Run("create "+name, func(t *testing.T) {
@@ -236,8 +235,7 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 	}
 
 	patchBodies := map[string]string{
-		"previews":            `{"serviceDetails":{"previews":{"generation":"manual"}}}`,
-		"registry credential": `{"image":{"imagePath":"nginx","registryCredentialId":"rgc-1"}}`,
+		"previews": `{"serviceDetails":{"previews":{"generation":"manual"}}}`,
 	}
 	for name, body := range patchBodies {
 		t.Run("patch "+name, func(t *testing.T) {

@@ -77,7 +77,7 @@ The following commands were exercised against live bex environments with real Se
 | `workspace current`, `workspaces` | ✅ | Return the caller's real `tea-…` workspace. |
 | `workspace set` | ◐ | The interactive flow was not tested. `RENDER_WORKSPACE` is the supported deterministic override and is used by the production setup above. |
 | `projects`, `environments <project-id>` | ✅ | Lists projects and returns Render-compatible environment records. |
-| `services`, `services create`, `services update`, `services delete` | ✅ | List and lifecycle operations return the expected Render wire shapes. The upstream CLI does not support `--num-instances` on update; supported fields such as `--health-check-path` work. |
+| `services`, `services create`, `services update`, `services delete` | ✅ | List and lifecycle operations return the expected Render wire shapes. `services create --image … --registry-credential rgc-…` binds the named workspace credential and reaches a Running App; `scripts/cli-compat.sh registry-credential-verify` is the self-cleaning live leg. The upstream CLI does not support `--num-instances` on update; supported fields such as `--health-check-path` work. |
 | `services instances` | ✅ | Returns live, non-terminal Deployment pods; suspended services return an empty list. |
 | `postgres create`, list, get, update, suspend, resume, delete | ✅ | Includes plan, disk, high-availability, and IP allow-list changes. Allow-list entries round-trip as `{cidrBlock, description}` objects — per-entry descriptions persist and come back on every read (w4/m24; previously accepted but dropped). |
 | `postgres update --name` | ✅ | Rename preserves the immutable `dpg-…` ID and Kubernetes identity. Production passed on 2026-07-15 using digest `ba32bf76ab6e` (deploy run `29406643202`): the legacy backfill preserved all 11 recorded UIDs, and a fresh resource passed the official-CLI identity smoke test. |
@@ -97,7 +97,7 @@ The following commands were exercised against live bex environments with real Se
 
 ## Verification
 
-The compatibility pass used `render-oss/cli` at `c23438e` on 2026-07-15 without patches. Raw transcripts are in [`.pm/w9/done/m2/evidence/log.md`](../.pm/w9/done/m2/evidence/log.md).
+The broad compatibility pass used `render-oss/cli` at `c23438e` on 2026-07-15 without patches. The private-image credential leg uses the current unmodified CLI at `72b3fbd59068ae84d024ec2ded9df6b27dc8dd68`; `scripts/registry-credential-cli-verify.sh` first requires an anonymous pull of the supplied image to fail, then creates and cleans up its credential and service, asserts the canonical REST summary plus persisted App/Secret/Deployment binding, and requires a kubelet pull event and `Running` Pod. Raw broad-pass transcripts are in [`.pm/w9/done/m2/evidence/log.md`](../.pm/w9/done/m2/evidence/log.md).
 
 For the local isolated harness:
 

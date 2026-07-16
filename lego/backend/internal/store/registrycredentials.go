@@ -102,6 +102,20 @@ func (s *PGStore) GetRegistryCredential(ctx context.Context, workspaceID, id str
 	return c, nil
 }
 
+// GetRegistryCredentialByID returns one credential without pre-scoping it to a
+// workspace. It exists for resource-binding resolvers that must distinguish an
+// unknown id (404) from an existing credential owned by another workspace
+// (403). Public credential reads continue to use GetRegistryCredential so this
+// lookup cannot accidentally become an unscoped read surface.
+func (s *PGStore) GetRegistryCredentialByID(ctx context.Context, id string) (RegistryCredential, error) {
+	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
+		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = $1`, id))
+	if err != nil {
+		return RegistryCredential{}, classify("registry credential", err)
+	}
+	return c, nil
+}
+
 // GetRegistryCredentialByHost returns the workspace's credential for host, if
 // any — the lookup the operator-wiring materialization path (w2/m14/t002)
 // uses to decide whether an App's image needs a pull secret. Newest wins when

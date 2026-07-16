@@ -203,7 +203,7 @@ type IntentStore interface {
 	SetAppIdleTTL(ctx context.Context, id string, seconds int32) error
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
-	SetAppSource(ctx context.Context, id, repo, image, branch string) error
+	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
 	// AddDomain appends or updates a custom-domain row. redirectForName is empty
 	// for a directly-served host and names the canonical host for an auto-paired
 	// redirect. The projector carries both into the App spec on the next resync.
@@ -274,6 +274,10 @@ type AppView struct {
 	// reconciled; Render's imagePath is configuration and must be available
 	// immediately so clients can clone an image-backed service.
 	SourceImage string `json:"sourceImage,omitempty"`
+	// RegistryCredentialID is the durable explicit private-registry binding.
+	// nil means legacy host auto-resolution; pointer-to-empty means explicitly
+	// unbound. Adapters expose the string value and treat nil as omitted.
+	RegistryCredentialID *string `json:"registryCredentialId,omitempty"`
 	// Runtime/build/start mirror Render's native source-build contract.
 	Runtime      string `json:"runtime,omitempty"`
 	BuildCommand string `json:"buildCommand,omitempty"`
@@ -670,6 +674,7 @@ func view(a *appv1alpha1.App) AppView {
 		URLs:                  a.Status.URLs,
 		Image:                 a.Status.Image,
 		SourceImage:           a.Spec.Image,
+		RegistryCredentialID:  cloneStringPtr(a.Spec.RegistryCredentialID),
 		Runtime:               a.Spec.Runtime,
 		BuildCommand:          a.Spec.BuildCommand,
 		StartCommand:          a.Spec.StartCommand,
@@ -1127,14 +1132,19 @@ type CreateRequest struct {
 	Schedule string
 	// Command overrides a cron_job's default entrypoint (spec.command); empty
 	// runs the image's own command. Ignored for every other type.
-	Command      string
-	Repo         string
-	Image        string
-	Branch       string
-	Builder      string
-	Runtime      string
-	BuildCommand string
-	StartCommand string
+	Command string
+	Repo    string
+	Image   string
+	// RegistryCredentialID follows Render's registryCredentialId semantics.
+	// nil means omitted (preserve bex's host auto-resolution); a pointer to an
+	// empty string explicitly selects no credential; any other value binds that
+	// exact credential after workspace and image-host validation.
+	RegistryCredentialID *string
+	Branch               string
+	Builder              string
+	Runtime              string
+	BuildCommand         string
+	StartCommand         string
 	// RootDir scopes build-from-git to a subdirectory of Repo (Render's Root
 	// Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir string
@@ -1384,16 +1394,17 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// still surfaces as ErrConflict here, never an unclassified 500.
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID:      tenantID,
-			Name:          req.Name,
-			Repo:          req.Repo,
-			Image:         req.Image,
-			Branch:        desired.Branch,
-			Port:          desired.Port,
-			Replicas:      desired.Replicas,
-			Tier:          desired.Tier,
-			ProjectID:     environment.ProjectID,
-			EnvironmentID: environment.ID,
+			TenantID:             tenantID,
+			Name:                 req.Name,
+			Repo:                 req.Repo,
+			Image:                req.Image,
+			RegistryCredentialID: cloneStringPtr(desired.RegistryCredentialID),
+			Branch:               desired.Branch,
+			Port:                 desired.Port,
+			Replicas:             desired.Replicas,
+			Tier:                 desired.Tier,
+			ProjectID:            environment.ProjectID,
+			EnvironmentID:        environment.ID,
 			// Provenance for the first deploy row CreateApp opens (w9/001):
 			// the branch tip this create will build, resolved best-effort.
 			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
@@ -1528,16 +1539,17 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	// store-managed (unified create path, w2/m11).
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID:      tenantID,
-			Name:          req.Name,
-			Repo:          req.Repo,
-			Image:         req.Image,
-			Branch:        desired.Branch,
-			Port:          desired.Port,
-			Replicas:      desired.Replicas,
-			Tier:          desired.Tier,
-			ProjectID:     environment.ProjectID,
-			EnvironmentID: environment.ID,
+			TenantID:             tenantID,
+			Name:                 req.Name,
+			Repo:                 req.Repo,
+			Image:                req.Image,
+			RegistryCredentialID: cloneStringPtr(desired.RegistryCredentialID),
+			Branch:               desired.Branch,
+			Port:                 desired.Port,
+			Replicas:             desired.Replicas,
+			Tier:                 desired.Tier,
+			ProjectID:            environment.ProjectID,
+			EnvironmentID:        environment.ID,
 			// Provenance for the first deploy row CreateApp opens (w9/001) —
 			// same best-effort resolution as create()'s.
 			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
@@ -1823,23 +1835,28 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := core.ValidateCIDRs(req.IPAllowList); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	registryCredentialID := cloneStringPtr(req.RegistryCredentialID)
+	if registryCredentialID != nil {
+		*registryCredentialID = strings.TrimSpace(*registryCredentialID)
+	}
 	spec := appv1alpha1.AppSpec{
-		Type:            svcType,
-		Repo:            req.Repo,
-		Image:           req.Image,
-		Branch:          branch,
-		Runtime:         runtime,
-		BuildCommand:    req.BuildCommand,
-		StartCommand:    req.StartCommand,
-		Builder:         builder,
-		RootDir:         req.RootDir,
-		BuildFilter:     buildFilter,
-		MaintenanceMode: maintenanceMode,
-		DockerfilePath:  req.DockerfilePath,
-		Port:            port,
-		Replicas:        replicas,
-		Tier:            tier,
-		HealthCheckPath: req.HealthCheckPath,
+		Type:                 svcType,
+		Repo:                 req.Repo,
+		Image:                req.Image,
+		RegistryCredentialID: registryCredentialID,
+		Branch:               branch,
+		Runtime:              runtime,
+		BuildCommand:         req.BuildCommand,
+		StartCommand:         req.StartCommand,
+		Builder:              builder,
+		RootDir:              req.RootDir,
+		BuildFilter:          buildFilter,
+		MaintenanceMode:      maintenanceMode,
+		DockerfilePath:       req.DockerfilePath,
+		Port:                 port,
+		Replicas:             replicas,
+		Tier:                 tier,
+		HealthCheckPath:      req.HealthCheckPath,
 		MaxShutdownDelaySeconds: cloneInt32(
 			req.MaxShutdownDelaySeconds,
 		),
@@ -1969,6 +1986,14 @@ func cloneInt32(value *int32) *int32 {
 	}
 	cloned := *value
 	return &cloned
+}
+
+func cloneStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 
 // applyCreateToSpec copies the create-owned fields of want onto an existing
@@ -2461,6 +2486,26 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 // the other. Store-managed Apps write the row first because the projector owns
 // these fields.
 func (s *Service) SetSource(ctx context.Context, name string, repo, image, branch *string) (AppView, error) {
+	return s.SetSourceAndRegistryCredential(ctx, name, repo, image, branch, nil)
+}
+
+// SetRegistryCredential sets, changes, or clears an image-backed service's
+// explicit registry credential. An empty id is the explicit-clear operation.
+// All adapters call this same verb so membership, host validation, Secret
+// materialization, and error classification cannot drift.
+func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID string) (AppView, error) {
+	return s.SetSourceAndRegistryCredential(ctx, name, nil, nil, nil, &credentialID)
+}
+
+// SetSourceAndRegistryCredential applies Render's PATCH source object and its
+// context-sensitive registryCredentialId together. The combined verb matters
+// for `image:{imagePath,registryCredentialId}`: the credential is validated
+// against the proposed image host before either source field reaches the App.
+// A nil credential pointer preserves the current binding; pointer-to-empty
+// clears it. Switching to a repo clears an old image credential unless the
+// request explicitly supplied one, in which case the unsupported repo-build
+// use is rejected honestly by ensureExternalRegistryPullSecret.
+func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID *string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
@@ -2489,18 +2534,49 @@ func (s *Service) SetSource(ctx context.Context, name string, repo, image, branc
 	if nextBranch == "" {
 		nextBranch = "main"
 	}
+	nextRegistryCredentialID := cloneStringPtr(a.Spec.RegistryCredentialID)
+	if registryCredentialID != nil {
+		value := strings.TrimSpace(*registryCredentialID)
+		nextRegistryCredentialID = &value
+	} else if repo != nil {
+		// A source-kind switch stops using the former image credential. This is
+		// omission-as-preserve for ordinary PATCHes, but an explicit repo switch
+		// cannot retain image-only authentication intent.
+		nextRegistryCredentialID = nil
+	}
+	probe := a.DeepCopy()
+	probe.Spec.Repo = nextRepo
+	probe.Spec.Image = nextImage
+	probe.Spec.Branch = nextBranch
+	probe.Spec.RegistryCredentialID = cloneStringPtr(nextRegistryCredentialID)
+	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, probe)
+	if err != nil {
+		return AppView{}, err
+	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
-			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch); err != nil {
+			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch, cloneStringPtr(nextRegistryCredentialID)); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
 	}
-	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
+	oldPullSecret := a.Spec.ExternalRegistryPullSecret
+	updated, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Repo = nextRepo
 		a.Spec.Image = nextImage
 		a.Spec.Branch = nextBranch
+		a.Spec.RegistryCredentialID = cloneStringPtr(nextRegistryCredentialID)
+		a.Spec.ExternalRegistryPullSecret = pullSecretName
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	if oldPullSecret != "" && pullSecretName == "" {
+		if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
+			return AppView{}, fmt.Errorf("delete cleared registry pull secret: %w", err)
+		}
+	}
+	return updated, nil
 }
 
 // SetCronJob changes a cron_job's schedule and/or command (spec.schedule +
