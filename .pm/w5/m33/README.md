@@ -22,7 +22,7 @@ A single Render-shaped POST creates an env group already containing vars/secret 
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm` round 12, 2026-07-15 — docs miner (ADR018:62: "bex POST still creates empty contents and service links, which clients add afterward… Dashboard list/detail views don't yet surface ownerId/timestamps").
+- **Source:** `/pm-brainstorm` round 12, 2026-07-15 — docs miner (ADR018:62: "bex POST still creates empty contents and service links, which clients add afterward… Dashboard list/detail views don't yet surface ownerId/timestamps"). The authenticated 2026-07-15 [dashboard walk](../../../docs/render-artifacts/dashboard-walk/workspace.md#page-by-page-verdicts) independently confirmed Render's one-step create controls; no duplicate gap was filed from the walk.
 - **Goal linkage:** env-groups Render parity (polishes w1/m16 + w5/m26).
 - **Expected outcome:** Blueprint- and CLI-driven env-group creation stops needing N follow-up calls; UI metadata matches Render's.
 - **Why now:** w6/m24 just reworked env-group attribution — the code is warm and this is its unfinished create-side half. Render parity closing task included — REST/GraphQL/MCP/UI change.
