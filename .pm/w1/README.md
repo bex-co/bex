@@ -77,7 +77,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `024.md` — verify/close the w1/m36 manual default-SA `imagePullSecrets` patch (undeclared prod gitops drift; likely mooted by w7/m36's per-App pull creds — verify-first, revert or declare) ← filed by `/pm-brainstorm` round 18's closeout-residual sweep, 2026-07-15
+_(`024.md` absorbed and closed by `w10/m4` 2026-07-15 — the prod SA patch was verified gone with the declared operator path load-bearing. `025.md` — Traefik LB `ignore_changes = [labels]` — absorbed into **w10/m6** (t001) 2026-07-15; note moved to `done/`.)_
 
 _(`018`, `019` promoted to `m30` 2026-07-13)_
 
