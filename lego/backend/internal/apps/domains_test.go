@@ -1054,6 +1054,164 @@ func TestMCPCustomDomainsSiblingConflict(t *testing.T) {
 	}
 }
 
+// --- w7/m38: REST list pagination + filter ---
+
+// TestRESTListDomainsPagination: paging through more domains than a single page
+// terminates, returns all items exactly once, in cursor-sorted order.
+func TestRESTListDomainsPagination(t *testing.T) {
+	// Build an app with 5 subdomains so we can page with limit=2.
+	app := appWithHosts("web",
+		"app.example.com",
+		"api.example.com",
+		"www.example.com",
+		"cdn.example.com",
+		"mail.example.com",
+	)
+	app.Spec.Host = "web.onbex.co" // forces all spec.hosts[] to use "<app>-tls-<host>" names
+	svc, _ := newService(nil, app)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	// Walk all pages with limit=2, collecting names.
+	var (
+		cursor   string
+		allNames []string
+	)
+	for {
+		url := "/v1/services/web/custom-domains?limit=2"
+		if cursor != "" {
+			url += "&cursor=" + cursor
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET page => %d: %s", rec.Code, rec.Body)
+		}
+		var page []customDomainWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		for _, item := range page {
+			allNames = append(allNames, item.CustomDomain.Name)
+			cursor = item.Cursor
+		}
+	}
+	if len(allNames) != 5 {
+		t.Fatalf("pagination walk: got %d names, want 5: %v", len(allNames), allNames)
+	}
+	// Verify no duplicates (StablePage guarantees this).
+	seen := map[string]bool{}
+	for _, n := range allNames {
+		if seen[n] {
+			t.Errorf("duplicate domain in paginated walk: %q", n)
+		}
+		seen[n] = true
+	}
+}
+
+// TestRESTListDomainsFilterVerificationStatus: verificationStatus=verified returns
+// only domains with a TLS secret; verificationStatus=pending the rest.
+func TestRESTListDomainsFilterVerificationStatus(t *testing.T) {
+	app := appWithHosts("web", "www.example.com", "api.example.com")
+	app.Spec.Host = "web.onbex.co"
+	// Only www.example.com gets a TLS secret → verified.
+	secret := tlsSecret("default", "web-tls-www.example.com")
+	cl := fakeClient(app, secret)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	getList := func(vs string) []customDomainWithCursor {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET",
+			"/v1/services/web/custom-domains?verificationStatus="+vs, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET verificationStatus=%s => %d: %s", vs, rec.Code, rec.Body)
+		}
+		var list []customDomainWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return list
+	}
+
+	verified := getList("verified")
+	if len(verified) != 1 || verified[0].CustomDomain.Name != "www.example.com" {
+		t.Errorf("verificationStatus=verified: want [www.example.com], got %v", verified)
+	}
+	pending := getList("pending")
+	if len(pending) != 1 || pending[0].CustomDomain.Name != "api.example.com" {
+		t.Errorf("verificationStatus=pending: want [api.example.com], got %v", pending)
+	}
+}
+
+// TestRESTListDomainsFilterDomainType: domainType=apex returns only apex
+// domains; domainType=subdomain returns subdomains.
+func TestRESTListDomainsFilterDomainType(t *testing.T) {
+	// foo.com is apex; www.foo.com and api.foo.com are subdomains.
+	app := appWithHosts("web", "foo.com", "www.foo.com", "api.foo.com")
+	app.Spec.Host = "web.onbex.co"
+	svc, _ := newService(nil, app)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	getList := func(dt string) []customDomainWithCursor {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET",
+			"/v1/services/web/custom-domains?domainType="+dt, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET domainType=%s => %d: %s", dt, rec.Code, rec.Body)
+		}
+		var list []customDomainWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return list
+	}
+
+	apexes := getList("apex")
+	if len(apexes) != 1 || apexes[0].CustomDomain.Name != "foo.com" {
+		t.Errorf("domainType=apex: want [foo.com], got %v", apexes)
+	}
+	subs := getList("subdomain")
+	if len(subs) != 2 {
+		t.Fatalf("domainType=subdomain: want 2 items, got %v", subs)
+	}
+	subNames := map[string]bool{}
+	for _, s := range subs {
+		subNames[s.CustomDomain.Name] = true
+	}
+	if !subNames["www.foo.com"] || !subNames["api.foo.com"] {
+		t.Errorf("domainType=subdomain: missing expected host, got %v", subs)
+	}
+}
+
+// TestRESTListDomainsInvalidEnumBadRequest: unknown verificationStatus or
+// domainType values return 400 Bad Request.
+func TestRESTListDomainsInvalidEnumBadRequest(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for _, url := range []string{
+		"/v1/services/web/custom-domains?verificationStatus=unknown",
+		"/v1/services/web/custom-domains?verificationStatus=VERIFIED",
+		"/v1/services/web/custom-domains?domainType=unknown",
+		"/v1/services/web/custom-domains?domainType=APEX",
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("GET %s => %d, want 400", url, rec.Code)
+		}
+	}
+}
+
 // --- helpers ---
 
 func managedAppWithHosts(name, appID string, hosts ...string) *appv1alpha1.App {
