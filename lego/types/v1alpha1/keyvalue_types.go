@@ -102,11 +102,9 @@ type KeyValueSpec struct {
 	// route is open to all source IPs. The internal path is never affected.
 	// Render's ipAllowList; only meaningful when Public. Each entry carries the
 	// CIDR enforcement reads plus an optional description that rides along
-	// untouched; Schemaless because a pre-m24 CR serialized entries as bare
-	// CIDR strings and both shapes must keep validating (see IPAllowEntry).
+	// untouched (see IPAllowEntry; the schema is structural — a malformed
+	// entry is rejected at admission).
 	// +optional
-	// +kubebuilder:validation:Schemaless
-	// +kubebuilder:pruning:PreserveUnknownFields
 	IPAllowList []IPAllowEntry `json:"ipAllowList,omitempty"`
 }
 

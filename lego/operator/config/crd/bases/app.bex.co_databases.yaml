@@ -111,9 +111,29 @@ spec:
                   route is open to all source IPs. The internal "-rw" path is never affected.
                   Render's ipAllowList; only meaningful when Public. Each entry carries the
                   CIDR enforcement reads plus an optional description that rides along
-                  untouched; Schemaless because a pre-m24 CR serialized entries as bare
-                  CIDR strings and both shapes must keep validating (see IPAllowEntry).
-                x-kubernetes-preserve-unknown-fields: true
+                  untouched (see IPAllowEntry; the schema is structural — a malformed
+                  entry is rejected at admission).
+                items:
+                  description: |-
+                    IPAllowEntry is one ipAllowList item on a Database/KeyValue spec: the CIDR
+                    the operator enforces plus an optional human-facing description that rides
+                    along untouched (Render's {cidrBlock, description} pairs, stored
+                    product-neutrally as {cidr, description}). Enforcement reads CIDR only
+                    (the operator's ipAllowListMiddlewareSpec).
+                  properties:
+                    cidr:
+                      description: CIDR is the source range this entry allows (e.g.
+                        "10.0.0.0/8").
+                      type: string
+                    description:
+                      description: |-
+                        Description is the operator-facing label a human gave this entry.
+                        Never read by enforcement.
+                      type: string
+                  required:
+                  - cidr
+                  type: object
+                type: array
               name:
                 description: |-
                   Name is the mutable, user-facing database name. metadata.name is the
