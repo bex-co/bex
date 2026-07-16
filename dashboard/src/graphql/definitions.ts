@@ -1536,6 +1536,7 @@ export type Query = {
   registryCredential: Maybe<RegistryCredential>;
   registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
   repos: Maybe<Array<Maybe<Repo>>>;
+  secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
   service: Maybe<Service>;
   serviceEvents: Maybe<Array<Maybe<ServiceEvent>>>;
@@ -1860,6 +1861,13 @@ export type QueryReposArgs = {
 };
 
 
+export type QuerySecretFilesArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: Scalars['String']['input'];
+};
+
+
 export type QueryServerArgs = {
   id: Scalars['String']['input'];
 };
@@ -2009,6 +2017,18 @@ export type SecretFile = {
 export type SecretFileInput = {
   content: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+export type SecretFileListValue = {
+  __typename: 'SecretFileListValue';
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
+};
+
+export type SecretFileWithCursor = {
+  __typename: 'SecretFileWithCursor';
+  cursor: Maybe<Scalars['String']['output']>;
+  secretFile: Maybe<SecretFileListValue>;
 };
 
 export type Service = {
