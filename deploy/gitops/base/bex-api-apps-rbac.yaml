@@ -53,6 +53,13 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["get", "list"]
+  # Resolve each projected App's exact Traefik router labels for HTTP egress
+  # accounting, then list peer Ingresses to reject normalized-name collisions.
+  # These are tenant routing objects in this namespace; platform Ingresses stay
+  # outside the grant.
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
