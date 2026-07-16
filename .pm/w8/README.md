@@ -29,6 +29,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **m14** — Postgres disk autoscaling (8 tasks) ← from `/pm-brainstorm` round 7, 2026-07-14 (systematic field-diff: `enableDiskAutoscaling`/`diskAutoscalingEnabled`, zero hits; the control loop between grow-only `storageGB` and w3/m10's already-scraped kubelet volume stats) — done 2026-07-15
 - [ ] **m15** — Complete outbound-bandwidth accounting: HTTP + WebSocket + direct + datastore TCP (14 tasks) ← prerequisite split from `001` 2026-07-14; replaces the HTTP-only counter before bandwidth caps can be promoted
 - [ ] **m16** — Managed-datastore polish chores: create ipAllowList parity + pg_stat_statements backfill + KV version assessment (7 tasks) ← groups round-14 consistency find (postgres create `ipAllowList` is REST-only while keyvalue has all three surfaces) with notes `003` + `006`, 2026-07-15 (the w7/m37 chores pattern); coordinates with w4/m24 (descriptions) and w9/m38 (error bodies)
+- [ ] **m17** — Disk-autoscaling hardening: loud sample-failure signal + single-sourced 16 TB cap (6 tasks) ← from `/pm-brainstorm` round 16, 2026-07-15 (consistency-mine over the day-old m14 diff: `database_autoscale.go:176-179` swallows sample-unavailable at Info level and silently no-ops — the feature's whole purpose defeated with no Event/condition; the 16 TB cap literal duplicated across operator, dashboard, MCP description, and docs)
 
 ## Inbox
 
